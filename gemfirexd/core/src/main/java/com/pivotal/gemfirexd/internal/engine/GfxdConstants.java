@@ -480,7 +480,8 @@ public interface GfxdConstants {
           Attribute.SKIP_CONSTRAINT_CHECKS,
           Attribute.ROUTE_QUERY,
           Attribute.AUTHZ_FULL_ACCESS_USERS,
-          Attribute.AUTHZ_READ_ONLY_ACCESS_USERS
+          Attribute.AUTHZ_READ_ONLY_ACCESS_USERS,
+          Attribute.SNAPPY_ROW_STORE_ONLY
         }));
 
   // --------------------- Flags for SanityManager debug trace below

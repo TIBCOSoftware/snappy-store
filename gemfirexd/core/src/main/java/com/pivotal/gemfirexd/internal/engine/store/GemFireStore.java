@@ -321,6 +321,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   
   private String dbLocaleStr;
 
+  private boolean isRowStoreOnly;
+
   private volatile LocalRegion identityRegion;
 
   // Embedded GFXD loner instance which will be 
@@ -978,7 +980,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
               "Exception occurred while starting GemFireXD JXM Agent", ade);
         }
       }
-      
+
+      this.isRowStoreOnly = Boolean.parseBoolean(
+          getBootProperty(Attribute.SNAPPY_ROW_STORE_ONLY));
+
       // persistingDD needs to be initialized here since we are dependent on it
       // in GfxdDistributionAdvisor
       String persistDD = getBootProperty(Attribute.GFXD_PERSIST_DD);
@@ -2282,6 +2287,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   public boolean isSnappyStore() {
     return this.snappyStore;
+  }
+
+  public boolean isRowStoreOnly() {
+    return this.isRowStoreOnly;
   }
 
   public String getDatabaseName() {
