@@ -4183,7 +4183,7 @@ class DRDAConnThread extends Thread {
              if (!Misc.getMemStore().isSnappyStore()) {
                database.queryHDFS = true;
              }
-             else if (!Misc.getMemStore().isRowStoreOnly()) {
+             else {
                database.routeQuery = true;
              }
           }
