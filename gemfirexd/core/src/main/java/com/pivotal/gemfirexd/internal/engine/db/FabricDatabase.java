@@ -459,7 +459,18 @@ public final class FabricDatabase implements ModuleControl,
       GfxdManagementService.handleEvent(
           GfxdResourceEvent.EMBEDCONNECTION__INIT, embedConn);
 
-      postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
+      boolean ddReadLockAcquired = false;
+      try {
+        // Acquire a read lock on data dictionary so that no new ddls can start
+        // executing until this node has finished ddl replay
+        ddReadLockAcquired = this.dd.lockForReadingInDDLReplayNoThrow(
+            this.memStore, Long.MAX_VALUE / 2, true);
+        postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
+      } finally {
+        if (ddReadLockAcquired) {
+          this.dd.unlockAfterReading(tc);
+        }
+      }
 
       // notify FabricService
       final FabricService service = FabricServiceManager
@@ -536,9 +547,6 @@ public final class FabricDatabase implements ModuleControl,
       final Properties bootProps, final LanguageConnectionContext lcc,
       final GemFireTransaction tc, final LogWriter logger) throws Exception {
 
-    //final boolean recoveringAfterACrash = isRecoveringAfterCrash();
-    // removeNoCrashIndicator();
-
     // Replay the initial DDL statements, if any, after DB is created. We invoke
     // this in postCreate so as to ensure that the first connection required for
     // DDL statement prepare and execution has been fully initialized.
@@ -587,7 +595,9 @@ public final class FabricDatabase implements ModuleControl,
     // Do not remote the SQL commands that are part of initial DDL replay.
     lcc.setIsConnectionForRemote(true);
     lcc.setSkipLocks(true);
-    int maxIterations = 4;
+    // Since we are taking the readlock on datadictionary upfront so no
+    // new ddls will arrive in the queue and multiple iterations won't be
+    // required.
     GfxdDDLQueueEntry qEntry = null;
     // The strategy of replay is thus. We get the initial batch of DDLs to
     // be executed from the DDL RegionQueue in a write lock. Any DDL
@@ -605,8 +615,11 @@ public final class FabricDatabase implements ModuleControl,
     // same DDL to be processed during intial replay in last iteration and
     // received as GfxdDDLMessage (which is blocked), so need to take care
     // of duplicates using DDL IDs.
+    // The above sophisticated strategy to allow ddls while replay is going
+    // on is being disabled as ddls are not frequent and several race condition
+    // scenario will automatically go away making it simpler and more
+    // maintainable.
     boolean acquiredReplayLock = false;
-    boolean ddReadLockAcquired = false;
     int actualSize;
     List<GfxdDDLQueueEntry> currentQueue;
     final ArrayList<GemFireContainer> uninitializedContainers =
@@ -616,26 +629,6 @@ public final class FabricDatabase implements ModuleControl,
     final Statement stmt = embedConn.createStatement();
 
     try {
-      while (maxIterations-- > 0) {
-
-        // For the last iteration take the DD read lock to force any
-        // in progress DDLs to flush and avoid missing them.
-        // This alongwith the DD read lock in GfxdDDLRegion#chunkEntries
-        // ensures that all pending DDLs that have possibly not sent
-        // the GfxdDDLMessage are flushed.
-
-        ddReadLockAcquired = false;
-        if (maxIterations == 0) {
-          // pass TC as null to avoid check of DDL replay in progress in
-          // the lock method
-          // try to acquire DD lock in loop checking whether the skip lock
-          // flag has been set
-          ddReadLockAcquired = this.dd.lockForReadingInDDLReplayNoThrow(
-              this.memStore, Long.MAX_VALUE / 2, true);
-        }
-        this.memStore.acquireDDLReplayLock(true);
-        acquiredReplayLock = true;
-
         final TLongHashSet processedIds = this.memStore.getProcessedDDLIDs();
         synchronized (processedIds) {
           // get all elements in the queue removing them from the queue
@@ -651,20 +644,10 @@ public final class FabricDatabase implements ModuleControl,
               ((ReplayableConflatable)qVal).markExecuting();
             }
           }
-          if (maxIterations > 0) {
-            // do not release the lock in the last iteration to block
-            // GfxdDDLMessages and thus avoid missing any DDL messages
-            this.memStore.releaseDDLReplayLock(true);
-            acquiredReplayLock = false;
-          }
-          if ((actualSize = currentQueue.size()) == 0) {
-            // we are good to end; force the next iteration to be the last
-            // one which is still required to take locks etc. and ensure
-            // flush of any pending DDLs/procedures
-            if (maxIterations > 1) {
-              maxIterations = 1;
-            }
-            continue;
+
+          if (currentQueue.size() == 0) {
+            // Nothing to replay just return
+            return;
           }
           // add the DDL IDs to processed IDs in advance since this could
           // need to wait for GfxdDDLFinishMessage so don't block
@@ -681,12 +664,8 @@ public final class FabricDatabase implements ModuleControl,
               iter.remove();
             }
           }
-          actualSize = currentQueue.size();
         }
-        if (logger.infoEnabled()) {
-          logger.info("FabricDatabase: initial replay remaining iters "
-              + maxIterations + " with remaining queue size " + actualSize);
-        }
+
         // First check if region intialization should be skipped for
         // any of the regions due to ALTER TABLE (#44280).
         // This map contains the current dependent ALTER TABLE DDL for a
@@ -845,7 +824,6 @@ public final class FabricDatabase implements ModuleControl,
                 + "having sequenceId=" + qEntry.getSequenceId());
           }
         }
-      }
 
       // before initializing regions and possibly waiting for other nodes, allow
       // any waiting GfxdDDLMessage to go through (#47873)
@@ -968,14 +946,6 @@ public final class FabricDatabase implements ModuleControl,
         sync.notifyAll();
       }
 
-      // release DD read lock only after marking DDL replay in progress as false
-      // else an incoming GfxdDDLMessage may be skipped due to DDL replay in
-      // progress flag (#44835)
-      if (ddReadLockAcquired) {
-        this.dd.unlockAfterReading(null);
-        ddReadLockAcquired = false;
-      }
-
       if (logger.infoEnabled()) {
         logger.info("FabricDatabase: initial DDL replay completed.");
       }
@@ -987,10 +957,6 @@ public final class FabricDatabase implements ModuleControl,
       }
 
     } finally {
-      if (ddReadLockAcquired) {
-        this.dd.unlockAfterReading(null);
-        ddReadLockAcquired = false;
-      }
       if (acquiredReplayLock) {
         this.memStore.releaseDDLReplayLock(true);
       }
