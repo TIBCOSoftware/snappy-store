@@ -72,6 +72,7 @@ import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryTimeStatistics;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.SigThreadDumpHandler;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.access.PropertyConglomerate;
@@ -718,16 +719,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
-
-    // install the GemFireXD specific thread dump signal (URG) handler
-    /*
-    try {
-      SigThreadDumpHandler.install();
-    } catch (Throwable t) {
-      SanityManager.DEBUG_PRINT("fine:TRACE",
-          "Failed to install thread dump signal handler: " + t.getCause());
-    }
-    */
 
     // first clear any residual statics from a previous unclean run
     clearStatics(true);
@@ -2273,6 +2264,15 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.databaseName.equalsIgnoreCase("snappydata")) {
         this.snappyStore = true;
         this.database.setdisableStatementOptimizationToGenericPlan();
+      }
+    }
+    // install the GemFireXD specific thread dump signal (URG) handler
+    if (!isSnappyStore()) {
+      try {
+        SigThreadDumpHandler.install();
+      } catch (Throwable t) {
+        SanityManager.DEBUG_PRINT("fine:TRACE",
+            "Failed to install thread dump signal handler: " + t.getCause());
       }
     }
   }
