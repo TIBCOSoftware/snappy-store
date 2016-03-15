@@ -187,9 +187,13 @@ final class MergeInserter implements SortController
           }
         }
         // ok, double the sort buffer size
-        sortBuffer.grow(100);
+        boolean tryInsert = false;
+        if(sortBuffer.capacity() < (Integer.MAX_VALUE/2 - 1)) {
+          tryInsert = true;
+          sortBuffer.grow(100);
+        }
 
-        if (sortBuffer.insert(row) != SortBuffer.INSERT_FULL)
+	if (tryInsert && (sortBuffer.insert(row) != SortBuffer.INSERT_FULL))
           //GemStone changes BEGIN
           //return;
           return true;

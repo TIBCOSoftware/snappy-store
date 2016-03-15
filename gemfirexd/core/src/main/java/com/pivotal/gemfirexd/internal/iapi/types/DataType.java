@@ -623,7 +623,7 @@ public abstract class DataType
 		if (!instanceOfResultType) {
 				throw StandardException.newException(
 						SQLState.LANG_DATA_TYPE_SET_MISMATCH,
-						theValue.getClass().getName(), getTypeName(resultTypeClassName));
+						theValue.getClass().getName(), getTypeName(resultTypeClassName), (String)null);
 		}
 
 		setObject(theValue);
@@ -700,7 +700,7 @@ public abstract class DataType
 	void throwLangSetMismatch(String argTypeName) throws StandardException
 	{
 		throw StandardException.newException(SQLState.LANG_DATA_TYPE_SET_MISMATCH, 
-									   argTypeName, this.getTypeName());
+									   argTypeName, this.getTypeName(), (String)null);
 		
 	}
 
@@ -1289,7 +1289,7 @@ public abstract class DataType
 	*/
 	protected final StandardException dataTypeConversion(String targetType) {
 		return StandardException.newException(SQLState.LANG_DATA_TYPE_GET_MISMATCH, 
-			targetType, this.getTypeName());
+			targetType, this.getTypeName(), (String)null);
 
 	}
 
@@ -1299,7 +1299,7 @@ public abstract class DataType
 	protected final StandardException outOfRange()
 	{
 		return StandardException.newException(
-				SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, getTypeName());
+				SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, getTypeName(), (String)null);
 	}
 
 	/**
@@ -1308,7 +1308,7 @@ public abstract class DataType
 	protected final StandardException invalidFormat()
 	{
 		return StandardException.newException(
-				SQLState.LANG_FORMAT_EXCEPTION, getTypeName());
+				SQLState.LANG_FORMAT_EXCEPTION, getTypeName(), (String)null);
 	}
 
   // GemStone changes BEGIN

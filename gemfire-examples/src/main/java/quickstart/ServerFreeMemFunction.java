@@ -24,7 +24,7 @@ import com.gemstone.gemfire.cache.execute.RegionFunctionContext;
 /**
  * A non-data aware function to retrieve the amount of free Java heap memory on 
  * the server, in MB.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 8.0

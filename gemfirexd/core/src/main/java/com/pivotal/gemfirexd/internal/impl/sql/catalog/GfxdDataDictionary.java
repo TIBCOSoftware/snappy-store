@@ -737,7 +737,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     SanityManager.DEBUG_PRINT("DataDictionary DEBUG", strbuf.toString());
     // also dump all GfxdDRWLockService locks
     GfxdDRWLockService ddlService = Misc.getMemStore().getDDLLockService();
-    ddlService.dumpAllRWLocks("LOCK TABLE at the time of failure", true, false);
+    ddlService.dumpAllRWLocks("LOCK TABLE at the time of failure",
+        true, false, true);
   }
 
   /**

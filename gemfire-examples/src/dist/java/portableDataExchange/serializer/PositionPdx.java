@@ -19,7 +19,7 @@ package portableDataExchange.serializer;
 /**
  * An example of a position object for a trading application. This class
  * demonstrates serializing an object using the PdxSerializable interface.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.6

@@ -1476,7 +1476,7 @@ public final class RegionEntryUtils {
     @Override
     public void printStacks(PrintWriter pw) {
       Misc.getMemStoreBooting().getDDLLockService().getLocalLockService()
-          .dumpAllRWLocks("PRINTSTACKS", pw);
+          .dumpAllRWLocks("PRINTSTACKS", pw, true);
     }
 
     @Override
@@ -2909,14 +2909,6 @@ public final class RegionEntryUtils {
 
     /**
      * Compare two byte[], ignore the trailing blanks in the longer byte[]
-     * 
-     * @param row
-     * @param columnOffset
-     * @param columnWidth
-     * @param targetColumnBytes
-     * @param targetOffset
-     * @param targetWidth
-     * @return
      */
     private final int compareCharBytes(final UnsafeWrapper unsafe,
         final long memAddr, final int columnOffset, final int columnWidth,
@@ -3069,14 +3061,6 @@ public final class RegionEntryUtils {
 
     /**
      * Compare two byte[], ignore the trailing blanks in the longer byte[]
-     * 
-     * @param row
-     * @param columnOffset
-     * @param columnWidth
-     * @param targetColumnBytes
-     * @param targetOffset
-     * @param targetWidth
-     * @return
      */
     private final int compareCharBytes(final byte[] row,
         final int columnOffset, final int columnWidth,
@@ -3217,7 +3201,8 @@ public final class RegionEntryUtils {
     }
   };
 
-  public static final ColumnProcessorOffHeap<OffHeapByteSource> checkOffHeapColumnEqualityWithRowOffHeap =
+  public static final ColumnProcessorOffHeap<OffHeapByteSource>
+      checkOffHeapColumnEqualityWithRowOffHeap =
       new ColumnProcessorOffHeap<OffHeapByteSource>() {
 
     private final int compareBytes(final UnsafeWrapper unsafe,
@@ -3240,14 +3225,6 @@ public final class RegionEntryUtils {
 
     /**
      * Compare two byte[], ignore the trailing blanks in the longer byte[]
-     * 
-     * @param row
-     * @param columnOffset
-     * @param columnWidth
-     * @param targetColumnBytes
-     * @param targetOffset
-     * @param targetWidth
-     * @return
      */
     private final int compareCharBytes(final UnsafeWrapper unsafe,
         final long memAddr, final int columnOffset, final int columnWidth,

@@ -124,9 +124,7 @@ public class DynamicLikeOptimizationTest extends BaseJDBCTestCase {
         getConnection().setAutoCommit(false);
     }
 
-    //FIXME
-    // GemFireXD gives NPE during execution here - skip this test
-/*    public void testSimpleLikePredicates() throws SQLException {
+    public void testSimpleLikePredicates() throws SQLException {
         PreparedStatement ps =
             prepareStatement("select 1 from t1 where 'asdf' like ?");
 
@@ -146,7 +144,7 @@ public class DynamicLikeOptimizationTest extends BaseJDBCTestCase {
 
         ps.close();
     }
-*/
+
     public void testEscapeSyntax() throws SQLException {
         PreparedStatement ps =
             prepareStatement("select 1 from t1 where '%foobar' " +

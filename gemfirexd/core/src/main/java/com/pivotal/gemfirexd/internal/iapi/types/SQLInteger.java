@@ -100,7 +100,7 @@ public final class SQLInteger
 	public byte	getByte() throws StandardException
 	{
           if (this.value > Byte.MAX_VALUE || this.value < Byte.MIN_VALUE)
-            throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+            throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
           return (byte) value;
 	}
         
@@ -110,7 +110,7 @@ public final class SQLInteger
 	public short	getShort() throws StandardException
 	{
 		if (value > Short.MAX_VALUE || value < Short.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 		return (short) value;
 	}
 

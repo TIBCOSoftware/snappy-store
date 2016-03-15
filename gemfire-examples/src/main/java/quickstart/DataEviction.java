@@ -30,7 +30,7 @@ import com.gemstone.gemfire.cache.Region;
  * Both use a Least Recently Used (LRU) eviction controller to decide what to
  * remove from memory. Please refer to the quickstart guide for instructions on
  * how to run this example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 5.8

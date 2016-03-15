@@ -253,6 +253,8 @@ public final class Version implements Comparable<Version> {
       Field f = c.getField("CURRENT_ORDINAL");
       f.setAccessible(true);
       f.setShort(null, CURRENT_ORDINAL);
+    } catch (ClassNotFoundException ignore) {
+      // this is expected for clients so ignore
     } catch (Exception e) {
       ClientSharedUtils.getLogger().warning(
           "Failed to set JGroupsVersion.CURRENT_ORDINAL: " + e);

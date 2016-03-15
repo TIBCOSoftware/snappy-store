@@ -25,7 +25,7 @@ import com.gemstone.gemfire.cache.Region;
 
 /**
  * Client that registers interest to receives all delta updates.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

@@ -20,7 +20,7 @@ import com.gemstone.gemfire.cache.RegionEvent;
 
 /**
  * CacheListener for the durable client.
- * </p>
+ * <p>
  *
  * @author GemStone Systems, Inc.
  */

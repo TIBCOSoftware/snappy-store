@@ -548,7 +548,7 @@ public final class GemFireTransaction extends RawTransaction implements
     final GfxdDRWLockService lockService = store.getDDLLockService();
     lockService.dumpAllRWLocks(
         "LOCK TABLE at the time of missing conglomerate [" + conglomId + "]",
-        true, false);
+        true, false, true);
     // also dump the SYS.SYSCONGLOMERATES contents
     final StringBuilder sb = new StringBuilder("Conglomerate Dump")
         .append(SanityManager.lineSeparator);

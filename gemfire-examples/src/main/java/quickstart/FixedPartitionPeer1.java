@@ -36,14 +36,14 @@ import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
  * region is configured to create one extra copy of each data entry. The copies
  * are placed on different VMs, so when one VM shuts down, no data is lost. 
  * Operations proceed normally on the other VM.
- * </p>
+ * <p>
  * Fixed partition "Q1" is associated with data of following months: Jan, Feb, Mar, Apr, May, Jun
- * </p>
+ * <p>
  * Fixed partition "Q2" is associated with data of following months: Jul, Aug, Sep, Oct, Nov, Dec
- * </p>
+ * <p>
  * Please refer to the quickstart guide for instructions on how to run this 
  * example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

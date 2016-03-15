@@ -111,7 +111,7 @@ public final class SQLLongint
 		/* This value is bogus if the SQLLongint is null */
 
 		if (value > Integer.MAX_VALUE || value < Integer.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 		return (int) value;
 	}
 
@@ -121,7 +121,7 @@ public final class SQLLongint
 	public byte	getByte() throws StandardException
 	{
 		if (value > Byte.MAX_VALUE || value < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		return (byte) value;
 	}
         
@@ -133,7 +133,7 @@ public final class SQLLongint
 	public short	getShort() throws StandardException
 	{
 		if (value > Short.MAX_VALUE || value < Short.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 		return (short) value;
 	}
 
@@ -432,7 +432,7 @@ public final class SQLLongint
 
 		if (theValue > Long.MAX_VALUE
 			|| theValue < Long.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 
 		float floorValue = (float)Math.floor(theValue);
 
@@ -451,7 +451,7 @@ public final class SQLLongint
 
 		if (theValue > Long.MAX_VALUE
 			|| theValue < Long.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 
 		double floorValue = Math.floor(theValue);
 
@@ -679,7 +679,7 @@ public final class SQLLongint
 			*/
 			if ((addend1Long < 0) != (resultValue < 0))
 			{
-				throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+				throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 			}
 		}
 		result.setValue(resultValue);
@@ -734,7 +734,7 @@ public final class SQLLongint
 			*/
 			if ((left.getLong() < 0) != (diff < 0))
 			{
-				throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+				throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 			}
 		}
 
@@ -785,7 +785,7 @@ public final class SQLLongint
 		tempResult = left.getLong() * right.getLong();
 		if ((right.getLong() != 0) && (left.getLong() != tempResult / right.getLong()))
 		{
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 		}
 
 		result.setValue(tempResult);
@@ -898,7 +898,7 @@ public final class SQLLongint
 		*/
 		if (operandValue == Long.MIN_VALUE)
 		{
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 		}
 
 		result.setValue(-operandValue);

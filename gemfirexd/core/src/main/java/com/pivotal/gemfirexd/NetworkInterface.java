@@ -121,8 +121,8 @@ public interface NetworkInterface {
    * also be set so that clients will yield appropriately.
    * 
    * @param max
-   *          maximum number of connection threads. If <= 0, connection threads
-   *          will be created when there are no free connection threads.
+   *          maximum number of connection threads. If &lt;= 0, connection
+   *          threads will be created when there are no free connection threads.
    * 
    * @see #setTimeSlice
    */
@@ -140,11 +140,11 @@ public interface NetworkInterface {
   /**
    * Set Network Server connection time slice parameter after which client
    * connections will yield. This should be set and is only relevant if
-   * setMaxThreads > 0.
+   * setMaxThreads &gt; 0.
    * 
    * @param timeslice
    *          number of milliseconds given to each session before yielding to
-   *          another session, if <=0, never yield.
+   *          another session, if &lt;=0, never yield.
    * 
    * @see #setMaxThreads
    */

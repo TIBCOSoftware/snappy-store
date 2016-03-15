@@ -97,11 +97,10 @@ test with fewer threads per cache.  Run a mix of Linux and Solaris on
 the 100MBit network.
 
 ------------------------------------------------------------------------
-PST14  Scalability of Nodes (Sudhir's Tests)
+PST14  Scalability of Nodes
 
 Description: 
-Measure performance as the number of nodes increases, according to
-Sudhir's matrix.
+Measure performance as the number of nodes increases, according to matrix.
 
 ------------------------------------------------------------------------
 PST15  Transaction Performance

@@ -1265,12 +1265,12 @@ public final class SQLBoolean
           return true;
         default:
           throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
-              TypeId.BOOLEAN_NAME);
+              TypeId.BOOLEAN_NAME, (String)null);
       }
     }
     else {
       throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
-          TypeId.BOOLEAN_NAME);
+          TypeId.BOOLEAN_NAME, (String)null);
     }
   }
 

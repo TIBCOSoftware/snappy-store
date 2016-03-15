@@ -177,10 +177,10 @@ public class AuthorizeRequest {
             + ": Authorized to perform PUTALL operation on region [" + regionName
             + ']');
       }
-      
+
       // now since we've authorized to run PUTALL, we also need to verify all the 
       // <key,value> are authorized to run PUT
-      /* According to Jags and Suds, we will not auth PUT for PUTALL for now
+      /* According to team decision, we will not auth PUT for PUTALL for now
        * We will only do auth once for each operation, i.e. PUTALL only
       Collection entries = map.entrySet();
       Iterator iterator = entries.iterator();

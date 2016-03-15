@@ -1193,7 +1193,7 @@ public abstract class EmbedCallableStatement20
 
             default:
                 throw newSQLException(SQLState.LANG_DATA_TYPE_GET_MISMATCH, 
-                        "java.io.Reader", Util.typeName(paramType));
+                        "java.io.Reader", Util.typeName(paramType), parameterIndex);
         } 
         // Update wasNull. 
         wasNull = (reader == null);
@@ -1221,7 +1221,7 @@ public abstract class EmbedCallableStatement20
                 break;
             default:
                 throw newSQLException(SQLState.LANG_DATA_TYPE_GET_MISMATCH, 
-                        "java.io.InputStream", Util.typeName(paramType));
+                        "java.io.InputStream", Util.typeName(paramType), parameterIndex);
         }
 
         boolean pushStack = false;

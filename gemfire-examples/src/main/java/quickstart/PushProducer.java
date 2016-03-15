@@ -25,7 +25,7 @@ import com.gemstone.gemfire.cache.Region;
  * as a replicate of the producer (push model, complete data replication). 
  * Please refer to the quickstart guide for instructions on how to run this 
  * example. 
- * </p> 
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 4.1.1

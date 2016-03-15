@@ -226,7 +226,7 @@ public final class GemFireXDUtils {
           new GemFireXDRuntimeException("unexpected format for boot/sys property "
               + Attribute.DEFAULT_RECOVERY_DELAY_PROP
               + " where a long was expected: " + defaultRecoveryDelayStr),
-          TypeId.LONGINT_NAME);
+          TypeId.LONGINT_NAME, (String)null);
     }
 
     // set default-startup-recovery-delay from the system property
@@ -249,7 +249,7 @@ public final class GemFireXDUtils {
           new GemFireXDRuntimeException("unexpected format for boot/sys property "
               + GfxdConstants.DEFAULT_STARTUP_RECOVERY_DELAY_PROP
               + " where a long was expected: " + defaultStartupRecoveryDelayStr),
-          TypeId.LONGINT_NAME);
+          TypeId.LONGINT_NAME, (String)null);
     }
 
     // set initial-capacity for all tables from the system property if provided
@@ -271,7 +271,7 @@ public final class GemFireXDUtils {
           new GemFireXDRuntimeException("unexpected format for boot/sys property "
               + Attribute.DEFAULT_INITIAL_CAPACITY_PROP
               + " where an integer was expected: " + defaultInitialCapacityStr),
-          TypeId.INTEGER_NAME);
+          TypeId.INTEGER_NAME, (String)null);
     }
 
     String propStr = PropertyUtil.getServiceProperty(store,
@@ -2784,7 +2784,8 @@ public final class GemFireXDUtils {
     try {
       // try to get the GfxdDRWLockService and dump locks and threads
       if (memStore != null) {
-        memStore.getDDLLockService().dumpAllRWLocks(header, false, false);
+        memStore.getDDLLockService().dumpAllRWLocks(header,
+            false, false, true);
       }
       else {
         throw new ShutdownException();

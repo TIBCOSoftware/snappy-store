@@ -609,7 +609,8 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
           {
               throw StandardException
               .newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE,
-                  "partition by list value not compatible with column type", colRef.getColumnName());       	  
+                  "partition by list value not compatible with column type",
+                  colRef.getColumnName());
           }
           final byte[] bytes = new byte[length];
           dvd.writeBytes(bytes, 0, dtd);
@@ -617,7 +618,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
         } catch (ClassCastException ex) {
           throw StandardException
               .newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, ex,
-                  "partition by list");
+                  "partition by list", colRef.getColumnName());
         }
       }
       return node;

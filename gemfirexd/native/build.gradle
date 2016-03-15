@@ -60,29 +60,31 @@ if (rootProject.hasProperty('native')) {
         architecture "x86_64"
       }
     }
-  }
 
-  binaries.all {
-    // Define toolchain-specific compiler and linker options
-    if (toolChain in Gcc) {
-      cppCompiler.args '-Wall', '-Wno-unused-local-typedefs', '-DPIC', '-fPIC',
-          '-std=c++11', '-I', '/usr/include/x86_64-linux-gnu',
-          '-I', '/gcm/where/cplusplus/boost/linux64/4.8.3/include',
-          '-I', '/gcm/where/cplusplus/gcc/linux64/deps/include'
-      if (buildType == buildTypes.debug) {
-        cppCompiler.args '-g3', '-O0'
-      } else {
-        cppCompiler.define 'NDEBUG'
-        cppCompiler.args '-O3'
-      }
+    binaries {
+      all {
+        // Define toolchain-specific compiler and linker options
+        if (toolChain in Gcc) {
+          cppCompiler.args '-Wall', '-Wno-unused-local-typedefs', '-DPIC', '-fPIC',
+            '-std=c++11', '-I', '/usr/include/x86_64-linux-gnu',
+            '-I', '/gcm/where/cplusplus/boost/linux64/4.8.3/include',
+            '-I', '/gcm/where/cplusplus/gcc/linux64/deps/include'
+              if (buildType == buildTypes.debug) {
+                cppCompiler.args '-g3', '-O0'
+              } else {
+                cppCompiler.define 'NDEBUG'
+                  cppCompiler.args '-O3'
+              }
 
-      linker.args '-rdynamic', '-B/usr/lib/x86_64-linux-gnu', '-ldl'
-    } else if (toolChain in VisualCpp) {
-      if (buildType == buildTypes.debug) {
-        cppCompiler.args '/Zi'
-        linker.args '/DEBUG'
-      } else {
-        cppCompiler.args '/Zi'
+          linker.args '-rdynamic', '-B/usr/lib/x86_64-linux-gnu', '-ldl'
+        } else if (toolChain in VisualCpp) {
+          if (buildType == buildTypes.debug) {
+            cppCompiler.args '/Zi'
+              linker.args '/DEBUG'
+          } else {
+            cppCompiler.args '/Zi'
+          }
+        }
       }
     }
   }

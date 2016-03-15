@@ -853,7 +853,7 @@ public abstract class EmbedPreparedStatement
         */
         if (!lengthLess && length > Integer.MAX_VALUE)
                throw newSQLException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE,
-                                     getParameterSQLType(parameterIndex));
+                                     getParameterSQLType(parameterIndex), parameterIndex);
 
         try {
             ReaderToUTF8Stream utfIn;
@@ -1014,7 +1014,7 @@ public abstract class EmbedPreparedStatement
         if ( !lengthLess && length > Integer.MAX_VALUE ) {
             throw newSQLException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE,
                getEmbedParameterSetMetaData().getParameterTypeName(
-                   parameterIndex));
+                   parameterIndex), parameterIndex);
         }
 
         try {
@@ -1075,7 +1075,7 @@ public abstract class EmbedPreparedStatement
      *  ignored if the parameter is not a user-defined type or REF
      * @exception SQLException if a database access error occurs or
      * this method is called on a closed <code>PreparedStatement</code>
-     * @exception SQLFeatureNotSupportedException if <code>sqlType</code> is
+     * @exception java.sql.SQLFeatureNotSupportedException if <code>sqlType</code> is
      * a <code>ARRAY</code>, <code>BLOB</code>, <code>CLOB</code>,
      * <code>DATALINK</code>, <code>JAVA_OBJECT</code>, <code>NCHAR</code>,
      * <code>NCLOB</code>, <code>NVARCHAR</code>, <code>LONGNVARCHAR</code>,

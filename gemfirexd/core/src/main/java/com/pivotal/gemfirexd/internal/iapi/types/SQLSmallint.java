@@ -113,7 +113,7 @@ public final class SQLSmallint
 	public byte	getByte() throws StandardException
 	{
 		if (value > Byte.MAX_VALUE || value < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		return (byte) value;
 	}
 
@@ -419,7 +419,7 @@ public final class SQLSmallint
 	public void setValue(int theValue) throws StandardException
 	{
 		if (theValue > Short.MAX_VALUE || theValue < Short.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 		value = (short)theValue;
 		isnull = false;
 	}
@@ -430,7 +430,7 @@ public final class SQLSmallint
 	public void setValue(long theValue) throws StandardException
 	{
 		if (theValue > Short.MAX_VALUE || theValue < Short.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 		value = (short)theValue;
 		isnull = false;
 	}
@@ -445,7 +445,7 @@ public final class SQLSmallint
 		theValue = NumberDataType.normalizeREAL(theValue);
 
 		if (theValue > Short.MAX_VALUE || theValue < Short.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 
 		float floorValue = (float)Math.floor(theValue);
 
@@ -463,7 +463,7 @@ public final class SQLSmallint
 		theValue = NumberDataType.normalizeDOUBLE(theValue);
 
 		if (theValue > Short.MAX_VALUE || theValue < Short.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 
 		double floorValue = Math.floor(theValue);
 

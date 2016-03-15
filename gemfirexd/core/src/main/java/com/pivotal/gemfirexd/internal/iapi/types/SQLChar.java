@@ -339,7 +339,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "byte");
+                    SQLState.LANG_FORMAT_EXCEPTION, "byte", (String)null);
         }
     }
 
@@ -366,7 +366,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "short");
+                    SQLState.LANG_FORMAT_EXCEPTION, "short", (String)null);
         }
     }
 
@@ -393,7 +393,7 @@ public class SQLChar
         {
           // GemStone changes BEGIN
           throw StandardException.newException(
-              SQLState.LANG_FORMAT_EXCEPTION, "int (" + nfe.getMessage() + ")");
+              SQLState.LANG_FORMAT_EXCEPTION, "int (" + nfe.getMessage() + ")", (String)null);
             /*(original code) throw StandardException.newException(
                     SQLState.LANG_FORMAT_EXCEPTION, "int");*/
           // GemStone changes END
@@ -423,7 +423,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "long");
+                    SQLState.LANG_FORMAT_EXCEPTION, "long", (String)null);
         }
     }
 
@@ -449,7 +449,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "float");
+                    SQLState.LANG_FORMAT_EXCEPTION, "float", (String)null);
         }
     }
 
@@ -475,7 +475,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "double");
+                SQLState.LANG_FORMAT_EXCEPTION, "double", (String)null);
         }
     }
 

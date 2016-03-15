@@ -1141,7 +1141,7 @@ public final class SQLTimestamp extends DataType
             String state = se.getSQLState();
             if( state != null && state.length() > 0 && SQLState.LANG_DATE_RANGE_EXCEPTION.startsWith( state))
             {
-                throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TIMESTAMP");
+                throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TIMESTAMP", (String)null);
             }
             throw se;
         }
@@ -1238,7 +1238,7 @@ public final class SQLTimestamp extends DataType
             if( secondsDiff >= 0)
             {
                 if (ldiff >= Integer.MAX_VALUE)
-                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
                 // cal holds the time for time1
                 cal.add( Calendar.MONTH, (int) (ldiff + 1));
                 for(;;)
@@ -1252,7 +1252,7 @@ public final class SQLTimestamp extends DataType
             else
             {
                 if (ldiff <= Integer.MIN_VALUE)
-                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
                 // cal holds the time for time1
                 cal.add( Calendar.MONTH, (int) (ldiff - 1));
                 for(;;)
@@ -1273,7 +1273,7 @@ public final class SQLTimestamp extends DataType
             if( secondsDiff >= 0)
             {
                 if (ldiff >= Integer.MAX_VALUE)
-                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
                 // cal holds the time for time1
                 cal.add( Calendar.YEAR, (int) (ldiff + 1));
                 for(;;)
@@ -1287,7 +1287,7 @@ public final class SQLTimestamp extends DataType
             else
             {
                 if (ldiff <= Integer.MIN_VALUE)
-                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+                    throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
                 // cal holds the time for time1
                 cal.add( Calendar.YEAR, (int) (ldiff - 1));
                 for(;;)

@@ -231,10 +231,11 @@ public class TestUtil extends TestCase {
     currentTest = getName();
     currentTestClass = getTestClass();
 
+    /*
     boolean nonTXTestMode = Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
       || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX));
-    
-//    isTransactional = !nonTXTestMode;
+    isTransactional = !nonTXTestMode;
+    */
 
     // reduce logging if test so requests
     String logLevel;
@@ -566,12 +567,14 @@ public class TestUtil extends TestCase {
     
     //Allow HDFS tests to create a standalone file system
     System.setProperty(HDFSStoreImpl.ALLOW_STANDALONE_HDFS_FILESYSTEM_PROP, "true");
-    
+
+    /*
     boolean nonTXTestMode = Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
         || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX)); 
-//    if (!nonTXTestMode) {
-//      props.put(Attribute.TX_SYNC_COMMITS, "true");
-//    }
+    if (!nonTXTestMode) {
+      props.put(Attribute.TX_SYNC_COMMITS, "true");
+    }
+    */
     
     return props;
   }
@@ -583,19 +586,19 @@ public class TestUtil extends TestCase {
     props = doCommonSetup(props);
 
     final Connection conn = DriverManager.getConnection(protocol, props);
-    
+    /*
     boolean nonTXTestMode = Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
         || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX));
-//    if (nonTXTestMode) {
+    if (nonTXTestMode) {
       System.out.println("Non-tx test mode.");
       conn.setAutoCommit(false);
       conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
-//    }
+    }
     Logger logger = getLogger();
     if (logger != null) {
       logger.info("TestUtil.getConnection::Autocommit is " + conn.getAutoCommit());
     }
-
+    */
     // Read the flag for deleting persistent files only during boot up
     if (jdbcConn == null || jdbcConn.isClosed()) {
       jdbcConn = conn;
@@ -641,13 +644,15 @@ public class TestUtil extends TestCase {
       }
       conn = DriverManager.getConnection(
           getNetProtocol(host, port) + urlSuffix, getNetProperties(props));
-      
+
+      /*
       boolean nonTXTestMode = (Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
           || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX))); 
-//      if (nonTXTestMode) {
+      if (nonTXTestMode) {
         conn.setAutoCommit(false);
         conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
-//      }
+      }
+      */
       return conn;
     } catch (UnknownHostException e) {
       throw new AssertionError(e);

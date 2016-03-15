@@ -433,7 +433,7 @@ public abstract class NumberDataType extends DataType
 			setValue(bigDecimal.longValue());
 		} else {
 
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, getTypeName());
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, getTypeName(), (String)null);
 		}
 	}
 	
@@ -486,7 +486,7 @@ public abstract class NumberDataType extends DataType
              ((v > 0) && (v < Limits.DB2_SMALLEST_POSITIVE_REAL)) ||
              ((v < 0) && (v > Limits.DB2_LARGEST_NEGATIVE_REAL)) )
         {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
         }
         // Normalize negative floats to be "positive" (can't detect easily without using Float object because -0.0f = 0.0f)
         if (v == 0.0f) v = 0.0f;
@@ -512,7 +512,7 @@ public abstract class NumberDataType extends DataType
              ((v > 0) && (v < Limits.DB2_SMALLEST_POSITIVE_REAL)) ||
              ((v < 0) && (v > Limits.DB2_LARGEST_NEGATIVE_REAL)) )
         {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
         }
         // Normalize negative floats to be "positive" (can't detect easily without using Float object because -0.0f = 0.0f)
         if (v == 0.0d) v = 0.0d;
@@ -532,7 +532,7 @@ public abstract class NumberDataType extends DataType
              ((v > 0) && (v < Limits.DB2_SMALLEST_POSITIVE_DOUBLE)) ||
              ((v < 0) && (v > Limits.DB2_LARGEST_NEGATIVE_DOUBLE)) )
         {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME, (String)null);
         }
         // Normalize negative doubles to be "positive" (can't detect easily without using Double object because -0.0f = 0.0f)
         if (v == 0.0d) v = 0.0d;

@@ -516,7 +516,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 		} catch (StandardException se) {
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 	}
 
 	/**
@@ -536,7 +536,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 		} catch (StandardException se) {
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 	}
         
         
@@ -558,7 +558,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 		} catch (StandardException se) {
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 	}
 
 	/**
@@ -592,7 +592,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
                         return localValue.longValue();
                 }
 
-                throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+                throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
         }
 
 	/**
@@ -1512,7 +1512,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 			((desiredPrecision - desiredScale) <  SQLDecimal.getWholeDigits(getBigDecimal())))
 		{
 			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, 
-									("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+")"));
+									("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+")"), (String)null);
 		}
 		value = value.setScale(desiredScale, BigDecimal.ROUND_DOWN);
 		rawData = null;
@@ -1579,7 +1579,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 			try {
 				return new BigDecimal(value.getString().trim());
 			} catch (NumberFormatException nfe) {
-				throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "java.math.BigDecimal");
+				throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "java.math.BigDecimal", (String)null);
 			}
 		case Types.BIGINT:
 			return BigDecimal.valueOf(value.getLong());

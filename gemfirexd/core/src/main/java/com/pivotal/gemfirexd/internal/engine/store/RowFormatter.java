@@ -96,8 +96,9 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
  * variable length fields so all the variable length fields are at the end.
  * After the field data, an offset is stored for each variable length field.
  * 
- * More information about the byte format can be found at: {@link https
- * ://wiki.gemstone.com/display/queryteam/Relational+Storage+Model}
+ * More information about the byte format can be found at:
+ * <a href="https://wiki.gemstone.com/display/queryteam/Relational+Storage+Model">
+ *   Relational Storage Model</a>
  * 
  * @author Eric Zoerner
  * @author Rahul Dubey
@@ -175,8 +176,7 @@ public final class RowFormatter implements Serializable {
   /**
    * Token version used for rows recovered from older pre 1.1 version data files
    * that did not have schema version. For such cases this token version is
-   * interpreted as the version just after recovery from disk (
-   * {@link GemFireContainer#setSchemaVersionOnRecovery()}).
+   * interpreted as the version just after recovery from disk.
    */
   public static final int TOKEN_RECOVERY_VERSION = -1;
 
@@ -252,7 +252,7 @@ public final class RowFormatter implements Serializable {
 
   /**
    * This interface allows specification of action to be taken for each column
-   * e.g. for {@link RowFormatter#extractColumn} and other such methods.
+   * e.g. for {@link RowFormatter#extractColumnBytes} and other such methods.
    * 
    * @author swale
    * @since 7.0
@@ -413,8 +413,8 @@ public final class RowFormatter implements Serializable {
 
   /**
    * This interface allows specification of action to be taken for each column
-   * e.g. for {@link RowFormatter#extractColumn} and other such methods for
-   * {@link OffHeapByteSource} rows.
+   * e.g. for {@link RowFormatter#extractColumnBytesOffHeap} and other such
+   * methods for {@link OffHeapByteSource} rows.
    * 
    * @author swale
    * @since gfxd 2.0
@@ -820,7 +820,7 @@ public final class RowFormatter implements Serializable {
    * @return the index where last encoded byte was written i.e. number of bytes
    *         written = (returned offset - passed offset + 1)
    * 
-   * @see InternalDataSerializer#writeSignedVL(int, DataOutput)
+   * @see InternalDataSerializer#writeSignedVL(long, DataOutput)
    */
   public static int writeCompactInt(final byte[] bytes, final int v,
       int offset) {
@@ -890,10 +890,7 @@ public final class RowFormatter implements Serializable {
   /**
    * Returns an <code>int</code> value by reading the specified number of bytes
    * provided as an argument starting at offset.
-   * 
-   * @param bytes
-   * @param offset
-   * @param numBytesToBeRead
+   *
    * @return an <code>int</code> value.
    */
   public static int readInt(final UnsafeWrapper unsafe, long memOffset,
@@ -920,6 +917,12 @@ public final class RowFormatter implements Serializable {
     return intValue;
   }
 
+  /**
+   * Returns an <code>int</code> value by reading the specified number of bytes
+   * provided as an argument starting at offset.
+   *
+   * @return an <code>int</code> value.
+   */
   public static int readInt(final byte[] bytes, int offset,
       final int numBytesToBeRead) {
     assert bytes != null;
@@ -8670,7 +8673,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "BOOLEAN", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -8738,7 +8741,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "BOOLEAN", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -8751,7 +8754,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsByte(bytes, offset, columnWidth,
-          cd.columnType, wasNull);
+          cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -8794,7 +8797,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TINYINT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -8809,7 +8812,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsByte(unsafe, memAddr + offset,
-          columnWidth, bs, cd.columnType, wasNull);
+          columnWidth, bs, cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -8862,7 +8865,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TINYINT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -8875,7 +8878,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsShort(bytes, offset, columnWidth,
-          cd.columnType, wasNull);
+          cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -8918,7 +8921,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "SMALLINT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -8933,7 +8936,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsShort(unsafe, memAddr + offset,
-          columnWidth, bs, cd.columnType, wasNull);
+          columnWidth, bs, cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -8986,7 +8989,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "SMALLINT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -8999,7 +9002,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsInt(bytes, offset, columnWidth,
-          cd.columnType, wasNull);
+          cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9042,7 +9045,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "INTEGER", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9057,7 +9060,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsInt(unsafe, memAddr + offset,
-          columnWidth, bs, cd.columnType, wasNull);
+          columnWidth, bs, cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9110,7 +9113,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "INTEGER", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9123,7 +9126,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsLong(bytes, offset, columnWidth,
-          cd.columnType, wasNull);
+          cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9166,7 +9169,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "BIGINT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9181,7 +9184,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsLong(unsafe, memAddr + offset,
-          columnWidth, bs, cd.columnType, wasNull);
+          columnWidth, bs, cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9234,7 +9237,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "BIGINT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9247,7 +9250,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsFloat(bytes, offset, columnWidth,
-          cd.columnType, wasNull);
+          cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9290,7 +9293,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "FLOAT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9305,7 +9308,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsFloat(unsafe, memAddr + offset,
-          columnWidth, bs, cd.columnType, wasNull);
+          columnWidth, bs, cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9358,7 +9361,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "FLOAT", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9371,7 +9374,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsDouble(bytes, offset, columnWidth,
-          cd.columnType, wasNull);
+          cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9414,7 +9417,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DOUBLE", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9429,7 +9432,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsDouble(unsafe, memAddr + offset,
-          columnWidth, bs, cd.columnType, wasNull);
+          columnWidth, bs, cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9482,7 +9485,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DOUBLE", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9495,7 +9498,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBigDecimal(bytes, offset, columnWidth,
-          cd.columnType, wasNull);
+          cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9538,7 +9541,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DECIMAL", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9553,7 +9556,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBigDecimal(unsafe, memAddr + offset,
-          columnWidth, bs, cd.columnType, wasNull);
+          columnWidth, bs, cd, wasNull);
     }
     else {
       assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
@@ -9606,7 +9609,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DECIMAL", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9828,7 +9831,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DATE", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9905,7 +9908,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DATE", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -9971,7 +9974,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TIME", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -10048,7 +10051,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TIME", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -10115,7 +10118,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TIMESTAMP", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -10192,7 +10195,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TIMESTAMP", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -10218,7 +10221,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "BLOB", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -10249,7 +10252,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "BLOB", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -10279,7 +10282,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "CLOB", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 
@@ -10321,7 +10324,7 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "CLOB", cd.getType()
-              .getFullSQLTypeName());
+              .getFullSQLTypeName(), cd.getColumnName());
     }
   }
 

@@ -221,7 +221,8 @@ public class EmbedStatement extends ConnectionChild
 	      || SQLState.LANG_FORMAT_EXCEPTION.equals(msgId)) {
 	    // add column name to the exception message
 	    final Object[] args = se.getArguments();
-	    if (args != null && args.length == 1) {
+	    if (args != null && (args.length == 1 ||
+	        (args.length > 1 && args[1] == null))) {
 	      final Object[] newArgs = new Object[2];
 	      String colName = (columnName == null
 	          ? a.getCurrentColumnName() : columnName);
@@ -238,7 +239,8 @@ public class EmbedStatement extends ConnectionChild
 	      || SQLState.UNSUPPORTED_ENCODING.equals(msgId)) {
 	    // add column name to the exception message
 	    final Object[] args = se.getArguments();
-	    if (args != null && args.length == 2) {
+	    if (args != null && (args.length == 2 ||
+	        (args.length > 2 && args[2] == null))) {
 	      final Object[] newArgs = new Object[3];
 	      String colName = (columnName == null
 	          ? a.getCurrentColumnName() : columnName);
@@ -255,7 +257,8 @@ public class EmbedStatement extends ConnectionChild
 	      || SQLState.LANG_DATE_SYNTAX_EXCEPTION.equals(msgId)) {
 	    // add column name to the exception message
 	    final Object[] args = se.getArguments();
-	    if (args == null || args.length == 0) {
+	    if (args == null || (args.length == 0 ||
+	        (args.length > 0 && args[0] == null))) {
 	      final Object[] newArgs = new Object[1];
 	      String colName = (columnName == null
 	          ? a.getCurrentColumnName() : columnName);

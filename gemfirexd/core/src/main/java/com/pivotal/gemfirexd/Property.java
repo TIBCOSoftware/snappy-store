@@ -272,14 +272,14 @@ public interface Property {
   /**
    * gemfirexd.signals.notlogged
    *
-   * <BR/>
+   * <BR>
    *
    * When debug logging is enabled, Gemfirexd will record OS-level signals
    * received. This property adds to the list of default signals which are
    * <b>not</b> logged. If the wildcard '*' is specified, no signals will
    * be logged.
    *
-   * <BR/>
+   * <BR>
    *
    * Default: WINCH, CHLD, CONT, CLD, BUS
    */

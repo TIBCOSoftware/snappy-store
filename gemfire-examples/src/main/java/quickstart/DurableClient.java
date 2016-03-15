@@ -25,14 +25,14 @@ import com.gemstone.gemfire.cache.Region;
 
 /**
  * DurableClient.java has the client which connects to the DurableServer.java.
- * </p>
+ * <p>
  * Ensure that before running this class the Server is up.
- * </p>
+ * <p>
  * Prerequisites: Build the QuickStart(./build.sh compile-quickstart) and set 
  * the CLASSPATH to include $GEMFIRE/quickstart/classes
- * </p>
+ * <p>
  * Following are the steps to test the Durable Functionality.
- * </p>
+ * <p>
  * <ol>
  *   <li>Start DurableServer - Here initializing keys key1,key2,key3,key4 with values K1,K2,K3,K4</li>
  *   <li>Start DurableClient</li>
@@ -60,9 +60,9 @@ import com.gemstone.gemfire.cache.Region;
  *     </ul>
  *   </li>
  * </ol>
- * </p>
+ * <p>
  * To stop the server, type "Exit" in server console.
- * </p>
+ * <p>
  *
  * @author GemStone Systems, Inc.
  */

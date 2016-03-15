@@ -386,8 +386,7 @@ public class IndexChanger
                         " not found in conglomerateid " + indexCID +
 // GemStone changes BEGIN
 // added size of index
-                        "Current scan = " + indexSC + " the size of the index : "+((MemIndexScanController)indexSC).sizeOfIndex());
-		        ((MemIndexScanController)indexSC).dumpIndex(null);		
+                        "Current scan = " + indexSC + " the size of the index : "+((MemIndexScanController)indexSC).sizeOfIndex());	
 // GemStone changes END
 				
                 Object[] args = new Object[2];

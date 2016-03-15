@@ -23,12 +23,12 @@ import com.gemstone.gemfire.cache.Declarable;
 /**
  * Represents a number of shares of a stock ("security") held in a {@link 
  * Portfolio}.
- * </p>
+ * <p>
  * This class is <code>Serializable</code> because we want it to be distributed 
  * to multiple members of a distributed system.  Because this class is 
  * <code>Declarable</code>, we can describe instances of it in a GemFire 
  * <code>cache.xml</code> file.
- * </p>
+ * <p>
  *
  * @author GemStone Systems, Inc.
  * @since 4.1.1

@@ -26,11 +26,11 @@ import com.gemstone.gemfire.management.ManagementService;
 import com.gemstone.gemfire.management.RegionMXBean;
 
 /**
- * In this example of Managed Node.</br> 
- * 1. It creates a cache and adds entries in it.</br>
- * 2. From ManagementService it retrieves service.</br>
+ * In this example of Managed Node.<br>
+ * 1. It creates a cache and adds entries in it.<br>
+ * 2. From ManagementService it retrieves service.<br>
  * 3. From service gets Region Mbean.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 7.0

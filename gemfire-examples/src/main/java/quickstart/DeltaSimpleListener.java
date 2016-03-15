@@ -24,7 +24,7 @@ import com.gemstone.gemfire.cache.util.CacheListenerAdapter;
 
 /**
  * Delta Propagation quick start cache listener for simple uses
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.1

@@ -266,7 +266,7 @@ public final class GfxdLocalLockService extends
       final Object lockObject, final Object lockOwner,
       final boolean dumpAllLocks) {
     if (dumpAllLocks) {
-      dumpAllRWLocks("LOCK TABLE at the time of failure", null);
+      dumpAllRWLocks("LOCK TABLE at the time of failure", null, true);
     }
     // check if the current thread was interrupted or system shutting down
     Throwable cause = null;
@@ -310,13 +310,16 @@ public final class GfxdLocalLockService extends
    * @param pw
    *          if non-null then dump is generated on given PrintWriter else it
    *          goes to standard GFXD log file
+   * @param force
+   *          if true then dump is forced immediately, else avoid multiple
+   *          dumps in quick succession (e.g. when many thread timeout on lock)
    */
-  public void dumpAllRWLocks(String logPrefix, PrintWriter pw) {
+  public void dumpAllRWLocks(String logPrefix, PrintWriter pw, boolean force) {
     // do not do the dump multiple times since multiple threads will try
     // to dump fairly close together
     synchronized (this) {
       long currentTime = System.currentTimeMillis();
-      if (this.lastDumpTime > 0) {
+      if (!force && this.lastDumpTime > 0) {
         if ((currentTime - this.lastDumpTime) < this.maxVMWriteLockWait) {
           return;
         }

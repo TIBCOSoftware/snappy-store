@@ -675,7 +675,6 @@ Guide.
                 <text>CHANGE_PASSWORD not allowed for current authentication scheme '{0}'.</text>
                 <arg>schemeName</arg>
             </msg>
-
             <msg>
                 <name>0A000.S.27</name>
                 <text>Local index '{0}' can only be created on table '{1}' using HDFSStore when the table uses EVICTION BY CRITERIA or uses OVERFLOW. The eviction action for the table is '{2}'.</text>
@@ -683,17 +682,15 @@ Guide.
                 <arg>tableName</arg>
                 <arg>evictionAction</arg>
             </msg>
-            
             <msg>
                 <name>0A000.S.28</name>
                 <text>LRU eviction is not supported for HDFS tables.</text>
             </msg>
-            
             <msg>
                 <name>0A000.S.29</name>
-                <text>HDFS Store cannot be used for REPLICATED TABLE.</text>
+                <text>HDFS Store table creation failed: {0}.</text>
+                <arg>message</arg>
             </msg>
-            	
             <msg>
                 <name>0A000.S.30</name>
                 <text>Foreign key constraint is not supported with custom eviction criteria for HDFS tables.</text>

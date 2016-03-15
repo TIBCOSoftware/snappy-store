@@ -1225,7 +1225,7 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
     final ColumnDescriptor cd = this.formatter.getColumnDescriptor(index);
     throw StandardException.newException(
         SQLState.LANG_DATA_TYPE_GET_MISMATCH, "Blob", cd.getType()
-            .getFullSQLTypeName());
+            .getFullSQLTypeName(), cd.getColumnName());
   }
 
   public Clob getAsClob(int position, ResultWasNull wasNull)
@@ -1234,7 +1234,7 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
     final ColumnDescriptor cd = this.formatter.getColumnDescriptor(index);
     throw StandardException.newException(
         SQLState.LANG_DATA_TYPE_GET_MISMATCH, "Clob", cd.getType()
-            .getFullSQLTypeName());
+            .getFullSQLTypeName(), cd.getColumnName());
   }
 
   protected abstract String getString(int position, ResultWasNull wasNull)

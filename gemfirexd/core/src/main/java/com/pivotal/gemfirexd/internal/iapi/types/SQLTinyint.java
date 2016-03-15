@@ -397,7 +397,7 @@ public final class SQLTinyint
 	public void setValue(short theValue) throws StandardException
 	{
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		value = (byte)theValue;
 		isnull = false;
 	}
@@ -408,7 +408,7 @@ public final class SQLTinyint
 	public void setValue(int theValue) throws StandardException
 	{
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		value = (byte)theValue;
 		isnull = false;
 	}
@@ -419,7 +419,7 @@ public final class SQLTinyint
 	public void setValue(long theValue) throws StandardException
 	{
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		value = (byte)theValue;
 		isnull = false;
 	}
@@ -434,7 +434,7 @@ public final class SQLTinyint
 		theValue = NumberDataType.normalizeREAL(theValue);
 
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 
 		float floorValue = (float)Math.floor(theValue);
 

@@ -2184,7 +2184,7 @@ public class SQLParser
 		  return i;
 		} catch (Exception e) {
 			throw StandardException.newException
-			  (SQLState.LANG_FORMAT_EXCEPTION, TypeId.INTEGER_NAME);
+			  (SQLState.LANG_FORMAT_EXCEPTION, TypeId.INTEGER_NAME, (String)null);
 		}
 	}
 
@@ -2195,7 +2195,7 @@ public class SQLParser
 		  return l;
 		} catch (Exception e) {
 			throw StandardException.newException
-			  (SQLState.LANG_FORMAT_EXCEPTION, TypeId.LONGINT_NAME);
+			  (SQLState.LANG_FORMAT_EXCEPTION, TypeId.LONGINT_NAME, (String)null);
 		}
 	}
 
@@ -14576,7 +14576,7 @@ numericLiteral(String sign) throws StandardException :
 		}
 		catch (NumberFormatException nfe)
 		{
-			throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME);
+			throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME, (String)null);
 		}
 
 		double dv = doubleValue.doubleValue();

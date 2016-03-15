@@ -1565,12 +1565,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.commit();
   }
 
-  /**
-   * Jag's simple test case.
-   * 
-   * @throws Exception
-   */
-  public void testJagsUseCase_timeInserts() throws Exception {
+  /** Simple test case of timing inserts. */
+  public void testUseCase_timeInserts() throws Exception {
     // reduce logs
     reduceLogLevelForTest("warning");
 
@@ -1581,7 +1577,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     Statement s = conn.createStatement();
     try {
       s.executeUpdate("drop table securities");
-    } catch (Exception e) {
+    } catch (Exception ignored) {
     }
 
     s.executeUpdate("create table securities ( sec_id integer not null "
@@ -4226,6 +4222,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
           // check successful commit the second time with new store
           barrier.await();
           conn.commit();
+          TXManagerImpl.waitForPendingCommitForTest();
         } catch (Throwable t) {
           failEx[0] = t;
           getLogWriter().error("unexpected exception", t);
@@ -4262,6 +4259,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     if (failEx[0] != null) {
       throw failEx[0];
     }
+    TXManagerImpl.waitForPendingCommitForTest();
 
     // check the final values
     SerializableRunnable checkRS = new SerializableRunnable() {

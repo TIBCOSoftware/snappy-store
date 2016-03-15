@@ -336,7 +336,7 @@ abstract class BinaryDecimal extends NumberDataType
 			// fall through to correct message
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 	}
 
 	/**
@@ -361,7 +361,7 @@ abstract class BinaryDecimal extends NumberDataType
 		}
 
 		throw StandardException.newException(
-				SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+				SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 	}
 
 	/**
@@ -384,7 +384,7 @@ abstract class BinaryDecimal extends NumberDataType
 			// fall through to correct message
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 	}
 	
 	

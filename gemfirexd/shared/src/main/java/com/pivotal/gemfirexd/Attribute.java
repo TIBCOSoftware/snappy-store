@@ -420,7 +420,7 @@ public interface Attribute {
 
   /**
    * The attribute that is used for the database name, from the JDBC notion of
-   * jdbc:<subprotocol>:<subname>
+   * jdbc:&lt;subprotocol&gt;:&lt;subname&gt;
    */
   String DBNAME_ATTR = "databaseName";
 
@@ -538,9 +538,35 @@ public interface Attribute {
   /**
    * A comma-separate SSL property key,value pairs. The available property
    * values are:
-   * 
-   * <li>
-   * protocol: TODO: SW:</li>
+   *
+   * <ul>
+   * <li><i>protocol</i>: default "TLS", see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#SSLContext">
+   *   JCA docs</a></li>
+   * <li><i>enabled-protocols</i>: enabled protocols separated by ":"</li>
+   * <li><i>cipher-suites</i>: enabled cipher suites separated by ":", see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#ciphersuites">
+   *   JCA docs</a></li>
+   * <li><i>client-auth=(true|false)</i>: if client also needs to be authenticated, see
+   * <a href="https://docs.oracle.com/javase/7/docs/api/javax/net/ssl/SSLServerSocket.html#setNeedClientAuth(boolean)">
+   *   JCA docs</a></li>
+   * <li><i>keystore</i>: path to key store file</li>
+   * <li><i>keystore-type</i>: the type of key-store (default "JKS"), see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#KeyStore">
+   *   JCA docs</a></li>
+   * <li><i>keystore-password</i>: password for the key store file</li>
+   * <li><i>keymanager-type</i>: the type of key manager factory, see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/jsse/JSSERefGuide.html#KeyManagerFactory">
+   *   JSSE docs</a></li>
+   * <li><i>truststore</i>: path to trust store file</li>
+   * <li><i>truststore-type</i>: the type of trust-store (default "JKS"), see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#KeyStore">
+   *   JCA docs</a></li>
+   * <li><i>truststore-password</i>: password for the trust store file</li>
+   * <li><i>trustmanager-type</i>: the type of trust manager factory, see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/jsse/JSSERefGuide.html#TrustManagerFactory">
+   *   JSSE docs</a></li>
+   * </ul>
    * 
    * <p>
    * If this is not specified then default java SSL properties as per

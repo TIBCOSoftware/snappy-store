@@ -30,7 +30,7 @@ import com.gemstone.gemfire.distributed.DistributedLockService;
  * key in the region and reports the update to the screen. This program is
  * intended to be run as two concurrent runs, so there is contention created for
  * the lock. See the quickstart guide for run instructions.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

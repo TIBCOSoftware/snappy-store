@@ -2595,7 +2595,8 @@ public abstract class Converters {
   public static final SQLException newTypeConversionException(
       String sourceType, String targetType, Throwable cause) {
     return ThriftExceptionUtil.newSQLException(
-        SQLState.LANG_DATA_TYPE_GET_MISMATCH, cause, sourceType, targetType);
+        SQLState.LANG_DATA_TYPE_GET_MISMATCH, cause, sourceType,
+        targetType, null);
   }
 
   public static final SQLException newTypeConversionException(

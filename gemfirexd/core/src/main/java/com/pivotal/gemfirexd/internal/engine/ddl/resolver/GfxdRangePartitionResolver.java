@@ -643,7 +643,7 @@ public class GfxdRangePartitionResolver extends GfxdPartitionResolver {
         } catch (ClassCastException ex) {
           throw StandardException.newException(
               SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, ex,
-              "partition by range");
+              "partition by range", colRef.getColumnName());
         }
       }
       return node;

@@ -1247,7 +1247,19 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
 
   public static Properties startLdapServerAndGetBootProperties(
       int locatorPort, int mcastPort, String sysUser) throws Exception {
-    final LdapTestServer server = LdapTestServer.getInstance();
+    return startLdapServerAndGetBootProperties(locatorPort, mcastPort,
+        sysUser, null);
+  }
+
+  public static Properties startLdapServerAndGetBootProperties(
+      int locatorPort, int mcastPort, String sysUser,
+      String ldifFilePath) throws Exception {
+    final LdapTestServer server;
+    if (ldifFilePath != null) {
+      server = LdapTestServer.getInstance(ldifFilePath);
+    } else {
+      server = LdapTestServer.getInstance();
+    }
     if (!server.isServerStarted()) {
       server.startServer();
     }

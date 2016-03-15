@@ -5315,12 +5315,14 @@ public abstract class EmbedResultSet extends ConnectionChild
 
 	private final SQLException dataTypeConversion(String targetType, int column) {
 		return newSQLException(SQLState.LANG_DATA_TYPE_GET_MISMATCH, targetType,
-                getColumnSQLType(column));
+                getColumnSQLType(column),
+	        resultDescription.getColumnDescriptor(column).getName());
 	}
 
 	private final SQLException dataTypeConversion(int column, String targetType) {
 		return newSQLException(SQLState.LANG_DATA_TYPE_GET_MISMATCH,
-                getColumnSQLType(column), targetType);
+                getColumnSQLType(column), targetType,
+	        resultDescription.getColumnDescriptor(column).getName());
 	}
     
     /**

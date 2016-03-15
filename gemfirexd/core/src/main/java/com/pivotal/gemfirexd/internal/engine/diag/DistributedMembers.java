@@ -181,7 +181,7 @@ public final class DistributedMembers extends UpdateVTITemplate {
   public boolean getBoolean(int columnNumber) {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.BOOLEAN) {
-      dataTypeConversion("boolean", desc.getType().getTypeName());
+      dataTypeConversion("boolean", desc);
     }
     this.wasNull = false;
     final String columnName = desc.getName();
@@ -205,7 +205,7 @@ public final class DistributedMembers extends UpdateVTITemplate {
   public int getInt(int columnNumber) {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.INTEGER) {
-      dataTypeConversion("integer", desc.getType().getTypeName());
+      dataTypeConversion("integer", desc);
     }
     this.wasNull = false;
     final String columnName = desc.getName();

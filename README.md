@@ -15,7 +15,7 @@ See the instructions below to build the product from source. Once built, you can
 
 ## Repository layout
 
-The snappy-store branch now mostly mimics the layout of Apache Geode layout for GemFire components and a more structured one for GemFireXD components. It uses gradle based build that can build entire GemFire+GemFireXD+hydra sources and run unit tests (running hydra tests still needs to be added).
+The snappy/master branch now mostly mimics the layout of Apache Geode layout for GemFire components and a more structured one for GemFireXD components. It uses gradle based build that can build entire GemFire+GemFireXD+hydra sources and run unit tests (running hydra tests still needs to be added).
 
 Some details on the directories in GemFire layout are mentioned below:
 
@@ -77,9 +77,23 @@ The GemFireXD layout is divided into separate logical modules namely:
 
 GemFireXD now builds completely using gradle. Due to the repository layout changes, the older ant builds no longer work (unless someone takes the effort to change them). The new scripts are much simpler, cleaner and way faster than old ant scripts but are still missing a bunch of old targets. Plan is to add them progressively as required.
 
-  * Switch to "snappy-store" branch if not on that already. Update the branch to the latest version. Then test the build with: ./gradlew clean && ./gradlew assemble testClasses
-  * Run a a GemFireXD junit test: ./gradlew :gemfirexd:tools:test -Dtest.single=\*\*/BugsTest
+  * Switch to "snappy/master" branch if not on that already. Update the branch to the latest version. Then test the build with: ./gradlew cleanAll && ./gradlew buildAll
+  * Run a GemFireXD junit test: ./gradlew :gemfirexd-tools:test --tests '\*\*/BugsTest'
+  * Run a GemFireXD dunit test: ./gradlew :gemfirexd-tools:dunit -Ddunit.single=\*\*/BugsDUnit.class
 
+Useful build and test targets:
+```
+./gradlew assemble      -  build all the sources
+./gradlew testClasses   -  build all the tests
+./gradlew product       -  build and place the product distribution
+                           (in build-artifacts/{osname like linux}/store)
+./gradlew buildAll      -  build all sources, tests, product, packages (all targets above)
+./gradlew cleanAll      -  clean all build and test output
+./gradlew test          -  run junit tests for all components
+./gradlew dunit         -  run distributed unit (dunit) tests for all components
+./gradlew check         -  run all tests including junit and dunit
+./gradlew precheckin -Pgfxd  -  cleanAll, buildAll, check
+```
 
 ## Setting up Intellij with gradle
 
@@ -95,7 +109,9 @@ If the build works fine, then import into Intellij:
   * Try Run->Run... on a test like CreateSchemaTest. Select the normal junit configuration (red+green arrows icon) and not gradle configuration (green round icon).
 
 
-### Running a junit test
+### Running a unit test
 
  * When selecting a run configuration for junit, avoid selecting the gradle one (green round icon) otherwise that will launch an external gradle process that will start building the project all over again. Use the normal junit (red+green arrows icon).
  * For JUnit tests, ensure that working directory is "$MODULE_DIR$/build-artifacts" as mentioned before. Otherwise many GemFireXD tests will fail to find the resource files required in many tests. They will also pollute the checkouts with large number of log files etc, so this will allow those to go into build-artifacts that can also be cleaned up easily.
+
+A dunit test can also be executed like above with the difference that multiple JVMs (ChildVM) will get launched in the test run. If you wish to debug the other JVMs, then need to find the appropriate process and attach the IDE debugger to the external JVM process.

@@ -111,7 +111,7 @@ HTTP Session State Caching and Replication
 
 [davidw, 10Sep03]
 
-Sudhir passes along the following requirements for the HTTP Session
+Team passes along the following requirements for the HTTP Session
 State caching module.  They will need to be tested.
 
 Base HTTP Session Replication Requirements:

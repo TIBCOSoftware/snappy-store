@@ -662,7 +662,7 @@ public class PreparedStatement extends Statement
                     //see http://issues.apache.org/jira/browse/DERBY-1610#action_12432568
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       jdbcType,
-                                                      paramType );
+                                                      paramType, parameterIndex);
                 }
                 
                 setNullX(parameterIndex, jdbcType);
@@ -711,7 +711,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.BOOLEAN,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -747,7 +747,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.TINYINT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -783,7 +783,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.SMALLINT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                                                   
 
                 }
@@ -825,7 +825,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.INTEGER,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                 }
                 
                 setIntX(parameterIndex, x);
@@ -866,7 +866,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.INTEGER,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                 }
                 setLongX(parameterIndex, x);
             }
@@ -906,7 +906,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.FLOAT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
 
                 }
                 
@@ -935,7 +935,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.DOUBLE,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -964,7 +964,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.BIGINT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
 
@@ -998,7 +998,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_ ,
                                                       java.sql.Types.DATE,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -1066,7 +1066,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception( agent_.logWriter_,
                                                        java.sql.Types.TIME,
-                                                       paramType );
+                                                       paramType, parameterIndex);
                 }
                 
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.TIME;
@@ -1133,7 +1133,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.TIMESTAMP,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -1206,7 +1206,7 @@ public class PreparedStatement extends Statement
                 if( ! PossibleTypes.POSSIBLE_TYPES_IN_SET_STRING.checkType( paramType ) ){
                     PossibleTypes.throw22005Exception(agent_.logWriter_ ,
                                                       java.sql.Types.VARCHAR,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                 }
                 
                 setStringX(parameterIndex, x);
@@ -1243,7 +1243,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.VARBINARY,
-                                                      paramType );
+                                                      paramType, parameterIndex);
                 }
                 
                 setBytesX(parameterIndex, x);
@@ -1405,7 +1405,7 @@ public class PreparedStatement extends Statement
             
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.LONGVARCHAR,
-                                              paramType);
+                                              paramType, parameterIndex);
             
             
         }
@@ -1418,7 +1418,7 @@ public class PreparedStatement extends Statement
                 checkType(paramType)) {
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.VARBINARY,
-                                              paramType);
+                                              paramType, parameterIndex);
         }
     }
     
@@ -1429,7 +1429,7 @@ public class PreparedStatement extends Statement
                 checkType(paramType)) {
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.LONGVARCHAR,
-                                              paramType);
+                                              paramType, parameterIndex);
         }
     }
 
@@ -1440,7 +1440,7 @@ public class PreparedStatement extends Statement
             
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.BLOB,
-                                              paramType);
+                                              paramType, parameterIndex);
         }
     }
     
@@ -1452,7 +1452,7 @@ public class PreparedStatement extends Statement
                     
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.CLOB,
-                                              paramType);
+                                              paramType, parameterIndex);
                     
         }
         
@@ -1819,7 +1819,7 @@ public class PreparedStatement extends Statement
         if ( !( paramType == expectedType ) )
         {
             PossibleTypes.throw22005Exception
-                (agent_.logWriter_, expectedType, paramType );
+                (agent_.logWriter_, expectedType, paramType, parameterIndex);
         }
         
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = expectedType;
@@ -4061,7 +4061,7 @@ public class PreparedStatement extends Statement
         
         static SqlException throw22005Exception( LogWriter logWriter, 
                                                  int valType,
-                                                 int paramType)
+                                                 int paramType, int parameterIndex)
             
             throws SqlException{
             
@@ -4069,7 +4069,7 @@ public class PreparedStatement extends Statement
                                     new ClientMessageId(SQLState.LANG_DATA_TYPE_GET_MISMATCH) ,
                                     new Object[]{ 
                                         Types.getTypeString(valType),
-                                        Types.getTypeString(paramType) 
+                                        Types.getTypeString(paramType), parameterIndex
                                     },
                                     (Throwable) null);
         }

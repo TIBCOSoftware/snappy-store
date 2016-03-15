@@ -28,7 +28,7 @@ import com.gemstone.gemfire.cache.client.ClientCacheFactory;
  * This example measures the time it takes for a client put to return in a
  * hierarchical cache configuration. Please refer to the quickstart guide for
  * instructions on how to run this example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 5.8

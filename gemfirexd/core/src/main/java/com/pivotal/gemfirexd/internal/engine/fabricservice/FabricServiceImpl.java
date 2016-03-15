@@ -111,6 +111,12 @@ public abstract class FabricServiceImpl implements FabricService {
 
   protected String userName;
   protected String password;
+  // bind address for network server
+  private String clientBindAddress = null;
+  // port for network server
+  private int clientPort = -1;
+  // properties for network server
+  private Properties clientProperties = null;
 
   protected HashSet<NetworkInterface> allnetservers =
     new HashSet<NetworkInterface>();
@@ -359,6 +365,13 @@ public abstract class FabricServiceImpl implements FabricService {
       } catch (Exception ex) {
         throw Util.javaException(ex);
       }
+      // was the network server stopped due to reconnect?
+      // relying on the fact that networkserverstatus will be in
+      // STOPPED state (if it was started, otherwise should in UNINITIALIZED)
+      // when reconnect happens
+    } else if (clientPort > 0 && networkserverstatus == State.STOPPED
+        && this.isReconnecting()) {
+      this.startNetworkServer(clientBindAddress, clientPort, clientProperties);
     }
   }
 
@@ -721,6 +734,11 @@ public abstract class FabricServiceImpl implements FabricService {
     SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
         "Starting " + serverType + " on: " + listenAddress
           + '[' + port + ']');
+
+    this.clientPort = port;
+    this.clientBindAddress = bindAddress;
+    this.clientProperties = new Properties();
+    this.clientProperties.putAll(networkProperties);
 
     final NetworkInterfaceImpl netImpl = thriftServer
         ? new ThriftNetworkInterface(listenAddress, port)

@@ -81,6 +81,11 @@ public class LdapTestServer {
         TestUtil.getResourcesDir() + "/lib/ldap/auth.ldif");
   }
 
+  public static LdapTestServer getInstance(String ldifFilePath)
+      throws Exception {
+    return getInstance("./apacheds", ldifFilePath);
+  }
+
   public static LdapTestServer getInstance(String workingDir,
       String ldifFilePath) throws Exception {
     LdapTestServer inst = instance;

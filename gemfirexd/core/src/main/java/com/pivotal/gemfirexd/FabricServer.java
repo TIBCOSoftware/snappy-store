@@ -80,7 +80,7 @@ import java.util.Properties;
  * defined as system properties. GemFireXD looks for this file in the current working
  * directory, followed by 'gemfirexd.system.home' directory and then in 'user.home' directory.
  * The file name can be overridden using the system property
- * -Dgemfirexd.properties=<property file>.
+ * -Dgemfirexd.properties=&lt;property file&gt;.
  * If this value is a relative file system path then the above search is done.
  * If it is an absolute file system path then that file must exist; no search for it is done.
  *
@@ -127,10 +127,7 @@ import java.util.Properties;
  * start-up sequence cannot be controlled in this way when using a JDBC
  * Connection directly, i.e. this server will be active immediately after
  * joining the distributed system.</li>
- * </li>
  * </ul>
- *
- *
  *
  * @author Soubhik C
  */
@@ -148,7 +145,7 @@ public interface FabricServer extends FabricService {
    * directory, if set, otherwise in the current working directory, followed by 
    * 'user.home' directory.
    * The file name can be overridden using the system property
-   * -Dgemfirexd.properties=<property file>.
+   * -Dgemfirexd.properties=&lt;property file&gt;.
    * If this value is a relative file system path then the above search is done.
    * If it is an absolute file system path then that file must exist; no search for it is done.
    *
@@ -191,7 +188,7 @@ public interface FabricServer extends FabricService {
    * directory, if set, otherwise in the current working directory, followed by 
    * 'user.home' directory.
    * The file name can be overridden using the system property
-   * -Dgemfirexd.properties=<property file>.
+   * -Dgemfirexd.properties=&lt;property file&gt;.
    * If this value is a relative file system path then the above search is done.
    * If it is an absolute file system path then that file must exist; no search for it is done.
    *

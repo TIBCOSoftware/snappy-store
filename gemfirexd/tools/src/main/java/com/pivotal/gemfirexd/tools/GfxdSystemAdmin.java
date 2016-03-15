@@ -232,6 +232,13 @@ public class GfxdSystemAdmin extends SystemAdmin {
   }
 
   @Override
+  public void printStacks(String cmd, List<String> cmdLine,
+      boolean allStacks) {
+    // always print everything in GemXD
+    super.printStacks(cmd, cmdLine, true);
+  }
+
+  @Override
   protected void checkDashArg(String cmd, String arg,
       @SuppressWarnings("rawtypes") Iterator it) {
     if (Arrays.binarySearch(commandsWithDSProps, cmd) >= 0) {

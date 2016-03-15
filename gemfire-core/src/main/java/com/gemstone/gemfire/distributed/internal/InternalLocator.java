@@ -1107,7 +1107,10 @@ public class InternalLocator extends Locator implements ConnectListener {
     if (this.stoppedForReconnect) {
       log.info("attempting to restart locator");
       boolean tcpServerStarted = false;
-      InternalDistributedSystem ds = this.myDs;
+      final InternalDistributedSystem ds = this.myDs;
+      if (ds == null || ds.getConfig() == null) {
+        return false;
+      }
       long waitTime = ds.getConfig().getMaxWaitTimeForReconnect()/2;
       QuorumChecker checker = null;
       while (ds.getReconnectedSystem() == null &&

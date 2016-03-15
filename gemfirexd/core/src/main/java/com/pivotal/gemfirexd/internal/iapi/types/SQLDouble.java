@@ -115,7 +115,7 @@ public final class SQLDouble extends NumberDataType
 	{
 	    // REMIND: do we want to check for truncation?
 		if ((value > (((double) Integer.MAX_VALUE) + 1.0d)) || (value < (((double) Integer.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 		return (int)value;
 	}
 
@@ -125,7 +125,7 @@ public final class SQLDouble extends NumberDataType
 	public byte	getByte() throws StandardException
 	{
           if ((this.value > (((double) Byte.MAX_VALUE) + 1.0d)) || (this.value < (((double) Byte.MIN_VALUE) - 1.0d)))
-            throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+            throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
           return (byte) value;
 	}
         
@@ -136,7 +136,7 @@ public final class SQLDouble extends NumberDataType
 	public short	getShort() throws StandardException
 	{
 		if ((value > (((double) Short.MAX_VALUE) + 1.0d)) || (value < (((double) Short.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 		return (short) value;
 	}
 
@@ -146,7 +146,7 @@ public final class SQLDouble extends NumberDataType
 	public long	getLong() throws StandardException
 	{
 		if ((value > (((double) Long.MAX_VALUE) + 1.0d)) || (value < (((double) Long.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 		return (long) value;
 	}
 
@@ -156,7 +156,7 @@ public final class SQLDouble extends NumberDataType
 	public float	getFloat() throws StandardException
 	{
 		if (Float.isInfinite((float)value))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
 		return (float) value;
 	}
 
@@ -750,7 +750,7 @@ public final class SQLDouble extends NumberDataType
 		double tempResult = leftValue * rightValue;
         // check underflow (result rounded to 0.0)
         if ( (tempResult == 0.0) && ( (leftValue != 0.0) && (rightValue != 0.0) ) ) {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME, (String)null);
         }
 
 		result.setValue(tempResult);
@@ -808,7 +808,7 @@ public final class SQLDouble extends NumberDataType
 
         // check underflow (result rounded to 0.0d)
         if ((divideResult == 0.0d) && (dividendValue != 0.0d)) {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME, (String)null);
         }
 
 		result.setValue(divideResult);

@@ -24,7 +24,7 @@ import com.gemstone.gemfire.pdx.PdxWriter;
  * An example of a PdxSerializer. This serializer handles PortfolioPdx and
  * PositionPdx objects by delegating to serializers for those individual object
  * types.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.6

@@ -27,7 +27,7 @@ import com.gemstone.gemfire.management.RegionMXBean;
 /**
  * In this example of Manager Node. It first creates a cache. For each member 
  * of Distributed System it retrieves RegionMXBeand and use its data.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 7.0

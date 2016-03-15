@@ -25,7 +25,7 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 
 /**
  * Delta Propagation quick start receiver cache listener
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.1

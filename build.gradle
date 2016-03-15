@@ -23,6 +23,7 @@ allprojects {
     maven { url 'http://repo.spring.io/libs-release' }
     maven { url 'http://repo.spring.io/ext-release-local' }
     maven { url 'https://dl.bintray.com/big-data/maven' }
+    mavenLocal()
   }
 
   gradle.taskGraph.whenReady( { graph ->
@@ -65,10 +66,11 @@ allprojects {
     DERBY_MAINT = '2000000'
     DERBY_DRDA_MAINT = '1'
 
-    PRODUCT_MAJOR = '2'
-    PRODUCT_MINOR = '0'
-    PRODUCT_MAINT = 'BETA'
-    PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}-${PRODUCT_MAINT}"
+    PRODUCT_MAJOR = '1'
+    PRODUCT_MINOR = '5'
+    PRODUCT_MAINT = '0'
+    PRODUCT_CLASSFIER = '-BETA'
+    PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSFIER}"
     PRODUCT_VENDOR = 'SnappyData, Inc.'
     COPYRIGHT = "Copyright 2016, ${PRODUCT_VENDOR} All rights reserved."
 
@@ -228,6 +230,11 @@ task cleanIntegrationOutput << {
   delete testDir
   file(testDir).mkdirs()
 }
+task cleanReports << {
+  def reportsDir = "${testResultsBase}/combined-reports"
+  delete reportsDir
+  file(reportsDir).mkdirs()
+}
 
 subprojects {
   // apply compiler options
@@ -346,16 +353,20 @@ subprojects {
     reports.html.destination = file("${workingDir}/html/${project.name}")
     reports.junitXml.destination = file(workingDir)
   }
-  task distributedTest(type:Test) {
+  task dunitSingle(type:Test) {
     dependsOn "${subprojectBase}product"
-    maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 2, 2)
-    //maxParallelForks = 1
+    maxParallelForks = 1
     minHeapSize = '512m'
     maxHeapSize = '512m'
 
-    include '**/*DUnitTest.class'
-    include '**/*DUnit.class'
-    exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
+    def single = System.getProperty("dunit.single")
+    if (single == null || single.length() == 0) {
+      include '**/*DUnitTest.class'
+      include '**/*DUnit.class'
+      exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
+    } else {
+      include single
+    }
 
     workingDir = "${testResultsBase}/dunit"
 
@@ -366,6 +377,110 @@ subprojects {
     //I'm hoping this might deal with SOME OOMEs I've seen
     //forkEvery 30
   }
+  task dunitParallel {
+    dependsOn "${subprojectBase}product", testClasses
+    def testClasses = dunitSingle.getCandidateClassFiles().getFiles()
+    def ntestClasses = testClasses.size()
+    def testClassesGroups = testClasses.collate(4)
+    def ntestClassesGroups = testClassesGroups.size()
+    def lastTestClass = new ThreadLocal<String>()
+    def testCount = new java.util.concurrent.atomic.AtomicInteger(0)
+    def failureCount = new java.util.concurrent.atomic.AtomicInteger(0)
+    def testTasks = (0..<ntestClassesGroups).collect { index ->
+      task "dunitParallel$index"(type: Test) {
+        maxParallelForks = 1
+        minHeapSize = '512m'
+        maxHeapSize = '512m'
+
+        def baseURI = getTestClassesDir().toURI()
+        include testClassesGroups[index].collect {
+          baseURI.relativize(it.toURI()).getPath()
+        }
+
+        workingDir = "${testResultsBase}/dunit"
+        binResultsDir = file("${workingDir}/binary/${project.name}_$index")
+        reports.html.enabled = false
+        reports.junitXml.destination = file(workingDir)
+
+        beforeTest { desc ->
+          def lastClass = lastTestClass.get()
+          if (desc.className != lastClass) {
+            def count = testCount.incrementAndGet()
+            def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
+            def threadId = Long.toHexString(Thread.currentThread().getId())
+            if (lastClass != null) {
+              println "$now <0x$threadId> END $lastClass"
+            }
+            println "$now <0x$threadId> Start ${desc.className} ($count/$ntestClasses)"
+            lastTestClass.set(desc.className)
+          }
+        }
+        afterTest { desc, result ->
+          if (result.exceptions.size() > 0) {
+            failureCount.incrementAndGet()
+          }
+        }
+      }
+    }
+    doLast {
+      if (ntestClasses > 0) {
+        def count = new java.util.concurrent.atomic.AtomicInteger(0)
+        def threadProcess = new Runnable() {
+          @Override
+          void run() {
+            def index = 0
+            def thread = Thread.currentThread()
+            while ((index = count.getAndIncrement()) < ntestClassesGroups) {
+              def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
+              def threadId = Long.toHexString(Thread.currentThread().getId())
+              def test = testTasks[index]
+              println "$now <0x$threadId> STARTING tests: ${test.getIncludes()}"
+              try {
+                test.executeTests()
+                def lastClass = lastTestClass.get()
+                if (lastClass != null) {
+                  println "$now <0x$threadId> END $lastClass"
+                }
+              } catch (Exception e) {
+                print "Exception in thread '${thread.getName()}' $e "
+                e.printStackTrace()
+              }
+              now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
+              println "$now <0x$threadId> ENDED tests: ${test.getIncludes()}"
+            }
+          }
+        }
+        def parallelism = Math.max((int) Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
+        def threads = new Thread[parallelism]
+        parallelism.times { threads[it] = new Thread(threadProcess) }
+        threads.each { it.start() }
+        threads.each { it.join() }
+
+        def progressTxt = file("${testResultsBase}/dunit/progress.txt").getAbsolutePath().toURI()
+        def report = file("${testResultsBase}/dunit/html/${project.name}/index.html").getAbsolutePath().toURI()
+        if (failureCount.get() > 0) {
+          println()
+          throw new GradleException("FAILED: There were ${failureCount.get()} failures. See the progress report in: file://$progressTxt, html report in: file://$report")
+        } else {
+          println()
+          println("SUCCESS: See the progress report in: file://$progressTxt, html report in: file://$report")
+          println()
+        }
+      }
+    }
+  }
+  task dunitReport(type: TestReport) {
+    description 'Combines the parallel dunit test reports.'
+    destinationDir = file("${testResultsBase}/dunit/html/${project.name}")
+    mustRunAfter dunitParallel
+  }
+  gradle.taskGraph.whenReady({ graph ->
+    project.tasks.getByName('dunitReport').reportOn project.tasks.withType(Test).matching { it.getName().startsWith('dunitParallel') }
+  })
+  task dunit {
+    dependsOn dunitParallel, dunitReport
+  }
+
   task integrationTest(type:Test) {
     dependsOn "${subprojectBase}product"
     maxParallelForks = (2 * Runtime.getRuntime().availableProcessors())
@@ -387,10 +502,9 @@ subprojects {
   }
 
   // apply common test configuration
-  gradle.taskGraph.whenReady( { graph ->
+  gradle.taskGraph.whenReady({ graph ->
     tasks.withType(Test).each { test ->
       test.configure {
-        onlyIf { ! Boolean.getBoolean('skip.tests') }
 
         jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxPermSize=128M', '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC', '-XX:CMSInitiatingOccupancyFraction=50', '-XX:+CMSClassUnloadingEnabled', '-ea']
 
@@ -419,7 +533,7 @@ subprojects {
             def output = new File(workingDir, "output.txt")
             def msg = event.message
             if (event.destination.toString() == 'StdErr') {
-              msg = msg.replace("\n", "\n[error]  ")
+              msg = msg.replace("\n", "\n[stderr]  ")
             }
             output << msg
           }
@@ -440,11 +554,11 @@ subprojects {
   })
 
   test.dependsOn subprojectBase + 'cleanTestOutput'
-  distributedTest.dependsOn subprojectBase + 'cleanDUnitOutput'
+  dunitSingle.dependsOn subprojectBase + 'cleanDUnitOutput'
+  dunitParallel.dependsOn subprojectBase + 'cleanDUnitOutput'
   integrationTest.dependsOn subprojectBase + 'cleanIntegrationOutput'
   check.dependsOn test
-  check.dependsOn distributedTest
-  check.dependsOn integrationTest
+  check.dependsOn dunit
 }
 
 // maven publish tasks
@@ -519,22 +633,26 @@ subprojects {
   }
 }
 
-//test.dependsOn subprojects.collect { p -> p.getTasksByName('test', false).collect { it.path } }
-test.dependsOn subprojects.test
-check.dependsOn subprojects.check
-
-task distributedTest {
-  dependsOn subprojects.distributedTest
+task dunit {
+  dependsOn "${subprojectBase}gemfirexd-tools:dunit"
+}
+task integrationTest {
+  dependsOn subprojects.integrationTest
 }
 
 task combineReports(type: TestReport) {
   description 'Combines the test reports.'
   destinationDir = file("${testResultsBase}/combined-reports")
+  mustRunAfter test, dunit, integrationTest
 }
+combineReports.dependsOn cleanReports
 
 gradle.taskGraph.whenReady({ graph ->
   tasks.getByName('combineReports').reportOn rootProject.subprojects.collect{ it.tasks.withType(Test) }.flatten()
 })
+
+test.dependsOn subprojects.test
+check.dependsOn test, dunit, combineReports
 
 task generateSources {
   dependsOn subprojectBase + 'gemfire-jgroups:jgMagic'
@@ -562,7 +680,6 @@ def includeJar(def jarFile) {
 task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
     subprojectBase + 'gemfirexd-core:shadowJar',
     subprojectBase + 'gemfirexd-tools:jar',
-    subprojectBase + 'gemfirexd-tests:jar',
     subprojectBase + 'gemfirexd-shared:javadoc',
     subprojectBase + 'gemfirexd-core:javadoc' ]) << {
 
@@ -673,5 +790,19 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
     }
     into "${productDir}/docs"
     rename 'gfxd-index.html', 'index.html'
+  }
+}
+
+task cleanAll {
+  dependsOn clean, subprojects.clean
+}
+task buildAll {
+  dependsOn subprojects.assemble, subprojects.testClasses, product
+  mustRunAfter cleanAll
+}
+check.mustRunAfter buildAll
+task precheckin {
+  if (project.hasProperty('gfxd')) {
+    dependsOn cleanAll, buildAll, check
   }
 }

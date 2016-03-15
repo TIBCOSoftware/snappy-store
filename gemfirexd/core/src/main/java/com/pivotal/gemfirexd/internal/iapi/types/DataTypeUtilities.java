@@ -1247,10 +1247,11 @@ public abstract class DataTypeUtilities {
   }
 
   public static final byte getAsByte(final byte[] inBytes, final int offset,
-      final int columnWidth, final DataTypeDescriptor dtd,
+      final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1258,14 +1259,16 @@ public abstract class DataTypeUtilities {
         if ((value > (Byte.MAX_VALUE + 1.0d))
             || (value < (Byte.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         return (byte)value;
       }
       case StoredFormatIds.INT_TYPE_ID: {
         final int value = SQLInteger.getAsInteger(inBytes, offset);
         if (value > Byte.MAX_VALUE || value < Byte.MIN_VALUE) {
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         }
         return (byte)value;
       }
@@ -1278,7 +1281,8 @@ public abstract class DataTypeUtilities {
             return (byte)lv;
           else {
             throw StandardException.newException(
-                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1290,7 +1294,8 @@ public abstract class DataTypeUtilities {
         final long lv = SQLLongint.getAsLong(inBytes, offset);
         if (lv > Byte.MAX_VALUE || lv < Byte.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
 
         return (byte)lv;
 
@@ -1300,14 +1305,16 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Byte.MAX_VALUE + 1.0d)))
             || (flt < (Byte.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         return (byte)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID: {
         final short shrt = SQLSmallint.getAsShort(inBytes, offset);
         if (shrt > Byte.MAX_VALUE || shrt < Byte.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         return (byte)shrt;
       }
       case StoredFormatIds.CHAR_TYPE_ID: {
@@ -1318,7 +1325,8 @@ public abstract class DataTypeUtilities {
             return Byte.parseByte(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1336,7 +1344,8 @@ public abstract class DataTypeUtilities {
             return Byte.parseByte(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1360,10 +1369,11 @@ public abstract class DataTypeUtilities {
 
   public static final byte getAsByte(final UnsafeWrapper unsafe,
       final long memOffset, final int columnWidth,
-      @Unretained final OffHeapByteSource bs, final DataTypeDescriptor dtd,
+      @Unretained final OffHeapByteSource bs, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1371,14 +1381,16 @@ public abstract class DataTypeUtilities {
         if ((value > (Byte.MAX_VALUE + 1.0d))
             || (value < (Byte.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         return (byte)value;
       }
       case StoredFormatIds.INT_TYPE_ID: {
         final int value = SQLInteger.getAsInteger(unsafe, memOffset);
         if (value > Byte.MAX_VALUE || value < Byte.MIN_VALUE) {
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         }
         return (byte)value;
       }
@@ -1391,7 +1403,8 @@ public abstract class DataTypeUtilities {
             return (byte)lv;
           else {
             throw StandardException.newException(
-                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1403,7 +1416,8 @@ public abstract class DataTypeUtilities {
         final long lv = SQLLongint.getAsLong(unsafe, memOffset);
         if (lv > Byte.MAX_VALUE || lv < Byte.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
 
         return (byte)lv;
 
@@ -1413,14 +1427,16 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Byte.MAX_VALUE + 1.0d)))
             || (flt < (Byte.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         return (byte)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID: {
         final short shrt = SQLSmallint.getAsShort(unsafe, memOffset);
         if (shrt > Byte.MAX_VALUE || shrt < Byte.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
+              cd.getColumnName());
         return (byte)shrt;
       }
       case StoredFormatIds.CHAR_TYPE_ID: {
@@ -1431,7 +1447,8 @@ public abstract class DataTypeUtilities {
             return Byte.parseByte(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1449,7 +1466,8 @@ public abstract class DataTypeUtilities {
             return Byte.parseByte(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1474,10 +1492,11 @@ public abstract class DataTypeUtilities {
   // TODO: SW: for both LANG_OUTSIDE_RANGE, LANG_FORMAT errors, should also
   // have the culprit value in exception message
   public static final short getAsShort(final byte[] inBytes, final int offset,
-      final int columnWidth, final DataTypeDescriptor dtd,
+      final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1485,7 +1504,8 @@ public abstract class DataTypeUtilities {
         if ((value > (Short.MAX_VALUE + 1.0d))
             || (value < (Short.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)value;
       }
 
@@ -1493,7 +1513,8 @@ public abstract class DataTypeUtilities {
         final int value = SQLInteger.getAsInteger(inBytes, offset);
         if (value > Short.MAX_VALUE || value < Short.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)value;
 
       }
@@ -1506,7 +1527,8 @@ public abstract class DataTypeUtilities {
             return (short)lv;
           else {
             throw StandardException.newException(
-                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1518,7 +1540,8 @@ public abstract class DataTypeUtilities {
         final long lv = SQLLongint.getAsLong(inBytes, offset);
         if (lv > Short.MAX_VALUE || lv < Short.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)lv;
       }
       case StoredFormatIds.REAL_TYPE_ID: {
@@ -1526,7 +1549,8 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Short.MAX_VALUE + 1.0d)))
             || (flt < (Short.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID:
@@ -1539,7 +1563,8 @@ public abstract class DataTypeUtilities {
             return Short.parseShort(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1557,7 +1582,8 @@ public abstract class DataTypeUtilities {
             return Short.parseShort(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1581,10 +1607,11 @@ public abstract class DataTypeUtilities {
 
   public static final short getAsShort(final UnsafeWrapper unsafe,
       final long memOffset, final int columnWidth,
-      @Unretained final OffHeapByteSource bs, final DataTypeDescriptor dtd,
+      @Unretained final OffHeapByteSource bs, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1592,7 +1619,8 @@ public abstract class DataTypeUtilities {
         if ((value > (Short.MAX_VALUE + 1.0d))
             || (value < (Short.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)value;
       }
 
@@ -1600,7 +1628,8 @@ public abstract class DataTypeUtilities {
         final int value = SQLInteger.getAsInteger(unsafe, memOffset);
         if (value > Short.MAX_VALUE || value < Short.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)value;
 
       }
@@ -1613,7 +1642,8 @@ public abstract class DataTypeUtilities {
             return (short)lv;
           else {
             throw StandardException.newException(
-                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1625,7 +1655,8 @@ public abstract class DataTypeUtilities {
         final long lv = SQLLongint.getAsLong(unsafe, memOffset);
         if (lv > Short.MAX_VALUE || lv < Short.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)lv;
       }
       case StoredFormatIds.REAL_TYPE_ID: {
@@ -1633,7 +1664,8 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Short.MAX_VALUE + 1.0d)))
             || (flt < (Short.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
+              cd.getColumnName());
         return (short)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID:
@@ -1646,7 +1678,8 @@ public abstract class DataTypeUtilities {
             return Short.parseShort(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1664,7 +1697,8 @@ public abstract class DataTypeUtilities {
             return Short.parseShort(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1687,10 +1721,11 @@ public abstract class DataTypeUtilities {
   }
 
   public static final int getAsInt(final byte[] inBytes, final int offset,
-      final int columnWidth, final DataTypeDescriptor dtd,
+      final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1698,7 +1733,8 @@ public abstract class DataTypeUtilities {
         if ((value > (Integer.MAX_VALUE + 1.0d))
             || (value < (Integer.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+              cd.getColumnName());
         return (int)value;
       }
 
@@ -1714,7 +1750,8 @@ public abstract class DataTypeUtilities {
             return (int)lv;
           else {
             throw StandardException.newException(
-                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+                cd.getColumnName());
           }
         }
         else {
@@ -1726,7 +1763,8 @@ public abstract class DataTypeUtilities {
         final long lv = SQLLongint.getAsLong(inBytes, offset);
         if (lv > Integer.MAX_VALUE || lv < Integer.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+              cd.getColumnName());
         return (int)lv;
       }
       case StoredFormatIds.REAL_TYPE_ID: {
@@ -1734,7 +1772,8 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Integer.MAX_VALUE + 1.0d)))
             || (flt < (Integer.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+              cd.getColumnName());
         return (int)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID:
@@ -1747,7 +1786,8 @@ public abstract class DataTypeUtilities {
             return Integer.parseInt(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER");
+                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+                cd.getColumnName());
           }
         }
         else {
@@ -1765,7 +1805,8 @@ public abstract class DataTypeUtilities {
             return Integer.parseInt(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER");
+                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+                cd.getColumnName());
           }
         }
         else {
@@ -1789,10 +1830,11 @@ public abstract class DataTypeUtilities {
 
   public static final int getAsInt(final UnsafeWrapper unsafe,
       final long memOffset, final int columnWidth, final OffHeapByteSource bs,
-      final DataTypeDescriptor dtd, final ResultWasNull wasNull)
+      final ColumnDescriptor cd, final ResultWasNull wasNull)
       throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1800,7 +1842,8 @@ public abstract class DataTypeUtilities {
         if ((value > (Integer.MAX_VALUE + 1.0d))
             || (value < (Integer.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+              cd.getColumnName());
         return (int)value;
       }
 
@@ -1816,7 +1859,8 @@ public abstract class DataTypeUtilities {
             return (int)lv;
           else {
             throw StandardException.newException(
-                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+                SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+                cd.getColumnName());
           }
         }
         else {
@@ -1828,7 +1872,8 @@ public abstract class DataTypeUtilities {
         final long lv = SQLLongint.getAsLong(unsafe, memOffset);
         if (lv > Integer.MAX_VALUE || lv < Integer.MIN_VALUE)
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+              cd.getColumnName());
         return (int)lv;
       }
       case StoredFormatIds.REAL_TYPE_ID: {
@@ -1836,7 +1881,8 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Integer.MAX_VALUE + 1.0d)))
             || (flt < (Integer.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
+              cd.getColumnName());
         return (int)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID:
@@ -1849,7 +1895,8 @@ public abstract class DataTypeUtilities {
             return Integer.parseInt(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER");
+                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+                cd.getColumnName());
           }
         }
         else {
@@ -1867,7 +1914,8 @@ public abstract class DataTypeUtilities {
             return Integer.parseInt(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER");
+                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+                cd.getColumnName());
           }
         }
         else {
@@ -1890,10 +1938,11 @@ public abstract class DataTypeUtilities {
   }
 
   public static final long getAsLong(final byte[] inBytes, final int offset,
-      final int columnWidth, final DataTypeDescriptor dtd,
+      final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1901,7 +1950,8 @@ public abstract class DataTypeUtilities {
         if ((value > (Long.MAX_VALUE + 1.0d))
             || (value < (Long.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT",
+              cd.getColumnName());
         return (long)value;
       }
 
@@ -1927,7 +1977,8 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Long.MAX_VALUE + 1.0d)))
             || (flt < (Long.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT",
+              cd.getColumnName());
         return (long)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID:
@@ -1940,7 +1991,8 @@ public abstract class DataTypeUtilities {
             return Long.parseLong(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1958,7 +2010,8 @@ public abstract class DataTypeUtilities {
             return Long.parseLong(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -1982,10 +2035,11 @@ public abstract class DataTypeUtilities {
 
   public static final long getAsLong(final UnsafeWrapper unsafe,
       final long memOffset, final int columnWidth, final OffHeapByteSource bs,
-      final DataTypeDescriptor dtd, final ResultWasNull wasNull)
+      final ColumnDescriptor cd, final ResultWasNull wasNull)
       throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
@@ -1993,7 +2047,8 @@ public abstract class DataTypeUtilities {
         if ((value > (Long.MAX_VALUE + 1.0d))
             || (value < (Long.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT",
+              cd.getColumnName());
         return (long)value;
       }
 
@@ -2019,7 +2074,8 @@ public abstract class DataTypeUtilities {
         if ((flt > ((Long.MAX_VALUE + 1.0d)))
             || (flt < (Long.MIN_VALUE - 1.0d)))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT",
+              cd.getColumnName());
         return (long)flt;
       }
       case StoredFormatIds.SMALLINT_TYPE_ID:
@@ -2032,7 +2088,8 @@ public abstract class DataTypeUtilities {
             return Long.parseLong(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -2050,7 +2107,8 @@ public abstract class DataTypeUtilities {
             return Long.parseLong(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -2073,17 +2131,19 @@ public abstract class DataTypeUtilities {
   }
 
   public static final float getAsFloat(final byte[] inBytes, final int offset,
-      final int columnWidth, final DataTypeDescriptor dtd,
+      final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
         final double value = SQLDouble.getAsDouble(inBytes, offset);
         if (Float.isInfinite((float)value))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME,
+              cd.getColumnName());
         return (float)value;
       }
       case StoredFormatIds.INT_TYPE_ID:
@@ -2113,7 +2173,8 @@ public abstract class DataTypeUtilities {
             return Float.parseFloat(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -2131,7 +2192,8 @@ public abstract class DataTypeUtilities {
             return Float.parseFloat(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT");
+                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+                cd.getColumnName());
           }
         }
         else {
@@ -2155,17 +2217,19 @@ public abstract class DataTypeUtilities {
 
   public static final float getAsFloat(final UnsafeWrapper unsafe,
       final long memOffset, final int columnWidth, final OffHeapByteSource bs,
-      final DataTypeDescriptor dtd, final ResultWasNull wasNull)
+      final ColumnDescriptor cd, final ResultWasNull wasNull)
       throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID: {
         final double value = SQLDouble.getAsDouble(unsafe, memOffset);
         if (Float.isInfinite((float)value))
           throw StandardException.newException(
-              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+              SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME,
+              cd.getColumnName());
         return (float)value;
       }
       case StoredFormatIds.INT_TYPE_ID:
@@ -2195,7 +2259,8 @@ public abstract class DataTypeUtilities {
             return Float.parseFloat(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME);
+                SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME,
+                cd.getColumnName());
           }
         }
         else {
@@ -2213,7 +2278,8 @@ public abstract class DataTypeUtilities {
             return Float.parseFloat(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME);
+                SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME,
+                cd.getColumnName());
           }
         }
         else {
@@ -2236,10 +2302,11 @@ public abstract class DataTypeUtilities {
   }
 
   public static final double getAsDouble(final byte[] inBytes,
-      final int offset, final int columnWidth, final DataTypeDescriptor dtd,
+      final int offset, final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID:
@@ -2270,7 +2337,8 @@ public abstract class DataTypeUtilities {
             return Double.parseDouble(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME);
+                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+                cd.getColumnName());
           }
         }
         else {
@@ -2288,7 +2356,8 @@ public abstract class DataTypeUtilities {
             return Double.parseDouble(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME);
+                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+                cd.getColumnName());
           }
         }
         else {
@@ -2311,10 +2380,11 @@ public abstract class DataTypeUtilities {
 
   public static final double getAsDouble(final UnsafeWrapper unsafe,
       final long memOffset, final int columnWidth, final OffHeapByteSource bs,
-      final DataTypeDescriptor dtd, final ResultWasNull wasNull)
+      final ColumnDescriptor cd, final ResultWasNull wasNull)
       throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     switch (formatID) {
       case StoredFormatIds.DOUBLE_TYPE_ID:
@@ -2345,7 +2415,8 @@ public abstract class DataTypeUtilities {
             return Double.parseDouble(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME);
+                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+                cd.getColumnName());
           }
         }
         else {
@@ -2363,7 +2434,8 @@ public abstract class DataTypeUtilities {
             return Double.parseDouble(str);
           } catch (NumberFormatException nfe) {
             throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME);
+                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+                cd.getColumnName());
           }
         }
         else {
@@ -2385,10 +2457,11 @@ public abstract class DataTypeUtilities {
   }
 
   public static final BigDecimal getAsBigDecimal(final byte[] inBytes,
-      final int offset, final int columnWidth, final DataTypeDescriptor dtd,
+      final int offset, final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     try {
       switch (formatID) {
@@ -2458,16 +2531,17 @@ public abstract class DataTypeUtilities {
       }
     } catch (NumberFormatException nfe) {
       throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
-          "java.math.BigDecimal");
+          "java.math.BigDecimal", cd.getColumnName());
     }
   }
 
   public static final BigDecimal getAsBigDecimal(final UnsafeWrapper unsafe,
       final long memOffset, final int columnWidth, final OffHeapByteSource bs,
-      final DataTypeDescriptor dtd, final ResultWasNull wasNull)
+      final ColumnDescriptor cd, final ResultWasNull wasNull)
       throws StandardException {
 
     assert wasNull != null;
+    final DataTypeDescriptor dtd = cd.getType();
     final int formatID = dtd.getTypeId().getTypeFormatId();
     try {
       switch (formatID) {
@@ -2538,7 +2612,7 @@ public abstract class DataTypeUtilities {
       }
     } catch (NumberFormatException nfe) {
       throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
-          "java.math.BigDecimal");
+          "java.math.BigDecimal", cd.getColumnName());
     }
   }
 
@@ -3293,15 +3367,6 @@ public abstract class DataTypeUtilities {
   /**
    * Null handling is done. Caller must handle default column values.
    * 
-   * @param lhs
-   * @param lhsDVD
-   * @param rhs
-   * @param lhsOffsetWidth
-   * @param rhsOffsetWidth
-   * @param nullsOrderedLow
-   * @param caseSensitive
-   * @param cd
-   * @return
    * @throws StandardException
    */
   public static final int compare(byte[] lhs, byte[] rhs,
@@ -3495,15 +3560,6 @@ public abstract class DataTypeUtilities {
   /**
    * Null handling is done. Caller must handle default column values.
    * 
-   * @param lhs
-   * @param lhsDVD
-   * @param rhs
-   * @param lhsOffsetWidth
-   * @param rhsOffsetWidth
-   * @param nullsOrderedLow
-   * @param caseSensitive
-   * @param cd
-   * @return
    * @throws StandardException
    */
   public static final int compare(DataValueDescriptor lhsDVD, byte[] rhs,

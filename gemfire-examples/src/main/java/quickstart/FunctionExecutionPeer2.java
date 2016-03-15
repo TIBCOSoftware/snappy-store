@@ -38,7 +38,7 @@ import com.gemstone.gemfire.cache.execute.ResultCollector;
  * It collects the result from its own execution as well as from FunctionExecutionPeer1.
  * Please refer to the quickstart guide for instructions on how to run this
  * example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.0

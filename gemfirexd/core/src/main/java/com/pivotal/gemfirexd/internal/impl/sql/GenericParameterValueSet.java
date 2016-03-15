@@ -252,7 +252,7 @@ public final class GenericParameterValueSet implements ParameterValueSet
 
 				if (throwError) {
 					throw StandardException.newException(SQLState.LANG_DATA_TYPE_SET_MISMATCH, t,
-						ClassInspector.readableClassName(value.getClass()), gp.declaredClassName);
+						ClassInspector.readableClassName(value.getClass()), gp.declaredClassName, null);
 				}
 			}
 

@@ -2668,83 +2668,86 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
    
     if (indexContainer.isInitialized() && !posDup && owner.isInitialized()) {
-      final String lineSep = SanityManager.lineSeparator;
-      final StringBuilder sb = new StringBuilder().append(lineSep);
-      final BucketRegion breg;
-      final PartitionedRegion preg;
-      final boolean isPrimary;
-      if (owner instanceof BucketRegion) {
-        breg = (BucketRegion)owner;
-        preg = breg.getPartitionedRegion();
-        isPrimary = breg.getBucketAdvisor().isPrimary();
-      }
-      else {
-        breg = null;
-        preg = null;
-        isPrimary = false;
-      }
-      final GemFireContainer container = indexContainer.getBaseContainer();
-      final RowFormatter rf = container.getCurrentRowFormatter();
-      final String[] columnNames;
-      if (rf != null) {
-        columnNames = new String[rf.getNumColumns()];
-        for (int i = 0; i < columnNames.length; ++i) {
-          columnNames[i] = rf.getColumnDescriptor(i).getColumnName();
-        }
-      }
-      else {
-        columnNames = null;
-      }
-      // Asif: Added assertion error as a Delete for now should
-      // always have an Entry in the index.
-      final MemIndex conglom = (MemIndex)indexContainer.getConglomerate();
       if (GemFireXDUtils.TracePersistIndex) {
-        conglom.dumpIndex(dumpFlag);
-      }
-      // also dump the region contents
-      if (breg != null) {
-        sb.append("======== Bucket ID=")
-            .append(preg.bucketStringForLogs(breg.getId())).append(" region=")
-            .append(breg.getName()).append(" primary=").append(isPrimary)
-            .append(" contents: ========");
-      }
-      else {
-        sb.append("======= Region=").append(owner.getFullPath())
-            .append(" contents: ========");
-      }
-      Iterator<?> iter = owner.getBestLocalIterator(true, 4.0, false);
-      while (iter.hasNext()) {
-        RegionEntry re = (RegionEntry) iter.next();
-        @Retained
-        @Released
-        final ExecRow row = RegionEntryUtils.getRowWithoutFaultIn(container,
-            owner, re, (ExtraTableInfo) re.getContainerInfo());
-        try {
-          sb.append(lineSep).append('\t');
-          if (row != null) {
-            final DataValueDescriptor[] dvds = row.getRowArray();
-            for (int i = 0; i < dvds.length; ++i) {
-              if (i > 0) {
-                sb.append(',');
-              }
-              sb.append((columnNames != null ? columnNames[i] : "col" + i))
-                  .append(':').append(dvds[i]);
-            }
-          } else {
-            sb.append("NULL");
-          }
-          sb.append('\t').append(re);
-          if (sb.length() > (4 * 1024 * 1024)) {
-            SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
-            sb.setLength(0);
-          }
-        } finally {
-          if(row != null) {
-            row.releaseByteSource();
+        final String lineSep = SanityManager.lineSeparator;
+        final StringBuilder sb = new StringBuilder().append(lineSep);
+        final BucketRegion breg;
+        final PartitionedRegion preg;
+        final boolean isPrimary;
+        if (owner instanceof BucketRegion) {
+          breg = (BucketRegion)owner;
+          preg = breg.getPartitionedRegion();
+          isPrimary = breg.getBucketAdvisor().isPrimary();
+        }
+        else {
+          breg = null;
+          preg = null;
+          isPrimary = false;
+        }
+        final GemFireContainer container = indexContainer.getBaseContainer();
+        final RowFormatter rf = container.getCurrentRowFormatter();
+        final String[] columnNames;
+        if (rf != null) {
+          columnNames = new String[rf.getNumColumns()];
+          for (int i = 0; i < columnNames.length; ++i) {
+            columnNames[i] = rf.getColumnDescriptor(i).getColumnName();
           }
         }
+        else {
+          columnNames = null;
+        }
+
+        // Asif: Added assertion error as a Delete for now should
+        // always have an Entry in the index.
+        final MemIndex conglom = (MemIndex)indexContainer.getConglomerate();
+        conglom.dumpIndex(dumpFlag);
+
+        // also dump the region contents
+        if (breg != null) {
+          sb.append("======== Bucket ID=")
+              .append(preg.bucketStringForLogs(breg.getId())).append(" region=")
+              .append(breg.getName()).append(" primary=").append(isPrimary)
+              .append(" contents: ========");
+        }
+        else {
+          sb.append("======= Region=").append(owner.getFullPath())
+              .append(" contents: ========");
+        }
+        Iterator<?> iter = owner.getBestLocalIterator(true, 4.0, false);
+        while (iter.hasNext()) {
+          RegionEntry re = (RegionEntry)iter.next();
+          @Retained
+          @Released
+          final ExecRow row = RegionEntryUtils.getRowWithoutFaultIn(container,
+              owner, re, (ExtraTableInfo)re.getContainerInfo());
+          try {
+            sb.append(lineSep).append('\t');
+            if (row != null) {
+              final DataValueDescriptor[] dvds = row.getRowArray();
+              for (int i = 0; i < dvds.length; ++i) {
+                if (i > 0) {
+                  sb.append(',');
+                }
+                sb.append((columnNames != null ? columnNames[i] : "col" + i))
+                    .append(':').append(dvds[i]);
+              }
+            }
+            else {
+              sb.append("NULL");
+            }
+            sb.append('\t').append(re);
+            if (sb.length() > (4 * 1024 * 1024)) {
+              SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
+              sb.setLength(0);
+            }
+          } finally {
+            if (row != null) {
+              row.releaseByteSource();
+            }
+          }
+        }
+        SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
       }
-      SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
       String message = "Delete did not happen on "
           + "index: " + indexContainer.getQualifiedTableName()
           + " for indexKey: " + ArrayUtils.objectString(indexKey)

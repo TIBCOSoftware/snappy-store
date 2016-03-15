@@ -126,10 +126,14 @@ implements CredentialInitializer
 	private String searchGroupBase;
 	private String searchGroupFilter;
 	private String[] searchGroupAttributes;
+	private String[] searchGroupUserAttributes;
 	private static final String[] attrGroupDefault = { "member",
 	    "uniqueMember" };
+	private static final String[] attrGroupUserDefault = { "uid" };
 	private static final java.util.regex.Pattern groupPattern =
 	    java.util.regex.Pattern.compile(Constants.LDAP_SEARCH_FILTER_GROUP);
+	private static final java.util.regex.Pattern userAttrPattern =
+	    java.util.regex.Pattern.compile("\\((\\w+)=$");
 	/* (original code)
 	private static final String[] attrDN = {"dn"};								;
 	*/
@@ -386,6 +390,9 @@ implements CredentialInitializer
 		this.searchAuthPW =
 					authenticationService.getProperty(Property.AUTH_LDAP_SEARCH_PW);
 
+// GemStone changes BEGIN
+		this.searchGroupUserAttributes = attrGroupUserDefault;
+// GemStone changes END
 		//
 		// Construct the LDAP search filter:
 		//
@@ -432,6 +439,21 @@ implements CredentialInitializer
 			this.rightSearchFilter = searchFilterProp.substring(
 				searchFilterProp.indexOf(Constants.LDAP_SEARCH_FILTER_USERNAME)+
 				(int) Constants.LDAP_SEARCH_FILTER_USERNAME.length());
+// GemStone changes BEGIN
+			java.util.regex.Matcher userAttrMatch = userAttrPattern
+			    .matcher(this.leftSearchFilter);
+			if (userAttrMatch.find()) {
+			  String userAttr = userAttrMatch.group(1);
+			  if (userAttr != null && !attributeExists(userAttr,
+			      this.searchGroupUserAttributes)) {
+			    int nAttrs = this.searchGroupUserAttributes.length;
+			    String[] userAttrs = Arrays.copyOf(
+			        this.searchGroupUserAttributes, nAttrs + 1);
+			    userAttrs[nAttrs] = userAttr;
+			    this.searchGroupUserAttributes = userAttrs;
+			  }
+			}
+// GemStone changes END
 
 
 		} else	{ // add this search filter to ours
@@ -448,7 +470,7 @@ implements CredentialInitializer
 		String ldapGroupSearchBase = authenticationService
 		    .getProperty(Property.AUTH_LDAP_GROUP_SEARCH_BASE);
 		if (ldapGroupSearchBase != null) {
-		  this.searchGroupBase = ldapSearchBase;
+		  this.searchGroupBase = ldapGroupSearchBase;
 		} else {
 		  this.searchGroupBase = this.searchBaseDN;
 		}
@@ -501,7 +523,9 @@ implements CredentialInitializer
 								"   - group search filter [" +
 								  this.searchGroupFilter + "]\n" +
 								"   - group search attributes " +
-								  Arrays.toString(searchGroupAttributes) + '\n'
+								  Arrays.toString(searchGroupAttributes) + '\n' +
+								"   - group user attributes " +
+								  Arrays.toString(searchGroupUserAttributes) + '\n'
 // GemStone changes END
 								);
 			}
@@ -727,29 +751,34 @@ implements CredentialInitializer
                     // if it has a uid= then its a member and can be
                     // added directly else lookup the DN again to get
                     // the members (or it can be a cn= of a member
-                    // itself but still needs to be lookup up)
+                    // itself but still needs to be looked up)
                     if (!memberDN.isEmpty()) {
                       Rdn id = memberDN.getRdn(memberDN.size() - 1);
-                      if ("uid".equalsIgnoreCase(id.getType())) {
+                      if (attributeExists(id.getType(),
+                          this.searchGroupUserAttributes)) {
                         member = id.getValue().toString();
                       } else {
                         // need to do a full search again
-                        if (GemFireXDUtils.TraceAuthentication) {
-                          SanityManager.DEBUG_PRINT(
-                              AuthenticationServiceBase.AuthenticationTrace,
-                              "Searching DN " + member + " in LDAP group = "
-                                  + group);
-                        }
                         if (topLevel) {
                           // match any objectClass for recursive searches
                           // since the DN expressed in member attribute
                           // should be fully qualified to match a single entry
                           searchFilter = "(objectClass=*)";
                           // add attributes for both groups and users
-                          int nattrs = searchAttributes.length;
-                          searchAttributes = Arrays.copyOf(searchAttributes,
-                              nattrs + 1);
-                          searchAttributes[nattrs] = "uid";
+                          int nAttrs = searchAttributes.length;
+			  int nSearchAttrs = this.searchGroupUserAttributes.length;
+                         searchAttributes = Arrays.copyOf(searchAttributes,
+                              nAttrs + nSearchAttrs);
+                          System.arraycopy(this.searchGroupUserAttributes, 0,
+                              searchAttributes, nAttrs, nSearchAttrs);
+                        }
+                        if (GemFireXDUtils.TraceAuthentication) {
+                          SanityManager.DEBUG_PRINT(
+                              AuthenticationServiceBase.AuthenticationTrace,
+                              "Searching DN " + member + " in LDAP group = "
+                                  + group + " filter = " + searchFilter
+                                  + " attributes = " + Arrays.toString(
+                                      searchAttributes));
                         }
                         resolveDNForGroup(ctx, member, searchFilter,
                             searchAttributes, false, group, groupMembers);
@@ -761,8 +790,8 @@ implements CredentialInitializer
                     member = StringUtil.SQLToUpperCase(member);
                     if (GemFireXDUtils.TraceAuthentication) {
                       SanityManager.DEBUG_PRINT(
-                          AuthenticationServiceBase.AuthenticationTrace,
-                          "Found member " + member + " in LDAP group = " + group);
+			  AuthenticationServiceBase.AuthenticationTrace,
+			  "Found member " + member + " in LDAP group = " + group);
                     }
                     groupMembers.add(member);
                   }
@@ -779,6 +808,15 @@ implements CredentialInitializer
               break;
             }
           }
+        }
+
+        private boolean attributeExists(String attr, String[] attrs) {
+          for (String a : attrs) {
+          if (attr.equalsIgnoreCase(a)) {
+              return true;
+            }
+          }
+          return false;
         }
 
 	/**

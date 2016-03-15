@@ -54,7 +54,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
  * {@link GfxdLockService}.
  * 
  * Some of the methods need to be protected now (
- * {@link #releaseLock(GfxdLockable, boolean, boolean)} and {@link #unlockAll()}
+ * {@link #releaseLock(GfxdLockable, boolean, boolean)} and {@link #unlockAll}
  * ) since multiple threads can release locks on the same Transaction,
  * particularly with streaming where this should be done after processing is
  * done on all nodes, so release is done by the ResultCollector while TX commit
@@ -101,8 +101,8 @@ public final class GfxdLockSet implements CompatibilitySpace {
   /**
    * An int representing max wait time for distributed lock on a single VM in
    * milliseconds. When this limit is exhausted then the lock acquisition is
-   * retried (to avoid deadlocks) subject to maximum of {@link #MAX_LOCKWAIT}
-   * for the complete distributed acquisition.
+   * retried (to avoid deadlocks) subject to maximum of
+   * {@link GfxdConstants#MAX_LOCKWAIT} for the complete distributed acquisition.
    */
   public static int MAX_VM_LOCKWAIT_VAL = MAX_LOCKWAIT_VAL
       / MAX_VM_LOCKWAIT_RETRIES;
@@ -160,7 +160,7 @@ public final class GfxdLockSet implements CompatibilitySpace {
 
   /**
    * Number of open ResultSets etc. referring to this GfxdLockSet. This governs
-   * whether {@link #unlockAll(boolean)} will actually release all locks or not.
+   * whether {@link #unlockAll} will actually release all locks or not.
    */
   private int numRefs;
 
@@ -205,7 +205,7 @@ public final class GfxdLockSet implements CompatibilitySpace {
 
   /**
    * Static method to initialize {@link GfxdConstants#MAX_LOCKWAIT},
-   * {@link GfxdConstants#MAX_VM_LOCKWAIT} , {@link GfxdConstants#MAX_LEASETIME}
+   * {@link #MAX_VM_LOCKWAIT_VAL}, {@link #MAX_WRITE_WAIT_RETRY}
    * to given values, and return the {@link #MAX_VM_LOCKWAIT_VAL}. NOT
    * THREAD_SAFE.
    */
