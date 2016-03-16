@@ -491,7 +491,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       FabricServer fab = FabricServiceManager.getFabricServerInstance();
 
       fab.start(null);
-      
+
       jdbcConn = TestUtil.getConnection();
 
       jdbcConn.createStatement().execute("create table testtable1 ( t int)");
@@ -509,10 +509,8 @@ public class FabricServerTest extends TestUtil implements UnitTest {
         DistributedSQLTestBase.deleteStrayDataDictionaryDir();
       }
     }
-    
     assertFalse(f.exists());
-
-  } // end of -Dgemfirexd.properties=xxx check.  
+  } // end of -Dgemfirexd.properties=xxx check.
 
   public void testConnectionPropOverridingPropertiesFile() throws Exception {
 
@@ -1206,7 +1204,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
     // gfe props to be read and passed on in DS.connect. so 'gemfire.' prefix is
     // not necessary
 
-    outProps.setProperty("host-data", "true");
+    outProps.setProperty("gemfirexd.host-data", "true");
     outProps.setProperty(DistributionConfig.MCAST_PORT_NAME, "0");
     outProps.setProperty(DistributionConfig.LOG_LEVEL_NAME, "config");
     outProps.setProperty(DistributionConfig.CONSERVE_SOCKETS_NAME, "false");
@@ -1240,11 +1238,18 @@ public class FabricServerTest extends TestUtil implements UnitTest {
     for (Map.Entry<Object, Object> e : passedIn.entrySet()) {
       String key = (String)e.getKey();
       if (!gfeProps.contains(key)) {
+        // check host-data separately
+        if (key.equals("gemfirexd.host-data")) {
+          boolean isStore = "true".equalsIgnoreCase((String)e.getValue());
+          GemFireStore.VMKind kind = Misc.getMemStore().getMyVMKind();
+          assertTrue(key + " not present",
+              isStore ? kind.isStore() : kind.isAccessor());
+        }
         continue;
       }
 
       String val = (String)e.getValue();
-      assertTrue(key + " not present ", connectedProps.containsKey(key));
+      assertTrue(key + " not present", connectedProps.containsKey(key));
 
       String connectedval = connectedProps.getProperty(key);
 

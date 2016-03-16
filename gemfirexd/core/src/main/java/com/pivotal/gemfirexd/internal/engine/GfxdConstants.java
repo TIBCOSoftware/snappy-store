@@ -183,6 +183,22 @@ public interface GfxdConstants {
   final String GFXD_LOG_FILE = GFXD_PREFIX + Attribute.LOG_FILE;
 
   /**
+   * @see Attribute#GFXD_HOST_DATA
+   */
+  final String GFXD_HOST_DATA = GFXD_PREFIX + Attribute.GFXD_HOST_DATA;
+
+  /**
+   * @see Attribute#SERVER_GROUPS
+   */
+  final String GFXD_SERVER_GROUPS = GFXD_PREFIX + Attribute.SERVER_GROUPS;
+
+  /**
+   * @see Attribute#STAND_ALONE_LOCATOR
+   */
+  final String GFXD_STAND_ALONE_LOCATOR = GFXD_PREFIX +
+      Attribute.STAND_ALONE_LOCATOR;
+
+  /**
    * The prefix for client driver system properties.
    */
   final String GFXD_CLIENT_PREFIX = Attribute.CLIENT_JVM_PROPERTY_PREFIX;

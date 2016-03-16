@@ -396,7 +396,7 @@ public class GemFireXDHADUnit extends DistributedSQLTestBase {
     // we expect connection close to be detected now that server is down
     assertNumConnections(-2, -2, 2);
     // 1 data connection
-    assertNumConnections(-4, -4, 1, 3);
+    assertNumConnections(-5, -5, 1, 3);
 
     sop(testName + " part3 ended");
 
@@ -419,13 +419,13 @@ public class GemFireXDHADUnit extends DistributedSQLTestBase {
     // number of closed connections can be 3 or 4 depending on whether the
     // close was registered on the server going down
     // negative value indicates that number of connections should be <= limit
-    assertNumConnections(-8, -5, 1, 3);
+    assertNumConnections(-9, -6, 1, 3);
 
     // closing a now "invalid" connection should be fine and cause no failover
     conn.close();
     assertNumConnections(-2, 0, 4);
     assertNumConnections(-2, -2, 2);
-    assertNumConnections(-8, -6, 1, 3);
+    assertNumConnections(-9, -7, 1, 3);
 
     sop(testName + " part4 ended");
 

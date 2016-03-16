@@ -78,8 +78,8 @@ The GemFireXD layout is divided into separate logical modules namely:
 GemFireXD now builds completely using gradle. Due to the repository layout changes, the older ant builds no longer work (unless someone takes the effort to change them). The new scripts are much simpler, cleaner and way faster than old ant scripts but are still missing a bunch of old targets. Plan is to add them progressively as required.
 
   * Switch to "snappy/master" branch if not on that already. Update the branch to the latest version. Then test the build with: ./gradlew cleanAll && ./gradlew buildAll
-  * Run a GemFireXD junit test: ./gradlew :gemfirexd-tools:test --tests '\*\*/BugsTest'
-  * Run a GemFireXD dunit test: ./gradlew :gemfirexd-tools:dunit -Ddunit.single=\*\*/BugsDUnit.class
+  * Run a GemFireXD junit test: ./gradlew :gemfirexd-tools:junit -Djunit.single='\*\*/BugsTest.class'
+  * Run a GemFireXD dunit test: ./gradlew :gemfirexd-tools:dunit -Ddunit.single='\*\*/BugsDUnit.class'
 
 Useful build and test targets:
 ```
@@ -89,7 +89,7 @@ Useful build and test targets:
                            (in build-artifacts/{osname like linux}/store)
 ./gradlew buildAll      -  build all sources, tests, product, packages (all targets above)
 ./gradlew cleanAll      -  clean all build and test output
-./gradlew test          -  run junit tests for all components
+./gradlew junit         -  run junit tests for all components
 ./gradlew dunit         -  run distributed unit (dunit) tests for all components
 ./gradlew check         -  run all tests including junit and dunit
 ./gradlew precheckin -Pgfxd  -  cleanAll, buildAll, check

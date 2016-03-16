@@ -39,6 +39,7 @@ import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.DistributedMember;
+import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisee;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
@@ -711,10 +712,11 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       final Properties properties) throws StandardException {
     Properties dsProps = null;
     String serverGroupsCSV = null;
-    String hostDataStr = null;
+    boolean hostData = true;
     boolean isLocator = false;
     boolean isAgent = false;
     boolean isAdmin = false;
+    int dumpTimeStatsFreq = -1;
     float criticalHeapPercent = -1.0f;
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
@@ -738,6 +740,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
     // set the flag to indicate a GemFireXD system
     GemFireCacheImpl.setGFXDSystem(true);
+
+    // set the gemfirePropertyFile
+    String propertyFileName = PropertyUtil.isSQLFire
+        ? com.pivotal.gemfirexd.Property.SQLF_PROPERTIES_FILE
+        : com.pivotal.gemfirexd.Property.PROPERTIES_FILE;
+    DistributedSystem.PROPERTY_FILE = PropertyUtil.getSystemProperty(
+        propertyFileName, PropertyUtil.getSystemProperty(
+            "gemfirePropertyFile", propertyFileName));
 
     ResolverUtils.reset();
     if (PropertyUtil.getSystemBoolean(
@@ -764,9 +774,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           useDebugVersion);
     }
 
-    int dumpTimeStatsFreq = Integer.getInteger(GfxdConstants.GFXD_PREFIX
-        + Attribute.DUMP_TIME_STATS_FREQ, -1).intValue();
-
     final Properties finalGFXDBootProps;
     try {
       finalGFXDBootProps = FabricServiceUtils.preprocessProperties(properties,
@@ -792,65 +799,23 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       for (Map.Entry<Object,Object> e: props.entrySet()) {
         finalGFXDBootProps.put(e.getKey(), e.getValue());
       }
-      dsys.getLogWriter().info("Booting data store with reconnected distributed system: " + dsys);
+      dsys.getLogWriter().info(
+          "Booting data store with reconnected distributed system: " + dsys);
     }
 
     final Enumeration<?> propNames = finalGFXDBootProps.propertyNames();
+    String propName, propValue;
     while (propNames.hasMoreElements()) {
-      final String propName = (String)propNames.nextElement();
-      final String propValue = finalGFXDBootProps.getProperty(propName);
+      propName = (String)propNames.nextElement();
+      propValue = finalGFXDBootProps.getProperty(propName);
 
-      if (propName.equals(Attribute.GFXD_HOST_DATA)) {
-        hostDataStr = propValue;
-      }
-      else if (propName.equals(Attribute.SERVER_GROUPS)) {
-        serverGroupsCSV = propValue;
-      }
-      else if (propName.equals(Attribute.STAND_ALONE_LOCATOR)) {
-        isLocator = true;
-      }
-      else if (propName.equals(GfxdConstants.PROPERTY_BOOT_INDICATOR)) {
+      if (propName.equals(GfxdConstants.PROPERTY_BOOT_INDICATOR)) {
         if(propValue.equals(GfxdConstants.BT_INDIC.FABRICAGENT.toString())) {
           isAgent = true;
         }
       }
       else if (propName.equals(Property.PROPERTY_GEMFIREXD_ADMIN)) {
         isAdmin = true;
-      }
-      else if (propName.equals(Attribute.DUMP_TIME_STATS_FREQ)) {
-        dumpTimeStatsFreq = readUnsignedIntegerProperty(propValue, propName);
-      }
-      else if (propName.equals(Attribute.SYS_PERSISTENT_DIR)) {
-        // Also set this property in the SystemProperties so that GatewayImpl
-        // can also access it
-        // For time being. This needs to be removed
-        System.setProperty(GfxdConstants.SYS_PERSISTENT_DIR_PROP, propValue);
-        this.persistenceDir = propValue;
-      }
-      else if (propName.equals(Attribute.SYS_HDFS_ROOT_DIR)) {
-        System.setProperty(GfxdConstants.SYS_HDFS_ROOT_DIR_PROP, propValue);
-        this.hdfsRootDir = propValue;
-      }
-      else if (propName.equals(CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE)) {
-        criticalHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(CacheServerLauncher.EVICTION_HEAP_PERCENTAGE)) {
-        evictionHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE)) {
-        criticalOffHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE)) {
-        evictionOffHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(Property.HADOOP_IS_GFXD_LONER)) {
-        this.isHadoopGfxdLonerMode = Boolean.parseBoolean(propValue);
-        if (this.isHadoopGfxdLonerMode) {
-          hadoopGfxdLonerConfig = new HadoopGfxdLonerConfig(finalGFXDBootProps,
-              this);
-          System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,
-              "true");
-        }
       }
 
       // remember these properties, so that modules that require one of
@@ -859,6 +824,74 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.serviceProperties.setProperty(propName, propValue);
       }
     }
+
+    final Properties props = this.serviceProperties;
+    hostData = PropertyUtil.getBooleanProperty(Attribute.GFXD_HOST_DATA,
+        GfxdConstants.GFXD_HOST_DATA, props, true, null);
+    serverGroupsCSV = PropertyUtil.findAndGetProperty(props,
+        Attribute.SERVER_GROUPS, GfxdConstants.GFXD_SERVER_GROUPS);
+    isLocator = PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
+        GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
+
+    propName = Attribute.DUMP_TIME_STATS_FREQ;
+    propValue = PropertyUtil.findAndGetProperty(props,
+        propName, GfxdConstants.GFXD_PREFIX + propName);
+    if (propValue != null) {
+      dumpTimeStatsFreq = readUnsignedIntegerProperty(propValue, propName);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        Attribute.SYS_PERSISTENT_DIR, GfxdConstants.SYS_PERSISTENT_DIR_PROP);
+    if (propValue != null) {
+      // Also set this property in the SystemProperties so that GatewayImpl
+      // can also access it
+      // For time being. This needs to be removed
+      System.setProperty(GfxdConstants.SYS_PERSISTENT_DIR_PROP, propValue);
+      this.persistenceDir = propValue;
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        Attribute.SYS_HDFS_ROOT_DIR, GfxdConstants.SYS_HDFS_ROOT_DIR_PROP);
+    if (propValue != null) {
+      System.setProperty(GfxdConstants.SYS_HDFS_ROOT_DIR_PROP, propValue);
+      this.hdfsRootDir = propValue;
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      criticalHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.EVICTION_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.EVICTION_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      evictionHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
+        GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      criticalOffHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
+        GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      evictionOffHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        Property.HADOOP_IS_GFXD_LONER, Property.HADOOP_IS_GFXD_LONER);
+    if (propValue != null) {
+      this.isHadoopGfxdLonerMode = Boolean.parseBoolean(propValue);
+      if (this.isHadoopGfxdLonerMode) {
+        hadoopGfxdLonerConfig = new HadoopGfxdLonerConfig(finalGFXDBootProps,
+            this);
+        System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,
+            "true");
+      }
+    }
+
     InternalDistributedSystem
         .setHadoopGfxdLonerMode(this.isHadoopGfxdLonerMode);
 
@@ -900,7 +933,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     else if(isAgent) {
       this.myKind = VMKind.AGENT;
     }
-    else if (hostDataStr != null && !Boolean.parseBoolean(hostDataStr)) {
+    else if (!hostData) {
       this.myKind = VMKind.ACCESSOR;
       // fix for bug #48479 accessor hung trying to reconnect after network failure
       finalGFXDBootProps.put(DistributionConfig.DISABLE_AUTO_RECONNECT_NAME, "true");

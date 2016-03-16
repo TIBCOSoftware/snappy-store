@@ -91,7 +91,7 @@ public class XATransactionTest extends JdbcTestBase {
           + IllegalArgumentException.class.getName() + "</ExpectedException>");
     }
     
-    xaDataSource.setConnectionAttributes("");
+    xaDataSource.setConnectionAttributes("mcast-port=0");
     XAConnection xaConn = xaDataSource.getXAConnection();
 
   }

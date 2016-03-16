@@ -221,7 +221,7 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     long elapsed = System.currentTimeMillis() - start;
     if (elapsed < 6000) {
       Thread.sleep(6000 - elapsed);
-    } else if (elapsed > 10500) {
+    } else if (elapsed > 10000) {
       expected = null;
     }
 
@@ -330,10 +330,14 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     long elapsed = System.currentTimeMillis() - start;
     if (elapsed < 6000) {
       Thread.sleep(6000 - elapsed);
+    } else if (elapsed > 10000) {
+      expected = null;
     }
 
     validateResults("EMP.TESTTABLE_ONE", expected);
-    expected.add(3);
+    if (expected != null) {
+      expected.add(3);
+    }
     validateResults("EMP.TESTTABLE_TWO", expected);
     Thread.sleep(5000);
     validateResults("EMP.TESTTABLE_ONE", null);

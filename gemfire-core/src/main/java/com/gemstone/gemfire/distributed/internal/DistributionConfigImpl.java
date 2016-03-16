@@ -39,6 +39,7 @@ import com.gemstone.gemfire.internal.ConfigSource;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.process.ProcessLauncherContext;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.memcached.GemFireMemcachedServer;
 
 /**
@@ -480,11 +481,20 @@ public class DistributionConfigImpl
       setSource(nonDefault, ConfigSource.api());
     }
     //Now remove all user defined properties from props.
-    for (Object entry : props.entrySet()) {
-      Map.Entry<String, String> ent = (Map.Entry<String, String>)entry; 
-      if (((String)ent.getKey()).startsWith(USERDEFINED_PREFIX_NAME) ||
-          ((String)ent.getKey()).startsWith(GFXD_USERDEFINED_PREFIX_NAME)){
+    String sysPrefix = SystemProperties.getServerInstance()
+        .getSystemPropertyNamePrefix();
+    if (GEMFIRE_PREFIX.equals(sysPrefix)) {
+      sysPrefix = null;
+    }
+    Iterator<?> propsIter = props.entrySet().iterator();
+    while (propsIter.hasNext()) {
+      Map.Entry<?, ?> ent = (Map.Entry<?, ?>)propsIter.next();
+      String key = (String)ent.getKey();
+      if (key.startsWith(USERDEFINED_PREFIX_NAME) ||
+          key.startsWith(GFXD_USERDEFINED_PREFIX_NAME)) {
         userDefinedProps.put(ent.getKey(), ent.getValue());
+      } else if (sysPrefix != null && key.startsWith(sysPrefix)) {
+        propsIter.remove();
       }
     }
     // Now override values picked up from the file or code with values

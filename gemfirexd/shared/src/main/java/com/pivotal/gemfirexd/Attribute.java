@@ -183,8 +183,6 @@ public interface Attribute {
 
   /**
    * The GemFireXD log file path property.
-   * 
-   * added by GemStone
    */
   String LOG_FILE = "log-file";
 

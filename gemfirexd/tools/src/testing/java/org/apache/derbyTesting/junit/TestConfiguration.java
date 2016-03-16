@@ -154,6 +154,7 @@ public class TestConfiguration {
         runningInDerbyHarness = assumeHarness;
         
         if (!assumeHarness) {
+            /*
             final   File dsh = new File("system");
 
             AccessController.doPrivileged
@@ -164,7 +165,8 @@ public class TestConfiguration {
                     return null;
                 }
             }
-             );            
+             );
+            */
         }
      }
     
