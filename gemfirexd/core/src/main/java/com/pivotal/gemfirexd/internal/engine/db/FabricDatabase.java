@@ -463,8 +463,8 @@ public final class FabricDatabase implements ModuleControl,
       try {
         // Acquire a read lock on data dictionary so that no new ddls can start
         // executing until this node has finished ddl replay
-        ddReadLockAcquired = this.dd.lockForReadingInDDLReplayNoThrow(
-            this.memStore, Long.MAX_VALUE / 2, true);
+        ddReadLockAcquired = this.dd.lockForReadingNoThrow(
+            tc, Long.MAX_VALUE / 2);
         postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
       } finally {
         if (ddReadLockAcquired) {
@@ -619,7 +619,7 @@ public final class FabricDatabase implements ModuleControl,
     // on is being disabled as ddls are not frequent and several race condition
     // scenario will automatically go away making it simpler and more
     // maintainable.
-    boolean acquiredReplayLock = false;
+    //boolean acquiredReplayLock = false;
     int actualSize;
     List<GfxdDDLQueueEntry> currentQueue;
     final ArrayList<GemFireContainer> uninitializedContainers =
@@ -645,10 +645,6 @@ public final class FabricDatabase implements ModuleControl,
             }
           }
 
-          if (currentQueue.size() == 0) {
-            // Nothing to replay just return
-            return;
-          }
           // add the DDL IDs to processed IDs in advance since this could
           // need to wait for GfxdDDLFinishMessage so don't block
           // GfxdDDLMessage else a deadlock will happen with this thread
@@ -848,11 +844,11 @@ public final class FabricDatabase implements ModuleControl,
 
       // take DD lock to flush any on-the-wire DDLs at this point else a DROP
       // INDEX, for example, may keep on waiting for node to initialize (#47873)
-      if (!uninitializedContainers.isEmpty()) {
-        // release the replay lock at this point since we will have the DD lock
-        this.memStore.releaseDDLReplayLock(true);
-        acquiredReplayLock = false;
-      }
+//      if (!uninitializedContainers.isEmpty()) {
+//        // release the replay lock at this point since we will have the DD lock
+//        this.memStore.releaseDDLReplayLock(true);
+//        acquiredReplayLock = false;
+//      }
 
       // run the pre-initialization at this point before recovering indexes
       for (GemFireContainer container : uninitializedContainers) {
@@ -957,9 +953,9 @@ public final class FabricDatabase implements ModuleControl,
       }
 
     } finally {
-      if (acquiredReplayLock) {
-        this.memStore.releaseDDLReplayLock(true);
-      }
+//      if (acquiredReplayLock) {
+//        this.memStore.releaseDDLReplayLock(true);
+//      }
       stmt.close();
       // Setting this to false so that the waiting compactor thread finishes
       this.memStore.setInitialDDLReplayInProgress(false);
