@@ -63,6 +63,7 @@ import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgumen
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -4956,8 +4957,10 @@ public final class GenericLanguageConnectionContext
 
 	@Override
 	public void setQueryRouting(boolean routeQuery) {
-		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, ROUTE_QUERY,
-				routeQuery);
+		if (!Misc.getMemStore().isRowStoreOnly()) {
+			this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, ROUTE_QUERY,
+					routeQuery);
+		}
 	}
 
 	@Override

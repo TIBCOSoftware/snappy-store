@@ -244,6 +244,9 @@ public interface Attribute {
   /** property name for enabling persistence of data dictionary */
   String GFXD_PERSIST_DD = "persist-dd";
 
+  /** property to indicate that this server is booted in only row store mode **/
+  String SNAPPY_ROW_STORE_ONLY = "row-store";
+
   /**
    * Read timeout for the connection, in seconds. Only for thin client
    * connections.
