@@ -433,7 +433,7 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
           .toString(true));
 
       props.setProperty(DistributionConfig.GEMFIRE_PREFIX
-          + DistributionConfig.LOG_LEVEL_NAME, "finest");
+          + DistributionConfig.LOG_LEVEL_NAME, "fine");
       props.setProperty(DistributionConfig.GEMFIRE_PREFIX
           + DistributionConfig.SECURITY_LOG_LEVEL_NAME, "finest");
 

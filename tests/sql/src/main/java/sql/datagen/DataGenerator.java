@@ -52,7 +52,7 @@ import com.gemstone.gemfire.LogWriter;
 
 public class DataGenerator {
   public LogWriter log;
-  protected static String url = "jdbc:sqlfire://localhost:1530/";
+  protected static String url = "jdbc:gemfirexd://localhost:1530/";
   protected static String driver = "com.pivotal.gemfirexd.jdbc.ClientDriver";
   public static final Random rand = new Random(SQLPrms.getRandSeed());
 
@@ -140,7 +140,6 @@ public class DataGenerator {
     batchNum = rows;
 
     List<ColumnMetaData> columnList = table.getColumns();
-
     // output file writer
     try {
       FileWriter fstream = new FileWriter(table.getCsvFileName());
@@ -187,7 +186,6 @@ public class DataGenerator {
             }
           }
         }
-
         out.write(sb.toString());
       } while (rows > 0);
 
@@ -520,7 +518,7 @@ public class DataGenerator {
 
     // host[port]
     if (args.length > 1) {
-      url = "jdbc:sqlfire://" + args[1];
+      url = "jdbc:gemfirexd://" + args[1];
       System.out.println("url=" + url);
     }
 

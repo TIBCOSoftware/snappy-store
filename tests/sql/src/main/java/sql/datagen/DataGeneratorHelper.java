@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import sql.SQLPrms;
 import sql.generic.SqlUtilityHelper;
 import util.TestException;
 
@@ -90,8 +91,10 @@ public class DataGeneratorHelper {
         // create csv for populate task
         generateCSVsForPopulate(datagen, tableNames, rowCounts, conn);
 
-        // create rows in BB for insert
-        generateRowsInBBForInserts(datagen, tableNames, conn);
+        // create rows in BB for insert. isInsertInBB is default true.
+        if(SQLPrms.isInsertInBB()){
+          generateRowsInBBForInserts(datagen, tableNames, conn);
+        }
       }else{
         throw new TestException("Datagenerator is already initialized");
       }    

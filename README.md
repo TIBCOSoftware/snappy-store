@@ -80,19 +80,33 @@ GemFireXD now builds completely using gradle. Due to the repository layout chang
   * Switch to "snappy/master" branch if not on that already. Update the branch to the latest version. Then test the build with: ./gradlew cleanAll && ./gradlew buildAll
   * Run a GemFireXD junit test: ./gradlew :gemfirexd-tools:junit -Djunit.single='\*\*/BugsTest.class'
   * Run a GemFireXD dunit test: ./gradlew :gemfirexd-tools:dunit -Ddunit.single='\*\*/BugsDUnit.class'
+  * Run a GemFireXD wan test:   ./gradlew :gemfirexd-tools:wan -Dwan.single='\*\*/GfxdSerialWanDUnit.class'
 
 Useful build and test targets:
 ```
-./gradlew assemble      -  build all the sources
-./gradlew testClasses   -  build all the tests
-./gradlew product       -  build and place the product distribution
-                           (in build-artifacts/{osname like linux}/store)
-./gradlew buildAll      -  build all sources, tests, product, packages (all targets above)
-./gradlew cleanAll      -  clean all build and test output
-./gradlew junit         -  run junit tests for all components
-./gradlew dunit         -  run distributed unit (dunit) tests for all components
-./gradlew check         -  run all tests including junit and dunit
+./gradlew assemble           -  build all the sources
+./gradlew testClasses        -  build all the tests
+./gradlew product            -  build and place the product distribution
+                                (in build-artifacts/{osname like linux}/store)
+./gradlew buildAll           -  build all sources, tests, product, packages (all targets above)
+./gradlew cleanAll           -  clean all build and test output
+./gradlew junit              -  run junit tests for all components
+./gradlew dunit              -  run distributed unit (dunit) tests for all relevant components
+./gradlew wan                -  run distributed WAN tests for all relevant components
+./gradlew check              -  run all tests including junit, dunit and wan
 ./gradlew precheckin -Pgfxd  -  cleanAll, buildAll, check
+```
+
+Command-line properties:
+```
+-Djunit.single=<test>        - run a single junit test; the test is provided as path
+                               to its .class file (wildcards like '*' and '**' can be
+                               used like in gradle includes/excludes patterns)
+-Ddunit.single=<test>          - run a single dunit test
+-Dwan.single=<test>            - run a single wan dunit test
+-DlogLevel=<level>             - set the log-level for the tests (default is "config")
+-DsecurityLogLevel=<level>     - set the security-log-level for the tests (default is "config")
+-Dskip.wanTest=true|false      - if true, then skip the wan tests when running check/precheckin
 ```
 
 ## Setting up Intellij with gradle

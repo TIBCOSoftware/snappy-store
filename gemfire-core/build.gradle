@@ -87,8 +87,8 @@ task createVersionPropertiesFile(dependsOn: 'processResources') {
 
   doLast {
     def props = [
-      "Product-Name"      : GEMFIRE_PRODUCT,
-      "Product-Version"   : GEMFIRE_VERSION,
+      "Product-Name"      : PRODUCT_NAME,
+      "Product-Version"   : version,
       "Build-Id"          : System.env.USER + ' ' + buildNumber,
       "Build-Date"        : buildDate,
       "Build-Platform"    : "${osName.getName()} ${osVersion} ${osArch}",

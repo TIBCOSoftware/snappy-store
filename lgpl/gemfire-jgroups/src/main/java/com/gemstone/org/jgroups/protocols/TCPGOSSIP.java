@@ -209,7 +209,10 @@ public class TCPGOSSIP extends Discovery  {
 //            if (gossip_client == null) GemStoneAddition (this is never null)
 //              return;
             if (client.getResponsiveServerCount() == 0) {
-              RuntimeException re = stack.gfBasicFunctions.getGemFireConfigException("Unable to contact a Locator service.  Operation either timed out or Locator does not exist.  Configured list of locators is \"" + initial_hosts + "\".");
+              RuntimeException re = stack.gfBasicFunctions.getGemFireConfigException(
+                  "Unable to contact a Locator service (timeout=" + timeout +
+                      "ms). Operation either timed out or Locator does not exist. " +
+                      "Configured list of locators is \"" + initial_hosts + "\".");
               throw re;
             }
 //          }

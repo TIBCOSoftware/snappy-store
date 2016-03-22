@@ -29,6 +29,8 @@ import java.util.Map.Entry;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.CacheException;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.execute.CallbackStatement;
@@ -47,13 +49,18 @@ import io.snappydata.test.dunit.standalone.DUnitBB;
 
 @SuppressWarnings("serial")
 public class HeapThresholdDUnit extends DistributedSQLTestBase {
-  
-  private volatile static Map<String,String> queryExecutionErrorStatus =
-      new HashMap<String,String>();
-  String netUrl;
+
+  private static final Map<String, String> queryExecutionErrorStatus =
+      new HashMap<>();
 
   public HeapThresholdDUnit(String name) {
     super(name);
+  }
+
+  @Override
+  protected void vmTearDown() throws Exception {
+    queryExecutionErrorStatus.clear();
+    super.vmTearDown();
   }
 
   @Override
@@ -136,7 +143,10 @@ public class HeapThresholdDUnit extends DistributedSQLTestBase {
         dumpSharedMap("Done Waiting for compilation ");
         getLogWriter().info("About to raise CRITICAL_UP event in VM " + pausevm.getPid());
         pausevm.invoke(HeapThresholdHelper.class, "raiseMemoryEvent", new Object[] {true, false});
-        
+
+        // wait for memory event to be propagated
+        waitForCriticalUpMembers(10000);
+
         for(QueryExecutor exec1 : executors) {
           exec1.notifyMemoryEvent();
         }
@@ -230,11 +240,14 @@ public class HeapThresholdDUnit extends DistributedSQLTestBase {
         for(QueryExecutor executor : executors) {
           executor.waitForCompilation();
         }
-        
+
         dumpSharedMap("Done Waiting for compilation ");
         getLogWriter().info("About to raise CRITICAL_UP event in VM " + pausevm.getPid());
         pausevm.invoke(HeapThresholdHelper.class, "raiseMemoryEvent", new Object[] {true, false});
-        
+
+        // wait for memory event to be propagated
+        waitForCriticalUpMembers(5000);
+
         for(QueryExecutor exec1 : executors) {
           exec1.notifyMemoryEvent();
         }
@@ -514,19 +527,22 @@ public class HeapThresholdDUnit extends DistributedSQLTestBase {
   }
 
   public static void waitForQueryStatus(String expectedStatus, String queryStr) {
+    final long maxWait = System.currentTimeMillis() + 30000;
     Thread t = Thread.currentThread();
-    if(t.getName().startsWith("DRDA")) {
+    if (t.getName().startsWith("DRDA")) {
       return;
     }
-    Object val = null;
+    Object val;
     try {
-        do {
-          Thread.sleep(500);
-          val = DUnitBB.getBB().get(queryStr);
-          assertTrue("val not instance of String", (val == null || val instanceof String));
-        } while (val == null || ! ((String)val).equals(expectedStatus) );
-    }
-    catch (InterruptedException e) {
+      do {
+        Thread.sleep(500);
+        if (System.currentTimeMillis() > maxWait) {
+          break;
+        }
+        val = DUnitBB.getBB().get(queryStr);
+        assertTrue("val not instance of String", (val == null || val instanceof String));
+      } while (val == null || !val.equals(expectedStatus));
+    } catch (InterruptedException e) {
       e.printStackTrace();
     }
   }
@@ -562,6 +578,22 @@ public class HeapThresholdDUnit extends DistributedSQLTestBase {
   private static void addToExecutionErrorStatus(String query, String failmsg) {
     synchronized(queryExecutionErrorStatus) {
       queryExecutionErrorStatus.put(query, failmsg);
+    }
+  }
+
+  private static void waitForCriticalUpMembers(long maxWait) throws Exception {
+    final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    if (cache == null) {
+      Thread.sleep(maxWait);
+    } else {
+      ResourceAdvisor adviser = cache.getResourceAdvisor();
+      long start = System.currentTimeMillis();
+      while (adviser.adviseCriticalMembers().size() == 0) {
+        Thread.sleep(100);
+        if (maxWait >= 0 && (System.currentTimeMillis() - start) > maxWait) {
+          break;
+        }
+      }
     }
   }
 

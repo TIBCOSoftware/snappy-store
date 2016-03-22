@@ -172,12 +172,12 @@ public class GfxdSystemProcedures extends SystemProcedures {
       AuthenticationServiceBase.validateUserPassword(userID, password, !isBUILTIN);
 
       final String oldValue = GET_DATABASE_PROPERTY(userID);
-      
+
       if (oldValue != null && oldValue.length() > 0) {
         throw StandardException.newException(
             SQLState.AUTH_USER_ALREADY_DEFINED, userID);
-      }      
-      
+      }
+
       PropertyInfo.setDatabaseProperty(userID, password, true);
       cleanupOnError = true;
 

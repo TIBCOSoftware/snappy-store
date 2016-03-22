@@ -15,7 +15,7 @@ fi
 for mode in ratio raw
 do
   echo "Preparing scaleperf $mode report..."
-  java -cp $GEMFIRE/lib/gemfire.jar:$JTESTS -Xmx1024m -DomitFailedTests=true \
+  java -cp $GEMFIRE/lib/gemfirexd-1.5.0-BETA.jar:$JTESTS -Xmx1024m -DomitFailedTests=true \
         -DcompReportFile=scaleperf.$mode.txt -Dmode=$mode -DcompareByKey=true \
         -DJTESTS=$JTESTS -Dgemfire.home=$GEMFIRE -DaddTestKey=true \
         perffmwk.PerfComparer $@

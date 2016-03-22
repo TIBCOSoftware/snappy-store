@@ -4449,7 +4449,7 @@ public class PartitionedRegion extends LocalRegion implements
     if (function.optimizeForWrite() && cache.getResourceManager().getHeapMonitor().
         containsHeapCriticalMembers(dest) &&
         !MemoryThresholds.isLowMemoryExceptionDisabled()) {
-      Set<InternalDistributedMember> hcm  = cache.getResourceAdvisor().adviseCritialMembers();
+      Set<InternalDistributedMember> hcm  = cache.getResourceAdvisor().adviseCriticalMembers();
       Set<DistributedMember> sm = SetUtils.intersection(hcm, dest);
       throw new LowMemoryException(LocalizedStrings.ResourceManager_LOW_MEMORY_FOR_0_FUNCEXEC_MEMBERS_1.toLocalizedString(
           new Object[] {function.getId(), sm}), sm);

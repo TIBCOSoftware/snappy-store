@@ -139,7 +139,8 @@ implements Serializable {
       }
       if ( hd.getGemFireHome() != null ) {
         classPath.add(hd.getGemFireHome() + hd.getFileSep() + "lib"
-                                          + hd.getFileSep() + "gemfire.jar");
+                                          + hd.getFileSep() + "gemfirexd-" +
+                ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
       }
       //Needed to run DUnit on multiple hosts
       classPath.add(hd.getTestDir() + hd.getFileSep() + "junit.jar");

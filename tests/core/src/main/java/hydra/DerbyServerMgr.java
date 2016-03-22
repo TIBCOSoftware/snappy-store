@@ -49,8 +49,26 @@ public class DerbyServerMgr
   /*
    * Builds a derby command line, including derbynet classpath
    */
-  protected static String getDerbyCmd() {
-    String derbyNetJarPath = TestConfig.tab().stringAt(Prms.derbyServerClassPath, defaultDerbyNetJarPath);
+  protected static String getDerbyCmd(HostDescription hd) {
+    //String derbyNetJarPath = TestConfig.tab().stringAt(Prms.derbyServerClassPath, defaultDerbyNetJarPath);
+    String derbyNetJarPath = defaultDerbyNetJarPath;
+
+    Long key = Prms.derbyServerClassPath;
+    Vector paths = TestConfig.tab().vecAt(key, null);
+    if (paths != null) {
+      for (Iterator it = paths.iterator(); it.hasNext();) {
+        String path = TestConfig.tab().getString(key, it.next());
+        if (path == null || path.equalsIgnoreCase(BasePrms.NONE)) {
+          it.remove();
+        }
+      }
+
+      if (paths.size() > 0) {
+        paths = EnvHelper.expandEnvVars(paths, hd);
+        derbyNetJarPath = EnvHelper.asPath(paths, hd);
+      }
+    }
+
     Log.getLogWriter().fine("derbynet.jar path: " + derbyNetJarPath);
 
     String derbyCmd = "-classpath " + derbyNetJarPath + cpSep
@@ -75,7 +93,7 @@ public class DerbyServerMgr
     //String args = TestConfig.tab().stringAt(Prms.extraDerbyServerVMArgs, "");
     String args = getExtraDerbyServerVMArgs();
     if (args.length() > 0) args += " ";
-    String cmd = JAVA_CMD + args + getDerbyCmd()
+    String cmd = JAVA_CMD + args + getDerbyCmd(hd)
                + "start -noSecurityManager -h " + host + " -p " + Port;
     PID = ProcessMgr.bgexec(cmd);
     Nuker.getInstance().recordPID(hd, PID);
@@ -96,7 +114,7 @@ public class DerbyServerMgr
     String host = hd.getHostName();
     Log.getLogWriter().info("Stopping derby server at "
                            + host + ":" + Port + "...");
-    String cmd = JAVA_CMD + getDerbyCmd() + "shutdown -h " + host + " -p " + Port;
+    String cmd = JAVA_CMD + getDerbyCmd(hd) + "shutdown -h " + host + " -p " + Port;
     if (TestConfig.tab().booleanAt(Prms.testSecurity, false))
       cmd += " -user superUser -password superUser "; //hardcoded for now
     ProcessMgr.fgexec(cmd, MAX_WAIT_SEC);

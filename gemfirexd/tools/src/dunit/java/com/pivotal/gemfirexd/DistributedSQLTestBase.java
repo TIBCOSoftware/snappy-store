@@ -142,6 +142,8 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   /*!(Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
       || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX)));*/
 
+  protected static volatile int vmCount;
+
   protected static final ArrayList<String> expectedDerbyExceptions =
     new ArrayList<String>();
 
@@ -322,9 +324,10 @@ public class DistributedSQLTestBase extends DistributedTestBase {
 
     TestUtil.setRandomUserName();
 
-    setLogFile(this.getClass().getName(), this.getName());
+    int numVMs = Host.getHost(0).getVMCount();
+    setLogFile(this.getClass().getName(), this.getName(), numVMs);
     invokeInEveryVM(this.getClass(), "setLogFile", new Object[] {
-        this.getClass().getName(), this.getName() });
+        this.getClass().getName(), this.getName(), numVMs });
 
     // reduce logging if test so requests
     String logLevel;
@@ -332,10 +335,6 @@ public class DistributedSQLTestBase extends DistributedTestBase {
       reduceLogLevelForTest(logLevel);
     }
     IndexPersistenceDUnit.deleteAllOplogFiles();
-    
-    // set preallocate to false in all the dunit
-    setPreallocateSysPropsToFalse();
-    invokeInEveryVM(this.getClass(), "setPreallocateSysPropsToFalse");
   }
 
   @Override
@@ -376,8 +375,8 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     setLogLevel.run();
   }
 
-  public static void setLogFile(final String className, final String name)
-      throws Exception {
+  public static void setLogFile(final String className, final String name,
+      final int numVMs) throws Exception {
     final Class<?> c = Class.forName(className);
     final DistributedSQLTestBase test = (DistributedSQLTestBase)c
         .getConstructor(String.class).newInstance(name);
@@ -387,12 +386,15 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     // also set the client driver properties
     TestUtil.setPropertyIfAbsent(null, GfxdConstants.GFXD_CLIENT_LOG_FILE,
         logFilePrefix + "-client.log");
+    // set preallocate to false in all the dunit
+    setPreallocateSysPropsToFalse();
+    vmCount = numVMs;
   }
 
   public static void setPreallocateSysPropsToFalse() {
     System.setProperty("gemfire.preAllocateDisk", "false");
   }
-  
+
   public static void setTestName(String name, String className) {
     try {
       currentTestName = name;
@@ -484,6 +486,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
 
   protected void setCommonProperties(Properties props, int mcastPort,
       String serverGroups, Properties extraProps) {
+    assert props != null;
     // ---- system files (logs and archive) ----//
     final String sysDirName = getSysDirName();
     final String testLogPrefix = getTestLogPrefix();
@@ -530,25 +533,28 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     //setGFXDProperty(props, DistributionConfig.STATISTIC_SAMPLING_ENABLED_NAME,
     //    "true");
 
-    // get the log-level from GemFirePrms
-    String logLevel = DUnitEnv.get().getDistributedSystemProperties()
-        .getProperty("log-level");
-    if (System.getProperty("gemfire.log-level") == null) {
-      setGFXDProperty(props, "log-level", logLevel);
+    // get the VM specific properties from DUnitEnv
+    Properties dsProps = DUnitEnv.get().getDistributedSystemProperties();
+    for (String prop : dsProps.stringPropertyNames()) {
+      if (props.getProperty(prop) == null &&
+          System.getProperty("gemfire." + prop) == null) {
+        props.setProperty(prop, dsProps.getProperty(prop));
+      }
     }
+
     //setGFXDProperty(props, "enable-network-partition-detection", "true");
-    /*
-    // reduce timeout properties for faster dunit runs
-    System.setProperty("p2p.discoveryTimeout", "1000");
-    System.setProperty("p2p.joinTimeout", "2000");
-    setGFXDProperty(props, "member-timeout", "2000");
-    System.setProperty("p2p.leaveTimeout", "1000");
-    System.setProperty("p2p.socket_timeout", "4000");
-    System.setProperty("p2p.disconnectDelay", "500");
-    System.setProperty("p2p.handshakeTimeoutMs", "2000");
-    System.setProperty("p2p.lingerTime", "500");
-    System.setProperty("p2p.listenerCloseTimeout", "4000");
-    */
+    // reduce timeout properties for faster WAN dunit runs
+    if (vmCount >= 8) {
+      System.setProperty("p2p.discoveryTimeout", "1000");
+      System.setProperty("p2p.joinTimeout", "2000");
+      setGFXDProperty(props, "member-timeout", "2000");
+      System.setProperty("p2p.leaveTimeout", "1000");
+      System.setProperty("p2p.socket_timeout", "4000");
+      System.setProperty("p2p.disconnectDelay", "500");
+      System.setProperty("p2p.handshakeTimeoutMs", "2000");
+      System.setProperty("p2p.lingerTime", "500");
+      System.setProperty("p2p.listenerCloseTimeout", "4000");
+    }
     if (extraProps != null) {
       Enumeration<?> e = extraProps.propertyNames();
       while (e.hasMoreElements()) {
@@ -566,7 +572,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     setGFXDProperty(props, DistributionConfig.STATISTIC_SAMPLING_ENABLED_NAME,
         "true");
     System.setProperty("gemfirexd-impl.observer-volatile-read", "true");
-    if (serverGroups != null && props != null) {
+    if (serverGroups != null) {
       props.setProperty("server-groups", serverGroups);
     }
     if (mcastPort > 0) {

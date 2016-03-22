@@ -1177,10 +1177,8 @@ public class EntryEventImpl extends KeyInfo implements
   }
 
   public final TXId getTransactionId() {
-    if (this.txState != null) {
-      return this.txState.getTransactionId();
-    }
-    return null;
+    final TXStateInterface txState = getTXState();
+    return txState != null ? txState.getTransactionId() : null;
   }
 
   public final TXStateInterface getTXState(final LocalRegion r) {

@@ -579,7 +579,7 @@ public abstract class GfxdFunctionMessage<T> extends
     if (optimizeForWrite() && hmm.containsHeapCriticalMembers(tgtMembers)
         && !MemoryThresholds.isLowMemoryExceptionDisabled()) {
       final Set<InternalDistributedMember> hcm = cache.getResourceAdvisor()
-          .adviseCritialMembers();
+          .adviseCriticalMembers();
       @SuppressWarnings("unchecked")
       final Set<DistributedMember> sm = new THashSet(4);
       GemFireXDUtils.setIntersect(hcm, tgtMembers, sm);

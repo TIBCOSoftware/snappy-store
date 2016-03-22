@@ -83,20 +83,17 @@ public final class HeapMemoryMonitor implements NotificationListener,
   public static final String POLLER_INTERVAL_PROP = "gemfire.heapPollerInterval";
   
    // Internal for polling the JVM for changes in heap memory usage.
-  private static final int POLLER_INTERVAL = Integer.getInteger(POLLER_INTERVAL_PROP, 500).intValue();
-  
+  private static final int POLLER_INTERVAL =
+       Integer.getInteger(POLLER_INTERVAL_PROP, 500);
+
   // This holds a new event as it transitions from updateStateAndSendEvent(...) to fillInProfile()
   private ThreadLocal<MemoryEvent> upcomingEvent = new ThreadLocal<MemoryEvent>();
-  
+
   private ScheduledExecutorService pollerExecutor;
   
   // Listener for heap memory usage as reported by the Cache stats.
   private final LocalStatListener statListener = new LocalHeapStatListener();
 
-  private volatile MemoryThresholds thresholds = new MemoryThresholds(
-      tenuredPoolMaxMemory + edenAndSurvivorPoolMaxMemory);
-  private volatile MemoryEvent mostRecentEvent = new MemoryEvent(ResourceType.HEAP_MEMORY, MemoryState.DISABLED,
-      MemoryState.DISABLED, null, 0L, true, this.thresholds);
   private volatile MemoryState currentState = MemoryState.DISABLED;
 
   //Set when startMonitoring() and stopMonitoring() are called
@@ -200,6 +197,11 @@ public final class HeapMemoryMonitor implements NotificationListener,
     }
     edenAndSurvivorPoolMaxMemory = edenAndSurvivorPoolMax;
   }
+
+  private volatile MemoryThresholds thresholds = new MemoryThresholds(
+      tenuredPoolMaxMemory + edenAndSurvivorPoolMaxMemory);
+  private volatile MemoryEvent mostRecentEvent = new MemoryEvent(ResourceType.HEAP_MEMORY, MemoryState.DISABLED,
+      MemoryState.DISABLED, null, 0L, true, this.thresholds);
 
   /**
    * Determines if the name of the memory pool MXBean provided matches a list of
@@ -910,7 +912,7 @@ public void stopMonitoring() {
       return true;
     }
 
-    return SetUtils.intersectsWith(members, this.resourceAdvisor.adviseCritialMembers());
+    return SetUtils.intersectsWith(members, this.resourceAdvisor.adviseCriticalMembers());
   }
 
   /**

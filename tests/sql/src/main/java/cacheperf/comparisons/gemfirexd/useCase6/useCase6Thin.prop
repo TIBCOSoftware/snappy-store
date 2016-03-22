@@ -1,0 +1,31 @@
+locatorHosts=1
+locatorVMsPerHost=1
+locatorThreadsPerVM=1
+
+A=client
+clientHosts=1
+clientVMsPerHost=1
+clientThreadsPerVM=1
+
+B=server
+serverHosts=1
+serverVMsPerHost=1
+serverThreadsPerVM=1
+B=server
+serverHosts=1
+serverVMsPerHost=1
+serverThreadsPerVM=1
+api=GFXD
+
+txIsolation = read_committed
+persist = false
+
+clientHeapMB = 256
+serverHeapMB = 4096
+
+trimSeconds =  60
+workSeconds = 180
+
+logQueries = false
+initialRowCount = 10000000
+perffmwk.comparisonKey = useCase6

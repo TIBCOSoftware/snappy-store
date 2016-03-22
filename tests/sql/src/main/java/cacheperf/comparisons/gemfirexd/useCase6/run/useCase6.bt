@@ -1,0 +1,84 @@
+cacheperf/comparisons/gemfirexd/useCase6/useCase6Thin.conf
+
+locatorHosts=1
+locatorVMsPerHost=1
+locatorThreadsPerVM=1
+
+A=client
+clientHosts=1
+clientVMsPerHost=1
+clientThreadsPerVM=1
+
+B=server
+serverHosts=1
+serverVMsPerHost=1
+serverThreadsPerVM=1
+
+api=GFXD
+
+txIsolation = read_committed
+persist = true
+
+clientHeapMB = 1024
+serverHeapMB = 2048
+
+trimSeconds =  30
+workSeconds = 180
+ddlFile = useCase6.sql
+logQueries = false
+initialRowCount = 100000
+perffmwk.comparisonKey = useCase6
+
+/* cacheperf/comparisons/gemfirexd/useCase6/useCase6Thin.conf
+  clientHosts = 5
+  serverHosts = 5
+  clientThreadsPerVM = 50
+  logQueries = false
+
+  serverHeapMB = 8192
+  trimSeconds = 30
+  workSeconds = 120
+
+  ddlFile = useCase6.sql
+  persist = true
+  initialRowCount = 20000000
+cacheperf/comparisons/gemfirexd/useCase6/useCase6Peer.conf
+  clientHosts = 2
+  serverHosts = 2
+  clientThreadsPerVM = 50
+  logQueries = false
+
+  serverHeapMB = 8192
+  trimSeconds = 30
+  workSeconds = 120
+
+  ddlFile = useCase6.sql
+  persist = true
+  initialRowCount = 30000000
+cacheperf/comparisons/gemfirexd/useCase6/useCase6Peer.conf
+  clientHosts = 5
+  serverHosts = 5
+  clientThreadsPerVM = 50
+  logQueries = false
+
+  serverHeapMB = 8192
+  trimSeconds = 30
+  workSeconds = 120
+
+  ddlFile = useCase6.sql
+  persist = true
+  initialRowCount = 40000000
+cacheperf/comparisons/gemfirexd/useCase6/useCase6Peer.conf
+  clientHosts = 5
+  serverHosts = 5
+  clientThreadsPerVM = 50
+  logQueries = false
+
+  serverHeapMB = 8192
+  trimSeconds = 30
+  workSeconds = 120
+
+  ddlFile = useCase6.sql
+  persist = true
+  initialRowCount = 50000000
+*/

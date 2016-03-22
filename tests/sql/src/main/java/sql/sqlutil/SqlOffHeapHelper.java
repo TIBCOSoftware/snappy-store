@@ -35,7 +35,7 @@ public class SqlOffHeapHelper {
 
   /** Return a List of off-heap memory Chunks where lob objects reside
    * 
-   * @param offHeapValue The base row for the lobs (if any)
+   * @param aChunk The base chunk for the lobs.
    * @param regionName The name of the region (table) storing the offHeapValue.
    * @param key The key for the offHeapValue.
    * @return A List of Chunks for the off-heap memory segments where the lobs reside.

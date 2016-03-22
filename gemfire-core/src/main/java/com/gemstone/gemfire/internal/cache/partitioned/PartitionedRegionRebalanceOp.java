@@ -430,7 +430,7 @@ public class PartitionedRegionRebalanceOp {
     
     int redundantCopies = leaderRegion.getRedundantCopies();
     int totalNumberOfBuckets = leaderRegion.getTotalNumberOfBuckets();
-    Set<InternalDistributedMember> criticalMembers = resourceManager.getResourceAdvisor().adviseCritialMembers();;
+    Set<InternalDistributedMember> criticalMembers = resourceManager.getResourceAdvisor().adviseCriticalMembers();;
     boolean removeOverRedundancy = true;
     model = new PartitionedRegionLoadModel(operator, redundantCopies, removeOverRedundancy, 
         satisfyRedundancy, moveBuckets, movePrimaries,

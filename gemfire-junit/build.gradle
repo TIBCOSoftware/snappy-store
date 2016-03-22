@@ -52,7 +52,7 @@ dependencies {
 
   // use dunit support from snappydata
   if (subprojectBase == ':') {
-    compile 'io.snappydata:dunit:1.0.0'
+    compile 'io.snappydata:dunit:1.0.1'
   } else {
     compile project(':dunit')
   }

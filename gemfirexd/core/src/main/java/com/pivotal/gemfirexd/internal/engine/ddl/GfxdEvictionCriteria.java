@@ -59,7 +59,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.compile.ValueNode;
 
 /**
  * Implementation of EVICTION BY CRITERIA clause for GemFireXD.
- * 
+ *
  * @author swale
  * @since gfxd 1.0
  */
@@ -68,7 +68,6 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
   private final ExpressionCompiler predicateCompiler;
   private final String predicateString;
   private PreparedStatement queryStatement;
-  private String[] exprCols;
   private Observer evictionObserver;
 
   public GfxdEvictionCriteria(ValueNode predicate, String sqlText,
@@ -90,14 +89,14 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
    * Bind this expression. This means binding the sub-expressions, as well as
    * checking that the return type for this expression is a boolean. This should
    * be invoked at the time when the rest of CREATE TABLE is being bound.
-   * 
+   *
    * @param fromList
    *          The FROM list for the query this expression is in, for binding
    *          columns.
    * @param lcc
    *          The current {@link LanguageConnectionContext} being used for the
    *          bind operation.
-   * 
+   *
    * @exception StandardException
    *              Thrown on error
    */
@@ -105,13 +104,13 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
       throws StandardException {
 
     // Check for no aggregates in EVICTION BY CRITERIA
-    Vector<?> aggregates = new Vector<Object>();
+    Vector<?> aggregates = new Vector<>();
     SubqueryList subqueries = (SubqueryList)lcc.getLanguageConnectionFactory()
         .getNodeFactory()
         .getNode(C_NodeTypes.SUBQUERY_LIST, lcc.getContextManager());
-    this.exprCols = this.predicateCompiler.bindExpression(fromList, subqueries,
-        aggregates);
-    if (this.exprCols == null || this.exprCols.length == 0) {
+    final String[] exprCols = this.predicateCompiler.bindExpression(fromList,
+        subqueries, aggregates);
+    if (exprCols == null || exprCols.length == 0) {
       throw StandardException
           .newException(SQLState.LANG_TABLE_REQUIRES_COLUMN_NAMES);
     }
@@ -159,8 +158,8 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
     LocalRegion region = ev.getRegion();
     CachePerfStats stats;
     if (region instanceof BucketRegion) {
-      stats = ((BucketRegion)region).getPartitionedRegion().getCachePerfStats();
-    } else{
+      stats = region.getPartitionedRegion().getCachePerfStats();
+    } else {
       stats = region.getCachePerfStats();
     }
     long startTime = stats.startEvaluation();
@@ -172,7 +171,7 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
       }
 
       if (re != null) {
-        if (isLockedForTransaction(re)) {
+        if (ev.getTXState() == null && re.hasAnyLock()) {
           return false;
         }
         if (re.isMarkedForEviction()) {
@@ -220,7 +219,7 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
             if (contextSet) {
               conn.getTR().restoreContextStack();
             }
-            
+
           }
         }
       }
@@ -232,7 +231,7 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
       stats.endEvaluation(startTime, 0);
     }
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -250,17 +249,18 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
   /**
    * An observer for eviction by criteria.
    */
-  public static interface Observer {
+  public interface Observer {
 
-    public void keyReturnedForEviction(Object key, Object routingObject,
+    void keyReturnedForEviction(Object key, Object routingObject,
         long currentMillis, Region<Object, Object> region);
 
-    public void onIterationComplete(Region<Object, Object> region);
+    void onIterationComplete(Region<Object, Object> region);
 
-    public void onDoEvictCompare(EntryEventImpl event);
+    void onDoEvictCompare(EntryEventImpl event);
   }
 
-  private final class Itr implements Iterator<Map.Entry<Object, Object>> , Releasable{
+  private final class Itr implements Iterator<Map.Entry<Object, Object>>,
+      Releasable {
 
     private final long currentMillis;
     private final GemFireContainer container;
@@ -314,21 +314,21 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
               predicateString, null, false, 0L, true);
           statementContext.setSQLAllowed(RoutineAliasInfo.READS_SQL_DATA,
               true);
-          
+
           resultSet = (CursorResultSet)queryStatement.execute(lcc, false, 0L);
-          
+
           if (resultSet.getNextRow() != null) {
             this.currentRowLocation = resultSet.getRowLocation();
           }
         }
       } catch (Exception e) {
+        t = e;
         // terminate the iteration immediately
         this.currentRowLocation = null;
         LogWriter logger = Misc.getCacheLogWriterNoThrow();
         if(logger != null) {
           logger.warning("GfxdEvictionCriteria: Error in Iterator creation", e);
         }
-        
       } finally {
         if (this.currentRowLocation == null) {
           if (statementContext != null) {
@@ -352,8 +352,6 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
       this.popLCCContext = popContext;
       this.statementContext = statementContext;
       this.resultSet = resultSet;
-      
-      
     }
 
     /**
@@ -378,7 +376,7 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
         this.currentRowLocation = null;
         try {
           key = rl.getKeyCopy();
-          routingObject = Integer.valueOf(rl.getBucketID());
+          routingObject = rl.getBucketID();
           if(GemFireXDUtils.isOffHeapEnabled()) {
             ((NoPutResultSet)this.resultSet).releasePreviousByteSource();
           }
@@ -440,12 +438,5 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
         release();
       }
     }
-  }
-
-  /**
-   * returns true if there is active read or write lock on the entry
-   */
-  private boolean isLockedForTransaction(RegionEntry re) {
-    return re.hasAnyLock();
   }
 }

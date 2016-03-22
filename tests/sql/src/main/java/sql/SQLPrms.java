@@ -1427,7 +1427,15 @@ public class SQLPrms extends BasePrms{
       return SQLPrms.tab().stringAt(sql.SQLPrms.sqlFilePath);
     }
   }
-
+  /**
+   * (boolean)
+   * Whether to record data in BB or not.  Defaults to true.
+   */
+  public static Long insertInBB;
+  public static boolean isInsertInBB() {
+    Long key = insertInBB;
+    return tasktab().booleanAt(key, tab().booleanAt(key, true));
+  }
   public static Long traceFlags;
   public static String getTraceFlags() {
     return tasktab().stringAt(traceFlags, tab().stringAt(traceFlags, null));

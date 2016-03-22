@@ -1,16 +1,16 @@
 #!/bin/bash
 
 runtest() {
-  export GEMFIRE_BUILD=$1
-  export GEMFIRE=$GEMFIRE_BUILD/product
-  export LD_LIBRARY_PATH=$GEMFIRE/../hidden/lib:$GEMFIRE/lib
-  export JTESTS=$GEMFIRE/../tests/classes
-  export CLASSPATH=$GEMFIRE/lib/gemfire.jar:$JTESTS:$GEMFIRE/lib/snappy-java-1.0.4.1.jar
-  export JAVA_HOME=/export/gcm/where/jdk/1.7.0_72/x86_64.linux
-  echo ""
-  echo "Running $JTESTS/smoketest/scale/scale.bt with $JTESTS/smoketest/scale/local.conf..."
-  echo ""
-  $JAVA_HOME/bin/java -server \
+   export SNAPPYDATADIR=$1
+   export GEMFIRE=$SNAPPYDATADIR/build-artifacts/scala-2.10/store
+   export LD_LIBRARY_PATH=$GEMFIRE/lib
+   export EXTRA_JTESTS=$SNAPPYDATADIR/snappy-store/tests/sql/build-artifacts/linux/classes/main
+   export JTESTS=$SNAPPYDATADIR/snappy-store/tests/core/build-artifacts/linux/classes/main
+   export CLASSPATH=$JTESTS:$EXTRA_JTESTS:$GEMFIRE/lib/gemfirexd-1.5.0-BETA.jar:$GEMFIRE/lib/gemfirexd-client-1.5.0-BETA.jar:JTESTS/../../libs/gemfirexd-hydra-tests-1.5.0-BETA-all.jar:$GEMFIRE/lib/gemfirexd-tools-1.5.0-BETA.jar:$SNAPPYDATADIR/snappy-dtests/build-artifacts/scala-2.10/libs/gemfirexd-scala-tests-0.1.0-SNAPSHOT.jar
+
+    echo "Running $JTESTS/smoketest/scale/scale.bt with $JTESTS/smoketest/scale/local.conf..."
+    echo ""
+   $JAVA_HOME/bin/java -server \
     -classpath $CLASSPATH -DGEMFIRE=$GEMFIRE -DJTESTS=$JTESTS \
     -DprovideRegressionSummary=false -DnukeHungTest=true -DmoveRemoteDirs=true \
     -DtestFileName=$JTESTS/smoketest/scale/scale.bt \

@@ -3222,13 +3222,30 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
         serverExecute(1, new SerializableRunnable() {
           @Override
           public void run() {
+            TestException te = null;
+            try {
+              userProps.setProperty(
+                  com.pivotal.gemfirexd.Attribute.USERNAME_ATTR, "sysUser1");
+              userProps.setProperty(
+                  com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR, "pwd_sysUser1");
+              final Connection conn = TestUtil.getConnection(userProps);
+              final Statement stmt = conn.createStatement();
+              stmt.execute("call sys.drop_user('gem1')");
+              stmt.close();
+              conn.close();
+            } catch (SQLException sqle) {
+              te = new TestException("unexpected exception");
+              te.initCause(sqle);
+            }
             try {
               FabricServiceManager.getFabricServerInstance()
                   .stopAllNetworkServers();
               TestUtil.shutDown(stopProps);
             } catch (SQLException sqle) {
-              final TestException te = new TestException("unexpected exception");
+              te = new TestException("unexpected exception");
               te.initCause(sqle);
+            }
+            if (te != null) {
               throw te;
             }
           }
@@ -3255,6 +3272,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     File authFile = new File(authDir, "gfxd-security.properties");
     FileOutputStream fos = new FileOutputStream(authFile);
     authProps.store(fos, null);
+    Connection conn2 = null;
+    Statement systemUser_stmt = null;
     try {
       // start a locator and some severs with auth enabled
       final int locPort = AvailablePort
@@ -3281,8 +3300,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       // connect as system user 'root'
       props2.setProperty("user", "root");
       props2.setProperty("password", "root");
-      Connection conn2 = TestUtil.getConnection(props2);
-      Statement systemUser_stmt = conn2.createStatement();
+      conn2 = TestUtil.getConnection(props2);
+      systemUser_stmt = conn2.createStatement();
 
       // create a new user
       systemUser_stmt.execute("call sys.create_user('user1', 'a')");
@@ -3315,15 +3334,23 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       }
 
       conn1.close();
-      conn2.close();
       conn3.close();
     } finally {
-      fos.close();
-      if (!authFile.delete()) {
-        authFile.deleteOnExit();
-      }
-      if (!authDir.delete()) {
-        authDir.deleteOnExit();
+      try {
+        if (conn2 != null) {
+          if (systemUser_stmt != null) {
+            systemUser_stmt.execute("call sys.drop_user('user1')");
+          }
+          conn2.close();
+        }
+      } finally {
+        fos.close();
+        if (!authFile.delete()) {
+          authFile.deleteOnExit();
+        }
+        if (!authDir.delete()) {
+          authDir.deleteOnExit();
+        }
       }
     }
   }

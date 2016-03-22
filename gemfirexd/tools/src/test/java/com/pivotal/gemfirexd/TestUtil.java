@@ -56,6 +56,7 @@ import com.gemstone.gemfire.internal.cache.xmlcache.CacheCreation;
 import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlGenerator;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionCreation;
+import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.OSType;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -898,6 +899,27 @@ public class TestUtil extends TestCase {
         // if the error code or SQLState is different, we have
         // an unexpected exception (shutdown failed)
         throw se;
+      }
+    }
+  }
+
+  public static void dropAllUsers(Connection conn) throws Exception {
+    Statement stmt = conn.createStatement();
+    stmt.execute("call sys.show_users()");
+    PreparedStatement pstmt = null;
+    try (ResultSet rs = stmt.getResultSet()) {
+      while (rs.next()) {
+        if (rs.getString(2).equalsIgnoreCase("USER")) {
+          if (pstmt == null) {
+            pstmt = conn.prepareStatement("call sys.drop_user(?)");
+          }
+          pstmt.setString(1, rs.getString(1));
+          pstmt.execute();
+        }
+      }
+    } finally {
+      if (pstmt != null) {
+        pstmt.close();
       }
     }
   }
@@ -2186,15 +2208,17 @@ public class TestUtil extends TestCase {
       }
     }
   }
-  
-  public static <T> Object getField(Class<T> clazz, T instance, String fieldName  ) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+
+  public static <T> Object getField(Class<T> clazz, T instance,
+      String fieldName) throws NoSuchFieldException, SecurityException,
+      IllegalArgumentException, IllegalAccessException {
     Field f = clazz.getDeclaredField(fieldName);
     f.setAccessible(true);
     return f.get(instance);
   }
 
   public static void assertTimerLibraryLoaded() {
-    final OSType ostype =  com.gemstone.gemfire.internal.shared.NativeCalls.getInstance().getOSType();
+    final OSType ostype = NativeCalls.getInstance().getOSType();
     if (ostype == OSType.LINUX) {
       assertTrue("Couldn't initialize jni native timer for " + ostype,
           NanoTimer.isJNINativeTimerEnabled());

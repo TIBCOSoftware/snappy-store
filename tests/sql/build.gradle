@@ -14,6 +14,7 @@ idea {
 
 ext {
   createdBy = System.getProperty("user.name")
+  derbyOldVersion = "10.8.2.2"
 }
 
 dependencies {
@@ -52,10 +53,10 @@ dependencies {
   compile 'org.apache.tomcat:tomcat-juli:8.0.32'
   compile 'org.apache.tomcat:tomcat-jdbc:8.0.32'
   compile 'com.mchange:c3p0:0.9.5.2'
-  compile "org.apache.derby:derbytools:${derbyVersion}"
-  runtime "org.apache.derby:derby:${derbyVersion}"
-  runtime "org.apache.derby:derbynet:${derbyVersion}"
-  runtime "org.apache.derby:derbyclient:${derbyVersion}"
+  compile "org.apache.derby:derbytools:${derbyOldVersion}"
+  runtime "org.apache.derby:derby:${derbyOldVersion}"
+  runtime "org.apache.derby:derbynet:${derbyOldVersion}"
+  runtime "org.apache.derby:derbyclient:${derbyOldVersion}"
 }
 
 // apply default manifest

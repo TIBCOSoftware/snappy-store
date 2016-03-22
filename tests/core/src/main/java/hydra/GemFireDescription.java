@@ -1080,7 +1080,6 @@ implements Serializable {
   protected static void configure( TestConfig config ) {
 
     ConfigHashtable tab = config.getParameters();
-
     // All gfd's that do not specify addresss will use this one.
     // Different distributed systems will have same address different port
     // C++ testing uses 224.10.11.[1-254] & 224.10.10.*
@@ -1382,7 +1381,9 @@ implements Serializable {
       }
       if ( mhd.getGemFireHome() != null ) {
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib"
-                                          + mhd.getFileSep() + "gemfire.jar");
+                + mhd.getFileSep() + "gemfirexd-" +
+                ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
+        classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib");
       }
       // set classpath at last
       Vector expandedClassPath = EnvHelper.expandEnvVars(classPath, mhd);
