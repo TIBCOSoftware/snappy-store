@@ -37,8 +37,7 @@ import com.gemstone.gemfire.internal.util.Bytes;
  * 
  * @author bakera
  */
-public class ArraySerializedComparator implements CompositeSerializedComparator, 
-DelegatingSerializedComparator {
+public class ArraySerializedComparator extends DelegatingSerializedComparator {
 
   /** the comparators */
   private volatile SerializedComparator[] comparators;
@@ -51,11 +50,6 @@ DelegatingSerializedComparator {
    */
   public void setComparators(SerializedComparator[] comparators) {
     this.comparators = comparators;
-  }
-  
-  @Override
-  public int compare(byte[] o1, byte[] o2) {
-    return compare(o1, 0, o1.length, o2, 0, o2.length);
   }
 
   @Override

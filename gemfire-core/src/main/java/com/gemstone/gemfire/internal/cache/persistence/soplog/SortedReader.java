@@ -19,8 +19,10 @@ package com.gemstone.gemfire.internal.cache.persistence.soplog;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 
-import org.apache.hadoop.io.RawComparator;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.KeyValue;
 
 /**
  * Defines a means to read sorted data including performing range scans.
@@ -68,13 +70,63 @@ public interface SortedReader<V> extends Closeable {
      */
     boolean accept(byte[] value);
   }
-  
+
   /**
    * Allows comparisons between serialized objects.
    */
-  public interface SerializedComparator extends RawComparator<byte[]> {
+  public abstract class SerializedComparator extends KeyValue.KVComparator {
+
+    /*
+    @Override
+    public int compare(Cell c1, Cell c2) {
+      return compare(c1.getRowArray(), c1.getRowOffset(), c1.getRowLength(),
+          c2.getRowArray(), c2.getRowOffset(), c2.getRowLength());
+    }
+    */
+
+    @Override
+    public int compareFlatKey(byte[] left, int lOffset, int lLength,
+        byte[] right, int rOffset, int rLength) {
+      return compare(left, lOffset, lLength, right, rOffset, rLength);
+    }
+
+    public int compare(byte[] b1, byte[] b2) {
+      return compare(b1, 0, b1.length, b2, 0, b2.length);
+    }
+
+    @Override
+    public abstract int compare(byte[] l, int lOff, int lLen, byte[] r,
+        int rOff, int rLen);
+
+    @Override
+    public byte[] calcIndexKey(byte[] lastKeyOfPreviousBlock,
+        byte[] firstKeyInBlock) {
+      return firstKeyInBlock;
+    }
+
+    public BytesComparator toBytesComparator() {
+      return new BytesComparator(this);
+    }
   }
-  
+
+  public final class BytesComparator implements Comparator<byte[]> {
+
+    private final SerializedComparator cmp;
+
+    BytesComparator(SerializedComparator cmp) {
+      this.cmp = cmp;
+    }
+
+    public SerializedComparator getSerializedComparator() {
+      return this.cmp;
+    }
+
+    @Override
+    public int compare(byte[] o1, byte[] o2) {
+      return this.cmp.compare(o1, 0, o1.length, o2, 0, o2.length);
+    }
+  }
+
   /**
    * Allows sorted iteration through a set of keys and values.
    */

@@ -34,7 +34,6 @@ dependencies {
   provided "com.sun.jersey:jersey-server:${jerseyVersion}"
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "org.apache.hbase:hbase:${hbaseVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
 
   provided "org.springframework:spring-aop:${springVersion}"

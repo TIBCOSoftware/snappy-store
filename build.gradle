@@ -49,7 +49,7 @@ allprojects {
     jerseyVersion = '1.9'
     hadoopJettyVersion = '6.1.26'
     jsr305Version = '1.3.9'
-    hbaseVersion = '0.94.27'
+    hbaseVersion = '0.98.17-hadoop2'
     derbyVersion = '10.10.2.0'
     //hbaseVersion = '0.94.4-gemfire-r45047'
     //hadoopVersion = '2.2.0-gphd-3.1.0.0'
@@ -69,7 +69,7 @@ allprojects {
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
     PRODUCT_MAINT = '0'
-    PRODUCT_CLASSFIER = '-BETA'
+    PRODUCT_CLASSFIER = '-BETA~1'
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSFIER}"
     PRODUCT_VENDOR = 'SnappyData, Inc.'
     COPYRIGHT = "Copyright 2016, ${PRODUCT_VENDOR} All rights reserved."
@@ -800,8 +800,8 @@ def includeJar(def jarFile) {
   return jarName.contains('jetty') || jarName.contains('spring') ||
     jarName.contains('hadoop') || jarName.contains('protobuf') ||
     jarName.contains('jersey') || jarName.contains('jetty') ||
-    jarName.contains('hbase') || jarName.contains('jsr305') ||
-    jarName.contains('pxf') || jarName.contains('jline')
+    jarName.contains('jsr305') || jarName.contains('pxf') ||
+    jarName.contains('jline')
 }
 
 // pack the entire GemFireXD product tree

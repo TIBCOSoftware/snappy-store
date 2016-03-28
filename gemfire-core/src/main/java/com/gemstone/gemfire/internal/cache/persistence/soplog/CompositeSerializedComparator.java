@@ -22,19 +22,21 @@ import com.gemstone.gemfire.internal.cache.persistence.soplog.SortedReader.Seria
 
 /**
  * Creates and compares composite keys.
- * 
+ *
  * @author bakera
  */
-public interface CompositeSerializedComparator extends SerializedComparator  {
+public abstract class CompositeSerializedComparator
+    extends SerializedComparator {
+
   /**
    * Constructs a composite key consisting of a primary key and a secondary key.
-   * 
+   *
    * @param key1 the primary key
    * @param key2 the secondary key
    * @return the composite key
    */
-  public byte[] createCompositeKey(byte[] key1, byte[] key2);
-  
+  public abstract byte[] createCompositeKey(byte[] key1, byte[] key2);
+
   /**
    * Constructs a composite key by combining the supplied keys.  The number of
    * keys and their order must match the comparator set.
@@ -42,16 +44,17 @@ public interface CompositeSerializedComparator extends SerializedComparator  {
    * The <code>WILDCARD_KEY</code> token may be used to match all subkeys in the
    * given ordinal position.  This is useful when constructing a search key to
    * retrieve all keys for a given primary key, ignoring the remaining subkeys.
-   * 
+   *
    * @param keys the keys, ordered by sort priority
    * @return the composite key
    */
-  public byte[] createCompositeKey(byte[]... keys);
-  
+  public abstract byte[] createCompositeKey(byte[]... keys);
+
   /**
    * Returns subkey for the given ordinal position.
+   *
    * @param key the composite key
    * @return the subkey
    */
-  public ByteBuffer getKey(ByteBuffer key, int ordinal);
+  public abstract ByteBuffer getKey(ByteBuffer key, int ordinal);
 }

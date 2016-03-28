@@ -19,6 +19,7 @@ package com.gemstone.gemfire.cache.hdfs.internal.hoplog.mapreduce;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.BaseHoplogTestCase;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.HFileSortedOplog;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.Hoplog;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
@@ -56,7 +57,8 @@ public class HDFSSplitIteratorJUnitTest extends BaseHoplogTestCase {
     createHoplog(2000, oplog);
     
     FileSystem fs = hdfsStore.getFileSystem();
-    Reader reader = HFile.createReader(fs, path, new CacheConfig(fs.getConf()));
+    Reader reader = HFile.createReader(fs, path,
+        new CacheConfig(fs.getConf()), fs.getConf());
     BlockIndexReader bir = reader.getDataBlockIndexReader();
     int blockCount = bir.getRootBlockCount();
     reader.close();
@@ -123,7 +125,8 @@ public class HDFSSplitIteratorJUnitTest extends BaseHoplogTestCase {
     createHoplog(2000, oplog);
     
     FileSystem fs = hdfsStore.getFileSystem();
-    Reader reader = HFile.createReader(fs, path1, new CacheConfig(fs.getConf()));
+    Reader reader = HFile.createReader(fs, path1,
+        new CacheConfig(fs.getConf()), fs.getConf());
     BlockIndexReader bir = reader.getDataBlockIndexReader();
     int blockCount = bir.getRootBlockCount();
     reader.close();
