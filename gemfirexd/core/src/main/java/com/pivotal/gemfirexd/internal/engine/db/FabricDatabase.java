@@ -246,7 +246,7 @@ public final class FabricDatabase implements ModuleControl,
   private final boolean allowBootWithFailures = Boolean.getBoolean(
       com.pivotal.gemfirexd.Property.DDLREPLAY_ALLOW_RESTART_WITH_ERRORS);
 
-  //private PersistedIndexUpdater2 indexUpdater;
+  public static boolean TEST_INDEX_RECREATE;
   
   /**
    * Creates a new FabricDatabase object.
@@ -978,7 +978,6 @@ public final class FabricDatabase implements ModuleControl,
           GfxdIndexManager gim = (GfxdIndexManager)region.getIndexUpdater();
           if (gim == null) continue;
           int localRegionSz = getLocalRegionSz(region, dp, logger, false, throwErrorOnMismatch);
-          logger.info("KN: just logging size(recovered): " + localRegionSz + " region: " + region);
           List<GemFireContainer> allIndexes = gim.getAllIndexes();
           for (GemFireContainer c : allIndexes) {
             if (c.isLocalIndex()) {
@@ -1002,8 +1001,10 @@ public final class FabricDatabase implements ModuleControl,
                 recreateAllLocalIndexes(logger);
                 checkRecoveredIndex(uninitializedContainers, logger, true);
               } else {
-                logger.info("checkRecoveredIndex: local index: " + c.getName() +
-                    " and table: " + region.getName() + " with size: " + localRegionSz);
+                if (logger.fineEnabled()) {
+                  logger.fine("checkRecoveredIndex: local index: " + c.getName() +
+                      " and table: " + region.getName() + " with size: " + localRegionSz);
+                }
               }
             }
           }
@@ -1048,7 +1049,7 @@ public final class FabricDatabase implements ModuleControl,
       if (!ds.getName().equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
         PersistentOplogSet oplogSet = ds.getPersistentOplogSet(null);
         ds.resetIndexRecoveryState();
-        // delete all idx file of all oplogs
+        // delete all idx file of all oplogs, so second arg as true below
         ds.scheduleIndexRecovery(oplogSet.getSortedOplogs(), true);
         logger.info("FabricDatabase: recreateAllLocalIndexes " +
             "waiting for index re-creation for disk store: " + ds.getName());
@@ -1065,7 +1066,6 @@ public final class FabricDatabase implements ModuleControl,
       DiskStoreImpl ds = region.getDiskStore();
       Collection<AbstractDiskRegion> diskRegions = ds.getAllDiskRegions().values();
       String regionPath = region.getFullPath();
-      logger.info("diskRegions size = " + (diskRegions == null ? "null" : diskRegions.size()) + " region: " + region);
       for (AbstractDiskRegion diskReg : diskRegions) {
         if (diskReg.isBucket() && diskReg.getPrName().equals(regionPath)) {
           if (!dump) {
@@ -1074,16 +1074,16 @@ public final class FabricDatabase implements ModuleControl,
             sz -= invalidCnt;
           }
           else {
+            logger.info("Dumping key value for region: " + region.getName());
             RegionMap rmap = diskReg.getRecoveredEntryMap();
-            logger.info("KN: recovered entry map: " + rmap + " size: " + (rmap != null ? rmap.size() : "null"));
             if (rmap != null) {
              Collection<RegionEntry> res =  rmap.regionEntriesInVM();
               for(RegionEntry re : res) {
-                logger.info("KN: reKey=" + re.getKey()+" value="+re._getValue());
+                logger.info("reKey=" + re.getKey()+" value="+re._getValue());
               }
             }
             else {
-              logger.info("KN: rmap is null");
+              logger.info("rmap is null");
             }
           }
         }
@@ -1097,22 +1097,24 @@ public final class FabricDatabase implements ModuleControl,
         logger.info("region size = " + sz + " region: " + region.getName());
       }
       else {
+        logger.info("Dumping key value for region: " + region.getName());
         RegionMap rmap = diskReg.getRecoveredEntryMap();
-        logger.info("KN: recovered entry map: " + rmap + " size: " + (rmap != null ? rmap.size() : "null"));
         if (rmap != null) {
           Collection<RegionEntry> res =  rmap.regionEntriesInVM();
           for(RegionEntry re : res) {
-            logger.info("KN: reKey=" + re.getKey()+" value="+re._getValue());
+            logger.info("reKey=" + re.getKey()+" value="+re._getValue());
           }
         }
         else {
-          logger.info("KN: rmap is null");
+          logger.info("rmap is null");
         }
       }
     }
-    if (!throwErrorOnMismatch) {
-      // TODO: KN: to check whether recreation is happening properly or not.
-      return sz-1;
+
+    if (!throwErrorOnMismatch && TEST_INDEX_RECREATE) {
+      // To check whether recreation is happening properly or not.
+      logger.info("Returning a wrong size as TEST_INDEX_RECREATE flag is true ");
+      return sz+10;
     }
     return sz;
   }
