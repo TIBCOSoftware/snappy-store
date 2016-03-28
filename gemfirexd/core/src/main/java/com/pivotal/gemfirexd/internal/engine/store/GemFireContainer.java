@@ -6333,6 +6333,41 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+  public int getIndexSize() {
+    if (this.isLocalIndex()) {
+      int sz = 0;
+      ConcurrentSkipListMap<Object, Object> slm = this.skipListMap;
+      if (slm == null || slm.isEmpty()) {
+        sz = 0;
+      }
+      else {
+        final Iterator<Object> itr = slm.values().iterator();
+        while (itr.hasNext()) {
+          final Object value = itr.next();
+
+          if (value != null) {
+            final Class<?> valueCls = value.getClass();
+
+            if (valueCls == RowLocation[].class) {
+              sz += ((RowLocation[])value).length;
+            }
+            else if (valueCls == ConcurrentTHashSet.class) {
+              sz += ((ConcurrentTHashSet<?>)value).size();
+            }
+            else {
+              assert value instanceof RowLocation: "unexpected type in index "
+                  + valueCls.getName() + ": " + value;
+              sz++;
+            }
+          }
+        }
+      }
+      return sz;
+    }
+    throw new GemFireXDRuntimeException("getIndexSize " +
+        "should be called only for local index but is being called for: " + this);
+  }
+
   public void setIndexTrace(boolean indexTraceOn) {
     this.indexTraceOnForThisTable = indexTraceOn;
   }
