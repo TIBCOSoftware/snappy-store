@@ -1066,26 +1066,28 @@ public final class FabricDatabase implements ModuleControl,
       DiskStoreImpl ds = region.getDiskStore();
       Collection<AbstractDiskRegion> diskRegions = ds.getAllDiskRegions().values();
       String regionPath = region.getFullPath();
+      int prId = ((PartitionedRegion)region).getPRId();
+      long regionUUId = region.getRegionUUID();
       for (AbstractDiskRegion diskReg : diskRegions) {
-        if (diskReg.isBucket() && diskReg.getPrName().equals(regionPath)) {
-          if (!dump) {
-            sz += diskReg.getRecoveredEntryCount();
-            int invalidCnt = diskReg.getInvalidOrTombstoneEntryCount();
-            sz -= invalidCnt;
-          }
-          else {
-            logger.info("Dumping key value for region: " + region.getName());
-            RegionMap rmap = diskReg.getRecoveredEntryMap();
-            if (rmap != null) {
-             Collection<RegionEntry> res =  rmap.regionEntriesInVM();
-              for(RegionEntry re : res) {
-                logger.info("reKey=" + re.getKey()+" value="+re._getValue());
+        long parentUUid = diskReg.getUUID();
+        // check if pr id matches
+        if (parentUUid == regionUUId) {
+            if (!dump) {
+              sz += diskReg.getRecoveredEntryCount();
+              int invalidCnt = diskReg.getInvalidOrTombstoneEntryCount();
+              sz -= invalidCnt;
+            } else {
+              logger.info("Dumping key value for region: " + region.getName());
+              RegionMap rmap = diskReg.getRecoveredEntryMap();
+              if (rmap != null) {
+                Collection<RegionEntry> res = rmap.regionEntriesInVM();
+                for (RegionEntry re : res) {
+                  logger.info("reKey=" + re.getKey() + " value=" + re._getValue());
+                }
+              } else {
+                logger.info("rmap is null");
               }
             }
-            else {
-              logger.info("rmap is null");
-            }
-          }
         }
       }
     }
