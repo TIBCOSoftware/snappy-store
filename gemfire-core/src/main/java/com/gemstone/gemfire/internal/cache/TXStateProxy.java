@@ -4576,7 +4576,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   @Override
   public Iterator<?> getLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
-      LocalRegion currRegion) {
+      LocalRegion currRegion, boolean fetchRemote) {
     throw new IllegalStateException("TXStateProxy.getLocalEntriesIterator: "
         + "this method is intended to be called only for PRs and no txns");
   }

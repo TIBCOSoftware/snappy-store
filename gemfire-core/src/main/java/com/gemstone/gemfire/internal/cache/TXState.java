@@ -3696,7 +3696,7 @@ public final class TXState implements TXStateInterface {
   @Override
   public Iterator<?> getLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
-      LocalRegion currRegion) {
+      LocalRegion currRegion, boolean fetchRemote) {
     throw new IllegalStateException("TXState.getLocalEntriesIterator: "
         + "this method is intended to be called only for PRs and no txns");
   }

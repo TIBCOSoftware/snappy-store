@@ -2272,7 +2272,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public final Iterator<?> getEntrySetIteratorForBucketSet(
       final Set<Integer> bucketSet, final GemFireTransaction tran,
-      final TXStateInterface tx, final int scanType, boolean primaryOnly) {
+      final TXStateInterface tx, final int scanType, boolean primaryOnly, boolean fetchRemote) {
 
     final boolean forUpdate = (scanType & TransactionController
         .OPENMODE_FORUPDATE) != 0;
@@ -2289,7 +2289,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
               + bucketSet + "; TX = " + tran);
     }
     return view.getLocalEntriesIterator(bucketSet, primaryOnly, forUpdate,
-        true, this.region);
+        true, this.region, fetchRemote);
   }
   
   public Iterator<?> getEntrySetIteratorHDFSSplit(Object hdfsSplit) {

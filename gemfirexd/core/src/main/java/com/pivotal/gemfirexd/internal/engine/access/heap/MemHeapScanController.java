@@ -475,8 +475,9 @@ public class MemHeapScanController implements MemScanController, RowCountable,
                       ? regionForBSet.getName() : "(null)"));
         }
         this.bucketSet = bset;
+        // incase of snappy fetch remote entry of bucket by default
         this.entryIterator = gfContainer.getEntrySetIteratorForBucketSet(bset,
-            tran, this.txState, openMode, this.forUpdate != 0);
+            tran, this.txState, openMode, this.forUpdate != 0, Misc.getMemStore().isSnappyStore());
       }
       else {
         boolean useOnlyPrimaryBuckets = ((this.openMode & GfxdConstants

@@ -5027,8 +5027,7 @@ public class PartitionedRegion extends LocalRegion implements
     
     return ret;
   }
-  
-  
+
   /**
    * Fetch the keys for the given bucket identifier, if the bucket is local or
    * remote.
@@ -6692,7 +6691,7 @@ public class PartitionedRegion extends LocalRegion implements
     if (context != null
         && (bucketSet = context.getLocalBucketSet(this)) != null) {
       return new PRLocalScanIterator(bucketSet, txState, forUpdate,
-          includeValues);
+          includeValues, false);
     }
     return new PRLocalScanIterator(primaryOnly, txState, forUpdate,
         includeValues);
@@ -7042,7 +7041,7 @@ public class PartitionedRegion extends LocalRegion implements
 
     private int currentBucketId = KeyInfo.UNKNOWN_BUCKET;
 
-    private BucketRegion currentBucketRegion;
+    private BucketRegion currentBucketRegion;// could be null if the entry is fetched from remote
 
     private boolean moveNext = true;
 
@@ -7051,6 +7050,8 @@ public class PartitionedRegion extends LocalRegion implements
     private boolean diskIteratorInitialized;
     
     private final StaticSystemCallbacks cb;
+
+    private final boolean fetchRemoteEntries;
 
     public PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
         final boolean forUpdate, final boolean includeValues) {
@@ -7088,6 +7089,7 @@ public class PartitionedRegion extends LocalRegion implements
           }
         }
       }
+      this.fetchRemoteEntries = false;
       this.bucketIdsIter = iter;
       this.numEntries = numEntries;
       this.txState = tx;
@@ -7098,7 +7100,7 @@ public class PartitionedRegion extends LocalRegion implements
     }
 
     public PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
-        final boolean forUpdate, final boolean includeValues) {
+        final boolean forUpdate, final boolean includeValues, final boolean fetchRemote) {
       Iterator<Integer> iter = null;
       long numEntries = -1;
       PartitionedRegionDataStore ds = dataStore;
@@ -7124,6 +7126,7 @@ public class PartitionedRegion extends LocalRegion implements
           numEntries = ds.getEstimatedLocalBucketSize(bucketIds);
         }
       }
+      this.fetchRemoteEntries = fetchRemote;
       this.bucketIdsIter = iter;
       this.txState = tx;
       this.forUpdate = forUpdate;
@@ -7164,7 +7167,8 @@ public class PartitionedRegion extends LocalRegion implements
           if (this.bucketEntriesIter != null
               && this.bucketEntriesIter.hasNext()) {
             final RegionEntry val = this.bucketEntriesIter.next();
-            if (val != null && !includeHDFSResults() && val.isMarkedForEviction() && !this.forUpdate) {
+            if (val != null && !(val instanceof NonLocalRegionEntry) && !includeHDFSResults()
+                && val.isMarkedForEviction() && !this.forUpdate) {
               // entry has been faulted in from HDFS, skip
               continue;
             }
@@ -7172,9 +7176,11 @@ public class PartitionedRegion extends LocalRegion implements
             // KN: If DiskIterator has been initialized then we need to change
             // the current bucket id and the current bucket region accordingly
             // as otherwise there will be a mismatch
-            if (val != null && this.diskIteratorInitialized) {
+            if (val != null && !(val instanceof NonLocalRegionEntry) && this.diskIteratorInitialized) {
               setCurrRegionAndBucketId(val);
             }
+            //TODO: Suranjan How will it work for tx? There will be no BucketRegion for NonLocalRegionEntry
+            // Ideally for tx there shouldn't be a case of iterator fetching remote entry
             if (this.txState != null) {
               this.currentEntry = this.txState.getLocalEntry(
                   PartitionedRegion.this, this.currentBucketRegion,
@@ -7208,56 +7214,159 @@ public class PartitionedRegion extends LocalRegion implements
               return false;
             }
             final int bucketId = this.bucketIdsIter.next().intValue();
-            final BucketRegion br;
+            BucketRegion br = null;
             try {
               br = dataStore.getInitializedBucketForId(null, bucketId);
             } catch (ForceReattemptException fre) {
+
+              //TODO: Suranjan in case of exception get all the entries
+              // from remote and return the iterator
               if (logger.fineEnabled()) {
                 logger.fine("PRLocalScanIterator#hasNext: bucket not "
                     + "available for ID " + bucketId + ", PR: "
                     + PartitionedRegion.this.toString());
               }
-              checkReadiness();
-              throw new InternalFunctionInvocationTargetException(
-                  fre.getLocalizedMessage(), fre);
-            }
-            this.currentBucketId = bucketId;
-            this.currentBucketRegion = br;
-            if (this.bucketEntriesIter == null) {
-              long cacheSize = this.numEntries >= 0 ? adjustDiskIterCacheSize(
-                  DistributedRegion.MAX_PENDING_ENTRIES, this.numEntries) : 0;
-              this.bucketEntriesIter = br.getBestLocalIterator(
-                  this.includeValues, cacheSize, true);
-              if (this.bucketEntriesIter instanceof HDFSIterator) {
-                if (this.forUpdate) {
-                  ((HDFSIterator)bucketEntriesIter).setForUpdate();
-                }
-                if (this.txState != null) {
-                  ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
-                }
+              if (!fetchRemoteEntries) {
+                checkReadiness();
+                throw new InternalFunctionInvocationTargetException(
+                    fre.getLocalizedMessage(), fre);
               }
             }
-            else if (!(this.bucketEntriesIter instanceof DiskSavyIterator)) {
-              this.bucketEntriesIter = br.entries.regionEntries().iterator();
-                if (this.bucketEntriesIter instanceof HDFSIterator) {
-                  if (this.forUpdate) {
-                    ((HDFSIterator)bucketEntriesIter).setForUpdate();
-                  }
-                  if (this.txState != null) {
-                    ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
-                  }
-                }
-            }
-            else {
-              // wait for region recovery etc.
-              br.getDiskIteratorCacheSize(1.0);
-              ((DiskSavyIterator)this.bucketEntriesIter).setRegion(br);
+            if (br != null) {
+              if (logger.fineEnabled()) {
+                logger.fine("PRLocalScanIterator#hasNext: bucket "
+                    + "available for ID " + bucketId + ", PR: "
+                    + PartitionedRegion.this.toString());
+              }
+              setLocalBucketEntryIterator(br, bucketId);
+            } else {
+              if (logger.fineEnabled()) {
+                logger.fine("PRLocalScanIterator#hasNext: bucket not "
+                    + "available for ID " + bucketId + ", PR: "
+                    + PartitionedRegion.this.toString() + ". Fetching from remote node");
+              }
+              setRemoteBucketEntriesIterator(bucketId);
             }
             break;
           }
         }
       }
       return (this.currentEntry != null);
+    }
+
+    private void setLocalBucketEntryIterator(BucketRegion br, int bucketId) {
+      this.currentBucketId = bucketId;
+      this.currentBucketRegion = br;
+      if (this.bucketEntriesIter == null) {
+        long cacheSize = this.numEntries >= 0 ? adjustDiskIterCacheSize(
+            DistributedRegion.MAX_PENDING_ENTRIES, this.numEntries) : 0;
+        this.bucketEntriesIter = br.getBestLocalIterator(
+            this.includeValues, cacheSize, true);
+        if (this.bucketEntriesIter instanceof HDFSIterator) {
+          if (this.forUpdate) {
+            ((HDFSIterator)bucketEntriesIter).setForUpdate();
+          }
+          if (this.txState != null) {
+            ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
+          }
+        }
+      } else if (!(this.bucketEntriesIter instanceof DiskSavyIterator)) {
+        this.bucketEntriesIter = br.entries.regionEntries().iterator();
+        if (this.bucketEntriesIter instanceof HDFSIterator) {
+          if (this.forUpdate) {
+            ((HDFSIterator)bucketEntriesIter).setForUpdate();
+          }
+          if (this.txState != null) {
+            ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
+          }
+        }
+      } else {
+        // wait for region recovery etc.
+        br.getDiskIteratorCacheSize(1.0);
+        ((DiskSavyIterator)this.bucketEntriesIter).setRegion(br);
+      }
+    }
+
+    private void setRemoteBucketEntriesIterator(int bucketId) {
+      this.currentBucketId = bucketId;
+      this.currentBucketRegion = null;
+      Set<RegionEntry> entries = getBucketEntries(bucketId);
+      if (entries != null) {
+        this.bucketEntriesIter = entries.iterator();
+      }
+      // if null, then iterator already set
+    }
+
+    private Set<RegionEntry> getBucketEntries(final int bucketId) {
+      Integer buck = Integer.valueOf(bucketId);
+      final int retryAttempts = calcRetry();
+      Set<RegionEntry> entries = null;
+      int count = 0;
+      InternalDistributedMember nod = getOrCreateNodeForBucketRead(bucketId);
+      RetryTimeKeeper snoozer = null;
+      while (count <= retryAttempts) {
+        // It's possible this is a GemFire thread e.g. ServerConnection
+        // which got to this point because of a distributed system shutdown or
+        // region closure which uses interrupt to break any sleep() or wait()
+        // calls
+        // e.g. waitForPrimary or waitForBucketRecovery
+        checkShutdown();
+
+        if (nod == null) {
+          if (snoozer == null) {
+            snoozer = new RetryTimeKeeper(retryTimeout);
+          }
+          nod = getOrCreateNodeForBucketRead(bucketId);
+
+          // No storage found for bucket, early out preventing hot loop, bug 36819
+          if (nod == null) {
+            checkShutdown();
+            break;
+          }
+          count++;
+          continue;
+        }
+
+        try {
+          if (nod.equals(getMyId())) {
+            final BucketRegion r = dataStore.getInitializedBucketForId(null, bucketId);
+            setLocalBucketEntryIterator(r, bucketId);
+            return null;
+          } else {
+            final TXStateInterface tx = getTXState();
+            final FetchEntriesResponse r;
+            r = FetchEntriesMessage.send(nod,
+                dataStore.getPartitionedRegion(), tx, bucketId);
+            entries = r.waitForEntriesSet();
+          }
+          if (entries != null) {
+            return entries;
+          }
+        } catch (ForceReattemptException prce) {
+          if (logger.fineEnabled()) {
+            logger.fine("getBucketEntries: attempt:" + (count + 1), logger.finerEnabled() ? prce : null);
+          }
+          checkReadiness();
+          if (snoozer == null) {
+            snoozer = new RetryTimeKeeper(retryTimeout);
+          }
+          InternalDistributedMember oldNode = nod;
+          nod = getNodeForBucketRead(buck.intValue());
+          if (nod != null && nod.equals(oldNode)) {
+            if (snoozer.overMaximum()) {
+              checkReadiness();
+              throw new TimeoutException(LocalizedStrings.PartitionedRegion_ATTEMPT_TO_ACQUIRE_PRIMARY_NODE_FOR_READ_ON_BUCKET_0_TIMED_OUT_IN_1_MS.toLocalizedString(new Object[]{getBucketName(buck.intValue()), Integer.valueOf(snoozer.getRetryTime())}));
+            }
+            snoozer.waitToRetryNode();
+          }
+
+        }
+        count++;
+      }
+      if (logger.fineEnabled()) {
+        logger.fine("getBucketEntries: no entries found returning empty set");
+      }
+      return Collections.EMPTY_SET;
     }
 
     private void setCurrRegionAndBucketId(RegionEntry val) {
@@ -11432,9 +11541,9 @@ public class PartitionedRegion extends LocalRegion implements
 
   public Iterator<?> getAppropriateLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
-      LocalRegion currRegion) {
+      LocalRegion currRegion, boolean fetchRemote) {
     if (bucketSet != null && !bucketSet.isEmpty()) {
-      return new PRLocalScanIterator(bucketSet, null, forUpdate, includeValues);
+      return new PRLocalScanIterator(bucketSet, null, forUpdate, includeValues, fetchRemote);
     }
     return new PRLocalScanIterator(primaryOnly, null, forUpdate, includeValues);
   }

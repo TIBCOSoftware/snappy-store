@@ -1,33 +1,22 @@
 /*
- * Copyright (c) 2010-2015 Pivotal Software, Inc. All rights reserved.
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you
- * may not use this file except in compliance with the License. You
- * may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied. See the License for the specific language governing
- * permissions and limitations under the License. See accompanying
- * LICENSE file.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-package com.gemstone.gemfire.internal.cache.partitioned;
+package com.gemstone.gemfire.internal.cache.partitioned.rebalance;
 
-import java.net.InetAddress;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.Map.Entry;
 
 import com.gemstone.gemfire.cache.partition.PartitionMemberInfo;
@@ -36,10 +25,14 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.cache.FixedPartitionAttributesImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.cache.partitioned.InternalPartitionDetails;
+import com.gemstone.gemfire.internal.cache.partitioned.OfflineMemberDetails;
+import com.gemstone.gemfire.internal.cache.partitioned.PRLoad;
+import com.gemstone.gemfire.internal.cache.partitioned.PartitionMemberInfoImpl;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.util.LogService;
 
 /**
  * A model of the load on all of the members for a partitioned region. This
@@ -72,6 +65,8 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
  */
 @SuppressWarnings("synthetic-access")
 public class PartitionedRegionLoadModel {
+  private static LogWriterI18n logger = LogService.logger();
+
   /**
    * A comparator that is used to sort buckets in the order
    * that we should satisfy redundancy - most needy buckets first.
@@ -102,7 +97,7 @@ public class PartitionedRegionLoadModel {
    * they are the primary for a bucket, we will set the primary to invalid, so it won't
    * be a candidate for rebalancing.
    */
-  private final MemberRollup INVALID_MEMBER = new MemberRollup(null, false);
+  final MemberRollup INVALID_MEMBER = new MemberRollup(null, false, false);
   
   private final BucketRollup[] buckets;
   
@@ -127,10 +122,6 @@ public class PartitionedRegionLoadModel {
   private final Collection<Move> attemptedBucketRemoves = new HashSet<Move>();
   
   private final BucketOperator operator;
-  private boolean removeOverRedundancy;
-  private boolean satisfyRedundancy;
-  private boolean moveBuckets;
-  private boolean movePrimaries;
   private final int requiredRedundancy;
 
   /**The average primary load on a member */
@@ -150,10 +141,6 @@ public class PartitionedRegionLoadModel {
 
   private final AddressComparor addressComparor;
 
-  private final LogWriterI18n logger;
-
-  private final boolean enforceLocalMaxMemory;
-
   private final Set<InternalDistributedMember> criticalMembers;
 
   private final PartitionedRegion partitionedRegion;
@@ -163,28 +150,14 @@ public class PartitionedRegionLoadModel {
    * Create a new model
    * @param operator the operator which performs the actual creates/moves for buckets
    * @param redundancyLevel The expected redundancy level for the region
-   * @param satisfyRedundancy true to satisfy redundancy
-   * @param moveBuckets true to move buckets
-   * @param movePrimaries true to move primaries
-   * @param enforceLocalMaxMemory 
-   * @param criticalMembers 
    */
   public PartitionedRegionLoadModel(BucketOperator operator,
-      int redundancyLevel, boolean removeOverRedundancy, 
-      boolean satisfyRedundancy, boolean moveBuckets,
-      boolean movePrimaries, int numBuckets, AddressComparor addressComparor,
-      LogWriterI18n logger, boolean enforceLocalMaxMemory,
+      int redundancyLevel, int numBuckets, AddressComparor addressComparor,
       Set<InternalDistributedMember> criticalMembers, PartitionedRegion region) {
     this.operator = operator;
-    this.removeOverRedundancy = removeOverRedundancy;
     this.requiredRedundancy = redundancyLevel;
-    this.satisfyRedundancy = satisfyRedundancy;
-    this.moveBuckets = moveBuckets;
-    this.movePrimaries = movePrimaries;
     this.buckets = new BucketRollup[numBuckets];
     this.addressComparor = addressComparor;
-    this.logger = logger;
-    this.enforceLocalMaxMemory = enforceLocalMaxMemory;
     this.criticalMembers = criticalMembers;
     this.partitionedRegion = region;
   }
@@ -199,7 +172,9 @@ public class PartitionedRegionLoadModel {
    * @param offlineDetails 
    */
   public void addRegion(String region,
-      Collection<? extends InternalPartitionDetails> memberDetailSet, OfflineMemberDetails offlineDetails) {
+      Collection<? extends InternalPartitionDetails> memberDetailSet, 
+      OfflineMemberDetails offlineDetails,
+      boolean enforceLocalMaxMemory) {
     this.allColocatedRegions.add(region);
     //build up a list of members and an array of buckets for this
     //region. Each bucket has a reference to all of the members
@@ -212,7 +187,7 @@ public class PartitionedRegionLoadModel {
 
       boolean isCritical = criticalMembers.contains(memberId);
       Member member = new Member(memberId,
-          memberDetails.getPRLoad().getWeight(), memberDetails.getConfiguredMaxMemory(), isCritical);
+          memberDetails.getPRLoad().getWeight(), memberDetails.getConfiguredMaxMemory(), isCritical, enforceLocalMaxMemory);
       regionMember.put(memberId, member);
 
       PRLoad load = memberDetails.getPRLoad();
@@ -243,7 +218,7 @@ public class PartitionedRegionLoadModel {
       MemberRollup memberSum = this.members.get(memberId);
       boolean isCritical = criticalMembers.contains(memberId);
       if(memberSum == null) {
-        memberSum = new MemberRollup(memberId, isCritical);
+        memberSum = new MemberRollup(memberId, isCritical, enforceLocalMaxMemory);
         this.members.put(memberId, memberSum);
       } 
       
@@ -258,7 +233,7 @@ public class PartitionedRegionLoadModel {
         // [sumedh] remove from buckets array too to be consistent since
         // this method will be invoked repeatedly for all colocated regions,
         // and then we may miss some colocated regions for a bucket leading
-        // to all kinds of issues later (e.g. see GFXD test for #41472 that
+        // to all kinds of issues later (e.g. see SQLF test for #41472 that
         //   shows some problems including NPEs, hangs etc.)
         this.buckets[i] = null;
         continue;
@@ -284,13 +259,10 @@ public class PartitionedRegionLoadModel {
           if(!(this.buckets[i].getPrimary() == INVALID_MEMBER)){
             if (!this.buckets[i].getPrimary().getDistributedMember().equals(
                 regionBuckets[i].getPrimary().getDistributedMember())) {
-              this.logger
-                  .fine("PartitionedRegionLoadModel - Setting bucket "
-                      + this.buckets[i]
-                      + " to INVALID because it is the primary on two members. "
-                      + "This could just be a race in the collocation of data. member1= "
-                      + this.buckets[i].getPrimary() + " member2="
-                      + regionBuckets[i].getPrimary());
+              if (logger.fineEnabled()) {
+                logger.fine("PartitionedRegionLoadModel - Setting bucket " + this.buckets[i] + " to INVALID because it is the primary on two members.This could just be a race in the collocation of data. member1= "
+                    + this.buckets[i].getPrimary() + " member2= " + regionBuckets[i].getPrimary());
+              }
               this.buckets[i].setPrimary(INVALID_MEMBER, 0);
             }
           }
@@ -308,111 +280,72 @@ public class PartitionedRegionLoadModel {
       MemberRollup memberRollup = itr.next().getValue();
       if(!memberRollup.getColocatedMembers().keySet().equals(this.allColocatedRegions)) {
         itr.remove();
-        if(this.logger.fineEnabled()) {
-          this.logger
-          .fine("PartitionedRegionLoadModel - removing member "
-              + memberRollup
-              + " from the consideration because it doesn't have all of the colocated regions. Expected="
-              + allColocatedRegions + ", was="
-              + memberRollup.getColocatedMembers());
+        if(logger.fineEnabled()) {
+          logger.fine("PartitionedRegionLoadModel - removing member " + memberRollup + " from the consideration because it doesn't have all of the colocated regions. Expected=" +
+              allColocatedRegions + ", was=" + memberRollup.getColocatedMembers());
         }
         //This state should never happen
-        if(!memberRollup.getBuckets().isEmpty() && this.logger.warningEnabled()) {
-          this.logger
-              .warning(LocalizedStrings.PartitionedRegionLoadModel_INCOMPLETE_COLOCATION,
-									new Object[] {
-                  memberRollup,
-                  this.allColocatedRegions,
-                  memberRollup.getColocatedMembers()
-                  .keySet(),
-                  memberRollup.getBuckets() });
+        if(!memberRollup.getBuckets().isEmpty()) {
+          logger.warning(LocalizedStrings.PartitionedRegionLoadModel_INCOMPLETE_COLOCATION,
+              new Object[]{memberRollup, this.allColocatedRegions, memberRollup.getColocatedMembers().keySet(), memberRollup.getBuckets()});
         }
         for(Bucket bucket: new HashSet<Bucket>(memberRollup.getBuckets())) {
           bucket.removeMember(memberRollup);
         }
       }
     }
-    
-    resetAverages();
-  }
-
-
-  /**
-   * Perform one step of the rebalancing process. This step may be to create a
-   * redundant bucket, move a bucket, or move a primary.
-   * 
-   * @return true we were able to make progress or at least attempt an operation, 
-   * false if there is no more rebalancing work to be done.
-   */
-  public boolean nextStep() {
-    boolean attemptedOperation = false;
-    if(this.removeOverRedundancy) {
-      attemptedOperation = removeOverRedundancy();
-    }
-    if(!attemptedOperation && this.satisfyRedundancy) {
-      attemptedOperation = satisfyRedundancy();
-    }
-    if(!attemptedOperation && this.moveBuckets) {
-      attemptedOperation = moveBuckets();
-    }
-    if(!attemptedOperation && this.movePrimaries) {
-      attemptedOperation = movePrimaries();
-    }
-      
-    return attemptedOperation;
-  }
-
-  public void createBucketsAndMakePrimaries() {
-    if (this.satisfyRedundancy) {
-      createFPRBucketsForThisNode();
-    }
-    
-    if (this.movePrimaries) {
-      makeFPRPrimaryForThisNode();
-    }
   }
   
-  public void createFPRBucketsForThisNode() {
-    if(this.lowRedundancyBuckets == null) {
-      initLowRedundancyBuckets();
-    }
-    
-    final Map<BucketRollup,Move> moves = new HashMap<BucketRollup,Move>();
-    
-    for (BucketRollup bucket : this.lowRedundancyBuckets) {
-      Move move = findBestTargetForFPR(bucket, true);
-      
-      if (move == null
-          && !addressComparor.enforceUniqueZones()) {
-        move = findBestTargetForFPR(bucket, false);
-      }
-      
-      if (move != null) {
-        moves.put(bucket, move);
-      } else {
-        if (this.logger.fineEnabled()) {
-          this.logger.fine("Skipping low redundancy bucket " + bucket
-              + " because no member will accept it");
-        }
-      }
-    }
-    // TODO: This can be done in a thread pool to speed things up as all buckets 
-    // are different, there will not be any contention for lock
-    for (Map.Entry<BucketRollup, Move> bucketMove : moves.entrySet()) {
-      BucketRollup bucket = bucketMove.getKey();
-      Move move = bucketMove.getValue();
-      Map<String, Long> colocatedRegionSizes = getColocatedRegionSizes(bucket);
+  public void initialize() {
+    resetAverages();
+    initOverRedundancyBuckets();
+    initLowRedundancyBuckets();
+  }
+  
+  public SortedSet<BucketRollup> getLowRedundancyBuckets() {
+    return lowRedundancyBuckets;
+  }
+  
+  public SortedSet<BucketRollup> getOverRedundancyBuckets() {
+    return overRedundancyBuckets;
+  }
 
-      Member targetMember = move.getTarget();
-      
-      if (!this.operator.createRedundantBucket(targetMember.getMemberId(),
-          bucket.getId(), colocatedRegionSizes)) {
-        this.attemptedBucketCreations.add(move);
-      } else {
-        this.lowRedundancyBuckets.remove(bucket);
-        bucket.addMember(targetMember);
-      }
-    }
+  public void setOverRedundancyBuckets(
+      SortedSet<BucketRollup> overRedundancyBuckets) {
+    this.overRedundancyBuckets = overRedundancyBuckets;
+  }
+
+  public boolean enforceUniqueZones() {
+    return addressComparor.enforceUniqueZones();
+  }
+  
+  public void ignoreLowRedundancyBucket(BucketRollup first) {
+    this.lowRedundancyBuckets.remove(first);
+  }
+  
+  public void ignoreOverRedundancyBucket(BucketRollup first) {
+    this.overRedundancyBuckets.remove(first);
+  }
+  
+  public MemberRollup getMember(InternalDistributedMember target) {
+    return members.get(target);
+  }
+  
+  public BucketRollup[] getBuckets() {
+    return buckets;
+  }
+  
+  public String getName() {
+    return getPartitionedRegion().getFullPath();
+  }
+  
+  public PartitionedRegion getPartitionedRegion() {
+    //TODO - this model really should not have
+    //a reference to the partitioned region object.
+    //The fixed PR code currently depends on this
+    //partitioned region object and needs
+    //refactoring.
+    return partitionedRegion;
   }
 
   private Map<String, Long> getColocatedRegionSizes(BucketRollup bucket) {
@@ -425,98 +358,69 @@ public class PartitionedRegionLoadModel {
     }
     return colocatedRegionSizes;
   }
-  /**
-   * Try to satisfy redundancy for a single bucket.
-   * @return true if we actually created a bucket somewhere.
-   */
-  private boolean satisfyRedundancy() {
-    if(this.lowRedundancyBuckets == null) {
-      initLowRedundancyBuckets();
-    }
-    Move bestMove = null;
-    BucketRollup first = null;
-    while(bestMove == null) {
-      if(this.lowRedundancyBuckets.isEmpty()) {
-        this.satisfyRedundancy = false;
-        return false;
-      } 
 
-      first = this.lowRedundancyBuckets.first();
-      bestMove = findBestTarget(first, true);
-      if (bestMove == null
-          && !addressComparor.enforceUniqueZones()) {
-        bestMove = findBestTarget(first, false);
-      }
-      if(bestMove == null) {
-        if(this.logger.fineEnabled()) {
-          this.logger.fine("Skipping low redundancy bucket " + first + " because no member will accept it");
-        }
-        this.lowRedundancyBuckets.remove(first);
-      }
-    }
+  /**
+   * Trigger the creation of a redundant bucket, potentially asynchronously.
+   * 
+   * This method will find the best node to create a redundant bucket and 
+   * invoke the bucket operator to create a bucket on that node. Because the bucket
+   * operator is asynchronous, the bucket may not be created immediately, but
+   * the model will be updated regardless. Invoke {@link #waitForOperations()}
+   * to wait for those operations to actually complete
+   */
+  public void createRedundantBucket(final BucketRollup bucket,
+      final Member targetMember) {
+    Map<String, Long> colocatedRegionSizes = getColocatedRegionSizes(bucket);
+    final Move move = new Move(null, targetMember, bucket);
     
-    Map<String, Long> colocatedRegionSizes = getColocatedRegionSizes(first);
-    
-    Member targetMember = bestMove.getTarget();
-    if(!this.operator.createRedundantBucket(targetMember.getMemberId(), first.getId(), colocatedRegionSizes)) {
-      this.attemptedBucketCreations.add(bestMove);
-    } else {
-      this.lowRedundancyBuckets.remove(first);
-      first.addMember(targetMember);
+      this.lowRedundancyBuckets.remove(bucket);
+      bucket.addMember(targetMember);
       //put the bucket back into the list if we still need to satisfy redundancy for
       //this bucket
-      if(first.getRedundancy() < this.requiredRedundancy) {
-        this.lowRedundancyBuckets.add(first);
+      if(bucket.getRedundancy() < this.requiredRedundancy) {
+        this.lowRedundancyBuckets.add(bucket);
       }
       resetAverages();
-    }
     
-    return true;
+    this.operator.createRedundantBucket(targetMember.getMemberId(), bucket.getId(), colocatedRegionSizes, new BucketOperator.Completion() {
+      @Override
+      public void onSuccess() {
+    }
+
+      @Override
+      public void onFailure() {
+        //If the bucket creation failed, we need to undo the changes
+        //we made to the model
+        attemptedBucketCreations.add(move);
+        bucket.removeMember(targetMember);
+        if(bucket.getRedundancy() < requiredRedundancy) {
+          lowRedundancyBuckets.add(bucket);
+        }
+        resetAverages();
+      }
+    });
   }
   
-  /**
-   * Remove copies of buckets that have more
-   * than the expected number of redundant copies.
-   */
-  private boolean removeOverRedundancy() {
-    if(this.overRedundancyBuckets == null) {
-      initOverRedundancyBuckets();
-    }
-    Move bestMove = null;
-    BucketRollup first = null;
-    while(bestMove == null) {
-      if(this.overRedundancyBuckets.isEmpty()) {
-        this.removeOverRedundancy = false;
-        return false;
-      } 
+  
 
-      first = this.overRedundancyBuckets.first();
-      bestMove = findBestRemove(first);
-      if(bestMove == null) {
-        if(this.logger.fineEnabled()) {
-          this.logger.fine("Skipping overredundancy bucket " + first + " because couldn't find a member to remove from?");
-        }
-        this.overRedundancyBuckets.remove(first);
-      }
-    }
+  protected void remoteOverRedundancyBucket(BucketRollup bucket,
+      Member targetMember) {
     
-    Map<String, Long> colocatedRegionSizes = getColocatedRegionSizes(first);
+    Move bestMove = new Move(null, targetMember, bucket);
+    Map<String, Long> colocatedRegionSizes = getColocatedRegionSizes(bucket);
     
-    Member targetMember = bestMove.getTarget();
-    if(!this.operator.removeBucket(targetMember.getMemberId(), first.getId(), colocatedRegionSizes)) {
+    if(!this.operator.removeBucket(targetMember.getMemberId(), bucket.getId(), colocatedRegionSizes)) {
       this.attemptedBucketRemoves.add(bestMove);
     } else {
-      this.overRedundancyBuckets.remove(first);
-      first.removeMember(targetMember);
+      this.overRedundancyBuckets.remove(bucket);
+      bucket.removeMember(targetMember);
       //put the bucket back into the list if we still need to satisfy redundancy for
       //this bucket
-      if(first.getOnlineRedundancy() > this.requiredRedundancy) {
-        this.overRedundancyBuckets.add(first);
+      if(bucket.getOnlineRedundancy() > this.requiredRedundancy) {
+        this.overRedundancyBuckets.add(bucket);
       }
       resetAverages();
     }
-    
-    return true;
   }
   
   private void initLowRedundancyBuckets() {
@@ -546,12 +450,12 @@ public class PartitionedRegionLoadModel {
    *          true if we should only consider members that do not have the same
    *          IP Address as a member that already hosts the bucket
    */
-  private Move findBestTarget(Bucket bucket, boolean checkIPAddress) {
+  public Move findBestTarget(Bucket bucket, boolean checkIPAddress) {
     float leastCost = Float.MAX_VALUE;
     Move bestMove = null;
     
     for (Member member : this.members.values()) {
-      if (member.willAcceptBucket(bucket, null, checkIPAddress)) {
+      if (member.willAcceptBucket(bucket, null, checkIPAddress).willAccept()) {
         float cost = (member.getTotalLoad() + bucket.getLoad())
             / member.getWeight();
         if (cost < leastCost) {
@@ -572,7 +476,7 @@ public class PartitionedRegionLoadModel {
    * @param bucket
    *          the bucket we want to create
    */
-  private Move findBestRemove(Bucket bucket) {
+  public Move findBestRemove(Bucket bucket) {
     float mostLoaded = Float.MIN_VALUE;
     Move bestMove = null;
     
@@ -590,7 +494,7 @@ public class PartitionedRegionLoadModel {
     return bestMove;
   }
 
-  private Move findBestTargetForFPR(Bucket bucket, boolean checkIPAddress) {
+  public Move findBestTargetForFPR(Bucket bucket, boolean checkIPAddress) {
     Move noMove = null;
     InternalDistributedMember targetMemberID = null;
     Member targetMember = null;
@@ -604,7 +508,7 @@ public class PartitionedRegionLoadModel {
               .getDistributionManagerId();
           if (this.members.containsKey(targetMemberID)) {
             targetMember = this.members.get(targetMemberID);
-            if (targetMember.willAcceptBucket(bucket, null, checkIPAddress)) {
+            if (targetMember.willAcceptBucket(bucket, null, checkIPAddress).willAccept()) {
               // We should have just one move for creating
               // all the buckets for a FPR on this node.
               return new Move(null, targetMember, bucket);
@@ -617,11 +521,26 @@ public class PartitionedRegionLoadModel {
     return noMove;
   }
 
-  /**
-   * Move a single primary from one member to another
-   * @return if we are able to move a primary.
-   */
-  private boolean movePrimaries() {
+  protected boolean movePrimary(Move bestMove) {
+    Member bestSource = bestMove.getSource();
+    Member bestTarget = bestMove.getTarget();
+    Bucket bestBucket = bestMove.getBucket();
+    boolean successfulMove = this.operator.movePrimary(bestSource.getDistributedMember(), bestTarget
+        .getDistributedMember(), bestBucket.getId());
+
+    if(successfulMove) {
+      bestBucket.setPrimary(bestTarget, bestBucket.getPrimaryLoad());
+    }
+
+    boolean entryAdded  = this.attemptedPrimaryMoves.add(bestMove);
+    Assert
+    .assertTrue(entryAdded,
+        "PartitionedRegionLoadModel.movePrimarys - excluded set is not growing, so we probably would have an infinite loop here");
+    
+    return successfulMove;
+  }
+
+  public Move findBestPrimaryMove() {
     Move bestMove= null;
     double bestImprovement = 0;
     GemFireCacheImpl cache = null;
@@ -632,7 +551,7 @@ public class PartitionedRegionLoadModel {
             continue;
           }
           // If node is not fully initialized yet, then skip this node
-          // (GemFireXD DDL replay in progress).
+          // (SQLFabric DDL replay in progress).
           if (cache == null) {
             cache = GemFireCacheImpl.getInstance();
           }
@@ -653,29 +572,7 @@ public class PartitionedRegionLoadModel {
         }
       }
     }
-
-    if (bestMove == null) {
-      this.movePrimaries = false;
-      this.attemptedPrimaryMoves.clear();
-      return false;
-    }
-
-    Member bestSource = bestMove.getSource();
-    Member bestTarget = bestMove.getTarget();
-    Bucket bestBucket = bestMove.getBucket();
-    boolean successfulMove = this.operator.movePrimary(bestSource.getDistributedMember(), bestTarget
-        .getDistributedMember(), bestBucket.getId());
-
-    if(successfulMove) {
-      bestBucket.setPrimary(bestTarget, bestBucket.getPrimaryLoad());
-    }
-
-    boolean entryAdded  = this.attemptedPrimaryMoves.add(bestMove);
-    Assert
-    .assertTrue(entryAdded,
-        "PartitionedRegionLoadModel.movePrimarys - excluded set is not growing, so we probably would have an infinite loop here");
-    
-    return true;
+    return bestMove;
   }
 
   /**
@@ -700,10 +597,8 @@ public class PartitionedRegionLoadModel {
 
               InternalDistributedMember srcDM = (source == null || source == INVALID_MEMBER) ? target
                   .getDistributedMember() : source.getDistributedMember();
-              if (this.logger.fineEnabled()) {
-                logger.fine("PRLM#movePrimariesForFPR: For Bucket#"
-                    + bucket.getId() + " ,Moving primary from source "
-                    + bucket.primary + " to target " + target);
+              if (logger.fineEnabled()) {
+                logger.fine("PRLM#movePrimariesForFPR: For Bucket#" + bucket.getId() +", moving primary from source "+bucket.primary+" to target " + target);
               }
               boolean successfulMove = this.operator.movePrimary(srcDM,
                   target.getDistributedMember(), bucket.getId());
@@ -712,12 +607,9 @@ public class PartitionedRegionLoadModel {
               Assert.assertTrue(successfulMove,
                   " Fixed partitioned region not able to move the primary!");
               if (successfulMove) {
-                if (this.logger.fineEnabled()) {
-                  logger.fine("PRLM#movePrimariesForFPR: For Bucket#"
-                      + bucket.getId() + " ,Moved primary from source : "
-                      + source + " to target " + target);
+                if (logger.fineEnabled()) {
+                  logger.fine("PRLM#movePrimariesForFPR: For Bucket#" + bucket.getId() +", moving primary from source "+bucket.primary+" to target " + target);
                 }
-
                 bucket.setPrimary(target, bucket.getPrimaryLoad());
               } 
             }
@@ -733,7 +625,7 @@ public class PartitionedRegionLoadModel {
   private float getPrimaryAverage() {
     if(this.primaryAverage == -1) {
       float totalWeight = 0;
-      int totalPrimaryCount = 0;
+      float totalPrimaryCount = 0;
       for(Member member : this.members.values()) {
         totalPrimaryCount += member.getPrimaryLoad();
         totalWeight += member.getWeight();
@@ -751,7 +643,7 @@ public class PartitionedRegionLoadModel {
   private float getAverageLoad() {
     if(this.averageLoad == -1) {
       float totalWeight = 0;
-      int totalLoad = 0;
+      float totalLoad = 0;
       for(Member member : this.members.values()) {
         totalLoad += member.getTotalLoad();
         totalWeight += member.getWeight();
@@ -770,7 +662,7 @@ public class PartitionedRegionLoadModel {
    * largest weight.
    */
   private double getMinPrimaryImprovement() {
-    if(Math.round(this.minPrimaryImprovement) == -1L) {
+    if((this.minPrimaryImprovement + 1.0) < .0000001) { // i.e. == -1
       float largestWeight = 0;
       float smallestBucket = 0;
       for(Member member : this.members.values()) {
@@ -799,7 +691,7 @@ public class PartitionedRegionLoadModel {
    * largest weight.
    */
   private double getMinImprovement() {
-    if(Math.round(this.minImprovement) == -1) {
+    if((this.minImprovement + 1.0) < .0000001) { // i.e. == -1
       float largestWeight = 0;
       float smallestBucket = 0;
       for(Member member : this.members.values()) {
@@ -865,11 +757,7 @@ public class PartitionedRegionLoadModel {
     return deviation * deviation;
   }
 
-  /**
-   * Move a single bucket from one member to another.
-   * @return true if we could move the bucket
-   */
-  private boolean moveBuckets() {
+  public Move findBestBucketMove() {
     Move bestMove= null;
     double bestImprovement = 0;
     for(Member source: this.members.values()) {
@@ -878,7 +766,7 @@ public class PartitionedRegionLoadModel {
           if(bucket.getMembersHosting().contains(target)) {
             continue;
           }
-          if(!target.willAcceptBucket(bucket, source, true)) {
+          if(!target.willAcceptBucket(bucket, source, true).willAccept()) {
             continue;
           }
           double improvement = improvement(source.getTotalLoad(), source
@@ -894,12 +782,10 @@ public class PartitionedRegionLoadModel {
         }
       }
     }
+    return bestMove;
+  }
 
-    if (bestMove == null) {
-      moveBuckets = false;
-      return false;
-    }
-
+  protected boolean moveBucket(Move bestMove) {
     Member bestSource = bestMove.getSource();
     Member bestTarget = bestMove.getTarget();
     BucketRollup bestBucket = (BucketRollup) bestMove.getBucket();
@@ -922,7 +808,7 @@ public class PartitionedRegionLoadModel {
     .assertTrue(entryAdded,
         "PartitionedRegionLoadModel.moveBuckets - excluded set is not growing, so we probably would have an infinite loop here");
     
-    return true;
+    return successfulMove;
   }
 
   /**
@@ -970,6 +856,14 @@ public class PartitionedRegionLoadModel {
     }
     
     return variance;
+  }
+  
+  /**
+   * Wait for the bucket operator to complete
+   * any pending asynchronous operations.
+   */
+  public void waitForOperations() {
+    operator.waitForOperations();
   }
   
   @Override
@@ -1032,8 +926,8 @@ public class PartitionedRegionLoadModel {
     private final Map<String, Member> colocatedMembers = new HashMap<String, Member>();
     private final boolean invalid = false;
 
-    public MemberRollup(InternalDistributedMember memberId, boolean isCritical) {
-      super(memberId, isCritical);
+    public MemberRollup(InternalDistributedMember memberId, boolean isCritical, boolean enforceLocalMaxMemory) {
+      super(memberId, isCritical, enforceLocalMaxMemory);
     }
     
     /**
@@ -1137,8 +1031,9 @@ public class PartitionedRegionLoadModel {
     }
 
     @Override
-    public boolean willAcceptBucket(Bucket bucket, Member source, boolean checkIPAddress) {
-      if(super.willAcceptBucket(bucket, source, checkIPAddress)) {
+    public RefusalReason willAcceptBucket(Bucket bucket, Member source, boolean checkIPAddress) {
+      RefusalReason reason = super.willAcceptBucket(bucket, source, checkIPAddress);
+      if(reason.willAccept()) {
         BucketRollup bucketRollup = (BucketRollup) bucket;
         MemberRollup sourceRollup = (MemberRollup) source;
         for(Map.Entry<String, Member> entry: getColocatedMembers().entrySet()) {
@@ -1148,14 +1043,15 @@ public class PartitionedRegionLoadModel {
           Member colocatedSource = sourceRollup == null ? null
               : sourceRollup.getColocatedMembers().get(region);
           if(colocatedBucket != null) {
-            if(!member.willAcceptBucket(colocatedBucket, colocatedSource, checkIPAddress)) {
-              return false;
+            reason = member.willAcceptBucket(colocatedBucket, colocatedSource, checkIPAddress);
+            if(!reason.willAccept()) {
+              return reason;
             }
           }
         }
-        return true;
+        return RefusalReason.NONE;
       }
-      return false;
+      return reason;
     }
 
     Map<String, Member> getColocatedMembers() {
@@ -1171,7 +1067,7 @@ public class PartitionedRegionLoadModel {
    * @author dsmith
    *
    */
-  private class BucketRollup extends Bucket {
+  protected class BucketRollup extends Bucket {
     private final Map<String, Bucket> colocatedBuckets = new HashMap<String, Bucket>();
 
     public BucketRollup(int id) {
@@ -1265,7 +1161,7 @@ public class PartitionedRegionLoadModel {
   /**
    * Represents a single member of the distributed system.
    */
-  private class Member implements Comparable<Member> {
+  protected class Member implements Comparable<Member> {
     private final InternalDistributedMember memberId;
     protected float weight;
     protected float totalLoad;
@@ -1275,14 +1171,16 @@ public class PartitionedRegionLoadModel {
     private final Set<Bucket> buckets = new TreeSet<Bucket>();
     private final Set<Bucket> primaryBuckets = new TreeSet<Bucket>();
     private final boolean isCritical;
+    private final boolean enforceLocalMaxMemory;
     
-    public Member(InternalDistributedMember memberId, boolean isCritical) {
+    public Member(InternalDistributedMember memberId, boolean isCritical, boolean enforceLocalMaxMemory) {
       this.memberId = memberId;
       this.isCritical = isCritical;
+      this.enforceLocalMaxMemory = enforceLocalMaxMemory;
     }
 
-    public Member(InternalDistributedMember memberId, float weight, long localMaxMemory, boolean isCritical) {
-      this(memberId, isCritical);
+    public Member(InternalDistributedMember memberId, float weight, long localMaxMemory, boolean isCritical, boolean enforceLocalMaxMemory) {
+      this(memberId, isCritical, enforceLocalMaxMemory);
       this.weight = weight;
       this.localMaxMemory = localMaxMemory;
     }
@@ -1294,16 +1192,16 @@ public class PartitionedRegionLoadModel {
      * @param checkZone true if we should not put two copies
      * of a bucket on two nodes with the same IP address.
      */
-    public boolean willAcceptBucket(Bucket bucket, Member sourceMember, boolean checkZone) {
+    public RefusalReason willAcceptBucket(Bucket bucket, Member sourceMember, boolean checkZone) {
       //make sure this member is not already hosting this bucket
       if(getBuckets().contains(bucket)) {
-        return false;
+        return RefusalReason.ALREADY_HOSTING;
       }
-      // If node is not fully initialized yet, then skip this node (GemFireXD
+      // If node is not fully initialized yet, then skip this node (SQLFabric
       // DDL replay in progress).
       final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
       if (cache != null && cache.isUnInitializedMember(getMemberId())) {
-        return false;
+        return RefusalReason.UNITIALIZED_MEMBER;
       }
       //Check the ip address
       if(checkZone) {
@@ -1321,37 +1219,31 @@ public class PartitionedRegionLoadModel {
                 && addressComparor.areSameZone(getMemberId(),
                     hostingMember.getDistributedMember())) {
               if(logger.fineEnabled()) {
-                logger
-                    .fine("Member " + this + " would prefer not to host " + bucket
-                        + " because it is already on another member with the same redundancy zone");
+                logger.fine("Member "+this+" would prefer not to host "+bucket+" because it is already on another member with the same redundancy zone");
               }
-              return false;
+              return RefusalReason.SAME_ZONE;
             }
           }
         }
       }
 
       //check the localMaxMemory
-      if(enforceLocalMaxMemory && this.totalBytes + bucket.getBytes() > this.localMaxMemory) {
+      if(this.enforceLocalMaxMemory && this.totalBytes + bucket.getBytes() > this.localMaxMemory) {
         if(logger.fineEnabled()) {
-          logger
-              .fine("Member " + this + " won't host bucket " + bucket
-                  + " because it doesn't have enough space");
+          logger.fine(this + " won't host bucket "+bucket+" because it doesn't have enough space");
         }
-        return false;
+        return RefusalReason.LOCAL_MAX_MEMORY_FULL;
       }
       
       //check to see if the heap is critical
       if(isCritical) {
         if(logger.fineEnabled()) {
-          logger
-              .fine("Member " + this + " won't host bucket " + bucket
-                  + " because it's heap is critical");
+          logger.fine("Member "+ this +" won't host bucket "+bucket+" because it's heap is critical");
         }
-        return false;
+        return RefusalReason.CRITICAL_HEAP;
       }
       
-      return true;
+      return RefusalReason.NONE;
     }
 
     public boolean addBucket(Bucket bucket) {
@@ -1467,7 +1359,7 @@ public class PartitionedRegionLoadModel {
   /**
    * Represents a single bucket.
    */
-  private class Bucket implements Comparable<Bucket> {
+  protected class Bucket implements Comparable<Bucket> {
     protected long bytes;
     private final int id;
     protected float load;
@@ -1536,7 +1428,7 @@ public class PartitionedRegionLoadModel {
       return this.redundancy;
     }
 
-    private float getLoad() {
+    public float getLoad() {
       return this.load;
     }
 
@@ -1600,7 +1492,7 @@ public class PartitionedRegionLoadModel {
    * @author dsmith
    *
    */
-  private static class Move {
+  protected static class Move {
     private final Member source;
     private final Member target;
     private final Bucket bucket;
@@ -1680,83 +1572,6 @@ public class PartitionedRegionLoadModel {
     
     
   }
-
-  /**
-   * A BucketOperator is used by the PartitionedRegionLoadModel to perform the actual
-   * operations such as moving a bucket or creating a redundant copy.
-   * @author dsmith
-   *
-   */
-  public static interface BucketOperator {
-
-    /**
-     * Create a redundancy copy of a bucket on a given node
-     * @param targetMember the node to create the bucket on
-     * @param bucketId the id of the bucket to create
-     * @param colocatedRegionBytes the size of the bucket in bytes
-     * @return true if a redundant copy of the bucket was created.
-     */
-    boolean createRedundantBucket(InternalDistributedMember targetMember,
-        int bucketId, Map<String, Long> colocatedRegionBytes);
-
-    /**
-     * Remove a bucket from the target member.
-     */
-    boolean removeBucket(InternalDistributedMember memberId, int id,
-        Map<String, Long> colocatedRegionSizes);
-
-    /**
-     * Move a bucket from one member to another
-     * @param sourceMember The member we want to move the bucket off of. 
-     * @param targetMember The member we want to move the bucket too.
-     * @param bucketId the id of the bucket we want to move
-     * @return true if the bucket was moved successfully
-     */
-    boolean moveBucket(InternalDistributedMember sourceMember,
-        InternalDistributedMember targetMember, int bucketId,
-        Map<String, Long> colocatedRegionBytes);
-
-    /**
-     * Move a primary from one node to another. This method will
-     * not be called unless both nodes are hosting the bucket, and the source
-     * node is the primary for the bucket.
-     * @param source The old primary for the bucket
-     * @param target The new primary for the bucket
-     * @param bucketId The id of the bucket to move;
-     * @return true if the primary was successfully moved.
-     */
-    boolean movePrimary(InternalDistributedMember source,
-        InternalDistributedMember target, int bucketId);
-  }
-  
-  /**
-   * A BucketOperator which does nothing. Used for simulations.
-   * @author dsmith
-   *
-   */
-  public static class SimulatedBucketOperator implements BucketOperator {
-
-    public boolean createRedundantBucket(
-        InternalDistributedMember targetMember, int i, Map<String, Long> colocatedRegionBytes) {
-      return true;
-    }
-    
-    public boolean moveBucket(InternalDistributedMember source,
-        InternalDistributedMember target, int id,
-        Map<String, Long> colocatedRegionBytes) {
-      return true;
-    }
-
-    public boolean movePrimary(InternalDistributedMember source,
-        InternalDistributedMember target, int bucketId) {
-      return true;
-    }
-
-    public boolean removeBucket(InternalDistributedMember memberId, int id,
-        Map<String, Long> colocatedRegionSizes) {
-      return true;
-    }
-  }
   
   public static interface AddressComparor {
     
@@ -1767,4 +1582,45 @@ public class PartitionedRegionLoadModel {
    public boolean areSameZone(InternalDistributedMember member1, InternalDistributedMember member2); 
   }
   
+  public static enum RefusalReason {
+    NONE,
+    ALREADY_HOSTING, UNITIALIZED_MEMBER,
+    SAME_ZONE,
+    LOCAL_MAX_MEMORY_FULL,
+    CRITICAL_HEAP;
+    
+    public boolean willAccept() {
+      return this == NONE;
+    }
+    
+    public String formatMessage(Member source, Member target, Bucket bucket) {
+      switch(this) {
+      case NONE:
+        return "No reason, the move should be allowed.";
+      case ALREADY_HOSTING:
+        return "Target member " + target.getMemberId()
+            + " is already hosting bucket " + bucket.getId();
+      case UNITIALIZED_MEMBER:
+        return "Target member " + target.getMemberId()
+            + " is not fully initialized";
+      case SAME_ZONE:
+        return "Target member "
+            + target.getMemberId()
+            + " is in the same redundancy zone as other members hosting bucket "
+            + bucket.getId() + ": " + bucket.getMembersHosting();
+      case LOCAL_MAX_MEMORY_FULL:
+        return "Target member " + target.getMemberId()
+            + " does not have space within it's local max memory for bucket "
+            + bucket.getId() + ". Bucket Size " + bucket.getBytes()
+            + " local max memory: " + target.localMaxMemory + " remaining: "
+            + target.totalBytes;
+      case CRITICAL_HEAP:
+        return "Target member "
+            + target.getMemberId()
+            + " has reached its critical heap percentage, and cannot accept more data"; 
+      default:
+        return this.toString();
+      }
+    }
+  }
 }

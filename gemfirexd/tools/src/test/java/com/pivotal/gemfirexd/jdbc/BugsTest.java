@@ -8484,7 +8484,7 @@ public class BugsTest extends JdbcTestBase {
     int expectedBucketId = PartitionedRegionHelper.getHashKey(pr, Integer
         .valueOf(new UserType(udt).computeHashCode(-1, 0)));
     Iterator<?> iter = pr.getAppropriateLocalEntriesIterator(null, true, false,
-        true, null);
+        true, null, false);
     int numEntries = 19;
     while (iter.hasNext()) {
       RowLocation rl = (RowLocation)iter.next();
