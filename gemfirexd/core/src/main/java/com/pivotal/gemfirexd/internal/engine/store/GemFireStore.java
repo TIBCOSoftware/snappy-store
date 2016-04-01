@@ -2130,9 +2130,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       // Instead do this at the boot time itself
       CallbackProcedures.clearStatics();
       DistributionObserver.clearStatics();
-      if (!forBoot) {
-        FabricDatabase.TEST_INDEX_RECREATE = false;
-      }
       // remove flag to indicate GemFireXD product
       GemFireCacheImpl.setGFXDSystem(false);
       selfMemId = null;

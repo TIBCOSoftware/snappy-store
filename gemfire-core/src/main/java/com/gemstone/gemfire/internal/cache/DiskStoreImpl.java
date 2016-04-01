@@ -2230,10 +2230,10 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     persistentOplogs.recoverRegionsThatAreReady(initialRecovery);
   }
 
-  public void scheduleIndexRecovery(Set<Oplog> allOplogs, boolean recreateIndexes) {
+  void scheduleIndexRecovery(Set<Oplog> allOplogs) {
     // schedule index recovery atmost once
     if (markIndexRecoveryScheduled()) {
-      IndexRecoveryTask task = new IndexRecoveryTask(allOplogs, recreateIndexes);
+      IndexRecoveryTask task = new IndexRecoveryTask(allOplogs);
       executeDiskStoreTask(task);
     }
   }
@@ -4702,12 +4702,9 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
 
     private final Set<Oplog> allOplogs;
 
-    public IndexRecoveryTask(Set<Oplog> allOplogs, boolean recreateIndexFile) {
+    public IndexRecoveryTask(Set<Oplog> allOplogs) {
       this.allOplogs = allOplogs;
-      this.recreateIndexFile = recreateIndexFile;
     }
-
-    private final boolean recreateIndexFile;
 
     @Override
     public void run() {
@@ -4751,7 +4748,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
             // recover for indexes if there was no krf (hence value
             // recovery already done inline)
             // fallback to full recovery if failed to recover from *irf
-            File indexFile = oplog.getIndexFileIfValid(this.recreateIndexFile);
+            File indexFile = oplog.getIndexFileIfValid();
             boolean hasKrf = !oplog.needsKrf();
             if (!hasKrf || !newIndexes.isEmpty() || indexFile == null) {
               // for missing krf case, the irf will be created in createKrf
@@ -4814,16 +4811,16 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           SystemFailure.checkFailure();
           indexRecoveryFailure.compareAndSet(null, err);
         } finally {
-//          for (Oplog oplog : this.allOplogs) {
-//            oplog.clearInitRecoveryMap();
-//          }
+          for (Oplog oplog : this.allOplogs) {
+            oplog.clearInitRecoveryMap();
+          }
           markIndexRecoveryDone();
         }
       }
       else {
-//        for (Oplog oplog : this.allOplogs) {
-//          oplog.clearInitRecoveryMap();
-//        }
+        for (Oplog oplog : this.allOplogs) {
+          oplog.clearInitRecoveryMap();
+        }
         markIndexRecoveryDone();
       }
     }
@@ -5171,12 +5168,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
   }
 
-  public void resetIndexRecoveryState() {
-    synchronized (this.indexRecoveryState) {
-      this.indexRecoveryState[0] = INDEXRECOVERY_UNINIT;
-    }
-  }
-
   public void markIndexRecoveryDone() {
     synchronized (this.indexRecoveryState) {
       markIndexRecovery(INDEXRECOVERY_DONE);
@@ -5275,13 +5266,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
     else {
       resetAsyncQueueCapacity();
-    }
-  }
-
-  public void clearRecoveryMapOfAllOplogs() {
-    PersistentOplogSet oplogSet = getPersistentOplogSet(null);
-    for (Oplog oplog : oplogSet.getAllOplogs()) {
-      oplog.clearInitRecoveryMap();
     }
   }
 }
