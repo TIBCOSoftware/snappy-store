@@ -391,13 +391,13 @@ public final class FabricDatabase implements ModuleControl,
     disableStatementOptimization = Boolean.parseBoolean(PropertyUtil
         .getSystemProperty(GfxdConstants.GFXD_DISABLE_STATEMENT_MATCHING));
 
-    // populate and initialize the DDL queue
-    if (this.memStore.restrictedDDLStmtQueue()) {
-      this.memStore.getDDLQueueNoThrow().initializeQueue(this.dd);
-    }
-    else {
-      this.memStore.getDDLStmtQueue().initializeQueue(this.dd);
-    }
+//    // populate and initialize the DDL queue
+//    if (this.memStore.restrictedDDLStmtQueue()) {
+//      this.memStore.getDDLQueueNoThrow().initializeQueue(this.dd);
+//    }
+//    else {
+//      this.memStore.getDDLStmtQueue().initializeQueue(this.dd);
+//    }
 
     active = true;
 
@@ -456,12 +456,26 @@ public final class FabricDatabase implements ModuleControl,
       try {
         // Acquire a read lock on data dictionary so that no new ddls can start
         // executing until this node has finished ddl replay
-        ddReadLockAcquired = this.dd.lockForReadingNoThrow(
-            tc, Long.MAX_VALUE / 2);
+        int cnt = 0;
+        while( !(ddReadLockAcquired = this.dd.lockForReadingNoThrow(
+            null, Long.MAX_VALUE / 2))) {
+          if(cnt >= 10) {
+            throw new IllegalStateException("KN: failed to acquire dd read lock");
+          }
+          Thread.sleep(5000);
+        }
+        logger.info("KN: acquired dd read lock during post create");
+        // populate and initialize the DDL queue
+        if (this.memStore.restrictedDDLStmtQueue()) {
+          this.memStore.getDDLQueueNoThrow().initializeQueue(this.dd);
+        }
+        else {
+          this.memStore.getDDLStmtQueue().initializeQueue(this.dd);
+        }
         postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
       } finally {
         if (ddReadLockAcquired) {
-          this.dd.unlockAfterReading(tc);
+          this.dd.unlockAfterReading(null);
         }
       }
 
