@@ -160,101 +160,103 @@ public final class GfxdDDLMessage extends GfxdMessage implements
           " from sender " + getSender() + " while ddl replay is still in progress");
     }
     // Commenting ou the below code because with the simplified ddl replay logic
-    // during restrat we are taking dd read lock so on the fly ddl won't even reach here.
-//    if (isOKToSkip(ddlId)) {
-//      boolean skipDDL = true;
-//      // check if this is a conflatable then in that case try conflation and if
-//      // not possible due to execution in progress, then wait for DDL replay to
-//      // be complete
-//      final boolean conflate = ddl.shouldBeConflated();
-//      if (conflate || ddl.shouldDelayRegionInitialization()) {
-//        // try to conflate items from queue and wait for any executing conflated
-//        // entries; if any of the entries to be conflated has been executed and
-//        // this DDL has not been executed, then wait for entire DDL replay to
-//        // be complete
-//        final GfxdDDLRegionQueue ddlQ = memStore.getDDLQueueNoThrow();
-//        if (ddlQ != null) {
-//          if (conflate) {
-//            ArrayList<QueueValue> conflatedItems = new ArrayList<QueueValue>(5);
-//            memStore.acquireDDLReplayLock(true);
-//            try {
-//              if (ddlQ.conflate(ddl, ddl, false, conflatedItems)) {
-//                for (QueueValue qValue : conflatedItems) {
-//                  final DDLConflatable confVal = (DDLConflatable)qValue
-//                      .getValue();
-//                  if (confVal.isExecuting()) {
-//                    // now we have to wait for entire DDL replay to complete
-//                    // to maintain the order of DDLs
-//                    skipDDL = false;
-//                    break;
-//                  }
-//                }
-//              }
-//              // if we do not need to wait for DDL replay, then conflate the
-//              // queue and add this to processed IDs set
-//              if (skipDDL && ddlQ.conflate(ddl, ddl, true, null)) {
-//                final TLongHashSet processedIds = memStore.getProcessedDDLIDs();
-//                synchronized (processedIds) {
-//                  processedIds.add(ddlId);
-//                }
-//              }
-//            } finally {
-//              memStore.releaseDDLReplayLock(true);
-//            }
-//          }
-//          else {
-//            // for ALTER TABLE we have to always wait for DDL replay to complete
-//            // since we cannot pre-conflate the queue if CREATE is not done like
-//            // for DROP
-//            skipDDL = false;
-//          }
-//          if (!skipDDL) {
-//            // ok, we do need to wait for DDL replay to complete;
-//            // if DDL replay has reached the last iteration and is waiting
-//            // for DD read lock, then skip wait on DD read lock by the node
-//            // replay thread, if any, otherwise it can lead to a deadlock
-//            // (#47873); this DDL message execution means that DD write lock is
-//            // already held by the source node and the purpose of not allowing
-//            // any more DDLs to come in by the DD read lock in replay thread is
-//            // already served
-//            memStore.setInitialDDLReplayWaiting(true);
-//            try {
-//              GemFireXDUtils.waitForNodeInitialization();
-//            } finally {
-//              memStore.setInitialDDLReplayWaiting(false);
-//            }
-//            // its possible that this DDL has been executed in replay
-//            // by this time, so check again
-//            final TLongHashSet processedIds = memStore.getProcessedDDLIDs();
-//            synchronized (processedIds) {
-//              skipDDL = processedIds.contains(ddlId);
-//            }
-//          }
-//        }
-//      }
-//      if (skipDDL) {
-//        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, toString()
-//            + " Skipping execution of " + ddl.getValueToConflate()
-//            + " due to replay in progress");
-//        // Initial replay still in progress so just skip processing this message
-//        // which will be later handled by replay; this breaks the behaviour of
-//        // GfxdDDLMessage somewhat since a successful reply is sent without the
-//        // DDL still having being executed but should have no improper behaviour
-//        // as such; if we block, then DDLs on all processes will block till the
-//        // initial replay of this VM is complete which is not desirable.
-//
-//        // store in pending message list in any case since put in DDL region
-//        // will need to be done if origin node goes down before finish message
-//        synchronized (pendingDDLMessages) {
-//          // indicates that this node should not execute anything in finish
-//          // message or if origin node goes down before finish message
-//          this.args.connId = EmbedConnection.UNINITIALIZED;
-//          pendingDDLMessages.put(ddlId, this);
-//        }
-//        throw new GfxdDDLReplayInProgressException(
-//            "skipping DDL execution due to replay in progress");
-//      }
-//    }
+    // during restart we are taking dd read lock so on the fly ddl won't even reach here.
+    /*
+    if (isOKToSkip(ddlId)) {
+      boolean skipDDL = true;
+      // check if this is a conflatable then in that case try conflation and if
+      // not possible due to execution in progress, then wait for DDL replay to
+      // be complete
+      final boolean conflate = ddl.shouldBeConflated();
+      if (conflate || ddl.shouldDelayRegionInitialization()) {
+        // try to conflate items from queue and wait for any executing conflated
+        // entries; if any of the entries to be conflated has been executed and
+        // this DDL has not been executed, then wait for entire DDL replay to
+        // be complete
+        final GfxdDDLRegionQueue ddlQ = memStore.getDDLQueueNoThrow();
+        if (ddlQ != null) {
+          if (conflate) {
+            ArrayList<QueueValue> conflatedItems = new ArrayList<QueueValue>(5);
+            memStore.acquireDDLReplayLock(true);
+            try {
+              if (ddlQ.conflate(ddl, ddl, false, conflatedItems)) {
+                for (QueueValue qValue : conflatedItems) {
+                  final DDLConflatable confVal = (DDLConflatable)qValue
+                      .getValue();
+                  if (confVal.isExecuting()) {
+                    // now we have to wait for entire DDL replay to complete
+                    // to maintain the order of DDLs
+                    skipDDL = false;
+                    break;
+                  }
+                }
+              }
+              // if we do not need to wait for DDL replay, then conflate the
+              // queue and add this to processed IDs set
+              if (skipDDL && ddlQ.conflate(ddl, ddl, true, null)) {
+                final TLongHashSet processedIds = memStore.getProcessedDDLIDs();
+                synchronized (processedIds) {
+                  processedIds.add(ddlId);
+                }
+              }
+            } finally {
+              memStore.releaseDDLReplayLock(true);
+            }
+          }
+          else {
+            // for ALTER TABLE we have to always wait for DDL replay to complete
+            // since we cannot pre-conflate the queue if CREATE is not done like
+            // for DROP
+            skipDDL = false;
+          }
+          if (!skipDDL) {
+            // ok, we do need to wait for DDL replay to complete;
+            // if DDL replay has reached the last iteration and is waiting
+            // for DD read lock, then skip wait on DD read lock by the node
+            // replay thread, if any, otherwise it can lead to a deadlock
+            // (#47873); this DDL message execution means that DD write lock is
+            // already held by the source node and the purpose of not allowing
+            // any more DDLs to come in by the DD read lock in replay thread is
+            // already served
+            memStore.setInitialDDLReplayWaiting(true);
+            try {
+              GemFireXDUtils.waitForNodeInitialization();
+            } finally {
+              memStore.setInitialDDLReplayWaiting(false);
+            }
+            // its possible that this DDL has been executed in replay
+            // by this time, so check again
+            final TLongHashSet processedIds = memStore.getProcessedDDLIDs();
+            synchronized (processedIds) {
+              skipDDL = processedIds.contains(ddlId);
+            }
+          }
+        }
+      }
+      if (skipDDL) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, toString()
+            + " Skipping execution of " + ddl.getValueToConflate()
+            + " due to replay in progress");
+        // Initial replay still in progress so just skip processing this message
+        // which will be later handled by replay; this breaks the behaviour of
+        // GfxdDDLMessage somewhat since a successful reply is sent without the
+        // DDL still having being executed but should have no improper behaviour
+        // as such; if we block, then DDLs on all processes will block till the
+        // initial replay of this VM is complete which is not desirable.
+
+        // store in pending message list in any case since put in DDL region
+        // will need to be done if origin node goes down before finish message
+        synchronized (pendingDDLMessages) {
+          // indicates that this node should not execute anything in finish
+          // message or if origin node goes down before finish message
+          this.args.connId = EmbedConnection.UNINITIALIZED;
+          pendingDDLMessages.put(ddlId, this);
+        }
+        throw new GfxdDDLReplayInProgressException(
+            "skipping DDL execution due to replay in progress");
+      }
+    }
+*/
     // skip DDL execution on locators/agents/admins
     if (!GemFireXDUtils.getMyVMKind().isAccessorOrStore()) {
       if (GemFireXDUtils.TraceDDLQueue) {

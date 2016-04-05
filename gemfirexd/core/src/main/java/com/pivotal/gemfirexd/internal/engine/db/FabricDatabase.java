@@ -471,12 +471,14 @@ public final class FabricDatabase implements ModuleControl,
         int cnt = 0;
         while( !(ddReadLockAcquired = this.dd.lockForReadingNoThrow(
             null, Long.MAX_VALUE / 2))) {
-          if(cnt >= 10) {
-            throw new IllegalStateException("KN: failed to acquire dd read lock");
+          if (cnt >= 12) {
+            throw StandardException.newException(
+                SQLState.BOOT_DATABASE_FAILED,
+                "Could not acquire readlock on datadictionary before ddl replay");
           }
           Thread.sleep(5000);
         }
-        logger.info("KN: acquired dd read lock during post create");
+        logger.info("acquired dd read lock during post create");
         // populate and initialize the DDL queue
         if (this.memStore.restrictedDDLStmtQueue()) {
           this.memStore.getDDLQueueNoThrow().initializeQueue(this.dd);
@@ -638,9 +640,11 @@ public final class FabricDatabase implements ModuleControl,
     // The above sophisticated strategy to allow ddls while replay is going
     // on is being disabled as ddls are not frequent and several race condition
     // scenario will automatically go away making it simpler and more
-    // maintainable.
-    //boolean acquiredReplayLock = false;
-    //boolean ddReadLockAcquired = false;
+    // maintainable. ( as part of snap-585 )
+    /*
+    boolean acquiredReplayLock = false;
+    boolean ddReadLockAcquired = false;
+    */
     int actualSize;
     List<GfxdDDLQueueEntry> currentQueue;
     final ArrayList<GemFireContainer> uninitializedContainers =
@@ -651,26 +655,27 @@ public final class FabricDatabase implements ModuleControl,
 
     try {
       // commenting out for snap-585
-//      while (maxIterations-- > 0) {
-//
-//        // For the last iteration take the DD read lock to force any
-//        // in progress DDLs to flush and avoid missing them.
-//        // This alongwith the DD read lock in GfxdDDLRegion#chunkEntries
-//        // ensures that all pending DDLs that have possibly not sent
-//        // the GfxdDDLMessage are flushed.
-//
-//        ddReadLockAcquired = false;
-//        if (maxIterations == 0) {
-//          // pass TC as null to avoid check of DDL replay in progress in
-//          // the lock method
-//          // try to acquire DD lock in loop checking whether the skip lock
-//          // flag has been set
-//          ddReadLockAcquired = this.dd.lockForReadingInDDLReplayNoThrow(
-//              this.memStore, Long.MAX_VALUE / 2, true);
-//        }
-//        this.memStore.acquireDDLReplayLock(true);
-//        acquiredReplayLock = true;
+      /*
+      while (maxIterations-- > 0) {
 
+        // For the last iteration take the DD read lock to force any
+        // in progress DDLs to flush and avoid missing them.
+        // This alongwith the DD read lock in GfxdDDLRegion#chunkEntries
+        // ensures that all pending DDLs that have possibly not sent
+        // the GfxdDDLMessage are flushed.
+
+        ddReadLockAcquired = false;
+        if (maxIterations == 0) {
+          // pass TC as null to avoid check of DDL replay in progress in
+          // the lock method
+          // try to acquire DD lock in loop checking whether the skip lock
+          // flag has been set
+          ddReadLockAcquired = this.dd.lockForReadingInDDLReplayNoThrow(
+              this.memStore, Long.MAX_VALUE / 2, true);
+        }
+        this.memStore.acquireDDLReplayLock(true);
+        acquiredReplayLock = true;
+        */
         final TLongHashSet processedIds = this.memStore.getProcessedDDLIDs();
         synchronized (processedIds) {
           // get all elements in the queue removing them from the queue
@@ -687,21 +692,23 @@ public final class FabricDatabase implements ModuleControl,
             }
           }
           // commenting out for snap-585
-//          if (maxIterations > 0) {
-//            // do not release the lock in the last iteration to block
-//            // GfxdDDLMessages and thus avoid missing any DDL messages
-//            this.memStore.releaseDDLReplayLock(true);
-//            acquiredReplayLock = false;
-//          }
-//          if ((actualSize = currentQueue.size()) == 0) {
-//            // we are good to end; force the next iteration to be the last
-//            // one which is still required to take locks etc. and ensure
-//            // flush of any pending DDLs/procedures
-//            if (maxIterations > 1) {
-//              maxIterations = 1;
-//            }
-//            continue;
-//          }
+          /*
+          if (maxIterations > 0) {
+            // do not release the lock in the last iteration to block
+            // GfxdDDLMessages and thus avoid missing any DDL messages
+            this.memStore.releaseDDLReplayLock(true);
+            acquiredReplayLock = false;
+          }
+          if ((actualSize = currentQueue.size()) == 0) {
+            // we are good to end; force the next iteration to be the last
+            // one which is still required to take locks etc. and ensure
+            // flush of any pending DDLs/procedures
+            if (maxIterations > 1) {
+              maxIterations = 1;
+            }
+            continue;
+          }
+          */
           // add the DDL IDs to processed IDs in advance since this could
           // need to wait for GfxdDDLFinishMessage so don't block
           // GfxdDDLMessage else a deadlock will happen with this thread
@@ -721,10 +728,12 @@ public final class FabricDatabase implements ModuleControl,
           //actualSize = currentQueue.size();
         }
       // commenting out for snap-585
-//        if (logger.infoEnabled()) {
-//          logger.info("FabricDatabase: initial replay remaining iters "
-//              + maxIterations + " with remaining queue size " + actualSize);
-//        }
+      /*
+        if (logger.infoEnabled()) {
+          logger.info("FabricDatabase: initial replay remaining iters "
+              + maxIterations + " with remaining queue size " + actualSize);
+        }
+      */
         // First check if region intialization should be skipped for
         // any of the regions due to ALTER TABLE (#44280).
         // This map contains the current dependent ALTER TABLE DDL for a
@@ -884,7 +893,7 @@ public final class FabricDatabase implements ModuleControl,
           }
         }
       // commenting out for snap-585
-      //}
+      /*}*/
 
       // before initializing regions and possibly waiting for other nodes, allow
       // any waiting GfxdDDLMessage to go through (#47873)
@@ -910,11 +919,13 @@ public final class FabricDatabase implements ModuleControl,
       // take DD lock to flush any on-the-wire DDLs at this point else a DROP
       // INDEX, for example, may keep on waiting for node to initialize (#47873)
       // commenting out for snap-585
-//      if (!uninitializedContainers.isEmpty()) {
-//        // release the replay lock at this point since we will have the DD lock
-//        this.memStore.releaseDDLReplayLock(true);
-//        acquiredReplayLock = false;
-//      }
+      /*
+      if (!uninitializedContainers.isEmpty()) {
+        // release the replay lock at this point since we will have the DD lock
+        this.memStore.releaseDDLReplayLock(true);
+        acquiredReplayLock = false;
+      }
+      */
 
       // run the pre-initialization at this point before recovering indexes
       for (GemFireContainer container : uninitializedContainers) {
@@ -1012,11 +1023,12 @@ public final class FabricDatabase implements ModuleControl,
       // else an incoming GfxdDDLMessage may be skipped due to DDL replay in
       // progress flag (#44835)
       // commenting out for snap-585
-//      if (ddReadLockAcquired) {
-//        this.dd.unlockAfterReading(null);
-//        ddReadLockAcquired = false;
-//      }
-
+      /*
+      if (ddReadLockAcquired) {
+        this.dd.unlockAfterReading(null);
+        ddReadLockAcquired = false;
+      }
+      */
       if (logger.infoEnabled()) {
         logger.info("FabricDatabase: initial DDL replay completed.");
       }
@@ -1029,13 +1041,15 @@ public final class FabricDatabase implements ModuleControl,
 
     } finally {
       // commenting out for snap-585
-//      if (ddReadLockAcquired) {
-//        this.dd.unlockAfterReading(null);
-//        ddReadLockAcquired = false;
-//      }
-//      if (acquiredReplayLock) {
-//        this.memStore.releaseDDLReplayLock(true);
-//      }
+      /*
+      if (ddReadLockAcquired) {
+        this.dd.unlockAfterReading(null);
+        ddReadLockAcquired = false;
+      }
+      if (acquiredReplayLock) {
+        this.memStore.releaseDDLReplayLock(true);
+      }
+      */
       stmt.close();
       // Setting this to false so that the waiting compactor thread finishes
       this.memStore.setInitialDDLReplayInProgress(false);
