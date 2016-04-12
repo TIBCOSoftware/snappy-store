@@ -253,8 +253,9 @@ public abstract class Connection implements java.sql.Connection,
 
     // indicates if a deferred reset connection is required
     public boolean resetConnectionAtFirstSql_ = false;
+  public String setSchemaSql_;
 
-    //---------------------constructors/finalizer---------------------------------
+  //---------------------constructors/finalizer---------------------------------
 
     // For jdbc 2 connections
     protected Connection(com.pivotal.gemfirexd.internal.client.am.LogWriter logWriter,

@@ -2715,6 +2715,11 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
             firstToken = getStatementToken(sql, idx + 1);
           }
         }
+        if (firstToken.equalsIgnoreCase("set")) {
+          if (sql.toLowerCase().contains(" schema ")) {
+              this.connection_.setSchemaSql_ = sql;
+          }
+        }
 // GemStone changes END
         if (firstToken.equalsIgnoreCase("select") || // captures <subselect> production
             // GemStone changes BEGIN
