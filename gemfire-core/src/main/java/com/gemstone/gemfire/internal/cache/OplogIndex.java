@@ -131,9 +131,9 @@ public final class OplogIndex {
     return this.irf;
   }
 
-  public synchronized File getIndexFileIfValid() {
+  public synchronized File getIndexFileIfValid(boolean recreateIndexFile) {
     File f = getIndexFile();
-    return checkValidIndexFile(f) ? f : null;
+    return checkValidIndexFile(f, recreateIndexFile) ? f : null;
   }
 
   synchronized void initializeForWriting(boolean truncate)
@@ -160,7 +160,7 @@ public final class OplogIndex {
       this.irf = newFile;
     }
 
-    final boolean append = checkValidIndexFile(this.irf);
+    final boolean append = checkValidIndexFile(this.irf, false);
     FileChannel channel = FileChannel.open(this.irf.toPath(),
         StandardOpenOption.CREATE, StandardOpenOption.WRITE);
     // position before EOF indicator if append is true
@@ -181,10 +181,10 @@ public final class OplogIndex {
     }
   }
 
-  boolean checkValidIndexFile(File f) {
-    if (f != null && f.exists()) {
-      boolean hasIrf = this.dsi.getDiskInitFile()
-          .hasIrf(this.oplog.getOplogId());
+  boolean checkValidIndexFile(File f, boolean recreateIndexFile) {
+    boolean hasIrf = this.dsi.getDiskInitFile()
+        .hasIrf(this.oplog.getOplogId());
+    if (f != null && f.exists() && !recreateIndexFile) {
       if (hasIrf) {
         // check if the file is closed properly
         try (FileChannel channel = FileChannel.open(f.toPath(),
@@ -210,6 +210,11 @@ public final class OplogIndex {
       }
       // delete the existing, unreadable file
       deleteIRF(hasIrf ? "unreadable file" : "metadata missing");
+    }
+    else if (recreateIndexFile) {
+      // delete the existing file as requires recreation
+      deleteIRF(hasIrf ? "unreadable file" : "metadata missing");
+      this.irf = null;
     }
     this.oplog.indexesWritten.clear();
     return false;

@@ -48,24 +48,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Dictionary;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Properties;
+import java.util.*;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.LogWriter;
+import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.ClassPathLoader;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gnu.trove.THashMap;
@@ -82,6 +73,7 @@ import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
+import com.pivotal.gemfirexd.internal.engine.access.index.MemIndex;
 import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
 import com.pivotal.gemfirexd.internal.engine.ddl.ReplayableConflatable;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLQueueEntry;
@@ -252,8 +244,6 @@ public final class FabricDatabase implements ModuleControl,
   /** to allow for initial DDL replay even with failures */
   private final boolean allowBootWithFailures = Boolean.getBoolean(
       com.pivotal.gemfirexd.Property.DDLREPLAY_ALLOW_RESTART_WITH_ERRORS);
-
-  //private PersistedIndexUpdater2 indexUpdater;
   
   /**
    * Creates a new FabricDatabase object.
@@ -399,13 +389,18 @@ public final class FabricDatabase implements ModuleControl,
         .getSystemProperty(GfxdConstants.GFXD_DISABLE_STATEMENT_MATCHING));
 
     // populate and initialize the DDL queue
+    // Initializing the queue later just before postCreateDDLReplay as read
+    // lock needs to be taken on dd, see snap-585, for no new ddl during
+    // restart and that place seems to be more suited so that on the ddl entries
+    // don't sneak in or else we need to take extra precaution.
+    /*
     if (this.memStore.restrictedDDLStmtQueue()) {
       this.memStore.getDDLQueueNoThrow().initializeQueue(this.dd);
     }
     else {
       this.memStore.getDDLStmtQueue().initializeQueue(this.dd);
     }
-
+    */
     active = true;
 
     // Register GemFireXD Member MBean if management is not disabled
@@ -459,7 +454,34 @@ public final class FabricDatabase implements ModuleControl,
       GfxdManagementService.handleEvent(
           GfxdResourceEvent.EMBEDCONNECTION__INIT, embedConn);
 
-      postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
+      boolean ddReadLockAcquired = false;
+      try {
+        // Acquire a read lock on data dictionary so that no new ddls can start
+        // executing until this node has finished ddl replay
+        int cnt = 0;
+        while( !(ddReadLockAcquired = this.dd.lockForReadingNoThrow(
+            null, Long.MAX_VALUE / 2))) {
+          if (cnt >= 12) {
+            throw StandardException.newException(
+                SQLState.BOOT_DATABASE_FAILED,
+                "Could not acquire readlock on datadictionary before ddl replay");
+          }
+          Thread.sleep(5000);
+        }
+        logger.info("acquired dd read lock during post create");
+        // populate and initialize the DDL queue
+        if (this.memStore.restrictedDDLStmtQueue()) {
+          this.memStore.getDDLQueueNoThrow().initializeQueue(this.dd);
+        }
+        else {
+          this.memStore.getDDLStmtQueue().initializeQueue(this.dd);
+        }
+        postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
+      } finally {
+        if (ddReadLockAcquired) {
+          this.dd.unlockAfterReading(null);
+        }
+      }
 
       // notify FabricService
       final FabricService service = FabricServiceManager
@@ -536,9 +558,6 @@ public final class FabricDatabase implements ModuleControl,
       final Properties bootProps, final LanguageConnectionContext lcc,
       final GemFireTransaction tc, final LogWriter logger) throws Exception {
 
-    //final boolean recoveringAfterACrash = isRecoveringAfterCrash();
-    // removeNoCrashIndicator();
-
     // Replay the initial DDL statements, if any, after DB is created. We invoke
     // this in postCreate so as to ensure that the first connection required for
     // DDL statement prepare and execution has been fully initialized.
@@ -587,7 +606,10 @@ public final class FabricDatabase implements ModuleControl,
     // Do not remote the SQL commands that are part of initial DDL replay.
     lcc.setIsConnectionForRemote(true);
     lcc.setSkipLocks(true);
-    int maxIterations = 4;
+    // Since readlock on datadictionary is taken upfront so no
+    // new ddls will arrive in the queue and multiple iterations won't be
+    // required.
+    //int maxIterations = 4;
     GfxdDDLQueueEntry qEntry = null;
     // The strategy of replay is thus. We get the initial batch of DDLs to
     // be executed from the DDL RegionQueue in a write lock. Any DDL
@@ -605,8 +627,14 @@ public final class FabricDatabase implements ModuleControl,
     // same DDL to be processed during intial replay in last iteration and
     // received as GfxdDDLMessage (which is blocked), so need to take care
     // of duplicates using DDL IDs.
+    // The above sophisticated strategy to allow ddls while replay is going
+    // on is being disabled as ddls are not frequent and several race condition
+    // scenario will automatically go away making it simpler and more
+    // maintainable. ( as part of snap-585 )
+    /*
     boolean acquiredReplayLock = false;
     boolean ddReadLockAcquired = false;
+    */
     int actualSize;
     List<GfxdDDLQueueEntry> currentQueue;
     final ArrayList<GemFireContainer> uninitializedContainers =
@@ -616,6 +644,8 @@ public final class FabricDatabase implements ModuleControl,
     final Statement stmt = embedConn.createStatement();
 
     try {
+      // commenting out for snap-585
+      /*
       while (maxIterations-- > 0) {
 
         // For the last iteration take the DD read lock to force any
@@ -635,7 +665,7 @@ public final class FabricDatabase implements ModuleControl,
         }
         this.memStore.acquireDDLReplayLock(true);
         acquiredReplayLock = true;
-
+        */
         final TLongHashSet processedIds = this.memStore.getProcessedDDLIDs();
         synchronized (processedIds) {
           // get all elements in the queue removing them from the queue
@@ -651,6 +681,8 @@ public final class FabricDatabase implements ModuleControl,
               ((ReplayableConflatable)qVal).markExecuting();
             }
           }
+          // commenting out for snap-585
+          /*
           if (maxIterations > 0) {
             // do not release the lock in the last iteration to block
             // GfxdDDLMessages and thus avoid missing any DDL messages
@@ -666,6 +698,7 @@ public final class FabricDatabase implements ModuleControl,
             }
             continue;
           }
+          */
           // add the DDL IDs to processed IDs in advance since this could
           // need to wait for GfxdDDLFinishMessage so don't block
           // GfxdDDLMessage else a deadlock will happen with this thread
@@ -681,12 +714,16 @@ public final class FabricDatabase implements ModuleControl,
               iter.remove();
             }
           }
-          actualSize = currentQueue.size();
+          // commenting out for snap-585
+          //actualSize = currentQueue.size();
         }
+      // commenting out for snap-585
+      /*
         if (logger.infoEnabled()) {
           logger.info("FabricDatabase: initial replay remaining iters "
               + maxIterations + " with remaining queue size " + actualSize);
         }
+      */
         // First check if region intialization should be skipped for
         // any of the regions due to ALTER TABLE (#44280).
         // This map contains the current dependent ALTER TABLE DDL for a
@@ -845,7 +882,8 @@ public final class FabricDatabase implements ModuleControl,
                 + "having sequenceId=" + qEntry.getSequenceId());
           }
         }
-      }
+      // commenting out for snap-585
+      /*}*/
 
       // before initializing regions and possibly waiting for other nodes, allow
       // any waiting GfxdDDLMessage to go through (#47873)
@@ -870,11 +908,14 @@ public final class FabricDatabase implements ModuleControl,
 
       // take DD lock to flush any on-the-wire DDLs at this point else a DROP
       // INDEX, for example, may keep on waiting for node to initialize (#47873)
+      // commenting out for snap-585
+      /*
       if (!uninitializedContainers.isEmpty()) {
         // release the replay lock at this point since we will have the DD lock
         this.memStore.releaseDDLReplayLock(true);
         acquiredReplayLock = false;
       }
+      */
 
       // run the pre-initialization at this point before recovering indexes
       for (GemFireContainer container : uninitializedContainers) {
@@ -913,6 +954,14 @@ public final class FabricDatabase implements ModuleControl,
                 dsi.getName(), (end - start)));
           }
         }
+      }
+
+      // By now the index recovery is done. Also the change owner is done in
+      // pre-initialize so before fully initializing the container and hence the
+      // underlying region let's do a sanity check on the index size and region size
+      // for sorted indexes.
+      if (this.memStore.getMyVMKind() == GemFireStore.VMKind.DATASTORE) {
+        checkRecoveredIndex(uninitializedContainers, logger, false);
       }
 
       for (GemFireContainer container : uninitializedContainers) {
@@ -971,11 +1020,13 @@ public final class FabricDatabase implements ModuleControl,
       // release DD read lock only after marking DDL replay in progress as false
       // else an incoming GfxdDDLMessage may be skipped due to DDL replay in
       // progress flag (#44835)
+      // commenting out for snap-585
+      /*
       if (ddReadLockAcquired) {
         this.dd.unlockAfterReading(null);
         ddReadLockAcquired = false;
       }
-
+      */
       if (logger.infoEnabled()) {
         logger.info("FabricDatabase: initial DDL replay completed.");
       }
@@ -987,6 +1038,8 @@ public final class FabricDatabase implements ModuleControl,
       }
 
     } finally {
+      // commenting out for snap-585
+      /*
       if (ddReadLockAcquired) {
         this.dd.unlockAfterReading(null);
         ddReadLockAcquired = false;
@@ -994,6 +1047,7 @@ public final class FabricDatabase implements ModuleControl,
       if (acquiredReplayLock) {
         this.memStore.releaseDDLReplayLock(true);
       }
+      */
       stmt.close();
       // Setting this to false so that the waiting compactor thread finishes
       this.memStore.setInitialDDLReplayInProgress(false);
@@ -1003,6 +1057,153 @@ public final class FabricDatabase implements ModuleControl,
     if (!ArrayUtils.objectEquals(initSchema, lcc.getCurrentSchemaName())) {
       FabricDatabase.setupDefaultSchema(dd, lcc, tc, initSchema, true);
     }
+  }
+
+  private void checkRecoveredIndex(ArrayList<GemFireContainer> uninitializedContainers,
+      final LogWriter logger, boolean throwErrorOnMismatch) {
+    for (GemFireContainer container : uninitializedContainers) {
+      LocalRegion region = container.getRegion();
+      DataPolicy dp = region.getDataPolicy();
+      if (dp == DataPolicy.PERSISTENT_PARTITION || dp == DataPolicy.PERSISTENT_REPLICATE) {
+        GfxdIndexManager gim = (GfxdIndexManager)region.getIndexUpdater();
+        if (gim == null || container.isGlobalIndex()) continue;
+        int localRegionSz = getAndDumpLocalRegionSize(region, dp, logger, false, throwErrorOnMismatch);
+        List<GemFireContainer> allIndexes = gim.getAllIndexes();
+        for (GemFireContainer c : allIndexes) {
+          if (c.isLocalIndex()) {
+            if (c.getIndexSize() != localRegionSz) {
+              if (!throwErrorOnMismatch) {
+                logger.warning("checkRecoveredIndex: for table: " + region.getName() + " " +
+                    "number of local entries = " + localRegionSz + " and number of " +
+                    "index entries in the index: " + c.getName() + " = " + c.getIndexSize());
+              } else {
+                logger.error("checkRecoveredIndex: for table: " + region.getName() + " " +
+                    "number of local entries = " + localRegionSz + " and number of " +
+                    "index entries in the index: " + c.getName() + " = " + c.getIndexSize());
+                dumpIndexAndRegion(region, dp, c, logger);
+                throw new IllegalStateException("Table data and indexes are not reconciling." +
+                    "Probably need to revoke the disk store");
+              }
+              logger.info("FabricDatabase: index and region out of sync. Recreating the indexes");
+              // First clear all the indexes
+              clearAllIndexes(uninitializedContainers);
+              recreateAllLocalIndexes(logger);
+              checkRecoveredIndex(uninitializedContainers, logger, true);
+            } else {
+              if (logger.fineEnabled()) {
+                logger.fine("checkRecoveredIndex: local index: " + c.getName() +
+                    " and table: " + region.getName() + " with size: " + localRegionSz);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private void dumpIndexAndRegion(LocalRegion region, DataPolicy dp, GemFireContainer index, LogWriter logger) {
+    ((MemIndex)index.getConglomerate()).dumpIndex("Dumping all indexes");
+    getAndDumpLocalRegionSize(region, dp, logger, true, false);
+  }
+
+  private void clearAllIndexes(ArrayList<GemFireContainer> uninitializedContainers) {
+    for (GemFireContainer container : uninitializedContainers) {
+      LocalRegion region = container.getRegion();
+      DataPolicy dp = region.getDataPolicy();
+      if (dp == DataPolicy.PERSISTENT_PARTITION || dp == DataPolicy.PERSISTENT_REPLICATE) {
+        GfxdIndexManager gim = (GfxdIndexManager)region.getIndexUpdater();
+        if (gim == null) continue;
+        List<GemFireContainer> allIndexes = gim.getAllIndexes();
+        for (GemFireContainer c : allIndexes) {
+          if (c.isLocalIndex()) {
+            c.getSkipListMap().clear();
+          }
+        }
+      }
+    }
+  }
+
+  private void recreateAllLocalIndexes(final LogWriter logger) {
+    Collection<DiskStoreImpl> diskStores = Misc.getGemFireCache().listDiskStores();
+    for (DiskStoreImpl ds : diskStores) {
+      if (!ds.getName().equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
+        PersistentOplogSet oplogSet = ds.getPersistentOplogSet(null);
+        ds.resetIndexRecoveryState();
+        // delete all idx file of all oplogs, so second arg as true below
+        ds.scheduleIndexRecovery(oplogSet.getSortedOplogs(), true);
+        logger.info("FabricDatabase: recreateAllLocalIndexes " +
+            "waiting for index re-creation for disk store: " + ds.getName());
+        ds.waitForIndexRecoveryEnd(-1);
+        logger.info("FabricDatabase: recreateAllLocalIndexes " +
+            "index re-creation for disk store: " + ds.getName() + " ended");
+      }
+    }
+  }
+
+  private int getAndDumpLocalRegionSize(LocalRegion region, DataPolicy dp,
+      final LogWriter logger, boolean dump, boolean throwErrorOnMismatch) {
+    int sz = 0;
+    if (dp == DataPolicy.PERSISTENT_PARTITION) {
+      DiskStoreImpl ds = region.getDiskStore();
+      Collection<AbstractDiskRegion> diskRegions = ds.getAllDiskRegions().values();
+      String regionPath = region.getFullPath();
+      int prId = ((PartitionedRegion)region).getPRId();
+      long regionUUId = region.getRegionUUID();
+      for (AbstractDiskRegion diskReg : diskRegions) {
+        long parentUUid = diskReg.getUUID();
+
+        // check if pr id matches
+        if (parentUUid == regionUUId) {
+          // TODO: Better way to find disk regions of global index's buckets?
+          if (diskReg.getName().contains("____")) continue;
+          if (!dump) {
+            sz += diskReg.getRecoveredEntryCount();
+            int invalidCnt = diskReg.getInvalidOrTombstoneEntryCount();
+            sz -= invalidCnt;
+          } else {
+            logger.info("Dumping key value for region: " + region.getName());
+            RegionMap rmap = diskReg.getRecoveredEntryMap();
+            if (rmap != null) {
+              Collection<RegionEntry> res = rmap.regionEntriesInVM();
+              for (RegionEntry re : res) {
+                logger.info("reKey=" + re.getKey() + " value=" + re._getValue());
+              }
+            } else {
+              logger.info("rmap is null");
+            }
+          }
+        }
+      }
+    }
+    else {
+      DiskRegion diskReg = region.getDiskRegion();
+      if (!dump) {
+        sz = diskReg.getRecoveredEntryCount();
+        sz -= diskReg.getInvalidOrTombstoneEntryCount();
+        logger.info("region size = " + sz + " region: " + region.getName());
+      }
+      else {
+        logger.info("Dumping key value for region: " + region.getName());
+        RegionMap rmap = diskReg.getRecoveredEntryMap();
+        if (rmap != null) {
+          Collection<RegionEntry> res =  rmap.regionEntriesInVM();
+          for(RegionEntry re : res) {
+            logger.info("reKey=" + re.getKey()+" value="+re._getValue());
+          }
+        }
+        else {
+          logger.info("rmap is null");
+        }
+      }
+    }
+
+    GemFireXDQueryObserver observer = GemFireXDQueryObserverHolder.getInstance();
+    if (!throwErrorOnMismatch && (observer != null && observer.testIndexRecreate())) {
+      // To check whether recreation is happening properly or not.
+      logger.info("Returning a wrong size as TEST_INDEX_RECREATE flag is true ");
+      return sz+10;
+    }
+    return sz;
   }
 
   @Override

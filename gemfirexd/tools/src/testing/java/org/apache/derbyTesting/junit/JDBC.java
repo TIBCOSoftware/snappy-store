@@ -2915,6 +2915,11 @@ public class JDBC {
   }
 
   @Override
+  public boolean testIndexRecreate() {
+    return false;
+  }
+
+      @Override
   public void regionSizeOptimizationTriggered2(SelectNode selectNode) {
     // TODO Auto-generated method stub
   }

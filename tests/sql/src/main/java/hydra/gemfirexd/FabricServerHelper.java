@@ -309,18 +309,18 @@ public class FabricServerHelper {
         .getVmDescription().getHostDescription();
     char sep = hd.getFileSep();
 
-    String productBin = hd.getGemFireHome() + sep + ".." + sep + "product-gfxd"
+    String productBin = hd.getGemFireHome() + sep + ".." + sep + "snappy"
                       + sep + "bin";
-    String productHiddenBin = hd.getGemFireHome() + sep + ".." + sep + "hidden"
+    String productHiddenBin = hd.getGemFireHome() + sep + ".." + sep + "snappy"
                       + sep + "bin";
 
     String gfxdScript = null;
     switch (hd.getOSType()) {
       case unix:
-        gfxdScript = "gfxd";
+        gfxdScript = "snappy-shell";
         break;
       case windows:
-        gfxdScript = "gfxd.bat";
+        gfxdScript = "snappy-shell.bat";
         break;
     }
     String gfxd = productBin + sep + gfxdScript;

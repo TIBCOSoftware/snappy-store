@@ -2230,10 +2230,10 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     persistentOplogs.recoverRegionsThatAreReady(initialRecovery);
   }
 
-  void scheduleIndexRecovery(Set<Oplog> allOplogs) {
+  public void scheduleIndexRecovery(Set<Oplog> allOplogs, boolean recreateIndexes) {
     // schedule index recovery atmost once
     if (markIndexRecoveryScheduled()) {
-      IndexRecoveryTask task = new IndexRecoveryTask(allOplogs);
+      IndexRecoveryTask task = new IndexRecoveryTask(allOplogs, recreateIndexes);
       executeDiskStoreTask(task);
     }
   }
@@ -4702,9 +4702,12 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
 
     private final Set<Oplog> allOplogs;
 
-    public IndexRecoveryTask(Set<Oplog> allOplogs) {
+    public IndexRecoveryTask(Set<Oplog> allOplogs, boolean recreateIndexFile) {
       this.allOplogs = allOplogs;
+      this.recreateIndexFile = recreateIndexFile;
     }
+
+    private final boolean recreateIndexFile;
 
     @Override
     public void run() {
@@ -4748,7 +4751,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
             // recover for indexes if there was no krf (hence value
             // recovery already done inline)
             // fallback to full recovery if failed to recover from *irf
-            File indexFile = oplog.getIndexFileIfValid();
+            File indexFile = oplog.getIndexFileIfValid(this.recreateIndexFile);
             boolean hasKrf = !oplog.needsKrf();
             if (!hasKrf || !newIndexes.isEmpty() || indexFile == null) {
               // for missing krf case, the irf will be created in createKrf
@@ -5165,6 +5168,12 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       else {
         return false;
       }
+    }
+  }
+
+  public void resetIndexRecoveryState() {
+    synchronized (this.indexRecoveryState) {
+      this.indexRecoveryState[0] = INDEXRECOVERY_UNINIT;
     }
   }
 

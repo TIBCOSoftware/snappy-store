@@ -35,7 +35,7 @@ fi
 
 export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/main
 #export JTESTS_RESOURCES=$SNAPPYDATADIR/store/tests/core/src/main/java
-export CLASSPATH=$JTESTS:$EXTRA_JTESTS:$GEMFIRE/lib/gemfirexd-1.5.0-BETA.jar:$GEMFIRE/lib/gemfirexd-client-1.5.0-BETA.jar:$JTESTS/../../libs/gemfirexd-hydra-tests-1.5.0-BETA-all.jar:$GEMFIRE/lib/gemfirexd-tools-1.5.0-BETA.jar
+export CLASSPATH=$JTESTS:$EXTRA_JTESTS:$GEMFIRE/lib/gemfirexd-1.5.0-BETA2.jar:$GEMFIRE/lib/gemfirexd-client-1.5.0-BETA2.jar:$JTESTS/../../libs/gemfirexd-hydra-tests-1.5.0-BETA2-all.jar:$GEMFIRE/lib/gemfirexd-tools-1.5.0-BETA2.jar:$SNAPPYDATADIR/snappy-dtests/build-artifacts/scala-2.10/libs/gemfirexd-scala-tests-0.1.0-SNAPSHOT.jar
 #/home/rajesh/extraJars/bsh.jar:
 
 # This is the command to run the test, make sure the correct release version of jar used or change the jar path to use correctly. Also change the jar name in sql/snappy.local.conf if incorrect

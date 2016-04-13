@@ -657,6 +657,8 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
    */
   protected int recoveredEntryCount;
 
+  protected int invalidOrTombstoneCount;
+
   private boolean entriesMapIncompatible;
   private boolean entriesIncompatible;
   private RegionMap entries;
@@ -775,7 +777,15 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
   public void incRecoveredEntryCount() {
     this.recoveredEntryCount++;
   }
-  
+
+  public int getInvalidOrTombstoneEntryCount() {
+    return this.invalidOrTombstoneCount;
+  }
+
+  public void incInvalidOrTombstoneEntryCount() {
+    this.invalidOrTombstoneCount++;
+  }
+
   /**
    * initializes the number of entries recovered
    */

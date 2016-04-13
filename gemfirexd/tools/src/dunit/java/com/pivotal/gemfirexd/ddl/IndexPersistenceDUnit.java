@@ -36,9 +36,13 @@ import com.gemstone.gemfire.internal.concurrent.ConcurrentSkipListMap;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
+import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
+import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
+import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
+import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
@@ -73,6 +77,15 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
 
   public static void setTestNewIndexFlag() {
     GemFireStore.setTestNewIndexFlag(true);
+  }
+
+  public static void setTestIndexRecreateFlag() {
+    GemFireXDQueryObserver observer = new GemFireXDQueryObserverAdapter() {
+      public boolean testIndexRecreate() {
+        return true;
+      }
+    };
+    GemFireXDQueryObserverHolder.setInstance(observer);
   }
 
   public static void checkIndexRecovery(boolean expected) {
@@ -385,6 +398,70 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
         vm4 = serverVMs.get(2);
         vm4.invoke(IndexPersistenceDUnit.class, "checkProperIndex",
           new Object[] {"/TMP/T1", "NEW_INDEX", Integer.valueOf(8)});
+        vm4.invoke(IndexPersistenceDUnit.class, "checkProperIndex",
+            new Object[] { "/TMP/T1", "IDX2" + "", Integer.valueOf(8) });
+        vm4.invoke(IndexPersistenceDUnit.class, "checkProperIndex",
+            new Object[] { "/TMP/T1", "IDX1", Integer.valueOf(8) });
+        vm4.invoke(IndexPersistenceDUnit.class, "checkIndexRecovery", new Object[] {true});
+        stmt.execute("drop table TMP.T1");
+        success = true;
+        deleteAllOplogFiles();
+      }
+    } catch (RuntimeException t) {
+      getLogWriter().info("got run time exception", t);
+      fail("no exception expected", t);
+    } catch (Throwable t) {
+      getLogWriter().info("got exception", t);
+      fail("no exception expected", t);
+    } finally {
+      if (success) {
+        stmt.execute("drop schema TMP RESTRICT");
+      }
+      invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
+          new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "false" });
+      stopAllVMs();
+    }
+  }
+
+  public void testIndexRe_Creation() throws Exception {
+    Statement stmt = null;
+    boolean success = false;
+    try {
+      deleteAllOplogFiles();
+      invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
+          new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "true" });
+      String ddl = "create table TMP.T1"
+          + "(c1 int not null primary key, c2 varchar(20) not null, c3 int not null)";
+      File file1 = new File(IndexPersistenceDUnit.getClassName());
+      file1.mkdirs();
+
+      startVMs(1, 3);
+      Connection conn = TestUtil.getConnection();
+      stmt = conn.createStatement();
+      stmt.execute("create schema TMP");
+
+      stmt.execute("create diskstore teststore_two ('" + file1.getPath() +"')" );
+      for (int j = 0; j < 2; j++) {
+        String ddlToExec = ddl;
+        if (j == 1) {
+          ddlToExec += " replicate persistent 'teststore_two'";
+        }
+        else {
+          ddlToExec += " partition by list(c1) (values(1, 2, 3, 4, 5, 6, 7, 8)) redundancy 2 persistent 'teststore_two'";
+        }
+        stmt.execute(ddlToExec);
+        stmt.execute("create index TMP.IDX2 on TMP.T1(c2, c3)");
+        stmt.execute("insert into TMP.T1 values(1, 'one', 1), (2, 'two', 2), (3, 'three', 3), (4, 'four', 3)");
+        stmt.execute("create index TMP.IDX1 on TMP.T1(c3)");
+        stmt.execute("insert into TMP.T1 values(5, 'one', 1), (6, 'two', 2), (7, 'three', 3), (8, 'four', 3)");
+        stmt.execute("select * from TMP.T1 where c3 = 3");
+        stopVMNum(-3);
+        stmt.execute("create index TMP.NEW_INDEX on TMP.T1(c2)");
+        VM vm4 = serverVMs.get(2);
+        vm4.invoke(IndexPersistenceDUnit.class, "setTestIndexRecreateFlag");
+        restartServerVMNums(new int[]{3}, 0, null, null);
+        vm4.invoke(IndexPersistenceDUnit.class, "checkProperIndex",
+            new Object[] {"/TMP/T1", "NEW_INDEX", Integer.valueOf(8)});
         vm4.invoke(IndexPersistenceDUnit.class, "checkProperIndex",
             new Object[] { "/TMP/T1", "IDX2" + "", Integer.valueOf(8) });
         vm4.invoke(IndexPersistenceDUnit.class, "checkProperIndex",

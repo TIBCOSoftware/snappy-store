@@ -1413,7 +1413,7 @@ public final class Oplog implements CompactableOplog {
         files.add(IOUtils.tryGetCanonicalFileElseGetAbsoluteFile(krfFile));      
       }
       
-      File idxFile = getIndexFileIfValid();
+      File idxFile = getIndexFileIfValid(false);
       if(idxFile != null && idxFile.exists()) {
         files.add(IOUtils.tryGetCanonicalFileElseGetAbsoluteFile(idxFile));      
       }
@@ -2070,6 +2070,9 @@ public final class Oplog implements CompactableOplog {
             de = initRecoveredEntry(drs.getDiskRegionView(), drs
                 .initializeRecoveredEntry(key, re));
             drs.getDiskRegionView().incRecoveredEntryCount();
+            if (EntryBits.isAnyInvalid(userBits) || EntryBits.isTombstone(userBits)) {
+              drs.getDiskRegionView().incInvalidOrTombstoneEntryCount();
+            }
             this.stats.incRecoveredEntryCreates();
             krfEntryCount++;
           } else {
@@ -2899,6 +2902,9 @@ public final class Oplog implements CompactableOplog {
               CompactionRecord cr = new CompactionRecord(keyBytes, crOffset);
               getRecoveryMap().put(oplogKeyId, cr);
               drs.getDiskRegionView().incRecoveredEntryCount();
+              if (EntryBits.isAnyInvalid(userBits) || EntryBits.isTombstone(userBits)) {
+                drs.getDiskRegionView().incInvalidOrTombstoneEntryCount();
+              }
               this.stats.incRecoveredEntryCreates();
             } else { // phase2
               assert p2cr != null;
@@ -3214,6 +3220,9 @@ public final class Oplog implements CompactableOplog {
             }
           de = initRecoveredEntry(drv, drs.initializeRecoveredEntry(key, re));
             drs.getDiskRegionView().incRecoveredEntryCount();
+            if (EntryBits.isAnyInvalid(userBits) || EntryBits.isTombstone(userBits)) {
+              drs.getDiskRegionView().incInvalidOrTombstoneEntryCount();
+            }
             this.stats.incRecoveredEntryCreates();
           } else {
           DiskEntry.RecoveredEntry re = createRecoveredEntry(objValue,
@@ -3427,6 +3436,9 @@ public final class Oplog implements CompactableOplog {
             CompactionRecord cr = new CompactionRecord(keyBytes, crOffset);
             getRecoveryMap().put(oplogKeyId, cr);
             drs.getDiskRegionView().incRecoveredEntryCount();
+            if (EntryBits.isAnyInvalid(userBits) || EntryBits.isTombstone(userBits)) {
+              drs.getDiskRegionView().incInvalidOrTombstoneEntryCount();
+            }
             this.stats.incRecoveredEntryCreates();
           } else { // phase2
             assert p2cr != null;
@@ -9000,8 +9012,8 @@ public final class Oplog implements CompactableOplog {
     
   }
 
-  public File getIndexFileIfValid() {
-    return this.idxkrf.getIndexFileIfValid();
+  public File getIndexFileIfValid(boolean deleteIndexFile) {
+    return this.idxkrf.getIndexFileIfValid(deleteIndexFile);
   }
 
   public boolean isNewOplog() {

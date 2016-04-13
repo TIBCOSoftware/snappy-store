@@ -4945,7 +4945,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           // to load the index neverthless
           numEntries += oplog.recoverIndexes(singleIndex);
         }
-        else if (oplog.getIndexFileIfValid() != null) {
+        else if (oplog.getIndexFileIfValid(false) != null) {
           Collection<DiskRegionInfo> regions = oplog
               .getTargetRegionsForIndexes(singleIndex.keySet());
           numEntries += oplog.writeIRF(oplog.getSortedLiveEntries(regions),

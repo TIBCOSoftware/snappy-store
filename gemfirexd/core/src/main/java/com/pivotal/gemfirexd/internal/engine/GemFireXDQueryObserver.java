@@ -1020,4 +1020,6 @@ public interface GemFireXDQueryObserver extends QueryObserver {
   public void afterQueryPlanGeneration(); 
   
   public void afterLockingTableDuringImport();
+
+  public boolean testIndexRecreate();
 }

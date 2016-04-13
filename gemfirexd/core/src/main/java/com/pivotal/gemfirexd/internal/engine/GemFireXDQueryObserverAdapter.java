@@ -686,4 +686,9 @@ public class GemFireXDQueryObserverAdapter implements GemFireXDQueryObserver,
   @Override
   public void afterLockingTableDuringImport() {
   }
+
+  @Override
+  public boolean testIndexRecreate() {
+    return false;
+  }
 }

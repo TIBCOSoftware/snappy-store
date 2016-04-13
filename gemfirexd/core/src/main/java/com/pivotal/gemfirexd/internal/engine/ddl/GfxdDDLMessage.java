@@ -151,6 +151,17 @@ public final class GfxdDDLMessage extends GfxdMessage implements
     // If we were going to skip this execution then check for special cases of
     // CREATE + DROP/ALTER combos first and see if CREATE has already been
     // completed or is in the process of being executed
+
+    // With the new logic of not allowing new ddls to be fired when replay is
+    // going on the skipping logic is removed and instead an assertion is put
+    // that ddl replay should not be in progress when ddl is received.
+    if (memStore.initialDDLReplayInProgress()) {
+      throw new GfxdDDLReplayInProgressException("Received ddl " + ddl +
+          " from sender " + getSender() + " while ddl replay is still in progress");
+    }
+    // Commenting ou the below code because with the simplified ddl replay logic
+    // during restart we are taking dd read lock so on the fly ddl won't even reach here.
+    /*
     if (isOKToSkip(ddlId)) {
       boolean skipDDL = true;
       // check if this is a conflatable then in that case try conflation and if
@@ -245,6 +256,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
             "skipping DDL execution due to replay in progress");
       }
     }
+*/
     // skip DDL execution on locators/agents/admins
     if (!GemFireXDUtils.getMyVMKind().isAccessorOrStore()) {
       if (GemFireXDUtils.TraceDDLQueue) {

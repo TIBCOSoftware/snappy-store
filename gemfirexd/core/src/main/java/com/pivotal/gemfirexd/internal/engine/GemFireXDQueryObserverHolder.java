@@ -1664,6 +1664,12 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
       observer.afterLockingTableDuringImport();
     }
   }
+
+  @Override
+  public boolean testIndexRecreate() {
+    return false;
+  }
+
   @Override
   public void afterQueryPlanGeneration() {
     final GemFireXDQueryObserver[] observers = this.observerCollection;
