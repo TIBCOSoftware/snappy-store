@@ -127,7 +127,11 @@ public abstract class Connection implements java.sql.Connection,
 
     // used to set transaction isolation level
     private Statement setTransactionIsolationStmt = null;
-    
+
+    // GemStone changes BEGIN
+    // Storing current schema set on connection for failover purpose
+    private Statement setCurrentSchemaStmt = null;
+    // GemStone changes END
     // used to get transaction isolation level
     private Statement getTransactionIsolationStmt = null;
     
@@ -1485,7 +1489,26 @@ public abstract class Connection implements java.sql.Connection,
 // GemStone changes END
         }
     }
+// GemStone changes BEGIN
+protected final void setCurrentSchema() throws SqlException {
+  if (this.setSchemaSql_ != null) {
+    setCurrentSchemaStmt =
+        createStatementX(java.sql.ResultSet.TYPE_FORWARD_ONLY,
+            java.sql.ResultSet.CONCUR_READ_ONLY,
+            holdability());
 
+    try {
+      setCurrentSchemaStmt.executeUpdate(this.setSchemaSql_);
+    } catch (SQLException sqle) {
+      // Eat the exception as the schema might have been dropped.
+      // At least log it.
+      SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
+          "WARN exception while setting current schema on failed" +
+              "over connection sqlstate " + sqle.getSQLState(), sqle);
+    }
+  }
+}
+// GemStone changes END
     /**
      * Finds out if the underlaying database connection supports session data
      * caching.

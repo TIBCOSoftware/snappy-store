@@ -2360,6 +2360,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
               final String password = getDeferredResetPassword();
               flowConnect(password, this.securityMechanism_, false);
 
+              setCurrentSchema();
               // reset any statements etc
               completeReset(false, true, false);
             }
@@ -2372,6 +2373,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
           if (autoCommit != this.autoCommit_) {
             setAutoCommitX(autoCommit);
           }
+          setCurrentSchema();
           if (SanityManager.TraceClientStatementHA) {
             final java.net.Socket s = agent.socket_;
             SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,

@@ -20,6 +20,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.InetAddress;
 import java.sql.*;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,7 +53,8 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.execute.CallbackStatement;
-import com.pivotal.gemfirexd.internal.client.am.DisconnectException;
+import com.pivotal.gemfirexd.internal.client.am.*;
+import com.pivotal.gemfirexd.internal.client.net.NetAgent;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
@@ -1841,6 +1848,89 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
     assertNumConnections(-3, -2, 1);
     assertNumConnections(-4, -4, 2);
+  }
+
+  public String reduceLogging() {
+    return "fine";
+  }
+  /**
+   * Test if multiple connections from network clients failover successfully.
+   */
+  public void testNetworkClientFailoverWithCurrentSchemaSetting() throws Exception {
+    // start some servers not using locator
+    startVMs(0, 2);
+    // Start two network servers
+    final int netPort = startNetworkServer(1, null, null);
+    final int netPort2 = startNetworkServer(2, null, null);
+    // Use this VM as the network client
+    TestUtil.loadNetDriver();
+    TestUtil.deletePersistentFiles = true;
+    final InetAddress localHost = SocketCreator.getLocalHost();
+    Connection conn = TestUtil.getNetConnection(
+        localHost.getCanonicalHostName(), netPort, null, new Properties());
+
+    com.pivotal.gemfirexd.internal.client.am.Connection clientConn
+        = (com.pivotal.gemfirexd.internal.client.am.Connection)conn;
+    NetAgent agent = (NetAgent)clientConn.agent_;
+    int port = agent.getPort();
+    assertTrue(port == netPort || port == netPort2);
+    boolean connectedToFirst = true;
+    if (port == netPort2) {
+      connectedToFirst = false;
+    }
+
+    // Create a table
+    Statement stmt = conn.createStatement();
+    stmt.execute("create schema CURRSCHEMA");
+    stmt.execute("set current schema CURRSCHEMA");
+    stmt.execute("create table TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null) redundancy 1");
+
+    // now try putting a unicode string (#41673)
+    PreparedStatement pstmt = conn
+        .prepareStatement("insert into TESTTABLE values(?,?)");
+
+    final String s = "test\u0905";
+    pstmt.setInt(1, 1);
+    pstmt.setString(2, s);
+    pstmt.execute();
+
+    ResultSet rs = conn.createStatement().executeQuery(
+        "select * from TESTTABLE");
+    assertTrue(rs.next());
+    assertEquals(1, rs.getInt(1));
+    String resultStr = rs.getString(2);
+    getLogWriter().info("sent chars: " + Arrays.toString(s.toCharArray()));
+    getLogWriter().info(
+        "got chars: " + Arrays.toString(resultStr.toCharArray()));
+    assertEquals(s.length(), resultStr.length());
+    assertEquals(s.charAt(s.length() - 1), resultStr
+        .charAt(resultStr.length() - 1));
+    assertEquals(s, resultStr);
+    assertFalse(rs.next());
+
+    pstmt.setInt(1, 10);
+    pstmt.setString(2, s);
+    pstmt.execute();
+    // now stop the server to which the conn is connected to.
+    if (connectedToFirst) {
+      stopVMNums(-1);
+    }
+    else {
+      stopVMNums(-2);
+    }
+
+    // Now try inserting one more into the table without resetting the current schema
+    pstmt.setInt(1, 30);
+    pstmt.setString(2, s);
+    pstmt.execute();
+
+    rs = conn.createStatement().executeQuery(
+        "select count(*) from TESTTABLE");
+    assertTrue(rs.next());
+    assertEquals(3, rs.getInt(1));
+    assertFalse(rs.next());
+    conn.close();
   }
 
   /**
