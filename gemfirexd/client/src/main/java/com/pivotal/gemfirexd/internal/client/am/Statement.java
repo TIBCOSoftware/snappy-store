@@ -42,6 +42,8 @@ package com.pivotal.gemfirexd.internal.client.am;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
@@ -2682,7 +2684,12 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
     }
 
     //-------------------------------helper methods-------------------------------
-
+// GemStone changes BEGIN
+    private static String setSchemaregexp
+        = "SET\\s+(CURRENT\\s+SQLID|((CURRENT\\s+)?SCHEMA))\\s+(=?).*";
+    private static Pattern SETSCHEMA_PATTERN =
+        Pattern.compile(setSchemaregexp, Pattern.CASE_INSENSITIVE);
+// GemStone changes END
     /**
      * Returns the name of the java.sql interface implemented by this class.
      * @return name of java.sql interface
@@ -2716,8 +2723,9 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
           }
         }
         if (firstToken.equalsIgnoreCase("set")) {
-          if (sql.toLowerCase().contains(" schema ")) {
-              this.connection_.setSchemaSql_ = sql;
+          Matcher m = SETSCHEMA_PATTERN.matcher(sql);
+            if (m.matches()) {
+            this.connection_.setSchemaSql_ = sql;
           }
         }
 // GemStone changes END

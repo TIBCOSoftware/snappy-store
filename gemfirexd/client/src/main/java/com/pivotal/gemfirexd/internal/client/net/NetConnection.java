@@ -2324,6 +2324,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
               SQLState.CONNECT_REQUIRED_PROPERTY_NOT_SET), "serverName");
         }
         try {
+          boolean setCurrentSchemaCalled = false;
           // if no agent created yet, then create a new one
           final NetAgent agent;
           if (this.netAgent_ == null) {
@@ -2361,6 +2362,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
               flowConnect(password, this.securityMechanism_, false);
 
               setCurrentSchema();
+              setCurrentSchemaCalled = true;
               // reset any statements etc
               completeReset(false, true, false);
             }
@@ -2373,7 +2375,9 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
           if (autoCommit != this.autoCommit_) {
             setAutoCommitX(autoCommit);
           }
-          setCurrentSchema();
+          if (!setCurrentSchemaCalled) {
+            setCurrentSchema();
+          }
           if (SanityManager.TraceClientStatementHA) {
             final java.net.Socket s = agent.socket_;
             SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
