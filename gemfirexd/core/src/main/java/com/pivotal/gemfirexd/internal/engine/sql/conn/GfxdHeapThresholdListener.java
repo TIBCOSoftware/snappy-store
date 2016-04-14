@@ -459,7 +459,7 @@ public final class GfxdHeapThresholdListener implements MemoryThresholdListener 
    */
   public static boolean isCancellableQuery(Activation act) {
     ExecPreparedStatement ps = act.getPreparedStatement();
-    if (ps != null) {
+    if (ps == null) {
       return false;
     }
     final ConstantAction ca = ps.getConstantAction();
