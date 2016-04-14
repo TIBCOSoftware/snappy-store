@@ -4667,7 +4667,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
   }
 
   public void test41995() throws Exception {
-    reduceLogLevelForTest("fine");
+//    reduceLogLevelForTest("fine");
     startVMs(1, 2);
     VM serverVM1 = serverVMs.get(0);
     VM serverVM2 = serverVMs.get(1);
