@@ -133,6 +133,8 @@ public class GenericStatement
 
         public static final Pattern SKIP_CANCEL_STMTS = Pattern.compile(
             "^\\s*(DROP|TRUNCATE)\\s+(TABLE|INDEX)\\s+", Pattern.CASE_INSENSITIVE);
+	public static final Pattern DELETE_STMT = Pattern.compile(
+			"^\\s*DELETE\\s+FROM\\s+.*", Pattern.CASE_INSENSITIVE);
         private static final Pattern ignoreStmts = Pattern.compile(
             ("\\s.*(\"SYSSTAT\"|SYS.\")"), Pattern.CASE_INSENSITIVE);
         //private ProcedureProxy procProxy;
@@ -344,8 +346,8 @@ public class GenericStatement
     boolean ddLockAcquired = false;
     int additionalDDLocks = 0;
     // don't cancel DROP/TRUNCATE TABLE/INDEX statements
-    final boolean checkCancellation = !SKIP_CANCEL_STMTS
-        .matcher(statementText).find();
+    final boolean checkCancellation = !(SKIP_CANCEL_STMTS
+        .matcher(statementText).find() || DELETE_STMT.matcher(statementText).find());
     try {
      outer: while(true) {
       ddMode = (dataDictionary != null ? dataDictionary.startReading(lcc) : 0);

@@ -30,19 +30,24 @@ import javax.sql.rowset.serial.SerialClob;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
+import com.gemstone.gemfire.cache.control.ResourceManager;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.ForceReattemptException;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PrimaryBucketException;
+import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
+import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
+import com.pivotal.gemfirexd.FabricService;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.dbsync.DBSynchronizerTestBase;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -54,6 +59,7 @@ import com.pivotal.gemfirexd.internal.engine.access.index.OpenMemIndex;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionWrapper;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.BitSetSet;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
@@ -4658,5 +4664,59 @@ public class BugsDUnit extends DistributedSQLTestBase {
         }
       });
     }
+  }
+
+  public void test41995() throws Exception {
+    reduceLogLevelForTest("fine");
+    startVMs(1, 2);
+    VM serverVM1 = serverVMs.get(0);
+    VM serverVM2 = serverVMs.get(1);
+    Connection conn = TestUtil.getConnection();
+    Statement stmt = conn.createStatement();
+
+    stmt.execute("CREATE TABLE T1(COL1 INT, COL2 INT)");
+
+    PreparedStatement ps = conn.prepareStatement("INSERT INTO T1 VALUES (?, ?)");
+    for (int i = 1; i <= 100; i++) {
+      ps.setInt(1, i);
+      ps.setInt(2, i);
+      ps.execute();
+    }
+
+    try {
+      serverVM1.invoke(this.getClass(), "raiseCriticalUp");
+      serverVM2.invoke(this.getClass(), "raiseCriticalUp");
+      stmt.execute("delete from t1 where col1 > 0");
+    } finally {
+      serverVM1.invoke(this.getClass(), "resetResourceManager");
+      serverVM2.invoke(this.getClass(), "resetResourceManager");
+    }
+    ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM T1");
+    assertTrue(rs.next());
+    assertEquals(0, rs.getInt(1));
+    conn.close();
+  }
+
+  public static void raiseCriticalUp() {
+    InternalResourceManager resMgr = Misc.getGemFireCache().getResourceManager();
+//    HeapMemoryMonitor.setTestDisableMemoryUpdates(true);
+    resMgr.getHeapMonitor().setTestMaxMemoryBytes(100);
+    HeapMemoryMonitor.setTestBytesUsedForThresholdSet(92);
+    resMgr.setCriticalHeapPercentage(90F);
+    resMgr.getHeapMonitor().updateStateAndSendEvent(92);
+  }
+
+  public static void resetResourceManager() {
+    FabricService fs = FabricServiceImpl.getInstance();
+    if (fs != null) {
+      GemFireCacheImpl gfCache = Misc.getGemFireCacheNoThrow();
+      if (gfCache != null) {
+//        HeapMemoryMonitor.setTestDisableMemoryUpdates(false);
+        InternalResourceManager resMgr = gfCache.getResourceManager();
+        resMgr.getHeapMonitor().setTestMaxMemoryBytes(0);
+        resMgr.getHeapMonitor().updateStateAndSendEvent(10);
+      }
+    }
+
   }
 }

@@ -57,6 +57,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.SelectQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
@@ -356,6 +357,7 @@ public abstract class AbstractGemFireDistributionActivation extends
                       .needKeysForSelectForUpdate()), getParameterValueSet(),
                   preg, routingKeysToExecute, this.qInfo.isInsertAsSubSelect(),
                   lcc, this.getTimeOutMillis());
+              functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
               prepMsg.setPartitionRegions(this.qInfo.getOtherRegions());
               // Handle Union, Intersect and Except
               if (this.qInfo.hasUnionNode()
@@ -427,6 +429,7 @@ public abstract class AbstractGemFireDistributionActivation extends
                   routingKeysToExecute /* set of routing objects */,
                   this.qInfo.isInsertAsSubSelect(), lcc,
                   this.getTimeOutMillis());
+              functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
               unprepMsg.setPartitionRegions(this.qInfo.getOtherRegions());
               // Handle Union, Intersect and Except
               if (this.qInfo.hasUnionNode()
@@ -597,6 +600,7 @@ public abstract class AbstractGemFireDistributionActivation extends
           (isForSelectForUpdateQuery && this.qInfo.needKeysForSelectForUpdate()),
           this.getParameterValueSet(), rgn, null, this.qInfo
               .isInsertAsSubSelect(), lcc, this.getTimeOutMillis());
+      functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
       setAllAreNonPartitionedRegion(rs, isVTIInvolved);
       if (isVTIInvolved) {
         functionMsg.setSendToAllReplicates(includeAdminForVTI());
@@ -640,6 +644,7 @@ public abstract class AbstractGemFireDistributionActivation extends
           (isForSelectForUpdateQuery && this.qInfo.needKeysForSelectForUpdate()),
           this.pvs, rgn, null, this.qInfo.isInsertAsSubSelect(), lcc, this
               .getTimeOutMillis());
+      functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
       setAllAreNonPartitionedRegion(rs, isVTIInvolved);
       if (isVTIInvolved) {
         functionMsg.setSendToAllReplicates(includeAdminForVTI());

@@ -119,6 +119,8 @@ public abstract class GfxdFunctionMessage<T> extends
 
   protected transient Set<DistributedMember> failedNodes;
 
+  protected transient boolean abortOnLowMemory = true;
+
   /**
    * The DistributionManager being used for processing. Will be null if message
    * is being processed locally.
@@ -212,6 +214,7 @@ public abstract class GfxdFunctionMessage<T> extends
     assert other.userCollector != null: "unexpected null ResultCollector";
     this.userCollector = other.userCollector;
     this.gfxdCollector = other.gfxdCollector;
+    this.abortOnLowMemory = other.abortOnLowMemory;
     // pass the reference
     if (this.timeStatsEnabled) {
       this.membersMsgsSent = other.membersMsgsSent;
@@ -576,7 +579,8 @@ public abstract class GfxdFunctionMessage<T> extends
     final HeapMemoryMonitor hmm = cache.getResourceManager().getHeapMonitor();
     @SuppressWarnings({ "unchecked", "rawtypes" })
     final Set<InternalDistributedMember> tgtMembers = (Set)members;
-    if (optimizeForWrite() && hmm.containsHeapCriticalMembers(tgtMembers)
+    if (optimizeForWrite() && abortOnLowMemory &&
+        hmm.containsHeapCriticalMembers(tgtMembers)
         && !MemoryThresholds.isLowMemoryExceptionDisabled()) {
       final Set<InternalDistributedMember> hcm = cache.getResourceAdvisor()
           .adviseCriticalMembers();
@@ -606,7 +610,7 @@ public abstract class GfxdFunctionMessage<T> extends
     HeapMemoryMonitor hmm = getGemFireCache().getResourceManager()
         .getHeapMonitor();
     if (optimizeForWrite() && !MemoryThresholds.isLowMemoryExceptionDisabled()
-        && hmm.isMemberHeapCritical(m)) {
+        && abortOnLowMemory && hmm.isMemberHeapCritical(m)) {
       throw new LowMemoryException(LocalizedStrings
           .ResourceManager_LOW_MEMORY_FOR_0_FUNCEXEC_MEMBERS_1
               .toLocalizedString(new Object[] {this.getClass().getName(),
@@ -1820,4 +1824,9 @@ public abstract class GfxdFunctionMessage<T> extends
   // execution to be on all copies of data to gather stats etc.
   public void setSendToAllReplicates(boolean includeAdmin) {
   }
+
+  public void setAbortOnLowMemory(boolean flag) {
+    abortOnLowMemory = flag;
+  }
+
 }
