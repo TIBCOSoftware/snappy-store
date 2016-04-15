@@ -144,6 +144,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
      * as base2 int[] (not using long[] since we then need to multiply
      * long*long which can overflow long) by 10^9, writes remainder and stores
      * back quotient, then again by 10^9, writes the remainder and so on.
+     * Using 10^9 since it is the max power of 10 that can fit in an integer.
      * <p>
      * All storage of in[] is done in big-endian format (i.e. most significant
      * integer is at 0th position) to be consistent with BigInteger and to be
@@ -184,8 +185,8 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
           BigInteger[] quotientAndRemainder = pow2.divideAndRemainder(billion);
   
           final byte[] qmag = quotientAndRemainder[0].toByteArray();
-          POW2_QUOTIENTS[index] = covertIntsToUnsignedLongs(convertBytesToIntegerMagnitude(
-              qmag, 0, qmag.length));
+          POW2_QUOTIENTS[index] = covertIntsToUnsignedLongs(
+              convertBytesToIntegerMagnitude(qmag, 0, qmag.length));
           // remainder will be less than billion
           POW2_REMAINDERS[index] = quotientAndRemainder[1].intValue();
         }
@@ -1930,7 +1931,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
       final ByteArrayDataOutput buffer) {
     final int size = Math.max(scale, 19) + 3;
     final char[] s = new char[size];
-    int endPos = size;
+    int endPos;
     if (scale > 0 && scale < 20) {
       final int decimalPos = size - 1 - scale;
       endPos = DataTypeUtilities.toStringUnsignedWithDecimalPoint(v, s, size,

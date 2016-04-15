@@ -22,8 +22,8 @@ runtest() {
 
  # If JAVA_HOME is not already set in system then set JAVA_HOME using TEST_JVM
  TEST_JVM=
- export JTESTS=$SNAPPYDATADIR/snappy-store/tests/sql/build-artifacts/linux/classes/main
- export PATH=$JAVA_HOME:$PATH:$SNAPPYDATADIR/snappy-store/tests/sql/build-artifacts/linux/classes/main:$JTESTS
+ export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/main
+ export PATH=$JAVA_HOME:$PATH:$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/main:$JTESTS
  export GEMFIRE=$SNAPPYDATADIR/build-artifacts/scala-2.10/store
  export LD_LIBRARY_PATH=$GEMFIRE/lib
  export OUTPUT_DIR=$resultDir
@@ -33,8 +33,8 @@ runtest() {
    TEST_JVM=$JAVA_HOME
  fi
 
- export EXTRA_JTESTS=$SNAPPYDATADIR/snappy-store/tests/core/build-artifacts/linux/classes/main
- #export JTESTS_RESOURCES=$SNAPPYDATADIR/snappy-store/tests/core/src/main/java
+ export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/main
+ #export JTESTS_RESOURCES=$SNAPPYDATADIR/store/tests/core/src/main/java
  export CLASSPATH=$JTESTS:$EXTRA_JTESTS:$GEMFIRE/lib/gemfirexd-1.5.0-BETA2.jar:$GEMFIRE/lib/gemfirexd-client-1.5.0-BETA2.jar:$JTESTS/../../libs/gemfirexd-hydra-tests-1.5.0-BETA2-all.jar:$GEMFIRE/lib/gemfirexd-tools-1.5.0-BETA2.jar:$SNAPPYDATADIR/snappy-dtests/build-artifacts/scala-2.10/libs/gemfirexd-scala-tests-0.1.0-SNAPSHOT.jar
  echo "Running useCase6.bt using useCase6.local.conf..."
 

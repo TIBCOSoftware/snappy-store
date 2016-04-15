@@ -4719,4 +4719,19 @@ public class BugsDUnit extends DistributedSQLTestBase {
     }
 
   }
+
+  public void test51906() throws Exception {
+    startVMs(1, 1);
+    Connection conn = TestUtil.getConnection();
+    Statement stmt = conn.createStatement();
+
+    stmt.execute("CREATE TABLE T1 (COL1 INT NOT NULL PRIMARY KEY, " +
+        "COL2 VARCHAR(10), COL3 CHAR(10), COL4 INT NOT NULL)");
+    stmt.execute("INSERT INTO T1 VALUES(1, '1', '11', 1)");
+    stmt.execute("UPDATE T1 SET COL2 = COL3 WHERE COL1 = 1");
+    ResultSet rs = stmt.executeQuery("SELECT COL2 FROM T1");
+    assertTrue(rs.next());
+    assertEquals("11", rs.getString(1).trim());
+    conn.close();
+  }
 }

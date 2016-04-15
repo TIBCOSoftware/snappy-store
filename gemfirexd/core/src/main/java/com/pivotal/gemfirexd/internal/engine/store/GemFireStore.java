@@ -49,6 +49,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GemFireLevel;
 import com.gemstone.gemfire.internal.HostStatSampler.StatsSamplerCallback;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -2267,8 +2268,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           if (this.externalCatalog == null) {
             // Instantiate using reflection
             try {
-              this.externalCatalog = (ExternalCatalog)Class.forName(
-                  "io.snappydata.impl.SnappyHiveCatalog").newInstance();
+              this.externalCatalog = (ExternalCatalog)ClassPathLoader
+                  .getLatest().forName("io.snappydata.impl.SnappyHiveCatalog")
+                  .newInstance();
             } catch (InstantiationException | IllegalAccessException
                 | ClassNotFoundException e) {
               throw new IllegalStateException(

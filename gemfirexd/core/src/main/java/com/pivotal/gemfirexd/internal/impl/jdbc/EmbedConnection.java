@@ -3156,7 +3156,7 @@ public abstract class EmbedConnection implements EngineConnection
 		transaction needs to be started after a previous commit or rollback
 	 	@exception SQLException if fails
 	 */
-	protected final void setupContextStack(
+	public final void setupContextStack(
 	    final boolean isOperation) throws SQLException {
 
 		/*
@@ -3188,7 +3188,7 @@ public abstract class EmbedConnection implements EngineConnection
 
 	}
 
-	protected final void restoreContextStack() throws SQLException {
+	public final void restoreContextStack() throws SQLException {
 
 // GemStone changes BEGIN
 		if (SanityManager.DEBUG_ASSERT) {
