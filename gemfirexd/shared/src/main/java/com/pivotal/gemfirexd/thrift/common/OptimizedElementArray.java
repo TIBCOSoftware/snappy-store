@@ -34,18 +34,7 @@ import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
-import com.pivotal.gemfirexd.thrift.BlobChunk;
-import com.pivotal.gemfirexd.thrift.ClobChunk;
-import com.pivotal.gemfirexd.thrift.ColumnDescriptor;
-import com.pivotal.gemfirexd.thrift.ColumnValue;
-import com.pivotal.gemfirexd.thrift.DateTime;
-import com.pivotal.gemfirexd.thrift.Decimal;
-import com.pivotal.gemfirexd.thrift.FieldType;
-import com.pivotal.gemfirexd.thrift.FieldValue;
-import com.pivotal.gemfirexd.thrift.GFXDType;
-import com.pivotal.gemfirexd.thrift.JSONObject;
-import com.pivotal.gemfirexd.thrift.PDXObject;
-import com.pivotal.gemfirexd.thrift.Timestamp;
+import com.pivotal.gemfirexd.thrift.*;
 
 /**
  * A compact way to represent a set of primitive and non-primitive values. The
@@ -245,7 +234,7 @@ public class OptimizedElementArray {
    * 
    * @param sqlTypes
    *          the list of element types ordered by their position
-   * @param boolean useTypes if true then also store the {@link GFXDType}s
+   * @param useTypes if true then also store the {@link GFXDType}s
    *        explicitly else the types will be tracked separately elsewhere and
    *        this class will expect proper getter/setter methods to be invoked
    * @param forSQLTypes
@@ -261,7 +250,7 @@ public class OptimizedElementArray {
    * 
    * @param metadata
    *          the list of {@link ColumnDescriptor}s ordered by their position
-   * @param boolean useTypes if true then also store the {@link GFXDType}s
+   * @param useTypes if true then also store the {@link GFXDType}s
    *        explicitly else the types will be tracked separately elsewhere and
    *        this class will expect proper getter/setter methods to be invoked
    */
@@ -270,7 +259,7 @@ public class OptimizedElementArray {
     this(getTypes(metadata), useTypes);
   }
 
-  public static final GFXDType[] getTypes(List<ColumnDescriptor> metadata) {
+  public static GFXDType[] getTypes(List<ColumnDescriptor> metadata) {
     final GFXDType[] types = new GFXDType[metadata.size()];
     int index = 0;
     for (ColumnDescriptor cd : metadata) {
@@ -322,7 +311,7 @@ public class OptimizedElementArray {
     int result = prims[primIndex++] & 0xff;
     result = (result << 8) | (prims[primIndex++] & 0xff);
     result = (result << 8) | (prims[primIndex++] & 0xff);
-    return ((result << 8) | (prims[primIndex++] & 0xff));
+    return ((result << 8) | (prims[primIndex] & 0xff));
   }
 
   public final long getLong(int index) {
@@ -335,7 +324,7 @@ public class OptimizedElementArray {
     result = (result << 8) | (prims[primIndex++] & 0xff);
     result = (result << 8) | (prims[primIndex++] & 0xff);
     result = (result << 8) | (prims[primIndex++] & 0xff);
-    return ((result << 8) | (prims[primIndex++] & 0xff));
+    return ((result << 8) | (prims[primIndex] & 0xff));
   }
 
   public final float getFloat(int index) {
@@ -735,7 +724,7 @@ public class OptimizedElementArray {
       case (1 << FieldValue.__CHAR_VAL_ISSET_ID):
         ensurePrimCapacity(2);
         this.positionMap[this.size] = this.primSize;
-        setPrimShort(this.primSize, (short)fv.char_val);
+        setPrimShort(this.primSize, fv.char_val);
         setType(this.size, FieldType.CHAR);
         this.size++;
         this.primSize += 2;
@@ -1238,27 +1227,14 @@ public class OptimizedElementArray {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof OptimizedElementArray) {
-      return equals((OptimizedElementArray)other);
-    }
-    else {
-      return false;
-    }
+    return other instanceof OptimizedElementArray &&
+        equals((OptimizedElementArray)other);
   }
 
   public boolean equals(OptimizedElementArray other) {
-    if (!Arrays.equals(this.positionMap, other.positionMap)) {
-      return false;
-    }
-    if (!Arrays.equals(this.types, other.types)) {
-      return false;
-    }
-    if (!Arrays.equals(this.primitives, other.primitives)) {
-      return false;
-    }
-    if (!Arrays.equals(this.nonPrimitives, other.nonPrimitives)) {
-      return false;
-    }
-    return true;
+    return Arrays.equals(this.positionMap, other.positionMap) &&
+        Arrays.equals(this.types, other.types) &&
+        Arrays.equals(this.primitives, other.primitives) &&
+        Arrays.equals(this.nonPrimitives, other.nonPrimitives);
   }
 }
