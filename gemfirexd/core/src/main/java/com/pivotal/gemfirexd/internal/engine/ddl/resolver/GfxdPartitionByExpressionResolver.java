@@ -951,7 +951,8 @@ public final class GfxdPartitionByExpressionResolver extends
             numPositions);
       }
       else if (vclass == byte[].class) {
-        return computeHashCode((byte[])val, rf, columnPositions, numPositions);
+        return computeHashCode((byte[])val, rf, columnPositions,
+            numPositions);
       }
       else if (vclass == OffHeapRow.class) {
         bsRow = (OffHeapRow)val;

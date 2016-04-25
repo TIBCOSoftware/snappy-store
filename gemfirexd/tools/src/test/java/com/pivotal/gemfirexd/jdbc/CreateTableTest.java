@@ -78,6 +78,7 @@ import io.snappydata.test.dunit.VM;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 import org.apache.derbyTesting.functionTests.tests.derbynet.SqlExceptionTest;
+import org.apache.derbyTesting.junit.JDBC;
 
 @SuppressWarnings("serial")
 public class CreateTableTest extends JdbcTestBase {
@@ -197,7 +198,64 @@ public class CreateTableTest extends JdbcTestBase {
     createTables(conn);
     populateData(conn, false, false);
   }
-  
+
+  public void testCLOBPK() throws SQLException {
+    Connection conn = getConnection();
+    Statement stmt = conn.createStatement();
+    stmt.execute("create schema bob");
+    try {
+      stmt.execute("CREATE TABLE USERS_ROLES(USERID string NOT NULL, "
+          + "ROLEID bigint NOT NULL, PRIMARY KEY (USERID,ROLEID))");
+      fail("Expected exception for LOB type as primary key");
+    } catch (SQLException sqle) {
+      if (!"42832".equals(sqle.getSQLState())) {
+        throw sqle;
+      }
+    }
+    try {
+      stmt.execute("CREATE TABLE USERS_ROLES(USERID string NOT NULL UNIQUE, "
+          + "ROLEID bigint NOT NULL)");
+      fail("Expected exception for LOB type as unique key");
+    } catch (SQLException sqle) {
+      if (!"42832".equals(sqle.getSQLState())) {
+        throw sqle;
+      }
+    }
+    stmt.execute("CREATE TABLE USERS_ROLES(USERID string NOT NULL, "
+        + "ROLEID bigint NOT NULL) PARTITION BY COLUMN(USERID,ROLEID)");
+    try {
+      stmt.execute("CREATE INDEX USERS_ROLES_ID ON USERS_ROLES(USERID)");
+      fail("Expected exception for LOB type as index key");
+    } catch (SQLException sqle) {
+      if (!"42832".equals(sqle.getSQLState())) {
+        throw sqle;
+      }
+    }
+    stmt.execute("CREATE INDEX USERS_ROLES_ROLE ON USERS_ROLES(ROLEID)");
+
+    stmt.execute("insert into users_roles values('two', 3), ('four', 5)");
+
+    ResultSet rs;
+    String[][] expected = new String[][]{
+        new String[]{"two", "3"},
+        new String[]{"four", "5"}
+    };
+    String[][] expected2 = new String[][]{
+        new String[]{"two", "3"}
+    };
+    rs = stmt.executeQuery("select * from users_roles");
+    JDBC.assertUnorderedResultSet(rs, expected);
+    rs = stmt.executeQuery("select * from users_roles where roleId > 2");
+    JDBC.assertUnorderedResultSet(rs, expected);
+    rs = stmt.executeQuery(
+        "select * from users_roles where roleId > 1 and roleId < 4");
+    JDBC.assertUnorderedResultSet(rs, expected2);
+    rs = stmt.executeQuery("select * from users_roles where roleId != 4");
+    JDBC.assertUnorderedResultSet(rs, expected);
+    rs = stmt.executeQuery("select * from users_roles where roleId != 5");
+    JDBC.assertUnorderedResultSet(rs, expected2);
+  }
+
   public void testNPE_43664() throws SQLException {
     Connection conn = getConnection();
     Statement stmt = conn.createStatement();
