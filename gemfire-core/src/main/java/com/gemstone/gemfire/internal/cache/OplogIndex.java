@@ -396,7 +396,8 @@ public final class OplogIndex {
       }
       processedCnt += indexes.length;
       if (processedCnt >= BATCH_FLUSH_SIZE_AT_ROLLOVER
-          || thresholdListener.isEviction()) {
+          || (thresholdListener.isEviction() &&
+              processedCnt >= (BATCH_FLUSH_SIZE_AT_ROLLOVER/4))) {
         flushEntries(drvIdToIndexes.values());
         processedCnt = 0;
       }
