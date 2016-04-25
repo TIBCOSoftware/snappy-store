@@ -21,6 +21,8 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
@@ -86,17 +88,18 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
         }
       }
     }
-    return Collections.emptySet();
+    throw new NoDataStoreAvailableException(LocalizedStrings
+        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
+        .toLocalizedString("SnappyData Lead Node"));
   }
 
   @Override
   public void postExecutionCallback() {
-
   }
 
   @Override
   public boolean isHA() {
-    return false;
+    return true;
   }
 
   @Override
