@@ -813,6 +813,9 @@ public interface SQLState {
 	String LANG_DB2_INVALID_COLS_SPECIFIED                             = "42802";
         String LANG_DB2_INVALID_SELECT_COL_FOR_HAVING = "42803";
 	String LANG_DB2_ADD_UNIQUE_OR_PRIMARY_KEY_ON_NULL_COLS			   = "42831";
+// GemStone changes BEGIN
+	String LANG_ADD_PRIMARY_KEY_OR_INDEX_ON_LOB_UDT = "42832";
+// GemStone changes END
 	String LANG_DB2_REPLACEMENT_ERROR								   = "42815.S.713";
 	String LANG_DB2_COALESCE_DATATYPE_MISMATCH								   = "42815.S.171";
 	String LANG_DB2_TOO_LONG_FLOATING_POINT_LITERAL			           = "42820";

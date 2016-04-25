@@ -1561,6 +1561,13 @@ Guide.
             </msg>
 
             <msg>
+                <name>42832</name>
+                <text>Column '{0}' of type '{1}' cannot be part of a primary/unique key or index because it is of LOB/UDT type.</text>
+                <arg>columnName</arg>
+                <arg>type</arg>
+            </msg>
+
+            <msg>
                 <name>42834</name>
                 <text>SET NULL cannot be specified because FOREIGN KEY '{0}'  cannot contain null values.  </text>
                 <arg>key</arg>
