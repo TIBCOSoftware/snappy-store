@@ -800,7 +800,7 @@ public abstract class Misc {
           op);
     }
     else if (gfeex instanceof NoDataStoreAvailableException) {
-      String[] messageParts = gfeex.getMessage().split(": ")
+      String[] messageParts = gfeex.getMessage().split(": ");
       return StandardException.newException(SQLState.NO_DATASTORE_FOUND, cause,
           messageParts.length > 1 ? messageParts[1] : op);
     }
