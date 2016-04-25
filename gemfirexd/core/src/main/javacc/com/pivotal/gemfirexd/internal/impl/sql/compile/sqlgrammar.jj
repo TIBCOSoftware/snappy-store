@@ -3101,7 +3101,9 @@ TOKEN [IGNORE_CASE] :
 |   <CHECKS: "checks" >
 |	<MAXWRITEONLYFILESIZE: "maxwriteonlyfilesize">
 |	<WRITEONLYFILEROLLOVERINTERVAL: "writeonlyfilerolloverinterval">
+|	<SPARKHASH: "sparkhash">
 |	<PUT: "put">
+
 // GemStone changes END
 }
 
@@ -12270,6 +12272,8 @@ partitionClauseAndColocationDefinition(AttributesFactory afact,
   }
 }
 
+
+
 PartitionResolver 
 partitioningClause(DistributionDefinitionNode distributionNode, boolean[] repPartPersFlags)
 	throws StandardException :
@@ -12279,12 +12283,13 @@ partitioningClause(DistributionDefinitionNode distributionNode, boolean[] repPar
 {
 	<PARTITION> <BY>
 
-  	(
-  	 <HASH>
-  	 {
-  	     distributionNode.setCustomHashing(true);
-  	  }
-  	)?
+    (
+           <SPARKHASH>
+           {
+               distributionNode.setCustomHashing(true);
+            }
+    )?
+
 	(
 
 	<RANGE>	tmpprslvr = partitionRangeDefinition(distributionNode)
@@ -18024,7 +18029,9 @@ nonReservedKeyword()  :
  	|   tok = <WRITEONLYFILEROLLOVERINTERVAL>
  	|	tok = <PUT>
  	|   tok = <JSON>
+ 	|   tok = <SPARKHASH>
  	|   tok = <CLOB_STRING>
+
 // GemStone changes END
 	)
 	{
