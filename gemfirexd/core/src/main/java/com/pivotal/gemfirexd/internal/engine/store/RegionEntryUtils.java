@@ -254,7 +254,7 @@ public final class RegionEntryUtils {
    * partitioning; can even that be avoided?
    * 
    * @param val
-   * @param validColumn
+   * @param validColumns
    *          - this is 1 based i.e. logicalPosition and will be substracted by
    *          1 for DVD[] access.
    * @param gfContainer

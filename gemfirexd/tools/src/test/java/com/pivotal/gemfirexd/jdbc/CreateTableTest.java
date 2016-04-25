@@ -38,6 +38,7 @@
 
 package com.pivotal.gemfirexd.jdbc;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.Properties;
@@ -79,6 +80,7 @@ import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 import org.apache.derbyTesting.functionTests.tests.derbynet.SqlExceptionTest;
 import org.apache.derbyTesting.junit.JDBC;
+import udtexamples.UDTPrice;
 
 @SuppressWarnings("serial")
 public class CreateTableTest extends JdbcTestBase {
@@ -199,7 +201,7 @@ public class CreateTableTest extends JdbcTestBase {
     populateData(conn, false, false);
   }
 
-  public void testCLOBPK() throws SQLException {
+  public void testLOBUDTKey_GEMXD18() throws SQLException {
     Connection conn = getConnection();
     Statement stmt = conn.createStatement();
     stmt.execute("create schema bob");
@@ -221,6 +223,30 @@ public class CreateTableTest extends JdbcTestBase {
         throw sqle;
       }
     }
+    // check UDT disallowed as key
+    stmt.execute("CREATE TYPE UDTPrice " +
+        "EXTERNAL NAME 'udtexamples.UDTPrice' LANGUAGE JAVA");
+    try {
+      stmt.execute("CREATE TABLE USERS_TICKETS(USERID string, "
+          + "ROLEID bigint NOT NULL, TICKETPRICE UDTPrice UNIQUE)");
+      fail("Expected exception for UDT type as unique key");
+    } catch (SQLException sqle) {
+      if (!"42832".equals(sqle.getSQLState())) {
+        throw sqle;
+      }
+    }
+    stmt.execute("CREATE TABLE USERS_TICKETS(USERID string NOT NULL, "
+        + "ROLEID bigint NOT NULL, TICKETPRICE UDTPrice)");
+    try {
+      stmt.execute(
+          "CREATE INDEX USERS_TICKETS_PRICE ON USERS_TICKETS(TICKETPRICE)");
+      fail("Expected exception for UDT type as index key");
+    } catch (SQLException sqle) {
+      if (!"X0X67".equals(sqle.getSQLState())) {
+        throw sqle;
+      }
+    }
+
     stmt.execute("CREATE TABLE USERS_ROLES(USERID string NOT NULL, "
         + "ROLEID bigint NOT NULL) PARTITION BY COLUMN(USERID,ROLEID)");
     try {
@@ -231,6 +257,7 @@ public class CreateTableTest extends JdbcTestBase {
         throw sqle;
       }
     }
+
     stmt.execute("CREATE INDEX USERS_ROLES_ROLE ON USERS_ROLES(ROLEID)");
 
     stmt.execute("insert into users_roles values('two', 3), ('four', 5)");
@@ -253,6 +280,38 @@ public class CreateTableTest extends JdbcTestBase {
     rs = stmt.executeQuery("select * from users_roles where roleId != 4");
     JDBC.assertUnorderedResultSet(rs, expected);
     rs = stmt.executeQuery("select * from users_roles where roleId != 5");
+    JDBC.assertUnorderedResultSet(rs, expected2);
+
+    // next for table having UDT type
+    stmt.execute("CREATE INDEX USERS_TICKETS_ROLES ON USERS_TICKETS(ROLEID)");
+    PreparedStatement pstmt = conn.prepareStatement(
+        "insert into USERS_TICKETS values(?, ?, ?)");
+    pstmt.setString(1, "two");
+    pstmt.setInt(2, 3);
+    pstmt.setObject(3, new UDTPrice(new BigDecimal("1.1"), new BigDecimal("2.2")));
+    pstmt.execute();
+    pstmt.setString(1, "four");
+    pstmt.setInt(2, 5);
+    pstmt.setObject(3, new UDTPrice(new BigDecimal("0.1"), new BigDecimal("3.2")));
+    pstmt.execute();
+
+    expected = new String[][]{
+        new String[]{"two", "3", "highPrice is 2.2 low price is 1.1"},
+        new String[]{"four", "5", "highPrice is 3.2 low price is 0.1"}
+    };
+    expected2 = new String[][]{
+        new String[]{"two", "3", "highPrice is 2.2 low price is 1.1"},
+    };
+    rs = stmt.executeQuery("select * from users_tickets");
+    JDBC.assertUnorderedResultSet(rs, expected);
+    rs = stmt.executeQuery("select * from users_tickets where roleId > 2");
+    JDBC.assertUnorderedResultSet(rs, expected);
+    rs = stmt.executeQuery(
+        "select * from users_tickets where roleId > 1 and roleId < 4");
+    JDBC.assertUnorderedResultSet(rs, expected2);
+    rs = stmt.executeQuery("select * from users_tickets where roleId != 4");
+    JDBC.assertUnorderedResultSet(rs, expected);
+    rs = stmt.executeQuery("select * from users_tickets where roleId != 5");
     JDBC.assertUnorderedResultSet(rs, expected2);
   }
 

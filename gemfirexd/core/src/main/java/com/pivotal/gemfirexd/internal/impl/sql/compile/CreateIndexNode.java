@@ -32,7 +32,6 @@ import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.CompilerContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
@@ -200,13 +199,13 @@ public class CreateIndexNode extends DDLStatementNode
 					columnDescriptor.getType().getTypeId().getSQLTypeName());
 			}
 // GemStone changes BEGIN
-			// Don't allow index on a LOB column
+			// Don't allow index on a LOB/XML column
 			TypeId typeId = columnDescriptor.getType().getTypeId();
 			if (typeId.isLOBTypeId() || typeId.isXMLTypeId()) {
 			  throw StandardException.newException(
-			      SQLState.LANG_ADD_PRIMARY_KEY_OR_INDEX_ON_LOB,
+			      SQLState.LANG_ADD_PRIMARY_KEY_OR_INDEX_ON_LOB_UDT,
 			      columnDescriptor.getColumnName(), typeId.getSQLTypeName());
-			}
+                       }
 // GemStone changes END
 		}
 

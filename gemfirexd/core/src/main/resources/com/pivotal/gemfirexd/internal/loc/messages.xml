@@ -1562,7 +1562,7 @@ Guide.
 
             <msg>
                 <name>42832</name>
-                <text>Column '{0}' of type '{1}' cannot be part of a primary/unique key or index because it is of LOB/XML type.</text>
+                <text>Column '{0}' of type '{1}' cannot be part of a primary/unique key or index because it is of LOB/UDT type.</text>
                 <arg>columnName</arg>
                 <arg>type</arg>
             </msg>
