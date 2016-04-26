@@ -4676,6 +4676,23 @@ public class InitialImageOperation  {
     }
   }
 
+  public static boolean anyTestHookInstalled() {
+    return (internalBeforeGetInitialImage != null ||
+    internalBeforeRequestRVV != null ||
+    internalAfterRequestRVV != null ||
+    internalAfterCalculatedUnfinishedOps != null ||
+    internalBeforeSavedReceivedRVV != null ||
+    internalAfterSavedReceivedRVV != null ||
+    internalAfterSentRequestImage != null ||
+    internalAfterReceivedRequestImage != null ||
+    internalDuringPackingImage != null ||
+    internalAfterSentImageReply != null ||
+    internalAfterReceivedImageReply != null ||
+    internalDuringApplyDelta != null ||
+    internalBeforeCleanExpiredTombstones != null ||
+    internalAfterSavedRVVEnd != null);
+  }
+
   public static void resetGIITestHook(final GIITestHookType type, final boolean setNull) {
     switch (type) {
     case BeforeGetInitialImage: // 0

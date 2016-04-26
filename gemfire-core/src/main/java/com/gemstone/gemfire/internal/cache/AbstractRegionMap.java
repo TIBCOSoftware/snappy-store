@@ -19,15 +19,7 @@ package com.gemstone.gemfire.internal.cache;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -47,9 +39,12 @@ import com.gemstone.gemfire.cache.query.QueryException;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.cache.query.internal.index.IndexManager;
 import com.gemstone.gemfire.cache.query.internal.index.IndexProtocol;
+import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.ByteArrayDataInput;
+import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.DiskInitFile.DiskRegionFlag;
 import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
@@ -73,6 +68,7 @@ import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.Has
 import com.gemstone.gemfire.internal.concurrent.MapCallbackAdapter;
 import com.gemstone.gemfire.internal.concurrent.MapResult;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl;
@@ -82,7 +78,9 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
+import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.PdxInstance;
 import com.gemstone.gemfire.pdx.PdxSerializationException;
 import com.gemstone.gemfire.pdx.internal.ConvertableToBytes;
@@ -2253,7 +2251,17 @@ RETRY_LOOP:
         txRemoveOldIndexEntry(Operation.DESTROY, re);
         boolean clearOccured = false;
         try {
-          processAndGenerateTXVersionTag(owner, cbEvent, re, txr);
+          EntryEventImpl txEvent = null;
+          if (!isRegionReady) {
+            if (re.isTombstone() || re.isDestroyedOrRemoved()) {
+              // creating the event just to process the version tag.
+              txEvent = createCBEvent(owner, localOp ? Operation.LOCAL_DESTROY
+                      : Operation.DESTROY, key, null, txState, eventId,
+                  aCallbackArgument, filterRoutingInfo, bridgeContext,
+                  versionTag, tailKey, cbEvent);
+            }
+          }
+          processAndGenerateTXVersionTag(owner, (txEvent != null) ? txEvent : cbEvent, re, txr);
           if (inTokenMode) {
             re.setValue(owner, Token.DESTROYED);
           }
@@ -2308,7 +2316,17 @@ RETRY_LOOP:
         }
 
         try {
-          processAndGenerateTXVersionTag(owner, cbEvent, re, txr);
+          EntryEventImpl txEvent = null;
+          if (!isRegionReady) {
+            if (re.isTombstone() || re.isDestroyedOrRemoved()) {
+              // creating the event just to process the version tag.
+              txEvent = createCBEvent(owner, localOp ? Operation.LOCAL_DESTROY
+                      : Operation.DESTROY, key, null, txState, eventId,
+                  aCallbackArgument, filterRoutingInfo, bridgeContext,
+                  versionTag, tailKey, cbEvent);
+            }
+          }
+          processAndGenerateTXVersionTag(owner, (txEvent != null) ? txEvent : cbEvent, re, txr);
           int oldSize = 0;
           if (cbEvent != null && owner.getConcurrencyChecksEnabled()
               && (versionTag = cbEvent.getVersionTag()) != null) {
@@ -4429,7 +4447,21 @@ RETRY_LOOP:
         OffHeapHelper.releaseWithNoTracking(oldValue);
       }
       }
-      processAndGenerateTXVersionTag(owner, cbEvent, re, txr);
+      boolean flag = false;
+      EntryEventImpl txEvent = null;
+      if (!isRegionReady && owner.getConcurrencyChecksEnabled()) {
+        InitialImageOperation.Entry tmplEntry = new InitialImageOperation.Entry();
+
+        flag = checkIfEqualValue(owner, re, tmplEntry, newValue);
+
+        // creating the event just to process the version tag.
+        txEvent = createCBEvent(owner, putOp, key, newValue, txState, eventId,
+            aCallbackArgument, filterRoutingInfo, bridgeContext, versionTag,
+            tailKey, cbEvent);
+      }
+      if (!flag) {
+        processAndGenerateTXVersionTag(owner, !isRegionReady ? txEvent : cbEvent, re, txr);
+      }
       txRemoveOldIndexEntry(putOp, re);
       if (didDestroy) {
         re.txDidDestroy(lastMod);
@@ -4564,6 +4596,87 @@ RETRY_LOOP:
       if (!cbEventInPending && cbEvent != null) cbEvent.release();
     }
   }
+
+  private boolean checkIfEqualValue(LocalRegion region, RegionEntry re, InitialImageOperation.Entry tmplEntry,
+      Object tmpValue) {
+    final DM dm = region.getDistributionManager();
+    final ByteArrayDataInput in = new ByteArrayDataInput();
+    final HeapDataOutputStream out = new HeapDataOutputStream(
+        Version.CURRENT);
+
+    if (re.fillInValue(region, tmplEntry, in, dm, null)) {
+      try {
+        if (tmplEntry.value != null) {
+          final byte[] valueInCache;
+          boolean areEqual = true;
+          final Class<?> vclass = tmplEntry.value.getClass();
+          if (vclass == byte[].class) {
+            valueInCache = (byte[])tmplEntry.value;
+            return Arrays.equals(valueInCache, (byte[])tmpValue);
+          } else if (vclass == byte[][].class) {
+            if (tmpValue instanceof byte[][]) {
+              final byte[][] v1 = (byte[][])tmplEntry.value;
+              final byte[][] v2 = (byte[][])tmpValue;
+              areEqual = ArrayUtils.areByteArrayArrayEquals(v1,
+                  v2);
+              if (areEqual) {
+                return true;
+              } else {
+                valueInCache = null;
+              }
+            } else {
+              valueInCache = EntryEventImpl
+                  .serialize(tmplEntry.value, out);
+            }
+          } else if (ByteSource.class.isAssignableFrom(vclass)) {
+            ByteSource bs = (ByteSource)tmplEntry.value;
+            // TODO: PERF: Asif: optimize ByteSource to allow
+            // comparison without reading byte[][] into memory
+            Object storedObject = bs
+                .getValueAsDeserializedHeapObject();
+            final Class<?> cls;
+            if (storedObject == null) {
+              valueInCache = null;
+            } else if ((cls = storedObject.getClass()) == byte[].class) {
+              valueInCache = (byte[])storedObject;
+            } else if (cls == byte[][].class
+                && tmpValue instanceof byte[][]) {
+              final byte[][] v1 = (byte[][])storedObject;
+              final byte[][] v2 = (byte[][])tmpValue;
+              areEqual = ArrayUtils.areByteArrayArrayEquals(v1,
+                  v2);
+              if (areEqual) {
+                return true;
+              } else {
+                valueInCache = null;
+              }
+            } else {
+              valueInCache = EntryEventImpl
+                  .serialize(storedObject, out);
+            }
+          } else if (HeapDataOutputStream.class
+              .isAssignableFrom(vclass)) {
+            valueInCache = ((HeapDataOutputStream)tmplEntry.value)
+                .toByteArray();
+          } else {
+            valueInCache = EntryEventImpl
+                .serialize(tmplEntry.value, out);
+          }
+          // compare byte arrays
+          if (areEqual) {
+            byte[] tmpBytes = EntryEventImpl.serialize(tmpValue, out);
+            if (Arrays.equals(valueInCache, tmpBytes)) {
+              return true;
+            }
+          }
+        }
+      } finally {
+        OffHeapHelper.release(tmplEntry.value);
+      }
+    }
+    return false;
+  }
+
 
   /**
    * called from txApply* methods to process and generate versionTags.

@@ -24,6 +24,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.GemFireVersion;
 import com.gemstone.gemfire.internal.cache.CacheConfig;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.InitialImageOperation;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jndi.JNDIInvoker;
@@ -257,7 +258,7 @@ public class CacheFactory {
     // deadlock when messaging returns to this VM
     final int initReq = LocalRegion.threadInitLevelRequirement();
     if (initReq == LocalRegion.ANY_INIT
-        || initReq == LocalRegion.BEFORE_INITIAL_IMAGE) { // fix bug 33471
+        || initReq == LocalRegion.BEFORE_INITIAL_IMAGE || (InitialImageOperation.anyTestHookInstalled())) { // fix bug 33471
       return basicGetInstancePart2(system, closeOk);
     } else {
       synchronized (CacheFactory.class) {
