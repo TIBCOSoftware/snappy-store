@@ -258,7 +258,8 @@ public class CacheFactory {
     // deadlock when messaging returns to this VM
     final int initReq = LocalRegion.threadInitLevelRequirement();
     if (initReq == LocalRegion.ANY_INIT
-        || initReq == LocalRegion.BEFORE_INITIAL_IMAGE || (InitialImageOperation.anyTestHookInstalled())) { // fix bug 33471
+        || initReq == LocalRegion.BEFORE_INITIAL_IMAGE  // fix bug 33471
+        || (InitialImageOperation.anyTestHookInstalled())) {
       return basicGetInstancePart2(system, closeOk);
     } else {
       synchronized (CacheFactory.class) {

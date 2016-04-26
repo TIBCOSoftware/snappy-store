@@ -2201,6 +2201,7 @@ RETRY_LOOP:
 
     final LocalRegion owner = _getOwner();
 
+    owner.getLogWriterI18n().fine("SKSK comign here for key " , new Exception("SKSK"));
     final boolean isRegionReady = !inTokenMode;
     boolean cbEventInPending = false;
     LogWriterI18n log = owner.getLogWriterI18n();
@@ -2251,17 +2252,7 @@ RETRY_LOOP:
         txRemoveOldIndexEntry(Operation.DESTROY, re);
         boolean clearOccured = false;
         try {
-          EntryEventImpl txEvent = null;
-          if (!isRegionReady) {
-            if (re.isTombstone() || re.isDestroyedOrRemoved()) {
-              // creating the event just to process the version tag.
-              txEvent = createCBEvent(owner, localOp ? Operation.LOCAL_DESTROY
-                      : Operation.DESTROY, key, null, txState, eventId,
-                  aCallbackArgument, filterRoutingInfo, bridgeContext,
-                  versionTag, tailKey, cbEvent);
-            }
-          }
-          processAndGenerateTXVersionTag(owner, (txEvent != null) ? txEvent : cbEvent, re, txr);
+          processAndGenerateTXVersionTag(owner, cbEvent, re, txr);
           if (inTokenMode) {
             re.setValue(owner, Token.DESTROYED);
           }
@@ -2299,6 +2290,7 @@ RETRY_LOOP:
         }
       }
       else if (inTokenMode || owner.concurrencyChecksEnabled) {
+
         if (shouldCreateCBEvent(owner,
             false /* isInvalidate */, isRegionReady || inRI)) {
           cbEvent = createCBEvent(owner, localOp ? Operation.LOCAL_DESTROY
@@ -2318,15 +2310,14 @@ RETRY_LOOP:
         try {
           EntryEventImpl txEvent = null;
           if (!isRegionReady) {
-            if (re.isTombstone() || re.isDestroyedOrRemoved()) {
-              // creating the event just to process the version tag.
-              txEvent = createCBEvent(owner, localOp ? Operation.LOCAL_DESTROY
-                      : Operation.DESTROY, key, null, txState, eventId,
-                  aCallbackArgument, filterRoutingInfo, bridgeContext,
-                  versionTag, tailKey, cbEvent);
-            }
+            // creating the event just to process the version tag.
+            txEvent = createCBEvent(owner, localOp ? Operation.LOCAL_DESTROY
+                    : Operation.DESTROY, key, null, txState, eventId,
+                aCallbackArgument, filterRoutingInfo, bridgeContext,
+                versionTag, tailKey, cbEvent);
           }
           processAndGenerateTXVersionTag(owner, (txEvent != null) ? txEvent : cbEvent, re, txr);
+
           int oldSize = 0;
           if (cbEvent != null && owner.getConcurrencyChecksEnabled()
               && (versionTag = cbEvent.getVersionTag()) != null) {

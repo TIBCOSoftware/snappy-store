@@ -91,9 +91,6 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testGFXDDeltaWithDeltaGII() throws Exception {
-	  if(isTransactional) {
-		  return;
-	  }
     startVMs(0, 2);
     startVMs(1, 0);
     createDiskStore(true, 1);
@@ -203,9 +200,6 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testGFXDDeltaWithDeltaGII_serverExecute() throws Exception {
-	  if(isTransactional) {
-		  return;
-	  }
     startVMs(0, 2);
     startVMs(1, 0);
     createDiskStore(true, 1);
@@ -420,9 +414,6 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testGFXDDeleteWithDeltaGIITX() throws Exception {
-    if(isTransactional) {
-      return;
-    }
     startVMs(0, 2);
     startVMs(1, 0);
     createDiskStore(true, 1);
@@ -535,9 +526,6 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testGFXDDeltaWithDeltaGIITX() throws Exception {
-    if(isTransactional) {
-      return;
-    }
     startVMs(0, 2);
     startVMs(1, 0);
     createDiskStore(true, 1);
