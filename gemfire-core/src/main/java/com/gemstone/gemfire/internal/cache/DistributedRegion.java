@@ -343,6 +343,9 @@ public class DistributedRegion extends LocalRegion implements
     if (event.getVersionTag() != null && event.getVersionTag().getRegionVersion() > 0) {
       return false;
     }
+    if (isTX()) {
+      return false;
+    }
     // if we're not allowed to generate a version tag we need to send it to someone who can
     if (this.concurrencyChecksEnabled && !this.generateVersionTag) {
       return true;

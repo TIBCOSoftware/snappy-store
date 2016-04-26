@@ -24,7 +24,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +45,7 @@ import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.ResourceManagerStats;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
+import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gnu.trove.TIntHashSet;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
@@ -4795,5 +4798,73 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     
     newstmt.close();
     newConn.commit();
+  }
+
+  /**
+   * Test insufficient data store behaviour for distributed/update/delete/select
+   * and for primary key based select/update/delete
+   *
+   * @throws Exception
+   */
+  public void testGFXDDeleteWithConcurrency() throws Exception {
+    startVMs(0, 2);
+    startVMs(1, 0);
+    createDiskStore(true, 1);
+    // Create a schema
+    clientSQLExecute(1, "create schema trade");
+
+    Map<Integer, String> expected = new HashMap<Integer, String>();
+    clientSQLExecute(1, "create table trade.customers (cid int not null, "
+        + "cust_name varchar(100), tid int, primary key (cid)) ENABLE CONCURRENCY CHECKS replicate "
+        + getSuffix());
+    Connection conn = TestUtil.getConnection();
+    conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+    conn.setAutoCommit(false);
+    PreparedStatement psInsert = conn
+        .prepareStatement("insert into trade.customers values (?,?,?)");
+    for (int i = 1; i < 5; ++i) {
+      psInsert.setInt(1, i);
+      psInsert.setString(2, "unmodified");
+      psInsert.setInt(3, i);
+      psInsert.executeUpdate();
+      expected.put(i,  "unmodified");
+    }
+    conn.commit();
+    Statement st = conn.createStatement();
+    boolean b = st.execute("delete from trade.customers where cid = 4");
+    conn.commit();
+    expected.remove(4);
+
+    {
+      //Make sure vm2 has the correct contents.
+      //Now we want to validate the region contents and RVVs...
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+
+      assertEquals(expected,received);
+    }
+
+    stopVMNums(-1);
+
+    //Make sure vm2 has the correct contents.
+    //Now we want to validate the region contents and RVVs...
+    {
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+      rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+      assertEquals(expected,received);
+    }
   }
 }
