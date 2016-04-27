@@ -33,7 +33,6 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
-import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.RegionExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -280,7 +279,7 @@ public class GemFireRegionSizeResultSet extends AbstractGemFireResultSet
         ResultCollector<Object, Object> collector, LocalRegion region,
         Set<Object> routingObjects, LanguageConnectionContext lcc) {
       super(collector, region, routingObjects, getCurrentTXState(lcc),
-          getTimeStatsSettings(lcc));
+          getTimeStatsSettings(lcc), true);
       this.qualifiedTableName = tableName;
     }
 

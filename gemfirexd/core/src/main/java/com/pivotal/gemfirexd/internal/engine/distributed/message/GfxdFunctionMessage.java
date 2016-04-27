@@ -188,8 +188,10 @@ public abstract class GfxdFunctionMessage<T> extends
 
   /** Constructor that should be invoked by child classes. */
   protected GfxdFunctionMessage(ResultCollector<Object, T> collector,
-      final TXStateInterface tx, boolean timeStatsEnabled) {
+      final TXStateInterface tx, boolean timeStatsEnabled,
+      boolean abortOnLowMemory) {
     super(tx, timeStatsEnabled);
+    this.abortOnLowMemory = abortOnLowMemory;
     if (this.timeStatsEnabled) {
       replyReceivedMsgs = Collections
           .synchronizedList(new ArrayList<GfxdFunctionReplyMessage>());
@@ -1824,9 +1826,4 @@ public abstract class GfxdFunctionMessage<T> extends
   // execution to be on all copies of data to gather stats etc.
   public void setSendToAllReplicates(boolean includeAdmin) {
   }
-
-  public void setAbortOnLowMemory(boolean flag) {
-    abortOnLowMemory = flag;
-  }
-
 }

@@ -53,7 +53,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
 
   public LeadNodeExecutorMsg(String sql, LeadNodeExecutionContext ctx,
       GfxdResultCollector<Object> rc) {
-    super(rc, null, false);
+    super(rc, null, false, true);
     this.sql = sql;
     this.ctx = ctx;
   }

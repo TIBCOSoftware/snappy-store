@@ -53,7 +53,6 @@ import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.diag.QueryStatisticsVTI;
-import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdFunctionMessage.GfxdFunctionReplyMessageProcessor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
@@ -711,7 +710,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
       final Object arg, boolean allMembersIncludingAdmin)
       throws StandardException {
     super(collector, null /* no TX for config messages */,
-        DistributionStats.enableClockStats);
+        DistributionStats.enableClockStats, true);
     if (members != null) {
       this.members = new HashSet<DistributedMember>();
       final Set<DistributedMember> allMembers = getAllDSMembers();

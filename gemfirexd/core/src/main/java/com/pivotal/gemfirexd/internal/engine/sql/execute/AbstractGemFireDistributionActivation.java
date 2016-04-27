@@ -345,6 +345,7 @@ public abstract class AbstractGemFireDistributionActivation extends
               }
               throwIfMissingParms();
               final PrepStatementExecutorMessage<Object> prepMsg;
+              boolean abortOnLowMemory = GfxdHeapThresholdListener.isCancellableQuery(this);
               functionMsg = prepMsg = new PrepStatementExecutorMessage<Object>(
                   rc, defaultSchema, this.connectionID, this.statementID,
                   this.executionID, newrootID, newstmtLevel,
@@ -356,8 +357,7 @@ public abstract class AbstractGemFireDistributionActivation extends
                   (this.qInfo.isSelectForUpdateQuery() && this.qInfo
                       .needKeysForSelectForUpdate()), getParameterValueSet(),
                   preg, routingKeysToExecute, this.qInfo.isInsertAsSubSelect(),
-                  lcc, this.getTimeOutMillis());
-              functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
+                  lcc, this.getTimeOutMillis(), abortOnLowMemory);
               prepMsg.setPartitionRegions(this.qInfo.getOtherRegions());
               // Handle Union, Intersect and Except
               if (this.qInfo.hasUnionNode()
@@ -415,6 +415,7 @@ public abstract class AbstractGemFireDistributionActivation extends
                 routingKeysToExecute = null;
               }
               rc = getResultCollector(enableStreaming, rs);
+              boolean abortOnLowMemory = GfxdHeapThresholdListener.isCancellableQuery(this);
               final StatementExecutorMessage<Object> unprepMsg;
               functionMsg = unprepMsg = new StatementExecutorMessage<Object>(
                   rc, defaultSchema, this.connectionID, this.statementID,
@@ -428,8 +429,7 @@ public abstract class AbstractGemFireDistributionActivation extends
                       .needKeysForSelectForUpdate()), this.pvs, preg,
                   routingKeysToExecute /* set of routing objects */,
                   this.qInfo.isInsertAsSubSelect(), lcc,
-                  this.getTimeOutMillis());
-              functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
+                  this.getTimeOutMillis(), abortOnLowMemory);
               unprepMsg.setPartitionRegions(this.qInfo.getOtherRegions());
               // Handle Union, Intersect and Except
               if (this.qInfo.hasUnionNode()
@@ -582,6 +582,7 @@ public abstract class AbstractGemFireDistributionActivation extends
       }
 
       throwIfMissingParms();
+      boolean abortOnLowMemory = GfxdHeapThresholdListener.isCancellableQuery(this);
       functionMsg = new PrepStatementExecutorMessage<Object>(
           rc,
           defaultSchema,
@@ -599,8 +600,7 @@ public abstract class AbstractGemFireDistributionActivation extends
           this.qInfo.isSubqueryFlatteningAllowed(),
           (isForSelectForUpdateQuery && this.qInfo.needKeysForSelectForUpdate()),
           this.getParameterValueSet(), rgn, null, this.qInfo
-              .isInsertAsSubSelect(), lcc, this.getTimeOutMillis());
-      functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
+              .isInsertAsSubSelect(), lcc, this.getTimeOutMillis(), abortOnLowMemory);
       setAllAreNonPartitionedRegion(rs, isVTIInvolved);
       if (isVTIInvolved) {
         functionMsg.setSendToAllReplicates(includeAdminForVTI());
@@ -626,6 +626,7 @@ public abstract class AbstractGemFireDistributionActivation extends
       }
     }
     else {
+      boolean abortOnLowMemory = GfxdHeapThresholdListener.isCancellableQuery(this);
       functionMsg = new StatementExecutorMessage<Object>(
           rc,
           defaultSchema,
@@ -643,8 +644,7 @@ public abstract class AbstractGemFireDistributionActivation extends
           this.qInfo.isSubqueryFlatteningAllowed(),
           (isForSelectForUpdateQuery && this.qInfo.needKeysForSelectForUpdate()),
           this.pvs, rgn, null, this.qInfo.isInsertAsSubSelect(), lcc, this
-              .getTimeOutMillis());
-      functionMsg.setAbortOnLowMemory(GfxdHeapThresholdListener.isCancellableQuery(this));
+              .getTimeOutMillis(), abortOnLowMemory);
       setAllAreNonPartitionedRegion(rs, isVTIInvolved);
       if (isVTIInvolved) {
         functionMsg.setSendToAllReplicates(includeAdminForVTI());

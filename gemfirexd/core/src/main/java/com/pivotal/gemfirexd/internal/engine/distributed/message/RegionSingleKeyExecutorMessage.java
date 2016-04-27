@@ -147,7 +147,7 @@ public abstract class RegionSingleKeyExecutorMessage extends
       final boolean allCopies, final TXStateInterface tx,
       boolean timeStatsEnabled) {
     super(new GfxdSingleResultCollector(allCopies ? DUMMY_RESULT : null), tx,
-        timeStatsEnabled);
+        timeStatsEnabled, true);
     this.region = region;
     this.regionPath = region.getFullPath();
     if (region.getPartitionAttributes() != null) {

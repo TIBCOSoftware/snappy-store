@@ -62,7 +62,7 @@ public final class StatementCloseExecutorMessage extends
       final ResultCollector<Object, Object> rc,
       final Set<DistributedMember> members, final long connectionId,
       final long statementId) {
-    super(rc, null, DistributionStats.enableClockStats);
+    super(rc, null, DistributionStats.enableClockStats, false);
     this.targetMembers = members;
     this.connectionId = connectionId;
     this.statementId = statementId;

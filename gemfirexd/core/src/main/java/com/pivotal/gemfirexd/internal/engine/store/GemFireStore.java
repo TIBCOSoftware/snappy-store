@@ -723,6 +723,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
 
+    // install the GemFireXD specific thread dump signal (URG) handler
+    try {
+      SigThreadDumpHandler.install();
+    } catch (Throwable t) {
+      SanityManager.DEBUG_PRINT("fine:TRACE",
+          "Failed to install thread dump signal handler: " + t.getCause());
+    }
+
     // first clear any residual statics from a previous unclean run
     clearStatics(true);
     GfxdDataSerializable.clearTypes();
@@ -2299,15 +2307,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.databaseName.equalsIgnoreCase("snappydata")) {
         this.snappyStore = true;
         this.database.setdisableStatementOptimizationToGenericPlan();
-      }
-    }
-    // install the GemFireXD specific thread dump signal (URG) handler
-    if (!isSnappyStore()) {
-      try {
-        SigThreadDumpHandler.install();
-      } catch (Throwable t) {
-        SanityManager.DEBUG_PRINT("fine:TRACE",
-            "Failed to install thread dump signal handler: " + t.getCause());
       }
     }
   }

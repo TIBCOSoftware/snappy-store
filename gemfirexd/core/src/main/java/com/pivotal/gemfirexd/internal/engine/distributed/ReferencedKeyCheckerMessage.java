@@ -221,7 +221,7 @@ public final class ReferencedKeyCheckerMessage extends
       FormatableBitSet refColsUpdtdBits, TIntObjectHashMap refColUpdtd2DependentCols,
       TIntIntHashMap refCol2IndexMap,
       int[] colToDVDPosMapping ) {
-    super(rc, tx, getTimeStatsSettings(lcc));
+    super(rc, tx, getTimeStatsSettings(lcc), true);
     this.container = container;
     this.schemaName = container.getSchemaName();
     if (this.schemaName == null) {

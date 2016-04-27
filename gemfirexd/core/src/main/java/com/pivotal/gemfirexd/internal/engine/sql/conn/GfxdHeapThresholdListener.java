@@ -483,8 +483,7 @@ public final class GfxdHeapThresholdListener implements MemoryThresholdListener 
                     ps.getUserQueryString(act.getLanguageConnectionContext()) + " for cancellation");
           }
           return false;
-        default:
-          ;
+        default: break;
       }
     }
     return true;

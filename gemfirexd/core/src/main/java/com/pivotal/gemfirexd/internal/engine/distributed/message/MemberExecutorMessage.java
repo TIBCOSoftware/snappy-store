@@ -46,8 +46,9 @@ public abstract class MemberExecutorMessage<T> extends GfxdFunctionMessage<T>
 
   /** Constructor that should be invoked by child classes. */
   protected MemberExecutorMessage(ResultCollector<Object, T> collector,
-      final TXStateInterface tx, boolean timeStatsEnabled) {
-    super(collector, tx, timeStatsEnabled);
+      final TXStateInterface tx, boolean timeStatsEnabled,
+      boolean abortOnLowMemory) {
+    super(collector, tx, timeStatsEnabled, abortOnLowMemory);
   }
 
   /** Copy constructor to be invoked by child classes. */

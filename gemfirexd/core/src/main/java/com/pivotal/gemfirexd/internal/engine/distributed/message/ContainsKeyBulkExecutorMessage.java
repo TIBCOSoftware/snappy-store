@@ -95,7 +95,7 @@ public class ContainsKeyBulkExecutorMessage extends
       final LanguageConnectionContext lcc) {
     super(new GfxdListResultCollector(null, true), region, new THashSet(
         Arrays.asList(routingObjects)) /*routingObjects*/, tx,
-        getTimeStatsSettings(lcc));
+        getTimeStatsSettings(lcc), true);
 
     this.inKeys = keys;
     this.inRoutingObjects = routingObjects;

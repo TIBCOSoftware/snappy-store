@@ -503,7 +503,7 @@ public final class IdentityValueManager {
     private GetRetrievedIdentityValues(
         final ResultCollector<Object, Object> rc,
         final Object table, final long start, final long increment) {
-      super(rc, null, false);
+      super(rc, null, false, true);
       this.table = table;
       this.start = start;
       this.increment = increment;

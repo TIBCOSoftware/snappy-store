@@ -211,7 +211,7 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     public TestFunctionMessage(ResultCollector<Object, Object> collector,
         LocalRegion region, Set<Object> routingObjects) {
       super(collector, region, routingObjects, null,
-          DistributionStats.enableClockStats);
+          DistributionStats.enableClockStats, true);
     }
 
     @Override

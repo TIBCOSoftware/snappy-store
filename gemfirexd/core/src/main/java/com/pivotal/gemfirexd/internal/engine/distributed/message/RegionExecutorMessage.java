@@ -181,8 +181,8 @@ public abstract class RegionExecutorMessage<T> extends GfxdFunctionMessage<T>
 
   protected RegionExecutorMessage(ResultCollector<Object, T> collector,
       LocalRegion region, Set<Object> routingObjects, TXStateInterface tx,
-      boolean timeStatsEnabled) {
-    super(collector, tx, timeStatsEnabled);
+      boolean timeStatsEnabled, boolean abortOnLowMemory) {
+    super(collector, tx, timeStatsEnabled, abortOnLowMemory);
     this.region = region;
     this.routingObjects = routingObjects;
   }
