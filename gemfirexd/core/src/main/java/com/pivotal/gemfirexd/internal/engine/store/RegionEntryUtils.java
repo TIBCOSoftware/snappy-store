@@ -1514,6 +1514,11 @@ public final class RegionEntryUtils {
     }
 
     @Override
+    public boolean isSnappyStore() {
+      return Misc.getMemStore().isSnappyStore();
+    }
+
+    @Override
     public boolean isOperationNode() {
       GemFireStore.VMKind myVMKind = GemFireXDUtils.getMyVMKind();
       return myVMKind != null && myVMKind.isAccessorOrStore();

@@ -22,6 +22,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.server.ServerLoad;
@@ -62,7 +63,24 @@ public class BridgeServerAdvisor extends GridAdvisor {
       InternalDistributedMember memberId, int version) {
     return new BridgeServerProfile(memberId, version);
   }
-  
+
+  @Override
+  public Set adviseProfileRemove() {
+    Set results = super.adviseProfileRemove();
+    // Add other members as recipients which are neither locators nor running netservers,
+    // if this is a snappy node. This could be helpful if a Spark Driver process is
+    // connected as a peer to this DS in split-cluster mode. SNAP-737
+    if (GemFireCacheImpl.getInternalProductCallbacks().isSnappyStore()) {
+      Set others = getDistributionManager().getOtherNormalDistributionManagerIds();
+      for (Object m : others) {
+        if (!results.contains(m)) {
+          results.add(m);
+        }
+      }
+    }
+    return results;
+  }
+
   /**
    * Describes a bridge server for distribution purposes.
    */
