@@ -89,24 +89,7 @@ public final class OpenMemIndex {
 
   /**
    * DOCUMENT ME!
-   * 
-   * @param open_user_scans
-   *          DOCUMENT ME!
-   * @param xact_manager
-   *          DOCUMENT ME!
-   * @param conglomerate
-   *          DOCUMENT ME!
-   * @param rawtran
-   *          DOCUMENT ME!
-   * @param hold
-   *          DOCUMENT ME!
-   * @param open_mode
-   *          DOCUMENT ME!
-   * @param lockLevel
-   *          DOCUMENT ME!
-   * @param dynamicInfo
-   *          DOCUMENT ME!
-   * 
+   *
    * @throws StandardException
    *           DOCUMENT ME!
    */

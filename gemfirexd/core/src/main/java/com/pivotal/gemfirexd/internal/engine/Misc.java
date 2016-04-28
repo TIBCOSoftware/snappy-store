@@ -820,8 +820,9 @@ public abstract class Misc {
           op);
     }
     else if (gfeex instanceof NoDataStoreAvailableException) {
+      String[] messageParts = gfeex.getMessage().split(": ");
       return StandardException.newException(SQLState.NO_DATASTORE_FOUND, cause,
-          op);
+          messageParts.length > 1 ? messageParts[1] : op);
     }
     else if (gfeex instanceof PartitionOfflineException) {
       return StandardException.newException(SQLState.INSUFFICIENT_DATASTORE,

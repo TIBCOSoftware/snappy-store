@@ -21,8 +21,11 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
@@ -68,35 +71,33 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   @Override
   public Set<DistributedMember> getMembers() {
     GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
-    InternalDistributedSystem ids = InternalDistributedSystem
-        .getConnectedInstance();
-    if (ids != null) {
-      if (ids.isLoner()) {
-        return Collections.<DistributedMember>singleton(
-            ids.getDistributedMember());
-      }
-      Set<DistributedMember> allMembers = ids.getAllOtherMembers();
-      for (DistributedMember m : allMembers) {
-        GfxdDistributionAdvisor.GfxdProfile profile = advisor
-            .getProfile((InternalDistributedMember)m);
-        if (profile != null && profile.hasSparkURL()) {
-          Set<DistributedMember> s = new HashSet<DistributedMember>();
-          s.add(m);
-          return Collections.unmodifiableSet(s);
-        }
+    InternalDistributedSystem ids = Misc.getDistributedSystem();
+    if (ids.isLoner()) {
+      return Collections.<DistributedMember>singleton(
+          ids.getDistributedMember());
+    }
+    Set<DistributedMember> allMembers = ids.getAllOtherMembers();
+    for (DistributedMember m : allMembers) {
+      GfxdDistributionAdvisor.GfxdProfile profile = advisor
+          .getProfile((InternalDistributedMember)m);
+      if (profile != null && profile.hasSparkURL()) {
+        Set<DistributedMember> s = new HashSet<DistributedMember>();
+        s.add(m);
+        return Collections.unmodifiableSet(s);
       }
     }
-    return Collections.emptySet();
+    throw new NoDataStoreAvailableException(LocalizedStrings
+        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
+        .toLocalizedString("SnappyData Lead Node"));
   }
 
   @Override
   public void postExecutionCallback() {
-
   }
 
   @Override
   public boolean isHA() {
-    return false;
+    return true;
   }
 
   @Override
