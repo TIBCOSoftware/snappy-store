@@ -1433,6 +1433,20 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           sysUUID, arg_names, arg_types, 3, 0, RoutineAliasInfo.READS_SQL_DATA,
           null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
 
+      // GET_ALLSERVERS_AND_PREFSERVER2(String excludedServers,
+      // String[] allNetServers, String[] prefServerName, int[] prefServerPort,
+      // Clob[] allNetServers)
+      arg_names = new String[] { "EXCLUDED_SERVERS",
+          "PREFERRED_SERVER_NAME", "PREFERRED_SERVER_PORT", "ALL_NETSERVERS" };
+      arg_types = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR, 256),
+          DataTypeDescriptor.getCatalogType(Types.INTEGER),
+          DataTypeDescriptor.getCatalogType(Types.CLOB) };
+      super.createSystemProcedureOrFunction("GET_ALLSERVERS_AND_PREFSERVER2",
+          sysUUID, arg_names, arg_types, 3, 0, RoutineAliasInfo.READS_SQL_DATA,
+          null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+
       // GET_PREFSERVER(String excludedServers, String[] preferredServerName,
       // int[] preferredServerPort)
       arg_names = new String[] { "EXCLUDED_SERVERS", "PREFERRED_SERVER_NAME",
@@ -1614,7 +1628,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
-      // GET_BUCKET_TO_SERVERS_MAPPING
+      // GET_BUCKET_TO_SERVER_MAPPING
       String[] arg_names = new String[] { "FQTN", "BKT_TO_SERVER_MAPPING" };
       TypeDescriptor[] arg_types = new TypeDescriptor[] { DataTypeDescriptor
           .getCatalogType(Types.VARCHAR), DataTypeDescriptor
@@ -1622,7 +1636,17 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       super.createSystemProcedureOrFunction("GET_BUCKET_TO_SERVER_MAPPING", sysUUID,
           arg_names, arg_types, 1, 0, RoutineAliasInfo.READS_SQL_DATA, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
 
+    {
+      // GET_BUCKET_TO_SERVER_MAPPING2
+      String[] arg_names = new String[] { "FQTN", "BKT_TO_SERVER_MAPPING" };
+      TypeDescriptor[] arg_types = new TypeDescriptor[] { DataTypeDescriptor
+          .getCatalogType(Types.VARCHAR), DataTypeDescriptor
+          .getCatalogType(Types.CLOB) };
+      super.createSystemProcedureOrFunction("GET_BUCKET_TO_SERVER_MAPPING2", sysUUID,
+          arg_names, arg_types, 1, 0, RoutineAliasInfo.READS_SQL_DATA, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
 
     TypeDescriptor varchar32672Type = DataTypeDescriptor.getCatalogType(
@@ -1793,7 +1817,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       String[] arg_names = new String[]{"TABLE", "SCHEMA_AS_JSON"};
       TypeDescriptor[] arg_types = new TypeDescriptor[]{
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR)
+          DataTypeDescriptor.getCatalogType(Types.CLOB)
       };
       super.createSystemProcedureOrFunction("GET_COLUMN_TABLE_SCHEMA", sysUUID,
           arg_names, arg_types, 1, 0, RoutineAliasInfo.READS_SQL_DATA, null,
