@@ -1090,7 +1090,6 @@ public abstract class Misc {
 
   public static boolean parseBoolean(String s) {
     if (s != null) {
-      s = s.trim();
       if (s.length() == 1) {
         return Integer.parseInt(s) != 0;
       } else {
