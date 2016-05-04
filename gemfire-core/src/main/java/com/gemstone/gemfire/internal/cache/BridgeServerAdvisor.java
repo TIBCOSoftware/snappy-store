@@ -71,12 +71,7 @@ public class BridgeServerAdvisor extends GridAdvisor {
     // if this is a snappy node. This could be helpful if a Spark Driver process is
     // connected as a peer to this DS in split-cluster mode. SNAP-737
     if (GemFireCacheImpl.getInternalProductCallbacks().isSnappyStore()) {
-      Set others = getDistributionManager().getOtherNormalDistributionManagerIds();
-      for (Object m : others) {
-        if (!results.contains(m)) {
-          results.add(m);
-        }
-      }
+      results.addAll(getDistributionManager().getOtherNormalDistributionManagerIds());
     }
     return results;
   }
