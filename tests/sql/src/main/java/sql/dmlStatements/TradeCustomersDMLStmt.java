@@ -1948,7 +1948,7 @@ public class TradeCustomersDMLStmt extends AbstractDMLStmt {
     return getQuery(conn, whichQuery, cid, since, tid);
   }
   
-  private ResultSet query(Connection conn, int whichQuery, int cid, Date since) 
+  private ResultSet query(Connection conn, int whichQuery, int cid, Date since)
       throws SQLException {
     int tid = getMyTid();
     return query (conn, whichQuery, cid, since, tid);
@@ -1996,6 +1996,10 @@ public class TradeCustomersDMLStmt extends AbstractDMLStmt {
       rs = getQuery(conn, whichQuery, cid, since, tid, success);
     }
     return rs;
+  }
+
+  protected static String selectQuery (int whichQuery){
+    return select[whichQuery];
   }
   
   protected static ResultSet getQuery(Connection conn, int whichQuery, int cid, Date since, 

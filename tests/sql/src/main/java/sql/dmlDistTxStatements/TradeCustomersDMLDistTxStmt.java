@@ -346,18 +346,18 @@ public class TradeCustomersDMLDistTxStmt extends TradeCustomersDMLStmt
       }
     }  
   }
-  
+
   @SuppressWarnings("unchecked")
   @Override
   public boolean insertGfxd(Connection gConn, boolean withDerby){
     if (!withDerby) {
-     return insertGfxdOnly(gConn);
+      return insertGfxdOnly(gConn);
     }
-    
+
     //with derby case
     int chance= 10;
     boolean useBatchInsert = rand.nextInt(chance) == 1 ? true : false;
-    
+
     int size = useBatchInsert? 5: 1;
     int[] cid = new int[size];
     String[] cust_name = new String[size];
@@ -367,53 +367,66 @@ public class TradeCustomersDMLDistTxStmt extends TradeCustomersDMLStmt
     int[] updateCount = new int[size];
     getDataForInsert(cid, cust_name,since,addr, size); //get the data
     if (rand.nextInt(100) == 1 && SQLDistTxTest.ticket43170fixed) --cid[0];  //add some insert/insert conflict
-    
+
     boolean usePut = rand.nextBoolean(); //randomly use put statement
 
     /* do not execute this due to #42672, this will be tested in the new txn testing
      * when foreign key are being tracked.
     if (useBatchInsert && rand.nextInt(100) == 1 && !usePut) {
       cid[size-1] = rand.nextInt((int) SQLBB.getBB().getSharedCounters().
-          read(SQLBB.tradeCustomersPrimary)) + 1; 
+          read(SQLBB.tradeCustomersPrimary)) + 1;
       Log.getLogWriter().info("possibly use duplicate cid: " + cid[size-1]);
       //test batch insert with possible duplicate
     }
     */
-    
+
     HashMap<String, Integer> modifiedKeysByOp = new HashMap<String, Integer>();
     for (int i=0; i<size; i++) {
       modifiedKeysByOp.put(getTableName()+"_"+cid[i], (Integer)SQLDistTxTest.curTxId.get());
     }
     HashMap<String, Integer> modifiedKeysByTx = (HashMap<String, Integer>)
         SQLDistTxTest.curTxModifiedKeys.get();
-    
-    try {
-      insertToGfxdTable(gConn, cid, cust_name,since, addr, updateCount, size, usePut);
-    } catch (SQLException se) {
-      SQLHelper.printSQLException(se);
-      if (se.getSQLState().equalsIgnoreCase("X0Z02") ) { 
-        if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, se, true);
-        else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, se, hasSecondary, true);
-        return false;
-      } else if (gfxdtxHANotReady && isHATest &&
-        SQLHelper.gotTXNodeFailureException(se) ) {
+
+    // we will retry 10 times in case of conflict
+    for(int i=0; i< 10; i++) {
+      try {
+        Log.getLogWriter().info("RR: Inserting " + i + " times.");
+        insertToGfxdTable(gConn, cid, cust_name, since, addr, updateCount, size, usePut);
+      } catch (SQLException se) {
         SQLHelper.printSQLException(se);
-        Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
-        return false;
-      } else {
-        gfxdse = se;
-        SQLDistTxTest.batchInsertToCustomersSucceeded.set(false);
+        if (se.getSQLState().equalsIgnoreCase("X0Z02")) {
+          try {
+            if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, se, true);
+            else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, se, hasSecondary, true);
+          } catch (TestException t) {
+            if (t.getMessage().contains("but got conflict exception") && i < 9) {
+              Log.getLogWriter().info("RR: got conflict, retrying the operations ");
+              continue;
+            }
+            else throw t;
+          }
+          return false;
+        } else if (gfxdtxHANotReady && isHATest &&
+            SQLHelper.gotTXNodeFailureException(se)) {
+          SQLHelper.printSQLException(se);
+          Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
+          return false;
+        } else {
+          gfxdse = se;
+          SQLDistTxTest.batchInsertToCustomersSucceeded.set(false);
+        }
       }
-    } 
-    
+      break;
+    }
+
     if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, null, false);
     else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, null, hasSecondary, false);
-    
+
     SQLDistTxTest.cidInserted.set(cid[0]);
-    
+
     //add this operation for derby
     addInsertToDerbyTx(cid, cust_name, since, addr, updateCount, gfxdse);
-    
+
     modifiedKeysByTx.putAll(modifiedKeysByOp);
     SQLDistTxTest.curTxModifiedKeys.set(modifiedKeysByTx);
     return true;
@@ -489,27 +502,27 @@ public class TradeCustomersDMLDistTxStmt extends TradeCustomersDMLStmt
       SQLHelper.handleMissedSQLException(gfxdse);
     }
   }
-  
+
   @SuppressWarnings("unchecked")
-	public boolean updateGfxd(Connection gConn, boolean withDerby){
+  public boolean updateGfxd(Connection gConn, boolean withDerby){
     if (!withDerby) {
       return updateGfxdOnly(gConn);
     }
-    
-    /* no need here based on update statement, the cid got is from existing cid 
+
+    /* no need here based on update statement, the cid got is from existing cid
     if (resetCurrentMaxCustId) {
       currentMaxCustId = (Integer) SQLBB.getBB().getSharedMap().get(SQLDistTxTest.CURRENTMAXCUSTID);
       resetCurrentMaxCustId = false;
     }
     */
-    
+
     int size =1;
     int[] cid = new int[size];
     int[] newCid = new int[size];
     String[] cust_name = new String[size];
     Date[] since = new Date[size];
-    String[] addr = new String[size]; 
-    
+    String[] addr = new String[size];
+
     int[] whichUpdate = new int[size];
     int[] updateCount = new int[size];
     SQLException gfxdse = null;
@@ -517,35 +530,35 @@ public class TradeCustomersDMLDistTxStmt extends TradeCustomersDMLStmt
 
     if (!ticket42672fixed && isCustomersPartitionedOnPKOrReplicate()) {
       //work around #49889 by not updating for now
-      //need additional test development to allow conflict 
+      //need additional test development to allow conflict
       Log.getLogWriter().info("not implemented due to #42672, abort this op for now");
       return true;
     }
-    
-    getDataForUpdate((Connection)SQLDistTxTest.gfxdNoneTxConn.get(), newCid, 
+
+    getDataForUpdate((Connection)SQLDistTxTest.gfxdNoneTxConn.get(), newCid,
         cid, cust_name, since, addr, whichUpdate, size);
     getExistingCidFromCustomers((Connection)SQLDistTxTest.gfxdNoneTxConn.get(),
         cid); //get random cid
-    
+
     HashMap<String, Integer> modifiedKeysByOp = new HashMap<String, Integer>();
     HashMap<String, Integer> modifiedKeysByTx = (HashMap<String, Integer>)
         SQLDistTxTest.curTxModifiedKeys.get();
-    
+
     /* needs to be handed in actual dml op later
     if (SQLTest.testPartitionBy) {
       PreparedStatement stmt = getCorrectTxStmt(gConn, whichUpdate[0]);
       if (stmt == null) {
         if (isHATest && (Boolean) SQLDistTxTest.failedToGetStmt.get()) {
           SQLDistTxTest.failedToGetStmt.set(false);
-          return false; //due to node failure, assume txn rolled back        
+          return false; //due to node failure, assume txn rolled back
         }
         else return true; //due to unsupported exception
       }
     }
     */
-    
+
     for (int i=0; i<size; i++) whichUpdate[i] = getWhichUpdate(whichUpdate[i]);
-    
+
     try {
       getKeysForUpdate(modifiedKeysByOp, whichUpdate[0], cid[0], newCid[0], since[0]);
     } catch (SQLException se) {
@@ -553,46 +566,57 @@ public class TradeCustomersDMLDistTxStmt extends TradeCustomersDMLStmt
       Log.getLogWriter().warning("not able to get the keys, abort this insert op");
       return true;
     }
-    
-    try {
-      updateGfxdTable(gConn, newCid, cid, cust_name, since, addr, whichUpdate, updateCount, size);
 
-      //handles get stmt failure conditions -- node failure or unsupported update on partition field
-      if (isHATest && (Boolean) SQLDistTxTest.failedToGetStmtNodeFailure.get()) {
-        SQLDistTxTest.failedToGetStmtNodeFailure.set(false); //reset flag
-        return false; //due to node failure, assume txn rolled back        
-      } 
-      if ((Boolean) SQLDistTxTest.updateOnPartitionCol.get()) {
-        SQLDistTxTest.updateOnPartitionCol.set(false); //reset flag
-        return true; //assume 0A000 exception does not cause txn to rollback
-      }
-  
-    } catch (SQLException se) {
-      SQLHelper.printSQLException(se);
-      if (se.getSQLState().equalsIgnoreCase("X0Z02") ) { 
-        if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, se, true);
-        else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, se, hasSecondary, true);
-        return false;
-      } else if (gfxdtxHANotReady && isHATest &&
-        SQLHelper.gotTXNodeFailureException(se) ) {
+    for(int i=0; i< 10; i++) {
+      try {
+        Log.getLogWriter().info("RR: Updating " + i + " times.");
+        updateGfxdTable(gConn, newCid, cid, cust_name, since, addr, whichUpdate, updateCount, size);
+
+        //handles get stmt failure conditions -- node failure or unsupported update on partition field
+        if (isHATest && (Boolean)SQLDistTxTest.failedToGetStmtNodeFailure.get()) {
+          SQLDistTxTest.failedToGetStmtNodeFailure.set(false); //reset flag
+          return false; //due to node failure, assume txn rolled back
+        }
+        if ((Boolean)SQLDistTxTest.updateOnPartitionCol.get()) {
+          SQLDistTxTest.updateOnPartitionCol.set(false); //reset flag
+          return true; //assume 0A000 exception does not cause txn to rollback
+        }
+      } catch (SQLException se) {
         SQLHelper.printSQLException(se);
-        Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
-        return false;
-      } else {
-        //SQLHelper.handleSQLException(se);
-        gfxdse = se;
+        if (se.getSQLState().equalsIgnoreCase("X0Z02")) {
+          try {
+            if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, se, true);
+            else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, se, hasSecondary, true);
+          } catch (TestException t) {
+            if (t.getMessage().contains("but got conflict exception") && i < 9) {
+              Log.getLogWriter().info("RR: got conflict, retrying the operations ");
+              continue;
+            }
+            else throw t;
+          }
+          return false;
+        } else if (gfxdtxHANotReady && isHATest &&
+            SQLHelper.gotTXNodeFailureException(se)) {
+          SQLHelper.printSQLException(se);
+          Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
+          return false;
+        } else {
+          //SQLHelper.handleSQLException(se);
+          gfxdse = se;
+        }
       }
+      break;
     }
     if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, null, false);
     else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, null, hasSecondary, false);
-      
+
     //add this operation for derby
     addUpdateToDerbyTx(newCid, cid, cust_name, since, addr, whichUpdate, updateCount, gfxdse);
-    
+
     modifiedKeysByTx.putAll(modifiedKeysByOp);
     SQLDistTxTest.curTxModifiedKeys.set(modifiedKeysByTx);
     return true;
-    
+
   }
   
   private int getWhichUpdate(int index) {
@@ -746,8 +770,107 @@ public class TradeCustomersDMLDistTxStmt extends TradeCustomersDMLStmt
     //this is handled in the SQLDistTxTest doDMLOp
     
     return true;
-  }  
-  
+  }
+
+  private ResultSet query(Connection conn, int whichQuery, int cid, Date since)
+      throws SQLException {
+    int tid = getMyTid();
+    return query (conn, whichQuery, cid, since, tid);
+  }
+
+  public void query(Connection dConn, Connection gConn) {
+    //  for testUniqueKeys both connections are needed
+    int whichQuery = rand.nextInt(select.length); //randomly select one query sql
+    int cid = rand.nextInt((int) SQLBB.getBB().getSharedCounters().read(SQLBB.tradeCustomersPrimary));
+    //Date since = new Date ((rand.nextInt(10)+98),rand.nextInt(12), rand.nextInt(31));
+    Date since = getSince();
+    ResultSet discRS = null;
+    ResultSet gfeRS = null;
+    ArrayList<SQLException> exceptionList = new ArrayList<SQLException>();
+
+    for( int i=0 ; i< 10; i++) {
+      Log.getLogWriter().info("RR: executing query " + i + "times");
+      if (dConn != null) {
+        try {
+          discRS = query(dConn, whichQuery, cid, since);
+          if (discRS == null) {
+            Log.getLogWriter().info("could not get the derby result set after retry, abort this query");
+            Log.getLogWriter().info("Could not finish the op in derby, will abort this operation in derby");
+            if (alterTableDropColumn && SQLTest.alterTableException.get() != null && (Boolean)SQLTest.alterTableException.get() == true)
+              ; //do nothing and expect gfxd fail with the same reason due to alter table
+            else return;
+          }
+        } catch (SQLException se) {
+          SQLHelper.handleDerbySQLException(se, exceptionList);
+        }
+        try {
+          gfeRS = query(gConn, whichQuery, cid, since);
+          if (gfeRS == null) {
+            if (isHATest) {
+              Log.getLogWriter().info("Testing HA and did not get GFXD result set");
+              return;
+            } else if (setCriticalHeap) {
+              Log.getLogWriter().info("got XCL54 and does not get query result");
+              return; //prepare stmt may fail due to XCL54 now
+            } /*if (alterTableDropColumn) {
+            Log.getLogWriter().info("prepare stmt failed due to missing column");
+            return; //prepare stmt may fail due to alter table now
+          } */ else
+              throw new TestException("Not able to get gfe result set after retry");
+          }
+        } catch (SQLException se) {
+          if (se.getSQLState().equals("X0Z02") && (i < 9)) {
+            Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+            continue;
+          }
+          SQLHelper.handleGFGFXDException(se, exceptionList);
+        }
+        SQLHelper.handleMissedSQLException(exceptionList);
+        if (discRS == null || gfeRS == null) return;
+
+        boolean success = ResultSetHelper.compareResultSets(discRS, gfeRS);
+        if (!success) {
+          Log.getLogWriter().info("Not able to compare results due to derby server error");
+        } //not able to compare results due to derby server error
+      }// we can verify resultSet
+      else {
+        try {
+          gfeRS = query(gConn, whichQuery, cid, since);   //could not varify results.
+        } catch (SQLException se) {
+          if (se.getSQLState().equals("42502") && SQLTest.testSecurity) {
+            Log.getLogWriter().info("Got expected no SELECT permission, continuing test");
+            return;
+          } else if (alterTableDropColumn && se.getSQLState().equals("42X04")) {
+            Log.getLogWriter().info("Got expected column not found exception, continuing test");
+            return;
+          }else if (se.getSQLState().equals("X0Z02") && (i < 9)) {
+            Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+            continue;
+          }  else SQLHelper.handleSQLException(se);
+        }
+
+        try {
+          if (gfeRS != null)
+            ResultSetHelper.asList(gfeRS, false);
+          else if (isHATest)
+            Log.getLogWriter().info("could not get gfxd query results after retry due to HA");
+          else if (setCriticalHeap)
+            Log.getLogWriter().info("could not get gfxd query results after retry due to XCL54");
+          else
+            throw new TestException("gfxd query returns null and not a HA test");
+        } catch (TestException te) {
+          if (te.getMessage().contains("Conflict detected in transaction operation and it will abort") && (i < 9)) {
+            Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+            continue;
+          } else throw te;
+        }
+      }
+      break;
+    }
+
+    SQLHelper.closeResultSet(gfeRS, gConn);
+  }
+
   protected static ResultSet query (Connection conn, int whichQuery, int cid, 
       Date since, int tid) throws SQLException {
     boolean[] success = new boolean[1];
