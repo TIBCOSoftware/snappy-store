@@ -69,10 +69,12 @@ INITTASK  taskClass = cacheperf.comparisons.gemfirexd.useCase6.UseCase6Client
           threadGroups = client
           ;
 
+/*
 INITTASK  taskClass = cacheperf.comparisons.gemfirexd.useCase6.UseCase6Client
           taskMethod = storeUniqueDataFromTableTask
           threadGroups = client
           ;
+*/
 
 INITTASK  taskClass = cacheperf.comparisons.gemfirexd.useCase6.UseCase6Client
           taskMethod = selectAndUpdateTask
