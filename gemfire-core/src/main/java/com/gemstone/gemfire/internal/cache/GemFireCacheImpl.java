@@ -5265,6 +5265,9 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     /** If this node is booted an an ADMIN node */
     public boolean isAdmin();
 
+    /** If this node is booted as a SnappyStore node */
+    public boolean isSnappyStore();
+
     /**
      * If this node has been booted as one that can perform operations as an
      * accessor or datastore (i.e. non-admin-only, non-agent-only,
