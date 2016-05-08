@@ -306,8 +306,8 @@ public class PoolXADSCreateShutdownDBTest extends BaseJDBCTestCase {
 
         Object retObject=null;
         try {
-            Method getter = ds.getClass().getMethod(getterName, null);
-            retObject = getter.invoke(ds, null);
+            Method getter = ds.getClass().getMethod(getterName);
+            retObject = getter.invoke(ds);
         } catch (Exception e) {
             Assert.fail(e.getMessage());
         }

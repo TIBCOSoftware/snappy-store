@@ -288,8 +288,8 @@ public class DSCreateShutdownDBTest extends BaseJDBCTestCase {
         // Base the type of the setter method from the value's class.
         Object retObject=null;
         try {
-            Method getter = ds.getClass().getMethod(getterName, null);
-            retObject = getter.invoke(ds, null);
+            Method getter = ds.getClass().getMethod(getterName);
+            retObject = getter.invoke(ds);
         } catch (Exception e) {
             Assert.fail(e.getMessage());
         }
