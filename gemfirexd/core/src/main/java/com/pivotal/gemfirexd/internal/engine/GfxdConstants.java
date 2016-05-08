@@ -478,6 +478,7 @@ public interface GfxdConstants {
           Attribute.AUTH_PROVIDER,
           Attribute.SERVER_AUTH_PROVIDER,
           Attribute.PERSIST_INDEXES,
+          Attribute.DEFAULT_PERSISTENT,
           Property.HADOOP_IS_GFXD_LONER,
           Property.GFXD_HD_HOMEDIR,
           Property.GFXD_HD_NAMENODEURL,
