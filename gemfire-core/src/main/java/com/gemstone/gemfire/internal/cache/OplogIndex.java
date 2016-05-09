@@ -255,6 +255,7 @@ public final class OplogIndex {
       this.dos.write(INDEX_END_OF_FILE_MAGIC);
       this.dos.flush();
       this.dos.close();
+      this.dos.getUnderlyingChannel().close();
       this.dos = null;
 
       allClosed = true;

@@ -1216,11 +1216,11 @@ public class RunList
 	    {
 		c = Class.forName("com.ibm.db2.jcc.DB2Driver");
 		o = c.newInstance();
-		m = c.getMethod("getMajorVersion", null);
-		i = (Integer)m.invoke(o, null);
+		m = c.getMethod("getMajorVersion");
+		i = (Integer)m.invoke(o);
 		jccMajor = i.intValue();
-		m = c.getMethod("getMinorVersion", null);
-		i = (Integer)m.invoke(o, null);
+		m = c.getMethod("getMinorVersion");
+		i = (Integer)m.invoke(o);
 		jccMinor = i.intValue();
 	    } catch (Exception e) {
 	        if (verbose) System.out.println("Exception in shouldSkipTest: " + e);

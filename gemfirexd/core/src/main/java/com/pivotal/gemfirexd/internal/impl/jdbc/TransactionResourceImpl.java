@@ -265,11 +265,11 @@ public final class TransactionResourceImpl
 		    Attribute.QUERY_HDFS,
 		    GfxdConstants.GFXD_QUERY_HDFS, info, false);
 		this.routeQuery = getPropertyValue(
-				Attribute.ROUTE_QUERY,
-				GfxdConstants.GFXD_ROUTE_QUERY, info, false);
+		    Attribute.ROUTE_QUERY,
+		    GfxdConstants.GFXD_ROUTE_QUERY, info, false);
 		this.defaultPersistent = getPropertyValue(
-				Attribute.DEFAULT_PERSISTENT, GfxdConstants.GFXD_PREFIX
-						+ Attribute.DEFAULT_PERSISTENT, info, false);
+		    Attribute.DEFAULT_PERSISTENT, GfxdConstants.GFXD_PREFIX
+			+ Attribute.DEFAULT_PERSISTENT, info, false);
 		this.enableBulkFkChecks = PropertyUtil.getBooleanProperty(
 		    Attribute.ENABLE_BULK_FK_CHECKS,
 		    GfxdConstants.GFXD_ENABLE_BULK_FK_CHECKS, info, true, null);
@@ -283,11 +283,9 @@ public final class TransactionResourceImpl
                     GfxdConstants.GFXD_QUERY_TIMEOUT, Attribute.QUERY_TIMEOUT);
                 if (qt == null) {
                   // SQLF:BC
-                  qt = PropertyUtil
-                      .findAndGetProperty(
-                          info,
-                          com.pivotal.gemfirexd.internal.iapi.reference.Property.SQLF_QUERY_TIMEOUT,
-                          Attribute.QUERY_TIMEOUT);
+                  qt = PropertyUtil.findAndGetProperty(info,
+		      com.pivotal.gemfirexd.internal.iapi.reference.Property.SQLF_QUERY_TIMEOUT,
+		      Attribute.QUERY_TIMEOUT);
                 }
                 if (qt != null) {
                   this.queryTimeOut = Integer.parseInt(qt);

@@ -1536,7 +1536,7 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId DiskStoreStillAtVersion_0 = new StringIdImpl(4897, "This disk store is still at version {0}.");
 
   public static final StringId DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION = new StringIdImpl(
-      4898, "No Data Store found for distribution for : {0}.");
+      4898, "No Data Store found in the distributed system for: {0}");
   public static final StringId GemFireUtilLauncher_SystemAdmin_Usage = new StringIdImpl(
       4899, "Various administrative utilities for a GemFire distributed system");
   public static final StringId CacheServerLauncher_EVICTION_HEAP_PERCENTAGE =

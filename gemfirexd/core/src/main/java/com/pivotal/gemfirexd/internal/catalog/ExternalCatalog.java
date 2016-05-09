@@ -25,23 +25,26 @@ package com.pivotal.gemfirexd.internal.catalog;
  */
 public interface ExternalCatalog {
 
-	/**
-	 * Will be used by the execution engine to route to JobServer
-	 * when it finds out that this table is a column table.
-	 *
-	 * @param tableName
-	 * @return true if the table is column table, false if row/ref table
-	 */
-	boolean isColumnTable(String tableName, boolean skipLocks);
+  /**
+   * Will be used by the execution engine to route to JobServer
+   * when it finds out that this table is a column table.
+   *
+   * @return true if the table is column table, false if row/ref table
+   */
+  boolean isColumnTable(String tableName, boolean skipLocks);
 
-	/**
-	 * Will be used by the execution engine to execute query in gemfirexd
-	 * if tablename is of a row table.
-	 *
-	 * @param tableName
-	 * @return true if the table is column table, false if row/ref table
-	 */
-	boolean isRowTable(String tableName, boolean skipLocks);
+  /**
+   * Will be used by the execution engine to execute query in gemfirexd
+   * if tablename is of a row table.
+   *
+   * @return true if the table is column table, false if row/ref table
+   */
+  boolean isRowTable(String tableName, boolean skipLocks);
 
-	void stop();
+  /**
+   * Get the schema for a column table in Json format (as in Spark).
+   */
+  String getColumnTableSchemaAsJson(String tableName, boolean skipLocks);
+
+  void stop();
 }

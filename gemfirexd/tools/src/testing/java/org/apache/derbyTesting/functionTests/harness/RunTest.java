@@ -1108,11 +1108,11 @@ public class RunTest
 			{
 				c = Class.forName("com.ibm.db2.jcc.DB2Driver");
 				o = c.newInstance();
-				m = c.getMethod("getMajorVersion", null);
-				i = (Integer)m.invoke(o, null);
+				m = c.getMethod("getMajorVersion");
+				i = (Integer)m.invoke(o);
 				jccMajor = i.intValue();
-				m = c.getMethod("getMinorVersion", null);
-				i = (Integer)m.invoke(o, null);
+				m = c.getMethod("getMinorVersion");
+				i = (Integer)m.invoke(o);
 				jccMinor = i.intValue();
 			} catch (ClassNotFoundException e) {}
 
@@ -2867,12 +2867,12 @@ clp.list(System.out);
             
             try{
                 // Get the static suite() method if it exists.
-                Method suiteMethod = testClass.getMethod("suite", null);
+                Method suiteMethod = testClass.getMethod("suite");
                 // Get the TestSuite object returned by the suite() method
                 // by invoking it.
                 // Method is static, hence param1 is null
                 // Method has no formal parameters, hence param2 is null
-                junitTestSuite = (TestSuite) suiteMethod.invoke(null, null);
+                junitTestSuite = (TestSuite) suiteMethod.invoke(null);
             } catch(Exception ex){
                 // Not able to access static suite() method (with no params)
                 // returning a TestSuite object.

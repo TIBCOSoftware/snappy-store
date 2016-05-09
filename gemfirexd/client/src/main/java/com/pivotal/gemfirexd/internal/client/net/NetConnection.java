@@ -1341,7 +1341,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
     public java.sql.CallableStatement getBucketToServerDetails_;
 
     public static final String BUCKET_AND_SERVER_PROC_QUERY =
-      "call SYS.GET_BUCKET_TO_SERVER_MAPPING(?, ?)";
+      "call SYS.GET_BUCKET_TO_SERVER_MAPPING2(?, ?)";
 
     /** array of SQLState strings that denote failover should be done */
     public static final String[] failoverSQLStateArray = new String[] { "08001",
@@ -1441,7 +1441,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
       assert Thread.holdsLock(staticSync_);
 
       final String qAllAndPreferredServer =
-        "call SYS.GET_ALLSERVERS_AND_PREFSERVER(?, ?, ?, ?)";
+        "call SYS.GET_ALLSERVERS_AND_PREFSERVER2(?, ?, ?, ?)";
       final String qPreferredServer = "call SYS.GET_PREFSERVER(?, ?, ?)";
       final String qAllServersOnly = "select NETSERVERS, KIND from SYS." +
         "MEMBERS where LENGTH(NETSERVERS) > 0 order by LENGTH(LOCATOR) desc";
@@ -1532,7 +1532,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
             if (cstmt == null) {
               cstmt = conn.prepareCall(qAllAndPreferredServer);
             }
-            cstmt.registerOutParameter(4, java.sql.Types.LONGVARCHAR);
+            cstmt.registerOutParameter(4, java.sql.Types.CLOB);
           }
           else {
             if (cstmt == null) {
@@ -3511,7 +3511,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
 
   /**
    * The pattern to extract addresses from the result of
-   * GET_ALLSERVERS_AND_PREFSERVER procedure; format is:
+   * GET_ALLSERVERS_AND_PREFSERVER2 procedure; format is:
    * 
    * host1/addr1[port1]{kind1},host2/addr2[port2]{kind2},...
    */
@@ -3558,7 +3558,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
     NetConnection locateConn_;
 
     /**
-     * Cached callable statement for GET_ALLSERVERS_AND_PREFSERVER procedure
+     * Cached callable statement for GET_ALLSERVERS_AND_PREFSERVER2 procedure
      * call on the {@link #locateConn_} connection.
      */
     java.sql.CallableStatement allStmt_;

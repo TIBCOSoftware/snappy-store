@@ -949,7 +949,7 @@ implements Cloneable
       + Constants.QueryHints.hashMaxCapacity + ","
       + Constants.QueryHints.bulkFetch + ","
       + Constants.QueryHints.withSecondaries + ","
-      + Constants.QueryHints.queryHDFS;      
+      + Constants.QueryHints.queryHDFS;
 
   // GemStone changes END
 	
@@ -1130,12 +1130,7 @@ implements Cloneable
                         // GemStone changes BEGIN
                         else if (key.equals(Constants.QueryHints.withSecondaries.name())) {
                           explicitSecondaryBucketSet = true;
-                          if (value.length() == 1) {
-                            includeSecondaryBuckets = Integer.parseInt(value) == 0 ? false : true;
-                          }
-                          else {
-                            includeSecondaryBuckets = Boolean.parseBoolean(value);
-                          }
+                          includeSecondaryBuckets = Misc.parseBoolean(value);
                           final CompilerContext cc = getCompilerContext();
                           cc.setOptimizeForWrite(!includeSecondaryBuckets);
                           cc.setWithSecondaries(includeSecondaryBuckets);
@@ -1150,12 +1145,7 @@ implements Cloneable
                           }
                         }
                         else if (key.equals(Constants.QueryHints.queryHDFS.name())) {
-                          if (value.length() == 1) {
-                            queryHDFS = Integer.parseInt(value) == 0 ? false : true;
-                          }
-                          else {
-                            queryHDFS = Boolean.parseBoolean(value);
-                          }                          
+                          queryHDFS = Misc.parseBoolean(value);
                           getCompilerContext().setQueryHDFS(queryHDFS);
                           getCompilerContext().setHasQueryHDFS(true);
                         }

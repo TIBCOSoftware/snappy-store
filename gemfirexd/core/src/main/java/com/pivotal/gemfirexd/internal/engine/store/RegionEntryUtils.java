@@ -254,7 +254,7 @@ public final class RegionEntryUtils {
    * partitioning; can even that be avoided?
    * 
    * @param val
-   * @param validColumns
+   * @param validColumn
    *          - this is 1 based i.e. logicalPosition and will be substracted by
    *          1 for DVD[] access.
    * @param gfContainer
@@ -1511,6 +1511,11 @@ public final class RegionEntryUtils {
     public boolean isAdmin() {
       GemFireStore.VMKind myVMKind = GemFireXDUtils.getMyVMKind();
       return myVMKind != null && myVMKind.isAdmin();
+    }
+
+    @Override
+    public boolean isSnappyStore() {
+      return Misc.getMemStore().isSnappyStore();
     }
 
     @Override

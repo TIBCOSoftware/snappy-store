@@ -503,7 +503,7 @@ subprojects {
   })
   junit.dependsOn junitParallel, junitReport
 
-  task dunitTest(type:Test) {
+  task dunitTest(type:Test, overwrite: true) {
     dependsOn "${subprojectBase}product"
     maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
     minHeapSize = '512m'

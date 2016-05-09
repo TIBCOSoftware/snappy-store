@@ -67,7 +67,7 @@ public final class DistributedConnectionCloseExecutorFunction implements
 
   public static void closeConnection(final long id,
       final GfxdConnectionHolder connHolder) {
-    final Long connId = Long.valueOf(id);
+    final Long connId = id;
     final GfxdConnectionWrapper wrapper = connHolder.removeWrapper(connId);
     if (wrapper != null) {
       // no need to synchronize since the wrapper has been removed from map
@@ -75,8 +75,10 @@ public final class DistributedConnectionCloseExecutorFunction implements
     }
 
     //TODO - Check only if the product is Snappy then call the remove connection ref messages
-    if (Misc.getMemStore().isSnappyStore())
-      CallbackFactoryProvider.getClusterCallbacks().clearSnappyContextForConnection(connId);
+    if (Misc.getMemStore().isSnappyStore()) {
+      CallbackFactoryProvider.getClusterCallbacks()
+          .clearSnappyContextForConnection(connId);
+    }
   }
 
   public String getId() {

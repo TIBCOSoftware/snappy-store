@@ -1166,7 +1166,7 @@ public class HeapDataOutputStream extends OutputStream implements
     if (ASCII_STRINGS) {
       writeAsciiUTF(str, true);
     } else {
-      writeFullUTF(str, true, true);
+      writeUTF(str, true, true);
     }
   }
   private final void writeAsciiUTF(String str, boolean encodeLength) throws UTFDataFormatException {
@@ -1205,7 +1205,7 @@ public class HeapDataOutputStream extends OutputStream implements
    * The reader code should use the logic similar to DataOutputStream.readUTF() 
    * from the version 1.6.0_10 to decode this properly.
    */
-  public final void writeFullUTF(String str, boolean encodeLength,
+  public final void writeUTF(String str, boolean encodeLength,
       boolean useShortLen) throws UTFDataFormatException {
     int strlen = str.length();
     if (encodeLength && useShortLen && strlen > 65535) {
@@ -1269,7 +1269,7 @@ public class HeapDataOutputStream extends OutputStream implements
       if (ASCII_STRINGS) {
         writeAsciiUTF(str, false);
       } else {
-        writeFullUTF(str, false, false);
+        writeUTF(str, false, false);
       }
     } catch (UTFDataFormatException ex) {
       // this shouldn't happen since we did not encode the length

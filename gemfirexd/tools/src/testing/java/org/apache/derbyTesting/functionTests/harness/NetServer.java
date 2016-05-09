@@ -253,12 +253,11 @@ public class NetServer
 		{
 			Constructor serverConstructor;
 			Class serverClass = Class.forName(NETWORK_SERVER_CLASS_NAME);
-			serverConstructor = serverClass.getConstructor(null);
-			networkServer = serverConstructor.newInstance(null);
-			pingMethod = networkServer.getClass().getMethod("ping",
-															 null);
+			serverConstructor = serverClass.getConstructor();
+			networkServer = serverConstructor.newInstance();
+			pingMethod = networkServer.getClass().getMethod("ping");
 		}
-		pingMethod.invoke(networkServer,null);
+		pingMethod.invoke(networkServer);
 		return true;
 	}
 

@@ -18,6 +18,7 @@
 package com.pivotal.gemfirexd.internal.engine.ddl.catalog;
 
 import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -77,6 +78,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.StatementRoutinePermission;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
 import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
@@ -927,6 +929,44 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
+   * Get two results: a CLOB containing all the network servers available in
+   * the distributed system; other the preferred server w.r.t. load-balancing to
+   * connect to from a JDBC client as out parameter. A set of servers to be
+   * excluded from consideration can be passed as a comma-separated string (e.g.
+   * to ignore the failed server during failover).
+   *
+   * The format of network server list is:
+   *
+   * host1[port1]{kind1},host2[port2]{kind2},...
+   *
+   * i.e. comma-separated list of each network server followed by the
+   * <code>VMKind</code> of the VM in curly braces. The network servers on
+   * stand-alone locators are given preference and appear at the front. If the
+   * output column exceeds the max size of LONGVARCHAR column
+   * {@link TypeId#LONGVARCHAR_MAXWIDTH} then null is returned for this result
+   * in which case the client is supposed to get the list from the SYS.MEMBERS
+   * VTI table in a separate call.
+   *
+   * This is primarily to avoid making two calls to the servers from the clients
+   * during connection creation or failover.
+   * <p>
+   * This differs from GET_ALLSERVERS_AND_PREFSERVER in returning
+   * "allNetServers" as a CLOB rather than a LONGVARCHAR for the rare case
+   * when it exceeds 32K.
+   */
+  public static void GET_ALLSERVERS_AND_PREFSERVER2(String excludedServers,
+      String[] prefServerName, int[] prefServerPort, Clob[] allNetServers)
+      throws SQLException {
+    final String[] allServers = new String[1];
+    GET_ALLSERVERS_AND_PREFSERVER(excludedServers, prefServerName, prefServerPort, allServers);
+    if (allServers[0] != null) {
+      allNetServers[0] = new HarmonySerialClob(allServers[0]);
+    } else {
+      allNetServers[0] = null;
+    }
+  }
+
+  /**
    * Get the preferred server to which the next connection should be made. A set
    * of servers to be excluded from consideration can be passed as a
    * comma-separated string (e.g. to ignore the failed server during failover).
@@ -1434,13 +1474,41 @@ public class GfxdSystemProcedures extends SystemProcedures {
     bktToServerMapping[0] = bucketInfo.toString();
   }
 
+
+  /**
+   * Get all buckets location information network server addr wise. This
+   * updated version uses CLOBs for results so works with large number of
+   * buckets that can exceed 32K limit of VARCHARs.
+   *
+   * @param fqtn
+   *          the fully qualified table name
+   * @param bktToServerMapping
+   *          0th index will contain the information in the below format
+   *          "numbuckets:redundancy:bucketid1:primarybucketserver;
+   *          secondary1bucketserver;...|bucketid2...."
+   *          "113:2:0;pc25.pune.gemstone.com/10.112.204.14[25005]{datastore};
+   *          null;null|2;pc25.pune.gemstone.com/10.112.204.14[25005]
+   *          {datastore};null;null"
+   * @throws SQLException
+   */
+  public static void GET_BUCKET_TO_SERVER_MAPPING2(String fqtn,
+      Clob[] bktToServerMapping) throws SQLException {
+    String[] mapping = new String[1];
+    GET_BUCKET_TO_SERVER_MAPPING(fqtn, mapping);
+    if (mapping[0] != null) {
+      bktToServerMapping[0] = new HarmonySerialClob(mapping[0]);
+    } else {
+      bktToServerMapping[0] = null;
+    }
+  }
+
   /**
    * Message is published to everybody (including locators) and added to the DDL
    * queue for persistent purposes.
-   * 
+   *
    * Any new member joining will also see the execution of the procedures like
    * statistics enabling/disabling.
-   * 
+   *
    * @param args
    *          arguments of the procedure.
    * @param lastArgServerGroups
@@ -1448,7 +1516,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
    *          serverGroup where the publish will be restricted.
    * @param systemProcedure
    *          procedure method that is remotely invoked.
-   * @param persistent whether to include in the DDL queue and replay 
+   * @param persistent whether to include in the DDL queue and replay
    * @param includeLocators should this message published to locator VMs too.
    * @throws SQLException wrapping any StandardExceptions if is raised.
    */
@@ -2164,6 +2232,28 @@ public class GfxdSystemProcedures extends SystemProcedures {
         }
       }
     }
+  }
+
+  /**
+   * Get the schema for a column table as a JSON string (as in Spark SQL).
+   *
+   * @param table The qualified name of column table.
+   * @throws SQLException if table is not found or is not a column table
+   */
+  public static void GET_COLUMN_TABLE_SCHEMA(String table,
+      Clob[] schemaAsJson) throws SQLException {
+
+    String schemaString = Misc.getMemStoreBooting().getExternalCatalog()
+        .getColumnTableSchemaAsJson(table, true);
+    if (schemaString == null) {
+      throw PublicAPI.wrapStandardException(StandardException.newException(
+          SQLState.TABLE_NOT_FOUND, table));
+    }
+    if (GemFireXDUtils.TraceExecute) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "GET_COLUMN_TABLE_SCHEMA table=" + table + " schema=" + schemaString);
+    }
+    schemaAsJson[0] = new HarmonySerialClob(schemaString);
   }
 
   /**

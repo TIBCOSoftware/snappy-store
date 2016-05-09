@@ -534,7 +534,7 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
 
       getBktLocationProc
           .setString(1, this.singleHopInformation.getRegionName());
-      getBktLocationProc.registerOutParameter(2, java.sql.Types.LONGVARCHAR);
+      getBktLocationProc.registerOutParameter(2, java.sql.Types.CLOB);
       getBktLocationProc.execute();
       String bucketToServerMappingStr = getBktLocationProc.getString(2);
       if (SanityManager.TraceSingleHop) {

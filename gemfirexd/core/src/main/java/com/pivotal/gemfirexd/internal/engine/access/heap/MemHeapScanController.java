@@ -813,7 +813,8 @@ public class MemHeapScanController implements MemScanController, RowCountable,
                     + ", isIterOnPR=" + this.gfContainer.isPartitioned());
           }
           // a null owner in full scan will happen for remote entries
-          if (owner == null && !isGlobalScan) {
+          if (owner == null && !isGlobalScan &&
+              !Misc.getMemStore().isSnappyStore()) {
             // Not a real bucket :
             // Asif: what should we do in this case? Assign PR as the
             // owner?

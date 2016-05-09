@@ -68,7 +68,7 @@ public class UseCase6Client extends QueryPerfClient {
 
   protected ResultSet rs = null;
   protected int result = 0;
-  protected static final ArrayList<String>[] paramValues = new ArrayList[2];
+  protected final ArrayList<String>[] paramValues = new ArrayList[2];
 
 //------------------------------------------------------------------------------
 // statistics task
@@ -406,6 +406,9 @@ public class UseCase6Client extends QueryPerfClient {
   }
 
   private void useCase6SelectAndUpdate() throws SQLException {
+    if (paramValues[0] == null) {
+      storeUniqueDataFromTable();
+    }
     PreparedStatement update = null;
     PreparedStatement select = null;
     final Connection connection = QueryUtil.gfxdClientSetup(this);

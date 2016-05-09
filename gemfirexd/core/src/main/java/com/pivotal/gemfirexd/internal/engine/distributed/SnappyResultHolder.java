@@ -185,7 +185,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
         break;
 
       case StoredFormatIds.SQL_BOOLEAN_ID :
-        dvd = new SQLBlob();
+        dvd = new SQLBoolean();
         jdbcTypeId = Types.BOOLEAN;
         dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable);
         break;
@@ -247,6 +247,13 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
         dvd = new SQLClob();
         jdbcTypeId = Types.CLOB;
         dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable);
+        break;
+
+      case StoredFormatIds.SQL_BLOB_ID:
+        dvd = new SQLBlob();
+        jdbcTypeId = Types.BLOB;
+        dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+            jdbcTypeId, nullable);
         break;
 
       default :

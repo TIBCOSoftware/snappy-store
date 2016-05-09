@@ -31,7 +31,6 @@ public interface SparkSQLExecute {
 
   /**
    * Called at the lowest level to serialize the SnappyResultHolder object per batch.
-   * @param out
    */
   void serializeRows(DataOutput out);
 }

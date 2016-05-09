@@ -89,11 +89,11 @@ public class FileCompare
 	  {
 	    c = Class.forName(NetServer.getDriverName(framework));
 	    o = c.newInstance();
-	    m = c.getMethod("getMajorVersion", null);
-	    i = (Integer)m.invoke(o, null);
+	    m = c.getMethod("getMajorVersion");
+	    i = (Integer)m.invoke(o);
 	    driverVersionMajor = i.intValue();
-	    m = c.getMethod("getMinorVersion", null);
-	    i = (Integer)m.invoke(o, null);
+	    m = c.getMethod("getMinorVersion");
+	    i = (Integer)m.invoke(o);
 	    driverVersionMinor = i.intValue();
             if (framework.startsWith("DerbyNet")) searchDriverVersion = true;
 	  } catch ( Exception e )

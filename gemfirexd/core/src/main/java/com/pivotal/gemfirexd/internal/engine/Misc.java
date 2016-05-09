@@ -820,8 +820,9 @@ public abstract class Misc {
           op);
     }
     else if (gfeex instanceof NoDataStoreAvailableException) {
+      String[] messageParts = gfeex.getMessage().split(": ");
       return StandardException.newException(SQLState.NO_DATASTORE_FOUND, cause,
-          op);
+          messageParts.length > 1 ? messageParts[1] : op);
     }
     else if (gfeex instanceof PartitionOfflineException) {
       return StandardException.newException(SQLState.INSUFFICIENT_DATASTORE,
@@ -1086,7 +1087,19 @@ public abstract class Misc {
     }
     return 19;
   }
-  
+
+  public static boolean parseBoolean(String s) {
+    if (s != null) {
+      if (s.length() == 1) {
+        return Integer.parseInt(s) != 0;
+      } else {
+        return Boolean.parseBoolean(s);
+      }
+    } else {
+      return false;
+    }
+  }
+
   public static TreeSet<Map.Entry<Integer, Long>> sortByValue(
       Map<Integer, Long> distribution) {
     TreeSet<Map.Entry<Integer, Long>> entriesByVal = new TreeSet<Map.Entry<Integer, Long>>(
