@@ -40,7 +40,6 @@ import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.SerializableDelta;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
-import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRow;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.engine.store.RegionEntryUtils;
 import com.pivotal.gemfirexd.internal.engine.store.RegionKey;
