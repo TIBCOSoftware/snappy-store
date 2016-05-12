@@ -17,6 +17,8 @@
 
 package hydra;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.io.Serializable;
 import java.util.*;
 
@@ -150,6 +152,22 @@ implements Serializable {
     return map;
   }
 
+  protected static String getSnappyJarPath(String jarPath, final String jarName) {
+    String snappyJar = null;
+    File parent = new File(jarPath);
+    File[] files = parent.listFiles(new FilenameFilter() {
+      @Override
+      public boolean accept(File dir, String name) {
+        if (name.startsWith(jarName))
+          return true;
+        else return false;
+      }
+    });
+    File snappyAssembly = files[0];
+    snappyJar = snappyAssembly.getAbsolutePath();
+    return snappyJar;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   ////    CONFIGURATION                                                     ////
   //////////////////////////////////////////////////////////////////////////////
@@ -234,11 +252,14 @@ implements Serializable {
         classPath.add(hd.getGemFireHome() + hd.getFileSep() + "lib"
                 + hd.getFileSep() + "gemfirexd-tools-" +
                 ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
+        classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "lib", "snappydata-assembly"));
       }
 
       // classPath -- test jars
       classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "gemfirexd-hydra-tests-" +
               ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
+      classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
+              "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "gemfirexd-scala-tests"));
 
       // classPath -- set at last
       vmd.setClassPath(EnvHelper.asPath(classPath, hd));
