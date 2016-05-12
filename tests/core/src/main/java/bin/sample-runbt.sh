@@ -93,5 +93,5 @@ export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classe
 
 # This is the command to run the test, make sure the correct release version of jar used or change the jar path to use correctly. Also change the jar name in sql/snappy.local.conf if incorrect
 
-echo $SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS  -Dbt.grepLogs=true -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
-$SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS  -Dbt.grepLogs=true -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
+echo $SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS  -Dbt.grepLogs=true -DremovePassedTest=true -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
+$SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS  -Dbt.grepLogs=true -DremovePassedTest=true -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
