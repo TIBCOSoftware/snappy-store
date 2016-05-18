@@ -17,7 +17,7 @@
 #include <exception>
 #include <typeinfo>
 
-#include <cstdint>
+#include <boost/cstdint.hpp>
 
 namespace apache { namespace thrift { namespace protocol {
   class TProtocol;
