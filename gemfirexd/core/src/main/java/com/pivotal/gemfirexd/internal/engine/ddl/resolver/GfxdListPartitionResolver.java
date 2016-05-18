@@ -414,24 +414,31 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
         final RowFormatter rf = this.gfContainer.getCurrentRowFormatter();
         final ColumnDescriptor cd = rf.getColumnDescriptor(this.colIndexInVal);
         final byte[] vbytes;
-        if (!rf.hasLobs()) {
-          if (val.getClass() == byte[].class) {
-            vbytes = (byte[])val;
+        final Class<?> vclass = val.getClass();
+        if (vclass == byte[].class) {
+          if (cd.isLob) {
+            vbytes = cd.columnDefaultBytes;
           } else {
-            vbytes = ((OffHeapByteSource) val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+            vbytes = (byte[])val;
           }
-        }
-        else if (cd.isLob) {
-          if (val.getClass() == byte[][].class) {
+        } else if (vclass == byte[][].class) {
+          if (cd.isLob) {
             vbytes = rf.getLob((byte[][])val, this.colIndexInVal + 1);
           } else {
-            vbytes = rf.getLob((OffHeapRowWithLobs)val, this.colIndexInVal + 1); // OFFHEAP: optimize; no need to read all the bytes
+            vbytes = ((byte[][])val)[0];
           }
-        }
-        else if (val.getClass() == byte[][].class) {
-          vbytes = ((byte[][])val)[0];
+        } else if (vclass == OffHeapRowWithLobs.class) {
+          if (cd.isLob) {
+            vbytes = rf.getLob((OffHeapRowWithLobs)val, this.colIndexInVal + 1); // OFFHEAP: optimize; no need to read all the bytes
+          } else {
+            vbytes = ((OffHeapRowWithLobs)val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+          }
         } else {
-          vbytes = ((OffHeapByteSource) val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+          if (cd.isLob) {
+            vbytes = cd.columnDefaultBytes;
+          } else {
+            vbytes = ((OffHeapByteSource)val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+          }
         }
         final long offsetAndWidth = rf.getOffsetAndWidth(
             this.colIndexInVal + 1, vbytes, cd);

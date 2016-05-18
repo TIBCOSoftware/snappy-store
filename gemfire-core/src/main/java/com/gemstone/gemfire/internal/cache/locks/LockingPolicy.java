@@ -257,8 +257,17 @@ public enum LockingPolicy {
       // a conflict. So in this case the commit becomes two-phase and the lock
       // upgrade to EX mode is done in pre-commit phase that throws a conflict
       // exception.
-      acquireLockFailFast(lockObj, mode, ExclusiveSharedSynchronizer
-          .ALLOW_READ_ONLY_WITH_EX_SH | flags, lockOwner, context, msg);
+      // Removed the ALLOW_READ_ONLY_WITH_EX_SH flag due to the following
+      // possible scenario:
+      //  1) child starts transactional insert but still not reached insert
+      //  2) parent delete ReferencedKeyChecker searches and finds nothing,
+      //     not even a transactional entry so does nothing
+      //  3) parent delete acquires write lock on parent entry
+      //  4) child insert acquires write lock on child entry and READ_ONLY
+      //     on parent entry (which does not get a conflict due to this flag)
+      //  5) child insert finishes and commits successfully releasing READ_ONLY
+      //  6) parent delete then finishes successfully
+      acquireLockFailFast(lockObj, mode, flags, lockOwner, context, msg);
     }
 
     @Override
