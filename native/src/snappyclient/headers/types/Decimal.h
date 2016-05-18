@@ -51,14 +51,11 @@ namespace types {
 
   class Decimal {
   private:
-    // no copy constructor for now
-    Decimal operator=(const Decimal& other);
-
     void initializeBigInteger(const int8_t signum,
         const int8_t* magnitude, const uint32_t maglen, const bool bigEndian);
 
     /** discard fractional part */
-    const mpz_t* getBigInteger(mpz_t* copy) const throw ();
+    const mpz_t* getBigInteger(mpz_t* copy) const noexcept;
 
     static uint32_t TEN_POWERS_TABLE[];
 
@@ -88,45 +85,52 @@ namespace types {
 
     Decimal(const std::string& str, const uint32_t columnIndex = -1);
 
-    Decimal(const Decimal& other);
+    Decimal(const Decimal& other) noexcept;
+    Decimal(Decimal&& other) noexcept;
+
+    Decimal& operator=(const Decimal& other) noexcept;
+    Decimal& operator=(Decimal&& other) noexcept;
 
     static Decimal ZERO;
     static Decimal ONE;
 
-    bool operator==(const Decimal& other) const throw ();
+    bool operator==(const Decimal& other) const;
 
-    bool operator!=(const Decimal& other) const throw ();
+    bool operator!=(const Decimal& other) const;
 
-    uint32_t precision() const throw ();
+    uint32_t precision() const noexcept {
+      if (m_precision == 0) {
+        m_precision = mpz_sizeinbase(m_bigInt, 10);
+      }
+      return m_precision;
+    }
 
-    uint32_t scale() const throw () {
+    uint32_t scale() const noexcept {
       return m_scale;
     }
 
-    int32_t signum() const throw () {
+    int32_t signum() const noexcept {
       return mpz_sgn(m_bigInt);
     }
 
-    bool toULong(uint64_t& result,
-        const bool allowOverflow = false) const throw ();
+    bool toUnsignedInt64(uint64_t& result, const bool allowOverflow = false) const;
 
-    bool toLong(int64_t& result,
-        const bool allowOverflow = false) const throw ();
+    bool toInt64(int64_t& result, const bool allowOverflow = false) const;
 
-    bool toDouble(double& result) const throw ();
+    bool toDouble(double& result) const;
 
-    uint32_t toByteArray(std::string& str) const throw ();
+    uint32_t toByteArray(std::string& str) const;
 
     bool wholeDigits(uint8_t* bytes, const uint32_t maxLen,
-        uint32_t& actualLen) const throw ();
+        uint32_t& actualLen) const noexcept;
 
-    void copyTo(thrift::Decimal& target) const throw () {
+    void copyTo(thrift::Decimal& target) const {
       toByteArray(target.magnitude);
       target.signum = signum();
       target.scale = m_scale;
     }
 
-    uint32_t toString(std::string& str) const throw ();
+    uint32_t toString(std::string& str) const;
 
     ~Decimal();
   };

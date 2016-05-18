@@ -91,35 +91,35 @@ namespace client {
 
     virtual SQLException* clone() const;
 
-    inline const std::string& getReason() const throw () {
+    const std::string& getReason() const noexcept {
       return m_reason;
     }
 
-    virtual const char* what() const throw () {
+    virtual const char* what() const noexcept {
       return m_reason.c_str();
     }
 
-    inline const std::string& getSQLState() const throw () {
+    const std::string& getSQLState() const noexcept {
       return m_state;
     }
 
-    int32_t getSeverity() const throw () {
+    int32_t getSeverity() const noexcept {
       return m_severity;
     }
 
-    const SQLException* getNextException() const throw () {
+    const SQLException* getNextException() const noexcept {
       return m_next;
     }
 
-    void setNextException(SQLException* next) throw () {
+    void setNextException(SQLException* next) noexcept {
       m_next = next;
     }
 
-    inline const char* getFileName() const throw () {
+    const char* getFileName() const noexcept {
       return m_file;
     }
 
-    inline int getLineNumber() const throw () {
+    int getLineNumber() const noexcept {
       return m_line;
     }
 
@@ -140,7 +140,7 @@ namespace client {
 
     virtual void toString(std::ostream& out) const;
 
-    virtual ~SQLException() throw ();
+    virtual ~SQLException();
 
   protected:
     std::string m_reason;
@@ -216,14 +216,14 @@ namespace client {
      * Get the name of this exception class. Child classes must always
      * override this to return their own class name.
      */
-    virtual const char* getName() const throw () {
+    virtual const char* getName() const noexcept {
       return "SQLException";
     }
 
     /**
      * Number of stack frames to skip when constructing the stack trace
      */
-    virtual size_t skipFrames() const throw () {
+    virtual size_t skipFrames() const noexcept {
 #ifdef __GNUC__
       // skip the top-most constructor frame
       return 1;
@@ -250,11 +250,9 @@ namespace client {
 
     virtual SQLException* clone() const;
 
-    const SQLWarning* getNextWarning() const throw ();
+    const SQLWarning* getNextWarning() const noexcept;
 
-    void setNextWarning(SQLWarning* next) throw () {
-      m_next = next;
-    }
+    void setNextWarning(SQLWarning* next);
 
   protected:
     SQLWarning(const char* file, int line, const std::string& reason,
@@ -288,11 +286,11 @@ namespace client {
           );
     }
 
-    virtual const char* getName() const throw () {
+    virtual const char* getName() const noexcept {
       return "SQLWarning";
     }
 
-    virtual size_t skipFrames() const throw () {
+    virtual size_t skipFrames() const noexcept {
       return SQLException::skipFrames() + 1;
     }
   };

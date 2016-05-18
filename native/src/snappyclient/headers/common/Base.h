@@ -105,11 +105,12 @@
 #  define _SNAPPY_NEWLINE_STR "\n"
 #endif
 
-extern "C" {
-#  include <stdint.h>
-}
+#include <cstdint>
 #include <string>
 
 #define BOOST_FILESYSTEM_NO_DEPRECATED
+#define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
+#define BOOST_MPL_LIMIT_LIST_SIZE 30
+#define BOOST_MPL_LIMIT_VECTOR_SIZE 30
 
 #endif /* BASE_H_ */

@@ -10,7 +10,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-LocatorService_getPreferredServer_args::~LocatorService_getPreferredServer_args() throw() {
+LocatorService_getPreferredServer_args::~LocatorService_getPreferredServer_args() noexcept {
 }
 
 
@@ -157,7 +157,7 @@ uint32_t LocatorService_getPreferredServer_args::write(::apache::thrift::protoco
 }
 
 
-LocatorService_getPreferredServer_pargs::~LocatorService_getPreferredServer_pargs() throw() {
+LocatorService_getPreferredServer_pargs::~LocatorService_getPreferredServer_pargs() noexcept {
 }
 
 
@@ -207,7 +207,7 @@ uint32_t LocatorService_getPreferredServer_pargs::write(::apache::thrift::protoc
 }
 
 
-LocatorService_getPreferredServer_result::~LocatorService_getPreferredServer_result() throw() {
+LocatorService_getPreferredServer_result::~LocatorService_getPreferredServer_result() noexcept {
 }
 
 
@@ -280,7 +280,7 @@ uint32_t LocatorService_getPreferredServer_result::write(::apache::thrift::proto
 }
 
 
-LocatorService_getPreferredServer_presult::~LocatorService_getPreferredServer_presult() throw() {
+LocatorService_getPreferredServer_presult::~LocatorService_getPreferredServer_presult() noexcept {
 }
 
 
@@ -333,7 +333,7 @@ uint32_t LocatorService_getPreferredServer_presult::read(::apache::thrift::proto
 }
 
 
-LocatorService_getAllServersWithPreferredServer_args::~LocatorService_getAllServersWithPreferredServer_args() throw() {
+LocatorService_getAllServersWithPreferredServer_args::~LocatorService_getAllServersWithPreferredServer_args() noexcept {
 }
 
 
@@ -480,7 +480,7 @@ uint32_t LocatorService_getAllServersWithPreferredServer_args::write(::apache::t
 }
 
 
-LocatorService_getAllServersWithPreferredServer_pargs::~LocatorService_getAllServersWithPreferredServer_pargs() throw() {
+LocatorService_getAllServersWithPreferredServer_pargs::~LocatorService_getAllServersWithPreferredServer_pargs() noexcept {
 }
 
 
@@ -530,7 +530,7 @@ uint32_t LocatorService_getAllServersWithPreferredServer_pargs::write(::apache::
 }
 
 
-LocatorService_getAllServersWithPreferredServer_result::~LocatorService_getAllServersWithPreferredServer_result() throw() {
+LocatorService_getAllServersWithPreferredServer_result::~LocatorService_getAllServersWithPreferredServer_result() noexcept {
 }
 
 
@@ -623,7 +623,7 @@ uint32_t LocatorService_getAllServersWithPreferredServer_result::write(::apache:
 }
 
 
-LocatorService_getAllServersWithPreferredServer_presult::~LocatorService_getAllServersWithPreferredServer_presult() throw() {
+LocatorService_getAllServersWithPreferredServer_presult::~LocatorService_getAllServersWithPreferredServer_presult() noexcept {
 }
 
 
@@ -688,7 +688,7 @@ uint32_t LocatorService_getAllServersWithPreferredServer_presult::read(::apache:
 }
 
 
-LocatorService_closeConnection_args::~LocatorService_closeConnection_args() throw() {
+LocatorService_closeConnection_args::~LocatorService_closeConnection_args() noexcept {
 }
 
 
@@ -729,7 +729,7 @@ uint32_t LocatorService_closeConnection_args::write(::apache::thrift::protocol::
 }
 
 
-LocatorService_closeConnection_pargs::~LocatorService_closeConnection_pargs() throw() {
+LocatorService_closeConnection_pargs::~LocatorService_closeConnection_pargs() noexcept {
 }
 
 

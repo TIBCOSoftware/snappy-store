@@ -52,10 +52,7 @@ extern "C" {
 
 #include <exception>
 #include <typeinfo>
-
-/** @brief Macro to unwrap the type <code>T</code> inside AutoPtr. */
-#define AUTOPTR_UNWRAP(T) \
-    typename io::snappydata::client::UnwrapAutoPtr<T>::type
+#include <boost/config.hpp>
 
 namespace io {
 namespace snappydata {
@@ -64,10 +61,10 @@ namespace functor {
   struct WriteStream {
     std::ostream& m_out;
 
-    void operator()(char c) throw () {
+    inline void operator()(char c) {
       m_out.put(c);
     }
-    void operator()(const char* buf, const size_t bufLen) throw () {
+    inline void operator()(const char* buf, const size_t bufLen) {
       m_out.write(buf, bufLen);
     }
   };
@@ -75,10 +72,10 @@ namespace functor {
   struct WriteString {
     std::string& m_str;
 
-    void operator()(char c) throw () {
+    inline void operator()(char c) {
       m_str.append(1, c);
     }
-    void operator()(const char* buf, const size_t bufLen) throw () {
+    inline void operator()(const char* buf, const size_t bufLen) {
       m_str.append(buf, bufLen);
     }
   };
@@ -86,7 +83,7 @@ namespace functor {
   struct WriteWString {
     std::wstring& m_wstr;
 
-    void operator()(int c) throw () {
+    inline void operator()(int c) {
       m_wstr.append(1, (wchar_t)c);
     }
   };
@@ -128,20 +125,20 @@ namespace client {
   public:
     static const char* getSQLTypeName(const thrift::ColumnValue& cv);
 
-    inline static float int32ToFloat(int32_t i) throw () {
+    inline static float int32ToFloat(int32_t i) noexcept {
       float2int_ u;
       u.m_i32 = i;
       return u.m_f;
     }
 
-    inline static int32_t float2Int32(float f) throw () {
+    inline static int32_t float2Int32(float f) noexcept {
       float2int_ u;
       u.m_f = f;
       return u.m_i32;
     }
 
     template <typename T>
-    inline static std::vector<T> singleVector(const T& elem) throw () {
+    static std::vector<T> singleVector(const T& elem) {
       std::vector<T> vec(1);
       vec.push_back(elem);
       return vec;
@@ -206,10 +203,10 @@ namespace client {
         std::string& resultHost, int& resultPort);
 
     static const char* getServerTypeString(
-        thrift::ServerType::type serverType) throw ();
+        thrift::ServerType::type serverType) noexcept;
 
-    inline static bool isServerTypeDefault(
-        const thrift::ServerType::type serverType) throw () {
+    static bool isServerTypeDefault(
+        const thrift::ServerType::type serverType) noexcept {
       return (serverType == thrift::ServerType::THRIFT_SNAPPY_CP)
           | (serverType == thrift::ServerType::THRIFT_LOCATOR_CP);
     }
@@ -240,11 +237,11 @@ namespace client {
     static void convertByteToString(const int8_t v, std::string& result);
     static void convertShortToString(const int16_t v, std::string& result);
     static void convertIntToString(const int32_t v, std::string& result);
-    static void convertLongToString(const int64_t v, std::string& result);
+    static void convertInt64ToString(const int64_t v, std::string& result);
     static void convertFloatToString(const float v, std::string& result,
-        const int32_t precision = DEFAULT_REAL_PRECISION);
+        const uint32_t precision = DEFAULT_REAL_PRECISION);
     static void convertDoubleToString(const double v, std::string& result,
-        const int32_t precision = DEFAULT_REAL_PRECISION);
+        const uint32_t precision = DEFAULT_REAL_PRECISION);
 
     static std::ostream& toStream(std::ostream& out,
         const thrift::HostAddress& hostAddr);
@@ -254,13 +251,13 @@ namespace client {
 
     static std::string toString(const std::exception& stde);
 
-    static void throwDataFormatError(const char* target,
+    BOOST_NORETURN static void throwDataFormatError(const char* target,
         const uint32_t columnIndex, const char* cause);
 
-    static void throwDataFormatError(const char* target,
+    BOOST_NORETURN static void throwDataFormatError(const char* target,
         const uint32_t columnIndex, const std::exception& cause);
 
-    static void throwDataOutsideRangeError(const char* target,
+    BOOST_NORETURN static void throwDataOutsideRangeError(const char* target,
         const uint32_t columnIndex, const char* cause);
 
 #ifdef __GNUC__
@@ -286,21 +283,6 @@ namespace client {
   };
 
   /**
-   * @brief This struct unwraps the type <code>T</code> inside AutoPtr.
-   */
-  template<typename T>
-  struct UnwrapAutoPtr {
-  };
-
-  /**
-   * @brief This struct unwraps the type <code>T</code> inside AutoPtr.
-   */
-  template<typename T>
-  struct UnwrapAutoPtr<AutoPtr<T> > {
-    typedef T type;
-  };
-
-  /**
    * @brief Thrown for an incorrect typecast.
    */
   class CastException: public std::bad_cast {
@@ -311,40 +293,13 @@ namespace client {
     CastException(const std::string& msg) : m_msg(msg) {
     }
 
-    virtual ~CastException() throw () {
+    virtual ~CastException() {
     }
 
-    virtual const char* what() const throw () {
+    virtual const char* what() const noexcept {
       return m_msg.c_str();
     }
   };
-
-  /**
-   * Dynamically cast the underlying pointer to the given type and throw
-   * <code>CastException</code> if the cast fails.
-   */
-  template<typename TTarget, typename T>
-  TTarget dynamicCast(const AutoPtr<T>& other) {
-    AUTOPTR_UNWRAP(TTarget)* otherPtr;
-    T* otherP;
-
-    if ((otherP = other.get()) == NULL) {
-      return NULL;
-    } else if ((otherPtr = dynamic_cast<AUTOPTR_UNWRAP(TTarget)*>(
-                otherP)) != NULL) {
-      return TTarget(otherPtr);
-    } else {
-      std::string msg;
-      const char* sourceType = typeid(*otherP).name();
-      const char* targetType = typeid(AUTOPTR_UNWRAP(TTarget)).name();
-      msg.append("dynamicCast: cast failed from '");
-      Utils::demangleTypeName(sourceType, msg);
-      msg.append("' to '");
-      Utils::demangleTypeName(targetType, msg);
-      msg.append("'.");
-      throw CastException(msg);
-    }
-  }
 
 } /* namespace client */
 } /* namespace snappydata */
@@ -442,9 +397,9 @@ void io::snappydata::client::Utils::convertUTF16ToUTF8(
 std::ostream& operator <<(std::ostream& out, const wchar_t* wstr);
 
 std::ostream& operator <<(std::ostream& out,
-  const io::snappydata::thrift::ServerType::type serverType);
+  const io::snappydata::thrift::ServerType::type& serverType);
 
 std::ostream& operator<<(std::ostream& out,
-  const io::snappydata::client::_SqleHex hexstr);
+  const io::snappydata::client::_SqleHex& hexstr);
 
 #endif /* UTILS_H_ */

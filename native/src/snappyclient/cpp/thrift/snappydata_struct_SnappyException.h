@@ -36,13 +36,13 @@ class SnappyException : public ::apache::thrift::TException {
  public:
 
   SnappyException(const SnappyException&);
-  SnappyException(SnappyException&&);
+  SnappyException(SnappyException&&) noexcept;
   SnappyException& operator=(const SnappyException&);
-  SnappyException& operator=(SnappyException&&);
+  SnappyException& operator=(SnappyException&&) noexcept;
   SnappyException() : serverInfo() {
   }
 
-  virtual ~SnappyException() throw();
+  virtual ~SnappyException() noexcept;
   SnappyExceptionData exceptionData;
   std::string serverInfo;
   std::vector<SnappyExceptionData>  nextExceptions;
@@ -78,10 +78,10 @@ class SnappyException : public ::apache::thrift::TException {
 
   virtual void printTo(std::ostream& out) const;
   mutable std::string thriftTExceptionMessageHolder_;
-  const char* what() const throw();
+  const char* what() const noexcept;
 };
 
-void swap(SnappyException &a, SnappyException &b);
+void swap(SnappyException &a, SnappyException &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const SnappyException& obj)
 {

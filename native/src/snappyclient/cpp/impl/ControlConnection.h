@@ -76,7 +76,7 @@ namespace impl {
     const std::set<thrift::ServerType> m_snappyServerTypeSet;
     const std::vector<thrift::HostAddress>& m_locators;
     thrift::HostAddress m_controlHost;
-    AutoPtr<thrift::LocatorServiceClient> m_controlLocator;
+    std::unique_ptr<thrift::LocatorServiceClient> m_controlLocator;
     const std::vector<thrift::HostAddress> m_controlHosts;
     const std::unordered_set<thrift::HostAddress> m_controlHostSet;
     const std::set<std::string>& m_serverGroups;
@@ -87,7 +87,7 @@ namespace impl {
      * Since one DS is supposed to have one ControlConnection, so we expect the
      * total size of this static global list to be small.
      */
-    static const std::vector<AutoPtr<ControlConnection> > s_allConnections;
+    static const std::vector<ControlConnection> s_allConnections;
     /** Global lock for {@link allConnections} */
     static const std::mutex s_allConnsLock;
 
@@ -105,7 +105,7 @@ namespace impl {
   public:
     ControlConnection(const ClientService& service);
 
-    static const AutoPtr<ControlConnection>& getOrCreateControlConnection(
+    static const ControlConnection& getOrCreateControlConnection(
         const thrift::HostAddress& hostAddr, const ClientService& service);
 
     const thrift::HostAddress& getPreferredServer(

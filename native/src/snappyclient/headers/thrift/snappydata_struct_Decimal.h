@@ -19,13 +19,13 @@ class Decimal {
  public:
 
   Decimal(const Decimal&);
-  Decimal(Decimal&&);
+  Decimal(Decimal&&) noexcept;
   Decimal& operator=(const Decimal&);
-  Decimal& operator=(Decimal&&);
+  Decimal& operator=(Decimal&&) noexcept;
   Decimal() : signum(0), scale(0), magnitude() {
   }
 
-  virtual ~Decimal() throw();
+  virtual ~Decimal() noexcept;
   int8_t signum;
   int32_t scale;
   std::string magnitude;
@@ -58,7 +58,7 @@ class Decimal {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(Decimal &a, Decimal &b);
+void swap(Decimal &a, Decimal &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const Decimal& obj)
 {

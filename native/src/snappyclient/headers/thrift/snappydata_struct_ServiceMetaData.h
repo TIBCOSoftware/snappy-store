@@ -29,13 +29,13 @@ class ServiceMetaData {
  public:
 
   ServiceMetaData(const ServiceMetaData&);
-  ServiceMetaData(ServiceMetaData&&);
+  ServiceMetaData(ServiceMetaData&&) noexcept;
   ServiceMetaData& operator=(const ServiceMetaData&);
-  ServiceMetaData& operator=(ServiceMetaData&&);
+  ServiceMetaData& operator=(ServiceMetaData&&) noexcept;
   ServiceMetaData() : productName(), productVersion(), productMajorVersion(0), productMinorVersion(0), jdbcMajorVersion(0), jdbcMinorVersion(0), identifierQuote(), searchStringEscape(), extraNameCharacters(), schemaTerm(), procedureTerm(), catalogTerm(), catalogSeparator(), maxBinaryLiteralLength(0), maxCharLiteralLength(0), maxColumnsInGroupBy(0), maxColumnsInIndex(0), maxColumnsInOrderBy(0), maxColumnsInSelect(0), maxColumnsInTable(0), maxConnections(0), maxIndexLength(0), maxRowSize(0), maxStatementLength(0), maxOpenStatements(0), maxTableNamesInSelect(0), maxColumnNameLength(0), maxCursorNameLength(0), maxSchemaNameLength(0), maxProcedureNameLength(0), maxCatalogNameLength(0), maxTableNameLength(0), maxUserNameLength(0), defaultTransactionIsolation(0), defaultResultSetType(0), defaultResultSetHoldabilityHoldCursorsOverCommit(0), sqlStateIsXOpen(0), catalogAtStart(0), rowIdLifeTime((RowIdLifetime::type)0) {
   }
 
-  virtual ~ServiceMetaData() throw();
+  virtual ~ServiceMetaData() noexcept;
   std::string productName;
   std::string productVersion;
   int32_t productMajorVersion;
@@ -297,7 +297,7 @@ class ServiceMetaData {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ServiceMetaData &a, ServiceMetaData &b);
+void swap(ServiceMetaData &a, ServiceMetaData &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const ServiceMetaData& obj)
 {

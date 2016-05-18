@@ -34,48 +34,17 @@
  */
 
 /**
- * JSONObject.h
+ * JSONObject.cpp
  */
 
-#ifndef JSONOBJECT_H_
-#define JSONOBJECT_H_
+#include <types/JSON.h>
 
-#include "SQLException.h"
-#include "WrapperBase.h"
+using namespace io::snappydata::client::types;
 
-namespace io {
-namespace snappydata {
-namespace client {
-namespace types {
+JSON::JSON(const JSON& other) : m_val(other.m_val) {
+}
 
-  class JSONObject: public WrapperBase<thrift::JSONObject> {
-  private:
-    JSONObject(thrift::JSONObject* json) :
-        WrapperBase<thrift::JSONObject>(json, false) {
-    }
-
-    friend class io::snappydata::client::Row;
-    friend class io::snappydata::client::Parameters;
-    friend class io::snappydata::client::UpdatableRow;
-
-  public:
-    JSONObject();
-
-    JSONObject(const std::string& str);
-
-    JSONObject(const JSONObject& other) :
-        WrapperBase<thrift::JSONObject>(other) {
-    }
-
-    JSONObject& operator=(const JSONObject& other) {
-      WrapperBase<thrift::JSONObject>::operator=(other);
-      return *this;
-    }
-  };
-
-} /* namespace types */
-} /* namespace client */
-} /* namespace snappydata */
-} /* namespace io */
-
-#endif /* JSONOBJECT_H_ */
+JSON& JSON::operator=(const JSON& other) {
+  m_val = other.m_val;
+  return *this;
+}

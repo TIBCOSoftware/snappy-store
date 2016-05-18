@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-SnappyException::~SnappyException() throw() {
+SnappyException::~SnappyException() noexcept {
 }
 
 
@@ -144,8 +144,9 @@ uint32_t SnappyException::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(SnappyException &a, SnappyException &b) {
+void swap(SnappyException &a, SnappyException &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.exceptionData, b.exceptionData);
   swap(a.serverInfo, b.serverInfo);
   swap(a.nextExceptions, b.nextExceptions);
@@ -158,7 +159,7 @@ SnappyException::SnappyException(const SnappyException& other179) : TException()
   nextExceptions = other179.nextExceptions;
   __isset = other179.__isset;
 }
-SnappyException::SnappyException( SnappyException&& other180) : TException() {
+SnappyException::SnappyException( SnappyException&& other180) noexcept : TException() {
   exceptionData = std::move(other180.exceptionData);
   serverInfo = std::move(other180.serverInfo);
   nextExceptions = std::move(other180.nextExceptions);
@@ -171,7 +172,7 @@ SnappyException& SnappyException::operator=(const SnappyException& other181) {
   __isset = other181.__isset;
   return *this;
 }
-SnappyException& SnappyException::operator=(SnappyException&& other182) {
+SnappyException& SnappyException::operator=(SnappyException&& other182) noexcept {
   exceptionData = std::move(other182.exceptionData);
   serverInfo = std::move(other182.serverInfo);
   nextExceptions = std::move(other182.nextExceptions);
@@ -187,7 +188,7 @@ void SnappyException::printTo(std::ostream& out) const {
   out << ")";
 }
 
-const char* SnappyException::what() const throw() {
+const char* SnappyException::what() const noexcept {
   try {
     std::stringstream ss;
     ss << "TException - service has thrown: " << *this;

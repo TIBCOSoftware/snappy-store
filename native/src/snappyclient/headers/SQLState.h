@@ -100,11 +100,11 @@ namespace client {
         const ExceptionSeverity::type severity);
 
   public:
-    inline const char* getSQLState() const throw () {
+    const char* getSQLState() const noexcept {
       return m_state;
     }
 
-    ExceptionSeverity::type getSeverity() const throw () {
+    ExceptionSeverity::type getSeverity() const noexcept {
       return m_severity;
     }
 

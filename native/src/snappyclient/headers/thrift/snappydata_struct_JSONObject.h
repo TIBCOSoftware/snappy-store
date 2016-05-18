@@ -27,13 +27,13 @@ class JSONObject {
  public:
 
   JSONObject(const JSONObject&);
-  JSONObject(JSONObject&&);
+  JSONObject(JSONObject&&) noexcept;
   JSONObject& operator=(const JSONObject&);
-  JSONObject& operator=(JSONObject&&);
+  JSONObject& operator=(JSONObject&&) noexcept;
   JSONObject() {
   }
 
-  virtual ~JSONObject() throw();
+  virtual ~JSONObject() noexcept;
   std::map<std::string, JSONValue>  pairs;
   std::vector<JSONValue>  array;
 
@@ -67,7 +67,7 @@ class JSONObject {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(JSONObject &a, JSONObject &b);
+void swap(JSONObject &a, JSONObject &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const JSONObject& obj)
 {

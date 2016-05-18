@@ -207,7 +207,7 @@ void SQLException::toString(std::ostream& out) const {
       << m_line;
 }
 
-SQLException::~SQLException() throw () {
+SQLException::~SQLException() {
   SQLException* next = m_next;
   SQLException* pnext;
   while (next != NULL) {
@@ -229,9 +229,13 @@ SQLWarning::SQLWarning(const char* file, int line, const SQLState& state,
     SQLException(file, line, state, reason) {
 }
 
-const SQLWarning* SQLWarning::getNextWarning() const throw () {
+const SQLWarning* SQLWarning::getNextWarning() const noexcept {
   const SQLException* next = getNextException();
   return next != NULL ? dynamic_cast<const SQLWarning*>(next) : NULL;
+}
+
+void SQLWarning::setNextWarning(SQLWarning* next) {
+  m_next = next;
 }
 
 SQLWarning::SQLWarning(const SQLWarning& other) :

@@ -87,6 +87,16 @@ namespace _snappy_impl {
   };
 }
 
+void Timestamp::setNanos(int32_t nanos) {
+  if (nanos >= 0 && nanos < NANOS_MAX) {
+    m_nanos = nanos;
+  } else {
+    throw GET_SQLEXCEPTION2(
+        SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG3, nanos,
+        NANOS_MAX - 1);
+  }
+}
+
 Timestamp Timestamp::parseString(const std::string& str, const bool utc,
     const uint32_t columnIndex) {
   // TODO: PERF: can be made much more efficient by using tight parser

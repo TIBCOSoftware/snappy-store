@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-UpdateResult::~UpdateResult() throw() {
+UpdateResult::~UpdateResult() noexcept {
 }
 
 
@@ -160,8 +160,9 @@ uint32_t UpdateResult::write(::apache::thrift::protocol::TProtocol* oprot) const
   return xfer;
 }
 
-void swap(UpdateResult &a, UpdateResult &b) {
+void swap(UpdateResult &a, UpdateResult &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.updateCount, b.updateCount);
   swap(a.batchUpdateCounts, b.batchUpdateCounts);
   swap(a.generatedKeys, b.generatedKeys);
@@ -176,7 +177,7 @@ UpdateResult::UpdateResult(const UpdateResult& other307) {
   warnings = other307.warnings;
   __isset = other307.__isset;
 }
-UpdateResult::UpdateResult( UpdateResult&& other308) {
+UpdateResult::UpdateResult( UpdateResult&& other308) noexcept {
   updateCount = std::move(other308.updateCount);
   batchUpdateCounts = std::move(other308.batchUpdateCounts);
   generatedKeys = std::move(other308.generatedKeys);
@@ -191,7 +192,7 @@ UpdateResult& UpdateResult::operator=(const UpdateResult& other309) {
   __isset = other309.__isset;
   return *this;
 }
-UpdateResult& UpdateResult::operator=(UpdateResult&& other310) {
+UpdateResult& UpdateResult::operator=(UpdateResult&& other310) noexcept {
   updateCount = std::move(other310.updateCount);
   batchUpdateCounts = std::move(other310.batchUpdateCounts);
   generatedKeys = std::move(other310.generatedKeys);

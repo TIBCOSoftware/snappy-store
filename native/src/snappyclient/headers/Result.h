@@ -46,51 +46,62 @@
 #include "Types.h"
 #include "PreparedStatement.h"
 
+#include <memory>
+
 namespace io {
 namespace snappydata {
 namespace client {
 
   class Result {
   private:
-    impl::ClientService& m_service;
-    void* const m_serviceId;
-    const AutoPtr<const thrift::StatementAttrs> m_attrs;
+    std::shared_ptr<impl::ClientService> m_service;
+    StatementAttributes m_attrs;
     thrift::StatementResult m_result;
 
-    Result(impl::ClientService& service, void* serviceId,
-        const thrift::StatementAttrs* attrs, PreparedStatement* pstmt = NULL);
+    Result(const std::shared_ptr<impl::ClientService>& service,
+        const StatementAttributes& attrs);
 
-    Result(const Result&); // no copy constructor
-    Result operator=(const Result&); // no assignment operator
+    Result(const Result&) = delete; // no copy constructor
+    Result operator=(const Result&) = delete; // no assignment operator
 
     friend class Connection;
     friend class PreparedStatement;
 
-    static void getResultSetArgs(const thrift::StatementAttrs* attrs,
-        int32_t& batchSize, bool& updatable, bool& scrollable);
+    static void getResultSetArgs(const StatementAttributes& attrs,
+        int32_t& batchSize, bool& updatable, bool& scrollable) noexcept;
 
     ResultSet* newResultSet(thrift::RowSet& rowSet);
 
   public:
+    ~Result();
 
-    AutoPtr<ResultSet> getResultSet();
+    std::unique_ptr<ResultSet> getResultSet();
 
-    int32_t getUpdateCount() const throw ();
+    int32_t getUpdateCount() const noexcept;
 
-    AutoPtr<const Row> getOutputParameters() const;
+    inline bool hasBatchUpdateCounts() const noexcept {
+      return m_result.__isset.batchUpdateCounts
+          && m_result.batchUpdateCounts.size() > 0;
+    }
 
-    AutoPtr<ResultSet> getGeneratedKeys();
+    const std::vector<int32_t>& getBatchUpdateCounts() const noexcept;
 
-    inline bool hasWarnings() const throw () {
+    const Row* getOutputParameters() const;
+
+    std::unique_ptr<ResultSet> getGeneratedKeys();
+
+    const StatementAttributes& getAttributes() const noexcept {
+      return m_attrs;
+    }
+
+    inline bool hasWarnings() const noexcept {
       return m_result.__isset.warnings || (m_result.__isset.resultSet &&
           m_result.resultSet.__isset.warnings);
     }
 
-    AutoPtr<SQLWarning> getWarnings() const;
+    std::unique_ptr<SQLWarning> getWarnings() const;
 
-    AutoPtr<PreparedStatement> getPreparedStatement() const;
-
-    ~Result();
+    std::unique_ptr<PreparedStatement> getPreparedStatement() const;
   };
 
 } /* namespace client */

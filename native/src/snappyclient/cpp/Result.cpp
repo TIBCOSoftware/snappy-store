@@ -49,110 +49,82 @@
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 
-Result::Result(impl::ClientService& service, void* serviceId,
-    const thrift::StatementAttrs* attrs, PreparedStatement* pstmt) :
-    m_service(service), m_serviceId(serviceId), m_attrs(
-        attrs == NULL || attrs == &StatementAttributes::EMPTY.m_attrs ? NULL :
-            new thrift::StatementAttrs(*attrs)), m_result() {
-  // increment service reference
-  impl::ClientServiceHolder::instance().incrementReferenceCount(serviceId);
+Result::Result(const std::shared_ptr<impl::ClientService>& service,
+    const StatementAttributes& attrs) :
+    m_service(service), m_attrs(attrs), m_result() {
 }
 
-void Result::getResultSetArgs(const thrift::StatementAttrs* attrs,
-    int32_t& batchSize, bool& updatable, bool& scrollable) {
-  batchSize = thrift::snappydataConstants::DEFAULT_RESULTSET_BATCHSIZE;
-  updatable = false;
-  scrollable = false;
-  if (attrs != NULL) {
-    if (attrs->__isset.batchSize) {
-      batchSize = attrs->batchSize;
-    }
-    if (attrs->__isset.updatable) {
-      updatable = attrs->updatable;
-    }
-    if (attrs->__isset.resultSetType) {
-      scrollable = (attrs->resultSetType
-          != thrift::snappydataConstants::RESULTSET_TYPE_FORWARD_ONLY);
-    }
-  }
+Result::~Result() {
+}
+
+void Result::getResultSetArgs(const StatementAttributes& attrs,
+    int32_t& batchSize, bool& updatable, bool& scrollable) noexcept {
+  batchSize = attrs.getBatchSize();
+  updatable = attrs.isUpdatable();
+  scrollable = (attrs.getResultSetType() != ResultSetType::FORWARD_ONLY);
 }
 
 ResultSet* Result::newResultSet(thrift::RowSet& rowSet) {
   int32_t batchSize;
   bool updatable, scrollable;
-  const thrift::StatementAttrs* attrs = m_attrs.get();
-  getResultSetArgs(attrs, batchSize, updatable, scrollable);
-  return new ResultSet(&rowSet, attrs, false, m_service, m_serviceId, batchSize,
-      updatable, scrollable, false);
+  getResultSetArgs(m_attrs, batchSize, updatable, scrollable);
+  // the RowSet data will continue to be owned by this object
+  return new ResultSet(&rowSet, m_service, m_attrs, batchSize, updatable,
+      scrollable, false /* isOwner */);
 }
 
-AutoPtr<ResultSet> Result::getResultSet() {
+std::unique_ptr<ResultSet> Result::getResultSet() {
   if (m_result.__isset.resultSet) {
-    return AutoPtr<ResultSet>(newResultSet(m_result.resultSet));
+    return std::unique_ptr<ResultSet>(newResultSet(m_result.resultSet));
   } else {
-    return AutoPtr<ResultSet>(NULL);
+    return std::unique_ptr<ResultSet>();
   }
 }
 
-int32_t Result::getUpdateCount() const throw () {
+int32_t Result::getUpdateCount() const noexcept {
   return (m_result.__isset.updateCount ? m_result.updateCount : -1);
 }
 
-AutoPtr<const Row> Result::getOutputParameters() const {
+const std::vector<int32_t>& Result::getBatchUpdateCounts() const noexcept {
+  return m_result.batchUpdateCounts;
+}
+
+const Row* Result::getOutputParameters() const {
   if (m_result.__isset.procedureOutParams) {
-    return AutoPtr<const Row>(
-        new (const_cast<thrift::Row*>(&m_result.procedureOutParams)) Row(false),
+    return new (const_cast<thrift::Row*>(&m_result.procedureOutParams)) Row(
         false);
   } else {
-    return AutoPtr<const Row>(NULL);
+    return NULL;
   }
 }
 
-AutoPtr<ResultSet> Result::getGeneratedKeys() {
+std::unique_ptr<ResultSet> Result::getGeneratedKeys() {
   if (m_result.__isset.generatedKeys) {
-    return AutoPtr<ResultSet>(newResultSet(m_result.generatedKeys));
+    return std::unique_ptr<ResultSet>(newResultSet(m_result.generatedKeys));
   } else {
-    return AutoPtr<ResultSet>(NULL);
+    return std::unique_ptr<ResultSet>();
   }
 }
 
-AutoPtr<SQLWarning> Result::getWarnings() const {
+std::unique_ptr<SQLWarning> Result::getWarnings() const {
   if (m_result.__isset.warnings) {
-    return AutoPtr<SQLWarning>(new GET_SQLWARNING(m_result.warnings));
+    return std::unique_ptr<SQLWarning>(new GET_SQLWARNING(m_result.warnings));
   } else if (m_result.__isset.resultSet
       && m_result.resultSet.__isset.warnings) {
-    return AutoPtr<SQLWarning>(
-        new SQLWarning(__FILE__, __LINE__,
-            m_result.resultSet.warnings));
+    return std::unique_ptr<SQLWarning>(
+        new GET_SQLWARNING(m_result.resultSet.warnings));
   } else {
-    return AutoPtr<SQLWarning>(NULL);
+    return std::unique_ptr<SQLWarning>();
   }
 }
 
-AutoPtr<PreparedStatement> Result::getPreparedStatement() const {
+std::unique_ptr<PreparedStatement> Result::getPreparedStatement() const {
   if (m_result.__isset.preparedResult) {
     // deliberately making a copy of preparedResult to transfer full
     // ownership to that
-    const thrift::StatementAttrs* attrs = m_attrs.get();
-    return AutoPtr<PreparedStatement>(
-        new PreparedStatement(m_service, m_serviceId,
-            attrs == NULL ? StatementAttributes::EMPTY.m_attrs : *attrs,
-            m_result.preparedResult));
+    return std::unique_ptr<PreparedStatement>(
+        new PreparedStatement(m_service, m_attrs, m_result.preparedResult));
   } else {
-    return AutoPtr<PreparedStatement>(NULL);
-  }
-}
-
-Result::~Result() {
-  // destructor should *never* throw an exception
-  try {
-    // decrement service reference
-    impl::ClientServiceHolder::instance().decrementReferenceCount(m_serviceId);
-  } catch (const SQLException& sqle) {
-    Utils::handleExceptionInDestructor("result", sqle);
-  } catch (const std::exception& stde) {
-    Utils::handleExceptionInDestructor("result", stde);
-  } catch (...) {
-    Utils::handleExceptionInDestructor("result");
+    return std::unique_ptr<PreparedStatement>();
   }
 }

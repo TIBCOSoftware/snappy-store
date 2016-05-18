@@ -46,6 +46,7 @@ namespace io {
 namespace snappydata {
 namespace client {
 
+  // TODO: SW: add move constructors for all C++ classes
   class ColumnDescriptor: public ColumnDescriptorBase {
   private:
     ColumnDescriptor(thrift::ColumnDescriptor& descriptor,
@@ -56,7 +57,10 @@ namespace client {
     friend class ResultSet;
 
   public:
-    ColumnUpdatable::type getUpdatable() const throw () {
+    ~ColumnDescriptor() {
+    }
+
+    ColumnUpdatable::type getUpdatable() const noexcept {
       if (m_descriptor.updatable) {
         return ColumnUpdatable::UPDATABLE;
       } else if (m_descriptor.definitelyUpdatable) {
@@ -66,11 +70,11 @@ namespace client {
       }
     }
 
-    bool isAutoIncrement() const throw () {
+    bool isAutoIncrement() const noexcept {
       return m_descriptor.autoIncrement;
     }
 
-    bool isCaseSensitive() const throw () {
+    bool isCaseSensitive() const noexcept {
       switch (m_descriptor.type) {
         case SQLType::CHAR:
         case SQLType::VARCHAR:
@@ -83,16 +87,16 @@ namespace client {
       }
     }
 
-    bool isSearchable() const throw () {
+    bool isSearchable() const noexcept {
       // we have no restrictions yet, so this is always true
       return true;
     }
 
-    bool isCurrency() const throw () {
+    bool isCurrency() const noexcept {
       return (m_descriptor.type == SQLType::DECIMAL);
     }
 
-    uint32_t getDisplaySize() const throw () {
+    uint32_t getDisplaySize() const noexcept {
       uint32_t size;
       switch (m_descriptor.type) {
         case SQLType::TIMESTAMP:
@@ -128,7 +132,7 @@ namespace client {
       }
     }
 
-    std::string getLabel() throw () {
+    std::string getLabel() const noexcept {
       if (m_descriptor.__isset.name) {
         return m_descriptor.name;
       } else {
@@ -136,9 +140,6 @@ namespace client {
         ::snprintf(buf, sizeof(buf), "Column%d", m_columnIndex);
         return buf;
       }
-    }
-
-    ~ColumnDescriptor() throw () {
     }
   };
 

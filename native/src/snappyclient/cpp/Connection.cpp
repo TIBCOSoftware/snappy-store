@@ -223,7 +223,8 @@ void Connection::open(const std::string& host, const int port,
   // close any existing service instance first
   close();
 
-  m_service = new ClientService(host, port, connArgs, &m_serviceId);
+  m_service = std::shared_ptr<ClientService>(
+      new ClientService(host, port, connArgs));
 }
 
 void Connection::checkProperty(const std::string& propertyName) {
@@ -341,40 +342,38 @@ void Connection::convertOutputParameters(
   }
 }
 
-AutoPtr<Result> Connection::execute(const std::string& sql,
+std::unique_ptr<Result> Connection::execute(const std::string& sql,
     const std::map<int32_t, OutputParameter>& outputParams,
     const StatementAttributes& attrs) {
   ClientService& service = checkAndGetService();
 
-  AutoPtr<Result> result(new Result(service, m_serviceId, &attrs.m_attrs));
+  Result* result = new Result(m_service, attrs);
+  std::unique_ptr<Result> resultp(result);
   if (outputParams.size() == 0) {
-    service.execute(result->m_result, sql, EMPTY_OUT_PARAMS, attrs.m_attrs);
-    return result;
+    service.execute(result->m_result, sql, EMPTY_OUT_PARAMS,
+        attrs.getAttrs());
+    return resultp;
   } else {
     std::map<int32_t, thrift::OutputParameter> resultOutParams;
     convertOutputParameters(outputParams, resultOutParams);
-    service.execute(result->m_result, sql, resultOutParams, attrs.m_attrs);
-    return result;
+    service.execute(result->m_result, sql, resultOutParams, attrs.getAttrs());
+    return resultp;
   }
 }
 
-AutoPtr<ResultSet> Connection::executeQuery(const std::string& sql,
+std::unique_ptr<ResultSet> Connection::executeQuery(const std::string& sql,
     const StatementAttributes& attrs) {
   ClientService& service = checkAndGetService();
 
   int32_t batchSize;
   bool updatable, scrollable;
-  Result::getResultSetArgs(&attrs.m_attrs, batchSize, updatable, scrollable);
+  Result::getResultSetArgs(attrs, batchSize, updatable, scrollable);
 
-  thrift::RowSet* rsp = new thrift::RowSet();
-  AutoPtr<thrift::RowSet> rs(rsp);
-  service.executeQuery(*rsp, sql, attrs.m_attrs);
-
-  AutoPtr<ResultSet> resultSet(
-      new ResultSet(rsp, &attrs.m_attrs, true, service, m_serviceId, batchSize,
-          updatable, scrollable, true));
-  rs.release();
-  return resultSet;
+  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<ResultSet> result(
+      new ResultSet(rs, m_service, attrs, batchSize, updatable, scrollable));
+  service.executeQuery(*rs, sql, attrs.getAttrs());
+  return result;
 }
 
 int32_t Connection::executeUpdate(const std::string& sql,
@@ -382,10 +381,12 @@ int32_t Connection::executeUpdate(const std::string& sql,
   ClientService& service = checkAndGetService();
 
   thrift::UpdateResult result;
-  service.executeUpdate(result, Utils::singleVector(sql), attrs.m_attrs);
+  service.executeUpdate(result, Utils::singleVector(sql), attrs.getAttrs());
   if (result.__isset.warnings) {
     // set back in Connection
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
+  } else {
+    m_warnings.reset();
   }
   if (result.__isset.updateCount) {
     return result.updateCount;
@@ -394,86 +395,85 @@ int32_t Connection::executeUpdate(const std::string& sql,
   }
 }
 
-AutoPtr<std::vector<int32_t> > Connection::executeBatch(
+std::unique_ptr<std::vector<int32_t> > Connection::executeBatch(
     const std::vector<std::string>& batchSQLs,
     const StatementAttributes& attrs) {
   ClientService& service = checkAndGetService();
 
   thrift::UpdateResult result;
-  service.executeUpdate(result, batchSQLs, attrs.m_attrs);
+  service.executeUpdate(result, batchSQLs, attrs.getAttrs());
   if (result.__isset.warnings) {
     // set back in Connection
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
+  } else {
+    m_warnings.reset();
   }
   if (result.__isset.batchUpdateCounts) {
-    return AutoPtr<std::vector<int32_t> >(
+    return std::unique_ptr<std::vector<int32_t> >(
         new std::vector<int32_t>(result.batchUpdateCounts));
   } else {
-    return AutoPtr<std::vector<int32_t> >(NULL);
+    return std::unique_ptr<std::vector<int32_t> >();
   }
 }
 
-AutoPtr<SQLWarning> Connection::getWarnings() {
-  return AutoPtr<SQLWarning>(m_warnings.get(), false);
-}
-
-AutoPtr<PreparedStatement> Connection::prepareStatement(const std::string& sql,
+std::unique_ptr<PreparedStatement> Connection::prepareStatement(
+    const std::string& sql,
     const std::map<int32_t, OutputParameter>& outputParams,
     const StatementAttributes& attrs) {
   ClientService& service = checkAndGetService();
 
-  AutoPtr<PreparedStatement> pstmt(
-      new PreparedStatement(service, m_serviceId, attrs.m_attrs));
+  std::unique_ptr<PreparedStatement> pstmt(
+      new PreparedStatement(m_service, attrs));
   if (outputParams.size() == 0) {
     service.prepareStatement(pstmt->m_prepResult, sql, EMPTY_OUT_PARAMS,
-        attrs.m_attrs);
+        attrs.getAttrs());
   } else {
     std::map<int32_t, thrift::OutputParameter> resultOutParams;
     convertOutputParameters(outputParams, resultOutParams);
     service.prepareStatement(pstmt->m_prepResult, sql, resultOutParams,
-        attrs.m_attrs);
+        attrs.getAttrs());
   }
   return pstmt;
 }
 
-AutoPtr<Result> Connection::prepareAndExecute(const std::string& sql,
+std::unique_ptr<Result> Connection::prepareAndExecute(const std::string& sql,
     const Parameters& params,
     const std::map<int32_t, OutputParameter>& outputParams,
     const StatementAttributes& attrs) {
   ClientService& service = checkAndGetService();
 
-  AutoPtr<Result> result(new Result(service, m_serviceId, &attrs.m_attrs));
+  std::unique_ptr<Result> result(new Result(m_service, attrs));
   if (outputParams.size() == 0) {
     service.prepareAndExecute(result->m_result, sql,
         Utils::singleVector<thrift::Row>(params), EMPTY_OUT_PARAMS,
-        attrs.m_attrs);
+        attrs.getAttrs());
     return result;
   } else {
     std::map<int32_t, thrift::OutputParameter> resultOutParams;
     convertOutputParameters(outputParams, resultOutParams);
     service.prepareAndExecute(result->m_result, sql,
         Utils::singleVector<thrift::Row>(params), resultOutParams,
-        attrs.m_attrs);
+        attrs.getAttrs());
     return result;
   }
 }
 
-AutoPtr<Result> Connection::prepareAndExecuteBatch(const std::string& sql,
-    const ParametersBatch& paramsBatch,
+std::unique_ptr<Result> Connection::prepareAndExecuteBatch(
+    const std::string& sql, const ParametersBatch& paramsBatch,
     const std::map<int32_t, OutputParameter>& outputParams,
     const StatementAttributes& attrs) {
   ClientService& service = checkAndGetService();
 
-  AutoPtr<Result> result(new Result(service, m_serviceId, &attrs.m_attrs));
+  std::unique_ptr<Result> result(new Result(m_service, attrs));
   if (outputParams.size() == 0) {
     service.prepareAndExecute(result->m_result, sql, paramsBatch.m_batch,
-        EMPTY_OUT_PARAMS, attrs.m_attrs);
+        EMPTY_OUT_PARAMS, attrs.getAttrs());
     return result;
   } else {
     std::map<int32_t, thrift::OutputParameter> resultOutParams;
     convertOutputParameters(outputParams, resultOutParams);
     service.prepareAndExecute(result->m_result, sql, paramsBatch.m_batch,
-        resultOutParams, attrs.m_attrs);
+        resultOutParams, attrs.getAttrs());
     return result;
   }
 }
@@ -538,7 +538,8 @@ const std::string Connection::getNativeSQL(const std::string& sql) const {
   return trimSql;
 }
 
-ResultSetHoldability::type Connection::getResultSetHoldability() const throw () {
+ResultSetHoldability::type Connection::getResultSetHoldability()
+    const noexcept {
   if (m_defaultHoldability == ResultSetHoldability::NONE) {
     return thrift::snappydataConstants::DEFAULT_RESULTSET_HOLD_CURSORS_OVER_COMMIT
         ? ResultSetHoldability::HOLD_CURSORS_OVER_COMMIT
@@ -549,102 +550,82 @@ ResultSetHoldability::type Connection::getResultSetHoldability() const throw () 
 }
 
 void Connection::setResultSetHoldability(
-    ResultSetHoldability::type holdability) throw () {
+    ResultSetHoldability::type holdability) {
   m_defaultHoldability = holdability;
 }
 
 // metadata API
 
-AutoPtr<DatabaseMetaData> Connection::getServiceMetaData() {
+const DatabaseMetaData* Connection::getServiceMetaData() {
   ClientService& service = checkAndGetService();
 
-  if (m_metadata.get() == NULL) {
-    AutoPtr<DatabaseMetaData> metadata(new DatabaseMetaData());
-    service.getServiceMetaData(metadata->m_metadata);
-    m_metadata = metadata;
+  if (m_metadata == NULL) {
+    m_metadata.reset(new DatabaseMetaData());
+    service.getServiceMetaData(m_metadata->m_metadata);
   }
-  return AutoPtr<DatabaseMetaData>(m_metadata.get(), false);
+  return m_metadata.get();
 }
 
-AutoPtr<ResultSet> Connection::getSchemaMetaData(
+std::unique_ptr<ResultSet> Connection::getSchemaMetaData(
     const DatabaseMetaDataCall::type method, DatabaseMetaDataArgs& args,
     const DriverType::type driverType) {
   ClientService& service = checkAndGetService();
 
-  thrift::RowSet* rsp = new thrift::RowSet();
-  AutoPtr<thrift::RowSet> rs(rsp);
+  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
   args.m_args.driverType = driverType;
-  service.getSchemaMetaData(*rsp, method, args.m_args);
-
-  AutoPtr<ResultSet> resultSet(
-      new ResultSet(rsp, NULL, true, service, m_serviceId, -1, false, false,
-          true));
-  rs.release();
+  service.getSchemaMetaData(*rs, method, args.m_args);
   return resultSet;
 }
 
-AutoPtr<ResultSet> Connection::getIndexInfo(DatabaseMetaDataArgs& args,
-    bool unique, bool approximate, const DriverType::type driverType) {
-  ClientService& service = checkAndGetService();
-
-  thrift::RowSet* rsp = new thrift::RowSet();
-  AutoPtr<thrift::RowSet> rs(rsp);
-  args.m_args.driverType = driverType;
-  service.getIndexInfo(*rsp, args.m_args, unique, approximate);
-
-  AutoPtr<ResultSet> resultSet(
-      new ResultSet(rsp, NULL, true, service, m_serviceId, -1, false, false,
-          true));
-  rs.release();
-  return resultSet;
-}
-
-AutoPtr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
-    const std::string& typeNamePattern, const std::vector<SQLType::type>& types,
+std::unique_ptr<ResultSet> Connection::getIndexInfo(
+    DatabaseMetaDataArgs& args, bool unique, bool approximate,
     const DriverType::type driverType) {
   ClientService& service = checkAndGetService();
 
-  thrift::RowSet* rsp = new thrift::RowSet();
-  AutoPtr<thrift::RowSet> rs(rsp);
+  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
   args.m_args.driverType = driverType;
-  service.getUDTs(*rsp, args.m_args, types);
-
-  AutoPtr<ResultSet> resultSet(
-      new ResultSet(rsp, NULL, true, service, m_serviceId, -1, false, false,
-          true));
-  rs.release();
+  service.getIndexInfo(*rs, args.m_args, unique, approximate);
   return resultSet;
 }
 
-AutoPtr<ResultSet> Connection::getBestRowIdentifier(DatabaseMetaDataArgs& args,
-    int32_t scope, bool nullable, const DriverType::type driverType) {
+std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
+    const std::string& typeNamePattern,
+    const std::vector<SQLType::type>& types,
+    const DriverType::type driverType) {
   ClientService& service = checkAndGetService();
 
-  thrift::RowSet* rsp = new thrift::RowSet();
-  AutoPtr<thrift::RowSet> rs(rsp);
+  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
   args.m_args.driverType = driverType;
-  service.getBestRowIdentifier(*rsp, args.m_args, scope, nullable);
+  service.getUDTs(*rs, args.m_args, types);
+  return resultSet;
+}
 
-  AutoPtr<ResultSet> resultSet(
-      new ResultSet(rsp, NULL, true, service, m_serviceId, -1, false, false,
-          true));
-  rs.release();
+std::unique_ptr<ResultSet> Connection::getBestRowIdentifier(
+    DatabaseMetaDataArgs& args, int32_t scope, bool nullable,
+    const DriverType::type driverType) {
+  ClientService& service = checkAndGetService();
+
+  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
+  args.m_args.driverType = driverType;
+  service.getBestRowIdentifier(*rs, args.m_args, scope, nullable);
   return resultSet;
 }
 
 // end metadata API
 
 void Connection::close() {
-  ClientService* service = m_service;
-  if (service != NULL) {
-    // decrement service reference in all cases
-    ClearService clr = { m_serviceId, &m_service };
-
-    service->close();
+  if (m_service != NULL) {
+    // close the service and NULL it to decrement the shared_ptr reference
+    m_service->close();
+    m_service = NULL;
   }
 }
 
-Connection::~Connection() throw () {
+Connection::~Connection() {
   // destructor should *never* throw an exception
   try {
     close();

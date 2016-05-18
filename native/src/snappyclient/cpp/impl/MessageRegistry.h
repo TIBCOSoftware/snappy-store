@@ -57,8 +57,7 @@ namespace impl {
 
   public:
 
-    inline static MessageRegistry& instance() throw ()
-    {
+    inline static MessageRegistry& instance() noexcept {
       return s_instance;
     }
 

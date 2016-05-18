@@ -1255,7 +1255,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       result.setFlags(flags);
       // TODO: implement updatable ResultSets
       fillWarnings(result, rs);
-      // send cursorId for scrollable, partial resultsets and no open LOBs
+      // send cursorId for scrollable, partial resultsets or open LOBs
       if (isLastBatch && isForwardOnly && conn.getlobHMObj().isEmpty()) {
          if (stmtHolder == null || cursorId == INVALID_ID) {
           rs.close();

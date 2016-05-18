@@ -68,8 +68,7 @@ namespace client {
      */
     Parameters& createParameters();
 
-    ~ParametersBatch() throw ()
-    {
+    ~ParametersBatch() {
     }
 
   private:

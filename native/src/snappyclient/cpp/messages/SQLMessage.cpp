@@ -57,9 +57,9 @@ void SQLMessageBase::initialize(const SQLState& sqlState,
   m_sqlState = &sqlState;
 }
 
-SQLMessageBase::~SQLMessageBase() throw () {
+SQLMessageBase::~SQLMessageBase() {
 }
 
-const SQLState* SQLMessageBase::getSQLState() const throw () {
+const SQLState* SQLMessageBase::getSQLState() const noexcept {
   return m_sqlState;
 }

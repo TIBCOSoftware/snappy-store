@@ -47,13 +47,13 @@ class RowSet {
  public:
 
   RowSet(const RowSet&);
-  RowSet(RowSet&&);
+  RowSet(RowSet&&) noexcept;
   RowSet& operator=(const RowSet&);
-  RowSet& operator=(RowSet&&);
+  RowSet& operator=(RowSet&&) noexcept;
   RowSet() : flags(0), cursorId(0), statementId(0), connId(0), token(), offset(0), cursorName() {
   }
 
-  virtual ~RowSet() throw();
+  virtual ~RowSet() noexcept;
   std::vector<Row>  rows;
   int8_t flags;
   int32_t cursorId;
@@ -147,7 +147,7 @@ class RowSet {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(RowSet &a, RowSet &b);
+void swap(RowSet &a, RowSet &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const RowSet& obj)
 {

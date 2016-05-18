@@ -24,15 +24,15 @@ class Timestamp {
  public:
 
   Timestamp(const Timestamp&);
-  Timestamp(Timestamp&&);
+  Timestamp(Timestamp&&) noexcept;
   Timestamp& operator=(const Timestamp&);
-  Timestamp& operator=(Timestamp&&);
+  Timestamp& operator=(Timestamp&&) noexcept;
   Timestamp() : secsSinceEpoch(0), nanos(0) {
   }
   Timestamp(int64_t secs, int32_t ns) : secsSinceEpoch(secs), nanos(ns) {
   }
 
-  virtual ~Timestamp() throw();
+  virtual ~Timestamp();
   int64_t secsSinceEpoch;
   int32_t nanos;
 
@@ -64,7 +64,7 @@ class Timestamp {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(Timestamp &a, Timestamp &b);
+void swap(Timestamp &a, Timestamp &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const Timestamp& obj)
 {

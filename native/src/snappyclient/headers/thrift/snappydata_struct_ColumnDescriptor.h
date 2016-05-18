@@ -48,13 +48,13 @@ class ColumnDescriptor {
  public:
 
   ColumnDescriptor(const ColumnDescriptor&);
-  ColumnDescriptor(ColumnDescriptor&&);
+  ColumnDescriptor(ColumnDescriptor&&) noexcept;
   ColumnDescriptor& operator=(const ColumnDescriptor&);
-  ColumnDescriptor& operator=(ColumnDescriptor&&);
+  ColumnDescriptor& operator=(ColumnDescriptor&&) noexcept;
   ColumnDescriptor() : type((SnappyType::type)0), precision(0), scale(0), name(), fullTableName(), updatable(0), definitelyUpdatable(0), nullable(0), autoIncrement(0), parameterIn(0), parameterOut(0), udtTypeAndClassName() {
   }
 
-  virtual ~ColumnDescriptor() throw();
+  virtual ~ColumnDescriptor() noexcept;
   SnappyType::type type;
   int16_t precision;
   int16_t scale;
@@ -161,7 +161,7 @@ class ColumnDescriptor {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ColumnDescriptor &a, ColumnDescriptor &b);
+void swap(ColumnDescriptor &a, ColumnDescriptor &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const ColumnDescriptor& obj)
 {

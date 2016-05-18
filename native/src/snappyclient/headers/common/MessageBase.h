@@ -55,8 +55,8 @@ namespace impl {
   class MessageBase {
   private:
     // no copy constructor or assignment operator
-    MessageBase(const MessageBase&);
-    MessageBase& operator=(const MessageBase&);
+    MessageBase(const MessageBase&) = delete;
+    MessageBase& operator=(const MessageBase&) = delete;
 
   protected:
     std::string m_messageId;
@@ -71,10 +71,10 @@ namespace impl {
     void addMessagePart(const char* messagePart);
 
   public:
-    const std::string& getMessageId() const throw () {
+    const std::string& getMessageId() const noexcept {
       return m_messageId;
     }
-    size_t getNumMessageParts() const throw ();
+    size_t getNumMessageParts() const noexcept;
     const std::string& getMessagePart(int index) const;
 
     friend class impl::MessageRegistry;
@@ -85,12 +85,11 @@ namespace impl {
     const std::string m_message;
 
   public:
-    MessageException(const char* message) throw () : m_message(message) {
-    }
+    MessageException(const char* message);
 
-    virtual ~MessageException() throw ();
+    virtual ~MessageException();
 
-    virtual const char* what() const throw ();
+    virtual const char* what() const noexcept;
   };
 
 } /* namespace snappydata */

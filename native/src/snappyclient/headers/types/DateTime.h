@@ -136,31 +136,18 @@ namespace types {
         const uint16_t sec, const bool utc);
 
     /** Get the seconds since Epoch 1970-01-01 00:00:00 +0000 (UTC) */
-    inline int64_t getEpochTime() const throw() {
+    inline int64_t getEpochTime() const noexcept {
       return m_secsSinceEpoch;
     }
 
     /** Set the seconds since Epoch 1970-01-01 00:00:00 +0000 (UTC) */
-    inline void setEpochTime(const int64_t epochTime) throw() {
-      m_secsSinceEpoch = epochTime;
-    }
+    void setEpochTime(const int64_t epochTime);
 
     /**
      * Convert to time_t value if possible, else throw SQLException
      * (SQLState::SQLState::LANG_DATE_RANGE_EXCEPTION) for overflow.
      */
-    inline time_t getTime() const {
-      const int64_t secs = m_secsSinceEpoch;
-      if (sizeof(time_t) >= sizeof(secs)) {
-        return secs;
-      } else if (sizeof(time_t) >= sizeof(int32_t) &&
-          secs >= INT32_MIN && secs <= INT32_MAX) {
-        return (time_t)secs;
-      } else {
-        throw GET_SQLEXCEPTION2(
-            SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1, secs);
-      }
-    }
+    time_t getTime() const;
 
     /**
      * Create a DateTime instance parsing the date

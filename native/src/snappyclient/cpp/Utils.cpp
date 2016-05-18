@@ -81,6 +81,8 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
       return "BLOB";
     case thrift::SnappyType::BOOLEAN:
       return "BOOLEAN";
+    case thrift::SnappyType::CHAR:
+      return "CHAR";
     case thrift::SnappyType::CLOB:
       return "CLOB";
     case thrift::SnappyType::DATE:
@@ -97,12 +99,20 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
       return "JAVA_OBJECT";
     case thrift::SnappyType::JSON:
       return "JSON";
+    case thrift::SnappyType::LONGVARBINARY:
+      return "LONG VARBINARY";
+    case thrift::SnappyType::LONGVARCHAR:
+      return "LONG VARCHAR";
     case thrift::SnappyType::MAP:
       return "MAP";
     case thrift::SnappyType::NULLTYPE:
       return "NULL";
+    case thrift::SnappyType::REAL:
+      return "REAL";
     case thrift::SnappyType::SMALLINT:
       return "SMALLINT";
+    case thrift::SnappyType::SQLXML:
+      return "XML";
     case thrift::SnappyType::STRUCT:
       return "STRUCT";
     case thrift::SnappyType::TIME:
@@ -111,6 +121,8 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
       return "TIMESTAMP";
     case thrift::SnappyType::TINYINT:
       return "TINYINT";
+    case thrift::SnappyType::VARBINARY:
+      return "VARBINARY";
     case thrift::SnappyType::VARCHAR:
       return "VARCHAR";
     default:
@@ -173,7 +185,7 @@ void Utils::getHostPort(const std::string& hostPort, std::string& resultHost,
 }
 
 const char* Utils::getServerTypeString(
-    thrift::ServerType::type serverType) throw () {
+    thrift::ServerType::type serverType) noexcept {
   switch (serverType) {
     case thrift::ServerType::THRIFT_SNAPPY_CP:
       return "THRIFT_SERVER_COMPACTPROTOCOL";
@@ -334,7 +346,7 @@ void Utils::convertIntToString(const int32_t v, std::string& result) {
   result.append(buffer, pbuf - &buffer[0]);
 }
 
-void Utils::convertLongToString(const int64_t v, std::string& result) {
+void Utils::convertInt64ToString(const int64_t v, std::string& result) {
   char buffer[40];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::long_long, v);
@@ -342,7 +354,7 @@ void Utils::convertLongToString(const int64_t v, std::string& result) {
 }
 
 void Utils::convertFloatToString(const float v, std::string& result,
-    const int32_t precision) {
+    const uint32_t precision) {
   if (precision < 20) {
     char buffer[64];
     char* pbuf = buffer;
@@ -363,7 +375,7 @@ void Utils::convertFloatToString(const float v, std::string& result,
 }
 
 void Utils::convertDoubleToString(const double v, std::string& result,
-    const int32_t precision) {
+    const uint32_t precision) {
   if (precision < 20) {
     char buffer[64];
     char* pbuf = buffer;
@@ -537,11 +549,11 @@ std::ostream& operator <<(std::ostream& out, const wchar_t* wstr) {
 }
 
 std::ostream& operator <<(std::ostream& out,
-    const thrift::ServerType::type serverType) {
+    const thrift::ServerType::type& serverType) {
   return out << Utils::getServerTypeString(serverType);
 }
 
-std::ostream& operator <<(std::ostream& out, const _SqleHex hexstr) {
+std::ostream& operator <<(std::ostream& out, const _SqleHex& hexstr) {
   Utils::toHexString(hexstr.m_str.data(), hexstr.m_str.size(), out);
   return out;
 }

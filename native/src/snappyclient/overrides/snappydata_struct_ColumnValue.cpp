@@ -58,93 +58,403 @@
 #include <thrift/TToString.h>
 #include "Utils.h"
 
-namespace io { namespace snappydata { namespace thrift {
+using namespace io::snappydata::thrift;
 
-void ColumnValue::copyFields(const ColumnValue& other) {
-  m_uval = other.m_uval;
-  switch (m_type) {
-    case SnappyType::VARCHAR:
-    case SnappyType::BINARY:
-    case SnappyType::JAVA_OBJECT:
-      m_uval.string_binary_java_val = new std::string(
-          *other.m_uval.string_binary_java_val);
-      break;
-    case SnappyType::DECIMAL:
-      m_uval.decimal_val = new Decimal(
-          *other.m_uval.decimal_val);
-      break;
-    case SnappyType::BLOB:
-      m_uval.blob_val = new BlobChunk(
-          *other.m_uval.blob_val);
-      break;
-    case SnappyType::CLOB:
-      m_uval.clob_val = new ClobChunk(
-          *other.m_uval.clob_val);
-      break;
-    case SnappyType::ARRAY:
-      m_uval.array_val = new std::vector<ColumnValue>(*other.m_uval.array_val);
-      break;
-    case SnappyType::MAP:
-      m_uval.map_val = new std::map<ColumnValue, ColumnValue>(
-          *other.m_uval.map_val);
-      break;
-    case SnappyType::STRUCT:
-      m_uval.struct_val = new std::vector<ColumnValue>(*other.m_uval.struct_val);
-      break;
-    case SnappyType::JSON:
-      m_uval.json_val = new JSONObject(
-          *other.m_uval.json_val);
-      break;
-    default:
-      break;
-  }
+namespace {
+  class ValueEquality : public boost::static_visitor<bool> {
+  public:
+    template<typename T, typename U>
+    bool operator()(const T& lhs, const U& rhs) const {
+      // cannot compare different types
+      return false;
+    }
+
+    template<typename T>
+    bool operator()(const std::shared_ptr<T>& lhs,
+        const std::shared_ptr<T>& rhs) const {
+      // compare the objects inside shared_ptr's and not pointer equality
+      return *lhs == *rhs;
+    }
+
+    template<typename T>
+    bool operator()(const T& lhs, const T& rhs) const {
+      return lhs == rhs;
+    }
+  };
+
+  class Serializer : public boost::static_visitor<uint32_t> {
+  private:
+    ::apache::thrift::protocol::TProtocol*const m_oprot;
+
+  public:
+    Serializer(::apache::thrift::protocol::TProtocol* oprot) :
+        m_oprot(oprot) {
+    }
+
+    uint32_t operator()(const bool& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("bool_val",
+          ::apache::thrift::protocol::T_BOOL, 1);
+      xfer += m_oprot->writeBool(v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const int8_t& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("byte_val",
+          ::apache::thrift::protocol::T_BYTE, 2);
+      xfer += m_oprot->writeByte(v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const int16_t& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("i16_val",
+          ::apache::thrift::protocol::T_I16, 3);
+      xfer += m_oprot->writeI16(v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const int32_t& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("i32_val",
+          ::apache::thrift::protocol::T_I32, 4);
+      xfer += m_oprot->writeI32(v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const int64_t& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("i64_val",
+          ::apache::thrift::protocol::T_I64, 5);
+      xfer += m_oprot->writeI64(v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const float& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("float_val",
+          ::apache::thrift::protocol::T_I32, 6);
+      xfer += m_oprot->writeI32(io::snappydata::client::Utils::float2Int32(v));
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const double& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("double_val",
+          ::apache::thrift::protocol::T_DOUBLE, 7);
+      xfer += m_oprot->writeDouble(v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<std::string>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("string_val",
+          ::apache::thrift::protocol::T_STRING, 8);
+      xfer += m_oprot->writeString(*v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<Decimal>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("decimal_val",
+          ::apache::thrift::protocol::T_STRUCT, 9);
+      xfer += v->write(m_oprot);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const Date& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("date_val",
+          ::apache::thrift::protocol::T_STRUCT, 10);
+      xfer += v.write(m_oprot);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const Time& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("time_val",
+          ::apache::thrift::protocol::T_STRUCT, 11);
+      xfer += v.write(m_oprot);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const Timestamp& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("timestamp_val",
+          ::apache::thrift::protocol::T_STRUCT, 12);
+      xfer += v.write(m_oprot);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<Binary>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("binary_val",
+          ::apache::thrift::protocol::T_STRING, 13);
+      xfer += m_oprot->writeBinary(*v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<BlobChunk>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("blob_val",
+          ::apache::thrift::protocol::T_STRUCT, 14);
+      xfer += v->write(m_oprot);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<ClobChunk>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("clob_val",
+          ::apache::thrift::protocol::T_STRUCT, 15);
+      xfer += v->write(m_oprot);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<Array>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("array_val",
+          ::apache::thrift::protocol::T_LIST, 16);
+      xfer += m_oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT,
+          static_cast<uint32_t>(v->size()));
+      auto _iter229 = v->cbegin();
+      auto _iter229_end = v->cend();
+      while (_iter229 != _iter229_end) {
+        xfer += (*_iter229).write(m_oprot);
+        ++_iter229;
+      }
+      xfer += m_oprot->writeListEnd();
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<Map>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("map_val",
+          ::apache::thrift::protocol::T_MAP, 17);
+      xfer += m_oprot->writeMapBegin(::apache::thrift::protocol::T_STRUCT,
+          ::apache::thrift::protocol::T_STRUCT,
+           static_cast<uint32_t>(v->size()));
+      auto _iter230 = v->cbegin();
+      auto _iter230_end = v->cend();
+      while (_iter230 != _iter230_end) {
+        xfer += _iter230->first.write(m_oprot);
+        xfer += _iter230->second.write(m_oprot);
+        ++_iter230;
+      }
+      xfer += m_oprot->writeMapEnd();
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<Struct>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("struct_val",
+          ::apache::thrift::protocol::T_LIST, 18);
+      xfer += m_oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT,
+          static_cast<uint32_t>(v->size()));
+      auto _iter231 = v->cbegin();
+      auto _iter231_end = v->cend();
+      while (_iter231 != _iter231_end) {
+        xfer += (*_iter231).write(m_oprot);
+        ++_iter231;
+      }
+      xfer += m_oprot->writeListEnd();
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const NullType& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("null_val",
+          ::apache::thrift::protocol::T_BOOL, 16);
+      xfer += m_oprot->writeBool(v.m_v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<JSONObject>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("json_val",
+          ::apache::thrift::protocol::T_STRUCT, 18);
+      xfer += v->write(m_oprot);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+
+    uint32_t operator()(const std::shared_ptr<JavaObject>& v) const {
+      uint32_t xfer = 0;
+      xfer += m_oprot->writeFieldBegin("java_val",
+          ::apache::thrift::protocol::T_STRING, 19);
+      xfer += m_oprot->writeBinary(*v);
+      xfer += m_oprot->writeFieldEnd();
+      return xfer;
+    }
+  };
+
+  class PrintToStream : public boost::static_visitor<> {
+  private:
+    std::ostream& m_out;
+    const int m_which;
+
+  public:
+    PrintToStream(std::ostream& out, const int which) :
+        m_out(out), m_which(which) {
+    }
+
+    /** special override for BinaryType (which is a string) to print as hex */
+    void operator()(const std::shared_ptr<Binary>& v) const {
+      // print the bytes in hex form and not as string
+      m_out << "binary_val=0x";
+      io::snappydata::client::Utils::toHexString(v->data(), v->size(), m_out);
+    }
+
+    void operator()(const std::shared_ptr<Array>& v) const {
+      // print the object inside shared_ptr, not the pointer
+      // container types don't define << overloads, so use thrift to_string
+      m_out << "array_val=(";
+      auto iter = v->cbegin();
+      auto iterEnd = v->cend();
+      if (iter != iterEnd) {
+        iter->visit(*this);
+        ++iter;
+        while (iter != iterEnd) {
+          m_out << ", ";
+          iter->visit(*this);
+          ++iter;
+        }
+      }
+      m_out << ')';
+    }
+
+    void operator()(const std::shared_ptr<Map>& v) const {
+      // print the object inside shared_ptr, not the pointer
+      // container types don't define << overloads, so use thrift to_string
+      m_out << "map_val=";
+      auto iter = v->cbegin();
+      auto iterEnd = v->cend();
+      bool firstCall = true;
+      while (iter != iterEnd) {
+        if (firstCall) {
+          firstCall = false;
+        } else {
+          m_out << ", ";
+        }
+        iter->first.visit(*this);
+        m_out << " = ";
+        iter->second.visit(*this);
+        ++iter;
+      }
+      m_out << ')';
+    }
+
+    template<typename T>
+    void operator()(const std::shared_ptr<T>& v) const {
+      // print the object inside shared_ptr, not the pointer
+      // container types don't define << overloads, so use thrift to_string
+      m_out << ColumnValue::getThriftFieldName(m_which) << '='
+          << apache::thrift::to_string(*v);
+    }
+
+    template<typename T>
+    void operator()(const T& v) const {
+      m_out << ColumnValue::getThriftFieldName(m_which) << '=' << v;
+    }
+  };
 }
 
-void ColumnValue::clearValue() throw() {
-  switch (m_type) {
-    case SnappyType::OTHER:
-      return;
-    case SnappyType::VARCHAR:
-    case SnappyType::BINARY:
-    case SnappyType::JAVA_OBJECT:
-      delete m_uval.string_binary_java_val;
-      m_uval.string_binary_java_val = NULL;
-      break;
-    case SnappyType::DECIMAL:
-      delete m_uval.decimal_val;
-      m_uval.decimal_val = NULL;
-      break;
-    case SnappyType::BLOB:
-      delete m_uval.blob_val;
-      m_uval.blob_val = NULL;
-      break;
-    case SnappyType::CLOB:
-      delete m_uval.clob_val;
-      m_uval.clob_val = NULL;
-      break;
-    case SnappyType::ARRAY:
-      delete m_uval.array_val;
-      m_uval.array_val = NULL;
-      break;
-    case SnappyType::MAP:
-      delete m_uval.map_val;
-      m_uval.map_val = NULL;
-      break;
-    case SnappyType::STRUCT:
-      delete m_uval.struct_val;
-      m_uval.struct_val = NULL;
-      break;
-    case SnappyType::JSON:
-      delete m_uval.json_val;
-      m_uval.json_val = NULL;
-      break;
-    default:
-      break;
-  }
+ColumnValue& ColumnValue::operator=(const ColumnValue& other) noexcept {
+  m_val = other.m_val;
+  return *this;
+}
+ColumnValue& ColumnValue::operator=(ColumnValue&& other) noexcept {
+  m_val = std::move(other.m_val);
+  return *this;
+}
+
+bool ColumnValue::operator ==(const ColumnValue & rhs) const {
+  return boost::apply_visitor(::ValueEquality(), m_val, rhs.m_val);
+}
+
+const char* ColumnValue::getThriftFieldName(int index) noexcept {
+  return s_typeMap[index].second;
+}
+
+void ColumnValue::setBinary(const std::string& val) {
+  m_val = std::move(std::shared_ptr<Binary>(new Binary(val)));
+}
+
+void ColumnValue::setBinary(std::string&& val) {
+  m_val = std::move(std::shared_ptr<Binary>(new Binary(std::move(val))));
+}
+
+void ColumnValue::setBlob(const BlobChunk& val) {
+  m_val = std::move(std::shared_ptr<BlobChunk>(new BlobChunk(val)));
+}
+
+void ColumnValue::setBlob(BlobChunk&& val) {
+  m_val = std::move(
+      std::shared_ptr<BlobChunk>(new BlobChunk(std::move(val))));
+}
+
+void ColumnValue::setClob(const ClobChunk& val) {
+  m_val = std::move(std::shared_ptr<ClobChunk>(new ClobChunk(val)));
+}
+
+void ColumnValue::setClob(ClobChunk&& val) {
+  m_val = std::move(
+      std::shared_ptr<ClobChunk>(new ClobChunk(std::move(val))));
+}
+
+void ColumnValue::setArray(const Array& val) {
+  m_val = std::move(std::shared_ptr<Array>(new Array(val)));
+}
+
+void ColumnValue::setArray(Array&& val) {
+  m_val = std::move(std::shared_ptr<Array>(new Array(std::move(val))));
+}
+
+void ColumnValue::setMap(const Map& val) {
+  m_val = std::move(std::shared_ptr<Map>(new Map(val)));
+}
+
+void ColumnValue::setMap(Map&& val) {
+  m_val = std::move(std::shared_ptr<Map>(new Map(std::move(val))));
+}
+
+void ColumnValue::setStruct(const Struct& val) {
+  m_val = std::move(std::shared_ptr<Struct>(new Struct(val)));
+}
+
+void ColumnValue::setStruct(Struct&& val) {
+  m_val = std::move(std::shared_ptr<Struct>(new Struct(std::move(val))));
+}
+
+void ColumnValue::setJavaVal(const std::string& val) {
+  m_val = std::move(std::shared_ptr<JavaObject>(new JavaObject(val)));
+}
+
+void ColumnValue::setJavaVal(std::string&& val) {
+  m_val = std::move(
+      std::shared_ptr<JavaObject>(new JavaObject(std::move(val))));
 }
 
 uint32_t ColumnValue::read(::apache::thrift::protocol::TProtocol* iprot) {
-
   uint32_t xfer = 0;
   std::string fname;
   ::apache::thrift::protocol::TType ftype;
@@ -154,149 +464,143 @@ uint32_t ColumnValue::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   using ::apache::thrift::protocol::TProtocolException;
 
-
-  bool firstIter = true;
-  while (true)
-  {
-    if (!firstIter) {
-      clearValue();
-    }
+  while (true) {
     xfer += iprot->readFieldBegin(fname, ftype, fid);
     if (ftype == ::apache::thrift::protocol::T_STOP) {
       break;
     }
-    switch (fid)
-    {
+    switch (fid) {
       case 1:
         if (ftype == ::apache::thrift::protocol::T_BOOL) {
-          xfer += iprot->readBool(m_uval.bool_val);
-          m_type = SnappyType::BOOLEAN;
+          bool v;
+          xfer += iprot->readBool(v);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 2:
         if (ftype == ::apache::thrift::protocol::T_BYTE) {
-          xfer += iprot->readByte(m_uval.byte_val);
-          m_type = SnappyType::TINYINT;
+          int8_t v;
+          xfer += iprot->readByte(v);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 3:
         if (ftype == ::apache::thrift::protocol::T_I16) {
-          xfer += iprot->readI16(m_uval.i16_val);
-          m_type = SnappyType::SMALLINT;
+          int16_t v;
+          xfer += iprot->readI16(v);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 4:
         if (ftype == ::apache::thrift::protocol::T_I32) {
-          xfer += iprot->readI32(m_uval.i32_val);
-          m_type = SnappyType::INTEGER;
+          int32_t v;
+          xfer += iprot->readI32(v);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 5:
         if (ftype == ::apache::thrift::protocol::T_I64) {
-          xfer += iprot->readI64(m_uval.i64_val);
-          m_type = SnappyType::BIGINT;
+          int64_t v;
+          xfer += iprot->readI64(v);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 6:
         if (ftype == ::apache::thrift::protocol::T_I32) {
-          int32_t i;
-          xfer += iprot->readI32(i);
-          m_uval.float_val = client::Utils::int32ToFloat(i);
-          m_type = SnappyType::FLOAT;
+          int32_t v;
+          xfer += iprot->readI32(v);
+          m_val = io::snappydata::client::Utils::int32ToFloat(v);
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 7:
         if (ftype == ::apache::thrift::protocol::T_DOUBLE) {
-          xfer += iprot->readDouble(m_uval.double_val);
-          m_type = SnappyType::DOUBLE;
+          double v;
+          xfer += iprot->readDouble(v);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 8:
         if (ftype == ::apache::thrift::protocol::T_STRING) {
-          m_uval.string_binary_java_val = new std::string();
-          m_type = SnappyType::VARCHAR;
-          xfer += iprot->readString(*m_uval.string_binary_java_val);
+          auto v = std::shared_ptr<std::string>(new std::string());
+          xfer += iprot->readString(*v);
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 9:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          m_uval.decimal_val = new Decimal();
-          m_type = SnappyType::DECIMAL;
-          xfer += m_uval.decimal_val->read(iprot);
+          auto v = std::shared_ptr<Decimal>(new Decimal());
+          xfer += v->read(iprot);
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 10:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          DateTime d;
-          xfer += d.read(iprot);
-          m_uval.date_time_epoch_val = d.secsSinceEpoch;
-          m_type = SnappyType::DATE;
+          Date v;
+          xfer += v.read(iprot);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 11:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          DateTime t;
-          xfer += t.read(iprot);
-          m_uval.date_time_epoch_val = t.secsSinceEpoch;
-          m_type = SnappyType::TIME;
+          Time v;
+          xfer += v.read(iprot);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 12:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          Timestamp ts;
-          xfer += ts.read(iprot);
-          m_uval.timestamp_val.epochTime = ts.secsSinceEpoch;
-          m_uval.timestamp_val.nanos = ts.nanos;
-          m_type = SnappyType::TIMESTAMP;
+          Timestamp v;
+          xfer += v.read(iprot);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 13:
         if (ftype == ::apache::thrift::protocol::T_STRING) {
-          m_uval.string_binary_java_val = new std::string();
-          m_type = SnappyType::BINARY;
-          xfer += iprot->readBinary(*m_uval.string_binary_java_val);
+          auto v = std::shared_ptr<Binary>(new Binary());
+          xfer += iprot->readBinary(*v);
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 14:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          m_uval.blob_val = new BlobChunk();
-          m_type = SnappyType::BLOB;
-          xfer += m_uval.blob_val->read(iprot);
+          auto v = std::shared_ptr<BlobChunk>(new BlobChunk());
+          xfer += v->read(iprot);
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 15:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          m_uval.clob_val = new ClobChunk();
-          m_type = SnappyType::CLOB;
-          xfer += m_uval.clob_val->read(iprot);
+          auto v = std::shared_ptr<ClobChunk>(new ClobChunk());
+          xfer += v->read(iprot);
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -306,13 +610,15 @@ uint32_t ColumnValue::read(::apache::thrift::protocol::TProtocol* iprot) {
           uint32_t _size212;
           ::apache::thrift::protocol::TType _etype215;
           xfer += iprot->readListBegin(_etype215, _size212);
-          m_uval.array_val = new std::vector<ColumnValue>(_size212);
-          m_type = SnappyType::ARRAY;
+          auto v = std::shared_ptr<Array>(new Array(_size212));
           uint32_t _i216;
           for (_i216 = 0; _i216 < _size212; ++_i216) {
-            xfer += m_uval.array_val->operator[](_i216).read(iprot);
+            ColumnValue c;
+            xfer += c.read(iprot);
+            v->push_back(std::move(c));
           }
           xfer += iprot->readListEnd();
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -323,16 +629,17 @@ uint32_t ColumnValue::read(::apache::thrift::protocol::TProtocol* iprot) {
           ::apache::thrift::protocol::TType _ktype218;
           ::apache::thrift::protocol::TType _vtype219;
           xfer += iprot->readMapBegin(_ktype218, _vtype219, _size217);
-          m_uval.map_val = new std::map<ColumnValue, ColumnValue>();
-          m_type = SnappyType::MAP;
+          auto v = std::shared_ptr<Map>(new Map());
           uint32_t _i221;
           for (_i221 = 0; _i221 < _size217; ++_i221) {
-            ColumnValue _key222;
+            ColumnValue _key222, _val223;
             xfer += _key222.read(iprot);
-            ColumnValue& _val223 = m_uval.map_val->operator[](_key222);
             xfer += _val223.read(iprot);
+            // create the pair in-place
+            v->emplace(_key222, _val223);
           }
           xfer += iprot->readMapEnd();
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -342,39 +649,42 @@ uint32_t ColumnValue::read(::apache::thrift::protocol::TProtocol* iprot) {
           uint32_t _size224;
           ::apache::thrift::protocol::TType _etype227;
           xfer += iprot->readListBegin(_etype227, _size224);
-          m_uval.struct_val = new std::vector<ColumnValue>(_size224);
-          m_type = SnappyType::STRUCT;
+          auto v = std::shared_ptr<Struct>(new Struct(_size224));
           uint32_t _i228;
           for (_i228 = 0; _i228 < _size224; ++_i228) {
-            xfer += m_uval.struct_val->operator[](_i228).read(iprot);
+            ColumnValue c;
+            xfer += c.read(iprot);
+            v->push_back(std::move(c));
           }
           xfer += iprot->readListEnd();
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 19:
         if (ftype == ::apache::thrift::protocol::T_BOOL) {
-          xfer += iprot->readBool(*m_uval.null_val);
-          m_type = SnappyType::NULLTYPE;
+          bool v;
+          xfer += iprot->readBool(v);
+          m_val = v;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 20:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          m_uval.json_val = new JSONObject();
-          m_type = SnappyType::JSON;
-          xfer += m_uval.json_val->read(iprot);
+          auto v = std::shared_ptr<JSONObject>(new JSONObject());
+          xfer += v->read(iprot);
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 21:
         if (ftype == ::apache::thrift::protocol::T_STRING) {
-          m_uval.string_binary_java_val = new std::string();
-          m_type = SnappyType::JAVA_OBJECT;
-          xfer += iprot->readBinary(*m_uval.string_binary_java_val);
+          auto v = std::shared_ptr<JavaObject>(new JavaObject());
+          xfer += iprot->readBinary(*v);
+          m_val = std::move(v);
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -384,7 +694,6 @@ uint32_t ColumnValue::read(::apache::thrift::protocol::TProtocol* iprot) {
         break;
     }
     xfer += iprot->readFieldEnd();
-    firstIter = false;
   }
 
   xfer += iprot->readStructEnd();
@@ -392,285 +701,26 @@ uint32_t ColumnValue::read(::apache::thrift::protocol::TProtocol* iprot) {
   return xfer;
 }
 
-uint32_t ColumnValue::write(::apache::thrift::protocol::TProtocol* oprot) const {
+uint32_t ColumnValue::write(
+    ::apache::thrift::protocol::TProtocol* oprot) const {
   uint32_t xfer = 0;
   xfer += oprot->writeStructBegin("ColumnValue");
 
-  switch (m_type) {
-    case SnappyType::BOOLEAN:
-      xfer += oprot->writeFieldBegin("bool_val",
-          ::apache::thrift::protocol::T_BOOL, 1);
-      xfer += oprot->writeBool(m_uval.bool_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::TINYINT:
-      xfer += oprot->writeFieldBegin("byte_val",
-          ::apache::thrift::protocol::T_BYTE, 2);
-      xfer += oprot->writeByte(m_uval.byte_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::SMALLINT:
-      xfer += oprot->writeFieldBegin("i16_val",
-          ::apache::thrift::protocol::T_I16, 3);
-      xfer += oprot->writeI16(m_uval.i16_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::INTEGER:
-      xfer += oprot->writeFieldBegin("i32_val",
-          ::apache::thrift::protocol::T_I32, 4);
-      xfer += oprot->writeI32(m_uval.i32_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::BIGINT:
-      xfer += oprot->writeFieldBegin("i64_val",
-          ::apache::thrift::protocol::T_I64, 5);
-      xfer += oprot->writeI64(m_uval.i64_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::FLOAT:
-      xfer += oprot->writeFieldBegin("float_val",
-          ::apache::thrift::protocol::T_I32, 6);
-      xfer += oprot->writeI32(client::Utils::float2Int32(m_uval.float_val));
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::DOUBLE:
-      xfer += oprot->writeFieldBegin("double_val",
-          ::apache::thrift::protocol::T_DOUBLE, 7);
-      xfer += oprot->writeDouble(m_uval.double_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::VARCHAR:
-      xfer += oprot->writeFieldBegin("string_val",
-          ::apache::thrift::protocol::T_STRING, 8);
-      xfer += oprot->writeString(*m_uval.string_binary_java_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::DECIMAL:
-      xfer += oprot->writeFieldBegin("decimal_val",
-          ::apache::thrift::protocol::T_STRUCT, 9);
-      xfer += m_uval.decimal_val->write(oprot);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::DATE:
-      xfer += oprot->writeFieldBegin("date_val",
-          ::apache::thrift::protocol::T_STRUCT, 10);
-      xfer += DateTime(m_uval.date_time_epoch_val).write(oprot);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::TIME:
-      xfer += oprot->writeFieldBegin("time_val",
-          ::apache::thrift::protocol::T_STRUCT, 11);
-      xfer += DateTime(m_uval.date_time_epoch_val).write(oprot);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::TIMESTAMP:
-      xfer += oprot->writeFieldBegin("timestamp_val",
-          ::apache::thrift::protocol::T_STRUCT, 12);
-      xfer += Timestamp(m_uval.timestamp_val.epochTime,
-          m_uval.timestamp_val.nanos).write(oprot);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::BINARY:
-      xfer += oprot->writeFieldBegin("binary_val",
-          ::apache::thrift::protocol::T_STRING, 13);
-      xfer += oprot->writeBinary(*m_uval.string_binary_java_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::BLOB:
-      xfer += oprot->writeFieldBegin("blob_val",
-          ::apache::thrift::protocol::T_STRUCT, 14);
-      xfer += m_uval.blob_val->write(oprot);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::CLOB:
-      xfer += oprot->writeFieldBegin("clob_val",
-          ::apache::thrift::protocol::T_STRUCT, 15);
-      xfer += m_uval.clob_val->write(oprot);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::ARRAY:
-      xfer += oprot->writeFieldBegin("array_val",
-          ::apache::thrift::protocol::T_LIST, 16);
-      xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT,
-          static_cast<uint32_t>(m_uval.array_val->size()));
-      std::vector<ColumnValue>::const_iterator _iter229;
-      std::vector<ColumnValue>::const_iterator _iter229_end =
-        m_uval.array_val->end();
-      for (_iter229 = m_uval.array_val->begin();
-          _iter229 != _iter229_end; ++_iter229) {
-        xfer += (*_iter229).write(oprot);
-      }
-      xfer += oprot->writeListEnd();
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType:MAP:
-      xfer += oprot->writeFieldBegin("map_val",
-          ::apache::thrift::protocol::T_MAP, 17);
-      xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRUCT,
-          ::apache::thrift::protocol::T_STRUCT,
-          static_cast<uint32_t>(m_uval.map_val->size()));
-      std::map<ColumnValue, ColumnValue>::const_iterator _iter230;
-      std::map<ColumnValue, ColumnValue>::const_iterator _iter230_end =
-        m_uval.map_val->end();
-      for (_iter230 = m_uval.map_val->begin();
-          _iter230 != _iter230_end; ++_iter230) {
-        xfer += _iter230->first.write(oprot);
-        xfer += _iter230->second.write(oprot);
-      }
-      xfer += oprot->writeMapEnd();
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::STRUCT:
-      xfer += oprot->writeFieldBegin("struct_val",
-          ::apache::thrift::protocol::T_LIST, 18);
-      xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT,
-          static_cast<uint32_t>(m_uval.struct_val->size()));
-      std::vector<ColumnValue>::const_iterator _iter231;
-      std::vector<ColumnValue>::const_iterator _iter231_end =
-        m_uval.struct_val->end();
-      for (_iter231 = m_uval.struct_val->begin();
-          _iter231 != _iter231_end; ++_iter231) {
-        xfer += (*_iter231).write(oprot);
-      }
-      xfer += oprot->writeListEnd();
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::NULLTYPE:
-      xfer += oprot->writeFieldBegin("null_val",
-          ::apache::thrift::protocol::T_BOOL, 16);
-      xfer += oprot->writeBool(m_uval.null_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::JSON:
-      xfer += oprot->writeFieldBegin("json_val",
-          ::apache::thrift::protocol::T_STRUCT, 18);
-      xfer += m_uval.json_val->write(oprot);
-      xfer += oprot->writeFieldEnd();
-      break;
-    case SnappyType::JAVA_OBJECT:
-      xfer += oprot->writeFieldBegin("java_val",
-          ::apache::thrift::protocol::T_STRING, 19);
-      xfer += oprot->writeBinary(*m_uval.string_binary_java_val);
-      xfer += oprot->writeFieldEnd();
-      break;
-    default:
-      break;
-  }
+  xfer += boost::apply_visitor(::Serializer(oprot), m_val);
+
   xfer += oprot->writeFieldStop();
   xfer += oprot->writeStructEnd();
   return xfer;
 }
 
-void ColumnValue::swap(ColumnValue& other) {
-  using ::std::swap;
-  swap(m_uval, other.m_uval);
-  swap(m_type, other.m_type);
+void ColumnValue::swap(ColumnValue& other) noexcept {
+  std::swap(m_val, other.m_val);
 }
 
-void swap(ColumnValue &a, ColumnValue &b) {
+void swap(ColumnValue &a, ColumnValue &b) noexcept {
   a.swap(b);
 }
 
 void ColumnValue::printTo(std::ostream& out) const {
-  using ::apache::thrift::to_string;
-  switch (m_type) {
-    case SnappyType::BOOLEAN:
-      out << "bool_val=" << to_string(m_uval.bool_val);
-      break;
-    case SnappyType::TINYINT:
-      out << "byte_val=" << to_string(m_uval.byte_val);
-      break;
-    case SnappyType::SMALLINT:
-      out << "i16_val=" << to_string(m_uval.i16_val);
-      break;
-    case SnappyType::INTEGER:
-      out << "i32_val=" << to_string(m_uval.i32_val);
-      break;
-    case SnappyType::BIGINT:
-      out << "i64_val=" << to_string(m_uval.i64_val);
-      break;
-    case SnappyType::FLOAT:
-      out << "float_val=" << to_string(m_uval.float_val);
-      break;
-    case SnappyType::DOUBLE:
-      out << "double_val=" << to_string(m_uval.double_val);
-      break;
-    case SnappyType::VARCHAR:
-      out << "string_val=" << to_string(*m_uval.string_val);
-      break;
-    case SnappyType::DECIMAL:
-      out << "decimal_val=" << to_string(*m_uval.decimal_val);
-      break;
-    case SnappyType::DATE:
-      out << "date_val=" << to_string(Date(m_uval.date_time_epoch_val));
-      break;
-    case SnappyType::TIME:
-      out << "time_val=" << to_string(Date(m_uval.date_time_epoch_val));
-      break;
-    case SnappyType::TIMESTAMP:
-      out << "timestamp_val=" << to_string(Timestamp(m_uval.timestamp_val));
-      break;
-    case SnappyType::BINARY:
-      out << "binary_val=" << to_string(*m_uval.string_binary_java_val);
-      break;
-    case SnappyType::BLOB:
-      out << "blob_val=" << to_string(*m_uval.blob_val);
-      break;
-    case SnappyType::CLOB:
-      out << "clob_val=" << to_string(*m_uval.clob_val);
-      break;
-    case SnappyType::ARRAY:
-      out << "array_val=(";
-      xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT,
-      std::vector<ColumnValue>::const_iterator _iter229;
-      std::vector<ColumnValue>::const_iterator _iter229_end =
-        m_uval.array_val->end();
-      bool first_call = true;
-      for (_iter229 = m_uval.array_val->begin();
-          _iter229 != _iter229_end; ++_iter229) {
-        if (first_call) {
-          first_call = false;
-        } else {
-          out << ",";
-        }
-        out << to_string(*_iter229);
-      }
-      out << ")";
-      break;
-    case SnappyType:MAP:
-      out << "map_val=(" << to_string(*m_uval.map_val) << ")";
-      break;
-    case SnappyType::STRUCT:
-      out << "struct_val=(";
-      xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT,
-      std::vector<ColumnValue>::const_iterator _iter231;
-      std::vector<ColumnValue>::const_iterator _iter231_end =
-        m_uval.struct_val->end();
-      bool first_call = true;
-      for (_iter231 = m_uval.struct_val->begin();
-          _iter231 != _iter231_end; ++_iter231) {
-        if (first_call) {
-          first_call = false;
-        } else {
-          out << ",";
-        }
-        out << to_string(*_iter231);
-      }
-      out << ")";
-      break;
-    case SnappyType::NULLTYPE:
-      out << "null_val=" << to_string(m_uval.null_val);
-      break;
-    case SnappyType::JSON:
-      out << "json_val=" << to_string(*m_uval.json_val);
-      break;
-    case SnappyType::JAVA_OBJECT:
-      out << "java_val=" << to_string(*m_uval.string_binary_java_val);
-      break;
-    default:
-      out << "<unknown>";
-      break;
-  }
+  visit(::PrintToStream(out, m_val.which()));
 }
-
-}}}} // namespace

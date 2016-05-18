@@ -34,71 +34,42 @@
  */
 
 /**
- * WrapperBase.h
+ * JSONObject.h
  */
 
-#ifndef WRAPPERBASE_H_
-#define WRAPPERBASE_H_
+#ifndef JSONOBJECT_H_
+#define JSONOBJECT_H_
 
-#include "Utils.h"
+#include "SQLException.h"
 
 namespace io {
 namespace snappydata {
 namespace client {
+namespace types {
 
-  template<typename T>
-  class WrapperBase {
-  protected:
-    T* m_p;
-    bool m_isOwner;
-
-    void cleanup() {
-      if (m_isOwner && m_p != NULL) {
-        delete m_p;
-        m_p = NULL;
-      }
-    }
+  class JSON {
+  private:
+    std::shared_ptr<thrift::JSONObject> m_val;
 
   public:
-    WrapperBase(T* p, bool isOwner) throw () :
-        m_p(p), m_isOwner(isOwner) {
+    JSON(const std::shared_ptr<thrift::JSONObject>& json) : m_val(json) {
     }
 
-    WrapperBase(const WrapperBase& other) throw () :
-        m_p(other.m_p), m_isOwner(false) {
-    }
+    JSON(const std::string& str);
 
-    WrapperBase& operator=(const WrapperBase& other) throw () {
-      m_p = other.m_p;
-      m_isOwner = false;
-      return *this;
-    }
+    JSON(const JSON& other);
 
-    bool isOwner() const throw () {
-      return m_p;
-    }
+    JSON& operator=(const JSON& other);
 
-    void reset(T* p, bool isOwner = false) throw () {
-      m_p = p;
-      m_isOwner = isOwner;
-    }
-
-    virtual ~WrapperBase() throw () {
-      // destructor should *never* throw an exception
-      try {
-        cleanup();
-      } catch (const SQLException& sqle) {
-        Utils::handleExceptionInDestructor(typeid(T).name(), sqle);
-      } catch (const std::exception& stde) {
-        Utils::handleExceptionInDestructor(typeid(T).name(), stde);
-      } catch (...) {
-        Utils::handleExceptionInDestructor(typeid(T).name());
-      }
+    inline const std::shared_ptr<thrift::JSONObject>& getThriftObject()
+        const noexcept {
+      return m_val;
     }
   };
 
+} /* namespace types */
 } /* namespace client */
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* WRAPPERBASE_H_ */
+#endif /* JSONOBJECT_H_ */

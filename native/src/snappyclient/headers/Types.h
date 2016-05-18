@@ -40,6 +40,7 @@
 #ifndef TYPES_H_
 #define TYPES_H_
 
+#include <types/JSON.h>
 #include "ClientBase.h"
 #include "Utils.h"
 
@@ -50,7 +51,6 @@
 #include "types/Clob.h"
 #include "types/DateTime.h"
 #include "types/Decimal.h"
-#include "types/JSONObject.h"
 #include "types/Timestamp.h"
 
 using namespace io::snappydata::client::types;

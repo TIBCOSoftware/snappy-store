@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-OutputParameter::~OutputParameter() throw() {
+OutputParameter::~OutputParameter() noexcept {
 }
 
 
@@ -125,8 +125,9 @@ uint32_t OutputParameter::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(OutputParameter &a, OutputParameter &b) {
+void swap(OutputParameter &a, OutputParameter &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.type, b.type);
   swap(a.scale, b.scale);
   swap(a.typeName, b.typeName);
@@ -139,7 +140,7 @@ OutputParameter::OutputParameter(const OutputParameter& other259) {
   typeName = other259.typeName;
   __isset = other259.__isset;
 }
-OutputParameter::OutputParameter( OutputParameter&& other260) {
+OutputParameter::OutputParameter( OutputParameter&& other260) noexcept {
   type = std::move(other260.type);
   scale = std::move(other260.scale);
   typeName = std::move(other260.typeName);
@@ -152,7 +153,7 @@ OutputParameter& OutputParameter::operator=(const OutputParameter& other261) {
   __isset = other261.__isset;
   return *this;
 }
-OutputParameter& OutputParameter::operator=(OutputParameter&& other262) {
+OutputParameter& OutputParameter::operator=(OutputParameter&& other262) noexcept {
   type = std::move(other262.type);
   scale = std::move(other262.scale);
   typeName = std::move(other262.typeName);

@@ -63,7 +63,6 @@
 namespace io { namespace snappydata { namespace thrift {
 
 uint32_t Row::read(::apache::thrift::protocol::TProtocol* iprot) {
-
   uint32_t xfer = 0;
   std::string fname;
   ::apache::thrift::protocol::TType ftype;
@@ -86,7 +85,6 @@ uint32_t Row::read(::apache::thrift::protocol::TProtocol* iprot) {
       case 1:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
-            this->m_values.clear();
             uint32_t _size230;
             ::apache::thrift::protocol::TType _etype233;
             xfer += iprot->readListBegin(_etype233, _size230);
@@ -165,7 +163,7 @@ Row& Row::operator=(const Row& other) {
   return *this;
 }
 
-Row::~Row() throw() {
+Row::~Row() {
   if (m_changedColumns != NULL) {
     delete m_changedColumns;
     m_changedColumns = NULL;
@@ -180,44 +178,31 @@ void Row::clearChangedColumns() {
 }
 
 void Row::clear() {
-  size_t size = m_values.size();
-  while (--size >= 0) {
-    m_values[size].clearValue();
-  }
+  m_values.clear();
+  m_updatable = false;
   if (m_changedColumns != NULL) {
     m_changedColumns->clear();
   }
 }
 
-void Row::swap(Row& other) {
+void Row::swap(Row& other) noexcept {
   using ::std::swap;
   swap(m_values, other.m_values);
   swap(m_updatable, other.m_updatable);
   swap(m_changedColumns, other.m_changedColumns);
 }
 
-void swap(Row &a, Row &b) {
+void swap(Row &a, Row &b) noexcept {
   a.swap(b);
 }
 
 void Row::printTo(std::ostream& out) const {
-  using ::apache::thrift::to_string;
   if (m_updatable) {
-    out << "UpdatableRow(";
+    out << "UpdatableRow";
   } else {
-    out << "Row(";
+    out << "Row";
   }
-  bool first_call = true;
-  for (io::snappydata::ArrayList<ColumnValue>::const_iterator iter =
-      m_values.begin(); iter != m_values.end(); ++iter) {
-    if (first_call) {
-      first_call = false;
-    } else {
-      out << ",";
-    }
-    out << to_string(*iter);
-  }
-  out << ")";
+  out << m_values;
 }
 
 }}} // namespace

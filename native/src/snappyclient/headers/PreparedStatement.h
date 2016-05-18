@@ -45,38 +45,39 @@
 #include "StatementAttributes.h"
 #include "ResultSet.h"
 
+#include <memory>
+
 namespace io {
 namespace snappydata {
 namespace client {
 
   class PreparedStatement {
   private:
-    impl::ClientService& m_service;
-    void* m_serviceId;
+    std::shared_ptr<impl::ClientService> m_service;
     StatementAttributes m_attrs;
     thrift::PrepareResult m_prepResult;
-    AutoPtr<SQLWarning> m_warnings;
-    AutoPtr<std::map<int32_t, thrift::OutputParameter> > m_outParams;
-    // cached Result/ResultSet for reuse
-    ResultSet* m_result;
+    std::unique_ptr<SQLWarning> m_warnings;
+    std::unique_ptr<std::map<int32_t, thrift::OutputParameter> > m_outParams;
+    // cursorId of last execution
+    int32_t m_cursorId;
 
     friend class Connection;
     friend class Result;
 
-    PreparedStatement(impl::ClientService& service, void* serviceId,
-        const thrift::StatementAttrs& attrs);
+    PreparedStatement(const std::shared_ptr<impl::ClientService>& service,
+        const StatementAttributes& attrs);
 
-    PreparedStatement(impl::ClientService& service, void* serviceId,
-        const thrift::StatementAttrs& attrs,
+    PreparedStatement(const std::shared_ptr<impl::ClientService>& service,
+        const StatementAttributes& attrs,
         const thrift::PrepareResult& prepResult);
 
     // no copy constructor or assignment operator
-    PreparedStatement(const PreparedStatement&);
-    PreparedStatement operator=(const PreparedStatement&);
+    PreparedStatement(const PreparedStatement&) = delete;
+    PreparedStatement operator=(const PreparedStatement&) = delete;
 
     inline impl::ClientService& checkAndGetService() const {
-      if (m_serviceId != NULL) {
-        return m_service;
+      if (m_service != NULL) {
+        return *m_service;
       } else {
         throw GET_SQLEXCEPTION2(SQLStateMessage::ALREADY_CLOSED_MSG);
       }
@@ -90,45 +91,44 @@ namespace client {
     void registerOutParameter(const int32_t parameterIndex,
         const SQLType::type type, const int32_t scale);
 
-    void unregisterOutParameter(const int32_t parameterIndex);
+    bool unregisterOutParameter(const int32_t parameterIndex);
 
-    AutoPtr<Result> execute(const Parameters& params);
+    std::unique_ptr<Result> execute(const Parameters& params);
 
     int32_t executeUpdate(const Parameters& params);
 
-    AutoPtr<ResultSet> executeQuery(const Parameters& params);
+    std::unique_ptr<ResultSet> executeQuery(const Parameters& params);
 
-    AutoPtr<std::vector<int32_t> > executeBatch(
-        const ParametersBatch& paramsBatch);
+    std::vector<int32_t> executeBatch(const ParametersBatch& paramsBatch);
 
-    inline bool hasWarnings() const throw () {
-      return !m_warnings.isNull() || m_prepResult.__isset.warnings;
+    std::unique_ptr<ResultSet> getNextResults(
+        const NextResultSetBehaviour::type behaviour =
+            NextResultSetBehaviour::CLOSE_ALL);
+
+    inline bool hasWarnings() const noexcept {
+      return m_warnings != NULL || m_prepResult.__isset.warnings;
     }
 
-    AutoPtr<SQLWarning> getWarnings();
+    std::unique_ptr<SQLWarning> getWarnings();
 
-    size_t getParameterCount() const throw () {
+    size_t getParameterCount() const noexcept {
       return m_prepResult.parameterMetaData.size();
     }
 
     ParameterDescriptor getParameterDescriptor(
         const uint32_t parameterIndex);
 
-    uint32_t getColumnCount() const throw () {
+    uint32_t getColumnCount() const noexcept {
       return m_prepResult.resultSetMetaData.size();
     }
 
-    inline ColumnDescriptor getColumnDescriptor(
-        const uint32_t columnIndex) {
-      return ResultSet::getColumnDescriptor(
-          m_prepResult.resultSetMetaData, columnIndex);
-    }
+    ColumnDescriptor getColumnDescriptor(const uint32_t columnIndex);
 
-    void cancel();
+    bool cancel();
 
     void close();
 
-    ~PreparedStatement() throw ();
+    ~PreparedStatement();
   };
 
 } /* namespace client */

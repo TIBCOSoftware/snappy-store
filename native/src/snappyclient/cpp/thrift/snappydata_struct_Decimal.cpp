@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-Decimal::~Decimal() throw() {
+Decimal::~Decimal() noexcept {
 }
 
 
@@ -125,8 +125,9 @@ uint32_t Decimal::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(Decimal &a, Decimal &b) {
+void swap(Decimal &a, Decimal &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.signum, b.signum);
   swap(a.scale, b.scale);
   swap(a.magnitude, b.magnitude);
@@ -137,7 +138,7 @@ Decimal::Decimal(const Decimal& other0) {
   scale = other0.scale;
   magnitude = other0.magnitude;
 }
-Decimal::Decimal( Decimal&& other1) {
+Decimal::Decimal( Decimal&& other1) noexcept {
   signum = std::move(other1.signum);
   scale = std::move(other1.scale);
   magnitude = std::move(other1.magnitude);
@@ -148,7 +149,7 @@ Decimal& Decimal::operator=(const Decimal& other2) {
   magnitude = other2.magnitude;
   return *this;
 }
-Decimal& Decimal::operator=(Decimal&& other3) {
+Decimal& Decimal::operator=(Decimal&& other3) noexcept {
   signum = std::move(other3.signum);
   scale = std::move(other3.scale);
   magnitude = std::move(other3.magnitude);

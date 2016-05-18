@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-RowSet::~RowSet() throw() {
+RowSet::~RowSet() noexcept {
 }
 
 
@@ -349,8 +349,9 @@ uint32_t RowSet::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(RowSet &a, RowSet &b) {
+void swap(RowSet &a, RowSet &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.rows, b.rows);
   swap(a.flags, b.flags);
   swap(a.cursorId, b.cursorId);
@@ -381,7 +382,7 @@ RowSet::RowSet(const RowSet& other281) {
   rowIdsForUpdateOrDelete = other281.rowIdsForUpdateOrDelete;
   __isset = other281.__isset;
 }
-RowSet::RowSet( RowSet&& other282) {
+RowSet::RowSet( RowSet&& other282) noexcept {
   rows = std::move(other282.rows);
   flags = std::move(other282.flags);
   cursorId = std::move(other282.cursorId);
@@ -412,7 +413,7 @@ RowSet& RowSet::operator=(const RowSet& other283) {
   __isset = other283.__isset;
   return *this;
 }
-RowSet& RowSet::operator=(RowSet&& other284) {
+RowSet& RowSet::operator=(RowSet&& other284) noexcept {
   rows = std::move(other284.rows);
   flags = std::move(other284.flags);
   cursorId = std::move(other284.cursorId);

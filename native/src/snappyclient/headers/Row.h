@@ -41,13 +41,16 @@
 #define ROW_H_
 
 #include "Types.h"
-#include "WrapperBase.h"
 
 #include <sstream>
 
 #define GET_DATACONVERSION_ERROR(cv, target, columnIndex) \
      GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATA_TYPE_GET_MISMATCH_MSG, \
          target, Utils::getSQLTypeName(cv), columnIndex)
+
+namespace {
+  class ToString;
+}
 
 namespace io {
 namespace snappydata {
@@ -117,10 +120,10 @@ namespace client {
     uint32_t convertUnsignedInt(const thrift::ColumnValue& cv,
         const uint32_t columnIndex) const;
 
-    int64_t convertLong(const thrift::ColumnValue& cv,
+    int64_t convertInt64(const thrift::ColumnValue& cv,
         const uint32_t columnIndex) const;
 
-    uint64_t convertUnsignedLong(const thrift::ColumnValue& cv,
+    uint64_t convertUnsignedInt64(const thrift::ColumnValue& cv,
         const uint32_t columnIndex) const;
 
     float convertFloat(const thrift::ColumnValue& cv,
@@ -129,13 +132,14 @@ namespace client {
     double convertDouble(const thrift::ColumnValue& cv,
         const uint32_t columnIndex) const;
 
-    AutoPtr<std::string> convertString(const thrift::ColumnValue& cv,
+    std::shared_ptr<std::string> convertString(
+        const thrift::ColumnValue& cv, const uint32_t columnIndex,
+        const uint32_t realPrecision) const;
+
+    std::shared_ptr<Decimal> convertDecimal(const thrift::ColumnValue& cv,
         const uint32_t columnIndex, const uint32_t realPrecision) const;
 
-    AutoPtr<Decimal> convertDecimal(const thrift::ColumnValue& cv,
-        const uint32_t columnIndex, const uint32_t realPrecision) const;
-
-    AutoPtr<thrift::Decimal> convertTDecimal(
+    std::shared_ptr<thrift::Decimal> convertTDecimal(
         const thrift::ColumnValue& cv, const uint32_t columnIndex,
         const uint32_t realPrecision) const;
 
@@ -148,14 +152,22 @@ namespace client {
     Timestamp convertTimestamp(const thrift::ColumnValue& cv,
         const uint32_t columnIndex) const;
 
-    AutoPtr<std::string> convertBinary(const thrift::ColumnValue& cv,
-        const uint32_t columnIndex) const;
+    std::shared_ptr<std::string> convertBinary(
+        const thrift::ColumnValue& cv, const uint32_t columnIndex) const;
 
-    AutoPtr<std::string> getFullBlobData(const thrift::ColumnValue& cv,
-        const uint32_t columnIndex, const char* forType) const;
+    // TODO: need to add chunking for BLOBs/CLOBs
 
-    AutoPtr<std::string> getFullClobData(const thrift::ColumnValue& cv,
-        const uint32_t columnIndex, const char* forType) const;
+    static std::shared_ptr<std::string> getFullBlobData(
+        const std::shared_ptr<thrift::BlobChunk>& blob,
+        const thrift::ColumnValue& cv, const uint32_t columnIndex,
+        const char* forType);
+
+    static std::shared_ptr<std::string> getFullClobData(
+        const std::shared_ptr<thrift::ClobChunk>& clob,
+        const thrift::ColumnValue& cv, const uint32_t columnIndex,
+        const char* forType);
+
+    friend class ::ToString;
 
   public:
     Row() : thrift::Row() {
@@ -179,8 +191,8 @@ namespace client {
     bool getBoolean(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetBool()) {
-        return cv.getBool();
+      if (auto v = cv.getOrNull<bool>()) {
+        return *v;
       } else {
         return convertBoolean(cv, columnIndex);
       }
@@ -189,8 +201,8 @@ namespace client {
     int8_t getByte(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetByte()) {
-        return cv.getByte();
+      if (auto v = cv.getOrNull<int8_t>()) {
+        return *v;
       } else {
         return convertByte(cv, columnIndex);
       }
@@ -199,8 +211,8 @@ namespace client {
     uint8_t getUnsignedByte(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetByte()) {
-        return (uint8_t)cv.getByte();
+      if (auto v = cv.getOrNull<int8_t>()) {
+        return (uint8_t)*v;
       } else {
         return convertUnsignedByte(cv, columnIndex);
       }
@@ -209,8 +221,8 @@ namespace client {
     int16_t getShort(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetI16()) {
-        return cv.getI16();
+      if (auto v = cv.getOrNull<int16_t>()) {
+        return *v;
       } else {
         return convertShort(cv, columnIndex);
       }
@@ -219,8 +231,8 @@ namespace client {
     uint16_t getUnsignedShort(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetI16()) {
-        return (uint16_t)cv.getI16();
+      if (auto v = cv.getOrNull<int16_t>()) {
+        return (uint16_t)*v;
       } else {
         return convertUnsignedShort(cv, columnIndex);
       }
@@ -229,8 +241,8 @@ namespace client {
     int32_t getInt(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetI32()) {
-        return cv.getI32();
+      if (auto v = cv.getOrNull<int32_t>()) {
+        return *v;
       } else {
         return convertInt(cv, columnIndex);
       }
@@ -239,38 +251,38 @@ namespace client {
     uint32_t getUnsignedInt(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetI32()) {
-        return (uint32_t)cv.getI32();
+      if (auto v = cv.getOrNull<int32_t>()) {
+        return (uint32_t)*v;
       } else {
         return convertUnsignedInt(cv, columnIndex);
       }
     }
 
-    int64_t getLong(const uint32_t columnIndex) const {
+    int64_t getInt64(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetI64()) {
-        return cv.getI64();
+      if (auto v = cv.getOrNull<int64_t>()) {
+        return *v;
       } else {
-        return convertLong(cv, columnIndex);
+        return convertInt64(cv, columnIndex);
       }
     }
 
-    uint64_t getUnsignedLong(const uint32_t columnIndex) const {
+    uint64_t getUnsignedInt64(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetI64()) {
-        return (uint64_t)cv.getI64();
+      if (auto v = cv.getOrNull<int64_t>()) {
+        return (uint64_t)*v;
       } else {
-        return convertUnsignedLong(cv, columnIndex);
+        return convertUnsignedInt64(cv, columnIndex);
       }
     }
 
     float getFloat(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetFloat()) {
-        return cv.getFloat();
+      if (auto v = cv.getOrNull<float>()) {
+        return *v;
       } else {
         return convertFloat(cv, columnIndex);
       }
@@ -279,22 +291,19 @@ namespace client {
     double getDouble(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetDouble()) {
-        return cv.getDouble();
+      if (auto v = cv.getOrNull<double>()) {
+        return *v;
       } else {
         return convertDouble(cv, columnIndex);
       }
     }
 
-    // TODO: add some kind of shared_ptr to have shared ownership by
-    // caller and Row else it will be destroyed if user moves to next row
-    // same for BLOB/CLOB/BINARY/DECIMAL types
-    AutoPtr<std::string> getString(const uint32_t columnIndex,
+    std::shared_ptr<std::string> getString(const uint32_t columnIndex,
         const uint32_t realPrecision = DEFAULT_REAL_PRECISION) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetString()) {
-        return AutoPtr<std::string>(cv.getString(), false);
+      if (cv.getType() == thrift::SnappyType::VARCHAR) {
+        return cv.getPtr<std::string>();
       } else {
         return convertString(cv, columnIndex, realPrecision);
       }
@@ -304,22 +313,25 @@ namespace client {
         const int32_t outMaxLen, const bool truncate = true,
         const uint32_t realPrecision = DEFAULT_REAL_PRECISION) const;
 
-    AutoPtr<Decimal> getDecimal(const uint32_t columnIndex,
+    std::shared_ptr<Decimal> getDecimal(const uint32_t columnIndex,
+        const uint32_t realPrecision = DEFAULT_REAL_PRECISION) const;
+
+    std::shared_ptr<thrift::Decimal> getTDecimal(const uint32_t columnIndex,
         const uint32_t realPrecision = DEFAULT_REAL_PRECISION) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetDecimal()) {
-        return AutoPtr<Decimal>(new Decimal(*cv.getDecimal()));
+      if (cv.getType() == thrift::SnappyType::DECIMAL) {
+        return cv.getPtr<thrift::Decimal>();
       } else {
-        return convertDecimal(cv, columnIndex, realPrecision);
+        return convertTDecimal(cv, columnIndex, realPrecision);
       }
     }
 
     DateTime getDate(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetDate()) {
-        return DateTime(cv.getDate());
+      if (auto v = cv.getOrNull<thrift::Date>()) {
+        return DateTime(v->secsSinceEpoch);
       } else {
         return convertDate(cv, columnIndex);
       }
@@ -328,8 +340,8 @@ namespace client {
     DateTime getTime(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetTime()) {
-        return DateTime(cv.getTime());
+      if (auto v = cv.getOrNull<thrift::Time>()) {
+        return DateTime(v->secsSinceEpoch);
       } else {
         return convertTime(cv, columnIndex);
       }
@@ -338,76 +350,33 @@ namespace client {
     Timestamp getTimestamp(const uint32_t columnIndex) const {
       const thrift::ColumnValue& cv = getColumnValue(columnIndex);
 
-      if (cv.isSetTimestamp()) {
-        return Timestamp(cv.getTimestampEpoch(), cv.getTimestampNanos());
+      if (auto v = cv.getOrNull<thrift::Timestamp>()) {
+        return Timestamp(v->secsSinceEpoch, v->nanos);
       } else {
         return convertTimestamp(cv, columnIndex);
       }
     }
 
-    AutoPtr<std::string> getBinary(const uint32_t columnIndex) const {
-      const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+    std::shared_ptr<std::string> getBinary(const uint32_t columnIndex) const;
 
-      if (cv.isSetBinary()) {
-        return AutoPtr<std::string>(cv.getBinary(), false);
-      } else {
-        return convertBinary(cv, columnIndex);
-      }
-    }
+    std::shared_ptr<thrift::Array> getArray(const uint32_t columnIndex) const;
 
-    AutoPtr<std::vector<thrift::ColumnValue> > getArray(
-        const uint32_t columnIndex) const {
-      const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+    std::shared_ptr<thrift::Map> getMap(const uint32_t columnIndex) const;
 
-      if (cv.isSetARRAY()) {
-        return AutoPtr<std::vector<thrift::ColumnValue> >(cv.getARRAY(), false);
-      } else {
-        throw GET_DATACONVERSION_ERROR(cv, "ARRAY", columnIndex);
-      }
-    }
+    std::shared_ptr<thrift::Struct> getStruct(
+        const uint32_t columnIndex) const;
 
-    AutoPtr<std::map<thrift::ColumnValue, thrift::ColumnValue> > getMap(
-        const uint32_t columnIndex) const {
-      const thrift::ColumnValue& cv = getColumnValue(columnIndex);
-
-      if (cv.isSetMAP()) {
-        return AutoPtr<std::map<thrift::ColumnValue, thrift::ColumnValue> >(
-            cv.getMAP(), false);
-      } else {
-        throw GET_DATACONVERSION_ERROR(cv, "MAP", columnIndex);
-      }
-    }
-
-    AutoPtr<std::vector<thrift::ColumnValue> > getStruct(
-        const uint32_t columnIndex) const {
-      const thrift::ColumnValue& cv = getColumnValue(columnIndex);
-
-      if (cv.isSetSTRUCT()) {
-        return AutoPtr<std::vector<thrift::ColumnValue> >(cv.getSTRUCT(), false);
-      } else {
-        throw GET_DATACONVERSION_ERROR(cv, "STRUCT", columnIndex);
-      }
-    }
-
-    JSONObject getJSONObject(const uint32_t columnIndex) const {
-      const thrift::ColumnValue& cv = getColumnValue(columnIndex);
-
-      if (cv.isSetJSON()) {
-        return JSONObject(cv.getJSON());
-      } else {
-        throw GET_DATACONVERSION_ERROR(cv, "JSON", columnIndex);
-      }
-    }
-
-    int32_t numColumns() const {
-      return m_values.size();
-    }
+    JSON getJSON(const uint32_t columnIndex) const;
 
     inline bool isNull(const uint32_t columnIndex) const {
       return getColumnValue(columnIndex).isNull();
     }
 
-    virtual ~Row() throw () {
+    inline int32_t numColumns() const {
+      return m_values.size();
+    }
+
+    virtual ~Row() {
     }
   };
 

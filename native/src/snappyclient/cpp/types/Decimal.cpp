@@ -111,13 +111,11 @@ Decimal::Decimal(const uint64_t v) :
 
 /* TODO: need to implement conversion from double to BigDecimal
  * (e.g. see Android's code)
-public BigDecimal(double val) {
-}
 */
 
 Decimal::Decimal(const float v, const uint32_t precision) :
     m_precision(0) {
-  // TODO: make this efficient using code like above
+  // TODO: make this efficient using code like in JDK's BigDecimal
   std::string str;
   Utils::convertFloatToString(v, str, precision);
   parseString(str, -1);
@@ -125,7 +123,7 @@ Decimal::Decimal(const float v, const uint32_t precision) :
 
 Decimal::Decimal(const double v, const uint32_t precision) :
     m_precision(0) {
-  // TODO: make this efficient using code like above
+  // TODO: make this efficient using code like in JDK's BigDecimal
   std::string str;
   Utils::convertDoubleToString(v, str, precision);
   parseString(str, -1);
@@ -187,27 +185,45 @@ Decimal::Decimal(const std::string& str, const uint32_t columnIndex) :
   parseString(str, columnIndex);
 }
 
-Decimal::Decimal(const Decimal& other) :
+Decimal::Decimal(const Decimal& other) noexcept :
     m_scale(other.m_scale), m_precision(other.m_precision) {
   mpz_init_set(m_bigInt, other.m_bigInt);
 }
 
-bool Decimal::operator==(const Decimal& other) const throw () {
+Decimal::Decimal(Decimal&& other) noexcept :
+    m_scale(other.m_scale), m_precision(other.m_precision) {
+  m_bigInt[0] = other.m_bigInt[0];
+  mpz_init(other.m_bigInt);
+  other.m_scale = 0;
+  other.m_precision = 0;
+}
+
+Decimal& Decimal::operator=(const Decimal& other) noexcept {
+  mpz_clear(m_bigInt);
+  mpz_init_set(m_bigInt, other.m_bigInt);
+  m_scale = other.m_scale;
+  m_precision = other.m_precision;
+  return *this;
+}
+
+Decimal& Decimal::operator=(Decimal&& other) noexcept {
+  auto tmp = m_bigInt[0];
+  m_bigInt[0] = other.m_bigInt[0];
+  other.m_bigInt[0] = tmp;
+  std::swap(m_scale, other.m_scale);
+  std::swap(m_precision, other.m_precision);
+  return *this;
+}
+
+bool Decimal::operator==(const Decimal& other) const {
   return m_scale == other.m_scale && mpz_cmp(m_bigInt, other.m_bigInt) == 0;
 }
 
-bool Decimal::operator!=(const Decimal& other) const throw () {
+bool Decimal::operator!=(const Decimal& other) const {
   return m_scale != other.m_scale || mpz_cmp(m_bigInt, other.m_bigInt) != 0;
 }
 
-uint32_t Decimal::precision() const throw () {
-  if (m_precision == 0) {
-    m_precision = mpz_sizeinbase(m_bigInt, 10);
-  }
-  return m_precision;
-}
-
-const mpz_t* Decimal::getBigInteger(mpz_t* copy) const throw () {
+const mpz_t* Decimal::getBigInteger(mpz_t* copy) const noexcept {
   if (m_scale != 0) {
     mpz_init_set(*copy, m_bigInt);
     uint32_t nPowersOf10 = sizeof(TEN_POWERS_TABLE)
@@ -227,8 +243,7 @@ const mpz_t* Decimal::getBigInteger(mpz_t* copy) const throw () {
   }
 }
 
-bool Decimal::toULong(uint64_t& result,
-    const bool allowOverflow) const throw () {
+bool Decimal::toUnsignedInt64(uint64_t& result, const bool allowOverflow) const {
   mpz_t temp;
   const mpz_t* intVal = getBigInteger(&temp);
   if (allowOverflow) {
@@ -244,7 +259,7 @@ bool Decimal::toULong(uint64_t& result,
   }
 }
 
-bool Decimal::toLong(int64_t& result, const bool allowOverflow) const throw () {
+bool Decimal::toInt64(int64_t& result, const bool allowOverflow) const {
   mpz_t temp;
   const mpz_t* intVal = getBigInteger(&temp);
   if (allowOverflow) {
@@ -260,7 +275,7 @@ bool Decimal::toLong(int64_t& result, const bool allowOverflow) const throw () {
   }
 }
 
-bool Decimal::toDouble(double& result) const throw () {
+bool Decimal::toDouble(double& result) const {
   // TODO: SW: make this efficient
   std::string str;
   toString(str);
@@ -272,7 +287,7 @@ bool Decimal::toDouble(double& result) const throw () {
   }
 }
 
-uint32_t Decimal::toByteArray(std::string& str) const throw () {
+uint32_t Decimal::toByteArray(std::string& str) const {
   uint32_t len = str.length();
   // calculate the required length
   uint32_t nbytes = (mpz_sizeinbase(m_bigInt, 2) + 7) / 8;
@@ -289,7 +304,7 @@ uint32_t Decimal::toByteArray(std::string& str) const throw () {
 }
 
 bool Decimal::wholeDigits(uint8_t* bytes, const uint32_t maxLen,
-    uint32_t& actualLen) const throw () {
+    uint32_t& actualLen) const noexcept {
   mpz_t temp;
   const mpz_t* intVal = getBigInteger(&temp);
   // calculate the required length
@@ -303,7 +318,7 @@ bool Decimal::wholeDigits(uint8_t* bytes, const uint32_t maxLen,
   }
 }
 
-uint32_t Decimal::toString(std::string& str) const throw () {
+uint32_t Decimal::toString(std::string& str) const {
   // convert the integer to string first
   char buf[thrift::snappydataConstants::DECIMAL_MAX_PRECISION + 4];
   char* bufp = buf;

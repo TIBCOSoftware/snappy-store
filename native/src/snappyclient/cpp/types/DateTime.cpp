@@ -82,6 +82,23 @@ void DateTime::init(const uint16_t year, const uint16_t month,
   }
 }
 
+void DateTime::setEpochTime(const int64_t epochTime) {
+  m_secsSinceEpoch = epochTime;
+}
+
+time_t DateTime::getTime() const {
+  const int64_t secs = m_secsSinceEpoch;
+  if (sizeof(time_t) >= sizeof(secs)) {
+    return secs;
+  } else if (sizeof(time_t) >= sizeof(int32_t) &&
+      secs >= INT32_MIN && secs <= INT32_MAX) {
+    return (time_t)secs;
+  } else {
+    throw GET_SQLEXCEPTION2(
+        SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1, secs);
+  }
+}
+
 DateTime DateTime::parseDate(const std::string& str, const bool utc,
     const uint32_t columnIndex) {
   try {

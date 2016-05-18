@@ -115,7 +115,7 @@ namespace snappydata {
      *
      * @return current value associated with name as 64-bit long or "def"
      */
-    static int64_t getLong(const std::string& propName, int64_t def);
+    static int64_t getInt64(const std::string& propName, int64_t def);
 
     /**
      * Get float value for given property name. If the property name

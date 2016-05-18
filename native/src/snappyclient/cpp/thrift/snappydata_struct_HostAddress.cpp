@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-HostAddress::~HostAddress() throw() {
+HostAddress::~HostAddress() noexcept {
 }
 
 
@@ -144,8 +144,9 @@ uint32_t HostAddress::write(::apache::thrift::protocol::TProtocol* oprot) const 
   return xfer;
 }
 
-void swap(HostAddress &a, HostAddress &b) {
+void swap(HostAddress &a, HostAddress &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.hostName, b.hostName);
   swap(a.port, b.port);
   swap(a.ipAddress, b.ipAddress);
@@ -160,7 +161,7 @@ HostAddress::HostAddress(const HostAddress& other165) {
   serverType = other165.serverType;
   __isset = other165.__isset;
 }
-HostAddress::HostAddress( HostAddress&& other166) {
+HostAddress::HostAddress( HostAddress&& other166) noexcept {
   hostName = std::move(other166.hostName);
   port = std::move(other166.port);
   ipAddress = std::move(other166.ipAddress);
@@ -175,7 +176,7 @@ HostAddress& HostAddress::operator=(const HostAddress& other167) {
   __isset = other167.__isset;
   return *this;
 }
-HostAddress& HostAddress::operator=(HostAddress&& other168) {
+HostAddress& HostAddress::operator=(HostAddress&& other168) noexcept {
   hostName = std::move(other168.hostName);
   port = std::move(other168.port);
   ipAddress = std::move(other168.ipAddress);

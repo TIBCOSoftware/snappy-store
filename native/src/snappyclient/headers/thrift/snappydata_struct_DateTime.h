@@ -32,15 +32,15 @@ class DateTime {
  public:
 
   DateTime(const DateTime&);
-  DateTime(DateTime&&);
+  DateTime(DateTime&&) noexcept;
   DateTime& operator=(const DateTime&);
-  DateTime& operator=(DateTime&&);
+  DateTime& operator=(DateTime&&) noexcept;
   DateTime() : secsSinceEpoch(0) {
   }
   DateTime(int64_t secs) : secsSinceEpoch(secs) {
   }
 
-  virtual ~DateTime() throw();
+  virtual ~DateTime();
   int64_t secsSinceEpoch;
 
   void __set_secsSinceEpoch(const int64_t val);
@@ -63,10 +63,9 @@ class DateTime {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(DateTime &a, DateTime &b);
+void swap(DateTime &a, DateTime &b) noexcept;
 
-inline std::ostream& operator<<(std::ostream& out, const DateTime& obj)
-{
+inline std::ostream& operator<<(std::ostream& out, const DateTime& obj) {
   obj.printTo(out);
   return out;
 }

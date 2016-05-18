@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-ServiceMetaData::~ServiceMetaData() throw() {
+ServiceMetaData::~ServiceMetaData() noexcept {
 }
 
 
@@ -1225,8 +1225,9 @@ uint32_t ServiceMetaData::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(ServiceMetaData &a, ServiceMetaData &b) {
+void swap(ServiceMetaData &a, ServiceMetaData &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.productName, b.productName);
   swap(a.productVersion, b.productVersion);
   swap(a.productMajorVersion, b.productMajorVersion);
@@ -1329,7 +1330,7 @@ ServiceMetaData::ServiceMetaData(const ServiceMetaData& other132) {
   featuresWithParams = other132.featuresWithParams;
   __isset = other132.__isset;
 }
-ServiceMetaData::ServiceMetaData( ServiceMetaData&& other133) {
+ServiceMetaData::ServiceMetaData( ServiceMetaData&& other133) noexcept {
   productName = std::move(other133.productName);
   productVersion = std::move(other133.productVersion);
   productMajorVersion = std::move(other133.productMajorVersion);
@@ -1432,7 +1433,7 @@ ServiceMetaData& ServiceMetaData::operator=(const ServiceMetaData& other134) {
   __isset = other134.__isset;
   return *this;
 }
-ServiceMetaData& ServiceMetaData::operator=(ServiceMetaData&& other135) {
+ServiceMetaData& ServiceMetaData::operator=(ServiceMetaData&& other135) noexcept {
   productName = std::move(other135.productName);
   productVersion = std::move(other135.productVersion);
   productMajorVersion = std::move(other135.productMajorVersion);

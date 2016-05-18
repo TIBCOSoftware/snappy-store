@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-JSONObject::~JSONObject() throw() {
+JSONObject::~JSONObject() noexcept {
 }
 
 
@@ -148,8 +148,9 @@ uint32_t JSONObject::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(JSONObject &a, JSONObject &b) {
+void swap(JSONObject &a, JSONObject &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.pairs, b.pairs);
   swap(a.array, b.array);
   swap(a.__isset, b.__isset);
@@ -160,7 +161,7 @@ JSONObject::JSONObject(const JSONObject& other40) {
   array = other40.array;
   __isset = other40.__isset;
 }
-JSONObject::JSONObject( JSONObject&& other41) {
+JSONObject::JSONObject( JSONObject&& other41) noexcept {
   pairs = std::move(other41.pairs);
   array = std::move(other41.array);
   __isset = std::move(other41.__isset);
@@ -171,7 +172,7 @@ JSONObject& JSONObject::operator=(const JSONObject& other42) {
   __isset = other42.__isset;
   return *this;
 }
-JSONObject& JSONObject::operator=(JSONObject&& other43) {
+JSONObject& JSONObject::operator=(JSONObject&& other43) noexcept {
   pairs = std::move(other43.pairs);
   array = std::move(other43.array);
   __isset = std::move(other43.__isset);

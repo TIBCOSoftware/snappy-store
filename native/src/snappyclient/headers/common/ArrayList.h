@@ -102,8 +102,9 @@ namespace snappydata {
         return m_p;
       }
 
-      inline T& operator++() {
-        return *(++m_p);
+      inline _Iter& operator++() {
+        m_p++;
+        return *this;
       }
 
       inline bool operator==(const _Iter& other) {
@@ -505,22 +506,21 @@ namespace std {
       io::snappydata::ArrayList<T>& list2) {
     list1.swap(list2);
   }
-}
 
-template<typename T>
-std::ostream& operator<<(std::ostream& out,
-    const io::snappydata::ArrayList<T>& list) {
-  out << '(';
-  if (list.size() > 0) {
-    typename io::snappydata::ArrayList<T>::const_iterator tp = list.cbegin();
-    typename io::snappydata::ArrayList<T>::const_iterator end = list.cend();
-    out << *tp;
-    while (++tp != end) {
-      out << ',';
+  template<typename T>
+  std::ostream& operator<<(std::ostream& out,
+      const io::snappydata::ArrayList<T>& list) {
+    out << '(';
+    if (list.size() > 0) {
+      typename io::snappydata::ArrayList<T>::const_iterator tp = list.cbegin();
+      typename io::snappydata::ArrayList<T>::const_iterator end = list.cend();
       out << *tp;
+      while (++tp != end) {
+        out << ',' << *tp;
+      }
     }
+    return (out << ')');
   }
-  return (out << ')');
 }
 
 #endif /* ARRAYLIST_H_ */

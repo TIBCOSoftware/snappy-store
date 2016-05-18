@@ -68,7 +68,7 @@ void MessageBase::addMessagePart(const char* messagePart) {
   m_messageParts.push_back(messagePart);
 }
 
-size_t MessageBase::getNumMessageParts() const throw () {
+size_t MessageBase::getNumMessageParts() const noexcept {
   return m_messageParts.size();
 }
 
@@ -76,9 +76,12 @@ const std::string& MessageBase::getMessagePart(int index) const {
   return m_messageParts.at(index);
 }
 
-MessageException::~MessageException() throw () {
+MessageException::MessageException(const char* message) : m_message(message) {
 }
 
-const char* MessageException::what() const throw () {
+MessageException::~MessageException() {
+}
+
+const char* MessageException::what() const noexcept {
   return m_message.c_str();
 }

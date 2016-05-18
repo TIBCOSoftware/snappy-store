@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-DateTime::~DateTime() throw() {
+DateTime::~DateTime() noexcept {
 }
 
 
@@ -87,22 +87,23 @@ uint32_t DateTime::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(DateTime &a, DateTime &b) {
+void swap(DateTime &a, DateTime &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.secsSinceEpoch, b.secsSinceEpoch);
 }
 
 DateTime::DateTime(const DateTime& other208) {
   secsSinceEpoch = other208.secsSinceEpoch;
 }
-DateTime::DateTime( DateTime&& other209) {
+DateTime::DateTime( DateTime&& other209) noexcept {
   secsSinceEpoch = std::move(other209.secsSinceEpoch);
 }
 DateTime& DateTime::operator=(const DateTime& other210) {
   secsSinceEpoch = other210.secsSinceEpoch;
   return *this;
 }
-DateTime& DateTime::operator=(DateTime&& other211) {
+DateTime& DateTime::operator=(DateTime&& other211) noexcept {
   secsSinceEpoch = std::move(other211.secsSinceEpoch);
   return *this;
 }

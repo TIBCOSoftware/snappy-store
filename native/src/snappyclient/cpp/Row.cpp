@@ -47,31 +47,311 @@
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 
+std::shared_ptr<Decimal> Row::getDecimal(const uint32_t columnIndex,
+    const uint32_t realPrecision) const {
+  const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+
+  if (cv.getType() == thrift::SnappyType::DECIMAL) {
+    return std::shared_ptr<Decimal>(
+        new Decimal(*cv.getPtr<thrift::Decimal>()));
+  } else {
+    return convertDecimal(cv, columnIndex, realPrecision);
+  }
+}
+
+std::shared_ptr<std::string> Row::getBinary(
+    const uint32_t columnIndex) const {
+  const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+
+  if (cv.getType() == thrift::SnappyType::VARBINARY) {
+    return cv.getPtr<thrift::Binary>();
+  } else {
+    return convertBinary(cv, columnIndex);
+  }
+}
+
+std::shared_ptr<thrift::Array> Row::getArray(
+    const uint32_t columnIndex) const {
+  const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+
+  if (cv.getType() == thrift::SnappyType::ARRAY) {
+    return cv.getPtr<thrift::Array>();
+  } else {
+    throw GET_DATACONVERSION_ERROR(cv, "ARRAY", columnIndex);
+  }
+}
+
+std::shared_ptr<thrift::Map> Row::getMap(const uint32_t columnIndex) const {
+  const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+
+  if (cv.getType() == thrift::SnappyType::MAP) {
+    return cv.getPtr<thrift::Map>();
+  } else {
+    throw GET_DATACONVERSION_ERROR(cv, "MAP", columnIndex);
+  }
+}
+
+std::shared_ptr<thrift::Struct> Row::getStruct(
+    const uint32_t columnIndex) const {
+  const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+
+  if (cv.getType() == thrift::SnappyType::STRUCT) {
+    return cv.getPtr<thrift::Struct>();
+  } else {
+    throw GET_DATACONVERSION_ERROR(cv, "STRUCT", columnIndex);
+  }
+}
+
+JSON Row::getJSON(const uint32_t columnIndex) const {
+  const thrift::ColumnValue& cv = getColumnValue(columnIndex);
+
+  if (cv.getType() == thrift::SnappyType::JSON) {
+    return JSON(cv.getPtr<thrift::JSONObject>());
+  } else {
+    throw GET_DATACONVERSION_ERROR(cv, "JSON", columnIndex);
+  }
+}
+
+namespace {
+
+  using namespace io::snappydata;
+
+  template <typename NT>
+  static NT decimalToExactNumeric(const thrift::ColumnValue& cv,
+      const uint32_t columnIndex, const char* typeName) {
+    Decimal d(*cv.getPtr<thrift::Decimal>());
+    int64_t result;
+    if (d.toInt64(result, false)
+        && result >= std::numeric_limits<NT>::min()
+        && result <= std::numeric_limits<NT>::max()) {
+      return static_cast<NT>(result);
+    } else {
+      std::string s;
+      d.toString(s);
+      Utils::throwDataOutsideRangeError(typeName, columnIndex, s.c_str());
+    }
+  }
+
+  template <typename NT>
+  static NT decimalToApproxNumeric(const thrift::ColumnValue& cv,
+      const uint32_t columnIndex, const char* typeName) {
+    Decimal d(*cv.getPtr<thrift::Decimal>());
+    double result;
+    if (d.toDouble(result)
+        && result >= std::numeric_limits<NT>::min()
+        && result <= std::numeric_limits<NT>::max()) {
+      return static_cast<NT>(result);
+    } else {
+      std::string s;
+      d.toString(s);
+      Utils::throwDataOutsideRangeError(typeName, columnIndex, s.c_str());
+    }
+  }
+
+  // TODO: can write visitors for most of the conversion methods in this class
+
+  // Utils uses karma::generate which is the fastest converter
+  // that has been tested (beats sprintf easily)
+  class ToString : public boost::static_visitor<std::shared_ptr<std::string> > {
+  private:
+    const thrift::ColumnValue& m_cv;
+    const uint32_t m_columnIndex;
+    const uint32_t m_realPrecision;
+
+  public:
+    ToString(const thrift::ColumnValue& cv, const uint32_t columnIndex,
+        const uint32_t realPrecision) :
+        m_cv(cv), m_columnIndex(columnIndex), m_realPrecision(realPrecision) {
+    }
+
+    std::shared_ptr<std::string> operator()(const bool& v) const {
+      return std::shared_ptr<std::string>(
+          new std::string(v ? "true" : "false"));
+    }
+
+    std::shared_ptr<std::string> operator()(const int8_t& v) const {
+      std::shared_ptr<std::string> result(new std::string());
+      Utils::convertByteToString(v, *result);
+      return std::move(result);
+    }
+
+    std::shared_ptr<std::string> operator()(const int16_t& v) const {
+      std::shared_ptr<std::string> result(new std::string());
+      Utils::convertShortToString(v, *result);
+      return std::move(result);
+    }
+
+    std::shared_ptr<std::string> operator()(const int32_t& v) const {
+      std::shared_ptr<std::string> result(new std::string());
+      Utils::convertIntToString(v, *result);
+      return std::move(result);
+    }
+
+    std::shared_ptr<std::string> operator()(const int64_t& v) const {
+      std::shared_ptr<std::string> result(new std::string());
+      Utils::convertInt64ToString(v, *result);
+      return std::move(result);
+    }
+
+    std::shared_ptr<std::string> operator()(const float& v) const {
+      std::shared_ptr<std::string> result(new std::string());
+      Utils::convertFloatToString(v, *result, m_realPrecision);
+      return std::move(result);
+    }
+
+    std::shared_ptr<std::string> operator()(const double& v) const {
+      std::shared_ptr<std::string> result(new std::string());
+      Utils::convertDoubleToString(v, *result, m_realPrecision);
+      return std::move(result);
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<std::string>& v) const {
+      return v;
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<thrift::Decimal>& v) const {
+      Decimal d(*v);
+      std::shared_ptr<std::string> str(new std::string());
+      d.toString(*str);
+      return std::move(str);
+    }
+
+    std::shared_ptr<std::string> operator()(const thrift::Date& v) const {
+      std::shared_ptr<std::string> str(new std::string());
+      client::types::DateTime dt(v.secsSinceEpoch);
+      dt.toDate(*str);
+      return std::move(str);
+    }
+
+    std::shared_ptr<std::string> operator()(const thrift::Time& v) const {
+      std::shared_ptr<std::string> str(new std::string());
+      client::types::DateTime dt(v.secsSinceEpoch);
+      dt.toTime(*str);
+      return std::move(str);
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const thrift::Timestamp& v) const {
+      std::shared_ptr<std::string> str(new std::string());
+      Timestamp ts(v.secsSinceEpoch, v.nanos);
+      ts.toString(*str);
+      return std::move(str);
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<thrift::ClobChunk>& v) const {
+      return std::move(
+          Row::getFullClobData(v, m_cv, m_columnIndex, "VARCHAR"));
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<thrift::Array>& v) const {
+      auto str = std::shared_ptr<std::string>(new std::string());
+      str->append("ARRAY(");
+      auto iter = v->cbegin();
+      auto iterEnd = v->cend();
+      if (iter != iterEnd) {
+        auto s = iter->visit(*this);
+        str->append(*s);
+        ++iter;
+        while (iter != iterEnd) {
+          str->append(", ");
+          s = iter->visit(*this);
+          str->append(*s);
+          ++iter;
+        }
+      }
+      str->append(1, ')');
+      return str;
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<thrift::Map>& v) const {
+      auto str = std::shared_ptr<std::string>(new std::string());
+      str->append("MAP(");
+      auto iter = v->cbegin();
+      auto iterEnd = v->cend();
+      bool firstCall = true;
+      while (iter != iterEnd) {
+        if (firstCall) {
+          firstCall = false;
+        } else {
+          str->append(", ");
+        }
+        auto s = iter->first.visit(*this);
+        str->append(*s);
+        str->append(" = ");
+        s = iter->second.visit(*this);
+        str->append(*s);
+        ++iter;
+      }
+      str->append(1, ')');
+      return str;
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<thrift::Struct>& v) const {
+      auto str = std::shared_ptr<std::string>(new std::string());
+      str->append("STRUCT(");
+      auto iter = v->cbegin();
+      auto iterEnd = v->cend();
+      if (iter != iterEnd) {
+        auto s = iter->visit(*this);
+        str->append(*s);
+        ++iter;
+        while (iter != iterEnd) {
+          str->append(", ");
+          s = iter->visit(*this);
+          str->append(*s);
+          ++iter;
+        }
+      }
+      str->append(1, ')');
+      return str;
+    }
+
+    std::shared_ptr<std::string> operator()(const thrift::NullType& v) const {
+      if (v.m_v) {
+        return std::shared_ptr<std::string>();
+      } else {
+        return std::shared_ptr<std::string>(new std::string());
+      }
+    }
+
+    template <typename T>
+    std::shared_ptr<std::string> operator()(const T& v) const {
+      throw GET_DATACONVERSION_ERROR(m_cv, "VARCHAR", m_columnIndex);
+    }
+  };
+}
+
 bool Row::convertBoolean(const thrift::ColumnValue& cv,
     const uint32_t columnIndex) const {
   switch (cv.getType()) {
     case thrift::SnappyType::SMALLINT:
-      return cv.getI16() != 0;
+      return cv.get<int16_t>() != 0;
     case thrift::SnappyType::INTEGER:
-      return cv.getI32() != 0;
+      return cv.get<int32_t>() != 0;
     case thrift::SnappyType::BIGINT:
-      return cv.getI64() != 0;
+      return cv.get<int64_t>() != 0;
     case thrift::SnappyType::NULLTYPE:
-      return false;
+      return !cv.isNull();
     case thrift::SnappyType::TINYINT:
-      return cv.getByte() != 0;
+      return cv.get<int8_t>() != 0;
     case thrift::SnappyType::DOUBLE:
-      return cv.getDouble() != 0.0;
+      return cv.get<double>() != 0.0;
     case thrift::SnappyType::FLOAT:
-      return cv.getFloat() != 0.0f;
+      return cv.get<float>() != 0.0f;
     case thrift::SnappyType::DECIMAL:
-      return Decimal(*cv.getDecimal()) != Decimal::ZERO;
+      return Decimal(*cv.getPtr<thrift::Decimal>()) != Decimal::ZERO;
     case thrift::SnappyType::VARCHAR: {
-      std::string& v = *cv.getString();
-      if (v == "true" || v == "1") {
+      auto v = cv.getString();
+      if (*v == "true" || *v == "1") {
         return true;
       } else {
-        std::string s = boost::algorithm::trim_copy(*cv.getString());
+        std::string s = boost::algorithm::trim_copy(*v);
         boost::algorithm::to_lower(s);
         return !(s == "0" || s == "false");
       }
@@ -86,33 +366,21 @@ int8_t Row::convertByte(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return boost::numeric_cast<int8_t>(cv.getI16());
+        return boost::numeric_cast<int8_t>(cv.get<int16_t>());
       case thrift::SnappyType::INTEGER:
-        return boost::numeric_cast<int8_t>(cv.getI32());
+        return boost::numeric_cast<int8_t>(cv.get<int32_t>());
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<int8_t>(cv.getI64());
+        return boost::numeric_cast<int8_t>(cv.get<int64_t>());
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<int8_t>(cv.getDouble());
+        return boost::numeric_cast<int8_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<int8_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        int64_t result;
-        if (d.toLong(result, false)
-            && result >= std::numeric_limits<int8_t>::min()
-            && result <= std::numeric_limits<int8_t>::max()) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("TINYINT", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<int8_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<int8_t>(cv, columnIndex, "TINYINT");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<int8_t>(*cv.getString());
       default:
@@ -129,33 +397,21 @@ uint8_t Row::convertUnsignedByte(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return boost::numeric_cast<uint8_t>(cv.getI16());
+        return boost::numeric_cast<uint8_t>(cv.get<int16_t>());
       case thrift::SnappyType::INTEGER:
-        return boost::numeric_cast<uint8_t>(cv.getI32());
+        return boost::numeric_cast<uint8_t>(cv.get<int32_t>());
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<uint8_t>(cv.getI64());
+        return boost::numeric_cast<uint8_t>(cv.get<int64_t>());
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<uint8_t>(cv.getDouble());
+        return boost::numeric_cast<uint8_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<uint8_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        uint64_t result;
-        if (d.toULong(result, false)
-            && result >= std::numeric_limits<uint8_t>::min()
-            && result <= std::numeric_limits<uint8_t>::max()) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("TINYINT", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<uint8_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<uint8_t>(cv, columnIndex, "TINYINT");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<uint8_t>(*cv.getString());
       default:
@@ -172,33 +428,21 @@ int16_t Row::convertShort(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::INTEGER:
-        return boost::numeric_cast<int16_t>(cv.getI32());
+        return boost::numeric_cast<int16_t>(cv.get<int32_t>());
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<int16_t>(cv.getI64());
+        return boost::numeric_cast<int16_t>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<int16_t>(cv.getDouble());
+        return boost::numeric_cast<int16_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<int16_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        int64_t result;
-        if (d.toLong(result, false)
-            && result >= std::numeric_limits<int16_t>::min()
-            && result <= std::numeric_limits<int16_t>::max()) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("TINYINT", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<int16_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<int16_t>(cv, columnIndex, "SMALLINT");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<int16_t>(*cv.getString());
       default:
@@ -215,33 +459,21 @@ uint16_t Row::convertUnsignedShort(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::INTEGER:
-        return boost::numeric_cast<uint16_t>(cv.getI32());
+        return boost::numeric_cast<uint16_t>(cv.get<int32_t>());
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<uint16_t>(cv.getI64());
+        return boost::numeric_cast<uint16_t>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<uint16_t>(cv.getDouble());
+        return boost::numeric_cast<uint16_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<uint16_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        uint64_t result;
-        if (d.toULong(result, false)
-            && result >= std::numeric_limits<uint16_t>::min()
-            && result <= std::numeric_limits<uint16_t>::max()) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("TINYINT", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<uint16_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<uint16_t>(cv, columnIndex, "SMALLINT");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<uint16_t>(*cv.getString());
       default:
@@ -258,33 +490,21 @@ int32_t Row::convertInt(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.getI16();
+        return cv.get<int16_t>();
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<int32_t>(cv.getI64());
+        return boost::numeric_cast<int32_t>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<int32_t>(cv.getDouble());
+        return boost::numeric_cast<int32_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<int32_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        int64_t result;
-        if (d.toLong(result, false)
-            && result >= std::numeric_limits<int32_t>::min()
-            && result <= std::numeric_limits<int32_t>::max()) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("INTEGER", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<int32_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<int32_t>(cv, columnIndex, "INTEGER");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<int32_t>(*cv.getString());
       default:
@@ -301,33 +521,21 @@ uint32_t Row::convertUnsignedInt(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.getI16();
+        return cv.get<int16_t>();
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<uint32_t>(cv.getI64());
+        return boost::numeric_cast<uint32_t>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<uint32_t>(cv.getDouble());
+        return boost::numeric_cast<uint32_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<uint32_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        uint64_t result;
-        if (d.toULong(result, false)
-            && result >= std::numeric_limits<uint32_t>::min()
-            && result <= std::numeric_limits<uint32_t>::max()) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("INTEGER", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<uint32_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<uint32_t>(cv, columnIndex, "INTEGER");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<uint32_t>(*cv.getString());
       default:
@@ -339,36 +547,26 @@ uint32_t Row::convertUnsignedInt(const thrift::ColumnValue& cv,
   throw GET_DATACONVERSION_ERROR(cv, "INTEGER", columnIndex);
 }
 
-int64_t Row::convertLong(const thrift::ColumnValue& cv,
+int64_t Row::convertInt64(const thrift::ColumnValue& cv,
     const uint32_t columnIndex) const {
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.getI16();
+        return cv.get<int16_t>();
       case thrift::SnappyType::INTEGER:
-        return cv.getI32();
+        return cv.get<int32_t>();
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<int64_t>(cv.getDouble());
+        return boost::numeric_cast<int64_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<int64_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        int64_t result;
-        if (d.toLong(result, false)) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("BIGINT", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<int64_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<int64_t>(cv, columnIndex, "BIGINT");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<int64_t>(*cv.getString());
       default:
@@ -380,36 +578,26 @@ int64_t Row::convertLong(const thrift::ColumnValue& cv,
   throw GET_DATACONVERSION_ERROR(cv, "BIGINT", columnIndex);
 }
 
-uint64_t Row::convertUnsignedLong(const thrift::ColumnValue& cv,
+uint64_t Row::convertUnsignedInt64(const thrift::ColumnValue& cv,
     const uint32_t columnIndex) const {
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.getI16();
+        return cv.get<int16_t>();
       case thrift::SnappyType::INTEGER:
-        return cv.getI32();
+        return cv.get<int32_t>();
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0;
+        return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<uint64_t>(cv.getDouble());
+        return boost::numeric_cast<uint64_t>(cv.get<double>());
       case thrift::SnappyType::FLOAT:
-        return boost::numeric_cast<uint64_t>(cv.getFloat());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        uint64_t result;
-        if (d.toULong(result, false)) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("BIGINT", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<uint64_t>(cv.get<float>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToExactNumeric<uint64_t>(cv, columnIndex, "BIGINT");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<uint64_t>(*cv.getString());
       default:
@@ -426,32 +614,21 @@ float Row::convertFloat(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.getI16();
+        return cv.get<int16_t>();
       case thrift::SnappyType::INTEGER:
-        return cv.getI32();
+        return cv.get<int32_t>();
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<float>(cv.getI64());
+        return boost::numeric_cast<float>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0.0f;
+        return cv.isNull() ? 0.0f : 1.0f;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1.0f : 0.0f;
       case thrift::SnappyType::DOUBLE:
-        return boost::numeric_cast<float>(cv.getDouble());
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        double result;
-        if (d.toDouble(result) && result >= std::numeric_limits<float>::min()
-            && result <= std::numeric_limits<float>::max()) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("FLOAT", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return boost::numeric_cast<float>(cv.get<double>());
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToApproxNumeric<float>(cv, columnIndex, "FLOAT");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<float>(*cv.getString());
       default:
@@ -468,31 +645,21 @@ double Row::convertDouble(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.getI16();
+        return cv.get<int16_t>();
       case thrift::SnappyType::INTEGER:
-        return cv.getI32();
+        return cv.get<int32_t>();
       case thrift::SnappyType::BIGINT:
-        return boost::numeric_cast<double>(cv.getI64());
+        return boost::numeric_cast<double>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.getByte();
+        return cv.get<int8_t>();
       case thrift::SnappyType::NULLTYPE:
-        return 0.0;
+        return cv.isNull() ? 0.0 : 1.0;
       case thrift::SnappyType::BOOLEAN:
-        return cv.getBool() ? 1 : 0;
+        return cv.get<bool>() ? 1.0 : 0.0;
       case thrift::SnappyType::FLOAT:
-        return cv.getFloat();
-      case thrift::SnappyType::DECIMAL: {
-        Decimal d(*cv.getDecimal());
-        double result;
-        if (d.toDouble(result)) {
-          return result;
-        } else {
-          std::string s;
-          d.toString(s);
-          Utils::throwDataOutsideRangeError("DOUBLE", columnIndex, s.c_str());
-        }
-        break;
-      }
+        return cv.get<float>();
+      case thrift::SnappyType::DECIMAL:
+        return ::decimalToApproxNumeric<double>(cv, columnIndex, "DOUBLE");
       case thrift::SnappyType::VARCHAR:
         return boost::lexical_cast<double>(*cv.getString());
       default:
@@ -504,104 +671,37 @@ double Row::convertDouble(const thrift::ColumnValue& cv,
   throw GET_DATACONVERSION_ERROR(cv, "DOUBLE", columnIndex);
 }
 
-AutoPtr<std::string> Row::convertString(const thrift::ColumnValue& cv,
+std::shared_ptr<std::string> Row::convertString(const thrift::ColumnValue& cv,
     const uint32_t columnIndex, const uint32_t realPrecision) const {
-  switch (cv.getType()) {
-    // karma::generate is about the fastest converter (beats sprintf easily)
-    case thrift::SnappyType::INTEGER: {
-      AutoPtr<std::string> result(new std::string());
-      Utils::convertIntToString(cv.getI32(), *result);
-      return result;
-    }
-    case thrift::SnappyType::BIGINT: {
-      AutoPtr<std::string> result(new std::string());
-      Utils::convertLongToString(cv.getI64(), *result);
-      return result;
-    }
-    case thrift::SnappyType::SMALLINT: {
-      AutoPtr<std::string> result(new std::string());
-      Utils::convertShortToString(cv.getI16(), *result);
-      return result;
-    }
-    case thrift::SnappyType::BOOLEAN:
-      return AutoPtr<std::string>(
-          new std::string(cv.getBool() ? "true" : "false"));
-    case thrift::SnappyType::TINYINT: {
-      AutoPtr<std::string> result(new std::string());
-      Utils::convertByteToString(cv.getByte(), *result);
-      return result;
-    }
-    case thrift::SnappyType::NULLTYPE:
-      return AutoPtr<std::string>(NULL);
-    case thrift::SnappyType::FLOAT: {
-      AutoPtr<std::string> result(new std::string());
-      Utils::convertFloatToString(cv.getFloat(), *result, realPrecision);
-      return result;
-    }
-    case thrift::SnappyType::DOUBLE: {
-      AutoPtr<std::string> result(new std::string());
-      Utils::convertDoubleToString(cv.getDouble(), *result, realPrecision);
-      return result;
-    }
-    case thrift::SnappyType::DECIMAL: {
-      Decimal d(*cv.getDecimal());
-      std::string* str = new std::string();
-      AutoPtr<std::string> res(str);
-      d.toString(*str);
-      return res;
-    }
-    case thrift::SnappyType::DATE: {
-      std::string* str = new std::string();
-      AutoPtr<std::string> res(str);
-      DateTime dt(cv.getDate());
-      dt.toDate(*str);
-      return res;
-    }
-    case thrift::SnappyType::TIME: {
-      std::string* str = new std::string();
-      AutoPtr<std::string> res(str);
-      DateTime dt(cv.getTime());
-      dt.toTime(*str);
-      return res;
-    }
-    case thrift::SnappyType::TIMESTAMP: {
-      std::string* str = new std::string();
-      AutoPtr<std::string> res(str);
-      Timestamp ts(cv.getTimestampEpoch(), cv.getTimestampNanos());
-      ts.toString(*str);
-      return res;
-    }
-    case thrift::SnappyType::CLOB:
-      return getFullClobData(cv, columnIndex, "CHAR");
-    case thrift::SnappyType::BLOB:
-      return getFullBlobData(cv, columnIndex, "CHAR");
-    default:
-      break;
-  }
-  throw GET_DATACONVERSION_ERROR(cv, "CHAR", columnIndex);
+  return cv.visit(::ToString(cv, columnIndex, realPrecision));
 }
 
-AutoPtr<Decimal> Row::convertDecimal(const thrift::ColumnValue& cv,
+std::shared_ptr<Decimal> Row::convertDecimal(const thrift::ColumnValue& cv,
     const uint32_t columnIndex, const uint32_t realPrecision) const {
   switch (cv.getType()) {
     case thrift::SnappyType::SMALLINT:
-      return AutoPtr<Decimal>(new Decimal(cv.getI16()));
+      return std::shared_ptr<Decimal>(new Decimal(cv.get<int16_t>()));
     case thrift::SnappyType::INTEGER:
-      return AutoPtr<Decimal>(new Decimal(cv.getI32()));
+      return std::shared_ptr<Decimal>(new Decimal(cv.get<int32_t>()));
     case thrift::SnappyType::BIGINT:
-      return AutoPtr<Decimal>(new Decimal(cv.getI64()));
+      return std::shared_ptr<Decimal>(new Decimal(cv.get<int64_t>()));
     case thrift::SnappyType::TINYINT:
-      return AutoPtr<Decimal>(new Decimal(cv.getByte()));
+      return std::shared_ptr<Decimal>(new Decimal(cv.get<int8_t>()));
     case thrift::SnappyType::NULLTYPE:
-      return AutoPtr<Decimal>(NULL);
+      if (cv.isNull()) return std::shared_ptr<Decimal>();
+      else return std::shared_ptr<Decimal>(new Decimal((uint32_t)1));
     case thrift::SnappyType::BOOLEAN:
-      return AutoPtr<Decimal>(new Decimal((uint32_t)(cv.getBool() ? 1 : 0)));
+      return std::shared_ptr<Decimal>(
+          new Decimal((uint32_t)(cv.get<bool>() ? 1 : 0)));
     case thrift::SnappyType::FLOAT:
-      return AutoPtr<Decimal>(new Decimal(cv.getFloat(), realPrecision));
+      return std::shared_ptr<Decimal>(
+          new Decimal(cv.get<float>(), realPrecision));
     case thrift::SnappyType::DOUBLE:
-      return AutoPtr<Decimal>(new Decimal(cv.getDouble(), realPrecision));
+      return std::shared_ptr<Decimal>(
+          new Decimal(cv.get<double>(), realPrecision));
     case thrift::SnappyType::VARCHAR:
-      return AutoPtr<Decimal>(new Decimal(*cv.getString(), columnIndex));
+      return std::shared_ptr<Decimal>(
+          new Decimal(*cv.getString(), columnIndex));
     default:
       break;
   }
@@ -610,61 +710,67 @@ AutoPtr<Decimal> Row::convertDecimal(const thrift::ColumnValue& cv,
 
 // TODO: PERF: not efficient but probably does not matter since in nearly
 // all cases we would expect underlying type to also be DECIMAL
-AutoPtr<thrift::Decimal> Row::convertTDecimal(const thrift::ColumnValue& cv,
+std::shared_ptr<thrift::Decimal> Row::convertTDecimal(const thrift::ColumnValue& cv,
     const uint32_t columnIndex, const uint32_t realPrecision) const {
   switch (cv.getType()) {
     case thrift::SnappyType::SMALLINT: {
-      Decimal dec(cv.getI16());
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
+      Decimal dec(cv.get<int16_t>());
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);
-      return tdec;
+      return std::move(tdec);
     }
     case thrift::SnappyType::INTEGER: {
-      Decimal dec(cv.getI32());
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
+      Decimal dec(cv.get<int32_t>());
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);
-      return tdec;
+      return std::move(tdec);
     }
     case thrift::SnappyType::BIGINT: {
-      Decimal dec(cv.getI64());
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
+      Decimal dec(cv.get<int64_t>());
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);
-      return tdec;
+      return std::move(tdec);
     }
     case thrift::SnappyType::TINYINT: {
-      Decimal dec(cv.getByte());
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
+      Decimal dec(cv.get<int8_t>());
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);
-      return tdec;
+      return std::move(tdec);
     }
     case thrift::SnappyType::NULLTYPE:
-      return AutoPtr<thrift::Decimal>(NULL);
+      if (cv.isNull()) {
+        return std::shared_ptr<thrift::Decimal>();
+      } else {
+        std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+        Decimal::ONE.copyTo(*tdec);
+        return std::move(tdec);
+      }
     case thrift::SnappyType::BOOLEAN: {
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
-      if (cv.getBool()) {
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      if (cv.get<bool>()) {
         Decimal::ONE.copyTo(*tdec);
       } else {
         Decimal::ZERO.copyTo(*tdec);
       }
-      return tdec;
+      return std::move(tdec);
     }
     case thrift::SnappyType::FLOAT: {
-      Decimal dec(cv.getFloat(), realPrecision);
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
+      Decimal dec(cv.get<float>(), realPrecision);
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);
-      return tdec;
+      return std::move(tdec);
     }
     case thrift::SnappyType::DOUBLE: {
-      Decimal dec(cv.getDouble(), realPrecision);
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
+      Decimal dec(cv.get<double>(), realPrecision);
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);
-      return tdec;
+      return std::move(tdec);
     }
     case thrift::SnappyType::VARCHAR: {
       Decimal dec(*cv.getString(), columnIndex);
-      AutoPtr<thrift::Decimal> tdec(new thrift::Decimal());
+      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);
-      return tdec;
+      return std::move(tdec);
     }
     default:
       break;
@@ -676,9 +782,9 @@ DateTime Row::convertDate(const thrift::ColumnValue& cv,
     const uint32_t columnIndex) const {
   switch (cv.getType()) {
     case thrift::SnappyType::TIMESTAMP:
-      return DateTime(cv.getTimestampEpoch());
+      return DateTime(cv.get<thrift::Timestamp>().secsSinceEpoch);
     case thrift::SnappyType::TIME:
-      return DateTime(cv.getTime());
+      return DateTime(cv.get<thrift::Time>().secsSinceEpoch);
     case thrift::SnappyType::NULLTYPE:
       return DateTime(0);
     case thrift::SnappyType::VARCHAR: {
@@ -695,9 +801,9 @@ DateTime Row::convertTime(const thrift::ColumnValue& cv,
     const uint32_t columnIndex) const {
   switch (cv.getType()) {
     case thrift::SnappyType::TIMESTAMP:
-      return DateTime(cv.getTimestampEpoch());
+      return DateTime(cv.get<thrift::Timestamp>().secsSinceEpoch);
     case thrift::SnappyType::DATE:
-      return DateTime(cv.getDate());
+      return DateTime(cv.get<thrift::Date>().secsSinceEpoch);
     case thrift::SnappyType::NULLTYPE:
       return DateTime(0);
     case thrift::SnappyType::VARCHAR: {
@@ -716,9 +822,9 @@ Timestamp Row::convertTimestamp(const thrift::ColumnValue& cv,
     case thrift::SnappyType::NULLTYPE:
       return Timestamp(0);
     case thrift::SnappyType::DATE:
-      return Timestamp(cv.getDate());
+      return Timestamp(cv.get<thrift::Date>().secsSinceEpoch);
     case thrift::SnappyType::TIME:
-      return Timestamp(cv.getTime());
+      return Timestamp(cv.get<thrift::Time>().secsSinceEpoch);
     case thrift::SnappyType::VARCHAR: {
       std::string v = boost::algorithm::trim_copy(*cv.getString());
       return Timestamp::parseString(v, columnIndex);
@@ -729,53 +835,60 @@ Timestamp Row::convertTimestamp(const thrift::ColumnValue& cv,
   throw GET_DATACONVERSION_ERROR(cv, "TIMESTAMP", columnIndex);
 }
 
-AutoPtr<std::string> Row::convertBinary(const thrift::ColumnValue& cv,
+std::shared_ptr<std::string> Row::convertBinary(const thrift::ColumnValue& cv,
     const uint32_t columnIndex) const {
   switch (cv.getType()) {
     case thrift::SnappyType::BLOB:
-      return getFullBlobData(cv, columnIndex,"BINARY");
+      return getFullBlobData(cv.getPtr<thrift::BlobChunk>(), cv, columnIndex,
+          "VARBINARY");
     case thrift::SnappyType::CLOB:
-      return getFullClobData(cv, columnIndex, "BINARY");
+      return getFullClobData(cv.getPtr<thrift::ClobChunk>(), cv, columnIndex,
+          "VARBINARY");
     case thrift::SnappyType::NULLTYPE:
-      return AutoPtr<std::string>(NULL);
+      if (cv.isNull()) return std::shared_ptr<std::string>();
+      else return std::shared_ptr<std::string>(new std::string());
     case thrift::SnappyType::VARCHAR: {
-      return AutoPtr<std::string>(cv.getString(), false);
+      return cv.getString();
     default:
       break;
     }
   }
-  throw GET_DATACONVERSION_ERROR(cv, "BINARY", columnIndex);
+  throw GET_DATACONVERSION_ERROR(cv, "VARBINARY", columnIndex);
 }
 
-AutoPtr<std::string> Row::getFullBlobData(const thrift::ColumnValue& cv,
-    const uint32_t columnIndex, const char* forType) const {
+std::shared_ptr<std::string> Row::getFullBlobData(
+    const std::shared_ptr<thrift::BlobChunk>& blob,
+    const thrift::ColumnValue& cv, const uint32_t columnIndex,
+    const char* forType) {
   // TODO: add proper BLOB/CLOB support
-  thrift::BlobChunk* blob = cv.getBlob();
   if (blob != NULL) {
     if (blob->last) {
-      return AutoPtr<std::string>(&blob->chunk, false);
+      // TODO: SW: fix BlobChunk to have std::shared_ptr<std::string> as chunk
+      return std::shared_ptr<std::string>(new std::string(blob->chunk));
     } else {
       throw GET_DATACONVERSION_ERROR(cv, forType, columnIndex);
     }
   } else {
-    return AutoPtr<std::string>(NULL);
+    return std::shared_ptr<std::string>();
   }
 }
 
-AutoPtr<std::string> Row::getFullClobData(const thrift::ColumnValue& cv,
-    const uint32_t columnIndex, const char* forType) const {
+std::shared_ptr<std::string> Row::getFullClobData(
+    const std::shared_ptr<thrift::ClobChunk>& clob,
+    const thrift::ColumnValue& cv, const uint32_t columnIndex,
+    const char* forType) {
   // TODO: add proper BLOB/CLOB support
   // TODO: also add support for passing in char* to fill in (e.g. from ODBC)
   // instead of having to create a copy here from multiple chunks and then
   // ODBC/... driver has to make another copy; also explore C++11 std::move
-  thrift::ClobChunk* clob = cv.getClob();
   if (clob != NULL) {
     if (clob->last) {
-      return AutoPtr<std::string>(&clob->chunk, false);
+      // TODO: SW: fix ClobChunk to have std::shared_ptr<std::string> as chunk
+      return std::shared_ptr<std::string>(new std::string(clob->chunk));
     } else {
       throw GET_DATACONVERSION_ERROR(cv, forType, columnIndex);
     }
   } else {
-    return AutoPtr<std::string>(NULL);
+    return std::shared_ptr<std::string>();
   }
 }

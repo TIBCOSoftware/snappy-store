@@ -95,20 +95,12 @@ namespace types {
     }
 
     /** Get the nano seconds component of this timestamp */
-    inline int32_t getNanos() const throw() {
+    inline int32_t getNanos() const noexcept {
       return m_nanos;
     }
 
     /** Set the new nano seconds component of this timestamp */
-    inline void setNanos(int32_t nanos) {
-      if (nanos >= 0 && nanos < NANOS_MAX) {
-        m_nanos = nanos;
-      } else {
-        throw GET_SQLEXCEPTION2(
-            SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG3, nanos,
-            NANOS_MAX - 1);
-      }
-    }
+    void setNanos(int32_t nanos);
 
     /**
      * Create a Timestamp instance parsing the timestamp
@@ -125,11 +117,6 @@ namespace types {
      */
     std::string& toString(std::string& str,
         const bool utc = true) const;
-
-    /** convert to thrift Timestamp for sending over the wire */
-    inline thrift::Timestamp toTTimestamp() const {
-      return thrift::Timestamp(getEpochTime(), m_nanos);
-    }
   };
 
   struct time_fmt_manip {

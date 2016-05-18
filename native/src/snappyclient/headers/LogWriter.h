@@ -37,7 +37,6 @@
 #define LOGGING_H_
 
 #include "common/Base.h"
-#include "common/AutoPtr.h"
 #include "SQLException.h"
 
 extern "C" {
@@ -150,7 +149,7 @@ namespace client {
 
     static int g_idGenerator;
 
-    static const int getNextId() throw ();
+    static const int getNextId() noexcept;
 
     TraceFlag(const std::string& name, const int id,
         const TraceFlag* parent1 = NULL, const TraceFlag* parent2 = NULL,
@@ -159,19 +158,19 @@ namespace client {
     void addParentFlag(const TraceFlag* parent);
 
   public:
-    inline const std::string& name() const throw () {
+    const std::string& name() const noexcept {
       return m_name;
     }
 
-    inline int id() const throw () {
+    const int id() const noexcept {
       return m_id;
     }
 
-    inline bool global() const throw () {
+    bool global() const noexcept {
       return m_globalSet;
     }
 
-    inline static bool maxGlobalId() throw () {
+    static bool maxGlobalId() noexcept {
       return g_idGenerator;
     }
 
@@ -208,12 +207,11 @@ namespace client {
     LogWriter(const LogWriter&); // no copy constructor
     LogWriter& operator=(const LogWriter&); // no assignment operator
 
-    AutoPtr<std::ostream> m_rawStream;
+    std::unique_ptr<std::ostream> m_rawStream;
     /**
      * The log-file being used for logging.
-     * This is a copy-on-write field so embedded in AutoPtr.
      */
-    AutoPtr<std::string> m_logFile;
+    std::string m_logFile;
     /** The LogLevel for the current LogWriter. */
     LogLevel::type m_logLevel;
     /**
@@ -241,13 +239,13 @@ namespace client {
     LogWriter(std::ostream* logStream, const std::string& logFile,
         const LogLevel::type logLevel);
 
-    ~LogWriter() throw ();
+    ~LogWriter();
 
     static const int DEFAULT_BUFSIZE = 16 * 1024;
 
     static const char* NEWLINE;
 
-    inline static LogWriter& global() throw () {
+    inline static LogWriter& global() noexcept {
       return g_logger;
     }
 
@@ -258,19 +256,19 @@ namespace client {
 
     std::ostream& getRawStream();
 
-    AutoPtr<const std::string> getLogFile() const throw () {
-      return AutoPtr<const std::string>(m_logFile.get(), false);
+    const std::string& getLogFile() const noexcept {
+      return m_logFile;
     }
 
-    LogLevel::type getLogLevel() const throw () {
+    LogLevel::type getLogLevel() const noexcept {
       return m_logLevel;
     }
 
-    inline bool isLogged(const LogLevel::type logLevel) const {
+    inline bool isLogged(const LogLevel::type logLevel) const noexcept {
       return ((int)logLevel >= (int)m_logLevel);
     }
 
-    inline bool isTraceEnabled(const TraceFlag& flag) const {
+    inline bool isTraceEnabled(const TraceFlag& flag) const noexcept {
       return m_traceFlags[flag.id()] == 1;
     }
 
@@ -282,31 +280,31 @@ namespace client {
 
     std::ostream& log(const LogLevel::type logLevel);
 
-    inline static bool SEVERE_ENABLED() {
+    inline static bool SEVERE_ENABLED() noexcept {
       return ((int)LogLevel::SEVERE >= (int)g_logger.m_logLevel);
     }
-    inline static bool ERROR_ENABLED() {
+    inline static bool ERROR_ENABLED() noexcept {
       return ((int)LogLevel::ERROR >= (int)g_logger.m_logLevel);
     }
-    inline static bool WARNING_ENABLED() {
+    inline static bool WARNING_ENABLED() noexcept {
       return ((int)LogLevel::WARNING >= (int)g_logger.m_logLevel);
     }
-    inline static bool CONFIG_ENABLED() {
+    inline static bool CONFIG_ENABLED() noexcept {
       return ((int)LogLevel::CONFIG >= (int)g_logger.m_logLevel);
     }
-    inline static bool INFO_ENABLED() {
+    inline static bool INFO_ENABLED() noexcept {
       return ((int)LogLevel::INFO >= (int)g_logger.m_logLevel);
     }
-    inline static bool FINE_ENABLED() {
+    inline static bool FINE_ENABLED() noexcept {
       return ((int)LogLevel::FINE >= (int)g_logger.m_logLevel);
     }
-    inline static bool FINER_ENABLED() {
+    inline static bool FINER_ENABLED() noexcept {
       return ((int)LogLevel::FINER >= (int)g_logger.m_logLevel);
     }
-    inline static bool FINEST_ENABLED() {
+    inline static bool FINEST_ENABLED() noexcept {
       return ((int)LogLevel::FINEST >= (int)g_logger.m_logLevel);
     }
-    inline static bool TRACE_ENABLED(const TraceFlag& flag) {
+    inline static bool TRACE_ENABLED(const TraceFlag& flag) noexcept {
       return flag.global();
     }
 

@@ -30,13 +30,13 @@ class SnappyExceptionData {
  public:
 
   SnappyExceptionData(const SnappyExceptionData&);
-  SnappyExceptionData(SnappyExceptionData&&);
+  SnappyExceptionData(SnappyExceptionData&&) noexcept;
   SnappyExceptionData& operator=(const SnappyExceptionData&);
-  SnappyExceptionData& operator=(SnappyExceptionData&&);
+  SnappyExceptionData& operator=(SnappyExceptionData&&) noexcept;
   SnappyExceptionData() : reason(), sqlState(), severity(0) {
   }
 
-  virtual ~SnappyExceptionData() throw();
+  virtual ~SnappyExceptionData() noexcept;
   std::string reason;
   std::string sqlState;
   int32_t severity;
@@ -69,7 +69,7 @@ class SnappyExceptionData {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(SnappyExceptionData &a, SnappyExceptionData &b);
+void swap(SnappyExceptionData &a, SnappyExceptionData &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const SnappyExceptionData& obj)
 {

@@ -45,10 +45,7 @@
 #ifndef SNAPPYDATA_STRUCT_COLUMNVALUE_H
 #define SNAPPYDATA_STRUCT_COLUMNVALUE_H
 
-
-extern "C" {
-#include <string.h>
-}
+#include "common/Base.h"
 
 #include "snappydata_struct_Decimal.h"
 #include "snappydata_struct_Timestamp.h"
@@ -67,218 +64,248 @@ extern "C" {
 
 #include "snappydata_types.h"
 
+#include <boost/functional/hash.hpp>
+#include <boost/variant.hpp>
+
+#include <deque>
+#include <unordered_map>
 #include <vector>
-#include <map>
+
+namespace io { namespace snappydata {
+
+template<typename ... T>
+struct VariadicSize {
+  static constexpr int size = sizeof...(T);
+};
+
+template<typename ... T>
+struct VariadicSize<boost::variant<T...> > {
+  static constexpr int size = sizeof...(T);
+};
+
+namespace thrift {
+  class ColumnValue;
+}
+
+}} // namespace
+
+namespace std {
+  template<>
+  struct hash<io::snappydata::thrift::ColumnValue> {
+    size_t operator()(const io::snappydata::thrift::ColumnValue& v) const;
+  };
+}
 
 namespace io { namespace snappydata { namespace thrift {
 
+// boost::variant does not allow composition of multiple fields with the same
+// types hence need to define separate types for storage of repeated types
+
+typedef DateTime Date;
+
+class Time : public DateTime {
+public:
+  Time() : DateTime() {
+  }
+  Time(int64_t secs) : DateTime(secs) {
+  }
+};
+
+class Binary : public std::string {
+public:
+  Binary() {
+  }
+  Binary(const std::string& v) : std::string(v) {
+  }
+  Binary(const int8_t* bytes, int len) :
+      std::string((const char*)bytes, len) {
+  }
+  Binary(Binary&& other) : std::string(std::move(other)) {
+  }
+  Binary(std::string&& other) : std::string(std::move(other)) {
+  }
+  Binary& operator=(Binary&& other) {
+    std::string::operator=(std::move(other));
+    return *this;
+  }
+  Binary& operator=(std::string&& other) {
+    std::string::operator=(std::move(other));
+    return *this;
+  }
+};
+
+// TODO: Types of Array and Struct have been kept different below to allow
+// using in boost::variant without having to define a class.
+// The Array class can change into a proper class that enforces same type
+// for all elements.
+
+typedef std::deque<ColumnValue> Array;
+
+typedef std::unordered_map<ColumnValue, ColumnValue> Map;
+
+typedef std::vector<ColumnValue> Struct;
+
+struct NullType {
+  bool m_v;
+
+  bool operator==(const NullType& other) const {
+    return m_v == other.m_v;
+  }
+  bool operator!=(const NullType& other) const {
+    return m_v != other.m_v;
+  }
+};
+
+class JavaObject : public std::string {
+public:
+  JavaObject() {
+  }
+  JavaObject(const std::string& v) : std::string(v) {
+  }
+  JavaObject(const int8_t* bytes, int len) :
+      std::string((const char*)bytes, len) {
+  }
+  JavaObject(JavaObject&& other) : std::string(std::move(other)) {
+  }
+  JavaObject(std::string&& other) : std::string(std::move(other)) {
+  }
+  JavaObject& operator=(JavaObject&& other) {
+    std::string::operator=(std::move(other));
+    return *this;
+  }
+  JavaObject& operator=(std::string&& other) {
+    std::string::operator=(std::move(other));
+    return *this;
+  }
+};
+
 class ColumnValue {
 private:
+  // Types below should exactly match the types and be in the same order as in
+  // snappydata.thrift for ColumnValue
+  // Any changes to snappydata.thrift ColumnValue should be reflected below
+  // as well as added to the s_typeMap below
+  typedef boost::variant<
+    bool, // BOOLEAN
+    int8_t, // TINYINT
+    int16_t, // SMALLINT
+    int32_t, // INTEGER
+    int64_t, // BIGINT
+    float, // FLOAT/REAL
+    double, // DOUBLE
+    std::shared_ptr<std::string>, // VARCHAR
+    std::shared_ptr<Decimal>, // DECIMAL
+    Date, // DATE (epoch value)
+    Time, // TIME (epoch value)
+    Timestamp, // TIMESTAMP
+    std::shared_ptr<Binary>, // VARBINARY
+    std::shared_ptr<BlobChunk>, // BLOB
+    std::shared_ptr<ClobChunk>, // CLOB
+    std::shared_ptr<Array>, // ARRAY
+    std::shared_ptr<Map>, // MAP
+    std::shared_ptr<Struct>, // STRUCT
+    NullType, // NULLTYPE
+    std::shared_ptr<JSONObject>, // JSON
+    std::shared_ptr<JavaObject> // JAVA_OBJECT
+  > UnionType;
+  UnionType m_val;
 
-  union {
-    bool bool_val;
-    int8_t byte_val;
-    int16_t i16_val;
-    int32_t i32_val;
-    int64_t i64_val;
-    float float_val;
-    double double_val;
-    std::string* string_binary_java_val;
-    Decimal* decimal_val;
-    int64_t date_time_epoch_val;
-    struct __ts {
-      int64_t epochTime;
-      int32_t nanos;
+  static constexpr std::pair<SnappyType::type, const char*>
+  s_typeMap[VariadicSize<UnionType>::size] = {
+    std::make_pair(SnappyType::BOOLEAN, "bool_val"),
+    std::make_pair(SnappyType::TINYINT, "byte_val"),
+    std::make_pair(SnappyType::SMALLINT, "i16_val"),
+    std::make_pair(SnappyType::INTEGER, "i32_val"),
+    std::make_pair(SnappyType::BIGINT, "i64_val"),
+    std::make_pair(SnappyType::FLOAT, "float_val"),
+    std::make_pair(SnappyType::DOUBLE, "double_val"),
+    std::make_pair(SnappyType::VARCHAR, "string_val"),
+    std::make_pair(SnappyType::DECIMAL, "decimal_val"),
+    std::make_pair(SnappyType::DATE, "date_val"),
+    std::make_pair(SnappyType::TIME, "time_val"),
+    std::make_pair(SnappyType::TIMESTAMP, "timestamp_val"),
+    std::make_pair(SnappyType::VARBINARY, "binary_val"),
+    std::make_pair(SnappyType::BLOB, "blob_val"),
+    std::make_pair(SnappyType::CLOB, "clob_val"),
+    std::make_pair(SnappyType::ARRAY, "array_val"),
+    std::make_pair(SnappyType::MAP, "map_val"),
+    std::make_pair(SnappyType::STRUCT, "struct_val"),
+    std::make_pair(SnappyType::NULLTYPE, "null_val"),
+    std::make_pair(SnappyType::JSON, "json_val"),
+    std::make_pair(SnappyType::JAVA_OBJECT, "java_val")
+  };
 
-      bool operator==(const __ts other) const {
-        return epochTime == other.epochTime && nanos == other.nanos;
-      }
-    } timestamp_val;
-    BlobChunk* blob_val;
-    ClobChunk* clob_val;
-    std::vector<ColumnValue>* array_val;
-    std::map<ColumnValue, ColumnValue>* map_val;
-    std::vector<ColumnValue>* struct_val;
-    bool null_val;
-    JSONObject* json_val;
-  } m_uval;
-
-  SnappyType::type m_type;
-
-  /**
-   * This is required to be invoked after clearValue() has been invoked
-   * (or in constructor where it is not needed)
-   */
-  void copyFields(const ColumnValue& other);
+  friend class std::hash<io::snappydata::thrift::ColumnValue>;
 
 public:
 
-  ColumnValue() : m_type(SnappyType::OTHER) {
+  ColumnValue() noexcept : m_val() {
   }
 
-  void clearValue() throw();
-
-  inline ColumnValue(const ColumnValue& other) {
-    if (other.m_type == SnappyType::OTHER) {
-      m_type = SnappyType::OTHER;
-      return;
-    }
-    copyFields(other);
+  ColumnValue(const ColumnValue& other) noexcept : m_val(other.m_val) {
   }
 
-  inline ColumnValue& operator=(const ColumnValue& other) {
-    if (other.m_type == SnappyType::OTHER) {
-      if (m_type == SnappyType::OTHER) {
-        return *this;
-      }
-      m_type = SnappyType::OTHER;
-      return *this;
-    }
-    clearValue();
-    copyFields(other);
-    return *this;
+  ColumnValue(ColumnValue&& other) noexcept : m_val(std::move(other.m_val)) {
   }
 
-  inline ~ColumnValue() throw() {
-    clearValue();
+  ColumnValue& operator=(const ColumnValue& other) noexcept;
+  ColumnValue& operator=(ColumnValue&& other) noexcept;
+
+  ~ColumnValue() {
   }
 
-  inline SnappyType::type getType() const throw () {
-    return m_type;
+  bool operator == (const ColumnValue & rhs) const;
+  bool operator != (const ColumnValue &rhs) const {
+    return !(*this == rhs);
   }
 
-  inline void setType(const SnappyType::type type) throw () {
-    m_type = type;
+  inline SnappyType::type getType() const noexcept {
+    return s_typeMap[m_val.which()].first;
   }
 
-  inline bool isSetBool() const throw () {
-    return (m_type == SnappyType::BOOLEAN);
+  static const char* getThriftFieldName(int index) noexcept;
+
+  template<typename Visitor>
+  inline BOOST_VARIANT_AUX_GENERIC_RESULT_TYPE(typename Visitor::result_type)
+  visit(const Visitor& visitor) const {
+    return boost::apply_visitor(visitor, m_val);
   }
 
-  inline bool getBool() const throw () {
-    return m_uval.bool_val;
+  template <typename T>
+  inline T get() const {
+    return boost::get<T>(m_val);
   }
 
-  inline void setBool(const bool val) {
-    clearValue();
-    m_uval.bool_val = val;
-    m_type = SnappyType::BOOLEAN;
+  template <typename T>
+  inline const std::shared_ptr<T>& getPtr() const {
+    return boost::get<std::shared_ptr<T> >(m_val);
   }
 
-  inline bool isSetByte() const throw () {
-    return (m_type == SnappyType::TINYINT);
+  inline const std::shared_ptr<std::string> getString() const {
+    return boost::get<std::shared_ptr<std::string> >(m_val);
   }
 
-  inline int8_t getByte() const throw () {
-    return m_uval.byte_val;
+  template <typename T>
+  inline const T* getOrNull() const BOOST_NOEXCEPT {
+    return boost::get<T>(&m_val);
   }
 
-  inline void setByte(const int8_t val) {
-    clearValue();
-    m_uval.byte_val = val;
-    m_type = SnappyType::TINYINT;
-  }
-
-  inline bool isSetI16() const throw () {
-    return (m_type == SnappyType::SMALLINT);
-  }
-
-  inline int16_t getI16() const throw () {
-    return m_uval.i16_val;
-  }
-
-  inline void setI16(const int16_t val) {
-    clearValue();
-    m_uval.i16_val = val;
-    m_type = SnappyType::SMALLINT;
-  }
-
-  inline bool isSetI32() const throw () {
-    return (m_type == SnappyType::INTEGER);
-  }
-
-  inline int32_t getI32() const throw () {
-    return m_uval.i32_val;
-  }
-
-  inline void setI32(const int32_t val) {
-    clearValue();
-    m_uval.i32_val = val;
-    m_type = SnappyType::INTEGER;
-  }
-
-  inline bool isSetI64() const throw () {
-    return (m_type == SnappyType::BIGINT);
-  }
-
-  inline int64_t getI64() const throw () {
-    return m_uval.i64_val;
-  }
-
-  inline void setI64(const int64_t val) {
-    clearValue();
-    m_uval.i64_val = val;
-    m_type = SnappyType::BIGINT;
-  }
-
-  inline bool isSetFloat() const throw () {
-    return (m_type == SnappyType::FLOAT);
-  }
-
-  inline float getFloat()  const throw (){
-    return m_uval.float_val;
-  }
-
-  inline void setFloat(const float val) {
-    clearValue();
-    m_uval.float_val = val;
-    m_type = SnappyType::FLOAT;
-  }
-
-  inline bool isSetDouble() const throw () {
-    return (m_type == SnappyType::DOUBLE);
-  }
-
-  inline double getDouble() const throw () {
-    return m_uval.double_val;
-  }
-
-  inline void setDouble(const double val) {
-    clearValue();
-    m_uval.double_val = val;
-    m_type = SnappyType::DOUBLE;
-  }
-
-  inline bool isSetString() const throw () {
-    return (m_type == SnappyType::VARCHAR);
-  }
-
-  inline std::string* getString() const throw () {
-    return m_uval.string_binary_java_val;
+  template <typename T>
+  inline void set(const T& v) {
+    m_val = v;
   }
 
   inline void setString(const std::string& val) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(val);
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(val);
-    }
-    m_type = SnappyType::VARCHAR;
+    m_val = std::move(std::shared_ptr<std::string>(new std::string(val)));
+  }
+
+  inline void setString(std::string&& val) {
+    m_val = std::move(std::shared_ptr<std::string>(
+        new std::string(std::move(val))));
   }
 
   inline void setString(const char* val) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(val);
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(val);
-    }
-    m_type = SnappyType::VARCHAR;
+    m_val = std::move(std::shared_ptr<std::string>(new std::string(val)));
   }
 
   // TODO: PERF: we could change thrift impl to carry through char* instead
@@ -288,458 +315,91 @@ public:
   // buffer to read the result into instead of creating a new std::string
   // (though it is dangerous and should avoid unless perf benefit is proven)
   inline void setString(const char* val, const int32_t len) {
-    if (len >= 0) {
-      if (m_type & (SnappyType::VARCHAR
-          | SnappyType::BINARY
-          | SnappyType::JAVA_OBJECT)) {
-        m_uval.string_binary_java_val->assign(val, len);
-      } else {
-        clearValue();
-        m_uval.string_binary_java_val = new std::string(val, len);
-      }
-      m_type = SnappyType::VARCHAR;
-    } else {
-      setString(val);
-    }
-  }
-
-  inline bool isSetDecimal() const throw () {
-    return (m_type == SnappyType::DECIMAL);
-  }
-
-  inline Decimal* getDecimal() const throw () {
-    return m_uval.decimal_val;
+    m_val = std::move(std::shared_ptr<std::string>(new std::string(val, len)));
   }
 
   inline void setDecimal(const Decimal& val) {
-    if (isSetDecimal()) {
-      m_uval.decimal_val->operator=(val);
-    } else {
-      clearValue();
-      m_uval.decimal_val = new Decimal(val);
-    }
-    m_type = SnappyType::DECIMAL;
+    m_val = std::move(std::shared_ptr<Decimal>(new Decimal(val)));
   }
 
-  inline Decimal* initForDecimal() {
-    if (isSetDecimal()) {
-      return m_uval.decimal_val;
-    } else {
-      clearValue();
-      m_uval.decimal_val = NULL;
-      m_type = SnappyType::DECIMAL;
-      return (m_uval.decimal_val = new Decimal());
-    }
-  }
-
-  inline bool isSetDate() const throw () {
-    return (m_type == SnappyType::DATE);
-  }
-
-  inline int64_t getDate() const throw () {
-    return m_uval.date_time_epoch_val;
-  }
-
-  inline void setDate(const int64_t secsSinceEpoch) {
-    clearValue();
-    m_uval.date_time_epoch_val = secsSinceEpoch;
-    m_type = SnappyType::DATE;
-  }
-
-  inline bool isSetTime() const throw () {
-    return (m_type == SnappyType::TIME);
-  }
-
-  inline int64_t getTime() const throw () {
-    return m_uval.date_time_epoch_val;
-  }
-
-  inline void setTime(const int64_t secsSinceEpoch) {
-    clearValue();
-    m_uval.date_time_epoch_val = secsSinceEpoch;
-    m_type = SnappyType::TIME;
-  }
-
-  inline bool isSetTimestamp() const throw () {
-    return (m_type == SnappyType::TIMESTAMP);
-  }
-
-  inline Timestamp getTimestamp() const throw () {
-    return Timestamp(m_uval.timestamp_val.epochTime,
-        m_uval.timestamp_val.nanos);
-  }
-
-  inline int64_t getTimestampEpoch() const throw () {
-    return m_uval.timestamp_val.epochTime;
-  }
-
-  inline int32_t getTimestampNanos() const throw () {
-    return m_uval.timestamp_val.nanos;
-  }
-
-  inline void setTimestamp(const Timestamp& val) {
-    clearValue();
-    m_uval.timestamp_val.epochTime = val.secsSinceEpoch;
-    m_uval.timestamp_val.nanos = val.nanos;
-    m_type = SnappyType::TIMESTAMP;
+  inline void setDecimal(Decimal&& val) {
+    m_val = std::move(std::shared_ptr<Decimal>(new Decimal(std::move(val))));
   }
 
   inline void setTimestamp(const int64_t epochTime,
       const int32_t nanos) {
-    clearValue();
-    m_uval.timestamp_val.epochTime = epochTime;
-    m_uval.timestamp_val.nanos = nanos;
-    m_type = SnappyType::TIMESTAMP;
+    m_val = Timestamp(epochTime, nanos);
   }
 
-  inline bool isSetBinary() const throw () {
-    return (m_type == SnappyType::BINARY);
+  inline bool isNull() const {
+    return boost::get<NullType>(m_val).m_v;
   }
 
-  inline std::string* getBinary() const throw () {
-    return m_uval.string_binary_java_val;
+  inline void setIsNull(bool val) {
+    NullType v = { val };
+    m_val = v;
   }
 
-  inline void setBinary(const std::string& val) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(val);
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(val);
-    }
-    m_type = SnappyType::BINARY;
-  }
+  void setBinary(const std::string& val);
+  void setBinary(std::string&& val);
 
-  inline void setBinary(const char* val, const size_t len) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(val, len);
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(val, len);
-    }
-    m_type = SnappyType::BINARY;
-  }
+  void setBlob(const BlobChunk& val);
+  void setBlob(BlobChunk&& val);
 
-  inline bool isSetBlob() const throw () {
-    return (m_type == SnappyType::BLOB);
-  }
+  void setClob(const ClobChunk& val);
+  void setClob(ClobChunk&& val);
 
-  inline BlobChunk* getBlob() const throw () {
-    return m_uval.blob_val;
-  }
+  void setArray(const Array& val);
+  void setArray(Array&& val);
 
-  inline void setBlob(const BlobChunk& val) {
-    if (isSetBlob()) {
-      *m_uval.blob_val = val;
-    } else {
-      clearValue();
-      m_uval.blob_val = new BlobChunk(val);
-    }
-    m_type = SnappyType::BLOB;
-  }
+  void setMap(const Map& val);
+  void setMap(Map&& val);
 
-  inline bool isSetClob() const throw () {
-    return (m_type == SnappyType::CLOB);
-  }
+  void setStruct(const Struct& val);
+  void setStruct(Struct&& val);
 
-  inline ClobChunk* getClob() const throw () {
-    return m_uval.clob_val;
-  }
-
-  inline void setClob(const ClobChunk& val) {
-    if (isSetClob()) {
-      *m_uval.clob_val = val;
-    } else {
-      clearValue();
-      m_uval.clob_val = new ClobChunk(val);
-    }
-    m_type = SnappyType::CLOB;
-  }
-
-  inline bool isSetARRAY() const throw () {
-    return (m_type == SnappyType::ARRAY);
-  }
-
-  inline std::vector<ColumnValue>* getARRAY() const throw () {
-    return m_uval.array_val;
-  }
-
-  inline void setARRAY(const std::vector<ColumnValue>& val) {
-    if (isSetARRAY()) {
-      *m_uval.array_val = val;
-    } else {
-      clearValue();
-      m_uval.array_val = new std::vector<ColumnValue>(val);
-    }
-    m_type = SnappyType::ARRAY;
-  }
-
-  inline bool isSetMAP() const throw () {
-    return (m_type == SnappyType::MAP);
-  }
-
-  inline std::map<ColumnValue, ColumnValue>* getMAP() const throw () {
-    return m_uval.map_val;
-  }
-
-  inline void setMAP(const std::map<ColumnValue, ColumnValue>& val) {
-    if (isSetMAP()) {
-      *m_uval.map_val = val;
-    } else {
-      clearValue();
-      m_uval.map_val = new std::map<ColumnValue, ColumnValue>(val);
-    }
-    m_type = SnappyType::MAP;
-  }
-
-  inline bool isSetSTRUCT() const throw () {
-    return (m_type == SnappyType::STRUCT);
-  }
-
-  inline std::vector<ColumnValue>* getSTRUCT() const throw () {
-    return m_uval.struct_val;
-  }
-
-  inline void setSTRUCT(const std::vector<ColumnValue>& val) {
-    if (isSetSTRUCT()) {
-      *m_uval.struct_val = val;
-    } else {
-      clearValue();
-      m_uval.struct_val = new std::vector<ColumnValue>(val);
-    }
-    m_type = SnappyType::STRUCT;
-  }
-
-  inline bool isNull() const throw () {
-    return (m_type == SnappyType::NULLTYPE);
-  }
-
-  inline void setNull() {
-    clearValue();
-    m_uval.null_val = true;
-    m_type = SnappyType::NULLTYPE;
-  }
-
-  inline bool isSetJSON() const throw () {
-    return (m_type == SnappyType::JSON);
-  }
-
-  inline JSONObject* getJSON() const throw () {
-    return m_uval.json_val;
-  }
-
-  inline void setJSON(const JSONObject& val) {
-    if (isSetJSON()) {
-      *m_uval.json_val = val;
-    } else {
-      clearValue();
-      m_uval.json_val = new JSONObject(val);
-    }
-    m_type = SnappyType::JSON;
-  }
-
-  inline bool isSetJavaVal() const throw () {
-    return (m_type == SnappyType::JAVA_OBJECT);
-  }
-
-  inline std::string* getJavaVal() const throw () {
-    return m_uval.string_binary_java_val;
-  }
-
-  inline void setJavaVal(const std::string& val) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(val);
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(val);
-    }
-    m_type = SnappyType::JAVA_OBJECT;
-  }
-
-  inline void setString(std::string&& val) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(std::move(val));
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(std::move(val));
-    }
-    m_type = SnappyType::VARCHAR;
-  }
-
-  inline void setDecimal(Decimal&& val) {
-    if (isSetDecimal()) {
-      m_uval.decimal_val->operator=(std::move(val));
-    } else {
-      clearValue();
-      m_uval.decimal_val = new Decimal(std::move(val));
-    }
-    m_type = SnappyType::DECIMAL;
-  }
-
-  inline void setBinary(std::string&& val) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(std::move(val));
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(std::move(val));
-    }
-    m_type = SnappyType::BINARY;
-  }
-
-  inline void setBlob(BlobChunk&& val) {
-    if (isSetBlob()) {
-      m_uval.blob_val->operator=(std::move(val));
-    } else {
-      clearValue();
-      m_uval.blob_val = new BlobChunk(std::move(val));
-    }
-    m_type = SnappyType::BLOB;
-  }
-
-  inline void setClob(ClobChunk&& val) {
-    if (isSetClob()) {
-      m_uval.clob_val->operator=(std::move(val));
-    } else {
-      clearValue();
-      m_uval.clob_val = new ClobChunk(std::move(val));
-    }
-    m_type = SnappyType::CLOB;
-  }
-
-  inline void setARRAY(std::vector<ColumnValue>&& val) {
-    if (isSetARRAY()) {
-      m_uval.array_val->operator=(std::move(val));
-    } else {
-      clearValue();
-      m_uval.array_val = new std::vector<ColumnValue>(std::move(val));
-    }
-    m_type = SnappyType::ARRAY;
-  }
-
-  inline void setMAP(std::map<ColumnValue, ColumnValue>&& val) {
-    if (isSetMAP()) {
-      m_uval.map_val->operator=(std::move(val));
-    } else {
-      clearValue();
-      m_uval.map_val = new std::map<ColumnValue, ColumnValue>(std::move(val));
-    }
-    m_type = SnappyType::MAP;
-  }
-
-  inline void setSTRUCT(std::vector<ColumnValue>&& val) {
-    if (isSetSTRUCT()) {
-      m_uval.struct_val->operator=(std::move(val));
-    } else {
-      clearValue();
-      m_uval.struct_val = new std::vector<ColumnValue>(std::move(val));
-    }
-    m_type = SnappyType::STRUCT;
-  }
-
-  inline void setJSON(JSONObject&& val) {
-    if (isSetJSON()) {
-      m_uval.json_val->operator=(std::move(val));
-    } else {
-      clearValue();
-      m_uval.json_val = new JSONObject(std::move(val));
-    }
-    m_type = SnappyType::JSON;
-  }
-
-  inline void setJavaVal(std::string&& val) {
-    if (m_type & (SnappyType::VARCHAR
-        | SnappyType::BINARY
-        | SnappyType::JAVA_OBJECT)) {
-      m_uval.string_binary_java_val->assign(std::move(val));
-    } else {
-      clearValue();
-      m_uval.string_binary_java_val = new std::string(std::move(val));
-    }
-    m_type = SnappyType::JAVA_OBJECT;
-  }
-
-  bool operator == (const ColumnValue & rhs) const {
-    const SnappyType::type type = m_type;
-    if (type != rhs.m_type) return false;
-    switch (type) {
-      case SnappyType::VARCHAR:
-      case SnappyType::CHAR:
-      case SnappyType::LONGVARCHAR:
-      case SnappyType::BINARY:
-      case SnappyType::LONGVARBINARY:
-      case SnappyType::JAVA_OBJECT:
-        return *m_uval.string_binary_java_val
-            == *rhs.m_uval.string_binary_java_val;
-      case SnappyType::DECIMAL:
-        return *m_uval.decimal_val == *rhs.m_uval.decimal_val;
-      case SnappyType::BIGINT:
-        return m_uval.i64_val == rhs.m_uval.i64_val;
-      case SnappyType::BOOLEAN:
-        return m_uval.bool_val == rhs.m_uval.bool_val;
-      case SnappyType::DATE:
-        return m_uval.date_time_epoch_val == rhs.m_uval.date_time_epoch_val;
-      case SnappyType::DOUBLE:
-        return m_uval.double_val == rhs.m_uval.double_val;
-      case SnappyType::FLOAT:
-        return m_uval.float_val == rhs.m_uval.float_val;
-      case SnappyType::INTEGER:
-        return m_uval.i32_val == rhs.m_uval.i32_val;
-      case SnappyType::NULLTYPE:
-        return true;
-      case SnappyType::SMALLINT:
-        return m_uval.i16_val == rhs.m_uval.i16_val;
-      case SnappyType::TIME:
-        return m_uval.date_time_epoch_val == rhs.m_uval.date_time_epoch_val;
-      case SnappyType::TIMESTAMP:
-        return m_uval.timestamp_val == rhs.m_uval.timestamp_val;
-      case SnappyType::TINYINT:
-        return m_uval.byte_val == rhs.m_uval.byte_val;
-      case SnappyType::BLOB:
-        return *m_uval.blob_val == *rhs.m_uval.blob_val;
-      case SnappyType::CLOB:
-        return *m_uval.clob_val == *rhs.m_uval.clob_val;
-      case SnappyType::ARRAY:
-        return *m_uval.array_val == *rhs.m_uval.array_val;
-      case SnappyType::MAP:
-        return *m_uval.map_val == *rhs.m_uval.map_val;
-      case SnappyType::STRUCT:
-        return *m_uval.struct_val == *rhs.m_uval.struct_val;
-      case SnappyType::JSON:
-        return *m_uval.json_val == *rhs.m_uval.json_val;
-      default:
-        return ::memcmp(&m_uval, &rhs.m_uval, sizeof(m_uval)) == 0;
-    }
-  }
-  bool operator != (const ColumnValue &rhs) const {
-    return *this != rhs;
-  }
-
-  bool operator < (const ColumnValue & ) const;
+  void setJavaVal(const std::string& val);
+  void setJavaVal(std::string&& val);
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
-  void swap(ColumnValue& other);
+  void swap(ColumnValue& other) noexcept;
   void printTo(std::ostream& out) const;
 };
 
-void swap(ColumnValue &a, ColumnValue &b);
+void swap(ColumnValue &a, ColumnValue &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const ColumnValue& obj) {
   obj.printTo(out);
   return out;
 }
 
+inline std::ostream& operator<<(std::ostream& out, const NullType& v) {
+  return out << v.m_v;
+}
+
+inline size_t hash_value(const io::snappydata::thrift::DateTime& v) {
+  return boost::hash_value(v.secsSinceEpoch);
+}
+inline size_t hash_value(const io::snappydata::thrift::Time& v) {
+  return boost::hash_value(v.secsSinceEpoch);
+}
+inline size_t hash_value(const io::snappydata::thrift::Timestamp& v) {
+  size_t h = 0;
+  boost::hash_combine(h, v.secsSinceEpoch);
+  boost::hash_combine(h, v.nanos);
+  return h;
+}
+inline size_t hash_value(const io::snappydata::thrift::NullType& v) {
+  return boost::hash_value(v.m_v);
+}
+
 }}} // namespace
+
+inline size_t std::hash<io::snappydata::thrift::ColumnValue>::operator()(
+    const io::snappydata::thrift::ColumnValue& v) const {
+  return boost::hash_value(v.m_val);
+}
 
 #endif

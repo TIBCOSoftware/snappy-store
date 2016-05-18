@@ -41,13 +41,13 @@ class ServiceMetaDataArgs {
  public:
 
   ServiceMetaDataArgs(const ServiceMetaDataArgs&);
-  ServiceMetaDataArgs(ServiceMetaDataArgs&&);
+  ServiceMetaDataArgs(ServiceMetaDataArgs&&) noexcept;
   ServiceMetaDataArgs& operator=(const ServiceMetaDataArgs&);
-  ServiceMetaDataArgs& operator=(ServiceMetaDataArgs&&);
+  ServiceMetaDataArgs& operator=(ServiceMetaDataArgs&&) noexcept;
   ServiceMetaDataArgs() : connId(0), driverType(0), token(), schema(), table(), columnName(), foreignSchema(), foreignTable(), procedureName(), functionName(), attributeName(), typeName(), typeId((SnappyType::type)0) {
   }
 
-  virtual ~ServiceMetaDataArgs() throw();
+  virtual ~ServiceMetaDataArgs() noexcept;
   int32_t connId;
   int8_t driverType;
   std::string token;
@@ -161,7 +161,7 @@ class ServiceMetaDataArgs {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ServiceMetaDataArgs &a, ServiceMetaDataArgs &b);
+void swap(ServiceMetaDataArgs &a, ServiceMetaDataArgs &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const ServiceMetaDataArgs& obj)
 {

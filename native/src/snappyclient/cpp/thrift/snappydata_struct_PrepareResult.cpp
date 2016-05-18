@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-PrepareResult::~PrepareResult() throw() {
+PrepareResult::~PrepareResult() noexcept {
 }
 
 
@@ -182,8 +182,9 @@ uint32_t PrepareResult::write(::apache::thrift::protocol::TProtocol* oprot) cons
   return xfer;
 }
 
-void swap(PrepareResult &a, PrepareResult &b) {
+void swap(PrepareResult &a, PrepareResult &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.statementId, b.statementId);
   swap(a.parameterMetaData, b.parameterMetaData);
   swap(a.resultSetMetaData, b.resultSetMetaData);
@@ -198,7 +199,7 @@ PrepareResult::PrepareResult(const PrepareResult& other297) {
   warnings = other297.warnings;
   __isset = other297.__isset;
 }
-PrepareResult::PrepareResult( PrepareResult&& other298) {
+PrepareResult::PrepareResult( PrepareResult&& other298) noexcept {
   statementId = std::move(other298.statementId);
   parameterMetaData = std::move(other298.parameterMetaData);
   resultSetMetaData = std::move(other298.resultSetMetaData);
@@ -213,7 +214,7 @@ PrepareResult& PrepareResult::operator=(const PrepareResult& other299) {
   __isset = other299.__isset;
   return *this;
 }
-PrepareResult& PrepareResult::operator=(PrepareResult&& other300) {
+PrepareResult& PrepareResult::operator=(PrepareResult&& other300) noexcept {
   statementId = std::move(other300.statementId);
   parameterMetaData = std::move(other300.parameterMetaData);
   resultSetMetaData = std::move(other300.resultSetMetaData);

@@ -103,11 +103,11 @@ namespace client {
       setInt(columnIndex, (const int32_t)v);
     }
 
-    void setLong(const uint32_t columnIndex, const int64_t v);
+    void setInt64(const uint32_t columnIndex, const int64_t v);
 
-    void setUnsignedLong(const uint32_t columnIndex, const uint64_t v) {
+    void setUnsignedInt64(const uint32_t columnIndex, const uint64_t v) {
       // thrift API has no unsigned so need to convert to signed
-      setLong(columnIndex, (const int64_t)v);
+      setInt64(columnIndex, (const int64_t)v);
     }
 
     void setFloat(const uint32_t columnIndex, const float v);
@@ -115,6 +115,8 @@ namespace client {
     void setDouble(const uint32_t columnIndex, const double v);
 
     void setString(const uint32_t columnIndex, const std::string& v);
+
+    void setString(const uint32_t columnIndex, std::string&& v);
 
     void setDecimal(const uint32_t columnIndex, const Decimal& v);
 
@@ -126,33 +128,23 @@ namespace client {
 
     void setBinary(const uint32_t columnIndex, const std::string& v);
 
-    void setArray(const uint32_t columnIndex,
-        const std::vector<thrift::ColumnValue>& v);
-
-    void setMap(const uint32_t columnIndex,
-        const std::map<thrift::ColumnValue, thrift::ColumnValue>& v);
-
-    void setStruct(const uint32_t columnIndex,
-        const std::vector<thrift::ColumnValue>& v);
-
-    void setJSONObject(const uint32_t columnIndex, const JSONObject& v);
-
-    void setNull(const uint32_t columnIndex);
-
-    void setString(const uint32_t columnIndex, std::string&& v);
-
     void setBinary(const uint32_t columnIndex, std::string&& v);
 
-    void setArray(const uint32_t columnIndex,
-        std::vector<thrift::ColumnValue>&& v);
+    void setArray(const uint32_t columnIndex, const thrift::Array& v);
 
-    void setMap(const uint32_t columnIndex,
-        std::map<thrift::ColumnValue, thrift::ColumnValue>&& v);
+    void setArray(const uint32_t columnIndex, thrift::Array&& v);
 
-    void setStruct(const uint32_t columnIndex,
-        std::vector<thrift::ColumnValue>&& v);
+    void setMap(const uint32_t columnIndex, const thrift::Map& v);
 
-    void setJSONObject(const uint32_t columnIndex, JSONObject&& v);
+    void setMap(const uint32_t columnIndex, thrift::Map&& v);
+
+    void setStruct(const uint32_t columnIndex, const thrift::Struct& v);
+
+    void setStruct(const uint32_t columnIndex, thrift::Struct&& v);
+
+    void setNull(const uint32_t columnIndex, const bool v);
+
+    void setJSON(const uint32_t columnIndex, const JSON& v);
   };
 
 } /* namespace client */

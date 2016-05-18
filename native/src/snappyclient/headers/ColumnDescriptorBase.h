@@ -47,8 +47,7 @@ namespace snappydata {
 namespace client {
 
   namespace ColumnNullability {
-    enum type
-    {
+    enum type {
       NONULLS = 0,
       NULLABLE = 1,
       UNKNOWN = 2
@@ -56,8 +55,7 @@ namespace client {
   }
 
   namespace ColumnUpdatable {
-    enum type
-    {
+    enum type {
       READ_ONLY = 0,
       UPDATABLE = 1,
       DEFINITELY_UPDATABLE = 2
@@ -75,23 +73,26 @@ namespace client {
     }
 
   public:
+    ~ColumnDescriptorBase() {
+    }
+
     /**
      * Get the 1-based index of the column/parameter that this
      * descriptor represents.
      */
-    uint32_t getIndex() const throw () {
+    uint32_t getIndex() const noexcept {
       return m_columnIndex;
     }
 
-    SQLType::type getSQLType() const throw () {
+    SQLType::type getSQLType() const noexcept {
       return m_descriptor.type;
     }
 
-    std::string getName() const {
-      return m_descriptor.__isset.name ? m_descriptor.name : "";
+    const std::string& getName() const noexcept {
+      return m_descriptor.name;
     }
 
-    std::string getSchema() const {
+    std::string getSchema() const noexcept {
       if (m_descriptor.__isset.fullTableName) {
         const std::string& tableName = m_descriptor.fullTableName;
         size_t dotPos;
@@ -102,7 +103,7 @@ namespace client {
       return "";
     }
 
-    std::string getTable() const {
+    std::string getTable() const noexcept {
       if (m_descriptor.__isset.fullTableName) {
         const std::string& tableName = m_descriptor.fullTableName;
         size_t dotPos;
@@ -115,7 +116,11 @@ namespace client {
       return "";
     }
 
-    ColumnNullability::type getNullability() const throw () {
+    const std::string& getFullTableName() const noexcept {
+      return m_descriptor.fullTableName;
+    }
+
+    ColumnNullability::type getNullability() const noexcept {
       if (m_descriptor.nullable) {
         return ColumnNullability::NULLABLE;
       } else if (m_descriptor.__isset.nullable) {
@@ -125,7 +130,7 @@ namespace client {
       }
     }
 
-    bool isSigned() const throw () {
+    bool isSigned() const noexcept {
       switch (m_descriptor.type) {
         case SQLType::TINYINT:
         case SQLType::SMALLINT:
@@ -141,11 +146,11 @@ namespace client {
       }
     }
 
-    int16_t getPrecision() const throw () {
+    int16_t getPrecision() const noexcept {
       return m_descriptor.precision;
     }
 
-    int16_t getScale() const throw () {
+    int16_t getScale() const noexcept {
       if (m_descriptor.__isset.scale) {
         return m_descriptor.scale;
       } else {
@@ -173,7 +178,7 @@ namespace client {
      * Returns the database type name for this column, or "UNKNOWN"
      * if the type cannot be determined.
      */
-    std::string getTypeName() const throw () {
+    std::string getTypeName() const noexcept {
       if (m_descriptor.__isset.udtTypeAndClassName) {
         const std::string& typeAndClass = m_descriptor.udtTypeAndClassName;
         size_t colonIndex;
@@ -246,7 +251,7 @@ namespace client {
      * For a Java user-defined type, return the java class name
      * of the type, else returns empty string ("").
      */
-    std::string getUDTClassName() const throw () {
+    std::string getUDTClassName() const noexcept {
       if (m_descriptor.__isset.udtTypeAndClassName) {
         const std::string& typeAndClass = m_descriptor.udtTypeAndClassName;
         size_t colonIndex;
@@ -255,9 +260,6 @@ namespace client {
         }
       }
       return "";
-    }
-
-    ~ColumnDescriptorBase() throw () {
     }
   };
 

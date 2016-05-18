@@ -65,7 +65,10 @@ namespace client {
     friend class PreparedStatement;
 
   public:
-    ParameterMode::type getParameterMode() const throw() {
+    ~ParameterDescriptor() {
+    }
+
+    ParameterMode::type getParameterMode() const noexcept {
       if (m_descriptor.parameterIn) {
         return m_descriptor.parameterOut ? ParameterMode::INOUT
             : ParameterMode::IN;
@@ -74,9 +77,6 @@ namespace client {
       } else {
         return ParameterMode::UNKNOWN;
       }
-    }
-
-    ~ParameterDescriptor() throw () {
     }
   };
 

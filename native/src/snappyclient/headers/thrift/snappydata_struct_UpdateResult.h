@@ -46,13 +46,13 @@ class UpdateResult {
  public:
 
   UpdateResult(const UpdateResult&);
-  UpdateResult(UpdateResult&&);
+  UpdateResult(UpdateResult&&) noexcept;
   UpdateResult& operator=(const UpdateResult&);
-  UpdateResult& operator=(UpdateResult&&);
+  UpdateResult& operator=(UpdateResult&&) noexcept;
   UpdateResult() : updateCount(0) {
   }
 
-  virtual ~UpdateResult() throw();
+  virtual ~UpdateResult() noexcept;
   int32_t updateCount;
   std::vector<int32_t>  batchUpdateCounts;
   RowSet generatedKeys;
@@ -100,7 +100,7 @@ class UpdateResult {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(UpdateResult &a, UpdateResult &b);
+void swap(UpdateResult &a, UpdateResult &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const UpdateResult& obj)
 {

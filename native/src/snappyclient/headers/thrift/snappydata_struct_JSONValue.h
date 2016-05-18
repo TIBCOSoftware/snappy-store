@@ -32,13 +32,13 @@ class JSONValue {
  public:
 
   JSONValue(const JSONValue&);
-  JSONValue(JSONValue&&);
+  JSONValue(JSONValue&&) noexcept;
   JSONValue& operator=(const JSONValue&);
-  JSONValue& operator=(JSONValue&&);
+  JSONValue& operator=(JSONValue&&) noexcept;
   JSONValue() : string_val(), bool_val(0), i32_val(0), i64_val(0), double_val(0), null_val(0) {
   }
 
-  virtual ~JSONValue() throw();
+  virtual ~JSONValue() noexcept;
   std::string string_val;
   bool bool_val;
   int32_t i32_val;
@@ -114,7 +114,7 @@ class JSONValue {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(JSONValue &a, JSONValue &b);
+void swap(JSONValue &a, JSONValue &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const JSONValue& obj)
 {

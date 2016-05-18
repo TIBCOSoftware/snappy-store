@@ -252,13 +252,13 @@ class SnappyDataService_getPreferredServer_args {
  public:
 
   SnappyDataService_getPreferredServer_args(const SnappyDataService_getPreferredServer_args&);
-  SnappyDataService_getPreferredServer_args(SnappyDataService_getPreferredServer_args&&);
+  SnappyDataService_getPreferredServer_args(SnappyDataService_getPreferredServer_args&&) noexcept;
   SnappyDataService_getPreferredServer_args& operator=(const SnappyDataService_getPreferredServer_args&);
-  SnappyDataService_getPreferredServer_args& operator=(SnappyDataService_getPreferredServer_args&&);
+  SnappyDataService_getPreferredServer_args& operator=(SnappyDataService_getPreferredServer_args&&) noexcept;
   SnappyDataService_getPreferredServer_args() {
   }
 
-  virtual ~SnappyDataService_getPreferredServer_args() throw();
+  virtual ~SnappyDataService_getPreferredServer_args() noexcept;
   std::set<ServerType::type>  serverTypes;
   std::set<std::string>  serverGroups;
   std::set<HostAddress>  failedServers;
@@ -297,7 +297,7 @@ class SnappyDataService_getPreferredServer_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getPreferredServer_pargs() throw();
+  virtual ~SnappyDataService_getPreferredServer_pargs() noexcept;
   const std::set<ServerType::type> * serverTypes;
   const std::set<std::string> * serverGroups;
   const std::set<HostAddress> * failedServers;
@@ -316,13 +316,13 @@ class SnappyDataService_getPreferredServer_result {
  public:
 
   SnappyDataService_getPreferredServer_result(const SnappyDataService_getPreferredServer_result&);
-  SnappyDataService_getPreferredServer_result(SnappyDataService_getPreferredServer_result&&);
+  SnappyDataService_getPreferredServer_result(SnappyDataService_getPreferredServer_result&&) noexcept;
   SnappyDataService_getPreferredServer_result& operator=(const SnappyDataService_getPreferredServer_result&);
-  SnappyDataService_getPreferredServer_result& operator=(SnappyDataService_getPreferredServer_result&&);
+  SnappyDataService_getPreferredServer_result& operator=(SnappyDataService_getPreferredServer_result&&) noexcept;
   SnappyDataService_getPreferredServer_result() {
   }
 
-  virtual ~SnappyDataService_getPreferredServer_result() throw();
+  virtual ~SnappyDataService_getPreferredServer_result() noexcept;
   HostAddress success;
   SnappyException error;
 
@@ -361,7 +361,7 @@ class SnappyDataService_getPreferredServer_presult {
  public:
 
 
-  virtual ~SnappyDataService_getPreferredServer_presult() throw();
+  virtual ~SnappyDataService_getPreferredServer_presult() noexcept;
   HostAddress* success;
   SnappyException error;
 
@@ -382,13 +382,13 @@ class SnappyDataService_getAllServersWithPreferredServer_args {
  public:
 
   SnappyDataService_getAllServersWithPreferredServer_args(const SnappyDataService_getAllServersWithPreferredServer_args&);
-  SnappyDataService_getAllServersWithPreferredServer_args(SnappyDataService_getAllServersWithPreferredServer_args&&);
+  SnappyDataService_getAllServersWithPreferredServer_args(SnappyDataService_getAllServersWithPreferredServer_args&&) noexcept;
   SnappyDataService_getAllServersWithPreferredServer_args& operator=(const SnappyDataService_getAllServersWithPreferredServer_args&);
-  SnappyDataService_getAllServersWithPreferredServer_args& operator=(SnappyDataService_getAllServersWithPreferredServer_args&&);
+  SnappyDataService_getAllServersWithPreferredServer_args& operator=(SnappyDataService_getAllServersWithPreferredServer_args&&) noexcept;
   SnappyDataService_getAllServersWithPreferredServer_args() {
   }
 
-  virtual ~SnappyDataService_getAllServersWithPreferredServer_args() throw();
+  virtual ~SnappyDataService_getAllServersWithPreferredServer_args() noexcept;
   std::set<ServerType::type>  serverTypes;
   std::set<std::string>  serverGroups;
   std::set<HostAddress>  failedServers;
@@ -427,7 +427,7 @@ class SnappyDataService_getAllServersWithPreferredServer_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getAllServersWithPreferredServer_pargs() throw();
+  virtual ~SnappyDataService_getAllServersWithPreferredServer_pargs() noexcept;
   const std::set<ServerType::type> * serverTypes;
   const std::set<std::string> * serverGroups;
   const std::set<HostAddress> * failedServers;
@@ -446,13 +446,13 @@ class SnappyDataService_getAllServersWithPreferredServer_result {
  public:
 
   SnappyDataService_getAllServersWithPreferredServer_result(const SnappyDataService_getAllServersWithPreferredServer_result&);
-  SnappyDataService_getAllServersWithPreferredServer_result(SnappyDataService_getAllServersWithPreferredServer_result&&);
+  SnappyDataService_getAllServersWithPreferredServer_result(SnappyDataService_getAllServersWithPreferredServer_result&&) noexcept;
   SnappyDataService_getAllServersWithPreferredServer_result& operator=(const SnappyDataService_getAllServersWithPreferredServer_result&);
-  SnappyDataService_getAllServersWithPreferredServer_result& operator=(SnappyDataService_getAllServersWithPreferredServer_result&&);
+  SnappyDataService_getAllServersWithPreferredServer_result& operator=(SnappyDataService_getAllServersWithPreferredServer_result&&) noexcept;
   SnappyDataService_getAllServersWithPreferredServer_result() {
   }
 
-  virtual ~SnappyDataService_getAllServersWithPreferredServer_result() throw();
+  virtual ~SnappyDataService_getAllServersWithPreferredServer_result() noexcept;
   std::vector<HostAddress>  success;
   SnappyException error;
 
@@ -491,7 +491,7 @@ class SnappyDataService_getAllServersWithPreferredServer_presult {
  public:
 
 
-  virtual ~SnappyDataService_getAllServersWithPreferredServer_presult() throw();
+  virtual ~SnappyDataService_getAllServersWithPreferredServer_presult() noexcept;
   std::vector<HostAddress> * success;
   SnappyException error;
 
@@ -510,13 +510,13 @@ class SnappyDataService_openConnection_args {
  public:
 
   SnappyDataService_openConnection_args(const SnappyDataService_openConnection_args&);
-  SnappyDataService_openConnection_args(SnappyDataService_openConnection_args&&);
+  SnappyDataService_openConnection_args(SnappyDataService_openConnection_args&&) noexcept;
   SnappyDataService_openConnection_args& operator=(const SnappyDataService_openConnection_args&);
-  SnappyDataService_openConnection_args& operator=(SnappyDataService_openConnection_args&&);
+  SnappyDataService_openConnection_args& operator=(SnappyDataService_openConnection_args&&) noexcept;
   SnappyDataService_openConnection_args() {
   }
 
-  virtual ~SnappyDataService_openConnection_args() throw();
+  virtual ~SnappyDataService_openConnection_args() noexcept;
   OpenConnectionArgs arguments;
 
   _SnappyDataService_openConnection_args__isset __isset;
@@ -545,7 +545,7 @@ class SnappyDataService_openConnection_pargs {
  public:
 
 
-  virtual ~SnappyDataService_openConnection_pargs() throw();
+  virtual ~SnappyDataService_openConnection_pargs() noexcept;
   const OpenConnectionArgs* arguments;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
@@ -562,13 +562,13 @@ class SnappyDataService_openConnection_result {
  public:
 
   SnappyDataService_openConnection_result(const SnappyDataService_openConnection_result&);
-  SnappyDataService_openConnection_result(SnappyDataService_openConnection_result&&);
+  SnappyDataService_openConnection_result(SnappyDataService_openConnection_result&&) noexcept;
   SnappyDataService_openConnection_result& operator=(const SnappyDataService_openConnection_result&);
-  SnappyDataService_openConnection_result& operator=(SnappyDataService_openConnection_result&&);
+  SnappyDataService_openConnection_result& operator=(SnappyDataService_openConnection_result&&) noexcept;
   SnappyDataService_openConnection_result() {
   }
 
-  virtual ~SnappyDataService_openConnection_result() throw();
+  virtual ~SnappyDataService_openConnection_result() noexcept;
   ConnectionProperties success;
   SnappyException error;
 
@@ -607,7 +607,7 @@ class SnappyDataService_openConnection_presult {
  public:
 
 
-  virtual ~SnappyDataService_openConnection_presult() throw();
+  virtual ~SnappyDataService_openConnection_presult() noexcept;
   ConnectionProperties* success;
   SnappyException error;
 
@@ -630,13 +630,13 @@ class SnappyDataService_execute_args {
  public:
 
   SnappyDataService_execute_args(const SnappyDataService_execute_args&);
-  SnappyDataService_execute_args(SnappyDataService_execute_args&&);
+  SnappyDataService_execute_args(SnappyDataService_execute_args&&) noexcept;
   SnappyDataService_execute_args& operator=(const SnappyDataService_execute_args&);
-  SnappyDataService_execute_args& operator=(SnappyDataService_execute_args&&);
+  SnappyDataService_execute_args& operator=(SnappyDataService_execute_args&&) noexcept;
   SnappyDataService_execute_args() : connId(0), sql(), token() {
   }
 
-  virtual ~SnappyDataService_execute_args() throw();
+  virtual ~SnappyDataService_execute_args() noexcept;
   int32_t connId;
   std::string sql;
   std::map<int32_t, OutputParameter>  outputParams;
@@ -685,7 +685,7 @@ class SnappyDataService_execute_pargs {
  public:
 
 
-  virtual ~SnappyDataService_execute_pargs() throw();
+  virtual ~SnappyDataService_execute_pargs() noexcept;
   const int32_t* connId;
   const std::string* sql;
   const std::map<int32_t, OutputParameter> * outputParams;
@@ -706,13 +706,13 @@ class SnappyDataService_execute_result {
  public:
 
   SnappyDataService_execute_result(const SnappyDataService_execute_result&);
-  SnappyDataService_execute_result(SnappyDataService_execute_result&&);
+  SnappyDataService_execute_result(SnappyDataService_execute_result&&) noexcept;
   SnappyDataService_execute_result& operator=(const SnappyDataService_execute_result&);
-  SnappyDataService_execute_result& operator=(SnappyDataService_execute_result&&);
+  SnappyDataService_execute_result& operator=(SnappyDataService_execute_result&&) noexcept;
   SnappyDataService_execute_result() {
   }
 
-  virtual ~SnappyDataService_execute_result() throw();
+  virtual ~SnappyDataService_execute_result() noexcept;
   StatementResult success;
   SnappyException error;
 
@@ -751,7 +751,7 @@ class SnappyDataService_execute_presult {
  public:
 
 
-  virtual ~SnappyDataService_execute_presult() throw();
+  virtual ~SnappyDataService_execute_presult() noexcept;
   StatementResult* success;
   SnappyException error;
 
@@ -773,13 +773,13 @@ class SnappyDataService_executeUpdate_args {
  public:
 
   SnappyDataService_executeUpdate_args(const SnappyDataService_executeUpdate_args&);
-  SnappyDataService_executeUpdate_args(SnappyDataService_executeUpdate_args&&);
+  SnappyDataService_executeUpdate_args(SnappyDataService_executeUpdate_args&&) noexcept;
   SnappyDataService_executeUpdate_args& operator=(const SnappyDataService_executeUpdate_args&);
-  SnappyDataService_executeUpdate_args& operator=(SnappyDataService_executeUpdate_args&&);
+  SnappyDataService_executeUpdate_args& operator=(SnappyDataService_executeUpdate_args&&) noexcept;
   SnappyDataService_executeUpdate_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_executeUpdate_args() throw();
+  virtual ~SnappyDataService_executeUpdate_args() noexcept;
   int32_t connId;
   std::vector<std::string>  sqls;
   StatementAttrs attrs;
@@ -823,7 +823,7 @@ class SnappyDataService_executeUpdate_pargs {
  public:
 
 
-  virtual ~SnappyDataService_executeUpdate_pargs() throw();
+  virtual ~SnappyDataService_executeUpdate_pargs() noexcept;
   const int32_t* connId;
   const std::vector<std::string> * sqls;
   const StatementAttrs* attrs;
@@ -843,13 +843,13 @@ class SnappyDataService_executeUpdate_result {
  public:
 
   SnappyDataService_executeUpdate_result(const SnappyDataService_executeUpdate_result&);
-  SnappyDataService_executeUpdate_result(SnappyDataService_executeUpdate_result&&);
+  SnappyDataService_executeUpdate_result(SnappyDataService_executeUpdate_result&&) noexcept;
   SnappyDataService_executeUpdate_result& operator=(const SnappyDataService_executeUpdate_result&);
-  SnappyDataService_executeUpdate_result& operator=(SnappyDataService_executeUpdate_result&&);
+  SnappyDataService_executeUpdate_result& operator=(SnappyDataService_executeUpdate_result&&) noexcept;
   SnappyDataService_executeUpdate_result() {
   }
 
-  virtual ~SnappyDataService_executeUpdate_result() throw();
+  virtual ~SnappyDataService_executeUpdate_result() noexcept;
   UpdateResult success;
   SnappyException error;
 
@@ -888,7 +888,7 @@ class SnappyDataService_executeUpdate_presult {
  public:
 
 
-  virtual ~SnappyDataService_executeUpdate_presult() throw();
+  virtual ~SnappyDataService_executeUpdate_presult() noexcept;
   UpdateResult* success;
   SnappyException error;
 
@@ -910,13 +910,13 @@ class SnappyDataService_executeQuery_args {
  public:
 
   SnappyDataService_executeQuery_args(const SnappyDataService_executeQuery_args&);
-  SnappyDataService_executeQuery_args(SnappyDataService_executeQuery_args&&);
+  SnappyDataService_executeQuery_args(SnappyDataService_executeQuery_args&&) noexcept;
   SnappyDataService_executeQuery_args& operator=(const SnappyDataService_executeQuery_args&);
-  SnappyDataService_executeQuery_args& operator=(SnappyDataService_executeQuery_args&&);
+  SnappyDataService_executeQuery_args& operator=(SnappyDataService_executeQuery_args&&) noexcept;
   SnappyDataService_executeQuery_args() : connId(0), sql(), token() {
   }
 
-  virtual ~SnappyDataService_executeQuery_args() throw();
+  virtual ~SnappyDataService_executeQuery_args() noexcept;
   int32_t connId;
   std::string sql;
   StatementAttrs attrs;
@@ -960,7 +960,7 @@ class SnappyDataService_executeQuery_pargs {
  public:
 
 
-  virtual ~SnappyDataService_executeQuery_pargs() throw();
+  virtual ~SnappyDataService_executeQuery_pargs() noexcept;
   const int32_t* connId;
   const std::string* sql;
   const StatementAttrs* attrs;
@@ -980,13 +980,13 @@ class SnappyDataService_executeQuery_result {
  public:
 
   SnappyDataService_executeQuery_result(const SnappyDataService_executeQuery_result&);
-  SnappyDataService_executeQuery_result(SnappyDataService_executeQuery_result&&);
+  SnappyDataService_executeQuery_result(SnappyDataService_executeQuery_result&&) noexcept;
   SnappyDataService_executeQuery_result& operator=(const SnappyDataService_executeQuery_result&);
-  SnappyDataService_executeQuery_result& operator=(SnappyDataService_executeQuery_result&&);
+  SnappyDataService_executeQuery_result& operator=(SnappyDataService_executeQuery_result&&) noexcept;
   SnappyDataService_executeQuery_result() {
   }
 
-  virtual ~SnappyDataService_executeQuery_result() throw();
+  virtual ~SnappyDataService_executeQuery_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -1025,7 +1025,7 @@ class SnappyDataService_executeQuery_presult {
  public:
 
 
-  virtual ~SnappyDataService_executeQuery_presult() throw();
+  virtual ~SnappyDataService_executeQuery_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -1048,13 +1048,13 @@ class SnappyDataService_prepareStatement_args {
  public:
 
   SnappyDataService_prepareStatement_args(const SnappyDataService_prepareStatement_args&);
-  SnappyDataService_prepareStatement_args(SnappyDataService_prepareStatement_args&&);
+  SnappyDataService_prepareStatement_args(SnappyDataService_prepareStatement_args&&) noexcept;
   SnappyDataService_prepareStatement_args& operator=(const SnappyDataService_prepareStatement_args&);
-  SnappyDataService_prepareStatement_args& operator=(SnappyDataService_prepareStatement_args&&);
+  SnappyDataService_prepareStatement_args& operator=(SnappyDataService_prepareStatement_args&&) noexcept;
   SnappyDataService_prepareStatement_args() : connId(0), sql(), token() {
   }
 
-  virtual ~SnappyDataService_prepareStatement_args() throw();
+  virtual ~SnappyDataService_prepareStatement_args() noexcept;
   int32_t connId;
   std::string sql;
   std::map<int32_t, OutputParameter>  outputParams;
@@ -1103,7 +1103,7 @@ class SnappyDataService_prepareStatement_pargs {
  public:
 
 
-  virtual ~SnappyDataService_prepareStatement_pargs() throw();
+  virtual ~SnappyDataService_prepareStatement_pargs() noexcept;
   const int32_t* connId;
   const std::string* sql;
   const std::map<int32_t, OutputParameter> * outputParams;
@@ -1124,13 +1124,13 @@ class SnappyDataService_prepareStatement_result {
  public:
 
   SnappyDataService_prepareStatement_result(const SnappyDataService_prepareStatement_result&);
-  SnappyDataService_prepareStatement_result(SnappyDataService_prepareStatement_result&&);
+  SnappyDataService_prepareStatement_result(SnappyDataService_prepareStatement_result&&) noexcept;
   SnappyDataService_prepareStatement_result& operator=(const SnappyDataService_prepareStatement_result&);
-  SnappyDataService_prepareStatement_result& operator=(SnappyDataService_prepareStatement_result&&);
+  SnappyDataService_prepareStatement_result& operator=(SnappyDataService_prepareStatement_result&&) noexcept;
   SnappyDataService_prepareStatement_result() {
   }
 
-  virtual ~SnappyDataService_prepareStatement_result() throw();
+  virtual ~SnappyDataService_prepareStatement_result() noexcept;
   PrepareResult success;
   SnappyException error;
 
@@ -1169,7 +1169,7 @@ class SnappyDataService_prepareStatement_presult {
  public:
 
 
-  virtual ~SnappyDataService_prepareStatement_presult() throw();
+  virtual ~SnappyDataService_prepareStatement_presult() noexcept;
   PrepareResult* success;
   SnappyException error;
 
@@ -1191,13 +1191,13 @@ class SnappyDataService_executePrepared_args {
  public:
 
   SnappyDataService_executePrepared_args(const SnappyDataService_executePrepared_args&);
-  SnappyDataService_executePrepared_args(SnappyDataService_executePrepared_args&&);
+  SnappyDataService_executePrepared_args(SnappyDataService_executePrepared_args&&) noexcept;
   SnappyDataService_executePrepared_args& operator=(const SnappyDataService_executePrepared_args&);
-  SnappyDataService_executePrepared_args& operator=(SnappyDataService_executePrepared_args&&);
+  SnappyDataService_executePrepared_args& operator=(SnappyDataService_executePrepared_args&&) noexcept;
   SnappyDataService_executePrepared_args() : stmtId(0), token() {
   }
 
-  virtual ~SnappyDataService_executePrepared_args() throw();
+  virtual ~SnappyDataService_executePrepared_args() noexcept;
   int32_t stmtId;
   Row params;
   std::map<int32_t, OutputParameter>  outputParams;
@@ -1241,7 +1241,7 @@ class SnappyDataService_executePrepared_pargs {
  public:
 
 
-  virtual ~SnappyDataService_executePrepared_pargs() throw();
+  virtual ~SnappyDataService_executePrepared_pargs() noexcept;
   const int32_t* stmtId;
   const Row* params;
   const std::map<int32_t, OutputParameter> * outputParams;
@@ -1261,13 +1261,13 @@ class SnappyDataService_executePrepared_result {
  public:
 
   SnappyDataService_executePrepared_result(const SnappyDataService_executePrepared_result&);
-  SnappyDataService_executePrepared_result(SnappyDataService_executePrepared_result&&);
+  SnappyDataService_executePrepared_result(SnappyDataService_executePrepared_result&&) noexcept;
   SnappyDataService_executePrepared_result& operator=(const SnappyDataService_executePrepared_result&);
-  SnappyDataService_executePrepared_result& operator=(SnappyDataService_executePrepared_result&&);
+  SnappyDataService_executePrepared_result& operator=(SnappyDataService_executePrepared_result&&) noexcept;
   SnappyDataService_executePrepared_result() {
   }
 
-  virtual ~SnappyDataService_executePrepared_result() throw();
+  virtual ~SnappyDataService_executePrepared_result() noexcept;
   StatementResult success;
   SnappyException error;
 
@@ -1306,7 +1306,7 @@ class SnappyDataService_executePrepared_presult {
  public:
 
 
-  virtual ~SnappyDataService_executePrepared_presult() throw();
+  virtual ~SnappyDataService_executePrepared_presult() noexcept;
   StatementResult* success;
   SnappyException error;
 
@@ -1327,13 +1327,13 @@ class SnappyDataService_executePreparedUpdate_args {
  public:
 
   SnappyDataService_executePreparedUpdate_args(const SnappyDataService_executePreparedUpdate_args&);
-  SnappyDataService_executePreparedUpdate_args(SnappyDataService_executePreparedUpdate_args&&);
+  SnappyDataService_executePreparedUpdate_args(SnappyDataService_executePreparedUpdate_args&&) noexcept;
   SnappyDataService_executePreparedUpdate_args& operator=(const SnappyDataService_executePreparedUpdate_args&);
-  SnappyDataService_executePreparedUpdate_args& operator=(SnappyDataService_executePreparedUpdate_args&&);
+  SnappyDataService_executePreparedUpdate_args& operator=(SnappyDataService_executePreparedUpdate_args&&) noexcept;
   SnappyDataService_executePreparedUpdate_args() : stmtId(0), token() {
   }
 
-  virtual ~SnappyDataService_executePreparedUpdate_args() throw();
+  virtual ~SnappyDataService_executePreparedUpdate_args() noexcept;
   int32_t stmtId;
   Row params;
   std::string token;
@@ -1372,7 +1372,7 @@ class SnappyDataService_executePreparedUpdate_pargs {
  public:
 
 
-  virtual ~SnappyDataService_executePreparedUpdate_pargs() throw();
+  virtual ~SnappyDataService_executePreparedUpdate_pargs() noexcept;
   const int32_t* stmtId;
   const Row* params;
   const std::string* token;
@@ -1391,13 +1391,13 @@ class SnappyDataService_executePreparedUpdate_result {
  public:
 
   SnappyDataService_executePreparedUpdate_result(const SnappyDataService_executePreparedUpdate_result&);
-  SnappyDataService_executePreparedUpdate_result(SnappyDataService_executePreparedUpdate_result&&);
+  SnappyDataService_executePreparedUpdate_result(SnappyDataService_executePreparedUpdate_result&&) noexcept;
   SnappyDataService_executePreparedUpdate_result& operator=(const SnappyDataService_executePreparedUpdate_result&);
-  SnappyDataService_executePreparedUpdate_result& operator=(SnappyDataService_executePreparedUpdate_result&&);
+  SnappyDataService_executePreparedUpdate_result& operator=(SnappyDataService_executePreparedUpdate_result&&) noexcept;
   SnappyDataService_executePreparedUpdate_result() {
   }
 
-  virtual ~SnappyDataService_executePreparedUpdate_result() throw();
+  virtual ~SnappyDataService_executePreparedUpdate_result() noexcept;
   UpdateResult success;
   SnappyException error;
 
@@ -1436,7 +1436,7 @@ class SnappyDataService_executePreparedUpdate_presult {
  public:
 
 
-  virtual ~SnappyDataService_executePreparedUpdate_presult() throw();
+  virtual ~SnappyDataService_executePreparedUpdate_presult() noexcept;
   UpdateResult* success;
   SnappyException error;
 
@@ -1457,13 +1457,13 @@ class SnappyDataService_executePreparedQuery_args {
  public:
 
   SnappyDataService_executePreparedQuery_args(const SnappyDataService_executePreparedQuery_args&);
-  SnappyDataService_executePreparedQuery_args(SnappyDataService_executePreparedQuery_args&&);
+  SnappyDataService_executePreparedQuery_args(SnappyDataService_executePreparedQuery_args&&) noexcept;
   SnappyDataService_executePreparedQuery_args& operator=(const SnappyDataService_executePreparedQuery_args&);
-  SnappyDataService_executePreparedQuery_args& operator=(SnappyDataService_executePreparedQuery_args&&);
+  SnappyDataService_executePreparedQuery_args& operator=(SnappyDataService_executePreparedQuery_args&&) noexcept;
   SnappyDataService_executePreparedQuery_args() : stmtId(0), token() {
   }
 
-  virtual ~SnappyDataService_executePreparedQuery_args() throw();
+  virtual ~SnappyDataService_executePreparedQuery_args() noexcept;
   int32_t stmtId;
   Row params;
   std::string token;
@@ -1502,7 +1502,7 @@ class SnappyDataService_executePreparedQuery_pargs {
  public:
 
 
-  virtual ~SnappyDataService_executePreparedQuery_pargs() throw();
+  virtual ~SnappyDataService_executePreparedQuery_pargs() noexcept;
   const int32_t* stmtId;
   const Row* params;
   const std::string* token;
@@ -1521,13 +1521,13 @@ class SnappyDataService_executePreparedQuery_result {
  public:
 
   SnappyDataService_executePreparedQuery_result(const SnappyDataService_executePreparedQuery_result&);
-  SnappyDataService_executePreparedQuery_result(SnappyDataService_executePreparedQuery_result&&);
+  SnappyDataService_executePreparedQuery_result(SnappyDataService_executePreparedQuery_result&&) noexcept;
   SnappyDataService_executePreparedQuery_result& operator=(const SnappyDataService_executePreparedQuery_result&);
-  SnappyDataService_executePreparedQuery_result& operator=(SnappyDataService_executePreparedQuery_result&&);
+  SnappyDataService_executePreparedQuery_result& operator=(SnappyDataService_executePreparedQuery_result&&) noexcept;
   SnappyDataService_executePreparedQuery_result() {
   }
 
-  virtual ~SnappyDataService_executePreparedQuery_result() throw();
+  virtual ~SnappyDataService_executePreparedQuery_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -1566,7 +1566,7 @@ class SnappyDataService_executePreparedQuery_presult {
  public:
 
 
-  virtual ~SnappyDataService_executePreparedQuery_presult() throw();
+  virtual ~SnappyDataService_executePreparedQuery_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -1587,13 +1587,13 @@ class SnappyDataService_executePreparedBatch_args {
  public:
 
   SnappyDataService_executePreparedBatch_args(const SnappyDataService_executePreparedBatch_args&);
-  SnappyDataService_executePreparedBatch_args(SnappyDataService_executePreparedBatch_args&&);
+  SnappyDataService_executePreparedBatch_args(SnappyDataService_executePreparedBatch_args&&) noexcept;
   SnappyDataService_executePreparedBatch_args& operator=(const SnappyDataService_executePreparedBatch_args&);
-  SnappyDataService_executePreparedBatch_args& operator=(SnappyDataService_executePreparedBatch_args&&);
+  SnappyDataService_executePreparedBatch_args& operator=(SnappyDataService_executePreparedBatch_args&&) noexcept;
   SnappyDataService_executePreparedBatch_args() : stmtId(0), token() {
   }
 
-  virtual ~SnappyDataService_executePreparedBatch_args() throw();
+  virtual ~SnappyDataService_executePreparedBatch_args() noexcept;
   int32_t stmtId;
   std::vector<Row>  paramsBatch;
   std::string token;
@@ -1632,7 +1632,7 @@ class SnappyDataService_executePreparedBatch_pargs {
  public:
 
 
-  virtual ~SnappyDataService_executePreparedBatch_pargs() throw();
+  virtual ~SnappyDataService_executePreparedBatch_pargs() noexcept;
   const int32_t* stmtId;
   const std::vector<Row> * paramsBatch;
   const std::string* token;
@@ -1651,13 +1651,13 @@ class SnappyDataService_executePreparedBatch_result {
  public:
 
   SnappyDataService_executePreparedBatch_result(const SnappyDataService_executePreparedBatch_result&);
-  SnappyDataService_executePreparedBatch_result(SnappyDataService_executePreparedBatch_result&&);
+  SnappyDataService_executePreparedBatch_result(SnappyDataService_executePreparedBatch_result&&) noexcept;
   SnappyDataService_executePreparedBatch_result& operator=(const SnappyDataService_executePreparedBatch_result&);
-  SnappyDataService_executePreparedBatch_result& operator=(SnappyDataService_executePreparedBatch_result&&);
+  SnappyDataService_executePreparedBatch_result& operator=(SnappyDataService_executePreparedBatch_result&&) noexcept;
   SnappyDataService_executePreparedBatch_result() {
   }
 
-  virtual ~SnappyDataService_executePreparedBatch_result() throw();
+  virtual ~SnappyDataService_executePreparedBatch_result() noexcept;
   UpdateResult success;
   SnappyException error;
 
@@ -1696,7 +1696,7 @@ class SnappyDataService_executePreparedBatch_presult {
  public:
 
 
-  virtual ~SnappyDataService_executePreparedBatch_presult() throw();
+  virtual ~SnappyDataService_executePreparedBatch_presult() noexcept;
   UpdateResult* success;
   SnappyException error;
 
@@ -1720,13 +1720,13 @@ class SnappyDataService_prepareAndExecute_args {
  public:
 
   SnappyDataService_prepareAndExecute_args(const SnappyDataService_prepareAndExecute_args&);
-  SnappyDataService_prepareAndExecute_args(SnappyDataService_prepareAndExecute_args&&);
+  SnappyDataService_prepareAndExecute_args(SnappyDataService_prepareAndExecute_args&&) noexcept;
   SnappyDataService_prepareAndExecute_args& operator=(const SnappyDataService_prepareAndExecute_args&);
-  SnappyDataService_prepareAndExecute_args& operator=(SnappyDataService_prepareAndExecute_args&&);
+  SnappyDataService_prepareAndExecute_args& operator=(SnappyDataService_prepareAndExecute_args&&) noexcept;
   SnappyDataService_prepareAndExecute_args() : connId(0), sql(), token() {
   }
 
-  virtual ~SnappyDataService_prepareAndExecute_args() throw();
+  virtual ~SnappyDataService_prepareAndExecute_args() noexcept;
   int32_t connId;
   std::string sql;
   std::vector<Row>  paramsBatch;
@@ -1780,7 +1780,7 @@ class SnappyDataService_prepareAndExecute_pargs {
  public:
 
 
-  virtual ~SnappyDataService_prepareAndExecute_pargs() throw();
+  virtual ~SnappyDataService_prepareAndExecute_pargs() noexcept;
   const int32_t* connId;
   const std::string* sql;
   const std::vector<Row> * paramsBatch;
@@ -1802,13 +1802,13 @@ class SnappyDataService_prepareAndExecute_result {
  public:
 
   SnappyDataService_prepareAndExecute_result(const SnappyDataService_prepareAndExecute_result&);
-  SnappyDataService_prepareAndExecute_result(SnappyDataService_prepareAndExecute_result&&);
+  SnappyDataService_prepareAndExecute_result(SnappyDataService_prepareAndExecute_result&&) noexcept;
   SnappyDataService_prepareAndExecute_result& operator=(const SnappyDataService_prepareAndExecute_result&);
-  SnappyDataService_prepareAndExecute_result& operator=(SnappyDataService_prepareAndExecute_result&&);
+  SnappyDataService_prepareAndExecute_result& operator=(SnappyDataService_prepareAndExecute_result&&) noexcept;
   SnappyDataService_prepareAndExecute_result() {
   }
 
-  virtual ~SnappyDataService_prepareAndExecute_result() throw();
+  virtual ~SnappyDataService_prepareAndExecute_result() noexcept;
   StatementResult success;
   SnappyException error;
 
@@ -1847,7 +1847,7 @@ class SnappyDataService_prepareAndExecute_presult {
  public:
 
 
-  virtual ~SnappyDataService_prepareAndExecute_presult() throw();
+  virtual ~SnappyDataService_prepareAndExecute_presult() noexcept;
   StatementResult* success;
   SnappyException error;
 
@@ -1869,13 +1869,13 @@ class SnappyDataService_beginTransaction_args {
  public:
 
   SnappyDataService_beginTransaction_args(const SnappyDataService_beginTransaction_args&);
-  SnappyDataService_beginTransaction_args(SnappyDataService_beginTransaction_args&&);
+  SnappyDataService_beginTransaction_args(SnappyDataService_beginTransaction_args&&) noexcept;
   SnappyDataService_beginTransaction_args& operator=(const SnappyDataService_beginTransaction_args&);
-  SnappyDataService_beginTransaction_args& operator=(SnappyDataService_beginTransaction_args&&);
+  SnappyDataService_beginTransaction_args& operator=(SnappyDataService_beginTransaction_args&&) noexcept;
   SnappyDataService_beginTransaction_args() : connId(0), isolationLevel(0), token() {
   }
 
-  virtual ~SnappyDataService_beginTransaction_args() throw();
+  virtual ~SnappyDataService_beginTransaction_args() noexcept;
   int32_t connId;
   int8_t isolationLevel;
   std::map<TransactionAttribute::type, bool>  flags;
@@ -1919,7 +1919,7 @@ class SnappyDataService_beginTransaction_pargs {
  public:
 
 
-  virtual ~SnappyDataService_beginTransaction_pargs() throw();
+  virtual ~SnappyDataService_beginTransaction_pargs() noexcept;
   const int32_t* connId;
   const int8_t* isolationLevel;
   const std::map<TransactionAttribute::type, bool> * flags;
@@ -1938,13 +1938,13 @@ class SnappyDataService_beginTransaction_result {
  public:
 
   SnappyDataService_beginTransaction_result(const SnappyDataService_beginTransaction_result&);
-  SnappyDataService_beginTransaction_result(SnappyDataService_beginTransaction_result&&);
+  SnappyDataService_beginTransaction_result(SnappyDataService_beginTransaction_result&&) noexcept;
   SnappyDataService_beginTransaction_result& operator=(const SnappyDataService_beginTransaction_result&);
-  SnappyDataService_beginTransaction_result& operator=(SnappyDataService_beginTransaction_result&&);
+  SnappyDataService_beginTransaction_result& operator=(SnappyDataService_beginTransaction_result&&) noexcept;
   SnappyDataService_beginTransaction_result() {
   }
 
-  virtual ~SnappyDataService_beginTransaction_result() throw();
+  virtual ~SnappyDataService_beginTransaction_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_beginTransaction_result__isset __isset;
@@ -1977,7 +1977,7 @@ class SnappyDataService_beginTransaction_presult {
  public:
 
 
-  virtual ~SnappyDataService_beginTransaction_presult() throw();
+  virtual ~SnappyDataService_beginTransaction_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_beginTransaction_presult__isset __isset;
@@ -1997,13 +1997,13 @@ class SnappyDataService_setTransactionAttributes_args {
  public:
 
   SnappyDataService_setTransactionAttributes_args(const SnappyDataService_setTransactionAttributes_args&);
-  SnappyDataService_setTransactionAttributes_args(SnappyDataService_setTransactionAttributes_args&&);
+  SnappyDataService_setTransactionAttributes_args(SnappyDataService_setTransactionAttributes_args&&) noexcept;
   SnappyDataService_setTransactionAttributes_args& operator=(const SnappyDataService_setTransactionAttributes_args&);
-  SnappyDataService_setTransactionAttributes_args& operator=(SnappyDataService_setTransactionAttributes_args&&);
+  SnappyDataService_setTransactionAttributes_args& operator=(SnappyDataService_setTransactionAttributes_args&&) noexcept;
   SnappyDataService_setTransactionAttributes_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_setTransactionAttributes_args() throw();
+  virtual ~SnappyDataService_setTransactionAttributes_args() noexcept;
   int32_t connId;
   std::map<TransactionAttribute::type, bool>  flags;
   std::string token;
@@ -2042,7 +2042,7 @@ class SnappyDataService_setTransactionAttributes_pargs {
  public:
 
 
-  virtual ~SnappyDataService_setTransactionAttributes_pargs() throw();
+  virtual ~SnappyDataService_setTransactionAttributes_pargs() noexcept;
   const int32_t* connId;
   const std::map<TransactionAttribute::type, bool> * flags;
   const std::string* token;
@@ -2060,13 +2060,13 @@ class SnappyDataService_setTransactionAttributes_result {
  public:
 
   SnappyDataService_setTransactionAttributes_result(const SnappyDataService_setTransactionAttributes_result&);
-  SnappyDataService_setTransactionAttributes_result(SnappyDataService_setTransactionAttributes_result&&);
+  SnappyDataService_setTransactionAttributes_result(SnappyDataService_setTransactionAttributes_result&&) noexcept;
   SnappyDataService_setTransactionAttributes_result& operator=(const SnappyDataService_setTransactionAttributes_result&);
-  SnappyDataService_setTransactionAttributes_result& operator=(SnappyDataService_setTransactionAttributes_result&&);
+  SnappyDataService_setTransactionAttributes_result& operator=(SnappyDataService_setTransactionAttributes_result&&) noexcept;
   SnappyDataService_setTransactionAttributes_result() {
   }
 
-  virtual ~SnappyDataService_setTransactionAttributes_result() throw();
+  virtual ~SnappyDataService_setTransactionAttributes_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_setTransactionAttributes_result__isset __isset;
@@ -2099,7 +2099,7 @@ class SnappyDataService_setTransactionAttributes_presult {
  public:
 
 
-  virtual ~SnappyDataService_setTransactionAttributes_presult() throw();
+  virtual ~SnappyDataService_setTransactionAttributes_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_setTransactionAttributes_presult__isset __isset;
@@ -2118,13 +2118,13 @@ class SnappyDataService_getTransactionAttributes_args {
  public:
 
   SnappyDataService_getTransactionAttributes_args(const SnappyDataService_getTransactionAttributes_args&);
-  SnappyDataService_getTransactionAttributes_args(SnappyDataService_getTransactionAttributes_args&&);
+  SnappyDataService_getTransactionAttributes_args(SnappyDataService_getTransactionAttributes_args&&) noexcept;
   SnappyDataService_getTransactionAttributes_args& operator=(const SnappyDataService_getTransactionAttributes_args&);
-  SnappyDataService_getTransactionAttributes_args& operator=(SnappyDataService_getTransactionAttributes_args&&);
+  SnappyDataService_getTransactionAttributes_args& operator=(SnappyDataService_getTransactionAttributes_args&&) noexcept;
   SnappyDataService_getTransactionAttributes_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_getTransactionAttributes_args() throw();
+  virtual ~SnappyDataService_getTransactionAttributes_args() noexcept;
   int32_t connId;
   std::string token;
 
@@ -2158,7 +2158,7 @@ class SnappyDataService_getTransactionAttributes_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getTransactionAttributes_pargs() throw();
+  virtual ~SnappyDataService_getTransactionAttributes_pargs() noexcept;
   const int32_t* connId;
   const std::string* token;
 
@@ -2176,13 +2176,13 @@ class SnappyDataService_getTransactionAttributes_result {
  public:
 
   SnappyDataService_getTransactionAttributes_result(const SnappyDataService_getTransactionAttributes_result&);
-  SnappyDataService_getTransactionAttributes_result(SnappyDataService_getTransactionAttributes_result&&);
+  SnappyDataService_getTransactionAttributes_result(SnappyDataService_getTransactionAttributes_result&&) noexcept;
   SnappyDataService_getTransactionAttributes_result& operator=(const SnappyDataService_getTransactionAttributes_result&);
-  SnappyDataService_getTransactionAttributes_result& operator=(SnappyDataService_getTransactionAttributes_result&&);
+  SnappyDataService_getTransactionAttributes_result& operator=(SnappyDataService_getTransactionAttributes_result&&) noexcept;
   SnappyDataService_getTransactionAttributes_result() {
   }
 
-  virtual ~SnappyDataService_getTransactionAttributes_result() throw();
+  virtual ~SnappyDataService_getTransactionAttributes_result() noexcept;
   std::map<TransactionAttribute::type, bool>  success;
   SnappyException error;
 
@@ -2221,7 +2221,7 @@ class SnappyDataService_getTransactionAttributes_presult {
  public:
 
 
-  virtual ~SnappyDataService_getTransactionAttributes_presult() throw();
+  virtual ~SnappyDataService_getTransactionAttributes_presult() noexcept;
   std::map<TransactionAttribute::type, bool> * success;
   SnappyException error;
 
@@ -2243,13 +2243,13 @@ class SnappyDataService_commitTransaction_args {
  public:
 
   SnappyDataService_commitTransaction_args(const SnappyDataService_commitTransaction_args&);
-  SnappyDataService_commitTransaction_args(SnappyDataService_commitTransaction_args&&);
+  SnappyDataService_commitTransaction_args(SnappyDataService_commitTransaction_args&&) noexcept;
   SnappyDataService_commitTransaction_args& operator=(const SnappyDataService_commitTransaction_args&);
-  SnappyDataService_commitTransaction_args& operator=(SnappyDataService_commitTransaction_args&&);
+  SnappyDataService_commitTransaction_args& operator=(SnappyDataService_commitTransaction_args&&) noexcept;
   SnappyDataService_commitTransaction_args() : connId(0), startNewTransaction(0), token() {
   }
 
-  virtual ~SnappyDataService_commitTransaction_args() throw();
+  virtual ~SnappyDataService_commitTransaction_args() noexcept;
   int32_t connId;
   bool startNewTransaction;
   std::map<TransactionAttribute::type, bool>  flags;
@@ -2293,7 +2293,7 @@ class SnappyDataService_commitTransaction_pargs {
  public:
 
 
-  virtual ~SnappyDataService_commitTransaction_pargs() throw();
+  virtual ~SnappyDataService_commitTransaction_pargs() noexcept;
   const int32_t* connId;
   const bool* startNewTransaction;
   const std::map<TransactionAttribute::type, bool> * flags;
@@ -2312,13 +2312,13 @@ class SnappyDataService_commitTransaction_result {
  public:
 
   SnappyDataService_commitTransaction_result(const SnappyDataService_commitTransaction_result&);
-  SnappyDataService_commitTransaction_result(SnappyDataService_commitTransaction_result&&);
+  SnappyDataService_commitTransaction_result(SnappyDataService_commitTransaction_result&&) noexcept;
   SnappyDataService_commitTransaction_result& operator=(const SnappyDataService_commitTransaction_result&);
-  SnappyDataService_commitTransaction_result& operator=(SnappyDataService_commitTransaction_result&&);
+  SnappyDataService_commitTransaction_result& operator=(SnappyDataService_commitTransaction_result&&) noexcept;
   SnappyDataService_commitTransaction_result() {
   }
 
-  virtual ~SnappyDataService_commitTransaction_result() throw();
+  virtual ~SnappyDataService_commitTransaction_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_commitTransaction_result__isset __isset;
@@ -2351,7 +2351,7 @@ class SnappyDataService_commitTransaction_presult {
  public:
 
 
-  virtual ~SnappyDataService_commitTransaction_presult() throw();
+  virtual ~SnappyDataService_commitTransaction_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_commitTransaction_presult__isset __isset;
@@ -2372,13 +2372,13 @@ class SnappyDataService_rollbackTransaction_args {
  public:
 
   SnappyDataService_rollbackTransaction_args(const SnappyDataService_rollbackTransaction_args&);
-  SnappyDataService_rollbackTransaction_args(SnappyDataService_rollbackTransaction_args&&);
+  SnappyDataService_rollbackTransaction_args(SnappyDataService_rollbackTransaction_args&&) noexcept;
   SnappyDataService_rollbackTransaction_args& operator=(const SnappyDataService_rollbackTransaction_args&);
-  SnappyDataService_rollbackTransaction_args& operator=(SnappyDataService_rollbackTransaction_args&&);
+  SnappyDataService_rollbackTransaction_args& operator=(SnappyDataService_rollbackTransaction_args&&) noexcept;
   SnappyDataService_rollbackTransaction_args() : connId(0), startNewTransaction(0), token() {
   }
 
-  virtual ~SnappyDataService_rollbackTransaction_args() throw();
+  virtual ~SnappyDataService_rollbackTransaction_args() noexcept;
   int32_t connId;
   bool startNewTransaction;
   std::map<TransactionAttribute::type, bool>  flags;
@@ -2422,7 +2422,7 @@ class SnappyDataService_rollbackTransaction_pargs {
  public:
 
 
-  virtual ~SnappyDataService_rollbackTransaction_pargs() throw();
+  virtual ~SnappyDataService_rollbackTransaction_pargs() noexcept;
   const int32_t* connId;
   const bool* startNewTransaction;
   const std::map<TransactionAttribute::type, bool> * flags;
@@ -2441,13 +2441,13 @@ class SnappyDataService_rollbackTransaction_result {
  public:
 
   SnappyDataService_rollbackTransaction_result(const SnappyDataService_rollbackTransaction_result&);
-  SnappyDataService_rollbackTransaction_result(SnappyDataService_rollbackTransaction_result&&);
+  SnappyDataService_rollbackTransaction_result(SnappyDataService_rollbackTransaction_result&&) noexcept;
   SnappyDataService_rollbackTransaction_result& operator=(const SnappyDataService_rollbackTransaction_result&);
-  SnappyDataService_rollbackTransaction_result& operator=(SnappyDataService_rollbackTransaction_result&&);
+  SnappyDataService_rollbackTransaction_result& operator=(SnappyDataService_rollbackTransaction_result&&) noexcept;
   SnappyDataService_rollbackTransaction_result() {
   }
 
-  virtual ~SnappyDataService_rollbackTransaction_result() throw();
+  virtual ~SnappyDataService_rollbackTransaction_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_rollbackTransaction_result__isset __isset;
@@ -2480,7 +2480,7 @@ class SnappyDataService_rollbackTransaction_presult {
  public:
 
 
-  virtual ~SnappyDataService_rollbackTransaction_presult() throw();
+  virtual ~SnappyDataService_rollbackTransaction_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_rollbackTransaction_presult__isset __isset;
@@ -2500,13 +2500,13 @@ class SnappyDataService_prepareCommitTransaction_args {
  public:
 
   SnappyDataService_prepareCommitTransaction_args(const SnappyDataService_prepareCommitTransaction_args&);
-  SnappyDataService_prepareCommitTransaction_args(SnappyDataService_prepareCommitTransaction_args&&);
+  SnappyDataService_prepareCommitTransaction_args(SnappyDataService_prepareCommitTransaction_args&&) noexcept;
   SnappyDataService_prepareCommitTransaction_args& operator=(const SnappyDataService_prepareCommitTransaction_args&);
-  SnappyDataService_prepareCommitTransaction_args& operator=(SnappyDataService_prepareCommitTransaction_args&&);
+  SnappyDataService_prepareCommitTransaction_args& operator=(SnappyDataService_prepareCommitTransaction_args&&) noexcept;
   SnappyDataService_prepareCommitTransaction_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_prepareCommitTransaction_args() throw();
+  virtual ~SnappyDataService_prepareCommitTransaction_args() noexcept;
   int32_t connId;
   std::map<TransactionAttribute::type, bool>  flags;
   std::string token;
@@ -2545,7 +2545,7 @@ class SnappyDataService_prepareCommitTransaction_pargs {
  public:
 
 
-  virtual ~SnappyDataService_prepareCommitTransaction_pargs() throw();
+  virtual ~SnappyDataService_prepareCommitTransaction_pargs() noexcept;
   const int32_t* connId;
   const std::map<TransactionAttribute::type, bool> * flags;
   const std::string* token;
@@ -2564,13 +2564,13 @@ class SnappyDataService_prepareCommitTransaction_result {
  public:
 
   SnappyDataService_prepareCommitTransaction_result(const SnappyDataService_prepareCommitTransaction_result&);
-  SnappyDataService_prepareCommitTransaction_result(SnappyDataService_prepareCommitTransaction_result&&);
+  SnappyDataService_prepareCommitTransaction_result(SnappyDataService_prepareCommitTransaction_result&&) noexcept;
   SnappyDataService_prepareCommitTransaction_result& operator=(const SnappyDataService_prepareCommitTransaction_result&);
-  SnappyDataService_prepareCommitTransaction_result& operator=(SnappyDataService_prepareCommitTransaction_result&&);
+  SnappyDataService_prepareCommitTransaction_result& operator=(SnappyDataService_prepareCommitTransaction_result&&) noexcept;
   SnappyDataService_prepareCommitTransaction_result() : success(0) {
   }
 
-  virtual ~SnappyDataService_prepareCommitTransaction_result() throw();
+  virtual ~SnappyDataService_prepareCommitTransaction_result() noexcept;
   bool success;
   SnappyException error;
 
@@ -2609,7 +2609,7 @@ class SnappyDataService_prepareCommitTransaction_presult {
  public:
 
 
-  virtual ~SnappyDataService_prepareCommitTransaction_presult() throw();
+  virtual ~SnappyDataService_prepareCommitTransaction_presult() noexcept;
   bool* success;
   SnappyException error;
 
@@ -2630,13 +2630,13 @@ class SnappyDataService_getNextResultSet_args {
  public:
 
   SnappyDataService_getNextResultSet_args(const SnappyDataService_getNextResultSet_args&);
-  SnappyDataService_getNextResultSet_args(SnappyDataService_getNextResultSet_args&&);
+  SnappyDataService_getNextResultSet_args(SnappyDataService_getNextResultSet_args&&) noexcept;
   SnappyDataService_getNextResultSet_args& operator=(const SnappyDataService_getNextResultSet_args&);
-  SnappyDataService_getNextResultSet_args& operator=(SnappyDataService_getNextResultSet_args&&);
+  SnappyDataService_getNextResultSet_args& operator=(SnappyDataService_getNextResultSet_args&&) noexcept;
   SnappyDataService_getNextResultSet_args() : cursorId(0), otherResultSetBehaviour(0), token() {
   }
 
-  virtual ~SnappyDataService_getNextResultSet_args() throw();
+  virtual ~SnappyDataService_getNextResultSet_args() noexcept;
   int32_t cursorId;
   int8_t otherResultSetBehaviour;
   std::string token;
@@ -2675,7 +2675,7 @@ class SnappyDataService_getNextResultSet_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getNextResultSet_pargs() throw();
+  virtual ~SnappyDataService_getNextResultSet_pargs() noexcept;
   const int32_t* cursorId;
   const int8_t* otherResultSetBehaviour;
   const std::string* token;
@@ -2694,13 +2694,13 @@ class SnappyDataService_getNextResultSet_result {
  public:
 
   SnappyDataService_getNextResultSet_result(const SnappyDataService_getNextResultSet_result&);
-  SnappyDataService_getNextResultSet_result(SnappyDataService_getNextResultSet_result&&);
+  SnappyDataService_getNextResultSet_result(SnappyDataService_getNextResultSet_result&&) noexcept;
   SnappyDataService_getNextResultSet_result& operator=(const SnappyDataService_getNextResultSet_result&);
-  SnappyDataService_getNextResultSet_result& operator=(SnappyDataService_getNextResultSet_result&&);
+  SnappyDataService_getNextResultSet_result& operator=(SnappyDataService_getNextResultSet_result&&) noexcept;
   SnappyDataService_getNextResultSet_result() {
   }
 
-  virtual ~SnappyDataService_getNextResultSet_result() throw();
+  virtual ~SnappyDataService_getNextResultSet_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -2739,7 +2739,7 @@ class SnappyDataService_getNextResultSet_presult {
  public:
 
 
-  virtual ~SnappyDataService_getNextResultSet_presult() throw();
+  virtual ~SnappyDataService_getNextResultSet_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -2763,13 +2763,13 @@ class SnappyDataService_getBlobChunk_args {
  public:
 
   SnappyDataService_getBlobChunk_args(const SnappyDataService_getBlobChunk_args&);
-  SnappyDataService_getBlobChunk_args(SnappyDataService_getBlobChunk_args&&);
+  SnappyDataService_getBlobChunk_args(SnappyDataService_getBlobChunk_args&&) noexcept;
   SnappyDataService_getBlobChunk_args& operator=(const SnappyDataService_getBlobChunk_args&);
-  SnappyDataService_getBlobChunk_args& operator=(SnappyDataService_getBlobChunk_args&&);
+  SnappyDataService_getBlobChunk_args& operator=(SnappyDataService_getBlobChunk_args&&) noexcept;
   SnappyDataService_getBlobChunk_args() : connId(0), lobId(0), offset(0), size(0), freeLobAtEnd(0), token() {
   }
 
-  virtual ~SnappyDataService_getBlobChunk_args() throw();
+  virtual ~SnappyDataService_getBlobChunk_args() noexcept;
   int32_t connId;
   int32_t lobId;
   int64_t offset;
@@ -2823,7 +2823,7 @@ class SnappyDataService_getBlobChunk_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getBlobChunk_pargs() throw();
+  virtual ~SnappyDataService_getBlobChunk_pargs() noexcept;
   const int32_t* connId;
   const int32_t* lobId;
   const int64_t* offset;
@@ -2845,13 +2845,13 @@ class SnappyDataService_getBlobChunk_result {
  public:
 
   SnappyDataService_getBlobChunk_result(const SnappyDataService_getBlobChunk_result&);
-  SnappyDataService_getBlobChunk_result(SnappyDataService_getBlobChunk_result&&);
+  SnappyDataService_getBlobChunk_result(SnappyDataService_getBlobChunk_result&&) noexcept;
   SnappyDataService_getBlobChunk_result& operator=(const SnappyDataService_getBlobChunk_result&);
-  SnappyDataService_getBlobChunk_result& operator=(SnappyDataService_getBlobChunk_result&&);
+  SnappyDataService_getBlobChunk_result& operator=(SnappyDataService_getBlobChunk_result&&) noexcept;
   SnappyDataService_getBlobChunk_result() {
   }
 
-  virtual ~SnappyDataService_getBlobChunk_result() throw();
+  virtual ~SnappyDataService_getBlobChunk_result() noexcept;
   BlobChunk success;
   SnappyException error;
 
@@ -2890,7 +2890,7 @@ class SnappyDataService_getBlobChunk_presult {
  public:
 
 
-  virtual ~SnappyDataService_getBlobChunk_presult() throw();
+  virtual ~SnappyDataService_getBlobChunk_presult() noexcept;
   BlobChunk* success;
   SnappyException error;
 
@@ -2914,13 +2914,13 @@ class SnappyDataService_getClobChunk_args {
  public:
 
   SnappyDataService_getClobChunk_args(const SnappyDataService_getClobChunk_args&);
-  SnappyDataService_getClobChunk_args(SnappyDataService_getClobChunk_args&&);
+  SnappyDataService_getClobChunk_args(SnappyDataService_getClobChunk_args&&) noexcept;
   SnappyDataService_getClobChunk_args& operator=(const SnappyDataService_getClobChunk_args&);
-  SnappyDataService_getClobChunk_args& operator=(SnappyDataService_getClobChunk_args&&);
+  SnappyDataService_getClobChunk_args& operator=(SnappyDataService_getClobChunk_args&&) noexcept;
   SnappyDataService_getClobChunk_args() : connId(0), lobId(0), offset(0), size(0), freeLobAtEnd(0), token() {
   }
 
-  virtual ~SnappyDataService_getClobChunk_args() throw();
+  virtual ~SnappyDataService_getClobChunk_args() noexcept;
   int32_t connId;
   int32_t lobId;
   int64_t offset;
@@ -2974,7 +2974,7 @@ class SnappyDataService_getClobChunk_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getClobChunk_pargs() throw();
+  virtual ~SnappyDataService_getClobChunk_pargs() noexcept;
   const int32_t* connId;
   const int32_t* lobId;
   const int64_t* offset;
@@ -2996,13 +2996,13 @@ class SnappyDataService_getClobChunk_result {
  public:
 
   SnappyDataService_getClobChunk_result(const SnappyDataService_getClobChunk_result&);
-  SnappyDataService_getClobChunk_result(SnappyDataService_getClobChunk_result&&);
+  SnappyDataService_getClobChunk_result(SnappyDataService_getClobChunk_result&&) noexcept;
   SnappyDataService_getClobChunk_result& operator=(const SnappyDataService_getClobChunk_result&);
-  SnappyDataService_getClobChunk_result& operator=(SnappyDataService_getClobChunk_result&&);
+  SnappyDataService_getClobChunk_result& operator=(SnappyDataService_getClobChunk_result&&) noexcept;
   SnappyDataService_getClobChunk_result() {
   }
 
-  virtual ~SnappyDataService_getClobChunk_result() throw();
+  virtual ~SnappyDataService_getClobChunk_result() noexcept;
   ClobChunk success;
   SnappyException error;
 
@@ -3041,7 +3041,7 @@ class SnappyDataService_getClobChunk_presult {
  public:
 
 
-  virtual ~SnappyDataService_getClobChunk_presult() throw();
+  virtual ~SnappyDataService_getClobChunk_presult() noexcept;
   ClobChunk* success;
   SnappyException error;
 
@@ -3062,13 +3062,13 @@ class SnappyDataService_sendBlobChunk_args {
  public:
 
   SnappyDataService_sendBlobChunk_args(const SnappyDataService_sendBlobChunk_args&);
-  SnappyDataService_sendBlobChunk_args(SnappyDataService_sendBlobChunk_args&&);
+  SnappyDataService_sendBlobChunk_args(SnappyDataService_sendBlobChunk_args&&) noexcept;
   SnappyDataService_sendBlobChunk_args& operator=(const SnappyDataService_sendBlobChunk_args&);
-  SnappyDataService_sendBlobChunk_args& operator=(SnappyDataService_sendBlobChunk_args&&);
+  SnappyDataService_sendBlobChunk_args& operator=(SnappyDataService_sendBlobChunk_args&&) noexcept;
   SnappyDataService_sendBlobChunk_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_sendBlobChunk_args() throw();
+  virtual ~SnappyDataService_sendBlobChunk_args() noexcept;
   BlobChunk chunk;
   int32_t connId;
   std::string token;
@@ -3107,7 +3107,7 @@ class SnappyDataService_sendBlobChunk_pargs {
  public:
 
 
-  virtual ~SnappyDataService_sendBlobChunk_pargs() throw();
+  virtual ~SnappyDataService_sendBlobChunk_pargs() noexcept;
   const BlobChunk* chunk;
   const int32_t* connId;
   const std::string* token;
@@ -3126,13 +3126,13 @@ class SnappyDataService_sendBlobChunk_result {
  public:
 
   SnappyDataService_sendBlobChunk_result(const SnappyDataService_sendBlobChunk_result&);
-  SnappyDataService_sendBlobChunk_result(SnappyDataService_sendBlobChunk_result&&);
+  SnappyDataService_sendBlobChunk_result(SnappyDataService_sendBlobChunk_result&&) noexcept;
   SnappyDataService_sendBlobChunk_result& operator=(const SnappyDataService_sendBlobChunk_result&);
-  SnappyDataService_sendBlobChunk_result& operator=(SnappyDataService_sendBlobChunk_result&&);
+  SnappyDataService_sendBlobChunk_result& operator=(SnappyDataService_sendBlobChunk_result&&) noexcept;
   SnappyDataService_sendBlobChunk_result() : success(0) {
   }
 
-  virtual ~SnappyDataService_sendBlobChunk_result() throw();
+  virtual ~SnappyDataService_sendBlobChunk_result() noexcept;
   int32_t success;
   SnappyException error;
 
@@ -3171,7 +3171,7 @@ class SnappyDataService_sendBlobChunk_presult {
  public:
 
 
-  virtual ~SnappyDataService_sendBlobChunk_presult() throw();
+  virtual ~SnappyDataService_sendBlobChunk_presult() noexcept;
   int32_t* success;
   SnappyException error;
 
@@ -3192,13 +3192,13 @@ class SnappyDataService_sendClobChunk_args {
  public:
 
   SnappyDataService_sendClobChunk_args(const SnappyDataService_sendClobChunk_args&);
-  SnappyDataService_sendClobChunk_args(SnappyDataService_sendClobChunk_args&&);
+  SnappyDataService_sendClobChunk_args(SnappyDataService_sendClobChunk_args&&) noexcept;
   SnappyDataService_sendClobChunk_args& operator=(const SnappyDataService_sendClobChunk_args&);
-  SnappyDataService_sendClobChunk_args& operator=(SnappyDataService_sendClobChunk_args&&);
+  SnappyDataService_sendClobChunk_args& operator=(SnappyDataService_sendClobChunk_args&&) noexcept;
   SnappyDataService_sendClobChunk_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_sendClobChunk_args() throw();
+  virtual ~SnappyDataService_sendClobChunk_args() noexcept;
   ClobChunk chunk;
   int32_t connId;
   std::string token;
@@ -3237,7 +3237,7 @@ class SnappyDataService_sendClobChunk_pargs {
  public:
 
 
-  virtual ~SnappyDataService_sendClobChunk_pargs() throw();
+  virtual ~SnappyDataService_sendClobChunk_pargs() noexcept;
   const ClobChunk* chunk;
   const int32_t* connId;
   const std::string* token;
@@ -3256,13 +3256,13 @@ class SnappyDataService_sendClobChunk_result {
  public:
 
   SnappyDataService_sendClobChunk_result(const SnappyDataService_sendClobChunk_result&);
-  SnappyDataService_sendClobChunk_result(SnappyDataService_sendClobChunk_result&&);
+  SnappyDataService_sendClobChunk_result(SnappyDataService_sendClobChunk_result&&) noexcept;
   SnappyDataService_sendClobChunk_result& operator=(const SnappyDataService_sendClobChunk_result&);
-  SnappyDataService_sendClobChunk_result& operator=(SnappyDataService_sendClobChunk_result&&);
+  SnappyDataService_sendClobChunk_result& operator=(SnappyDataService_sendClobChunk_result&&) noexcept;
   SnappyDataService_sendClobChunk_result() : success(0) {
   }
 
-  virtual ~SnappyDataService_sendClobChunk_result() throw();
+  virtual ~SnappyDataService_sendClobChunk_result() noexcept;
   int32_t success;
   SnappyException error;
 
@@ -3301,7 +3301,7 @@ class SnappyDataService_sendClobChunk_presult {
  public:
 
 
-  virtual ~SnappyDataService_sendClobChunk_presult() throw();
+  virtual ~SnappyDataService_sendClobChunk_presult() noexcept;
   int32_t* success;
   SnappyException error;
 
@@ -3322,13 +3322,13 @@ class SnappyDataService_freeLob_args {
  public:
 
   SnappyDataService_freeLob_args(const SnappyDataService_freeLob_args&);
-  SnappyDataService_freeLob_args(SnappyDataService_freeLob_args&&);
+  SnappyDataService_freeLob_args(SnappyDataService_freeLob_args&&) noexcept;
   SnappyDataService_freeLob_args& operator=(const SnappyDataService_freeLob_args&);
-  SnappyDataService_freeLob_args& operator=(SnappyDataService_freeLob_args&&);
+  SnappyDataService_freeLob_args& operator=(SnappyDataService_freeLob_args&&) noexcept;
   SnappyDataService_freeLob_args() : connId(0), lobId(0), token() {
   }
 
-  virtual ~SnappyDataService_freeLob_args() throw();
+  virtual ~SnappyDataService_freeLob_args() noexcept;
   int32_t connId;
   int32_t lobId;
   std::string token;
@@ -3367,7 +3367,7 @@ class SnappyDataService_freeLob_pargs {
  public:
 
 
-  virtual ~SnappyDataService_freeLob_pargs() throw();
+  virtual ~SnappyDataService_freeLob_pargs() noexcept;
   const int32_t* connId;
   const int32_t* lobId;
   const std::string* token;
@@ -3385,13 +3385,13 @@ class SnappyDataService_freeLob_result {
  public:
 
   SnappyDataService_freeLob_result(const SnappyDataService_freeLob_result&);
-  SnappyDataService_freeLob_result(SnappyDataService_freeLob_result&&);
+  SnappyDataService_freeLob_result(SnappyDataService_freeLob_result&&) noexcept;
   SnappyDataService_freeLob_result& operator=(const SnappyDataService_freeLob_result&);
-  SnappyDataService_freeLob_result& operator=(SnappyDataService_freeLob_result&&);
+  SnappyDataService_freeLob_result& operator=(SnappyDataService_freeLob_result&&) noexcept;
   SnappyDataService_freeLob_result() {
   }
 
-  virtual ~SnappyDataService_freeLob_result() throw();
+  virtual ~SnappyDataService_freeLob_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_freeLob_result__isset __isset;
@@ -3424,7 +3424,7 @@ class SnappyDataService_freeLob_presult {
  public:
 
 
-  virtual ~SnappyDataService_freeLob_presult() throw();
+  virtual ~SnappyDataService_freeLob_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_freeLob_presult__isset __isset;
@@ -3447,13 +3447,13 @@ class SnappyDataService_scrollCursor_args {
  public:
 
   SnappyDataService_scrollCursor_args(const SnappyDataService_scrollCursor_args&);
-  SnappyDataService_scrollCursor_args(SnappyDataService_scrollCursor_args&&);
+  SnappyDataService_scrollCursor_args(SnappyDataService_scrollCursor_args&&) noexcept;
   SnappyDataService_scrollCursor_args& operator=(const SnappyDataService_scrollCursor_args&);
-  SnappyDataService_scrollCursor_args& operator=(SnappyDataService_scrollCursor_args&&);
+  SnappyDataService_scrollCursor_args& operator=(SnappyDataService_scrollCursor_args&&) noexcept;
   SnappyDataService_scrollCursor_args() : cursorId(0), offset(0), offsetIsAbsolute(0), fetchReverse(0), fetchSize(0), token() {
   }
 
-  virtual ~SnappyDataService_scrollCursor_args() throw();
+  virtual ~SnappyDataService_scrollCursor_args() noexcept;
   int32_t cursorId;
   int32_t offset;
   bool offsetIsAbsolute;
@@ -3507,7 +3507,7 @@ class SnappyDataService_scrollCursor_pargs {
  public:
 
 
-  virtual ~SnappyDataService_scrollCursor_pargs() throw();
+  virtual ~SnappyDataService_scrollCursor_pargs() noexcept;
   const int32_t* cursorId;
   const int32_t* offset;
   const bool* offsetIsAbsolute;
@@ -3529,13 +3529,13 @@ class SnappyDataService_scrollCursor_result {
  public:
 
   SnappyDataService_scrollCursor_result(const SnappyDataService_scrollCursor_result&);
-  SnappyDataService_scrollCursor_result(SnappyDataService_scrollCursor_result&&);
+  SnappyDataService_scrollCursor_result(SnappyDataService_scrollCursor_result&&) noexcept;
   SnappyDataService_scrollCursor_result& operator=(const SnappyDataService_scrollCursor_result&);
-  SnappyDataService_scrollCursor_result& operator=(SnappyDataService_scrollCursor_result&&);
+  SnappyDataService_scrollCursor_result& operator=(SnappyDataService_scrollCursor_result&&) noexcept;
   SnappyDataService_scrollCursor_result() {
   }
 
-  virtual ~SnappyDataService_scrollCursor_result() throw();
+  virtual ~SnappyDataService_scrollCursor_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -3574,7 +3574,7 @@ class SnappyDataService_scrollCursor_presult {
  public:
 
 
-  virtual ~SnappyDataService_scrollCursor_presult() throw();
+  virtual ~SnappyDataService_scrollCursor_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -3598,13 +3598,13 @@ class SnappyDataService_executeCursorUpdate_args {
  public:
 
   SnappyDataService_executeCursorUpdate_args(const SnappyDataService_executeCursorUpdate_args&);
-  SnappyDataService_executeCursorUpdate_args(SnappyDataService_executeCursorUpdate_args&&);
+  SnappyDataService_executeCursorUpdate_args(SnappyDataService_executeCursorUpdate_args&&) noexcept;
   SnappyDataService_executeCursorUpdate_args& operator=(const SnappyDataService_executeCursorUpdate_args&);
-  SnappyDataService_executeCursorUpdate_args& operator=(SnappyDataService_executeCursorUpdate_args&&);
+  SnappyDataService_executeCursorUpdate_args& operator=(SnappyDataService_executeCursorUpdate_args&&) noexcept;
   SnappyDataService_executeCursorUpdate_args() : cursorId(0), token() {
   }
 
-  virtual ~SnappyDataService_executeCursorUpdate_args() throw();
+  virtual ~SnappyDataService_executeCursorUpdate_args() noexcept;
   int32_t cursorId;
   std::vector<CursorUpdateOperation::type>  operations;
   std::vector<Row>  changedRows;
@@ -3658,7 +3658,7 @@ class SnappyDataService_executeCursorUpdate_pargs {
  public:
 
 
-  virtual ~SnappyDataService_executeCursorUpdate_pargs() throw();
+  virtual ~SnappyDataService_executeCursorUpdate_pargs() noexcept;
   const int32_t* cursorId;
   const std::vector<CursorUpdateOperation::type> * operations;
   const std::vector<Row> * changedRows;
@@ -3679,13 +3679,13 @@ class SnappyDataService_executeCursorUpdate_result {
  public:
 
   SnappyDataService_executeCursorUpdate_result(const SnappyDataService_executeCursorUpdate_result&);
-  SnappyDataService_executeCursorUpdate_result(SnappyDataService_executeCursorUpdate_result&&);
+  SnappyDataService_executeCursorUpdate_result(SnappyDataService_executeCursorUpdate_result&&) noexcept;
   SnappyDataService_executeCursorUpdate_result& operator=(const SnappyDataService_executeCursorUpdate_result&);
-  SnappyDataService_executeCursorUpdate_result& operator=(SnappyDataService_executeCursorUpdate_result&&);
+  SnappyDataService_executeCursorUpdate_result& operator=(SnappyDataService_executeCursorUpdate_result&&) noexcept;
   SnappyDataService_executeCursorUpdate_result() {
   }
 
-  virtual ~SnappyDataService_executeCursorUpdate_result() throw();
+  virtual ~SnappyDataService_executeCursorUpdate_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_executeCursorUpdate_result__isset __isset;
@@ -3718,7 +3718,7 @@ class SnappyDataService_executeCursorUpdate_presult {
  public:
 
 
-  virtual ~SnappyDataService_executeCursorUpdate_presult() throw();
+  virtual ~SnappyDataService_executeCursorUpdate_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_executeCursorUpdate_presult__isset __isset;
@@ -3737,13 +3737,13 @@ class SnappyDataService_getServiceMetaData_args {
  public:
 
   SnappyDataService_getServiceMetaData_args(const SnappyDataService_getServiceMetaData_args&);
-  SnappyDataService_getServiceMetaData_args(SnappyDataService_getServiceMetaData_args&&);
+  SnappyDataService_getServiceMetaData_args(SnappyDataService_getServiceMetaData_args&&) noexcept;
   SnappyDataService_getServiceMetaData_args& operator=(const SnappyDataService_getServiceMetaData_args&);
-  SnappyDataService_getServiceMetaData_args& operator=(SnappyDataService_getServiceMetaData_args&&);
+  SnappyDataService_getServiceMetaData_args& operator=(SnappyDataService_getServiceMetaData_args&&) noexcept;
   SnappyDataService_getServiceMetaData_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_getServiceMetaData_args() throw();
+  virtual ~SnappyDataService_getServiceMetaData_args() noexcept;
   int32_t connId;
   std::string token;
 
@@ -3777,7 +3777,7 @@ class SnappyDataService_getServiceMetaData_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getServiceMetaData_pargs() throw();
+  virtual ~SnappyDataService_getServiceMetaData_pargs() noexcept;
   const int32_t* connId;
   const std::string* token;
 
@@ -3795,13 +3795,13 @@ class SnappyDataService_getServiceMetaData_result {
  public:
 
   SnappyDataService_getServiceMetaData_result(const SnappyDataService_getServiceMetaData_result&);
-  SnappyDataService_getServiceMetaData_result(SnappyDataService_getServiceMetaData_result&&);
+  SnappyDataService_getServiceMetaData_result(SnappyDataService_getServiceMetaData_result&&) noexcept;
   SnappyDataService_getServiceMetaData_result& operator=(const SnappyDataService_getServiceMetaData_result&);
-  SnappyDataService_getServiceMetaData_result& operator=(SnappyDataService_getServiceMetaData_result&&);
+  SnappyDataService_getServiceMetaData_result& operator=(SnappyDataService_getServiceMetaData_result&&) noexcept;
   SnappyDataService_getServiceMetaData_result() {
   }
 
-  virtual ~SnappyDataService_getServiceMetaData_result() throw();
+  virtual ~SnappyDataService_getServiceMetaData_result() noexcept;
   ServiceMetaData success;
   SnappyException error;
 
@@ -3840,7 +3840,7 @@ class SnappyDataService_getServiceMetaData_presult {
  public:
 
 
-  virtual ~SnappyDataService_getServiceMetaData_presult() throw();
+  virtual ~SnappyDataService_getServiceMetaData_presult() noexcept;
   ServiceMetaData* success;
   SnappyException error;
 
@@ -3860,13 +3860,13 @@ class SnappyDataService_getSchemaMetaData_args {
  public:
 
   SnappyDataService_getSchemaMetaData_args(const SnappyDataService_getSchemaMetaData_args&);
-  SnappyDataService_getSchemaMetaData_args(SnappyDataService_getSchemaMetaData_args&&);
+  SnappyDataService_getSchemaMetaData_args(SnappyDataService_getSchemaMetaData_args&&) noexcept;
   SnappyDataService_getSchemaMetaData_args& operator=(const SnappyDataService_getSchemaMetaData_args&);
-  SnappyDataService_getSchemaMetaData_args& operator=(SnappyDataService_getSchemaMetaData_args&&);
+  SnappyDataService_getSchemaMetaData_args& operator=(SnappyDataService_getSchemaMetaData_args&&) noexcept;
   SnappyDataService_getSchemaMetaData_args() : schemaCall((ServiceMetaDataCall::type)0) {
   }
 
-  virtual ~SnappyDataService_getSchemaMetaData_args() throw();
+  virtual ~SnappyDataService_getSchemaMetaData_args() noexcept;
   ServiceMetaDataCall::type schemaCall;
   ServiceMetaDataArgs metadataArgs;
 
@@ -3900,7 +3900,7 @@ class SnappyDataService_getSchemaMetaData_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getSchemaMetaData_pargs() throw();
+  virtual ~SnappyDataService_getSchemaMetaData_pargs() noexcept;
   const ServiceMetaDataCall::type* schemaCall;
   const ServiceMetaDataArgs* metadataArgs;
 
@@ -3918,13 +3918,13 @@ class SnappyDataService_getSchemaMetaData_result {
  public:
 
   SnappyDataService_getSchemaMetaData_result(const SnappyDataService_getSchemaMetaData_result&);
-  SnappyDataService_getSchemaMetaData_result(SnappyDataService_getSchemaMetaData_result&&);
+  SnappyDataService_getSchemaMetaData_result(SnappyDataService_getSchemaMetaData_result&&) noexcept;
   SnappyDataService_getSchemaMetaData_result& operator=(const SnappyDataService_getSchemaMetaData_result&);
-  SnappyDataService_getSchemaMetaData_result& operator=(SnappyDataService_getSchemaMetaData_result&&);
+  SnappyDataService_getSchemaMetaData_result& operator=(SnappyDataService_getSchemaMetaData_result&&) noexcept;
   SnappyDataService_getSchemaMetaData_result() {
   }
 
-  virtual ~SnappyDataService_getSchemaMetaData_result() throw();
+  virtual ~SnappyDataService_getSchemaMetaData_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -3963,7 +3963,7 @@ class SnappyDataService_getSchemaMetaData_presult {
  public:
 
 
-  virtual ~SnappyDataService_getSchemaMetaData_presult() throw();
+  virtual ~SnappyDataService_getSchemaMetaData_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -3984,13 +3984,13 @@ class SnappyDataService_getIndexInfo_args {
  public:
 
   SnappyDataService_getIndexInfo_args(const SnappyDataService_getIndexInfo_args&);
-  SnappyDataService_getIndexInfo_args(SnappyDataService_getIndexInfo_args&&);
+  SnappyDataService_getIndexInfo_args(SnappyDataService_getIndexInfo_args&&) noexcept;
   SnappyDataService_getIndexInfo_args& operator=(const SnappyDataService_getIndexInfo_args&);
-  SnappyDataService_getIndexInfo_args& operator=(SnappyDataService_getIndexInfo_args&&);
+  SnappyDataService_getIndexInfo_args& operator=(SnappyDataService_getIndexInfo_args&&) noexcept;
   SnappyDataService_getIndexInfo_args() : unique(0), approximate(0) {
   }
 
-  virtual ~SnappyDataService_getIndexInfo_args() throw();
+  virtual ~SnappyDataService_getIndexInfo_args() noexcept;
   ServiceMetaDataArgs metadataArgs;
   bool unique;
   bool approximate;
@@ -4029,7 +4029,7 @@ class SnappyDataService_getIndexInfo_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getIndexInfo_pargs() throw();
+  virtual ~SnappyDataService_getIndexInfo_pargs() noexcept;
   const ServiceMetaDataArgs* metadataArgs;
   const bool* unique;
   const bool* approximate;
@@ -4048,13 +4048,13 @@ class SnappyDataService_getIndexInfo_result {
  public:
 
   SnappyDataService_getIndexInfo_result(const SnappyDataService_getIndexInfo_result&);
-  SnappyDataService_getIndexInfo_result(SnappyDataService_getIndexInfo_result&&);
+  SnappyDataService_getIndexInfo_result(SnappyDataService_getIndexInfo_result&&) noexcept;
   SnappyDataService_getIndexInfo_result& operator=(const SnappyDataService_getIndexInfo_result&);
-  SnappyDataService_getIndexInfo_result& operator=(SnappyDataService_getIndexInfo_result&&);
+  SnappyDataService_getIndexInfo_result& operator=(SnappyDataService_getIndexInfo_result&&) noexcept;
   SnappyDataService_getIndexInfo_result() {
   }
 
-  virtual ~SnappyDataService_getIndexInfo_result() throw();
+  virtual ~SnappyDataService_getIndexInfo_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -4093,7 +4093,7 @@ class SnappyDataService_getIndexInfo_presult {
  public:
 
 
-  virtual ~SnappyDataService_getIndexInfo_presult() throw();
+  virtual ~SnappyDataService_getIndexInfo_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -4113,13 +4113,13 @@ class SnappyDataService_getUDTs_args {
  public:
 
   SnappyDataService_getUDTs_args(const SnappyDataService_getUDTs_args&);
-  SnappyDataService_getUDTs_args(SnappyDataService_getUDTs_args&&);
+  SnappyDataService_getUDTs_args(SnappyDataService_getUDTs_args&&) noexcept;
   SnappyDataService_getUDTs_args& operator=(const SnappyDataService_getUDTs_args&);
-  SnappyDataService_getUDTs_args& operator=(SnappyDataService_getUDTs_args&&);
+  SnappyDataService_getUDTs_args& operator=(SnappyDataService_getUDTs_args&&) noexcept;
   SnappyDataService_getUDTs_args() {
   }
 
-  virtual ~SnappyDataService_getUDTs_args() throw();
+  virtual ~SnappyDataService_getUDTs_args() noexcept;
   ServiceMetaDataArgs metadataArgs;
   std::vector<SnappyType::type>  types;
 
@@ -4153,7 +4153,7 @@ class SnappyDataService_getUDTs_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getUDTs_pargs() throw();
+  virtual ~SnappyDataService_getUDTs_pargs() noexcept;
   const ServiceMetaDataArgs* metadataArgs;
   const std::vector<SnappyType::type> * types;
 
@@ -4171,13 +4171,13 @@ class SnappyDataService_getUDTs_result {
  public:
 
   SnappyDataService_getUDTs_result(const SnappyDataService_getUDTs_result&);
-  SnappyDataService_getUDTs_result(SnappyDataService_getUDTs_result&&);
+  SnappyDataService_getUDTs_result(SnappyDataService_getUDTs_result&&) noexcept;
   SnappyDataService_getUDTs_result& operator=(const SnappyDataService_getUDTs_result&);
-  SnappyDataService_getUDTs_result& operator=(SnappyDataService_getUDTs_result&&);
+  SnappyDataService_getUDTs_result& operator=(SnappyDataService_getUDTs_result&&) noexcept;
   SnappyDataService_getUDTs_result() {
   }
 
-  virtual ~SnappyDataService_getUDTs_result() throw();
+  virtual ~SnappyDataService_getUDTs_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -4216,7 +4216,7 @@ class SnappyDataService_getUDTs_presult {
  public:
 
 
-  virtual ~SnappyDataService_getUDTs_presult() throw();
+  virtual ~SnappyDataService_getUDTs_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -4237,13 +4237,13 @@ class SnappyDataService_getBestRowIdentifier_args {
  public:
 
   SnappyDataService_getBestRowIdentifier_args(const SnappyDataService_getBestRowIdentifier_args&);
-  SnappyDataService_getBestRowIdentifier_args(SnappyDataService_getBestRowIdentifier_args&&);
+  SnappyDataService_getBestRowIdentifier_args(SnappyDataService_getBestRowIdentifier_args&&) noexcept;
   SnappyDataService_getBestRowIdentifier_args& operator=(const SnappyDataService_getBestRowIdentifier_args&);
-  SnappyDataService_getBestRowIdentifier_args& operator=(SnappyDataService_getBestRowIdentifier_args&&);
+  SnappyDataService_getBestRowIdentifier_args& operator=(SnappyDataService_getBestRowIdentifier_args&&) noexcept;
   SnappyDataService_getBestRowIdentifier_args() : scope(0), nullable(0) {
   }
 
-  virtual ~SnappyDataService_getBestRowIdentifier_args() throw();
+  virtual ~SnappyDataService_getBestRowIdentifier_args() noexcept;
   ServiceMetaDataArgs metadataArgs;
   int32_t scope;
   bool nullable;
@@ -4282,7 +4282,7 @@ class SnappyDataService_getBestRowIdentifier_pargs {
  public:
 
 
-  virtual ~SnappyDataService_getBestRowIdentifier_pargs() throw();
+  virtual ~SnappyDataService_getBestRowIdentifier_pargs() noexcept;
   const ServiceMetaDataArgs* metadataArgs;
   const int32_t* scope;
   const bool* nullable;
@@ -4301,13 +4301,13 @@ class SnappyDataService_getBestRowIdentifier_result {
  public:
 
   SnappyDataService_getBestRowIdentifier_result(const SnappyDataService_getBestRowIdentifier_result&);
-  SnappyDataService_getBestRowIdentifier_result(SnappyDataService_getBestRowIdentifier_result&&);
+  SnappyDataService_getBestRowIdentifier_result(SnappyDataService_getBestRowIdentifier_result&&) noexcept;
   SnappyDataService_getBestRowIdentifier_result& operator=(const SnappyDataService_getBestRowIdentifier_result&);
-  SnappyDataService_getBestRowIdentifier_result& operator=(SnappyDataService_getBestRowIdentifier_result&&);
+  SnappyDataService_getBestRowIdentifier_result& operator=(SnappyDataService_getBestRowIdentifier_result&&) noexcept;
   SnappyDataService_getBestRowIdentifier_result() {
   }
 
-  virtual ~SnappyDataService_getBestRowIdentifier_result() throw();
+  virtual ~SnappyDataService_getBestRowIdentifier_result() noexcept;
   RowSet success;
   SnappyException error;
 
@@ -4346,7 +4346,7 @@ class SnappyDataService_getBestRowIdentifier_presult {
  public:
 
 
-  virtual ~SnappyDataService_getBestRowIdentifier_presult() throw();
+  virtual ~SnappyDataService_getBestRowIdentifier_presult() noexcept;
   RowSet* success;
   SnappyException error;
 
@@ -4366,13 +4366,13 @@ class SnappyDataService_fetchActiveConnections_args {
  public:
 
   SnappyDataService_fetchActiveConnections_args(const SnappyDataService_fetchActiveConnections_args&);
-  SnappyDataService_fetchActiveConnections_args(SnappyDataService_fetchActiveConnections_args&&);
+  SnappyDataService_fetchActiveConnections_args(SnappyDataService_fetchActiveConnections_args&&) noexcept;
   SnappyDataService_fetchActiveConnections_args& operator=(const SnappyDataService_fetchActiveConnections_args&);
-  SnappyDataService_fetchActiveConnections_args& operator=(SnappyDataService_fetchActiveConnections_args&&);
+  SnappyDataService_fetchActiveConnections_args& operator=(SnappyDataService_fetchActiveConnections_args&&) noexcept;
   SnappyDataService_fetchActiveConnections_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_fetchActiveConnections_args() throw();
+  virtual ~SnappyDataService_fetchActiveConnections_args() noexcept;
   int32_t connId;
   std::string token;
 
@@ -4406,7 +4406,7 @@ class SnappyDataService_fetchActiveConnections_pargs {
  public:
 
 
-  virtual ~SnappyDataService_fetchActiveConnections_pargs() throw();
+  virtual ~SnappyDataService_fetchActiveConnections_pargs() noexcept;
   const int32_t* connId;
   const std::string* token;
 
@@ -4424,13 +4424,13 @@ class SnappyDataService_fetchActiveConnections_result {
  public:
 
   SnappyDataService_fetchActiveConnections_result(const SnappyDataService_fetchActiveConnections_result&);
-  SnappyDataService_fetchActiveConnections_result(SnappyDataService_fetchActiveConnections_result&&);
+  SnappyDataService_fetchActiveConnections_result(SnappyDataService_fetchActiveConnections_result&&) noexcept;
   SnappyDataService_fetchActiveConnections_result& operator=(const SnappyDataService_fetchActiveConnections_result&);
-  SnappyDataService_fetchActiveConnections_result& operator=(SnappyDataService_fetchActiveConnections_result&&);
+  SnappyDataService_fetchActiveConnections_result& operator=(SnappyDataService_fetchActiveConnections_result&&) noexcept;
   SnappyDataService_fetchActiveConnections_result() {
   }
 
-  virtual ~SnappyDataService_fetchActiveConnections_result() throw();
+  virtual ~SnappyDataService_fetchActiveConnections_result() noexcept;
   std::vector<ConnectionProperties>  success;
   SnappyException error;
 
@@ -4469,7 +4469,7 @@ class SnappyDataService_fetchActiveConnections_presult {
  public:
 
 
-  virtual ~SnappyDataService_fetchActiveConnections_presult() throw();
+  virtual ~SnappyDataService_fetchActiveConnections_presult() noexcept;
   std::vector<ConnectionProperties> * success;
   SnappyException error;
 
@@ -4489,13 +4489,13 @@ class SnappyDataService_fetchActiveStatements_args {
  public:
 
   SnappyDataService_fetchActiveStatements_args(const SnappyDataService_fetchActiveStatements_args&);
-  SnappyDataService_fetchActiveStatements_args(SnappyDataService_fetchActiveStatements_args&&);
+  SnappyDataService_fetchActiveStatements_args(SnappyDataService_fetchActiveStatements_args&&) noexcept;
   SnappyDataService_fetchActiveStatements_args& operator=(const SnappyDataService_fetchActiveStatements_args&);
-  SnappyDataService_fetchActiveStatements_args& operator=(SnappyDataService_fetchActiveStatements_args&&);
+  SnappyDataService_fetchActiveStatements_args& operator=(SnappyDataService_fetchActiveStatements_args&&) noexcept;
   SnappyDataService_fetchActiveStatements_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_fetchActiveStatements_args() throw();
+  virtual ~SnappyDataService_fetchActiveStatements_args() noexcept;
   int32_t connId;
   std::string token;
 
@@ -4529,7 +4529,7 @@ class SnappyDataService_fetchActiveStatements_pargs {
  public:
 
 
-  virtual ~SnappyDataService_fetchActiveStatements_pargs() throw();
+  virtual ~SnappyDataService_fetchActiveStatements_pargs() noexcept;
   const int32_t* connId;
   const std::string* token;
 
@@ -4547,13 +4547,13 @@ class SnappyDataService_fetchActiveStatements_result {
  public:
 
   SnappyDataService_fetchActiveStatements_result(const SnappyDataService_fetchActiveStatements_result&);
-  SnappyDataService_fetchActiveStatements_result(SnappyDataService_fetchActiveStatements_result&&);
+  SnappyDataService_fetchActiveStatements_result(SnappyDataService_fetchActiveStatements_result&&) noexcept;
   SnappyDataService_fetchActiveStatements_result& operator=(const SnappyDataService_fetchActiveStatements_result&);
-  SnappyDataService_fetchActiveStatements_result& operator=(SnappyDataService_fetchActiveStatements_result&&);
+  SnappyDataService_fetchActiveStatements_result& operator=(SnappyDataService_fetchActiveStatements_result&&) noexcept;
   SnappyDataService_fetchActiveStatements_result() {
   }
 
-  virtual ~SnappyDataService_fetchActiveStatements_result() throw();
+  virtual ~SnappyDataService_fetchActiveStatements_result() noexcept;
   std::map<int32_t, std::string>  success;
   SnappyException error;
 
@@ -4592,7 +4592,7 @@ class SnappyDataService_fetchActiveStatements_presult {
  public:
 
 
-  virtual ~SnappyDataService_fetchActiveStatements_presult() throw();
+  virtual ~SnappyDataService_fetchActiveStatements_presult() noexcept;
   std::map<int32_t, std::string> * success;
   SnappyException error;
 
@@ -4612,13 +4612,13 @@ class SnappyDataService_cancelStatement_args {
  public:
 
   SnappyDataService_cancelStatement_args(const SnappyDataService_cancelStatement_args&);
-  SnappyDataService_cancelStatement_args(SnappyDataService_cancelStatement_args&&);
+  SnappyDataService_cancelStatement_args(SnappyDataService_cancelStatement_args&&) noexcept;
   SnappyDataService_cancelStatement_args& operator=(const SnappyDataService_cancelStatement_args&);
-  SnappyDataService_cancelStatement_args& operator=(SnappyDataService_cancelStatement_args&&);
+  SnappyDataService_cancelStatement_args& operator=(SnappyDataService_cancelStatement_args&&) noexcept;
   SnappyDataService_cancelStatement_args() : stmtId(0), token() {
   }
 
-  virtual ~SnappyDataService_cancelStatement_args() throw();
+  virtual ~SnappyDataService_cancelStatement_args() noexcept;
   int32_t stmtId;
   std::string token;
 
@@ -4652,7 +4652,7 @@ class SnappyDataService_cancelStatement_pargs {
  public:
 
 
-  virtual ~SnappyDataService_cancelStatement_pargs() throw();
+  virtual ~SnappyDataService_cancelStatement_pargs() noexcept;
   const int32_t* stmtId;
   const std::string* token;
 
@@ -4669,13 +4669,13 @@ class SnappyDataService_cancelStatement_result {
  public:
 
   SnappyDataService_cancelStatement_result(const SnappyDataService_cancelStatement_result&);
-  SnappyDataService_cancelStatement_result(SnappyDataService_cancelStatement_result&&);
+  SnappyDataService_cancelStatement_result(SnappyDataService_cancelStatement_result&&) noexcept;
   SnappyDataService_cancelStatement_result& operator=(const SnappyDataService_cancelStatement_result&);
-  SnappyDataService_cancelStatement_result& operator=(SnappyDataService_cancelStatement_result&&);
+  SnappyDataService_cancelStatement_result& operator=(SnappyDataService_cancelStatement_result&&) noexcept;
   SnappyDataService_cancelStatement_result() {
   }
 
-  virtual ~SnappyDataService_cancelStatement_result() throw();
+  virtual ~SnappyDataService_cancelStatement_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_cancelStatement_result__isset __isset;
@@ -4708,7 +4708,7 @@ class SnappyDataService_cancelStatement_presult {
  public:
 
 
-  virtual ~SnappyDataService_cancelStatement_presult() throw();
+  virtual ~SnappyDataService_cancelStatement_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_cancelStatement_presult__isset __isset;
@@ -4727,13 +4727,13 @@ class SnappyDataService_closeResultSet_args {
  public:
 
   SnappyDataService_closeResultSet_args(const SnappyDataService_closeResultSet_args&);
-  SnappyDataService_closeResultSet_args(SnappyDataService_closeResultSet_args&&);
+  SnappyDataService_closeResultSet_args(SnappyDataService_closeResultSet_args&&) noexcept;
   SnappyDataService_closeResultSet_args& operator=(const SnappyDataService_closeResultSet_args&);
-  SnappyDataService_closeResultSet_args& operator=(SnappyDataService_closeResultSet_args&&);
+  SnappyDataService_closeResultSet_args& operator=(SnappyDataService_closeResultSet_args&&) noexcept;
   SnappyDataService_closeResultSet_args() : cursorId(0), token() {
   }
 
-  virtual ~SnappyDataService_closeResultSet_args() throw();
+  virtual ~SnappyDataService_closeResultSet_args() noexcept;
   int32_t cursorId;
   std::string token;
 
@@ -4767,7 +4767,7 @@ class SnappyDataService_closeResultSet_pargs {
  public:
 
 
-  virtual ~SnappyDataService_closeResultSet_pargs() throw();
+  virtual ~SnappyDataService_closeResultSet_pargs() noexcept;
   const int32_t* cursorId;
   const std::string* token;
 
@@ -4784,13 +4784,13 @@ class SnappyDataService_closeResultSet_result {
  public:
 
   SnappyDataService_closeResultSet_result(const SnappyDataService_closeResultSet_result&);
-  SnappyDataService_closeResultSet_result(SnappyDataService_closeResultSet_result&&);
+  SnappyDataService_closeResultSet_result(SnappyDataService_closeResultSet_result&&) noexcept;
   SnappyDataService_closeResultSet_result& operator=(const SnappyDataService_closeResultSet_result&);
-  SnappyDataService_closeResultSet_result& operator=(SnappyDataService_closeResultSet_result&&);
+  SnappyDataService_closeResultSet_result& operator=(SnappyDataService_closeResultSet_result&&) noexcept;
   SnappyDataService_closeResultSet_result() {
   }
 
-  virtual ~SnappyDataService_closeResultSet_result() throw();
+  virtual ~SnappyDataService_closeResultSet_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_closeResultSet_result__isset __isset;
@@ -4823,7 +4823,7 @@ class SnappyDataService_closeResultSet_presult {
  public:
 
 
-  virtual ~SnappyDataService_closeResultSet_presult() throw();
+  virtual ~SnappyDataService_closeResultSet_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_closeResultSet_presult__isset __isset;
@@ -4842,13 +4842,13 @@ class SnappyDataService_closeStatement_args {
  public:
 
   SnappyDataService_closeStatement_args(const SnappyDataService_closeStatement_args&);
-  SnappyDataService_closeStatement_args(SnappyDataService_closeStatement_args&&);
+  SnappyDataService_closeStatement_args(SnappyDataService_closeStatement_args&&) noexcept;
   SnappyDataService_closeStatement_args& operator=(const SnappyDataService_closeStatement_args&);
-  SnappyDataService_closeStatement_args& operator=(SnappyDataService_closeStatement_args&&);
+  SnappyDataService_closeStatement_args& operator=(SnappyDataService_closeStatement_args&&) noexcept;
   SnappyDataService_closeStatement_args() : stmtId(0), token() {
   }
 
-  virtual ~SnappyDataService_closeStatement_args() throw();
+  virtual ~SnappyDataService_closeStatement_args() noexcept;
   int32_t stmtId;
   std::string token;
 
@@ -4882,7 +4882,7 @@ class SnappyDataService_closeStatement_pargs {
  public:
 
 
-  virtual ~SnappyDataService_closeStatement_pargs() throw();
+  virtual ~SnappyDataService_closeStatement_pargs() noexcept;
   const int32_t* stmtId;
   const std::string* token;
 
@@ -4899,13 +4899,13 @@ class SnappyDataService_closeStatement_result {
  public:
 
   SnappyDataService_closeStatement_result(const SnappyDataService_closeStatement_result&);
-  SnappyDataService_closeStatement_result(SnappyDataService_closeStatement_result&&);
+  SnappyDataService_closeStatement_result(SnappyDataService_closeStatement_result&&) noexcept;
   SnappyDataService_closeStatement_result& operator=(const SnappyDataService_closeStatement_result&);
-  SnappyDataService_closeStatement_result& operator=(SnappyDataService_closeStatement_result&&);
+  SnappyDataService_closeStatement_result& operator=(SnappyDataService_closeStatement_result&&) noexcept;
   SnappyDataService_closeStatement_result() {
   }
 
-  virtual ~SnappyDataService_closeStatement_result() throw();
+  virtual ~SnappyDataService_closeStatement_result() noexcept;
   SnappyException error;
 
   _SnappyDataService_closeStatement_result__isset __isset;
@@ -4938,7 +4938,7 @@ class SnappyDataService_closeStatement_presult {
  public:
 
 
-  virtual ~SnappyDataService_closeStatement_presult() throw();
+  virtual ~SnappyDataService_closeStatement_presult() noexcept;
   SnappyException error;
 
   _SnappyDataService_closeStatement_presult__isset __isset;
@@ -4957,13 +4957,13 @@ class SnappyDataService_closeConnection_args {
  public:
 
   SnappyDataService_closeConnection_args(const SnappyDataService_closeConnection_args&);
-  SnappyDataService_closeConnection_args(SnappyDataService_closeConnection_args&&);
+  SnappyDataService_closeConnection_args(SnappyDataService_closeConnection_args&&) noexcept;
   SnappyDataService_closeConnection_args& operator=(const SnappyDataService_closeConnection_args&);
-  SnappyDataService_closeConnection_args& operator=(SnappyDataService_closeConnection_args&&);
+  SnappyDataService_closeConnection_args& operator=(SnappyDataService_closeConnection_args&&) noexcept;
   SnappyDataService_closeConnection_args() : connId(0), token() {
   }
 
-  virtual ~SnappyDataService_closeConnection_args() throw();
+  virtual ~SnappyDataService_closeConnection_args() noexcept;
   int32_t connId;
   std::string token;
 
@@ -4997,7 +4997,7 @@ class SnappyDataService_closeConnection_pargs {
  public:
 
 
-  virtual ~SnappyDataService_closeConnection_pargs() throw();
+  virtual ~SnappyDataService_closeConnection_pargs() noexcept;
   const int32_t* connId;
   const std::string* token;
 
@@ -5014,13 +5014,13 @@ class SnappyDataService_bulkClose_args {
  public:
 
   SnappyDataService_bulkClose_args(const SnappyDataService_bulkClose_args&);
-  SnappyDataService_bulkClose_args(SnappyDataService_bulkClose_args&&);
+  SnappyDataService_bulkClose_args(SnappyDataService_bulkClose_args&&) noexcept;
   SnappyDataService_bulkClose_args& operator=(const SnappyDataService_bulkClose_args&);
-  SnappyDataService_bulkClose_args& operator=(SnappyDataService_bulkClose_args&&);
+  SnappyDataService_bulkClose_args& operator=(SnappyDataService_bulkClose_args&&) noexcept;
   SnappyDataService_bulkClose_args() {
   }
 
-  virtual ~SnappyDataService_bulkClose_args() throw();
+  virtual ~SnappyDataService_bulkClose_args() noexcept;
   std::vector<EntityId>  entities;
 
   _SnappyDataService_bulkClose_args__isset __isset;
@@ -5049,7 +5049,7 @@ class SnappyDataService_bulkClose_pargs {
  public:
 
 
-  virtual ~SnappyDataService_bulkClose_pargs() throw();
+  virtual ~SnappyDataService_bulkClose_pargs() noexcept;
   const std::vector<EntityId> * entities;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;

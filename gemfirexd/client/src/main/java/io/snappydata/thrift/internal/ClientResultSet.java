@@ -317,6 +317,9 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
   private void setCurrentRow(Row row) {
     this.currentRow = row;
+    if (this.cursorOperationType != null) {
+      this.cursorOperationType = null;
+    }
   }
 
   /**

@@ -89,8 +89,7 @@ ControlConnection::ControlConnection() {
     }
   }
 
-const std::vector<AutoPtr<ControlConnection> > ControlConnection::
-    s_allConnections(2);
+const std::vector<ControlConnection> ControlConnection::s_allConnections(2);
 const std::mutex ControlConnection::s_allConnsLock;
 
 ControlConnection::ControlConnection(const ClientService& service) :
@@ -98,20 +97,18 @@ ControlConnection::ControlConnection(const ClientService& service) :
         boost::assign::list_of(service.m_reqdServerType)), m_locators(
             service.m_locators), m_controlHost(), m_controlLocator(),
         m_controlHosts(service.m_connHosts), m_controlHostSet(
-            service.m_connHosts), m_serverGroups(service.m_serverGroups)
-{
+            service.m_connHosts), m_serverGroups(service.m_serverGroups) {
 }
 
-const AutoPtr<ControlConnection>& ControlConnection::getOrCreateControlConnection(
-    const thrift::HostAddress& hostAddr, const ClientService& service)
-{
+const ControlConnection& ControlConnection::getOrCreateControlConnection(
+    const thrift::HostAddress& hostAddr, const ClientService& service) {
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
   std::lock_guard<std::mutex> globalGuard(s_allConnsLock);
 
   size_t index = s_allConnections.size();
   while (--index >= 0) {
-    AutoPtr<ControlConnection>& controlService = s_allConnections[index];
+    std::unique_ptr<ControlConnection>& controlService = s_allConnections[index];
 
     std::lock_guard<std::mutex> serviceGuard(
         controlService->m_lock);
@@ -121,7 +118,7 @@ const AutoPtr<ControlConnection>& ControlConnection::getOrCreateControlConnectio
     }
   }
   // if we reached here, then need to create a new ControlConnection
-  AutoPtr<ControlConnection> controlService = new ControlConnection(
+  std::unique_ptr<ControlConnection> controlService = new ControlConnection(
       service);
   std::set<thrift::HostAddress> emptyServers;
   controlService->getPreferredServer(emptyServers, true);

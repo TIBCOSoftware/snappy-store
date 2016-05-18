@@ -50,13 +50,13 @@ class StatementResult {
  public:
 
   StatementResult(const StatementResult&);
-  StatementResult(StatementResult&&);
+  StatementResult(StatementResult&&) noexcept;
   StatementResult& operator=(const StatementResult&);
-  StatementResult& operator=(StatementResult&&);
+  StatementResult& operator=(StatementResult&&) noexcept;
   StatementResult() : updateCount(0) {
   }
 
-  virtual ~StatementResult() throw();
+  virtual ~StatementResult() noexcept;
   RowSet resultSet;
   int32_t updateCount;
   std::vector<int32_t>  batchUpdateCounts;
@@ -125,7 +125,7 @@ class StatementResult {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(StatementResult &a, StatementResult &b);
+void swap(StatementResult &a, StatementResult &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const StatementResult& obj)
 {

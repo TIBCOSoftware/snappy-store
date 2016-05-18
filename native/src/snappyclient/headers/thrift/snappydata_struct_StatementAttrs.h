@@ -51,13 +51,13 @@ class StatementAttrs {
  public:
 
   StatementAttrs(const StatementAttrs&);
-  StatementAttrs(StatementAttrs&&);
+  StatementAttrs(StatementAttrs&&) noexcept;
   StatementAttrs& operator=(const StatementAttrs&);
-  StatementAttrs& operator=(StatementAttrs&&);
+  StatementAttrs& operator=(StatementAttrs&&) noexcept;
   StatementAttrs() : resultSetType(0), updatable(0), holdCursorsOverCommit(0), requireAutoIncCols(0), batchSize(1024), fetchReverse(0), lobChunkSize(0), maxRows(0), maxFieldSize(0), timeout(0), cursorName(), possibleDuplicate(0), poolable(0), doEscapeProcessing(0) {
   }
 
-  virtual ~StatementAttrs() throw();
+  virtual ~StatementAttrs() noexcept;
   int8_t resultSetType;
   bool updatable;
   bool holdCursorsOverCommit;
@@ -196,7 +196,7 @@ class StatementAttrs {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(StatementAttrs &a, StatementAttrs &b);
+void swap(StatementAttrs &a, StatementAttrs &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const StatementAttrs& obj)
 {

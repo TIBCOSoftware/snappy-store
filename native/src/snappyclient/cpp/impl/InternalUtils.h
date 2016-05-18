@@ -70,22 +70,6 @@ namespace impl {
   typedef boost::chrono::high_resolution_clock::duration NanoDurationThread;
 #endif
 
-  struct ClearService {
-    void*& m_serviceId;
-    ClientService** m_servicep;
-
-    ~ClearService() {
-      void* serviceId = m_serviceId;
-      if (m_servicep != NULL) {
-        *m_servicep = NULL;
-      }
-      if (serviceId != NULL) {
-        m_serviceId = NULL;
-        ClientServiceHolder::instance().decrementReferenceCount(serviceId);
-      }
-    }
-  };
-
   class InternalUtils {
   public:
     /** array to convert bytes to hex */
@@ -172,10 +156,10 @@ namespace impl {
     FreePointer& operator=(const FreePointer&); // disable assignment
 
   public:
-    FreePointer(void* p) throw () : m_p(p) {
+    FreePointer(void* p) noexcept : m_p(p) {
     }
 
-    void reset(void* p) throw () {
+    void reset(void* p) noexcept {
       m_p = p;
     }
 

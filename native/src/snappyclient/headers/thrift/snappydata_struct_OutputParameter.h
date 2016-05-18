@@ -41,13 +41,13 @@ class OutputParameter {
  public:
 
   OutputParameter(const OutputParameter&);
-  OutputParameter(OutputParameter&&);
+  OutputParameter(OutputParameter&&) noexcept;
   OutputParameter& operator=(const OutputParameter&);
-  OutputParameter& operator=(OutputParameter&&);
+  OutputParameter& operator=(OutputParameter&&) noexcept;
   OutputParameter() : type((SnappyType::type)0), scale(0), typeName() {
   }
 
-  virtual ~OutputParameter() throw();
+  virtual ~OutputParameter() noexcept;
   SnappyType::type type;
   int32_t scale;
   std::string typeName;
@@ -86,7 +86,7 @@ class OutputParameter {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(OutputParameter &a, OutputParameter &b);
+void swap(OutputParameter &a, OutputParameter &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const OutputParameter& obj)
 {

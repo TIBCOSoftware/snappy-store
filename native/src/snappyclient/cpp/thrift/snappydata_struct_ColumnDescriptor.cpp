@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-ColumnDescriptor::~ColumnDescriptor() throw() {
+ColumnDescriptor::~ColumnDescriptor() noexcept {
 }
 
 
@@ -328,8 +328,9 @@ uint32_t ColumnDescriptor::write(::apache::thrift::protocol::TProtocol* oprot) c
   return xfer;
 }
 
-void swap(ColumnDescriptor &a, ColumnDescriptor &b) {
+void swap(ColumnDescriptor &a, ColumnDescriptor &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.type, b.type);
   swap(a.precision, b.precision);
   swap(a.scale, b.scale);
@@ -362,7 +363,7 @@ ColumnDescriptor::ColumnDescriptor(const ColumnDescriptor& other244) {
   udtTypeAndClassName = other244.udtTypeAndClassName;
   __isset = other244.__isset;
 }
-ColumnDescriptor::ColumnDescriptor( ColumnDescriptor&& other245) {
+ColumnDescriptor::ColumnDescriptor( ColumnDescriptor&& other245) noexcept {
   type = std::move(other245.type);
   precision = std::move(other245.precision);
   scale = std::move(other245.scale);
@@ -395,7 +396,7 @@ ColumnDescriptor& ColumnDescriptor::operator=(const ColumnDescriptor& other246) 
   __isset = other246.__isset;
   return *this;
 }
-ColumnDescriptor& ColumnDescriptor::operator=(ColumnDescriptor&& other247) {
+ColumnDescriptor& ColumnDescriptor::operator=(ColumnDescriptor&& other247) noexcept {
   type = std::move(other247.type);
   precision = std::move(other247.precision);
   scale = std::move(other247.scale);

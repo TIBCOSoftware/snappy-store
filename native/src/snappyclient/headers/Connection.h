@@ -54,6 +54,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <memory>
 
 namespace io {
 namespace snappydata {
@@ -124,35 +125,34 @@ namespace client {
     static const ConnectionProperty& getProperty(
         const std::string& propertyName);
 
-    inline const std::string& getPropertyName() const throw () {
+    const std::string& getPropertyName() const noexcept {
       return m_propName;
     }
 
-    inline const std::string& getHelpMessage() const throw () {
+    const std::string& getHelpMessage() const noexcept {
       return m_helpMessage;
     }
 
-    inline const std::vector<std::string>* getPossibleValues() const throw () {
-      return &m_possibleValues;
+    const std::vector<std::string>& getPossibleValues() const noexcept {
+      return m_possibleValues;
     }
 
-    const int getFlags() const throw () {
+    const int getFlags() const noexcept {
       return m_flags;
     }
   };
 
   class Connection {
   private:
-    impl::ClientService* m_service;
-    void* m_serviceId;
-    AutoPtr<SQLWarning> m_warnings;
-    AutoPtr<DatabaseMetaData> m_metadata;
+    std::shared_ptr<impl::ClientService> m_service;
+    std::unique_ptr<SQLWarning> m_warnings;
+    std::unique_ptr<DatabaseMetaData> m_metadata;
     ResultSetHoldability::type m_defaultHoldability;
 
     // no copy constructor or assignment operator due to obvious issues
     // with usage of same connection by multiple thread concurrently
-    Connection(const Connection&);
-    Connection& operator=(const Connection&);
+    Connection(const Connection&) = delete;
+    Connection& operator=(const Connection&) = delete;
 
     void open(const std::string& host, const int port,
         thrift::OpenConnectionArgs& connArgs);
@@ -164,9 +164,11 @@ namespace client {
         std::map<int32_t, thrift::OutputParameter>& result);
 
   public:
-    Connection() : m_service(NULL), m_serviceId(NULL), m_warnings(NULL),
+    Connection() : m_service(), m_warnings(),
         m_metadata(), m_defaultHoldability(ResultSetHoldability::NONE) {
     }
+
+    static const DriverType::type DRIVER_TYPE = DriverType::ODBC;
 
     void open(const std::string& host, const int port);
 
@@ -180,16 +182,15 @@ namespace client {
         const std::string& user, const std::string& password,
         const std::map<std::string, std::string>& properties);
 
-    inline bool isOpen() const throw () {
+    inline bool isOpen() const noexcept {
       return m_service != NULL;
     }
 
     inline impl::ClientService& checkAndGetService() const {
-      impl::ClientService* service = m_service;
-      if (service != NULL) {
-        return *service;
+      if (m_service != NULL) {
+        return *m_service;
       } else {
-        throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG);
+        throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG1);
       }
     }
 
@@ -213,35 +214,37 @@ namespace client {
 
     int getReceiveTimeout() const;
 
-    AutoPtr<Result> execute(const std::string& sql,
+    std::unique_ptr<Result> execute(const std::string& sql,
         const std::map<int32_t, OutputParameter>& outputParams =
             EMPTY_OUTPUT_PARAMS, const StatementAttributes& attrs =
             StatementAttributes::EMPTY);
 
-    AutoPtr<ResultSet> executeQuery(const std::string& sql,
+    std::unique_ptr<ResultSet> executeQuery(const std::string& sql,
         const StatementAttributes& attrs = StatementAttributes::EMPTY);
 
     int32_t executeUpdate(const std::string& sql,
         const StatementAttributes& attrs = StatementAttributes::EMPTY);
 
-    AutoPtr<std::vector<int32_t> > executeBatch(
+    std::unique_ptr<std::vector<int32_t> > executeBatch(
         const std::vector<std::string>& batchSQLs,
         const StatementAttributes& attrs = StatementAttributes::EMPTY);
 
-    AutoPtr<SQLWarning> getWarnings();
+    inline const SQLWarning* getWarnings() const {
+      return m_warnings.get();
+    }
 
-    AutoPtr<PreparedStatement> prepareStatement(const std::string& sql,
+    std::unique_ptr<PreparedStatement> prepareStatement(const std::string& sql,
         const std::map<int32_t, OutputParameter>& outputParams =
             EMPTY_OUTPUT_PARAMS, const StatementAttributes& attrs =
             StatementAttributes::EMPTY);
 
-    AutoPtr<Result> prepareAndExecute(const std::string& sql,
+    std::unique_ptr<Result> prepareAndExecute(const std::string& sql,
         const Parameters& params,
         const std::map<int32_t, OutputParameter>& outputParams =
             EMPTY_OUTPUT_PARAMS, const StatementAttributes& attrs =
             StatementAttributes::EMPTY);
 
-    AutoPtr<Result> prepareAndExecuteBatch(const std::string& sql,
+    std::unique_ptr<Result> prepareAndExecuteBatch(const std::string& sql,
         const ParametersBatch& paramsBatch,
         const std::map<int32_t, OutputParameter>& outputParams =
             EMPTY_OUTPUT_PARAMS, const StatementAttributes& attrs =
@@ -266,40 +269,39 @@ namespace client {
 
     const std::string getNativeSQL(const std::string& sql) const;
 
-    ResultSetHoldability::type getResultSetHoldability() const throw ();
+    ResultSetHoldability::type getResultSetHoldability() const noexcept;
 
     // TODO: holdability is not yet carried through to thrift API calls
     // Snappy server does not yet implement HOLD_CURSORS so its okay for now
-    void setResultSetHoldability(
-        ResultSetHoldability::type holdability) throw ();
+    void setResultSetHoldability(ResultSetHoldability::type holdability);
 
     // metadata API
 
-    AutoPtr<DatabaseMetaData> getServiceMetaData();
+    const DatabaseMetaData* getServiceMetaData();
 
-    AutoPtr<ResultSet> getSchemaMetaData(
+    std::unique_ptr<ResultSet> getSchemaMetaData(
         const DatabaseMetaDataCall::type method,
-        DatabaseMetaDataArgs& args, const DriverType::type driverType =
-            DriverType::ODBC);
+        DatabaseMetaDataArgs& args,
+        const DriverType::type driverType = DRIVER_TYPE);
 
-    AutoPtr<ResultSet> getIndexInfo(DatabaseMetaDataArgs& args,
+    std::unique_ptr<ResultSet> getIndexInfo(DatabaseMetaDataArgs& args,
         bool unique, bool approximate,
-        const DriverType::type driverType = DriverType::ODBC);
+        const DriverType::type driverType = DRIVER_TYPE);
 
-    AutoPtr<ResultSet> getUDTs(DatabaseMetaDataArgs& args,
+    std::unique_ptr<ResultSet> getUDTs(DatabaseMetaDataArgs& args,
         const std::string& typeNamePattern,
         const std::vector<SQLType::type>& types,
-        const DriverType::type driverType = DriverType::ODBC);
+        const DriverType::type driverType = DRIVER_TYPE);
 
-    AutoPtr<ResultSet> getBestRowIdentifier(
+    std::unique_ptr<ResultSet> getBestRowIdentifier(
         DatabaseMetaDataArgs& metadaArgs, int32_t scope, bool nullable,
-        const DriverType::type driverType = DriverType::ODBC);
+        const DriverType::type driverType = DRIVER_TYPE);
 
     // end metadata API
 
     void close();
 
-    ~Connection() throw ();
+    ~Connection();
   };
 
 } /* namespace client */

@@ -37,7 +37,6 @@
 #define CLIENTBASE_H_
 
 #include "common/Base.h"
-#include "common/AutoPtr.h"
 #include "common/SystemProperties.h"
 #include "messages/SQLStateMessage.h"
 
@@ -104,43 +103,52 @@ namespace client {
   struct DatabaseFeature : public thrift::ServiceFeature {
   };
 
-  namespace DriverType {
-    enum type {
-      JDBC = 1,
-      ODBC = 2
+  struct DriverType {
+    enum type : int8_t {
+      JDBC = thrift::snappydataConstants::DRIVER_JDBC,
+      ODBC = thrift::snappydataConstants::DRIVER_ODBC
     };
-  }
+  };
 
-  namespace ResultSetType {
-    enum type {
-      TYPE_FORWARD_ONLY = 1,
-      TYPE_INSENSITIVE = 2,
-      TYPE_SENSITIVE = 3
+  struct ResultSetType {
+    enum type : int8_t {
+      FORWARD_ONLY = thrift::snappydataConstants::RESULTSET_TYPE_FORWARD_ONLY,
+      INSENSITIVE = thrift::snappydataConstants::RESULTSET_TYPE_INSENSITIVE,
+      SENSITIVE = thrift::snappydataConstants::RESULTSET_TYPE_SENSITIVE,
+      UNKNOWN = thrift::snappydataConstants::RESULTSET_TYPE_UNKNOWN
     };
-  }
+  };
 
-  namespace ResultSetHoldability {
-    enum type {
+  struct ResultSetHoldability {
+    enum type : int8_t {
       NONE = 0,
       CLOSE_CURSORS_OVER_COMMIT = 1,
       HOLD_CURSORS_OVER_COMMIT = 2
     };
-  }
+  };
 
   /**
    * Keeping the values below the same as the Thrift IDL. Unfortunately
    * the C++ genertor does not have these as constants rather as statics.
    */
-  namespace IsolationLevel {
-    enum type {
-      NONE = 0,
-      READ_UNCOMMITTED = 1,
-      READ_COMMITTED = 2,
-      REPEATABLE_READ = 4,
-      SERIALIZABLE = 8,
-      NO_CHANGE = 64
+  struct IsolationLevel {
+    enum type : int8_t {
+      NONE = thrift::snappydataConstants::TRANSACTION_NONE,
+      READ_UNCOMMITTED = thrift::snappydataConstants::TRANSACTION_READ_UNCOMMITTED,
+      READ_COMMITTED = thrift::snappydataConstants::TRANSACTION_READ_COMMITTED,
+      REPEATABLE_READ = thrift::snappydataConstants::TRANSACTION_REPEATABLE_READ,
+      SERIALIZABLE = thrift::snappydataConstants::TRANSACTION_SERIALIZABLE,
+      NO_CHANGE = thrift::snappydataConstants::TRANSACTION_NO_CHANGE
     };
-  }
+  };
+
+  struct NextResultSetBehaviour {
+    enum type : int8_t {
+      CLOSE_ALL = thrift::snappydataConstants::NEXTRS_CLOSE_ALL_RESULTS,
+      CLOSE_CURRENT = thrift::snappydataConstants::NEXTRS_CLOSE_CURRENT_RESULT,
+      KEEP_CURRENT = thrift::snappydataConstants::NEXTRS_KEEP_CURRENT_RESULT
+    };
+  };
 
   struct TransactionAttribute : public thrift::TransactionAttribute {
   };
@@ -157,39 +165,39 @@ namespace client {
       m_outParam.__set_type(type);
     }
 
-    const thrift::OutputParameter& getThriftOutputParameter() const throw () {
+    const thrift::OutputParameter& getThriftOutputParameter() const noexcept {
       return m_outParam;
     }
 
-    void setType(SQLType::type type) throw () {
+    void setType(SQLType::type type) noexcept {
       m_outParam.__set_type(type);
     }
 
-    SQLType::type getType() const throw () {
+    SQLType::type getType() const noexcept {
       return m_outParam.type;
     }
 
-    void setScale(const int32_t scale) throw () {
+    void setScale(const int32_t scale) noexcept {
       m_outParam.__set_scale(scale);
     }
 
-    int32_t getScale() const throw () {
+    int32_t getScale() const noexcept {
       return m_outParam.scale;
     }
 
-    bool isSetScale() const throw () {
+    bool isSetScale() const noexcept {
       return m_outParam.__isset.scale;
     }
 
-    void setTypeName(const std::string& typeName) throw () {
+    void setTypeName(const std::string& typeName) noexcept {
       m_outParam.__set_typeName(typeName);
     }
 
-    const std::string& getTypeName() const throw () {
+    const std::string& getTypeName() const noexcept {
       return m_outParam.typeName;
     }
 
-    bool isSetTypeName() const throw () {
+    bool isSetTypeName() const noexcept {
       return m_outParam.__isset.typeName;
     }
   };
@@ -206,7 +214,7 @@ namespace client {
     class Clob;
     class DateTime;
     class Decimal;
-    class JSONObject;
+    class JSON;
     class Timestamp;
   } /* namespace types */
 

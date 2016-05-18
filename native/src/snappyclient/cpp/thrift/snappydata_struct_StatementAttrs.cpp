@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-StatementAttrs::~StatementAttrs() throw() {
+StatementAttrs::~StatementAttrs() noexcept {
 }
 
 
@@ -440,8 +440,9 @@ uint32_t StatementAttrs::write(::apache::thrift::protocol::TProtocol* oprot) con
   return xfer;
 }
 
-void swap(StatementAttrs &a, StatementAttrs &b) {
+void swap(StatementAttrs &a, StatementAttrs &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.resultSetType, b.resultSetType);
   swap(a.updatable, b.updatable);
   swap(a.holdCursorsOverCommit, b.holdCursorsOverCommit);
@@ -482,7 +483,7 @@ StatementAttrs::StatementAttrs(const StatementAttrs& other204) {
   pendingTransactionAttrs = other204.pendingTransactionAttrs;
   __isset = other204.__isset;
 }
-StatementAttrs::StatementAttrs( StatementAttrs&& other205) {
+StatementAttrs::StatementAttrs( StatementAttrs&& other205) noexcept {
   resultSetType = std::move(other205.resultSetType);
   updatable = std::move(other205.updatable);
   holdCursorsOverCommit = std::move(other205.holdCursorsOverCommit);
@@ -523,7 +524,7 @@ StatementAttrs& StatementAttrs::operator=(const StatementAttrs& other206) {
   __isset = other206.__isset;
   return *this;
 }
-StatementAttrs& StatementAttrs::operator=(StatementAttrs&& other207) {
+StatementAttrs& StatementAttrs::operator=(StatementAttrs&& other207) noexcept {
   resultSetType = std::move(other207.resultSetType);
   updatable = std::move(other207.updatable);
   holdCursorsOverCommit = std::move(other207.holdCursorsOverCommit);

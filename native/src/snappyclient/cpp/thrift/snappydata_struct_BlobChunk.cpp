@@ -18,12 +18,12 @@
 #include <algorithm>
 #include <ostream>
 
-#include <thrift/TToString.h>
+#include "Utils.h"
 
 namespace io { namespace snappydata { namespace thrift {
 
 
-BlobChunk::~BlobChunk() throw() {
+BlobChunk::~BlobChunk() noexcept {
 }
 
 
@@ -160,8 +160,9 @@ uint32_t BlobChunk::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(BlobChunk &a, BlobChunk &b) {
+void swap(BlobChunk &a, BlobChunk &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.chunk, b.chunk);
   swap(a.last, b.last);
   swap(a.lobId, b.lobId);
@@ -178,7 +179,7 @@ BlobChunk::BlobChunk(const BlobChunk& other44) {
   totalLength = other44.totalLength;
   __isset = other44.__isset;
 }
-BlobChunk::BlobChunk( BlobChunk&& other45) {
+BlobChunk::BlobChunk( BlobChunk&& other45) noexcept {
   chunk = std::move(other45.chunk);
   last = std::move(other45.last);
   lobId = std::move(other45.lobId);
@@ -195,7 +196,7 @@ BlobChunk& BlobChunk::operator=(const BlobChunk& other46) {
   __isset = other46.__isset;
   return *this;
 }
-BlobChunk& BlobChunk::operator=(BlobChunk&& other47) {
+BlobChunk& BlobChunk::operator=(BlobChunk&& other47) noexcept {
   chunk = std::move(other47.chunk);
   last = std::move(other47.last);
   lobId = std::move(other47.lobId);
@@ -205,14 +206,22 @@ BlobChunk& BlobChunk::operator=(BlobChunk&& other47) {
   return *this;
 }
 void BlobChunk::printTo(std::ostream& out) const {
-  using ::apache::thrift::to_string;
-  out << "BlobChunk(";
-  out << "chunk=" << to_string(chunk);
-  out << ", " << "last=" << to_string(last);
-  out << ", " << "lobId="; (__isset.lobId ? (out << to_string(lobId)) : (out << "<null>"));
-  out << ", " << "offset="; (__isset.offset ? (out << to_string(offset)) : (out << "<null>"));
-  out << ", " << "totalLength="; (__isset.totalLength ? (out << to_string(totalLength)) : (out << "<null>"));
-  out << ")";
+  // print the bytes in hex form and not as string
+  out << "BlobChunk(chunk=0x";
+  client::Utils::toHexString(chunk.data(), chunk.size(), out);
+  if (last) {
+    out << ", last=true";
+  }
+  if (__isset.lobId) {
+    out << ", lobId=" << lobId;
+  }
+  if (__isset.offset) {
+    out << ", offset=" << offset;
+  }
+  if (__isset.totalLength) {
+    out << ", totalLength=" << totalLength;
+  }
+  out << ')';
 }
 
 }}} // namespace

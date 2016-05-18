@@ -184,14 +184,14 @@ void BufferedSocketTransport::setSendBufferSize(uint32_t wsz) {
   }
 }
 
-uint32_t BufferedSocketTransport::getReceiveBufferSize() const throw () {
+uint32_t BufferedSocketTransport::getReceiveBufferSize() const noexcept {
   return rBufSize_;
 }
 
-uint32_t BufferedSocketTransport::getSendBufferSize() const throw () {
+uint32_t BufferedSocketTransport::getSendBufferSize() const noexcept {
   return wBufSize_;
 }
 
-TSocket* BufferedSocketTransport::getSocket() const throw () {
+TSocket* BufferedSocketTransport::getSocket() const noexcept {
   return static_cast<TSocket*>(transport_.get());
 }

@@ -13,7 +13,7 @@ export PATH LD_LIBRARY_PATH
 
 CPP_HEADERS="SnappyDataService.h LocatorService.h snappydata_struct_SnappyException.h"
 
-thrift --gen "cpp:struct_separate_files=true,moveable_types=true,no_concurrent_client=true,no_recursion_limit=true" ../../../shared/src/main/java/io/snappydata/thrift/common/snappydata.thrift && rm -rf cpp/thrift/ && rm -rf headers/thrift/ && mv gen-cpp cpp/thrift && rm cpp/thrift/*skele* && mkdir -p headers/thrift && mv cpp/thrift/*.h headers/thrift/.
+thrift --gen "cpp:struct_separate_files=true,moveable_types=true,no_concurrent_client=true,no_recursion_limit=true" ../../../gemfirexd/shared/src/main/java/io/snappydata/thrift/common/snappydata.thrift && rm -rf cpp/thrift/ && rm -rf headers/thrift/ && mv gen-cpp cpp/thrift && rm cpp/thrift/*skele* && mkdir -p headers/thrift && mv cpp/thrift/*.h headers/thrift/.
 
 # copy all files from overrides
 for tname in overrides/*cpp; do

@@ -43,7 +43,6 @@
 #include <boost/make_shared.hpp>
 #include <boost/asio.hpp>
 #include <boost/log/attributes/current_process_id.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/chrono/process_cpu_clocks.hpp>
 
@@ -123,7 +122,7 @@ void ClientService::staticInitialize(
     // use process ID and timestamp for ID
     boost::log::process_id::native_type pid =
         boost::log::attributes::current_process_id().get().native_id();
-    s_hostId = boost::lexical_cast<std::string>(pid);
+    s_hostId = std::to_string(pid);
     s_hostId.append(1, '|');
     boost::posix_time::ptime currentTime =
         boost::posix_time::microsec_clock::universal_time();
@@ -163,6 +162,18 @@ void ClientService::staticInitialize(
   }
 }
 
+void ClientService::checkConnection(const char* op) {
+  protocol::TProtocol* protocol = m_client.getProtocol();
+  boost::shared_ptr<transport::TTransport> transport;
+  if (protocol == NULL || (transport = protocol->getTransport()) == NULL
+      || !transport->isOpen()) {
+    std::ostringstream server;
+    Utils::toStream(server, m_currentHostAddr);
+    throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG2,
+        server.str().c_str(), op);
+  }
+}
+
 void ClientService::handleStdException(const char* op,
     const std::exception& stde) {
   std::ostringstream reason;
@@ -173,6 +184,8 @@ void ClientService::handleStdException(const char* op,
 }
 
 void ClientService::handleUnknownException(const char* op) {
+  checkConnection(op);
+
   std::string reason;
   reason.append("Unknown exception in operation ").append(op);
   throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, reason.c_str());
@@ -184,16 +197,22 @@ void ClientService::handleSnappyException(const thrift::SnappyException& se) {
 
 void ClientService::handleTTransportException(const char* op,
     const TTransportException& tte) {
+  checkConnection(op);
+
   throwSQLExceptionForNodeFailure(op, tte);
 }
 
 void ClientService::handleTProtocolException(const char* op,
     const protocol::TProtocolException& tpe) {
+  checkConnection(op);
+
   throw GET_SQLEXCEPTION2(SQLStateMessage::THRIFT_PROTOCOL_ERROR_MSG,
       tpe.what(), op);
 }
 
 void ClientService::handleTException(const char* op, const TException& te) {
+  checkConnection(op);
+
   handleStdException(op, te);
 }
 
@@ -299,11 +318,11 @@ void ClientService::setPendingTransactionAttrs(
 // using TBufferedTransport with TCompactProtocol to match the server
 // settings; this could become configurable in future
 ClientService::ClientService(const std::string& host, const int port,
-    thrift::OpenConnectionArgs& connArgs, void** outServiceId) :
+    thrift::OpenConnectionArgs& connArgs) :
     // default for load-balance is true
     m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(true),
     m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP), m_serverGroups(),
-    m_transport(), m_client(createDummyProtocol()), m_serviceId(0),
+    m_transport(), m_client(createDummyProtocol()),
     m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
     m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
     m_isolationLevel(IsolationLevel::NONE) {
@@ -367,10 +386,6 @@ ClientService::ClientService(const std::string& host, const int port,
 
   std::set<thrift::HostAddress> failedServers;
   openConnection(hostAddr, failedServers);
-
-  if (outServiceId != NULL) {
-    *outServiceId = ClientServiceHolder::instance().registerInstance(*this);
-  }
 }
 
 void ClientService::openConnection(thrift::HostAddress& hostAddr,
@@ -382,7 +397,7 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
   if (TraceFlag::ClientStatementHA.global() | TraceFlag::ClientConn.global()) {
     start = InternalUtils::nanoTimeThread();
     tid = boost::this_thread::get_id();
-    AutoPtr<SQLException> ex(
+    std::unique_ptr<SQLException> ex(
         TraceFlag::ClientConn.global() ? new GET_SQLEXCEPTION(
             SQLState::UNKNOWN_EXCEPTION, "stack"): NULL);
     InternalLogger::TRACE_COMPACT(tid, "openConnection_S", NULL, 0, true, 0,
@@ -453,7 +468,7 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
   }
 }
 
-void ClientService::destroyTransport() throw () {
+void ClientService::destroyTransport() noexcept {
   // destructor should *never* throw an exception
   try {
     BufferedSocketTransport* transport = m_transport.get();
@@ -461,7 +476,7 @@ void ClientService::destroyTransport() throw () {
       if (transport->isOpen()) {
         transport->close();
       }
-      m_transport.reset();
+      m_transport = NULL;
     }
   } catch (const SQLException& sqle) {
     Utils::handleExceptionInDestructor("connection service", sqle);
@@ -472,7 +487,7 @@ void ClientService::destroyTransport() throw () {
   }
 }
 
-ClientService::~ClientService() throw () {
+ClientService::~ClientService() {
   // destructor should *never* throw an exception
   destroyTransport();
 }
@@ -1391,7 +1406,7 @@ void ClientService::close() {
       if (transport->isOpen()) {
         transport->close();
       }
-      m_transport.reset();
+      m_transport = NULL;
     }
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -1405,83 +1420,5 @@ void ClientService::close() {
     handleStdException("close", stde);
   } catch (...) {
     handleUnknownException("close");
-  }
-}
-
-ClientServiceHolder* ClientServiceHolder::s_instance =
-    new ClientServiceHolder();
-
-ClientServiceHolder::ClientServiceHolder() :
-    m_services(), m_servicesLock(), m_numServices(0) {
-}
-
-void* ClientServiceHolder::registerInstance(ClientService& service) {
-  std::lock_guard<std::mutex> sync(m_servicesLock);
-
-  const uint32_t serviceId = ++m_numServices;
-  std::vector<boost::shared_ptr<ClientService> > list;
-  boost::shared_ptr<ClientService> servicePtr(&service);
-  list.push_back(servicePtr);
-  service.m_serviceId = serviceId;
-  return &(m_services[serviceId] = list);
-}
-
-void ClientServiceHolder::incrementReferenceCount(void* serviceId) {
-  if (serviceId != NULL) {
-    // still taking lock to make inc/dec thread-safe though we might consider
-    // having per-service mutex instead if its a bottleneck (global lock should
-    //   not be a bottleneck given the call is uncommon but needs verification)
-    std::lock_guard<std::mutex> sync(m_servicesLock);
-
-    service_list& list = *static_cast<service_list*>(serviceId);
-    // list should be size > 0 so make a copy of shared_ptr to increase refCount
-    list.push_back(list.at(0));
-  } else {
-    // throw an exception
-    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
-        "Internal error: incrementReferenceCount got null serviceId");
-  }
-}
-
-void ClientServiceHolder::decrementReferenceCount(void* serviceId) {
-  if (serviceId != NULL) {
-    // still taking lock to make inc/dec thread-safe though we might consider
-    // having per-service mutex instead if its a bottleneck (global lock should
-    //   not be a bottleneck given the call is uncommon but needs verification)
-    std::lock_guard<std::mutex> sync(m_servicesLock);
-
-    service_list& list = *static_cast<service_list*>(serviceId);
-    // list should be size > 0 so remove a shared_ptr from list
-    const size_t numRefs = list.size();
-    if (numRefs > 0) {
-      if (numRefs == 1) {
-        // list will be empty so remove from map
-        m_services.erase(list.at(0)->m_serviceId);
-      }
-      list.pop_back();
-    } else {
-      // throw an exception
-      throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
-          "Internal error: decrementReferenceCount zero refCount");
-    }
-  } else {
-    // throw an exception
-    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
-        "Internal error: decrementReferenceCount got null serviceId");
-  }
-}
-
-boost::shared_ptr<ClientService> ClientServiceHolder::getService(
-    const void* serviceId) {
-  if (serviceId != NULL) {
-    std::lock_guard<std::mutex> sync(m_servicesLock);
-
-    const service_list& list = *static_cast<const service_list*>(serviceId);
-    // list should be size > 0
-    return list.at(0);
-  } else {
-    // throw an exception
-    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
-        "Internal error: getService got null serviceId");
   }
 }

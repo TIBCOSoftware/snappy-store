@@ -34,13 +34,13 @@ class HostAddress {
  public:
 
   HostAddress(const HostAddress&);
-  HostAddress(HostAddress&&);
+  HostAddress(HostAddress&&) noexcept;
   HostAddress& operator=(const HostAddress&);
-  HostAddress& operator=(HostAddress&&);
+  HostAddress& operator=(HostAddress&&) noexcept;
   HostAddress() : hostName(), port(0), ipAddress(), serverType((ServerType::type)0) {
   }
 
-  virtual ~HostAddress() throw();
+  virtual ~HostAddress() noexcept;
   std::string hostName;
   int32_t port;
   std::string ipAddress;
@@ -84,7 +84,7 @@ class HostAddress {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(HostAddress &a, HostAddress &b);
+void swap(HostAddress &a, HostAddress &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const HostAddress& obj)
 {

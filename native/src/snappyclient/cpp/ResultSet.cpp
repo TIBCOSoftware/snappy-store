@@ -49,37 +49,29 @@ using namespace io::snappydata::client;
 const ResultSet::const_iterator ResultSet::ITR_END_CONST;
 const ResultSet::iterator ResultSet::ITR_END;
 
-ResultSet::ResultSet(thrift::RowSet* rows, const thrift::StatementAttrs* attrs,
-    bool copyAttrs, impl::ClientService& service, void* serviceId,
-    const int32_t batchSize, bool updatable, bool scrollable, bool isOwner) :
-    WrapperBase<thrift::RowSet>(rows, isOwner), m_service(service),
-    m_serviceId(serviceId), m_attrs(attrs == NULL || attrs ==
-        &StatementAttributes::EMPTY.m_attrs ? NULL
-            : (copyAttrs ? new thrift::StatementAttrs(*attrs) : attrs),
-        copyAttrs), m_cursorId(rows->cursorId), m_batchSize(batchSize),
-        m_updatable(updatable), m_scrollable(scrollable), m_batchOffset(0),
-        m_descriptors(NULL), m_columnPositionMap(NULL), m_inUse(true) {
-  // register reference for service
-  impl::ClientServiceHolder::instance().incrementReferenceCount(serviceId);
+ResultSet::ResultSet(thrift::RowSet* rows,
+    const std::shared_ptr<impl::ClientService>& service,
+    const StatementAttributes& attrs, const int32_t batchSize, bool updatable,
+    bool scrollable, bool isOwner) :
+    m_rows(rows), m_service(service), m_attrs(attrs), m_batchSize(batchSize),
+    m_updatable(updatable), m_scrollable(scrollable), m_isOwner(isOwner),
+    m_descriptors(NULL), m_columnPositionMap(NULL) {
 }
 
-bool ResultSet::moveNextRowSet(int32_t offset) {
-  checkOpen("moveNext");
+bool ResultSet::moveToNextRowSet(int32_t offset) {
+  checkOpen("moveToNextRowSet");
 
   // copy descriptors prior to move since descriptors may not be
   // set by server in subsequent calls
   copyDescriptors();
 
-  m_service.scrollCursor(*m_p, m_cursorId, offset, false, false, m_batchSize);
-  if (m_p->rows.size() > 0) {
-    m_batchOffset = m_p->offset;
-    return true;
-  } else {
-    return false;
-  }
+  m_service->scrollCursor(*m_rows, m_rows->cursorId, offset, false, false,
+      m_batchSize);
+  return (m_rows->rows.size() > 0);
 }
 
-bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize) {
+bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize,
+    bool offsetIsAbsolute) {
   checkOpen("moveToRowSet");
   checkScrollable("moveToRowSet");
 
@@ -87,34 +79,30 @@ bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize) {
   // set by server in subsequent calls
   copyDescriptors();
 
-  m_service.scrollCursor(*m_p, m_cursorId, offset, false, false, batchSize);
-  if (m_p->rows.size() > 0) {
-    m_batchOffset = m_p->offset;
-    return true;
-  } else {
-    return false;
-  }
+  m_service->scrollCursor(*m_rows, m_rows->cursorId, offset, offsetIsAbsolute,
+      false, batchSize);
+  return (m_rows->rows.size() > 0);
 }
 
-struct ClearRow {
+struct ClearUpdates {
 private:
   UpdatableRow* m_row;
 
 public:
-  ClearRow(UpdatableRow* row) :
-      m_row(row) {
+  ClearUpdates(UpdatableRow* row) : m_row(row) {
   }
-  ~ClearRow() {
+  ~ClearUpdates() {
     m_row->clearChangedColumns();
   }
 };
 
 void ResultSet::insertRow(UpdatableRow* row, size_t rowIndex) {
+  checkOpen("insertRow");
   if (row != NULL && row->getChangedColumns() != NULL) {
-    ClearRow clearRow(row);
+    ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns = row->getChangedColumnsAsVector();
     if (changedColumns.size() > 0) {
-      m_service.executeCursorUpdate(m_cursorId,
+      m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::INSERT, *row, changedColumns,
           rowIndex);
       return;
@@ -125,11 +113,12 @@ void ResultSet::insertRow(UpdatableRow* row, size_t rowIndex) {
 }
 
 void ResultSet::updateRow(UpdatableRow* row, size_t rowIndex) {
+  checkOpen("updateRow");
   if (row != NULL && row->getChangedColumns() != NULL) {
-    ClearRow clearRow(row);
+    ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns = row->getChangedColumnsAsVector();
     if (changedColumns.size() > 0) {
-      m_service.executeCursorUpdate(m_cursorId,
+      m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::UPDATE, *row, changedColumns,
           rowIndex);
       return;
@@ -140,8 +129,9 @@ void ResultSet::updateRow(UpdatableRow* row, size_t rowIndex) {
 }
 
 void ResultSet::deleteRow(UpdatableRow* row, size_t rowIndex) {
-  ClearRow clearRow(row);
-  m_service.executeBatchCursorUpdate(m_cursorId,
+  checkOpen("deleteRow");
+  ClearUpdates clearRow(row);
+  m_service->executeBatchCursorUpdate(m_rows->cursorId,
       Utils::singleVector(thrift::CursorUpdateOperation::DELETE),
       std::vector<thrift::Row>(), std::vector<std::vector<int32_t> >(),
       Utils::singleVector(static_cast<int32_t>(rowIndex)));
@@ -166,10 +156,11 @@ ResultSet::iterator ResultSet::begin(uint32_t pos) {
 }
 
 uint32_t ResultSet::getColumnPosition(const std::string& name) const {
+  checkOpen("getColumnPosition");
   if (m_columnPositionMap == NULL) {
     // populate the map on first call
     const std::vector<thrift::ColumnDescriptor>* descriptors =
-        (m_descriptors != NULL) ? &m_p->metadata : m_descriptors;
+        m_descriptors != NULL ? &m_rows->metadata : m_descriptors;
     m_columnPositionMap = new std::map<std::string, uint32_t>();
     uint32_t index = 1;
     for (std::vector<thrift::ColumnDescriptor>::const_iterator iter =
@@ -198,82 +189,108 @@ uint32_t ResultSet::getColumnPosition(const std::string& name) const {
 
 ColumnDescriptor ResultSet::getColumnDescriptor(
     std::vector<thrift::ColumnDescriptor>& descriptors,
-    const uint32_t columnIndex) {
+    const uint32_t columnIndex, const char* operation) {
   // Check that columnIndex is in range.
-  if (columnIndex < 1 || columnIndex > descriptors.size()) {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::COLUMN_NOT_FOUND_MSG1,
-        columnIndex, descriptors.size());
-  }
-
-  // check if fullTableName, typeAndClassName are missing
-  // which may be optimized out for consecutive same values
-  thrift::ColumnDescriptor& cd = descriptors[columnIndex - 1];
-  if (!cd.__isset.fullTableName) {
-    // search for the table
-    for (int i = columnIndex - 2; i >= 0; i--) {
-      thrift::ColumnDescriptor& cd2 = descriptors[i];
-      if (cd2.__isset.fullTableName) {
-        cd.__set_fullTableName(cd2.fullTableName);
-        break;
-      }
-    }
-  }
-  if (cd.type == thrift::SnappyType::JAVA_OBJECT) {
-    if (!cd.__isset.udtTypeAndClassName) {
-      // search for the UDT typeAndClassName
+  if (columnIndex >= 1 && columnIndex <= descriptors.size()) {
+    // check if fullTableName, typeAndClassName are missing
+    // which may be optimized out for consecutive same values
+    thrift::ColumnDescriptor& cd = descriptors[columnIndex - 1];
+    if (!cd.__isset.fullTableName) {
+      // search for the table
       for (int i = columnIndex - 2; i >= 0; i--) {
         thrift::ColumnDescriptor& cd2 = descriptors[i];
-        if (cd2.__isset.udtTypeAndClassName) {
-          cd.__set_udtTypeAndClassName(cd2.udtTypeAndClassName);
+        if (cd2.__isset.fullTableName) {
+          cd.__set_fullTableName(cd2.fullTableName);
           break;
         }
       }
     }
+    if (cd.type == thrift::SnappyType::JAVA_OBJECT) {
+      if (!cd.__isset.udtTypeAndClassName) {
+        // search for the UDT typeAndClassName
+        for (int i = columnIndex - 2; i >= 0; i--) {
+          thrift::ColumnDescriptor& cd2 = descriptors[i];
+          if (cd2.__isset.udtTypeAndClassName) {
+            cd.__set_udtTypeAndClassName(cd2.udtTypeAndClassName);
+            break;
+          }
+        }
+      }
+    }
+    return ColumnDescriptor(cd, columnIndex);
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG,
+        columnIndex, descriptors.size(), operation);
   }
-  return ColumnDescriptor(cd, columnIndex);
+}
+
+ColumnDescriptor ResultSet::getColumnDescriptor(const uint32_t columnIndex) {
+  checkOpen("getColumnDescriptor");
+  return getColumnDescriptor(
+      m_descriptors == NULL ? m_rows->metadata : *m_descriptors,
+      columnIndex, "column number in result set");
 }
 
 int32_t ResultSet::getRow() const {
-  if (m_p != NULL) {
-    return m_p->offset;
+  if (m_rows != NULL) {
+    return m_rows->offset;
   } else {
     return 0;
   }
 }
 
-AutoPtr<SQLWarning> ResultSet::getWarnings() const {
-  checkOpen("getWarnings");
+std::string ResultSet::getCursorName() const {
+  checkOpen("getCursorName");
+  const thrift::RowSet* rs = m_rows;
+  return rs != NULL && rs->__isset.cursorName ? rs->cursorName : "";
+}
 
-  if (m_p->__isset.warnings) {
-    return AutoPtr<SQLWarning>(new GET_SQLWARNING(m_p->warnings));
+std::unique_ptr<ResultSet> ResultSet::getNextResults(
+    const NextResultSetBehaviour::type behaviour) {
+  checkOpen("getNextResults");
+
+  if (m_rows->cursorId != thrift::snappydataConstants::INVALID_ID) {
+    thrift::RowSet* rs = new thrift::RowSet();
+    std::unique_ptr<ResultSet> resultSet(
+        new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
+            m_scrollable));
+
+    m_service->getNextResultSet(*rs, m_rows->cursorId, behaviour);
+    return resultSet;
   } else {
-    return AutoPtr<SQLWarning>(NULL);
+    throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_CURSOR_STATE_MSG2);
   }
 }
 
-AutoPtr<ResultSet> ResultSet::clone() const {
-  if (m_p != NULL) {
-    /* clone the contained object */
-    thrift::RowSet* rsp = new thrift::RowSet(*m_p);
-    AutoPtr<thrift::RowSet> rs(rsp);
+std::unique_ptr<SQLWarning> ResultSet::getWarnings() const {
+  checkOpen("getWarnings");
 
-    AutoPtr<ResultSet> resultSet(
-        new ResultSet(rsp, m_attrs.get(), true, m_service, m_serviceId,
-            m_batchSize, m_updatable, m_scrollable, true /* isOwner */));
-    rs.release();
-    resultSet->m_batchOffset = m_batchOffset;
+  if (m_rows->__isset.warnings) {
+    return std::unique_ptr<SQLWarning>(new GET_SQLWARNING(m_rows->warnings));
+  } else {
+    return std::unique_ptr<SQLWarning>();
+  }
+}
+
+std::unique_ptr<ResultSet> ResultSet::clone() const {
+  checkOpen("clone");
+  if (m_rows != NULL) {
+    /* clone the contained object */
+    thrift::RowSet* rs = new thrift::RowSet(*m_rows);
+    std::unique_ptr<ResultSet> resultSet(
+        new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
+            m_scrollable, true /* isOwner */));
     if (m_descriptors != NULL) {
       resultSet->m_descriptors = new std::vector<thrift::ColumnDescriptor>(
           *m_descriptors);
     }
     return resultSet;
   } else {
-    return AutoPtr<ResultSet>(NULL);
+    return std::unique_ptr<ResultSet>();
   }
 }
 
 void ResultSet::cleanupRS() {
-  m_batchOffset = 0;
   if (m_descriptors != NULL) {
     delete m_descriptors;
     m_descriptors = NULL;
@@ -282,30 +299,38 @@ void ResultSet::cleanupRS() {
     delete m_columnPositionMap;
     m_columnPositionMap = NULL;
   }
-  m_inUse = false;
+}
 
-  WrapperBase<thrift::RowSet>::cleanup();
+bool ResultSet::cancelStatement() {
+  if (m_rows != NULL) {
+    const auto statementId = m_rows->statementId;
+    if (statementId != thrift::snappydataConstants::INVALID_ID) {
+      m_service->cancelStatement(statementId);
+      return true;
+    }
+  }
+  return false;
 }
 
 void ResultSet::close() {
-  if (m_p != NULL && m_cursorId != thrift::snappydataConstants::INVALID_ID) {
-    const int32_t cursorId = m_cursorId;
-    m_cursorId = thrift::snappydataConstants::INVALID_ID;
+  if (m_rows && m_rows->cursorId != thrift::snappydataConstants::INVALID_ID) {
     // need to make the server call only if this is not the last batch
     // or a scrollable cursor with multiple batches, otherwise server
     // would have already closed the ResultSet
-    bool last = (m_p->flags &
+    bool last = (m_rows->flags &
         thrift::snappydataConstants::ROWSET_LAST_BATCH) != 0;
-    if (!last || (m_scrollable && !(m_batchOffset == 0 && last))) {
-      m_service.closeResultSet(cursorId);
+    if (!last || (m_scrollable && !(m_rows->offset == 0 && last))) {
+      m_service->closeResultSet(m_rows->cursorId);
     }
   }
+  if (m_isOwner && m_rows) {
+    delete m_rows;
+  }
+  m_rows = NULL;
   cleanupRS();
 }
 
-ResultSet::~ResultSet() throw () {
-  // decrement service reference in all cases
-  impl::ClearService clr = { m_serviceId, NULL };
+ResultSet::~ResultSet() {
   // destructor should *never* throw an exception
   try {
     close();

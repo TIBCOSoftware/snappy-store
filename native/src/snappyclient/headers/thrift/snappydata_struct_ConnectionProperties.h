@@ -33,13 +33,13 @@ class ConnectionProperties {
  public:
 
   ConnectionProperties(const ConnectionProperties&);
-  ConnectionProperties(ConnectionProperties&&);
+  ConnectionProperties(ConnectionProperties&&) noexcept;
   ConnectionProperties& operator=(const ConnectionProperties&);
-  ConnectionProperties& operator=(ConnectionProperties&&);
+  ConnectionProperties& operator=(ConnectionProperties&&) noexcept;
   ConnectionProperties() : connId(0), clientHostName(), clientID(), userName(), token() {
   }
 
-  virtual ~ConnectionProperties() throw();
+  virtual ~ConnectionProperties() noexcept;
   int32_t connId;
   std::string clientHostName;
   std::string clientID;
@@ -88,7 +88,7 @@ class ConnectionProperties {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ConnectionProperties &a, ConnectionProperties &b);
+void swap(ConnectionProperties &a, ConnectionProperties &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const ConnectionProperties& obj)
 {

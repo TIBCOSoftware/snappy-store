@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-ServiceMetaDataArgs::~ServiceMetaDataArgs() throw() {
+ServiceMetaDataArgs::~ServiceMetaDataArgs() noexcept {
 }
 
 
@@ -344,8 +344,9 @@ uint32_t ServiceMetaDataArgs::write(::apache::thrift::protocol::TProtocol* oprot
   return xfer;
 }
 
-void swap(ServiceMetaDataArgs &a, ServiceMetaDataArgs &b) {
+void swap(ServiceMetaDataArgs &a, ServiceMetaDataArgs &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.connId, b.connId);
   swap(a.driverType, b.driverType);
   swap(a.token, b.token);
@@ -380,7 +381,7 @@ ServiceMetaDataArgs::ServiceMetaDataArgs(const ServiceMetaDataArgs& other143) {
   typeId = other143.typeId;
   __isset = other143.__isset;
 }
-ServiceMetaDataArgs::ServiceMetaDataArgs( ServiceMetaDataArgs&& other144) {
+ServiceMetaDataArgs::ServiceMetaDataArgs( ServiceMetaDataArgs&& other144) noexcept {
   connId = std::move(other144.connId);
   driverType = std::move(other144.driverType);
   token = std::move(other144.token);
@@ -415,7 +416,7 @@ ServiceMetaDataArgs& ServiceMetaDataArgs::operator=(const ServiceMetaDataArgs& o
   __isset = other145.__isset;
   return *this;
 }
-ServiceMetaDataArgs& ServiceMetaDataArgs::operator=(ServiceMetaDataArgs&& other146) {
+ServiceMetaDataArgs& ServiceMetaDataArgs::operator=(ServiceMetaDataArgs&& other146) noexcept {
   connId = std::move(other146.connId);
   driverType = std::move(other146.driverType);
   token = std::move(other146.token);

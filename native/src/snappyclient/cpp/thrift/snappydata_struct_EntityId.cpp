@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-EntityId::~EntityId() throw() {
+EntityId::~EntityId() noexcept {
 }
 
 
@@ -143,8 +143,9 @@ uint32_t EntityId::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(EntityId &a, EntityId &b) {
+void swap(EntityId &a, EntityId &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.id, b.id);
   swap(a.type, b.type);
   swap(a.connId, b.connId);
@@ -159,7 +160,7 @@ EntityId::EntityId(const EntityId& other321) {
   token = other321.token;
   __isset = other321.__isset;
 }
-EntityId::EntityId( EntityId&& other322) {
+EntityId::EntityId( EntityId&& other322) noexcept {
   id = std::move(other322.id);
   type = std::move(other322.type);
   connId = std::move(other322.connId);
@@ -174,7 +175,7 @@ EntityId& EntityId::operator=(const EntityId& other323) {
   __isset = other323.__isset;
   return *this;
 }
-EntityId& EntityId::operator=(EntityId&& other324) {
+EntityId& EntityId::operator=(EntityId&& other324) noexcept {
   id = std::move(other324.id);
   type = std::move(other324.type);
   connId = std::move(other324.connId);

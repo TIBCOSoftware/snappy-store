@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-ClobChunk::~ClobChunk() throw() {
+ClobChunk::~ClobChunk() noexcept {
 }
 
 
@@ -160,8 +160,9 @@ uint32_t ClobChunk::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(ClobChunk &a, ClobChunk &b) {
+void swap(ClobChunk &a, ClobChunk &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.chunk, b.chunk);
   swap(a.last, b.last);
   swap(a.lobId, b.lobId);
@@ -178,7 +179,7 @@ ClobChunk::ClobChunk(const ClobChunk& other48) {
   totalLength = other48.totalLength;
   __isset = other48.__isset;
 }
-ClobChunk::ClobChunk( ClobChunk&& other49) {
+ClobChunk::ClobChunk( ClobChunk&& other49) noexcept {
   chunk = std::move(other49.chunk);
   last = std::move(other49.last);
   lobId = std::move(other49.lobId);
@@ -195,7 +196,7 @@ ClobChunk& ClobChunk::operator=(const ClobChunk& other50) {
   __isset = other50.__isset;
   return *this;
 }
-ClobChunk& ClobChunk::operator=(ClobChunk&& other51) {
+ClobChunk& ClobChunk::operator=(ClobChunk&& other51) noexcept {
   chunk = std::move(other51.chunk);
   last = std::move(other51.last);
   lobId = std::move(other51.lobId);

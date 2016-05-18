@@ -75,11 +75,11 @@ namespace impl {
 
     void setSendBufferSize(uint32_t wsz);
 
-    uint32_t getReceiveBufferSize() const throw ();
+    uint32_t getReceiveBufferSize() const noexcept;
 
-    uint32_t getSendBufferSize() const throw ();
+    uint32_t getSendBufferSize() const noexcept;
 
-    TSocket* getSocket() const throw ();
+    TSocket* getSocket() const noexcept;
 
   private:
     const bool m_writeFramed;

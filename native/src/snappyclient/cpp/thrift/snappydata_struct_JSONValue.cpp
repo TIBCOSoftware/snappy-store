@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-JSONValue::~JSONValue() throw() {
+JSONValue::~JSONValue() noexcept {
 }
 
 
@@ -256,8 +256,9 @@ uint32_t JSONValue::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(JSONValue &a, JSONValue &b) {
+void swap(JSONValue &a, JSONValue &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.string_val, b.string_val);
   swap(a.bool_val, b.bool_val);
   swap(a.i32_val, b.i32_val);
@@ -280,7 +281,7 @@ JSONValue::JSONValue(const JSONValue& other22) {
   null_val = other22.null_val;
   __isset = other22.__isset;
 }
-JSONValue::JSONValue( JSONValue&& other23) {
+JSONValue::JSONValue( JSONValue&& other23) noexcept {
   string_val = std::move(other23.string_val);
   bool_val = std::move(other23.bool_val);
   i32_val = std::move(other23.i32_val);
@@ -303,7 +304,7 @@ JSONValue& JSONValue::operator=(const JSONValue& other24) {
   __isset = other24.__isset;
   return *this;
 }
-JSONValue& JSONValue::operator=(JSONValue&& other25) {
+JSONValue& JSONValue::operator=(JSONValue&& other25) noexcept {
   string_val = std::move(other25.string_val);
   bool_val = std::move(other25.bool_val);
   i32_val = std::move(other25.i32_val);

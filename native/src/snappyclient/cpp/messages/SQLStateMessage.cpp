@@ -43,7 +43,8 @@ using namespace io::snappydata::client;
 
 template class SQLMessage1<const char*> ;
 
-SQLMessage0 SQLStateMessage::NO_CURRENT_CONNECTION_MSG;
+SQLMessage0 SQLStateMessage::NO_CURRENT_CONNECTION_MSG1;
+SQLMessage2<const char*, const char*> SQLStateMessage::NO_CURRENT_CONNECTION_MSG2;
 SQLMessage0 SQLStateMessage::NO_CURRENT_ROW_MSG;
 SQLMessage0 SQLStateMessage::ALREADY_CLOSED_MSG;
 SQLMessage0 SQLStateMessage::CONNECTION_IN_USE_MSG;
@@ -81,7 +82,7 @@ SQLMessage2<const char*, const char*> SQLStateMessage::INVALID_CONNECTION_PROPER
 SQLMessage3<const char*, int, int> SQLStateMessage::OPTION_VALUE_CHANGED_MSG;
 SQLMessage1<const char*> SQLStateMessage::OPTION_CANNOT_BE_SET_FOR_STATEMENT_MSG;
 SQLMessage2<const char*, const char*> SQLStateMessage::INVALID_DRIVER_NAME_MSG;
-SQLMessage2<int, const char*> SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG;
+SQLMessage3<int, int, const char*> SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG;
 SQLMessage2<int, int> SQLStateMessage::INVALID_CTYPE_MSG;
 SQLMessage1<int> SQLStateMessage::INVALID_HANDLE_TYPE_MSG;
 SQLMessage2<int, int> SQLStateMessage::INVALID_PARAMETER_TYPE_MSG;
@@ -109,8 +110,11 @@ SQLMessage2<const char*, const char*> SQLStateMessage::THRIFT_PROTOCOL_ERROR_MSG
 SQLMessage3<const char*, const char*, int> SQLStateMessage::NATIVE_ERROR;
 
 void SQLStateMessage::staticInitialize() {
-  NO_CURRENT_CONNECTION_MSG.initialize(SQLState::NO_CURRENT_CONNECTION, 1,
+  NO_CURRENT_CONNECTION_MSG1.initialize(SQLState::NO_CURRENT_CONNECTION, 1,
       "The underlying physical connection was never opened or is closed");
+  NO_CURRENT_CONNECTION_MSG2.initialize(SQLState::NO_CURRENT_CONNECTION, 2,
+      "The underlying physical connection to server '",
+      "' was never opened or is closed (operation=", ")");
   NO_CURRENT_ROW_MSG.initialize(SQLState::INVALID_CURSOR_STATE, 1,
       "No current row.");
   ALREADY_CLOSED_MSG.initialize(SQLState::ALREADY_CLOSED, 1,
@@ -208,7 +212,7 @@ void SQLStateMessage::staticInitialize() {
   INVALID_DRIVER_NAME_MSG.initialize(SQLState::INVALID_DRIVER_NAME, 1,
       "Unexpected driver name '", "', expected '", "'");
   INVALID_DESCRIPTOR_INDEX_MSG.initialize(SQLState::INVALID_DESCRIPTOR_INDEX, 1,
-      "Invalid descriptor index ", " for ", "");
+      "Invalid descriptor index ", " (max=", ") for ", "");
   INVALID_CTYPE_MSG.initialize(SQLState::INVALID_CTYPE, 1,
       "Invalid C data type ", " specified for parameter ", "");
   INVALID_HANDLE_TYPE_MSG.initialize(SQLState::INVALID_HANDLE_TYPE, 1,

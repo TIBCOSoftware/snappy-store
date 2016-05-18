@@ -10,7 +10,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-SnappyDataService_getPreferredServer_args::~SnappyDataService_getPreferredServer_args() throw() {
+SnappyDataService_getPreferredServer_args::~SnappyDataService_getPreferredServer_args() noexcept {
 }
 
 
@@ -157,7 +157,7 @@ uint32_t SnappyDataService_getPreferredServer_args::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_getPreferredServer_pargs::~SnappyDataService_getPreferredServer_pargs() throw() {
+SnappyDataService_getPreferredServer_pargs::~SnappyDataService_getPreferredServer_pargs() noexcept {
 }
 
 
@@ -207,7 +207,7 @@ uint32_t SnappyDataService_getPreferredServer_pargs::write(::apache::thrift::pro
 }
 
 
-SnappyDataService_getPreferredServer_result::~SnappyDataService_getPreferredServer_result() throw() {
+SnappyDataService_getPreferredServer_result::~SnappyDataService_getPreferredServer_result() noexcept {
 }
 
 
@@ -280,7 +280,7 @@ uint32_t SnappyDataService_getPreferredServer_result::write(::apache::thrift::pr
 }
 
 
-SnappyDataService_getPreferredServer_presult::~SnappyDataService_getPreferredServer_presult() throw() {
+SnappyDataService_getPreferredServer_presult::~SnappyDataService_getPreferredServer_presult() noexcept {
 }
 
 
@@ -333,7 +333,7 @@ uint32_t SnappyDataService_getPreferredServer_presult::read(::apache::thrift::pr
 }
 
 
-SnappyDataService_getAllServersWithPreferredServer_args::~SnappyDataService_getAllServersWithPreferredServer_args() throw() {
+SnappyDataService_getAllServersWithPreferredServer_args::~SnappyDataService_getAllServersWithPreferredServer_args() noexcept {
 }
 
 
@@ -480,7 +480,7 @@ uint32_t SnappyDataService_getAllServersWithPreferredServer_args::write(::apache
 }
 
 
-SnappyDataService_getAllServersWithPreferredServer_pargs::~SnappyDataService_getAllServersWithPreferredServer_pargs() throw() {
+SnappyDataService_getAllServersWithPreferredServer_pargs::~SnappyDataService_getAllServersWithPreferredServer_pargs() noexcept {
 }
 
 
@@ -530,7 +530,7 @@ uint32_t SnappyDataService_getAllServersWithPreferredServer_pargs::write(::apach
 }
 
 
-SnappyDataService_getAllServersWithPreferredServer_result::~SnappyDataService_getAllServersWithPreferredServer_result() throw() {
+SnappyDataService_getAllServersWithPreferredServer_result::~SnappyDataService_getAllServersWithPreferredServer_result() noexcept {
 }
 
 
@@ -623,7 +623,7 @@ uint32_t SnappyDataService_getAllServersWithPreferredServer_result::write(::apac
 }
 
 
-SnappyDataService_getAllServersWithPreferredServer_presult::~SnappyDataService_getAllServersWithPreferredServer_presult() throw() {
+SnappyDataService_getAllServersWithPreferredServer_presult::~SnappyDataService_getAllServersWithPreferredServer_presult() noexcept {
 }
 
 
@@ -688,7 +688,7 @@ uint32_t SnappyDataService_getAllServersWithPreferredServer_presult::read(::apac
 }
 
 
-SnappyDataService_openConnection_args::~SnappyDataService_openConnection_args() throw() {
+SnappyDataService_openConnection_args::~SnappyDataService_openConnection_args() noexcept {
 }
 
 
@@ -746,7 +746,7 @@ uint32_t SnappyDataService_openConnection_args::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_openConnection_pargs::~SnappyDataService_openConnection_pargs() throw() {
+SnappyDataService_openConnection_pargs::~SnappyDataService_openConnection_pargs() noexcept {
 }
 
 
@@ -764,7 +764,7 @@ uint32_t SnappyDataService_openConnection_pargs::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_openConnection_result::~SnappyDataService_openConnection_result() throw() {
+SnappyDataService_openConnection_result::~SnappyDataService_openConnection_result() noexcept {
 }
 
 
@@ -837,7 +837,7 @@ uint32_t SnappyDataService_openConnection_result::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_openConnection_presult::~SnappyDataService_openConnection_presult() throw() {
+SnappyDataService_openConnection_presult::~SnappyDataService_openConnection_presult() noexcept {
 }
 
 
@@ -890,7 +890,7 @@ uint32_t SnappyDataService_openConnection_presult::read(::apache::thrift::protoc
 }
 
 
-SnappyDataService_execute_args::~SnappyDataService_execute_args() throw() {
+SnappyDataService_execute_args::~SnappyDataService_execute_args() noexcept {
 }
 
 
@@ -1020,7 +1020,7 @@ uint32_t SnappyDataService_execute_args::write(::apache::thrift::protocol::TProt
 }
 
 
-SnappyDataService_execute_pargs::~SnappyDataService_execute_pargs() throw() {
+SnappyDataService_execute_pargs::~SnappyDataService_execute_pargs() noexcept {
 }
 
 
@@ -1063,7 +1063,7 @@ uint32_t SnappyDataService_execute_pargs::write(::apache::thrift::protocol::TPro
 }
 
 
-SnappyDataService_execute_result::~SnappyDataService_execute_result() throw() {
+SnappyDataService_execute_result::~SnappyDataService_execute_result() noexcept {
 }
 
 
@@ -1136,7 +1136,7 @@ uint32_t SnappyDataService_execute_result::write(::apache::thrift::protocol::TPr
 }
 
 
-SnappyDataService_execute_presult::~SnappyDataService_execute_presult() throw() {
+SnappyDataService_execute_presult::~SnappyDataService_execute_presult() noexcept {
 }
 
 
@@ -1189,7 +1189,7 @@ uint32_t SnappyDataService_execute_presult::read(::apache::thrift::protocol::TPr
 }
 
 
-SnappyDataService_executeUpdate_args::~SnappyDataService_executeUpdate_args() throw() {
+SnappyDataService_executeUpdate_args::~SnappyDataService_executeUpdate_args() noexcept {
 }
 
 
@@ -1303,7 +1303,7 @@ uint32_t SnappyDataService_executeUpdate_args::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_executeUpdate_pargs::~SnappyDataService_executeUpdate_pargs() throw() {
+SnappyDataService_executeUpdate_pargs::~SnappyDataService_executeUpdate_pargs() noexcept {
 }
 
 
@@ -1341,7 +1341,7 @@ uint32_t SnappyDataService_executeUpdate_pargs::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_executeUpdate_result::~SnappyDataService_executeUpdate_result() throw() {
+SnappyDataService_executeUpdate_result::~SnappyDataService_executeUpdate_result() noexcept {
 }
 
 
@@ -1414,7 +1414,7 @@ uint32_t SnappyDataService_executeUpdate_result::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_executeUpdate_presult::~SnappyDataService_executeUpdate_presult() throw() {
+SnappyDataService_executeUpdate_presult::~SnappyDataService_executeUpdate_presult() noexcept {
 }
 
 
@@ -1467,7 +1467,7 @@ uint32_t SnappyDataService_executeUpdate_presult::read(::apache::thrift::protoco
 }
 
 
-SnappyDataService_executeQuery_args::~SnappyDataService_executeQuery_args() throw() {
+SnappyDataService_executeQuery_args::~SnappyDataService_executeQuery_args() noexcept {
 }
 
 
@@ -1561,7 +1561,7 @@ uint32_t SnappyDataService_executeQuery_args::write(::apache::thrift::protocol::
 }
 
 
-SnappyDataService_executeQuery_pargs::~SnappyDataService_executeQuery_pargs() throw() {
+SnappyDataService_executeQuery_pargs::~SnappyDataService_executeQuery_pargs() noexcept {
 }
 
 
@@ -1591,7 +1591,7 @@ uint32_t SnappyDataService_executeQuery_pargs::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_executeQuery_result::~SnappyDataService_executeQuery_result() throw() {
+SnappyDataService_executeQuery_result::~SnappyDataService_executeQuery_result() noexcept {
 }
 
 
@@ -1664,7 +1664,7 @@ uint32_t SnappyDataService_executeQuery_result::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_executeQuery_presult::~SnappyDataService_executeQuery_presult() throw() {
+SnappyDataService_executeQuery_presult::~SnappyDataService_executeQuery_presult() noexcept {
 }
 
 
@@ -1717,7 +1717,7 @@ uint32_t SnappyDataService_executeQuery_presult::read(::apache::thrift::protocol
 }
 
 
-SnappyDataService_prepareStatement_args::~SnappyDataService_prepareStatement_args() throw() {
+SnappyDataService_prepareStatement_args::~SnappyDataService_prepareStatement_args() noexcept {
 }
 
 
@@ -1847,7 +1847,7 @@ uint32_t SnappyDataService_prepareStatement_args::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_prepareStatement_pargs::~SnappyDataService_prepareStatement_pargs() throw() {
+SnappyDataService_prepareStatement_pargs::~SnappyDataService_prepareStatement_pargs() noexcept {
 }
 
 
@@ -1890,7 +1890,7 @@ uint32_t SnappyDataService_prepareStatement_pargs::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_prepareStatement_result::~SnappyDataService_prepareStatement_result() throw() {
+SnappyDataService_prepareStatement_result::~SnappyDataService_prepareStatement_result() noexcept {
 }
 
 
@@ -1963,7 +1963,7 @@ uint32_t SnappyDataService_prepareStatement_result::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_prepareStatement_presult::~SnappyDataService_prepareStatement_presult() throw() {
+SnappyDataService_prepareStatement_presult::~SnappyDataService_prepareStatement_presult() noexcept {
 }
 
 
@@ -2016,7 +2016,7 @@ uint32_t SnappyDataService_prepareStatement_presult::read(::apache::thrift::prot
 }
 
 
-SnappyDataService_executePrepared_args::~SnappyDataService_executePrepared_args() throw() {
+SnappyDataService_executePrepared_args::~SnappyDataService_executePrepared_args() noexcept {
 }
 
 
@@ -2134,7 +2134,7 @@ uint32_t SnappyDataService_executePrepared_args::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_executePrepared_pargs::~SnappyDataService_executePrepared_pargs() throw() {
+SnappyDataService_executePrepared_pargs::~SnappyDataService_executePrepared_pargs() noexcept {
 }
 
 
@@ -2173,7 +2173,7 @@ uint32_t SnappyDataService_executePrepared_pargs::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_executePrepared_result::~SnappyDataService_executePrepared_result() throw() {
+SnappyDataService_executePrepared_result::~SnappyDataService_executePrepared_result() noexcept {
 }
 
 
@@ -2246,7 +2246,7 @@ uint32_t SnappyDataService_executePrepared_result::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_executePrepared_presult::~SnappyDataService_executePrepared_presult() throw() {
+SnappyDataService_executePrepared_presult::~SnappyDataService_executePrepared_presult() noexcept {
 }
 
 
@@ -2299,7 +2299,7 @@ uint32_t SnappyDataService_executePrepared_presult::read(::apache::thrift::proto
 }
 
 
-SnappyDataService_executePreparedUpdate_args::~SnappyDataService_executePreparedUpdate_args() throw() {
+SnappyDataService_executePreparedUpdate_args::~SnappyDataService_executePreparedUpdate_args() noexcept {
 }
 
 
@@ -2381,7 +2381,7 @@ uint32_t SnappyDataService_executePreparedUpdate_args::write(::apache::thrift::p
 }
 
 
-SnappyDataService_executePreparedUpdate_pargs::~SnappyDataService_executePreparedUpdate_pargs() throw() {
+SnappyDataService_executePreparedUpdate_pargs::~SnappyDataService_executePreparedUpdate_pargs() noexcept {
 }
 
 
@@ -2407,7 +2407,7 @@ uint32_t SnappyDataService_executePreparedUpdate_pargs::write(::apache::thrift::
 }
 
 
-SnappyDataService_executePreparedUpdate_result::~SnappyDataService_executePreparedUpdate_result() throw() {
+SnappyDataService_executePreparedUpdate_result::~SnappyDataService_executePreparedUpdate_result() noexcept {
 }
 
 
@@ -2480,7 +2480,7 @@ uint32_t SnappyDataService_executePreparedUpdate_result::write(::apache::thrift:
 }
 
 
-SnappyDataService_executePreparedUpdate_presult::~SnappyDataService_executePreparedUpdate_presult() throw() {
+SnappyDataService_executePreparedUpdate_presult::~SnappyDataService_executePreparedUpdate_presult() noexcept {
 }
 
 
@@ -2533,7 +2533,7 @@ uint32_t SnappyDataService_executePreparedUpdate_presult::read(::apache::thrift:
 }
 
 
-SnappyDataService_executePreparedQuery_args::~SnappyDataService_executePreparedQuery_args() throw() {
+SnappyDataService_executePreparedQuery_args::~SnappyDataService_executePreparedQuery_args() noexcept {
 }
 
 
@@ -2615,7 +2615,7 @@ uint32_t SnappyDataService_executePreparedQuery_args::write(::apache::thrift::pr
 }
 
 
-SnappyDataService_executePreparedQuery_pargs::~SnappyDataService_executePreparedQuery_pargs() throw() {
+SnappyDataService_executePreparedQuery_pargs::~SnappyDataService_executePreparedQuery_pargs() noexcept {
 }
 
 
@@ -2641,7 +2641,7 @@ uint32_t SnappyDataService_executePreparedQuery_pargs::write(::apache::thrift::p
 }
 
 
-SnappyDataService_executePreparedQuery_result::~SnappyDataService_executePreparedQuery_result() throw() {
+SnappyDataService_executePreparedQuery_result::~SnappyDataService_executePreparedQuery_result() noexcept {
 }
 
 
@@ -2714,7 +2714,7 @@ uint32_t SnappyDataService_executePreparedQuery_result::write(::apache::thrift::
 }
 
 
-SnappyDataService_executePreparedQuery_presult::~SnappyDataService_executePreparedQuery_presult() throw() {
+SnappyDataService_executePreparedQuery_presult::~SnappyDataService_executePreparedQuery_presult() noexcept {
 }
 
 
@@ -2767,7 +2767,7 @@ uint32_t SnappyDataService_executePreparedQuery_presult::read(::apache::thrift::
 }
 
 
-SnappyDataService_executePreparedBatch_args::~SnappyDataService_executePreparedBatch_args() throw() {
+SnappyDataService_executePreparedBatch_args::~SnappyDataService_executePreparedBatch_args() noexcept {
 }
 
 
@@ -2869,7 +2869,7 @@ uint32_t SnappyDataService_executePreparedBatch_args::write(::apache::thrift::pr
 }
 
 
-SnappyDataService_executePreparedBatch_pargs::~SnappyDataService_executePreparedBatch_pargs() throw() {
+SnappyDataService_executePreparedBatch_pargs::~SnappyDataService_executePreparedBatch_pargs() noexcept {
 }
 
 
@@ -2903,7 +2903,7 @@ uint32_t SnappyDataService_executePreparedBatch_pargs::write(::apache::thrift::p
 }
 
 
-SnappyDataService_executePreparedBatch_result::~SnappyDataService_executePreparedBatch_result() throw() {
+SnappyDataService_executePreparedBatch_result::~SnappyDataService_executePreparedBatch_result() noexcept {
 }
 
 
@@ -2976,7 +2976,7 @@ uint32_t SnappyDataService_executePreparedBatch_result::write(::apache::thrift::
 }
 
 
-SnappyDataService_executePreparedBatch_presult::~SnappyDataService_executePreparedBatch_presult() throw() {
+SnappyDataService_executePreparedBatch_presult::~SnappyDataService_executePreparedBatch_presult() noexcept {
 }
 
 
@@ -3029,7 +3029,7 @@ uint32_t SnappyDataService_executePreparedBatch_presult::read(::apache::thrift::
 }
 
 
-SnappyDataService_prepareAndExecute_args::~SnappyDataService_prepareAndExecute_args() throw() {
+SnappyDataService_prepareAndExecute_args::~SnappyDataService_prepareAndExecute_args() noexcept {
 }
 
 
@@ -3191,7 +3191,7 @@ uint32_t SnappyDataService_prepareAndExecute_args::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_prepareAndExecute_pargs::~SnappyDataService_prepareAndExecute_pargs() throw() {
+SnappyDataService_prepareAndExecute_pargs::~SnappyDataService_prepareAndExecute_pargs() noexcept {
 }
 
 
@@ -3246,7 +3246,7 @@ uint32_t SnappyDataService_prepareAndExecute_pargs::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_prepareAndExecute_result::~SnappyDataService_prepareAndExecute_result() throw() {
+SnappyDataService_prepareAndExecute_result::~SnappyDataService_prepareAndExecute_result() noexcept {
 }
 
 
@@ -3319,7 +3319,7 @@ uint32_t SnappyDataService_prepareAndExecute_result::write(::apache::thrift::pro
 }
 
 
-SnappyDataService_prepareAndExecute_presult::~SnappyDataService_prepareAndExecute_presult() throw() {
+SnappyDataService_prepareAndExecute_presult::~SnappyDataService_prepareAndExecute_presult() noexcept {
 }
 
 
@@ -3372,7 +3372,7 @@ uint32_t SnappyDataService_prepareAndExecute_presult::read(::apache::thrift::pro
 }
 
 
-SnappyDataService_beginTransaction_args::~SnappyDataService_beginTransaction_args() throw() {
+SnappyDataService_beginTransaction_args::~SnappyDataService_beginTransaction_args() noexcept {
 }
 
 
@@ -3492,7 +3492,7 @@ uint32_t SnappyDataService_beginTransaction_args::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_beginTransaction_pargs::~SnappyDataService_beginTransaction_pargs() throw() {
+SnappyDataService_beginTransaction_pargs::~SnappyDataService_beginTransaction_pargs() noexcept {
 }
 
 
@@ -3531,7 +3531,7 @@ uint32_t SnappyDataService_beginTransaction_pargs::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_beginTransaction_result::~SnappyDataService_beginTransaction_result() throw() {
+SnappyDataService_beginTransaction_result::~SnappyDataService_beginTransaction_result() noexcept {
 }
 
 
@@ -3592,7 +3592,7 @@ uint32_t SnappyDataService_beginTransaction_result::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_beginTransaction_presult::~SnappyDataService_beginTransaction_presult() throw() {
+SnappyDataService_beginTransaction_presult::~SnappyDataService_beginTransaction_presult() noexcept {
 }
 
 
@@ -3637,7 +3637,7 @@ uint32_t SnappyDataService_beginTransaction_presult::read(::apache::thrift::prot
 }
 
 
-SnappyDataService_setTransactionAttributes_args::~SnappyDataService_setTransactionAttributes_args() throw() {
+SnappyDataService_setTransactionAttributes_args::~SnappyDataService_setTransactionAttributes_args() noexcept {
 }
 
 
@@ -3745,7 +3745,7 @@ uint32_t SnappyDataService_setTransactionAttributes_args::write(::apache::thrift
 }
 
 
-SnappyDataService_setTransactionAttributes_pargs::~SnappyDataService_setTransactionAttributes_pargs() throw() {
+SnappyDataService_setTransactionAttributes_pargs::~SnappyDataService_setTransactionAttributes_pargs() noexcept {
 }
 
 
@@ -3780,7 +3780,7 @@ uint32_t SnappyDataService_setTransactionAttributes_pargs::write(::apache::thrif
 }
 
 
-SnappyDataService_setTransactionAttributes_result::~SnappyDataService_setTransactionAttributes_result() throw() {
+SnappyDataService_setTransactionAttributes_result::~SnappyDataService_setTransactionAttributes_result() noexcept {
 }
 
 
@@ -3841,7 +3841,7 @@ uint32_t SnappyDataService_setTransactionAttributes_result::write(::apache::thri
 }
 
 
-SnappyDataService_setTransactionAttributes_presult::~SnappyDataService_setTransactionAttributes_presult() throw() {
+SnappyDataService_setTransactionAttributes_presult::~SnappyDataService_setTransactionAttributes_presult() noexcept {
 }
 
 
@@ -3886,7 +3886,7 @@ uint32_t SnappyDataService_setTransactionAttributes_presult::read(::apache::thri
 }
 
 
-SnappyDataService_getTransactionAttributes_args::~SnappyDataService_getTransactionAttributes_args() throw() {
+SnappyDataService_getTransactionAttributes_args::~SnappyDataService_getTransactionAttributes_args() noexcept {
 }
 
 
@@ -3956,7 +3956,7 @@ uint32_t SnappyDataService_getTransactionAttributes_args::write(::apache::thrift
 }
 
 
-SnappyDataService_getTransactionAttributes_pargs::~SnappyDataService_getTransactionAttributes_pargs() throw() {
+SnappyDataService_getTransactionAttributes_pargs::~SnappyDataService_getTransactionAttributes_pargs() noexcept {
 }
 
 
@@ -3978,7 +3978,7 @@ uint32_t SnappyDataService_getTransactionAttributes_pargs::write(::apache::thrif
 }
 
 
-SnappyDataService_getTransactionAttributes_result::~SnappyDataService_getTransactionAttributes_result() throw() {
+SnappyDataService_getTransactionAttributes_result::~SnappyDataService_getTransactionAttributes_result() noexcept {
 }
 
 
@@ -4077,7 +4077,7 @@ uint32_t SnappyDataService_getTransactionAttributes_result::write(::apache::thri
 }
 
 
-SnappyDataService_getTransactionAttributes_presult::~SnappyDataService_getTransactionAttributes_presult() throw() {
+SnappyDataService_getTransactionAttributes_presult::~SnappyDataService_getTransactionAttributes_presult() noexcept {
 }
 
 
@@ -4147,7 +4147,7 @@ uint32_t SnappyDataService_getTransactionAttributes_presult::read(::apache::thri
 }
 
 
-SnappyDataService_commitTransaction_args::~SnappyDataService_commitTransaction_args() throw() {
+SnappyDataService_commitTransaction_args::~SnappyDataService_commitTransaction_args() noexcept {
 }
 
 
@@ -4267,7 +4267,7 @@ uint32_t SnappyDataService_commitTransaction_args::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_commitTransaction_pargs::~SnappyDataService_commitTransaction_pargs() throw() {
+SnappyDataService_commitTransaction_pargs::~SnappyDataService_commitTransaction_pargs() noexcept {
 }
 
 
@@ -4306,7 +4306,7 @@ uint32_t SnappyDataService_commitTransaction_pargs::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_commitTransaction_result::~SnappyDataService_commitTransaction_result() throw() {
+SnappyDataService_commitTransaction_result::~SnappyDataService_commitTransaction_result() noexcept {
 }
 
 
@@ -4367,7 +4367,7 @@ uint32_t SnappyDataService_commitTransaction_result::write(::apache::thrift::pro
 }
 
 
-SnappyDataService_commitTransaction_presult::~SnappyDataService_commitTransaction_presult() throw() {
+SnappyDataService_commitTransaction_presult::~SnappyDataService_commitTransaction_presult() noexcept {
 }
 
 
@@ -4412,7 +4412,7 @@ uint32_t SnappyDataService_commitTransaction_presult::read(::apache::thrift::pro
 }
 
 
-SnappyDataService_rollbackTransaction_args::~SnappyDataService_rollbackTransaction_args() throw() {
+SnappyDataService_rollbackTransaction_args::~SnappyDataService_rollbackTransaction_args() noexcept {
 }
 
 
@@ -4532,7 +4532,7 @@ uint32_t SnappyDataService_rollbackTransaction_args::write(::apache::thrift::pro
 }
 
 
-SnappyDataService_rollbackTransaction_pargs::~SnappyDataService_rollbackTransaction_pargs() throw() {
+SnappyDataService_rollbackTransaction_pargs::~SnappyDataService_rollbackTransaction_pargs() noexcept {
 }
 
 
@@ -4571,7 +4571,7 @@ uint32_t SnappyDataService_rollbackTransaction_pargs::write(::apache::thrift::pr
 }
 
 
-SnappyDataService_rollbackTransaction_result::~SnappyDataService_rollbackTransaction_result() throw() {
+SnappyDataService_rollbackTransaction_result::~SnappyDataService_rollbackTransaction_result() noexcept {
 }
 
 
@@ -4632,7 +4632,7 @@ uint32_t SnappyDataService_rollbackTransaction_result::write(::apache::thrift::p
 }
 
 
-SnappyDataService_rollbackTransaction_presult::~SnappyDataService_rollbackTransaction_presult() throw() {
+SnappyDataService_rollbackTransaction_presult::~SnappyDataService_rollbackTransaction_presult() noexcept {
 }
 
 
@@ -4677,7 +4677,7 @@ uint32_t SnappyDataService_rollbackTransaction_presult::read(::apache::thrift::p
 }
 
 
-SnappyDataService_prepareCommitTransaction_args::~SnappyDataService_prepareCommitTransaction_args() throw() {
+SnappyDataService_prepareCommitTransaction_args::~SnappyDataService_prepareCommitTransaction_args() noexcept {
 }
 
 
@@ -4785,7 +4785,7 @@ uint32_t SnappyDataService_prepareCommitTransaction_args::write(::apache::thrift
 }
 
 
-SnappyDataService_prepareCommitTransaction_pargs::~SnappyDataService_prepareCommitTransaction_pargs() throw() {
+SnappyDataService_prepareCommitTransaction_pargs::~SnappyDataService_prepareCommitTransaction_pargs() noexcept {
 }
 
 
@@ -4820,7 +4820,7 @@ uint32_t SnappyDataService_prepareCommitTransaction_pargs::write(::apache::thrif
 }
 
 
-SnappyDataService_prepareCommitTransaction_result::~SnappyDataService_prepareCommitTransaction_result() throw() {
+SnappyDataService_prepareCommitTransaction_result::~SnappyDataService_prepareCommitTransaction_result() noexcept {
 }
 
 
@@ -4893,7 +4893,7 @@ uint32_t SnappyDataService_prepareCommitTransaction_result::write(::apache::thri
 }
 
 
-SnappyDataService_prepareCommitTransaction_presult::~SnappyDataService_prepareCommitTransaction_presult() throw() {
+SnappyDataService_prepareCommitTransaction_presult::~SnappyDataService_prepareCommitTransaction_presult() noexcept {
 }
 
 
@@ -4946,7 +4946,7 @@ uint32_t SnappyDataService_prepareCommitTransaction_presult::read(::apache::thri
 }
 
 
-SnappyDataService_getNextResultSet_args::~SnappyDataService_getNextResultSet_args() throw() {
+SnappyDataService_getNextResultSet_args::~SnappyDataService_getNextResultSet_args() noexcept {
 }
 
 
@@ -5028,7 +5028,7 @@ uint32_t SnappyDataService_getNextResultSet_args::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_getNextResultSet_pargs::~SnappyDataService_getNextResultSet_pargs() throw() {
+SnappyDataService_getNextResultSet_pargs::~SnappyDataService_getNextResultSet_pargs() noexcept {
 }
 
 
@@ -5054,7 +5054,7 @@ uint32_t SnappyDataService_getNextResultSet_pargs::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_getNextResultSet_result::~SnappyDataService_getNextResultSet_result() throw() {
+SnappyDataService_getNextResultSet_result::~SnappyDataService_getNextResultSet_result() noexcept {
 }
 
 
@@ -5127,7 +5127,7 @@ uint32_t SnappyDataService_getNextResultSet_result::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_getNextResultSet_presult::~SnappyDataService_getNextResultSet_presult() throw() {
+SnappyDataService_getNextResultSet_presult::~SnappyDataService_getNextResultSet_presult() noexcept {
 }
 
 
@@ -5180,7 +5180,7 @@ uint32_t SnappyDataService_getNextResultSet_presult::read(::apache::thrift::prot
 }
 
 
-SnappyDataService_getBlobChunk_args::~SnappyDataService_getBlobChunk_args() throw() {
+SnappyDataService_getBlobChunk_args::~SnappyDataService_getBlobChunk_args() noexcept {
 }
 
 
@@ -5298,7 +5298,7 @@ uint32_t SnappyDataService_getBlobChunk_args::write(::apache::thrift::protocol::
 }
 
 
-SnappyDataService_getBlobChunk_pargs::~SnappyDataService_getBlobChunk_pargs() throw() {
+SnappyDataService_getBlobChunk_pargs::~SnappyDataService_getBlobChunk_pargs() noexcept {
 }
 
 
@@ -5336,7 +5336,7 @@ uint32_t SnappyDataService_getBlobChunk_pargs::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_getBlobChunk_result::~SnappyDataService_getBlobChunk_result() throw() {
+SnappyDataService_getBlobChunk_result::~SnappyDataService_getBlobChunk_result() noexcept {
 }
 
 
@@ -5409,7 +5409,7 @@ uint32_t SnappyDataService_getBlobChunk_result::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_getBlobChunk_presult::~SnappyDataService_getBlobChunk_presult() throw() {
+SnappyDataService_getBlobChunk_presult::~SnappyDataService_getBlobChunk_presult() noexcept {
 }
 
 
@@ -5462,7 +5462,7 @@ uint32_t SnappyDataService_getBlobChunk_presult::read(::apache::thrift::protocol
 }
 
 
-SnappyDataService_getClobChunk_args::~SnappyDataService_getClobChunk_args() throw() {
+SnappyDataService_getClobChunk_args::~SnappyDataService_getClobChunk_args() noexcept {
 }
 
 
@@ -5580,7 +5580,7 @@ uint32_t SnappyDataService_getClobChunk_args::write(::apache::thrift::protocol::
 }
 
 
-SnappyDataService_getClobChunk_pargs::~SnappyDataService_getClobChunk_pargs() throw() {
+SnappyDataService_getClobChunk_pargs::~SnappyDataService_getClobChunk_pargs() noexcept {
 }
 
 
@@ -5618,7 +5618,7 @@ uint32_t SnappyDataService_getClobChunk_pargs::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_getClobChunk_result::~SnappyDataService_getClobChunk_result() throw() {
+SnappyDataService_getClobChunk_result::~SnappyDataService_getClobChunk_result() noexcept {
 }
 
 
@@ -5691,7 +5691,7 @@ uint32_t SnappyDataService_getClobChunk_result::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_getClobChunk_presult::~SnappyDataService_getClobChunk_presult() throw() {
+SnappyDataService_getClobChunk_presult::~SnappyDataService_getClobChunk_presult() noexcept {
 }
 
 
@@ -5744,7 +5744,7 @@ uint32_t SnappyDataService_getClobChunk_presult::read(::apache::thrift::protocol
 }
 
 
-SnappyDataService_sendBlobChunk_args::~SnappyDataService_sendBlobChunk_args() throw() {
+SnappyDataService_sendBlobChunk_args::~SnappyDataService_sendBlobChunk_args() noexcept {
 }
 
 
@@ -5826,7 +5826,7 @@ uint32_t SnappyDataService_sendBlobChunk_args::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_sendBlobChunk_pargs::~SnappyDataService_sendBlobChunk_pargs() throw() {
+SnappyDataService_sendBlobChunk_pargs::~SnappyDataService_sendBlobChunk_pargs() noexcept {
 }
 
 
@@ -5852,7 +5852,7 @@ uint32_t SnappyDataService_sendBlobChunk_pargs::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_sendBlobChunk_result::~SnappyDataService_sendBlobChunk_result() throw() {
+SnappyDataService_sendBlobChunk_result::~SnappyDataService_sendBlobChunk_result() noexcept {
 }
 
 
@@ -5925,7 +5925,7 @@ uint32_t SnappyDataService_sendBlobChunk_result::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_sendBlobChunk_presult::~SnappyDataService_sendBlobChunk_presult() throw() {
+SnappyDataService_sendBlobChunk_presult::~SnappyDataService_sendBlobChunk_presult() noexcept {
 }
 
 
@@ -5978,7 +5978,7 @@ uint32_t SnappyDataService_sendBlobChunk_presult::read(::apache::thrift::protoco
 }
 
 
-SnappyDataService_sendClobChunk_args::~SnappyDataService_sendClobChunk_args() throw() {
+SnappyDataService_sendClobChunk_args::~SnappyDataService_sendClobChunk_args() noexcept {
 }
 
 
@@ -6060,7 +6060,7 @@ uint32_t SnappyDataService_sendClobChunk_args::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_sendClobChunk_pargs::~SnappyDataService_sendClobChunk_pargs() throw() {
+SnappyDataService_sendClobChunk_pargs::~SnappyDataService_sendClobChunk_pargs() noexcept {
 }
 
 
@@ -6086,7 +6086,7 @@ uint32_t SnappyDataService_sendClobChunk_pargs::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_sendClobChunk_result::~SnappyDataService_sendClobChunk_result() throw() {
+SnappyDataService_sendClobChunk_result::~SnappyDataService_sendClobChunk_result() noexcept {
 }
 
 
@@ -6159,7 +6159,7 @@ uint32_t SnappyDataService_sendClobChunk_result::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_sendClobChunk_presult::~SnappyDataService_sendClobChunk_presult() throw() {
+SnappyDataService_sendClobChunk_presult::~SnappyDataService_sendClobChunk_presult() noexcept {
 }
 
 
@@ -6212,7 +6212,7 @@ uint32_t SnappyDataService_sendClobChunk_presult::read(::apache::thrift::protoco
 }
 
 
-SnappyDataService_freeLob_args::~SnappyDataService_freeLob_args() throw() {
+SnappyDataService_freeLob_args::~SnappyDataService_freeLob_args() noexcept {
 }
 
 
@@ -6294,7 +6294,7 @@ uint32_t SnappyDataService_freeLob_args::write(::apache::thrift::protocol::TProt
 }
 
 
-SnappyDataService_freeLob_pargs::~SnappyDataService_freeLob_pargs() throw() {
+SnappyDataService_freeLob_pargs::~SnappyDataService_freeLob_pargs() noexcept {
 }
 
 
@@ -6320,7 +6320,7 @@ uint32_t SnappyDataService_freeLob_pargs::write(::apache::thrift::protocol::TPro
 }
 
 
-SnappyDataService_freeLob_result::~SnappyDataService_freeLob_result() throw() {
+SnappyDataService_freeLob_result::~SnappyDataService_freeLob_result() noexcept {
 }
 
 
@@ -6381,7 +6381,7 @@ uint32_t SnappyDataService_freeLob_result::write(::apache::thrift::protocol::TPr
 }
 
 
-SnappyDataService_freeLob_presult::~SnappyDataService_freeLob_presult() throw() {
+SnappyDataService_freeLob_presult::~SnappyDataService_freeLob_presult() noexcept {
 }
 
 
@@ -6426,7 +6426,7 @@ uint32_t SnappyDataService_freeLob_presult::read(::apache::thrift::protocol::TPr
 }
 
 
-SnappyDataService_scrollCursor_args::~SnappyDataService_scrollCursor_args() throw() {
+SnappyDataService_scrollCursor_args::~SnappyDataService_scrollCursor_args() noexcept {
 }
 
 
@@ -6544,7 +6544,7 @@ uint32_t SnappyDataService_scrollCursor_args::write(::apache::thrift::protocol::
 }
 
 
-SnappyDataService_scrollCursor_pargs::~SnappyDataService_scrollCursor_pargs() throw() {
+SnappyDataService_scrollCursor_pargs::~SnappyDataService_scrollCursor_pargs() noexcept {
 }
 
 
@@ -6582,7 +6582,7 @@ uint32_t SnappyDataService_scrollCursor_pargs::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_scrollCursor_result::~SnappyDataService_scrollCursor_result() throw() {
+SnappyDataService_scrollCursor_result::~SnappyDataService_scrollCursor_result() noexcept {
 }
 
 
@@ -6655,7 +6655,7 @@ uint32_t SnappyDataService_scrollCursor_result::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_scrollCursor_presult::~SnappyDataService_scrollCursor_presult() throw() {
+SnappyDataService_scrollCursor_presult::~SnappyDataService_scrollCursor_presult() noexcept {
 }
 
 
@@ -6708,7 +6708,7 @@ uint32_t SnappyDataService_scrollCursor_presult::read(::apache::thrift::protocol
 }
 
 
-SnappyDataService_executeCursorUpdate_args::~SnappyDataService_executeCursorUpdate_args() throw() {
+SnappyDataService_executeCursorUpdate_args::~SnappyDataService_executeCursorUpdate_args() noexcept {
 }
 
 
@@ -6928,7 +6928,7 @@ uint32_t SnappyDataService_executeCursorUpdate_args::write(::apache::thrift::pro
 }
 
 
-SnappyDataService_executeCursorUpdate_pargs::~SnappyDataService_executeCursorUpdate_pargs() throw() {
+SnappyDataService_executeCursorUpdate_pargs::~SnappyDataService_executeCursorUpdate_pargs() noexcept {
 }
 
 
@@ -7006,7 +7006,7 @@ uint32_t SnappyDataService_executeCursorUpdate_pargs::write(::apache::thrift::pr
 }
 
 
-SnappyDataService_executeCursorUpdate_result::~SnappyDataService_executeCursorUpdate_result() throw() {
+SnappyDataService_executeCursorUpdate_result::~SnappyDataService_executeCursorUpdate_result() noexcept {
 }
 
 
@@ -7067,7 +7067,7 @@ uint32_t SnappyDataService_executeCursorUpdate_result::write(::apache::thrift::p
 }
 
 
-SnappyDataService_executeCursorUpdate_presult::~SnappyDataService_executeCursorUpdate_presult() throw() {
+SnappyDataService_executeCursorUpdate_presult::~SnappyDataService_executeCursorUpdate_presult() noexcept {
 }
 
 
@@ -7112,7 +7112,7 @@ uint32_t SnappyDataService_executeCursorUpdate_presult::read(::apache::thrift::p
 }
 
 
-SnappyDataService_getServiceMetaData_args::~SnappyDataService_getServiceMetaData_args() throw() {
+SnappyDataService_getServiceMetaData_args::~SnappyDataService_getServiceMetaData_args() noexcept {
 }
 
 
@@ -7182,7 +7182,7 @@ uint32_t SnappyDataService_getServiceMetaData_args::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_getServiceMetaData_pargs::~SnappyDataService_getServiceMetaData_pargs() throw() {
+SnappyDataService_getServiceMetaData_pargs::~SnappyDataService_getServiceMetaData_pargs() noexcept {
 }
 
 
@@ -7204,7 +7204,7 @@ uint32_t SnappyDataService_getServiceMetaData_pargs::write(::apache::thrift::pro
 }
 
 
-SnappyDataService_getServiceMetaData_result::~SnappyDataService_getServiceMetaData_result() throw() {
+SnappyDataService_getServiceMetaData_result::~SnappyDataService_getServiceMetaData_result() noexcept {
 }
 
 
@@ -7277,7 +7277,7 @@ uint32_t SnappyDataService_getServiceMetaData_result::write(::apache::thrift::pr
 }
 
 
-SnappyDataService_getServiceMetaData_presult::~SnappyDataService_getServiceMetaData_presult() throw() {
+SnappyDataService_getServiceMetaData_presult::~SnappyDataService_getServiceMetaData_presult() noexcept {
 }
 
 
@@ -7330,7 +7330,7 @@ uint32_t SnappyDataService_getServiceMetaData_presult::read(::apache::thrift::pr
 }
 
 
-SnappyDataService_getSchemaMetaData_args::~SnappyDataService_getSchemaMetaData_args() throw() {
+SnappyDataService_getSchemaMetaData_args::~SnappyDataService_getSchemaMetaData_args() noexcept {
 }
 
 
@@ -7402,7 +7402,7 @@ uint32_t SnappyDataService_getSchemaMetaData_args::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_getSchemaMetaData_pargs::~SnappyDataService_getSchemaMetaData_pargs() throw() {
+SnappyDataService_getSchemaMetaData_pargs::~SnappyDataService_getSchemaMetaData_pargs() noexcept {
 }
 
 
@@ -7424,7 +7424,7 @@ uint32_t SnappyDataService_getSchemaMetaData_pargs::write(::apache::thrift::prot
 }
 
 
-SnappyDataService_getSchemaMetaData_result::~SnappyDataService_getSchemaMetaData_result() throw() {
+SnappyDataService_getSchemaMetaData_result::~SnappyDataService_getSchemaMetaData_result() noexcept {
 }
 
 
@@ -7497,7 +7497,7 @@ uint32_t SnappyDataService_getSchemaMetaData_result::write(::apache::thrift::pro
 }
 
 
-SnappyDataService_getSchemaMetaData_presult::~SnappyDataService_getSchemaMetaData_presult() throw() {
+SnappyDataService_getSchemaMetaData_presult::~SnappyDataService_getSchemaMetaData_presult() noexcept {
 }
 
 
@@ -7550,7 +7550,7 @@ uint32_t SnappyDataService_getSchemaMetaData_presult::read(::apache::thrift::pro
 }
 
 
-SnappyDataService_getIndexInfo_args::~SnappyDataService_getIndexInfo_args() throw() {
+SnappyDataService_getIndexInfo_args::~SnappyDataService_getIndexInfo_args() noexcept {
 }
 
 
@@ -7632,7 +7632,7 @@ uint32_t SnappyDataService_getIndexInfo_args::write(::apache::thrift::protocol::
 }
 
 
-SnappyDataService_getIndexInfo_pargs::~SnappyDataService_getIndexInfo_pargs() throw() {
+SnappyDataService_getIndexInfo_pargs::~SnappyDataService_getIndexInfo_pargs() noexcept {
 }
 
 
@@ -7658,7 +7658,7 @@ uint32_t SnappyDataService_getIndexInfo_pargs::write(::apache::thrift::protocol:
 }
 
 
-SnappyDataService_getIndexInfo_result::~SnappyDataService_getIndexInfo_result() throw() {
+SnappyDataService_getIndexInfo_result::~SnappyDataService_getIndexInfo_result() noexcept {
 }
 
 
@@ -7731,7 +7731,7 @@ uint32_t SnappyDataService_getIndexInfo_result::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_getIndexInfo_presult::~SnappyDataService_getIndexInfo_presult() throw() {
+SnappyDataService_getIndexInfo_presult::~SnappyDataService_getIndexInfo_presult() noexcept {
 }
 
 
@@ -7784,7 +7784,7 @@ uint32_t SnappyDataService_getIndexInfo_presult::read(::apache::thrift::protocol
 }
 
 
-SnappyDataService_getUDTs_args::~SnappyDataService_getUDTs_args() throw() {
+SnappyDataService_getUDTs_args::~SnappyDataService_getUDTs_args() noexcept {
 }
 
 
@@ -7876,7 +7876,7 @@ uint32_t SnappyDataService_getUDTs_args::write(::apache::thrift::protocol::TProt
 }
 
 
-SnappyDataService_getUDTs_pargs::~SnappyDataService_getUDTs_pargs() throw() {
+SnappyDataService_getUDTs_pargs::~SnappyDataService_getUDTs_pargs() noexcept {
 }
 
 
@@ -7906,7 +7906,7 @@ uint32_t SnappyDataService_getUDTs_pargs::write(::apache::thrift::protocol::TPro
 }
 
 
-SnappyDataService_getUDTs_result::~SnappyDataService_getUDTs_result() throw() {
+SnappyDataService_getUDTs_result::~SnappyDataService_getUDTs_result() noexcept {
 }
 
 
@@ -7979,7 +7979,7 @@ uint32_t SnappyDataService_getUDTs_result::write(::apache::thrift::protocol::TPr
 }
 
 
-SnappyDataService_getUDTs_presult::~SnappyDataService_getUDTs_presult() throw() {
+SnappyDataService_getUDTs_presult::~SnappyDataService_getUDTs_presult() noexcept {
 }
 
 
@@ -8032,7 +8032,7 @@ uint32_t SnappyDataService_getUDTs_presult::read(::apache::thrift::protocol::TPr
 }
 
 
-SnappyDataService_getBestRowIdentifier_args::~SnappyDataService_getBestRowIdentifier_args() throw() {
+SnappyDataService_getBestRowIdentifier_args::~SnappyDataService_getBestRowIdentifier_args() noexcept {
 }
 
 
@@ -8114,7 +8114,7 @@ uint32_t SnappyDataService_getBestRowIdentifier_args::write(::apache::thrift::pr
 }
 
 
-SnappyDataService_getBestRowIdentifier_pargs::~SnappyDataService_getBestRowIdentifier_pargs() throw() {
+SnappyDataService_getBestRowIdentifier_pargs::~SnappyDataService_getBestRowIdentifier_pargs() noexcept {
 }
 
 
@@ -8140,7 +8140,7 @@ uint32_t SnappyDataService_getBestRowIdentifier_pargs::write(::apache::thrift::p
 }
 
 
-SnappyDataService_getBestRowIdentifier_result::~SnappyDataService_getBestRowIdentifier_result() throw() {
+SnappyDataService_getBestRowIdentifier_result::~SnappyDataService_getBestRowIdentifier_result() noexcept {
 }
 
 
@@ -8213,7 +8213,7 @@ uint32_t SnappyDataService_getBestRowIdentifier_result::write(::apache::thrift::
 }
 
 
-SnappyDataService_getBestRowIdentifier_presult::~SnappyDataService_getBestRowIdentifier_presult() throw() {
+SnappyDataService_getBestRowIdentifier_presult::~SnappyDataService_getBestRowIdentifier_presult() noexcept {
 }
 
 
@@ -8266,7 +8266,7 @@ uint32_t SnappyDataService_getBestRowIdentifier_presult::read(::apache::thrift::
 }
 
 
-SnappyDataService_fetchActiveConnections_args::~SnappyDataService_fetchActiveConnections_args() throw() {
+SnappyDataService_fetchActiveConnections_args::~SnappyDataService_fetchActiveConnections_args() noexcept {
 }
 
 
@@ -8336,7 +8336,7 @@ uint32_t SnappyDataService_fetchActiveConnections_args::write(::apache::thrift::
 }
 
 
-SnappyDataService_fetchActiveConnections_pargs::~SnappyDataService_fetchActiveConnections_pargs() throw() {
+SnappyDataService_fetchActiveConnections_pargs::~SnappyDataService_fetchActiveConnections_pargs() noexcept {
 }
 
 
@@ -8358,7 +8358,7 @@ uint32_t SnappyDataService_fetchActiveConnections_pargs::write(::apache::thrift:
 }
 
 
-SnappyDataService_fetchActiveConnections_result::~SnappyDataService_fetchActiveConnections_result() throw() {
+SnappyDataService_fetchActiveConnections_result::~SnappyDataService_fetchActiveConnections_result() noexcept {
 }
 
 
@@ -8451,7 +8451,7 @@ uint32_t SnappyDataService_fetchActiveConnections_result::write(::apache::thrift
 }
 
 
-SnappyDataService_fetchActiveConnections_presult::~SnappyDataService_fetchActiveConnections_presult() throw() {
+SnappyDataService_fetchActiveConnections_presult::~SnappyDataService_fetchActiveConnections_presult() noexcept {
 }
 
 
@@ -8516,7 +8516,7 @@ uint32_t SnappyDataService_fetchActiveConnections_presult::read(::apache::thrift
 }
 
 
-SnappyDataService_fetchActiveStatements_args::~SnappyDataService_fetchActiveStatements_args() throw() {
+SnappyDataService_fetchActiveStatements_args::~SnappyDataService_fetchActiveStatements_args() noexcept {
 }
 
 
@@ -8586,7 +8586,7 @@ uint32_t SnappyDataService_fetchActiveStatements_args::write(::apache::thrift::p
 }
 
 
-SnappyDataService_fetchActiveStatements_pargs::~SnappyDataService_fetchActiveStatements_pargs() throw() {
+SnappyDataService_fetchActiveStatements_pargs::~SnappyDataService_fetchActiveStatements_pargs() noexcept {
 }
 
 
@@ -8608,7 +8608,7 @@ uint32_t SnappyDataService_fetchActiveStatements_pargs::write(::apache::thrift::
 }
 
 
-SnappyDataService_fetchActiveStatements_result::~SnappyDataService_fetchActiveStatements_result() throw() {
+SnappyDataService_fetchActiveStatements_result::~SnappyDataService_fetchActiveStatements_result() noexcept {
 }
 
 
@@ -8705,7 +8705,7 @@ uint32_t SnappyDataService_fetchActiveStatements_result::write(::apache::thrift:
 }
 
 
-SnappyDataService_fetchActiveStatements_presult::~SnappyDataService_fetchActiveStatements_presult() throw() {
+SnappyDataService_fetchActiveStatements_presult::~SnappyDataService_fetchActiveStatements_presult() noexcept {
 }
 
 
@@ -8773,7 +8773,7 @@ uint32_t SnappyDataService_fetchActiveStatements_presult::read(::apache::thrift:
 }
 
 
-SnappyDataService_cancelStatement_args::~SnappyDataService_cancelStatement_args() throw() {
+SnappyDataService_cancelStatement_args::~SnappyDataService_cancelStatement_args() noexcept {
 }
 
 
@@ -8843,7 +8843,7 @@ uint32_t SnappyDataService_cancelStatement_args::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_cancelStatement_pargs::~SnappyDataService_cancelStatement_pargs() throw() {
+SnappyDataService_cancelStatement_pargs::~SnappyDataService_cancelStatement_pargs() noexcept {
 }
 
 
@@ -8865,7 +8865,7 @@ uint32_t SnappyDataService_cancelStatement_pargs::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_cancelStatement_result::~SnappyDataService_cancelStatement_result() throw() {
+SnappyDataService_cancelStatement_result::~SnappyDataService_cancelStatement_result() noexcept {
 }
 
 
@@ -8926,7 +8926,7 @@ uint32_t SnappyDataService_cancelStatement_result::write(::apache::thrift::proto
 }
 
 
-SnappyDataService_cancelStatement_presult::~SnappyDataService_cancelStatement_presult() throw() {
+SnappyDataService_cancelStatement_presult::~SnappyDataService_cancelStatement_presult() noexcept {
 }
 
 
@@ -8971,7 +8971,7 @@ uint32_t SnappyDataService_cancelStatement_presult::read(::apache::thrift::proto
 }
 
 
-SnappyDataService_closeResultSet_args::~SnappyDataService_closeResultSet_args() throw() {
+SnappyDataService_closeResultSet_args::~SnappyDataService_closeResultSet_args() noexcept {
 }
 
 
@@ -9041,7 +9041,7 @@ uint32_t SnappyDataService_closeResultSet_args::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_closeResultSet_pargs::~SnappyDataService_closeResultSet_pargs() throw() {
+SnappyDataService_closeResultSet_pargs::~SnappyDataService_closeResultSet_pargs() noexcept {
 }
 
 
@@ -9063,7 +9063,7 @@ uint32_t SnappyDataService_closeResultSet_pargs::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_closeResultSet_result::~SnappyDataService_closeResultSet_result() throw() {
+SnappyDataService_closeResultSet_result::~SnappyDataService_closeResultSet_result() noexcept {
 }
 
 
@@ -9124,7 +9124,7 @@ uint32_t SnappyDataService_closeResultSet_result::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_closeResultSet_presult::~SnappyDataService_closeResultSet_presult() throw() {
+SnappyDataService_closeResultSet_presult::~SnappyDataService_closeResultSet_presult() noexcept {
 }
 
 
@@ -9169,7 +9169,7 @@ uint32_t SnappyDataService_closeResultSet_presult::read(::apache::thrift::protoc
 }
 
 
-SnappyDataService_closeStatement_args::~SnappyDataService_closeStatement_args() throw() {
+SnappyDataService_closeStatement_args::~SnappyDataService_closeStatement_args() noexcept {
 }
 
 
@@ -9239,7 +9239,7 @@ uint32_t SnappyDataService_closeStatement_args::write(::apache::thrift::protocol
 }
 
 
-SnappyDataService_closeStatement_pargs::~SnappyDataService_closeStatement_pargs() throw() {
+SnappyDataService_closeStatement_pargs::~SnappyDataService_closeStatement_pargs() noexcept {
 }
 
 
@@ -9261,7 +9261,7 @@ uint32_t SnappyDataService_closeStatement_pargs::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_closeStatement_result::~SnappyDataService_closeStatement_result() throw() {
+SnappyDataService_closeStatement_result::~SnappyDataService_closeStatement_result() noexcept {
 }
 
 
@@ -9322,7 +9322,7 @@ uint32_t SnappyDataService_closeStatement_result::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_closeStatement_presult::~SnappyDataService_closeStatement_presult() throw() {
+SnappyDataService_closeStatement_presult::~SnappyDataService_closeStatement_presult() noexcept {
 }
 
 
@@ -9367,7 +9367,7 @@ uint32_t SnappyDataService_closeStatement_presult::read(::apache::thrift::protoc
 }
 
 
-SnappyDataService_closeConnection_args::~SnappyDataService_closeConnection_args() throw() {
+SnappyDataService_closeConnection_args::~SnappyDataService_closeConnection_args() noexcept {
 }
 
 
@@ -9437,7 +9437,7 @@ uint32_t SnappyDataService_closeConnection_args::write(::apache::thrift::protoco
 }
 
 
-SnappyDataService_closeConnection_pargs::~SnappyDataService_closeConnection_pargs() throw() {
+SnappyDataService_closeConnection_pargs::~SnappyDataService_closeConnection_pargs() noexcept {
 }
 
 
@@ -9459,7 +9459,7 @@ uint32_t SnappyDataService_closeConnection_pargs::write(::apache::thrift::protoc
 }
 
 
-SnappyDataService_bulkClose_args::~SnappyDataService_bulkClose_args() throw() {
+SnappyDataService_bulkClose_args::~SnappyDataService_bulkClose_args() noexcept {
 }
 
 
@@ -9537,7 +9537,7 @@ uint32_t SnappyDataService_bulkClose_args::write(::apache::thrift::protocol::TPr
 }
 
 
-SnappyDataService_bulkClose_pargs::~SnappyDataService_bulkClose_pargs() throw() {
+SnappyDataService_bulkClose_pargs::~SnappyDataService_bulkClose_pargs() noexcept {
 }
 
 

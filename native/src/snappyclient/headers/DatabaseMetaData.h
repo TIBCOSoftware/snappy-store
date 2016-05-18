@@ -62,73 +62,34 @@ namespace client {
     /** copy constructor */
     DatabaseMetaDataArgs(const DatabaseMetaDataArgs& other);
 
+    /** move constructor */
+    DatabaseMetaDataArgs(DatabaseMetaDataArgs&& other) noexcept;
+
     /** assignment operator */
-    DatabaseMetaDataArgs& operator=(const DatabaseMetaDataArgs& other) throw ();
+    DatabaseMetaDataArgs& operator=(const DatabaseMetaDataArgs& other);
 
-    const DatabaseMetaDataArgs& setSchema(const std::string& schema) throw () {
-      m_args.__set_schema(schema);
-      return *this;
-    }
+    /** move assignment operator */
+    DatabaseMetaDataArgs& operator=(DatabaseMetaDataArgs&& other) noexcept;
 
-    const DatabaseMetaDataArgs& setTable(const std::string& table) throw () {
-      m_args.__set_table(table);
-      return *this;
-    }
+    ~DatabaseMetaDataArgs();
 
-    const DatabaseMetaDataArgs& setTableTypes(
-        const std::vector<std::string>& tableTypes) throw () {
-      m_args.__set_tableTypes(tableTypes);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setColumnName(
-        const std::string& columnName) throw () {
-      m_args.__set_columnName(columnName);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setForeignSchema(
-        const std::string& foreignSchema) throw () {
-      m_args.__set_foreignSchema(foreignSchema);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setForeignTable(
-        const std::string& foreignTable) throw () {
-      m_args.__set_foreignTable(foreignTable);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setProcedureName(
-        const std::string& procedureName) throw () {
-      m_args.__set_procedureName(procedureName);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setFunctionName(
-        const std::string& functionName) throw () {
-      m_args.__set_functionName(functionName);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setAttributeName(
-        const std::string& attributeName) throw () {
-      m_args.__set_attributeName(attributeName);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setTypeName(
-        const std::string& typeName) throw () {
-      m_args.__set_typeName(typeName);
-      return *this;
-    }
-
-    const DatabaseMetaDataArgs& setType(const SQLType::type& type) throw () {
-      m_args.__set_typeId(type);
-      return *this;
-    }
-
-    ~DatabaseMetaDataArgs() throw ();
+    DatabaseMetaDataArgs& setSchema(const std::string& schema);
+    DatabaseMetaDataArgs& setTable(const std::string& table);
+    DatabaseMetaDataArgs& setTableTypes(
+        const std::vector<std::string>& tableTypes);
+    DatabaseMetaDataArgs& setColumnName(const std::string& columnName);
+    DatabaseMetaDataArgs& setForeignSchema(
+        const std::string& foreignSchema);
+    DatabaseMetaDataArgs& setForeignTable(
+        const std::string& foreignTable);
+    DatabaseMetaDataArgs& setProcedureName(
+        const std::string& procedureName);
+    DatabaseMetaDataArgs& setFunctionName(
+        const std::string& functionName);
+    DatabaseMetaDataArgs& setAttributeName(
+        const std::string& attributeName);
+    DatabaseMetaDataArgs& setTypeName(const std::string& typeName);
+    DatabaseMetaDataArgs& setType(const SQLType::type& type);
   };
 
   class DatabaseMetaData {
@@ -140,226 +101,81 @@ namespace client {
     friend class Connection;
 
     bool searchFeature(thrift::ServiceFeatureParameterized::type featureName,
-        int32_t searchFor) const throw ();
+        int32_t searchFor) const noexcept;
 
   public:
     /** copy constructor */
     DatabaseMetaData(const DatabaseMetaData& other);
 
+    /** move constructor */
+    DatabaseMetaData(DatabaseMetaData&& other) noexcept;
+
     /** assignment operator */
-    DatabaseMetaData& operator=(const DatabaseMetaData& other) throw ();
+    DatabaseMetaData& operator=(const DatabaseMetaData& other);
 
-    bool isFeatureSupported(DatabaseFeature::type feature) const throw ();
+    /** move operator */
+    DatabaseMetaData& operator=(DatabaseMetaData&& other) noexcept;
 
-    std::string getProductName() const throw () {
-      return m_metadata.productName;
-    }
+    ~DatabaseMetaData();
 
-    std::string getProductVersion() const throw () {
-      return m_metadata.productVersion;
-    }
-
-    int32_t getProductMajorVersion() const throw () {
-      return m_metadata.productMajorVersion;
-    }
-
-    int32_t getProductMinorVersion() const throw () {
-      return m_metadata.productMinorVersion;
-    }
-
-    int32_t getJdbcMajorVersion() const throw () {
-      return m_metadata.jdbcMajorVersion;
-    }
-
-    int32_t getJdbcMinorVersion() const throw () {
-      return m_metadata.jdbcMinorVersion;
-    }
-
-    std::string getIdentifierQuote() const throw () {
-      return m_metadata.identifierQuote;
-    }
-
-    AutoPtr<const std::vector<std::string> > getSQLKeyWords() const throw () {
-      return AutoPtr<const std::vector<std::string> >(
-          &m_metadata.sqlKeywords, false);
-    }
-
-    AutoPtr<const std::vector<std::string> > getNumericFunctions()
-        const throw () {
-      return AutoPtr<const std::vector<std::string> >(
-          &m_metadata.numericFunctions, false);
-    }
-
-    AutoPtr<const std::vector<std::string> > getStringFunctions()
-        const throw () {
-      return AutoPtr<const std::vector<std::string> >(
-          &m_metadata.stringFunctions, false);
-    }
-
-    AutoPtr<const std::vector<std::string> > getSystemFunctions()
-        const throw () {
-      return AutoPtr<const std::vector<std::string> >(
-          &m_metadata.systemFunctions, false);
-    }
-
-    AutoPtr<const std::vector<std::string> > getDateTimeFunctions()
-        const throw () {
-      return AutoPtr<const std::vector<std::string> >(
-          &m_metadata.dateTimeFunctions, false);
-    }
-
-    std::string getSearchStringEscape() const throw () {
-      return m_metadata.searchStringEscape;
-    }
-
-    std::string getExtraNameCharacters() const throw () {
-      return m_metadata.__isset.extraNameCharacters
-          ? m_metadata.extraNameCharacters : "";
-    }
-
+    bool isFeatureSupported(DatabaseFeature::type feature) const noexcept;
+    const std::string& getProductName() const noexcept;
+    const std::string& getProductVersion() const noexcept;
+    int32_t getProductMajorVersion() const noexcept;
+    int32_t getProductMinorVersion() const noexcept;
+    int32_t getJdbcMajorVersion() const noexcept;
+    int32_t getJdbcMinorVersion() const noexcept;
+    const std::string& getIdentifierQuote() const noexcept;
+    const std::vector<std::string>& getSQLKeyWords() const noexcept;
+    const std::vector<std::string>& getNumericFunctions() const noexcept;
+    const std::vector<std::string>& getStringFunctions() const noexcept;
+    const std::vector<std::string>& getSystemFunctions() const noexcept;
+    const std::vector<std::string>& getDateTimeFunctions() const noexcept;
+    const std::string& getSearchStringEscape() const noexcept;
+    const std::string& getExtraNameCharacters() const noexcept;
+    const std::string& getSchemaTerm() const noexcept;
+    const std::string& getProcedureTerm() const noexcept;
+    const std::string& getCatalogTerm() const noexcept;
+    const std::string& getCatalogSeparator() const noexcept;
+    int32_t getMaxBinaryLiteralLength() const noexcept;
+    int32_t getMaxCharLiteralLength() const noexcept;
+    int32_t getMaxColumnsInGroupBy() const noexcept;
+    int32_t getMaxColumnsInIndex() const noexcept;
+    int32_t getMaxColumnsInOrderBy() const noexcept;
+    int32_t getMaxColumnsInSelect() const noexcept;
+    int32_t getMaxColumnsInTable() const noexcept;
+    int32_t getMaxConnections() const noexcept;
+    int32_t getMaxIndexLength() const noexcept;
+    int32_t getMaxRowSize() const noexcept;
+    int32_t getMaxOpenStatements() const noexcept;
+    int32_t getMaxTableNamesInSelect() const noexcept;
+    int32_t getMaxColumnNameLength() const noexcept;
+    int32_t getMaxCursorNameLength() const noexcept;
+    int32_t getMaxSchemaNameLength() const noexcept;
+    int32_t getMaxProcedureNameLength() const noexcept;
+    int32_t getMaxCatalogNameLength() const noexcept;
+    int32_t maxTableNameLength() const noexcept;
+    int32_t maxUserNameLength() const noexcept;
+    int32_t defaultTransactionIsolation() const noexcept;
+    int32_t getDefaultResultSetType() const noexcept;
+    ResultSetHoldability::type getDefaultHoldability() const noexcept;
+    bool isSQLStateXOpen() const noexcept;
+    RowIdLifetime::type getDefaultRowIdLifeTime() const noexcept;
     bool supportsConvert(SQLType::type fromType,
-        SQLType::type toType) const throw ();
-
-    std::string getSchemaTerm() const throw () {
-      return m_metadata.schemaTerm;
-    }
-
-    std::string getProcedureTerm() const throw () {
-      return m_metadata.procedureTerm;
-    }
-
-    std::string getCatalogTerm() const throw () {
-      return m_metadata.catalogTerm;
-    }
-
-    std::string getCatalogSeparator() const throw () {
-      return m_metadata.catalogSeparator;
-    }
-
-    int32_t getMaxBinaryLiteralLength() const throw () {
-      return m_metadata.maxBinaryLiteralLength;
-    }
-
-    int32_t getMaxCharLiteralLength() const throw () {
-      return m_metadata.maxCharLiteralLength;
-    }
-
-    int32_t getMaxColumnsInGroupBy() const throw () {
-      return m_metadata.maxColumnsInGroupBy;
-    }
-
-    int32_t getMaxColumnsInIndex() const throw () {
-      return m_metadata.maxColumnsInIndex;
-    }
-
-    int32_t getMaxColumnsInOrderBy() const throw () {
-      return m_metadata.maxColumnsInOrderBy;
-    }
-
-    int32_t getMaxColumnsInSelect() const throw () {
-      return m_metadata.maxColumnsInSelect;
-    }
-
-    int32_t getMaxColumnsInTable() const throw () {
-      return m_metadata.maxColumnsInTable;
-    }
-
-    int32_t getMaxConnections() const throw () {
-      return m_metadata.maxConnections;
-    }
-
-    int32_t getMaxIndexLength() const throw () {
-      return m_metadata.maxIndexLength;
-    }
-
-    int32_t getMaxRowSize() const throw () {
-      return m_metadata.maxRowSize;
-    }
-
-    int32_t getMaxOpenStatements() const throw () {
-      return m_metadata.maxOpenStatements;
-    }
-
-    int32_t getMaxTableNamesInSelect() const throw () {
-      return m_metadata.maxTableNamesInSelect;
-    }
-
-    int32_t getMaxColumnNameLength() const throw () {
-      return m_metadata.maxColumnNameLength;
-    }
-
-    int32_t getMaxCursorNameLength() const throw () {
-      return m_metadata.maxCursorNameLength;
-    }
-
-    int32_t getMaxSchemaNameLength() const throw () {
-      return m_metadata.maxSchemaNameLength;
-    }
-
-    int32_t getMaxProcedureNameLength() const throw () {
-      return m_metadata.maxProcedureNameLength;
-    }
-
-    int32_t getMaxCatalogNameLength() const throw () {
-      return m_metadata.maxCatalogNameLength;
-    }
-
-    int32_t maxTableNameLength() const throw () {
-      return m_metadata.maxTableNameLength;
-    }
-
-    int32_t maxUserNameLength() const throw () {
-      return m_metadata.maxUserNameLength;
-    }
-
-    int32_t defaultTransactionIsolation() const throw () {
-      return m_metadata.defaultTransactionIsolation;
-    }
-
-    int32_t getDefaultResultSetType() const throw () {
-      return m_metadata.defaultResultSetType;
-    }
-
-    ResultSetHoldability::type getDefaultHoldability() const throw () {
-      return m_metadata.defaultResultSetHoldabilityHoldCursorsOverCommit
-          ? ResultSetHoldability::HOLD_CURSORS_OVER_COMMIT
-          : ResultSetHoldability::CLOSE_CURSORS_OVER_COMMIT;
-    }
-
-    bool isSQLStateXOpen() const throw () {
-      return m_metadata.sqlStateIsXOpen;
-    }
-
-    RowIdLifetime::type getDefaultRowIdLifeTime() const throw () {
-      return m_metadata.rowIdLifeTime;
-    }
-
+        SQLType::type toType) const noexcept;
     bool supportsTransactionIsolationLevel(
-        IsolationLevel::type isolation) const throw ();
-
-    bool supportsResultSetReadOnly(ResultSetType::type rsType) const throw ();
-
-    bool supportsResultSetUpdatable(ResultSetType::type rsType) const throw ();
-
-    bool othersUpdatesVisible(ResultSetType::type rsType) const throw ();
-
-    bool othersDeletesVisible(ResultSetType::type rsType) const throw ();
-
-    bool othersInsertsVisible(ResultSetType::type rsType) const throw ();
-
-    bool ownUpdatesVisible(ResultSetType::type rsType) const throw ();
-
-    bool ownDeletesVisible(ResultSetType::type rsType) const throw ();
-
-    bool ownInsertsVisible(ResultSetType::type rsType) const throw ();
-
-    bool updatesDetected(ResultSetType::type rsType) const throw ();
-
-    bool deletesDetected(ResultSetType::type rsType) const throw ();
-
-    bool insertsDetected(ResultSetType::type rsType) const throw ();
-
-    ~DatabaseMetaData() throw ();
+        IsolationLevel::type isolation) const noexcept;
+    bool supportsResultSetReadOnly(ResultSetType::type rsType) const noexcept;
+    bool supportsResultSetUpdatable(ResultSetType::type rsType) const noexcept;
+    bool othersUpdatesVisible(ResultSetType::type rsType) const noexcept;
+    bool othersDeletesVisible(ResultSetType::type rsType) const noexcept;
+    bool othersInsertsVisible(ResultSetType::type rsType) const noexcept;
+    bool ownUpdatesVisible(ResultSetType::type rsType) const noexcept;
+    bool ownDeletesVisible(ResultSetType::type rsType) const noexcept;
+    bool ownInsertsVisible(ResultSetType::type rsType) const noexcept;
+    bool updatesDetected(ResultSetType::type rsType) const noexcept;
+    bool deletesDetected(ResultSetType::type rsType) const noexcept;
+    bool insertsDetected(ResultSetType::type rsType) const noexcept;
   };
 
 } /* namespace client */

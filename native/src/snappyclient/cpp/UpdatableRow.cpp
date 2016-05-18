@@ -71,42 +71,42 @@ std::vector<int32_t> UpdatableRow::getChangedColumnsAsVector() {
       changedColumns.push_back(pos);
     }
   }
-  return changedColumns;
+  return std::move(changedColumns);
 }
 
 void UpdatableRow::setBoolean(const uint32_t columnIndex, const bool v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setBool(v);
+  cv->set(v);
 }
 
 void UpdatableRow::setByte(const uint32_t columnIndex, const int8_t v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setByte(v);
+  cv->set(v);
 }
 
 void UpdatableRow::setShort(const uint32_t columnIndex, const int16_t v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setI16(v);
+  cv->set(v);
 }
 
 void UpdatableRow::setInt(const uint32_t columnIndex, const int32_t v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setI32(v);
+  cv->set(v);
 }
 
-void UpdatableRow::setLong(const uint32_t columnIndex, const int64_t v) {
+void UpdatableRow::setInt64(const uint32_t columnIndex, const int64_t v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setI64(v);
+  cv->set(v);
 }
 
 void UpdatableRow::setFloat(const uint32_t columnIndex, const float v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setFloat(v);
+  cv->set(v);
 }
 
 void UpdatableRow::setDouble(const uint32_t columnIndex, const double v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setDouble(v);
+  cv->set(v);
 }
 
 void UpdatableRow::setString(const uint32_t columnIndex, const std::string& v) {
@@ -114,20 +114,26 @@ void UpdatableRow::setString(const uint32_t columnIndex, const std::string& v) {
   cv->setString(v);
 }
 
+void UpdatableRow::setString(const uint32_t columnIndex, std::string&& v) {
+  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
+  cv->setString(std::move(v));
+}
+
 void UpdatableRow::setDecimal(const uint32_t columnIndex, const Decimal& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setDecimal(thrift::Decimal());
-  v.copyTo(*cv->getDecimal());
+  std::shared_ptr<thrift::Decimal> dec(new thrift::Decimal());
+  v.copyTo(*dec);
+  cv->set(dec);
 }
 
 void UpdatableRow::setDate(const uint32_t columnIndex, const DateTime v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setDate(v.m_secsSinceEpoch);
+  cv->set(thrift::Date(v.m_secsSinceEpoch));
 }
 
 void UpdatableRow::setTime(const uint32_t columnIndex, const DateTime v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setTime(v.m_secsSinceEpoch);
+  cv->set(thrift::Time(v.m_secsSinceEpoch));
 }
 
 void UpdatableRow::setTimestamp(const uint32_t columnIndex,
@@ -141,64 +147,50 @@ void UpdatableRow::setBinary(const uint32_t columnIndex, const std::string& v) {
   cv->setBinary(v);
 }
 
-void UpdatableRow::setArray(const uint32_t columnIndex,
-    const std::vector<thrift::ColumnValue>& v) {
-  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setARRAY(v);
-}
-
-void UpdatableRow::setMap(const uint32_t columnIndex,
-    const std::map<thrift::ColumnValue, thrift::ColumnValue>& v) {
-  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setMAP(v);
-}
-
-void UpdatableRow::setStruct(const uint32_t columnIndex,
-    const std::vector<thrift::ColumnValue>& v) {
-  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setSTRUCT(v);
-}
-
-void UpdatableRow::setJSONObject(const uint32_t columnIndex,
-    const JSONObject& v) {
-  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setJSON(*v.m_p);
-}
-
-void UpdatableRow::setNull(const uint32_t columnIndex) {
-  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setNull();
-}
-
-void UpdatableRow::setString(const uint32_t columnIndex, std::string&& v) {
-  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setString(std::move(v));
-}
-
 void UpdatableRow::setBinary(const uint32_t columnIndex, std::string&& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
   cv->setBinary(std::move(v));
 }
 
 void UpdatableRow::setArray(const uint32_t columnIndex,
-    std::vector<thrift::ColumnValue>&& v) {
+    const thrift::Array& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setARRAY(std::move(v));
+  cv->setArray(v);
 }
 
-void UpdatableRow::setMap(const uint32_t columnIndex,
-    std::map<thrift::ColumnValue, thrift::ColumnValue>&& v) {
+void UpdatableRow::setArray(const uint32_t columnIndex, thrift::Array&& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setMAP(std::move(v));
+  cv->setArray(std::move(v));
+}
+
+void UpdatableRow::setMap(const uint32_t columnIndex, const thrift::Map& v) {
+  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
+  cv->setMap(v);
+}
+
+void UpdatableRow::setMap(const uint32_t columnIndex, thrift::Map&& v) {
+  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
+  cv->setMap(std::move(v));
 }
 
 void UpdatableRow::setStruct(const uint32_t columnIndex,
-    std::vector<thrift::ColumnValue>&& v) {
+    const thrift::Struct& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setSTRUCT(std::move(v));
+  cv->setStruct(v);
 }
 
-void UpdatableRow::setJSONObject(const uint32_t columnIndex, JSONObject&& v) {
+void UpdatableRow::setStruct(const uint32_t columnIndex, thrift::Struct&& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setJSON(std::move(*v.m_p));
+  cv->setStruct(std::move(v));
+}
+
+void UpdatableRow::setNull(const uint32_t columnIndex, const bool v) {
+  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
+  cv->setIsNull(v);
+}
+
+void UpdatableRow::setJSON(const uint32_t columnIndex,
+    const JSON& v) {
+  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
+  cv->set(v.getThriftObject());
 }

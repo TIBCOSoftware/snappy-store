@@ -30,13 +30,13 @@ class ClobChunk {
  public:
 
   ClobChunk(const ClobChunk&);
-  ClobChunk(ClobChunk&&);
+  ClobChunk(ClobChunk&&) noexcept;
   ClobChunk& operator=(const ClobChunk&);
-  ClobChunk& operator=(ClobChunk&&);
+  ClobChunk& operator=(ClobChunk&&) noexcept;
   ClobChunk() : chunk(), last(0), lobId(0), offset(0), totalLength(0) {
   }
 
-  virtual ~ClobChunk() throw();
+  virtual ~ClobChunk() noexcept;
   std::string chunk;
   bool last;
   int32_t lobId;
@@ -87,7 +87,7 @@ class ClobChunk {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ClobChunk &a, ClobChunk &b);
+void swap(ClobChunk &a, ClobChunk &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const ClobChunk& obj)
 {

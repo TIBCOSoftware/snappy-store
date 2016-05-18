@@ -110,20 +110,20 @@ public:
       m_values(initialCapacity), m_updatable(false), m_changedColumns(0) {
   }
 
-  Row(Row&& other) : m_values(std::move(other.m_values)), m_updatable(
+  Row(Row&& other) noexcept : m_values(std::move(other.m_values)), m_updatable(
       other.m_updatable), m_changedColumns(other.m_changedColumns) {
     other.m_updatable = false;
     other.m_changedColumns = NULL;
   }
 
-  Row& operator=(Row&& other) {
+  Row& operator=(Row&& other) noexcept {
     m_values.swap(other.m_values);
     std::swap(m_updatable, other.m_updatable);
     std::swap(m_changedColumns, other.m_changedColumns);
     return *this;
   }
 
-  virtual ~Row() throw();
+  virtual ~Row();
 
   void clearChangedColumns();
 
@@ -133,7 +133,7 @@ public:
     m_values.resize(newSize);
   }
 
-  void swap(Row& other);
+  void swap(Row& other) noexcept;
 
   bool operator == (const Row & rhs) const {
     return m_updatable == rhs.m_updatable &&
@@ -152,7 +152,7 @@ public:
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(Row &a, Row &b);
+void swap(Row &a, Row &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const Row& obj) {
   obj.printTo(out);

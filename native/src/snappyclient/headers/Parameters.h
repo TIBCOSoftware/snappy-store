@@ -103,11 +103,11 @@ namespace client {
       return setInt(index, (const int32_t)v);
     }
 
-    Parameters& setLong(const uint32_t index, const int64_t v);
+    Parameters& setInt64(const uint32_t index, const int64_t v);
 
-    Parameters& setUnsignedLong(const uint32_t index, const uint64_t v) {
+    Parameters& setUnsignedInt64(const uint32_t index, const uint64_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return setLong(index, (const int64_t)v);
+      return setInt64(index, (const int64_t)v);
     }
 
     Parameters& setFloat(const uint32_t index, const float v);
@@ -116,10 +116,15 @@ namespace client {
 
     Parameters& setString(const uint32_t index, const std::string& v);
 
+    Parameters& setString(const uint32_t index, std::string&& v);
+
     Parameters& setString(const uint32_t index, const char* v);
 
     Parameters& setString(const uint32_t index, const char* v,
         const int32_t len);
+
+    // TODO: somehow have an efficient move version; right now a full
+    // transformation copy happens from public Decimal to thrift's Decimal
 
     Parameters& setDecimal(const uint32_t index, const Decimal& v);
 
@@ -135,36 +140,26 @@ namespace client {
 
     Parameters& setBinary(const uint32_t index, const std::string& v);
 
+    Parameters& setBinary(const uint32_t index, std::string&& v);
+
     Parameters& setBinary(const uint32_t index, const int8_t* v,
         const size_t len);
 
-    Parameters& setArray(const uint32_t index,
-        const std::vector<thrift::ColumnValue>& v);
+    Parameters& setArray(const uint32_t index, const thrift::Array& v);
 
-    Parameters& setMap(const uint32_t index,
-        const std::map<thrift::ColumnValue, thrift::ColumnValue>& v);
+    Parameters& setArray(const uint32_t index, thrift::Array&& v);
 
-    Parameters& setStruct(const uint32_t index,
-        const std::vector<thrift::ColumnValue>& v);
+    Parameters& setMap(const uint32_t index, const thrift::Map& v);
 
-    Parameters& setJSONObject(const uint32_t index, const JSONObject& v);
+    Parameters& setMap(const uint32_t index, thrift::Map&& v);
 
-    Parameters& setNull(const uint32_t index);
+    Parameters& setStruct(const uint32_t index, const thrift::Struct& v);
 
-    Parameters& setString(const uint32_t index, std::string&& v);
+    Parameters& setStruct(const uint32_t index, thrift::Struct&& v);
 
-    Parameters& setBinary(const uint32_t index, std::string&& v);
+    Parameters& setNull(const uint32_t index, const bool v);
 
-    Parameters& setArray(const uint32_t index,
-        std::vector<thrift::ColumnValue>&& v);
-
-    Parameters& setMap(const uint32_t index,
-        std::map<thrift::ColumnValue, thrift::ColumnValue>&& v);
-
-    Parameters& setStruct(const uint32_t index,
-        std::vector<thrift::ColumnValue>&& v);
-
-    Parameters& setJSONObject(const uint32_t index, JSONObject&& v);
+    Parameters& setJSON(const uint32_t index, const JSON& v);
   };
 
 } /* namespace client */

@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-Timestamp::~Timestamp() throw() {
+Timestamp::~Timestamp() noexcept {
 }
 
 
@@ -105,8 +105,9 @@ uint32_t Timestamp::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(Timestamp &a, Timestamp &b) {
+void swap(Timestamp &a, Timestamp &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.secsSinceEpoch, b.secsSinceEpoch);
   swap(a.nanos, b.nanos);
   swap(a.__isset, b.__isset);
@@ -117,7 +118,7 @@ Timestamp::Timestamp(const Timestamp& other4) {
   nanos = other4.nanos;
   __isset = other4.__isset;
 }
-Timestamp::Timestamp( Timestamp&& other5) {
+Timestamp::Timestamp( Timestamp&& other5) noexcept {
   secsSinceEpoch = std::move(other5.secsSinceEpoch);
   nanos = std::move(other5.nanos);
   __isset = std::move(other5.__isset);
@@ -128,7 +129,7 @@ Timestamp& Timestamp::operator=(const Timestamp& other6) {
   __isset = other6.__isset;
   return *this;
 }
-Timestamp& Timestamp::operator=(Timestamp&& other7) {
+Timestamp& Timestamp::operator=(Timestamp&& other7) noexcept {
   secsSinceEpoch = std::move(other7.secsSinceEpoch);
   nanos = std::move(other7.nanos);
   __isset = std::move(other7.__isset);

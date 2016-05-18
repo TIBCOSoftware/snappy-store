@@ -51,103 +51,57 @@ namespace client {
 
   class StatementAttributes {
   public:
-    static const StatementAttributes EMPTY;
-
-    StatementAttributes() : m_attrs() {
-      // TODO: need to implement proper BLOB/CLOB/ARRAY/MAP/STRUCT/UDT support
-      // get full value in one shot for now
-      m_attrs.__set_lobChunkSize(0);
+    StatementAttributes();
+    StatementAttributes(const StatementAttributes& attrs);
+    ~StatementAttributes() {
     }
 
-    StatementAttributes(const StatementAttributes& attrs) :
-        m_attrs(attrs.m_attrs) {
-    }
+    static StatementAttributes EMPTY;
 
-    ResultSetType::type getResultSetType() const throw () {
+    ResultSetType::type getResultSetType() const noexcept {
       return static_cast<ResultSetType::type>(
-          m_attrs.__isset.resultSetType ? m_attrs.resultSetType :
+          m_attrs->__isset.resultSetType ? m_attrs->resultSetType :
               thrift::snappydataConstants::DEFAULT_RESULTSET_TYPE);
     }
 
-    ResultSetHoldability::type getResultSetHoldability() const throw () {
-      return (m_attrs.holdCursorsOverCommit && m_attrs.__isset
-          .holdCursorsOverCommit) || thrift::snappydataConstants
-          ::DEFAULT_RESULTSET_HOLD_CURSORS_OVER_COMMIT
-          ? ResultSetHoldability::HOLD_CURSORS_OVER_COMMIT
-          : ResultSetHoldability::CLOSE_CURSORS_OVER_COMMIT;
+    bool isUpdatable() const noexcept {
+      return m_attrs->__isset.updatable && m_attrs->updatable;
     }
 
-    bool isUpdatable() const throw () {
-      return m_attrs.__isset.updatable && m_attrs.updatable;
-    }
-
-    uint32_t getBatchSize() const throw () {
-      return m_attrs.__isset.batchSize ? m_attrs.batchSize
+    uint32_t getBatchSize() const noexcept {
+      return m_attrs->__isset.batchSize ? m_attrs->batchSize
           : thrift::snappydataConstants::DEFAULT_RESULTSET_BATCHSIZE;
     }
 
-    bool isFetchDirectionReverse() const throw () {
-      return m_attrs.__isset.fetchReverse && m_attrs.fetchReverse;
+    const thrift::StatementAttrs& getAttrs() const {
+      return *m_attrs;
     }
 
-    uint32_t getLobChunkSize() const throw () {
-      return m_attrs.__isset.lobChunkSize ? m_attrs.lobChunkSize
-          : thrift::snappydataConstants::DEFAULT_LOB_CHUNKSIZE;
-    }
+    ResultSetHoldability::type getResultSetHoldability() const noexcept;
+    bool isFetchDirectionReverse() const noexcept;
+    uint32_t getLobChunkSize() const noexcept;
+    uint32_t getMaxRows() const noexcept;
+    uint32_t getMaxFieldSize() const noexcept;
+    uint32_t getTimeout() const noexcept;
+    const std::string& getCursorName() const noexcept;
+    bool isPoolable() const noexcept;
+    bool hasEscapeProcessing() const noexcept;
 
-    uint32_t getMaxRows() const throw () {
-      return m_attrs.__isset.maxRows ? m_attrs.maxRows : 0;
-    }
-
-    uint32_t getMaxFieldSize() const throw () {
-      return m_attrs.__isset.maxFieldSize ? m_attrs.maxFieldSize : 0;
-    }
-
-    uint32_t getTimeout() const throw () {
-      return m_attrs.__isset.timeout ? m_attrs.timeout : 0;
-    }
-
-    const std::string& getCursorName() const throw () {
-      return
-          m_attrs.__isset.cursorName ? m_attrs.cursorName : EMPTY_STRING;
-    }
-
-    bool isPoolable() const throw () {
-      return m_attrs.__isset.poolable && m_attrs.poolable;
-    }
-
-    bool getEscapeProcessing() const throw () {
-      return m_attrs.__isset.doEscapeProcessing
-          && m_attrs.doEscapeProcessing;
-    }
-
-    void setResultSetType(ResultSetType::type rsType) throw ();
-    void setResultSetHoldability(
-        ResultSetHoldability::type holdability) throw ();
-    void setUpdatable(bool updatable) throw ();
-    void setBatchSize(uint32_t batchSize) throw ();
-    void setFetchDirectionReverse(bool fetchDirection) throw ();
-    void setLobChunkSize(uint32_t size) throw ();
-    void setMaxRows(uint32_t num) throw ();
-    void setFieldSize(uint32_t size) throw ();
-    void setTimeout(uint32_t timeout) throw ();
-    void setCursorName(const std::string& name) throw ();
-    void setPoolable(bool poolable) throw ();
-    void setEscapeProcessing(bool enable) throw ();
-
-    ~StatementAttributes() throw () {
-    }
+    void setResultSetType(ResultSetType::type rsType);
+    void setResultSetHoldability(ResultSetHoldability::type holdability);
+    void setUpdatable(bool updatable);
+    void setBatchSize(uint32_t batchSize);
+    void setFetchDirectionReverse(bool fetchDirection);
+    void setLobChunkSize(uint32_t size);
+    void setMaxRows(uint32_t num);
+    void setMaxFieldSize(uint32_t size);
+    void setTimeout(uint32_t timeout);
+    void setCursorName(const std::string& name);
+    void setPoolable(bool poolable);
+    void setEscapeProcessing(bool enable);
 
   private:
-    thrift::StatementAttrs m_attrs;
-
-    StatementAttributes(const thrift::StatementAttrs& attrs) : m_attrs(attrs) {
-    }
-
-    friend class Connection;
-    friend class PreparedStatement;
-    friend class Result;
-    friend class ResultSet;
+    std::shared_ptr<thrift::StatementAttrs> m_attrs;
   };
 
 } /* namespace client */

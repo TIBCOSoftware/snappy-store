@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-StatementResult::~StatementResult() throw() {
+StatementResult::~StatementResult() noexcept {
 }
 
 
@@ -214,8 +214,9 @@ uint32_t StatementResult::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(StatementResult &a, StatementResult &b) {
+void swap(StatementResult &a, StatementResult &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.resultSet, b.resultSet);
   swap(a.updateCount, b.updateCount);
   swap(a.batchUpdateCounts, b.batchUpdateCounts);
@@ -236,7 +237,7 @@ StatementResult::StatementResult(const StatementResult& other317) {
   preparedResult = other317.preparedResult;
   __isset = other317.__isset;
 }
-StatementResult::StatementResult( StatementResult&& other318) {
+StatementResult::StatementResult( StatementResult&& other318) noexcept {
   resultSet = std::move(other318.resultSet);
   updateCount = std::move(other318.updateCount);
   batchUpdateCounts = std::move(other318.batchUpdateCounts);
@@ -257,7 +258,7 @@ StatementResult& StatementResult::operator=(const StatementResult& other319) {
   __isset = other319.__isset;
   return *this;
 }
-StatementResult& StatementResult::operator=(StatementResult&& other320) {
+StatementResult& StatementResult::operator=(StatementResult&& other320) noexcept {
   resultSet = std::move(other320.resultSet);
   updateCount = std::move(other320.updateCount);
   batchUpdateCounts = std::move(other320.batchUpdateCounts);

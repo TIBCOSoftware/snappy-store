@@ -35,13 +35,13 @@ class OpenConnectionArgs {
  public:
 
   OpenConnectionArgs(const OpenConnectionArgs&);
-  OpenConnectionArgs(OpenConnectionArgs&&);
+  OpenConnectionArgs(OpenConnectionArgs&&) noexcept;
   OpenConnectionArgs& operator=(const OpenConnectionArgs&);
-  OpenConnectionArgs& operator=(OpenConnectionArgs&&);
+  OpenConnectionArgs& operator=(OpenConnectionArgs&&) noexcept;
   OpenConnectionArgs() : clientHostName(), clientID(), security((SecurityMechanism::type)0), userName(), password(), tokenSize(0), useStringForDecimal(0) {
   }
 
-  virtual ~OpenConnectionArgs() throw();
+  virtual ~OpenConnectionArgs() noexcept;
   std::string clientHostName;
   std::string clientID;
   SecurityMechanism::type security;
@@ -111,7 +111,7 @@ class OpenConnectionArgs {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(OpenConnectionArgs &a, OpenConnectionArgs &b);
+void swap(OpenConnectionArgs &a, OpenConnectionArgs &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const OpenConnectionArgs& obj)
 {

@@ -43,13 +43,13 @@ class PrepareResult {
  public:
 
   PrepareResult(const PrepareResult&);
-  PrepareResult(PrepareResult&&);
+  PrepareResult(PrepareResult&&) noexcept;
   PrepareResult& operator=(const PrepareResult&);
-  PrepareResult& operator=(PrepareResult&&);
+  PrepareResult& operator=(PrepareResult&&) noexcept;
   PrepareResult() : statementId(0) {
   }
 
-  virtual ~PrepareResult() throw();
+  virtual ~PrepareResult() noexcept;
   int32_t statementId;
   std::vector<ColumnDescriptor>  parameterMetaData;
   std::vector<ColumnDescriptor>  resultSetMetaData;
@@ -93,7 +93,7 @@ class PrepareResult {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(PrepareResult &a, PrepareResult &b);
+void swap(PrepareResult &a, PrepareResult &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const PrepareResult& obj)
 {

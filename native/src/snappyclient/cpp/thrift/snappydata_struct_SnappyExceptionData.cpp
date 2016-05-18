@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-SnappyExceptionData::~SnappyExceptionData() throw() {
+SnappyExceptionData::~SnappyExceptionData() noexcept {
 }
 
 
@@ -125,8 +125,9 @@ uint32_t SnappyExceptionData::write(::apache::thrift::protocol::TProtocol* oprot
   return xfer;
 }
 
-void swap(SnappyExceptionData &a, SnappyExceptionData &b) {
+void swap(SnappyExceptionData &a, SnappyExceptionData &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.reason, b.reason);
   swap(a.sqlState, b.sqlState);
   swap(a.severity, b.severity);
@@ -137,7 +138,7 @@ SnappyExceptionData::SnappyExceptionData(const SnappyExceptionData& other169) {
   sqlState = other169.sqlState;
   severity = other169.severity;
 }
-SnappyExceptionData::SnappyExceptionData( SnappyExceptionData&& other170) {
+SnappyExceptionData::SnappyExceptionData( SnappyExceptionData&& other170) noexcept {
   reason = std::move(other170.reason);
   sqlState = std::move(other170.sqlState);
   severity = std::move(other170.severity);
@@ -148,7 +149,7 @@ SnappyExceptionData& SnappyExceptionData::operator=(const SnappyExceptionData& o
   severity = other171.severity;
   return *this;
 }
-SnappyExceptionData& SnappyExceptionData::operator=(SnappyExceptionData&& other172) {
+SnappyExceptionData& SnappyExceptionData::operator=(SnappyExceptionData&& other172) noexcept {
   reason = std::move(other172.reason);
   sqlState = std::move(other172.sqlState);
   severity = std::move(other172.severity);

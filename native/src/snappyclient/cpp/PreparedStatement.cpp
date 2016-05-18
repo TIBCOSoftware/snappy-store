@@ -50,26 +50,26 @@
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 
-PreparedStatement::PreparedStatement(impl::ClientService& service,
-    void* serviceId, const thrift::StatementAttrs& attrs) :
-    m_service(service), m_serviceId(serviceId), m_attrs(attrs),
-    m_prepResult(), m_warnings(NULL), m_result(NULL) {
-  // register reference for service
-  impl::ClientServiceHolder::instance().incrementReferenceCount(serviceId);
+PreparedStatement::PreparedStatement(
+    const std::shared_ptr<impl::ClientService>& service,
+    const StatementAttributes& attrs) :
+    m_service(service), m_attrs(attrs),
+    m_prepResult(), m_warnings(),
+    m_cursorId(thrift::snappydataConstants::INVALID_ID) {
 }
 
-PreparedStatement::PreparedStatement(impl::ClientService& service,
-    void* serviceId, const thrift::StatementAttrs& attrs,
+PreparedStatement::PreparedStatement(
+    const std::shared_ptr<impl::ClientService>& service,
+    const StatementAttributes& attrs,
     const thrift::PrepareResult& prepResult) :
-    m_service(service), m_serviceId(serviceId), m_attrs(attrs),
-    m_prepResult(prepResult), m_warnings(NULL), m_result(NULL) {
-  // register reference for service
-  impl::ClientServiceHolder::instance().incrementReferenceCount(serviceId);
+    m_service(service), m_attrs(attrs),
+    m_prepResult(prepResult), m_warnings(),
+    m_cursorId(thrift::snappydataConstants::INVALID_ID) {
 }
 
 void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
     const SQLType::type type) {
-  if (m_outParams.isNull()) {
+  if (m_outParams == NULL) {
     m_outParams.reset(new std::map<int32_t, thrift::OutputParameter>());
   }
   thrift::OutputParameter outParam;
@@ -79,7 +79,7 @@ void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
 
 void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
     const SQLType::type type, const int32_t scale) {
-  if (m_outParams.isNull()) {
+  if (m_outParams == NULL) {
     m_outParams.reset(new std::map<int32_t, thrift::OutputParameter>());
   }
   thrift::OutputParameter outParam;
@@ -88,40 +88,42 @@ void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
   m_outParams->operator[](parameterIndex) = outParam;
 }
 
-void PreparedStatement::unregisterOutParameter(const int32_t parameterIndex) {
-  if (!m_outParams.isNull()) {
-    m_outParams->erase(parameterIndex);
+bool PreparedStatement::unregisterOutParameter(const int32_t parameterIndex) {
+  if (m_outParams != NULL) {
+    return (m_outParams->erase(parameterIndex) > 0);
+  } else {
+    return false;
   }
 }
 
-AutoPtr<Result> PreparedStatement::execute(const Parameters& params) {
-  impl::ClientService& service = checkAndGetService();
+std::unique_ptr<Result> PreparedStatement::execute(const Parameters& params) {
+  std::unique_ptr<Result> result(new Result(m_service, m_attrs));
 
-  AutoPtr<Result> result(
-      new Result(service, m_serviceId, &m_attrs.m_attrs, this));
-
-  service.executePrepared(result->m_result, m_prepResult, params,
-      m_outParams.isNull() ? EMPTY_OUT_PARAMS : *m_outParams);
-  if (result->m_result.__isset.warnings) {
+  m_service->executePrepared(result->m_result, m_prepResult, params,
+      m_outParams == NULL ? EMPTY_OUT_PARAMS : *m_outParams);
+  if (result->m_result.__isset.resultSet) {
+    m_cursorId = result->m_result.resultSet.cursorId;
+  } else {
+    m_cursorId = thrift::snappydataConstants::INVALID_ID;
+  }
+  if (result->hasWarnings()) {
     // set back in PreparedStatement
-    AutoPtr<SQLWarning> warnings = result->getWarnings();
-    if (warnings.isOwner()) {
-      m_warnings.reset(warnings.release());
-    } else {
-      m_warnings.reset(new SQLWarning(*warnings));
-    }
+    m_warnings = result->getWarnings();
+  } else {
+    m_warnings.reset();
   }
   return result;
 }
 
 int32_t PreparedStatement::executeUpdate(const Parameters& params) {
-  impl::ClientService& service = checkAndGetService();
-
   thrift::UpdateResult result;
-  service.executePreparedUpdate(result, m_prepResult, params);
+  m_service->executePreparedUpdate(result, m_prepResult, params);
+  m_cursorId = thrift::snappydataConstants::INVALID_ID;
   if (result.__isset.warnings) {
     // set back in PreparedStatement
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
+  } else {
+    m_warnings.reset();
   }
   if (result.__isset.updateCount) {
     return result.updateCount;
@@ -130,75 +132,77 @@ int32_t PreparedStatement::executeUpdate(const Parameters& params) {
   }
 }
 
-AutoPtr<ResultSet> PreparedStatement::executeQuery(const Parameters& params) {
-  impl::ClientService& service = checkAndGetService();
-
-  thrift::PrepareResult& prepResult = m_prepResult;
+std::unique_ptr<ResultSet> PreparedStatement::executeQuery(
+    const Parameters& params) {
   int32_t batchSize;
   bool updatable, scrollable;
-  Result::getResultSetArgs(&m_attrs.m_attrs, batchSize, updatable, scrollable);
+  Result::getResultSetArgs(m_attrs, batchSize, updatable, scrollable);
 
-  thrift::RowSet* rsp;
-  if (m_result == NULL) {
-    rsp = new thrift::RowSet();
-    m_result = new ResultSet(rsp, &m_attrs.m_attrs, true, service,
-        m_serviceId, batchSize, updatable, scrollable, false /* for reuse */);
-    // resize the vectors to some reasonable values
-    m_result->m_p->rows.reserve(4);
-    m_result->m_p->metadata.reserve(10);
-
-  // TODO: can also enable reuse in case the AutoPtr gets destroyed
-  // but for that need to have another flag in AutoPtr which will
-  // tell whether this is the last owner of the ptr regardless of
-  // whether "managed" is true or not initially, and then call back
-  // into ResultSet.cleanupRS
-  } else if (m_result->m_inUse) {
-    // need to create a new resultSet in this case
-    rsp = new thrift::RowSet();
-    AutoPtr<thrift::RowSet> rs(rsp);
-    service.executePreparedQuery(*rsp, prepResult, params);
-
-    AutoPtr<ResultSet> resultSet(
-        new ResultSet(rsp, &m_attrs.m_attrs, true, service, m_serviceId,
-            batchSize, updatable, scrollable, true));
-    rs.release();
-    return resultSet;
+  thrift::RowSet* rs = new thrift::RowSet();
+  // resize the vectors to some reasonable values
+  rs->rows.reserve(4);
+  rs->metadata.reserve(10);
+  std::unique_ptr<ResultSet> resultSet(
+      new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
+          scrollable));
+  m_service->executePreparedQuery(*rs, m_prepResult, params);
+  m_cursorId = rs->cursorId;
+  if (resultSet->hasWarnings()) {
+    // set back in PreparedStatement
+    m_warnings = resultSet->getWarnings();
   } else {
-    rsp = m_result->m_p;
+    m_warnings.reset();
   }
-
-  service.executePreparedQuery(*rsp, prepResult, params);
-  // (re)set the cursorId
-  m_result->m_cursorId = rsp->cursorId;
-  return AutoPtr<ResultSet>(m_result, false);
+  return resultSet;
 }
 
-AutoPtr<std::vector<int32_t> > PreparedStatement::executeBatch(
+std::vector<int32_t> PreparedStatement::executeBatch(
     const ParametersBatch& paramsBatch) {
-  impl::ClientService& service = checkAndGetService();
-
   thrift::UpdateResult result;
-  service.executePreparedBatch(result, m_prepResult, paramsBatch.m_batch);
+  m_service->executePreparedBatch(result, m_prepResult, paramsBatch.m_batch);
+  m_cursorId = thrift::snappydataConstants::INVALID_ID;
   if (result.__isset.warnings) {
     // set back in PreparedStatement
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
-  }
-  if (result.__isset.batchUpdateCounts) {
-    return AutoPtr<std::vector<int32_t> >(
-        new std::vector<int32_t>(result.batchUpdateCounts));
   } else {
-    return AutoPtr<std::vector<int32_t> >(NULL);
+    m_warnings.reset();
+  }
+  return std::move(result.batchUpdateCounts);
+}
+
+std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
+    const NextResultSetBehaviour::type behaviour) {
+  if (m_cursorId != thrift::snappydataConstants::INVALID_ID) {
+    int32_t batchSize;
+    bool updatable, scrollable;
+    Result::getResultSetArgs(m_attrs, batchSize, updatable, scrollable);
+
+    thrift::RowSet* rs = new thrift::RowSet();
+    std::unique_ptr<ResultSet> resultSet(
+        new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
+            scrollable));
+
+    m_service->getNextResultSet(*rs, m_cursorId, behaviour);
+    if (resultSet->hasWarnings()) {
+      // set back in PreparedStatement
+      m_warnings = resultSet->getWarnings();
+    } else {
+      m_warnings.reset();
+    }
+    return resultSet;
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_CURSOR_STATE_MSG2);
   }
 }
 
-AutoPtr<SQLWarning> PreparedStatement::getWarnings() {
-  if (!m_warnings.isNull()) {
-    return AutoPtr<SQLWarning>(m_warnings.get(), false);
+std::unique_ptr<SQLWarning> PreparedStatement::getWarnings() {
+  if (m_warnings != NULL) {
+    return std::unique_ptr<SQLWarning>(new SQLWarning(*m_warnings));
   } else if (m_prepResult.__isset.warnings) {
-    return AutoPtr<SQLWarning>(new GET_SQLWARNING(
-        m_prepResult.warnings), true);
+    return std::unique_ptr<SQLWarning>(new GET_SQLWARNING(
+        m_prepResult.warnings));
   } else {
-    return AutoPtr<SQLWarning>(NULL);
+    return std::unique_ptr<SQLWarning>();
   }
 }
 
@@ -210,52 +214,35 @@ ParameterDescriptor PreparedStatement::getParameterDescriptor(
     return ParameterDescriptor(
         m_prepResult.parameterMetaData[parameterIndex - 1], parameterIndex);
   } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        parameterIndex, m_prepResult.parameterMetaData.size());
+    throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG,
+        parameterIndex, m_prepResult.parameterMetaData.size(),
+        "parameter number in prepared statement");
   }
 }
 
-namespace _snappy_impl {
-  struct ClearPSTMT {
-    ResultSet*& m_result;
-    bool& m_isOwner;
-
-    ~ClearPSTMT() {
-      m_isOwner = true;
-      delete m_result;
-      m_result = NULL;
-    }
-  };
+ColumnDescriptor PreparedStatement::getColumnDescriptor(
+    const uint32_t columnIndex) {
+  return ResultSet::getColumnDescriptor(m_prepResult.resultSetMetaData,
+      columnIndex, "column number in prepared statement");
 }
 
-void PreparedStatement::cancel() {
-  const int32_t stmtId = m_prepResult.statementId;
-  if (stmtId != 0) {
-    impl::ClientService& service = checkAndGetService();
-
-    service.cancelStatement(stmtId);
+bool PreparedStatement::cancel() {
+  const int32_t statementId = m_prepResult.statementId;
+  if (statementId != thrift::snappydataConstants::INVALID_ID) {
+    m_service->cancelStatement(statementId);
+    return true;
   }
+  return false;
 }
 
 void PreparedStatement::close() {
-  if (m_result != NULL) {
-    // force cleanup of cached result set at this point in all cases
-    _snappy_impl::ClearPSTMT clr = { m_result, m_result->m_isOwner };
-
-    if (m_result->m_inUse) {
-      m_result->close();
-    }
+  if (m_prepResult.statementId != 0) {
+    m_service->closeStatement(m_prepResult.statementId);
   }
-  if (m_serviceId != NULL) {
-    if (m_prepResult.statementId != 0) {
-      m_service.closeStatement(m_prepResult.statementId);
-    }
-  }
+  m_cursorId = thrift::snappydataConstants::INVALID_ID;
 }
 
-PreparedStatement::~PreparedStatement() throw () {
-  // decrement service reference in all cases
-  impl::ClearService clr = { m_serviceId, NULL };
+PreparedStatement::~PreparedStatement() {
   // destructor should *never* throw an exception
   try {
     close();

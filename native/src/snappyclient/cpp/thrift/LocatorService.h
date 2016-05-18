@@ -109,13 +109,13 @@ class LocatorService_getPreferredServer_args {
  public:
 
   LocatorService_getPreferredServer_args(const LocatorService_getPreferredServer_args&);
-  LocatorService_getPreferredServer_args(LocatorService_getPreferredServer_args&&);
+  LocatorService_getPreferredServer_args(LocatorService_getPreferredServer_args&&) noexcept;
   LocatorService_getPreferredServer_args& operator=(const LocatorService_getPreferredServer_args&);
-  LocatorService_getPreferredServer_args& operator=(LocatorService_getPreferredServer_args&&);
+  LocatorService_getPreferredServer_args& operator=(LocatorService_getPreferredServer_args&&) noexcept;
   LocatorService_getPreferredServer_args() {
   }
 
-  virtual ~LocatorService_getPreferredServer_args() throw();
+  virtual ~LocatorService_getPreferredServer_args() noexcept;
   std::set<ServerType::type>  serverTypes;
   std::set<std::string>  serverGroups;
   std::set<HostAddress>  failedServers;
@@ -154,7 +154,7 @@ class LocatorService_getPreferredServer_pargs {
  public:
 
 
-  virtual ~LocatorService_getPreferredServer_pargs() throw();
+  virtual ~LocatorService_getPreferredServer_pargs() noexcept;
   const std::set<ServerType::type> * serverTypes;
   const std::set<std::string> * serverGroups;
   const std::set<HostAddress> * failedServers;
@@ -173,13 +173,13 @@ class LocatorService_getPreferredServer_result {
  public:
 
   LocatorService_getPreferredServer_result(const LocatorService_getPreferredServer_result&);
-  LocatorService_getPreferredServer_result(LocatorService_getPreferredServer_result&&);
+  LocatorService_getPreferredServer_result(LocatorService_getPreferredServer_result&&) noexcept;
   LocatorService_getPreferredServer_result& operator=(const LocatorService_getPreferredServer_result&);
-  LocatorService_getPreferredServer_result& operator=(LocatorService_getPreferredServer_result&&);
+  LocatorService_getPreferredServer_result& operator=(LocatorService_getPreferredServer_result&&) noexcept;
   LocatorService_getPreferredServer_result() {
   }
 
-  virtual ~LocatorService_getPreferredServer_result() throw();
+  virtual ~LocatorService_getPreferredServer_result() noexcept;
   HostAddress success;
   SnappyException error;
 
@@ -218,7 +218,7 @@ class LocatorService_getPreferredServer_presult {
  public:
 
 
-  virtual ~LocatorService_getPreferredServer_presult() throw();
+  virtual ~LocatorService_getPreferredServer_presult() noexcept;
   HostAddress* success;
   SnappyException error;
 
@@ -239,13 +239,13 @@ class LocatorService_getAllServersWithPreferredServer_args {
  public:
 
   LocatorService_getAllServersWithPreferredServer_args(const LocatorService_getAllServersWithPreferredServer_args&);
-  LocatorService_getAllServersWithPreferredServer_args(LocatorService_getAllServersWithPreferredServer_args&&);
+  LocatorService_getAllServersWithPreferredServer_args(LocatorService_getAllServersWithPreferredServer_args&&) noexcept;
   LocatorService_getAllServersWithPreferredServer_args& operator=(const LocatorService_getAllServersWithPreferredServer_args&);
-  LocatorService_getAllServersWithPreferredServer_args& operator=(LocatorService_getAllServersWithPreferredServer_args&&);
+  LocatorService_getAllServersWithPreferredServer_args& operator=(LocatorService_getAllServersWithPreferredServer_args&&) noexcept;
   LocatorService_getAllServersWithPreferredServer_args() {
   }
 
-  virtual ~LocatorService_getAllServersWithPreferredServer_args() throw();
+  virtual ~LocatorService_getAllServersWithPreferredServer_args() noexcept;
   std::set<ServerType::type>  serverTypes;
   std::set<std::string>  serverGroups;
   std::set<HostAddress>  failedServers;
@@ -284,7 +284,7 @@ class LocatorService_getAllServersWithPreferredServer_pargs {
  public:
 
 
-  virtual ~LocatorService_getAllServersWithPreferredServer_pargs() throw();
+  virtual ~LocatorService_getAllServersWithPreferredServer_pargs() noexcept;
   const std::set<ServerType::type> * serverTypes;
   const std::set<std::string> * serverGroups;
   const std::set<HostAddress> * failedServers;
@@ -303,13 +303,13 @@ class LocatorService_getAllServersWithPreferredServer_result {
  public:
 
   LocatorService_getAllServersWithPreferredServer_result(const LocatorService_getAllServersWithPreferredServer_result&);
-  LocatorService_getAllServersWithPreferredServer_result(LocatorService_getAllServersWithPreferredServer_result&&);
+  LocatorService_getAllServersWithPreferredServer_result(LocatorService_getAllServersWithPreferredServer_result&&) noexcept;
   LocatorService_getAllServersWithPreferredServer_result& operator=(const LocatorService_getAllServersWithPreferredServer_result&);
-  LocatorService_getAllServersWithPreferredServer_result& operator=(LocatorService_getAllServersWithPreferredServer_result&&);
+  LocatorService_getAllServersWithPreferredServer_result& operator=(LocatorService_getAllServersWithPreferredServer_result&&) noexcept;
   LocatorService_getAllServersWithPreferredServer_result() {
   }
 
-  virtual ~LocatorService_getAllServersWithPreferredServer_result() throw();
+  virtual ~LocatorService_getAllServersWithPreferredServer_result() noexcept;
   std::vector<HostAddress>  success;
   SnappyException error;
 
@@ -348,7 +348,7 @@ class LocatorService_getAllServersWithPreferredServer_presult {
  public:
 
 
-  virtual ~LocatorService_getAllServersWithPreferredServer_presult() throw();
+  virtual ~LocatorService_getAllServersWithPreferredServer_presult() noexcept;
   std::vector<HostAddress> * success;
   SnappyException error;
 
@@ -363,13 +363,13 @@ class LocatorService_closeConnection_args {
  public:
 
   LocatorService_closeConnection_args(const LocatorService_closeConnection_args&);
-  LocatorService_closeConnection_args(LocatorService_closeConnection_args&&);
+  LocatorService_closeConnection_args(LocatorService_closeConnection_args&&) noexcept;
   LocatorService_closeConnection_args& operator=(const LocatorService_closeConnection_args&);
-  LocatorService_closeConnection_args& operator=(LocatorService_closeConnection_args&&);
+  LocatorService_closeConnection_args& operator=(LocatorService_closeConnection_args&&) noexcept;
   LocatorService_closeConnection_args() {
   }
 
-  virtual ~LocatorService_closeConnection_args() throw();
+  virtual ~LocatorService_closeConnection_args() noexcept;
 
   bool operator == (const LocatorService_closeConnection_args & /* rhs */) const
   {
@@ -391,7 +391,7 @@ class LocatorService_closeConnection_pargs {
  public:
 
 
-  virtual ~LocatorService_closeConnection_pargs() throw();
+  virtual ~LocatorService_closeConnection_pargs() noexcept;
 
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 

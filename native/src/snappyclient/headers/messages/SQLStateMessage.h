@@ -63,7 +63,13 @@ namespace client {
     /**
      * Message string for "NO_CURRENT_CONNECTION" SQLState.
      */
-    static SQLMessage0 NO_CURRENT_CONNECTION_MSG;
+    static SQLMessage0 NO_CURRENT_CONNECTION_MSG1;
+
+    /**
+     * Message string for "NO_CURRENT_CONNECTION" SQLState that also includes
+     * previous server and operation for which connection was closed or lost.
+     */
+    static SQLMessage2<const char*, const char*> NO_CURRENT_CONNECTION_MSG2;
 
     /**
      * Message string for the case when cursor is not positioned on a row.
@@ -259,7 +265,7 @@ namespace client {
     /**
      * Message string for "INVALID_DESCRIPTOR_INDEX" SQLState.
      */
-    static SQLMessage2<int, const char*> INVALID_DESCRIPTOR_INDEX_MSG;
+    static SQLMessage3<int, int, const char*> INVALID_DESCRIPTOR_INDEX_MSG;
 
     /**
      * Message string for "INVALID_CTYPE" SQLState.

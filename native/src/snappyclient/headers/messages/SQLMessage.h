@@ -53,13 +53,13 @@ namespace client {
 
   protected:
     SQLMessageBase();
-    virtual ~SQLMessageBase() throw ();
+    virtual ~SQLMessageBase();
 
     void initialize(const char* messageId);
     void initialize(const SQLState& sqlState, const int idPerSQLState);
 
   public:
-    const SQLState* getSQLState() const throw ();
+    const SQLState* getSQLState() const noexcept;
   };
 
   class SQLMessage0 : public SQLMessageBase {
@@ -79,7 +79,7 @@ namespace client {
     friend class SQLStateMessage;
 
   public:
-    const std::string& format() const throw () {
+    const std::string& format() const {
       return getMessagePart(0);
     }
   };

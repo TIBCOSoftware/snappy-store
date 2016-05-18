@@ -42,7 +42,6 @@
 #include <fstream>
 #include <boost/make_shared.hpp>
 #include <boost/thread.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/chrono/io/time_point_io.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -120,7 +119,7 @@ const TraceFlag TraceFlag::ClientStatementMillis("ClientStatementMillis",
     TraceFlag::getNextId());
 const TraceFlag TraceFlag::ClientConn("ClientConn", TraceFlag::getNextId());
 
-const int TraceFlag::getNextId() throw () {
+const int TraceFlag::getNextId() noexcept {
   return g_idGenerator++;
 }
 
@@ -207,16 +206,15 @@ LogWriter::LogWriter(const std::string& logFile, const LogLevel::type logLevel,
 }
 
 LogWriter::LogWriter(std::ostream* logStream, const std::string& logFile,
-    const LogLevel::type logLevel) : m_rawStream(logStream), m_logFile(
-      logFile.empty() ? NULL : new std::string(logFile)), m_logLevel(
-      logLevel), m_buffer(NULL) {
+    const LogLevel::type logLevel) : m_rawStream(logStream),
+        m_logFile(logFile), m_logLevel(logLevel), m_buffer(NULL) {
   initTraceFlags();
   logStream->exceptions(std::ofstream::failbit | std::ofstream::badbit);
   // use local timezone for formatting
   *m_rawStream << boost::chrono::time_fmt(boost::chrono::timezone::local);
 }
 
-LogWriter::~LogWriter() throw () {
+LogWriter::~LogWriter() {
   close();
   if (m_traceFlags != NULL) {
     delete[] m_traceFlags;
@@ -238,25 +236,23 @@ void LogWriter::initTraceFlags() {
 
 void LogWriter::initialize(const std::string& logFile,
     const LogLevel::type logLevel, bool overwrite) {
-  m_logFile.reset(logFile.empty() ? NULL : new std::string(logFile));
+  m_logFile = logFile;
   m_logLevel = logLevel;
 
-  // logFile == NULL indicates logging on stdout
-  const std::string* const logf = m_logFile.get();
-  if (logf != NULL) {
-
-    AutoPtr<boost::filesystem::ofstream> fstr(
-        new boost::filesystem::ofstream());
-    fstr->exceptions(std::ofstream::failbit | std::ofstream::badbit);
+  // empty logFile indicates logging on stdout
+  if (m_logFile.size() > 0) {
+    boost::filesystem::ofstream* fs = new boost::filesystem::ofstream();
+    std::unique_ptr<boost::filesystem::ofstream> fsp(fs);
+    fs->exceptions(std::ofstream::failbit | std::ofstream::badbit);
     try {
-      boost::filesystem::path logpath(impl::InternalUtils::getPath(*logf));
+      boost::filesystem::path logpath(impl::InternalUtils::getPath(m_logFile));
 
       // for overwrite==false and existing file, roll it over to new name
       if (!overwrite) {
         int maxTries = 50;
         boost::system::error_code ec;
         if (boost::filesystem::exists(logpath, ec)) {
-          std::string targetFileName = *logf;
+          std::string targetFileName = m_logFile;
           while (maxTries-- > 0) {
             bool rolledOver = false;
             const size_t dashIndex = targetFileName.find_last_of('-');
@@ -267,8 +263,7 @@ void LogWriter::initialize(const std::string& logFile,
                   targetFileName.data() + dashIndex + 1, &remaining, 10);
               if (remaining != NULL && (*remaining == '.' || *remaining == 0)) {
                 targetFileName = targetFileName.substr(0, dashIndex + 1).append(
-                    boost::lexical_cast<std::string>(rolloverIndex + 1)).append(
-                    remaining);
+                    std::to_string(rolloverIndex + 1)).append(remaining);
                 rolledOver = true;
               }
             }
@@ -301,18 +296,19 @@ void LogWriter::initialize(const std::string& logFile,
       // takes care of in its internal logging is to use platform specific
       // line-endings. Application code should use the LogWriter::LINE_SEPARATOR
       // string for logging newlines.
-      fstr->open(logpath, std::ios::out | std::ios::binary |
+      fs->open(logpath, std::ios::out | std::ios::binary |
           (overwrite ? std::ios::trunc : std::ios::ate));
       // increase buffer
       if (m_buffer == NULL) {
         m_buffer = new char[DEFAULT_BUFSIZE];
       }
-      fstr->rdbuf()->pubsetbuf(m_buffer, DEFAULT_BUFSIZE);
+      fs->rdbuf()->pubsetbuf(m_buffer, DEFAULT_BUFSIZE);
     } catch (const std::exception& fail) {
       throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, Utils::toString(fail));
     }
     close();
-    m_rawStream = fstr;
+    m_rawStream.reset(fs);
+    fsp.release();
     // use local timezone for formatting
     *m_rawStream << boost::chrono::time_fmt(boost::chrono::timezone::local);
   }
@@ -328,20 +324,18 @@ void LogWriter::close() {
         oldFS->close();
       }
     } catch (const std::exception& se) {
-      const std::string* logFile = m_logFile.get();
       // log to stderr and move on
-      if (logFile != NULL) {
-        std::cerr << "Failure in closing stream for " << *logFile << ": " << se
-            << std::endl;
+      if (m_logFile.size() > 0) {
+        std::cerr << "Failure in closing stream for " << m_logFile << ": "
+            << se << std::endl;
       } else {
-        std::cerr << "Failure in closing stream (empty file name): " << se
-            << std::endl;
+        std::cerr << "Failure in closing stream (empty file name): "
+            << se << std::endl;
       }
     } catch (...) {
-      const std::string* logFile = m_logFile.get();
       // log to stderr and move on
-      if (logFile != NULL) {
-        std::cerr << "Unknown failure in closing stream for " << *logFile
+      if (m_logFile.size() > 0) {
+        std::cerr << "Unknown failure in closing stream for " << m_logFile
             << std::endl;
       } else {
         std::cerr << "Unknown failure in closing stream (empty file name)"

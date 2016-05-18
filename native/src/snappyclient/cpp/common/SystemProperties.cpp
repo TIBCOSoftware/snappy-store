@@ -73,7 +73,7 @@ int32_t SystemProperties::getInteger(const std::string& propName, int32_t def) {
   return SystemPropertiesImpl::getValue(propName, def);
 }
 
-int64_t SystemProperties::getLong(const std::string& propName, int64_t def) {
+int64_t SystemProperties::getInt64(const std::string& propName, int64_t def) {
   return SystemPropertiesImpl::getValue(propName, def);
 }
 

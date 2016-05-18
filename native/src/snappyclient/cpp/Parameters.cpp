@@ -50,7 +50,7 @@ Parameters::Parameters(const PreparedStatement& pstmt) :
 
 Parameters& Parameters::setBoolean(const uint32_t index, const bool v) {
   if (index < m_values.size()) {
-    m_values[index].setBool(v);
+    m_values[index].set(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -60,7 +60,7 @@ Parameters& Parameters::setBoolean(const uint32_t index, const bool v) {
 
 Parameters& Parameters::setByte(const uint32_t index, const int8_t v) {
   if (index < m_values.size()) {
-    m_values[index].setByte(v);
+    m_values[index].set(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -70,7 +70,7 @@ Parameters& Parameters::setByte(const uint32_t index, const int8_t v) {
 
 Parameters& Parameters::setShort(const uint32_t index, const int16_t v) {
   if (index < m_values.size()) {
-    m_values[index].setI16(v);
+    m_values[index].set(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -80,7 +80,7 @@ Parameters& Parameters::setShort(const uint32_t index, const int16_t v) {
 
 Parameters& Parameters::setInt(const uint32_t index, const int32_t v) {
   if (index < m_values.size()) {
-    m_values[index].setI32(v);
+    m_values[index].set(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -88,9 +88,9 @@ Parameters& Parameters::setInt(const uint32_t index, const int32_t v) {
   }
 }
 
-Parameters& Parameters::setLong(const uint32_t index, const int64_t v) {
+Parameters& Parameters::setInt64(const uint32_t index, const int64_t v) {
   if (index < m_values.size()) {
-    m_values[index].setI64(v);
+    m_values[index].set(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -100,7 +100,7 @@ Parameters& Parameters::setLong(const uint32_t index, const int64_t v) {
 
 Parameters& Parameters::setFloat(const uint32_t index, const float v) {
   if (index < m_values.size()) {
-    m_values[index].setFloat(v);
+    m_values[index].set(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -110,7 +110,7 @@ Parameters& Parameters::setFloat(const uint32_t index, const float v) {
 
 Parameters& Parameters::setDouble(const uint32_t index, const double v) {
   if (index < m_values.size()) {
-    m_values[index].setDouble(v);
+    m_values[index].set(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -121,6 +121,16 @@ Parameters& Parameters::setDouble(const uint32_t index, const double v) {
 Parameters& Parameters::setString(const uint32_t index, const std::string& v) {
   if (index < m_values.size()) {
     m_values[index].setString(v);
+    return *this;
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+        index, m_values.size());
+  }
+}
+
+Parameters& Parameters::setString(const uint32_t index, std::string&& v) {
+  if (index < m_values.size()) {
+    m_values[index].setString(std::move(v));
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -151,9 +161,9 @@ Parameters& Parameters::setString(const uint32_t index, const char* v,
 
 Parameters& Parameters::setDecimal(const uint32_t index, const Decimal& v) {
   if (index < m_values.size()) {
-    thrift::ColumnValue& cv = m_values[index];
-    thrift::Decimal& dec = *cv.initForDecimal();
-    v.copyTo(dec);
+    auto dec = std::shared_ptr<thrift::Decimal>(new thrift::Decimal());
+    v.copyTo(*dec);
+    m_values[index].set(dec);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -165,25 +175,25 @@ Parameters& Parameters::setDecimal(const uint32_t index, const int8_t signum,
     const int32_t scale, const int8_t* magnitude, const size_t maglen,
     const bool bigEndian) {
   if (index < m_values.size()) {
-    thrift::ColumnValue& cv = m_values[index];
-    thrift::Decimal& dec = *cv.initForDecimal();
+    auto dec = std::shared_ptr<thrift::Decimal>(new thrift::Decimal());
 
-    dec.signum = signum;
-    dec.scale = scale;
+    dec->signum = signum;
+    dec->scale = scale;
     if (bigEndian) {
-      dec.magnitude.assign((const char*)magnitude, maglen);
+      dec->magnitude.assign((const char*)magnitude, maglen);
     } else {
       // need to inverse the bytes
       if (maglen > 0) {
-        dec.magnitude.resize(maglen);
+        dec->magnitude.resize(maglen);
         const int8_t* magp = magnitude + maglen - 1;
         for (uint32_t index = 0; index < maglen; index++, magp--) {
-          dec.magnitude[index] = *magp;
+          dec->magnitude[index] = *magp;
         }
       } else {
-        dec.magnitude.clear();
+        dec->magnitude.clear();
       }
     }
+    m_values[index].set(dec);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -193,7 +203,7 @@ Parameters& Parameters::setDecimal(const uint32_t index, const int8_t signum,
 
 Parameters& Parameters::setDate(const uint32_t index, const DateTime v) {
   if (index < m_values.size()) {
-    m_values[index].setDate(v.m_secsSinceEpoch);
+    m_values[index].set(thrift::Date(v.m_secsSinceEpoch));
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -203,7 +213,7 @@ Parameters& Parameters::setDate(const uint32_t index, const DateTime v) {
 
 Parameters& Parameters::setTime(const uint32_t index, const DateTime v) {
   if (index < m_values.size()) {
-    m_values[index].setTime(v.m_secsSinceEpoch);
+    m_values[index].set(thrift::Time(v.m_secsSinceEpoch));
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -231,81 +241,6 @@ Parameters& Parameters::setBinary(const uint32_t index, const std::string& v) {
   }
 }
 
-Parameters& Parameters::setBinary(const uint32_t index, const int8_t* v,
-    const size_t len) {
-  if (index < m_values.size()) {
-    m_values[index].setBinary((const char*)v, len);
-    return *this;
-  } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        index, m_values.size());
-  }
-}
-
-Parameters& Parameters::setArray(const uint32_t index,
-    const std::vector<thrift::ColumnValue>& v) {
-  if (index < m_values.size()) {
-    m_values[index].setARRAY(v);
-    return *this;
-  } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        index, m_values.size());
-  }
-}
-
-Parameters& Parameters::setMap(const uint32_t index,
-    const std::map<thrift::ColumnValue, thrift::ColumnValue>& v) {
-  if (index < m_values.size()) {
-    m_values[index].setMAP(v);
-    return *this;
-  } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        index, m_values.size());
-  }
-}
-
-Parameters& Parameters::setStruct(const uint32_t index,
-    const std::vector<thrift::ColumnValue>& v) {
-  if (index < m_values.size()) {
-    m_values[index].setSTRUCT(v);
-    return *this;
-  } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        index, m_values.size());
-  }
-}
-
-Parameters& Parameters::setJSONObject(const uint32_t index,
-    const JSONObject& v) {
-  if (index < m_values.size()) {
-    m_values[index].setJSON(*v.m_p);
-    return *this;
-  } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        index, m_values.size());
-  }
-}
-
-Parameters& Parameters::setNull(const uint32_t index) {
-  if (index < m_values.size()) {
-    m_values[index].setNull();
-    return *this;
-  } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        index, m_values.size());
-  }
-}
-
-Parameters& Parameters::setString(const uint32_t index, std::string&& v) {
-  if (index < m_values.size()) {
-    m_values[index].setString(std::move(v));
-    return *this;
-  } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
-        index, m_values.size());
-  }
-}
-
 Parameters& Parameters::setBinary(const uint32_t index, std::string&& v) {
   if (index < m_values.size()) {
     m_values[index].setBinary(std::move(v));
@@ -316,10 +251,10 @@ Parameters& Parameters::setBinary(const uint32_t index, std::string&& v) {
   }
 }
 
-Parameters& Parameters::setArray(const uint32_t index,
-    std::vector<thrift::ColumnValue>&& v) {
+Parameters& Parameters::setBinary(const uint32_t index, const int8_t* v,
+    const size_t len) {
   if (index < m_values.size()) {
-    m_values[index].setARRAY(std::move(v));
+    m_values[index].setBinary(std::move(std::string((const char*)v, len)));
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -327,10 +262,40 @@ Parameters& Parameters::setArray(const uint32_t index,
   }
 }
 
-Parameters& Parameters::setMap(const uint32_t index,
-    std::map<thrift::ColumnValue, thrift::ColumnValue>&& v) {
+Parameters& Parameters::setArray(const uint32_t index,
+    const thrift::Array& v) {
   if (index < m_values.size()) {
-    m_values[index].setMAP(std::move(v));
+    m_values[index].setArray(v);
+    return *this;
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+        index, m_values.size());
+  }
+}
+
+Parameters& Parameters::setArray(const uint32_t index, thrift::Array&& v) {
+  if (index < m_values.size()) {
+    m_values[index].setArray(std::move(v));
+    return *this;
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+        index, m_values.size());
+  }
+}
+
+Parameters& Parameters::setMap(const uint32_t index, const thrift::Map& v) {
+  if (index < m_values.size()) {
+    m_values[index].setMap(v);
+    return *this;
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+        index, m_values.size());
+  }
+}
+
+Parameters& Parameters::setMap(const uint32_t index, thrift::Map&& v) {
+  if (index < m_values.size()) {
+    m_values[index].setMap(std::move(v));
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -339,9 +304,9 @@ Parameters& Parameters::setMap(const uint32_t index,
 }
 
 Parameters& Parameters::setStruct(const uint32_t index,
-    std::vector<thrift::ColumnValue>&& v) {
+    const thrift::Struct& v) {
   if (index < m_values.size()) {
-    m_values[index].setSTRUCT(std::move(v));
+    m_values[index].setStruct(v);
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
@@ -349,9 +314,30 @@ Parameters& Parameters::setStruct(const uint32_t index,
   }
 }
 
-Parameters& Parameters::setJSONObject(const uint32_t index, JSONObject&& v) {
+Parameters& Parameters::setStruct(const uint32_t index, thrift::Struct&& v) {
   if (index < m_values.size()) {
-    m_values[index].setJSON(std::move(*v.m_p));
+    m_values[index].setStruct(std::move(v));
+    return *this;
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+        index, m_values.size());
+  }
+}
+
+Parameters& Parameters::setNull(const uint32_t index, const bool v) {
+  if (index < m_values.size()) {
+    m_values[index].setIsNull(v);
+    return *this;
+  } else {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+        index, m_values.size());
+  }
+}
+
+Parameters& Parameters::setJSON(const uint32_t index,
+    const JSON& v) {
+  if (index < m_values.size()) {
+    m_values[index].set(v.getThriftObject());
     return *this;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,

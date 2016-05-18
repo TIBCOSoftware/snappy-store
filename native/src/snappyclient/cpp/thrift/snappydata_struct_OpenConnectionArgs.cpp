@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-OpenConnectionArgs::~OpenConnectionArgs() throw() {
+OpenConnectionArgs::~OpenConnectionArgs() noexcept {
 }
 
 
@@ -241,8 +241,9 @@ uint32_t OpenConnectionArgs::write(::apache::thrift::protocol::TProtocol* oprot)
   return xfer;
 }
 
-void swap(OpenConnectionArgs &a, OpenConnectionArgs &b) {
+void swap(OpenConnectionArgs &a, OpenConnectionArgs &b) noexcept {
   using ::std::swap;
+  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.clientHostName, b.clientHostName);
   swap(a.clientID, b.clientID);
   swap(a.security, b.security);
@@ -265,7 +266,7 @@ OpenConnectionArgs::OpenConnectionArgs(const OpenConnectionArgs& other156) {
   properties = other156.properties;
   __isset = other156.__isset;
 }
-OpenConnectionArgs::OpenConnectionArgs( OpenConnectionArgs&& other157) {
+OpenConnectionArgs::OpenConnectionArgs( OpenConnectionArgs&& other157) noexcept {
   clientHostName = std::move(other157.clientHostName);
   clientID = std::move(other157.clientID);
   security = std::move(other157.security);
@@ -288,7 +289,7 @@ OpenConnectionArgs& OpenConnectionArgs::operator=(const OpenConnectionArgs& othe
   __isset = other158.__isset;
   return *this;
 }
-OpenConnectionArgs& OpenConnectionArgs::operator=(OpenConnectionArgs&& other159) {
+OpenConnectionArgs& OpenConnectionArgs::operator=(OpenConnectionArgs&& other159) noexcept {
   clientHostName = std::move(other159.clientHostName);
   clientID = std::move(other159.clientID);
   security = std::move(other159.security);

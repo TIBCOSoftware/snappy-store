@@ -45,13 +45,13 @@ class EntityId {
  public:
 
   EntityId(const EntityId&);
-  EntityId(EntityId&&);
+  EntityId(EntityId&&) noexcept;
   EntityId& operator=(const EntityId&);
-  EntityId& operator=(EntityId&&);
+  EntityId& operator=(EntityId&&) noexcept;
   EntityId() : id(0), type(0), connId(0), token() {
   }
 
-  virtual ~EntityId() throw();
+  virtual ~EntityId() noexcept;
   int32_t id;
   int8_t type;
   int32_t connId;
@@ -93,7 +93,7 @@ class EntityId {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(EntityId &a, EntityId &b);
+void swap(EntityId &a, EntityId &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const EntityId& obj)
 {

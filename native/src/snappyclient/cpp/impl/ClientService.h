@@ -63,13 +63,16 @@ namespace impl {
 
   class BufferedSocketTransport;
   class ControlConnection;
-  class ClientServiceHolder;
 
   class SnappyDataClient : public thrift::SnappyDataServiceClient {
   public:
     SnappyDataClient(protocol::TProtocol* prot) :
         thrift::SnappyDataServiceClient(
             boost::shared_ptr < protocol::TProtocol > (prot)) {
+    }
+
+    inline protocol::TProtocol* getProtocol() const noexcept {
+      return iprot_;
     }
 
   private:
@@ -95,7 +98,6 @@ namespace impl {
 
     boost::shared_ptr<BufferedSocketTransport> m_transport;
     SnappyDataClient m_client;
-    uint32_t m_serviceId;
 
     thrift::HostAddress m_currentHostAddr;
     std::vector<thrift::HostAddress> m_connHosts;
@@ -110,8 +112,8 @@ namespace impl {
 
     // no copy constructor or assignment operator due to obvious issues
     // with usage of same connection by multiple threads concurrently
-    ClientService(const ClientService&);
-    ClientService& operator=(const ClientService&);
+    ClientService(const ClientService&) = delete;
+    ClientService& operator=(const ClientService&) = delete;
 
     void clearPendingTransactionAttrs();
 
@@ -126,9 +128,9 @@ namespace impl {
         //const SSLSocketParameters& sslParams,
         boost::shared_ptr<BufferedSocketTransport>& returnTransport);
 
-    friend class ClientServiceHolder;
-
   protected:
+    virtual void checkConnection(const char* op);
+
     virtual void handleSnappyException(const thrift::SnappyException& se);
 
     virtual void handleStdException(const char* op,
@@ -154,7 +156,7 @@ namespace impl {
 
     void setPendingTransactionAttrs(thrift::StatementAttrs& stmtAttrs);
 
-    void destroyTransport() throw ();
+    void destroyTransport() noexcept;
 
   private:
     // the static hostName and hostId used by all connections
@@ -164,9 +166,9 @@ namespace impl {
 
   public:
     ClientService(const std::string& host, const int port,
-        thrift::OpenConnectionArgs& arguments, void** outServiceId);
+        thrift::OpenConnectionArgs& arguments);
 
-    virtual ~ClientService() throw ();
+    virtual ~ClientService();
 
     static void staticInitialize(
         std::map<std::string, std::string>& props);
@@ -174,23 +176,20 @@ namespace impl {
     static thrift::ServerType::type getServerType(bool isServer,
         bool useBinaryProtocol, bool useSSL);
 
-    inline uint32_t getServiceId() const throw () {
-      return m_serviceId;
-    }
-
-    inline bool isOpen() const throw () {
+    inline bool isOpen() const noexcept {
       return m_isOpen;
     }
 
-    inline boost::shared_ptr<BufferedSocketTransport>& getTransport() {
+    inline const boost::shared_ptr<BufferedSocketTransport>& getTransport()
+        const noexcept {
       return m_transport;
     }
 
-    const char* getTokenStr() const throw () {
+    const char* getTokenStr() const noexcept {
       return m_token.empty() ? NULL : m_token.c_str();
     }
 
-    IsolationLevel::type getCurrentIsolationLevel() const throw () {
+    IsolationLevel::type getCurrentIsolationLevel() const noexcept {
       return m_isolationLevel;
     }
 
@@ -310,47 +309,6 @@ namespace impl {
     void closeStatement(const int32_t stmtId);
 
     void close();
-  };
-
-  /**
-   * This is a global registry for ClientService. The primary reason
-   * for having this is to avoid having to refer to boost::shared_ptr
-   * in Connection and other public classes. Instead the reference
-   * count is maintained here and removed from list once it goes
-   * down to zero.
-   */
-  class ClientServiceHolder {
-  private:
-    typedef std::vector<boost::shared_ptr<ClientService> > service_list;
-    typedef std::unordered_map<long, service_list> services_map;
-
-    services_map m_services;
-    std::mutex m_servicesLock;
-    uint32_t m_numServices;
-
-    ClientServiceHolder();
-
-    /**
-     * This is a small memory "leak" of single global object but we
-     * will live with it to ensure that detached/non-joined threads
-     * keep using valid service object even when main thread exists
-     * and calls global destructors.
-     */
-    static ClientServiceHolder* s_instance;
-
-  public:
-
-    inline static ClientServiceHolder& instance() throw () {
-      return *s_instance;
-    }
-
-    void* registerInstance(ClientService& service);
-
-    void incrementReferenceCount(void* serviceId);
-
-    void decrementReferenceCount(void* serviceId);
-
-    boost::shared_ptr<ClientService> getService(const void* serviceId);
   };
 
 } /* namespace impl */

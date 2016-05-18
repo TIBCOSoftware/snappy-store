@@ -511,28 +511,28 @@ union ColumnValue {
   1: bool                                                  bool_val      // BOOLEAN
   2: byte                                                  byte_val      // TINYINT
   3: i16                                                   i16_val       // SMALLINT
-  4: i32                                                   i32_val       // INT
+  4: i32                                                   i32_val       // INTEGER
   5: i64                                                   i64_val       // BIGINT
   // using 32-bit integer for FLOAT instead of double to avoid
   // any changes in precision; callers must encode float as 32-bit integer
-  // in a manner compatible with Java's Float.floatToIntBits, or in union in
-  // C/C++ having two fields, one float one int for conversion between the two
-  6: i32                                                   float_val     // FLOAT
+  // in a manner compatible with Java's Float.floatToIntBits, or like a C/C++
+  // union having two fields namely float & int for conversion between the two
+  6: i32                                                   float_val     // FLOAT/REAL
   7: double                                                double_val    // DOUBLE
-  8: string                                                string_val    // CHAR, VARCHAR, others
-  9: Decimal                                               decimal_val   // DECIMAL/NUMERIC
+  8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR, SQLXML
+  9: Decimal                                               decimal_val   // DECIMAL
  10: DateTime                                              date_val      // DATE (only the date portion is used)
  11: DateTime                                              time_val      // TIME (only the time portion is used)
  12: Timestamp                                             timestamp_val // TIMESTAMP
- 13: binary                                                binary_val    // BINARY, VARBINARY
+ 13: binary                                                binary_val    // BINARY, VARBINARY, LONGVARBINARY
  14: BlobChunk                                             blob_val      // BLOB
  15: ClobChunk                                             clob_val      // CLOB
  16: list<ColumnValue>                                     array_val     // ARRAY
  17: map<ColumnValue, ColumnValue>                         map_val       // MAP
  18: list<ColumnValue>                                     struct_val    // STRUCT
- 19: bool                                                  null_val      // NULL
- 20: JSONObject                                            json_val      // JSON_OBJECT
- 21: binary                                                java_val      // JAVA_OBJECT
+ 19: bool                                                  null_val      // NULLTYPE
+ 20: JSONObject                                            json_val      // JSON
+ 21: binary                                                java_val      // JAVA_OBJECT (serialized)
 }
 
 // constants for unknown precision/scale
