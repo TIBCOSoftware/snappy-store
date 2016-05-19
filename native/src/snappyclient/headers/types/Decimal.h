@@ -42,7 +42,11 @@
 
 #include "SQLException.h"
 
+#ifdef _WIN32
+#include <mpir.h>
+#else
 #include <gmp.h>
+#endif
 
 namespace io {
 namespace snappydata {
