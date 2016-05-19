@@ -83,29 +83,36 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   }
 }
 
-task product(dependsOn: assemble) << {
+task product(dependsOn: assemble) {
   def productDir = "${buildDir}/snappyclient"
 
-  // copy the release libraries
-  copy {
-    from "${buildDir}/libs/snappyclient/shared/release", "${buildDir}/libs/snappyclient/static/release"
-    into "${productDir}/lib"
-  }
-  // copy the debug libraries
-  copy {
-    from "${buildDir}/libs/snappyclient/shared/debug", "${buildDir}/libs/snappyclient/static/debug"
-    into "${productDir}/lib/debug"
-  }
-  // copy the public headers
-  copy {
-    from "${projectDir}/src/snappyclient/headers"
-    into "${productDir}/include"
+  doFirst {
+    delete productDir
+    file("${productDir}/lib").mkdirs()
   }
 
-  if (project.hasProperty('copyTo')) {
+  doLast {
+    // copy the release libraries
     copy {
-      from productDir
-      into copyTo
+      from "${buildDir}/libs/snappyclient/shared/release", "${buildDir}/libs/snappyclient/static/release"
+      into "${productDir}/lib"
+    }
+    // copy the debug libraries
+    copy {
+      from "${buildDir}/libs/snappyclient/shared/debug", "${buildDir}/libs/snappyclient/static/debug"
+      into "${productDir}/lib/debug"
+    }
+    // copy the public headers
+    copy {
+      from "${projectDir}/src/snappyclient/headers"
+      into "${productDir}/include"
+    }
+
+    if (project.hasProperty('copyTo')) {
+      copy {
+        from productDir
+        into copyTo
+      }
     }
   }
 }
