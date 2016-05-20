@@ -81,6 +81,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.PreparedStatement;
 import com.pivotal.gemfirexd.internal.iapi.sql.Statement;
 import com.pivotal.gemfirexd.internal.iapi.sql.StatementType;
+import com.pivotal.gemfirexd.internal.iapi.sql.compile.C_NodeTypes;
 import com.pivotal.gemfirexd.internal.iapi.sql.compile.CompilerContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.compile.Parser;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.ConnectionUtil;
@@ -93,7 +94,10 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.AlterTableNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CursorNode;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.DeleteNode;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.DropTableNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ExecSPSNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.InsertNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
@@ -345,8 +349,10 @@ public class GenericStatement
     int ddMode = 0;
     boolean ddLockAcquired = false;
     int additionalDDLocks = 0;
-    // don't cancel DROP/TRUNCATE TABLE/INDEX statements
-    final boolean checkCancellation = !(SKIP_CANCEL_STMTS
+    // don't cancel DROP/TRUNCATE TABLE/INDEX /DELETE statements
+    // before querytree is available set the flag based on pattern matching
+    // later when qt is available set it using nodetype
+    boolean checkCancellation = !(SKIP_CANCEL_STMTS
         .matcher(statementText).find() || DELETE_STMT.matcher(statementText).find());
     try {
      outer: while(true) {
@@ -573,6 +579,7 @@ public class GenericStatement
           }
           throw ex;
 				}
+				checkCancellation = !shouldSkipMemoryChecks(qt);
 				// DDL Route, even if no exception
 				if (routeQuery && cc.isForcedDDLrouting())
 				{
@@ -1178,6 +1185,15 @@ public class GenericStatement
 
 
 		return preparedStmt;
+	}
+
+	private boolean shouldSkipMemoryChecks(StatementNode qt) {
+		final int nodeType = qt.getNodeType();
+		return nodeType == C_NodeTypes.DELETE_NODE
+        || nodeType == C_NodeTypes.DROP_TABLE_NODE
+        || nodeType == C_NodeTypes.DROP_INDEX_NODE
+        || (nodeType == C_NodeTypes.ALTER_TABLE_NODE &&
+				     ((AlterTableNode)qt).isTruncateTable());
 	}
 
 	/**
