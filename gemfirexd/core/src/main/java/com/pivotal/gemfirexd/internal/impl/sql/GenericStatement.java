@@ -96,8 +96,6 @@ import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.AlterTableNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CursorNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.DeleteNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.DropTableNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ExecSPSNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.InsertNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
@@ -208,8 +206,8 @@ public class GenericStatement
 
 	// GemStone changes BEGIN
 	private GenericPreparedStatement getPreparedStatementForSnappy(
-    boolean commitNestedTransaction, StatementContext statementContext,
-    LanguageConnectionContext lcc, boolean isDDL) throws StandardException {
+			boolean commitNestedTransaction, StatementContext statementContext,
+			LanguageConnectionContext lcc, boolean isDDL, boolean checkCancellation) throws StandardException {
       GenericPreparedStatement gps = preparedStmt;
       GeneratedClass ac = new SnappyActivationClass(!isDDL);
       gps.setActivationClass(ac);
@@ -225,6 +223,9 @@ public class GenericStatement
           "GenericStatement.getPreparedStatementForSnappy: Created SnappyActivation for sql: " + this.getSource()
            + " ,isDDL=" + isDDL);
 	 }
+     if (checkCancellation) {
+       Misc.checkMemory(thresholdListener, statementText, -1);
+     }
      return gps;
   }
 
@@ -575,7 +576,7 @@ public class GenericStatement
 						if(Pattern.matches(INSERT_INTO_TABLE_PATTERN, getSource().toUpperCase())){
 							cc.markAsDDLForSnappyUse(true);
 						}
-            return getPreparedStatementForSnappy(false, statementContext, lcc, cc.isMarkedAsDDLForSnappyUse());
+            return getPreparedStatementForSnappy(false, statementContext, lcc, cc.isMarkedAsDDLForSnappyUse(), checkCancellation);
           }
           throw ex;
 				}
@@ -584,7 +585,7 @@ public class GenericStatement
 				if (routeQuery && cc.isForcedDDLrouting())
 				{
 					//SanityManager.DEBUG_PRINT("DEBUG","Parse: force routing sql=" + this.getSource());
-				    return getPreparedStatementForSnappy(false, statementContext, lcc, true);
+				    return getPreparedStatementForSnappy(false, statementContext, lcc, true, checkCancellation);
 				}
 				//GemStone changes END
 				parseTime = getCurrentTimeMillis(lcc);
@@ -651,7 +652,7 @@ public class GenericStatement
 					catch(StandardException ex) {
 						//System.out.println("Bind: exception routeQuery=" + routeQuery + " ,sql=" + this.getSource() + " ,flag=" + cc.isDDL4routing());
 						if (routeQuery) {
-							return getPreparedStatementForSnappy(true, statementContext, lcc, false);
+							return getPreparedStatementForSnappy(true, statementContext, lcc, false, checkCancellation);
 						}
 						throw ex;
 					}
@@ -715,7 +716,7 @@ public class GenericStatement
 					}
 					catch(StandardException ex) {
 						if (routeQuery) {
-							return getPreparedStatementForSnappy(true, statementContext, lcc, false);
+							return getPreparedStatementForSnappy(true, statementContext, lcc, false, checkCancellation);
 						}
 						throw ex;
 					}
@@ -750,7 +751,7 @@ public class GenericStatement
 																					// The below should be connection specific.
 																					if (routeQuery && qinfo != null && qinfo.isSelect() && !isPreparedStatement()) {
 																						if (SnappyActivation.isColumnTable((DMLQueryInfo)qinfo, false)) {
-																							return getPreparedStatementForSnappy(true, statementContext, lcc, false);
+																							return getPreparedStatementForSnappy(true, statementContext, lcc, false, checkCancellation);
 																						}
 																					}
 
@@ -849,7 +850,7 @@ public class GenericStatement
             (messgId.equals(SQLState.NOT_COLOCATED_WITH)
                || messgId.equals(SQLState.COLOCATION_CRITERIA_UNSATISFIED) ||
                   messgId.equals(SQLState.REPLICATED_PR_CORRELATED_UNSUPPORTED))) {
-            return getPreparedStatementForSnappy(true, statementContext, lcc, false);
+            return getPreparedStatementForSnappy(true, statementContext, lcc, false, checkCancellation);
           }
 // GemStone changes END
 					lcc.commitNestedTransaction();
