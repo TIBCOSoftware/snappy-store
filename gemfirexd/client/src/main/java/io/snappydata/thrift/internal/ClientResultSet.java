@@ -1332,7 +1332,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final boolean rowUpdated() throws SQLException {
     checkClosed();
 
-    return this.cursorOperationType == CursorUpdateOperation.UPDATE;
+    return this.cursorOperationType == CursorUpdateOperation.UPDATE_OP;
   }
 
   /**
@@ -1342,7 +1342,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final boolean rowInserted() throws SQLException {
     checkClosed();
 
-    return this.cursorOperationType == CursorUpdateOperation.INSERT;
+    return this.cursorOperationType == CursorUpdateOperation.INSERT_OP;
   }
 
   /**
@@ -1352,7 +1352,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final boolean rowDeleted() throws SQLException {
     checkClosed();
 
-    return this.cursorOperationType == CursorUpdateOperation.DELETE;
+    return this.cursorOperationType == CursorUpdateOperation.DELETE_OP;
   }
 
   private void initRowUpdate(String operation) throws SQLException {
@@ -1836,7 +1836,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       this.insertRow.setChangedColumns(this.changedColumns);
       try {
         this.service.executeCursorUpdate(getLobSource(true, "insertRow"),
-            this.cursorId, CursorUpdateOperation.INSERT, insertRow,
+            this.cursorId, CursorUpdateOperation.INSERT_OP, insertRow,
             getChangedColumns(), this.rowsIter.nextIndex() - 1);
       } catch (SnappyException se) {
         throw ThriftExceptionUtil.newSQLException(se);
@@ -1844,7 +1844,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
         this.currentRow.setChangedColumns(null);
       }
       this.changedColumns.clear();
-      this.cursorOperationType = CursorUpdateOperation.INSERT;
+      this.cursorOperationType = CursorUpdateOperation.INSERT_OP;
       this.insertRow = null;
     }
     else {
@@ -1868,7 +1868,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       this.currentRow.setChangedColumns(this.changedColumns);
       try {
         this.service.executeCursorUpdate(getLobSource(true, "updateRow"),
-            this.cursorId, CursorUpdateOperation.UPDATE, this.currentRow,
+            this.cursorId, CursorUpdateOperation.UPDATE_OP, this.currentRow,
             getChangedColumns(), this.rowsIter.nextIndex() - 1);
       } catch (SnappyException se) {
         throw ThriftExceptionUtil.newSQLException(se);
@@ -1876,7 +1876,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
         this.currentRow.setChangedColumns(null);
       }
       this.changedColumns.clear();
-      this.cursorOperationType = CursorUpdateOperation.UPDATE;
+      this.cursorOperationType = CursorUpdateOperation.UPDATE_OP;
     }
     else {
       throw ThriftExceptionUtil.newSQLException(
@@ -1897,7 +1897,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     }
     try {
       this.service.executeCursorUpdate(getLobSource(true, "deleteRow"),
-          this.cursorId, CursorUpdateOperation.DELETE, null, null,
+          this.cursorId, CursorUpdateOperation.DELETE_OP, null, null,
           this.rowsIter.nextIndex() - 1);
     } catch (SnappyException se) {
       throw ThriftExceptionUtil.newSQLException(se);
@@ -1905,7 +1905,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     if (this.changedColumns != null) {
       this.changedColumns.clear();
     }
-    this.cursorOperationType = CursorUpdateOperation.DELETE;
+    this.cursorOperationType = CursorUpdateOperation.DELETE_OP;
   }
 
   /**

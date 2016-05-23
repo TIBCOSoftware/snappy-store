@@ -12,9 +12,9 @@ import java.util.HashMap;
 import org.apache.thrift.TEnum;
 
 public enum CursorUpdateOperation implements org.apache.thrift.TEnum {
-  UPDATE(1),
-  INSERT(2),
-  DELETE(3);
+  UPDATE_OP(1),
+  INSERT_OP(2),
+  DELETE_OP(3);
 
   private final int value;
 
@@ -36,11 +36,11 @@ public enum CursorUpdateOperation implements org.apache.thrift.TEnum {
   public static CursorUpdateOperation findByValue(int value) { 
     switch (value) {
       case 1:
-        return UPDATE;
+        return UPDATE_OP;
       case 2:
-        return INSERT;
+        return INSERT_OP;
       case 3:
-        return DELETE;
+        return DELETE_OP;
       default:
         return null;
     }

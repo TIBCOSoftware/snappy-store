@@ -420,9 +420,9 @@ int _kCursorUpdateOperationValues[] = {
   CursorUpdateOperation::DELETE_OP
 };
 const char* _kCursorUpdateOperationNames[] = {
-  "UPDATE",
-  "INSERT",
-  "DELETE"
+  "UPDATE_OP",
+  "INSERT_OP",
+  "DELETE_OP"
 };
 const std::map<int, const char*> _CursorUpdateOperation_VALUES_TO_NAMES(::apache::thrift::TEnumIterator(3, _kCursorUpdateOperationValues, _kCursorUpdateOperationNames), ::apache::thrift::TEnumIterator(-1, NULL, NULL));
 

@@ -99,8 +99,8 @@ time_t DateTime::getTime() const {
   }
 }
 
-DateTime DateTime::parseDate(const std::string& str, const bool utc,
-    const uint32_t columnIndex) {
+DateTime DateTime::parseDate(const std::string& str,
+    const uint32_t columnIndex, const bool utc) {
   try {
     boost::gregorian::date d = boost::gregorian::from_simple_string(str);
     boost::gregorian::date::ymd_type ymd = d.year_month_day();
@@ -115,7 +115,7 @@ DateTime DateTime::parseDate(const std::string& str, const bool utc,
 }
 
 DateTime DateTime::parseTime(const std::string& str,
-    const bool utc, const uint32_t columnIndex) {
+    const uint32_t columnIndex, const bool utc) {
   try {
     // use today's date
     boost::gregorian::date today = boost::gregorian::day_clock::local_day();
@@ -135,7 +135,7 @@ DateTime DateTime::parseTime(const std::string& str,
 
 // TODO: allow for optional timezone in the string apart from the UTC flag
 DateTime DateTime::parseDateTime(const std::string& str,
-    const bool utc, const uint32_t columnIndex) {
+    const uint32_t columnIndex, const bool utc) {
   try {
     // split date/time on a unique delimiter char such as ' '
     std::string dateStr, timeStr;

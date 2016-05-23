@@ -107,7 +107,7 @@ namespace types {
      * in string form hh:mm:ss hh:mm:ss[.NNNNNNNNN]
      */
     static Timestamp parseString(const std::string& str,
-        const bool utc = true, const uint32_t columnIndex = 0);
+        const uint32_t columnIndex = 0, const bool utc = true);
 
     /**
      * Get the UTC date time representation

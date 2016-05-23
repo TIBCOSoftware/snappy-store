@@ -154,39 +154,39 @@ namespace types {
      * in string form yyyy-mm-dd
      *
      * @param str   the string to be parsed
-     * @param utc   if true then the date is expressed in UTC
-     *              else in local timezone
      * @param columnIndex if this is associated with some column number
      *                    which is used in any exception message
+     * @param utc   if true then the date is expressed in UTC
+     *              else in local timezone
      */
     static DateTime parseDate(const std::string& str,
-        const bool utc = true, const uint32_t columnIndex = 0);
+        const uint32_t columnIndex = 0, const bool utc = true);
 
     /**
      * Create a DateTime instance parsing the time
      * in string form hh:mm:ss
      *
      * @param str   the string to be parsed
-     * @param utc   if true then the date is expressed in UTC
-     *              else in local timezone
      * @param columnIndex if this is associated with some column number
      *                    which is used in any exception message
+     * @param utc   if true then the date is expressed in UTC
+     *              else in local timezone
      */
     static DateTime parseTime(const std::string& str,
-        const bool utc = true, const uint32_t columnIndex = 0);
+        const uint32_t columnIndex = 0, const bool utc = true);
 
     /**
      * Create a DateTime instance parsing the date and time
      * in string form yyyy-mm-dd hh:mm:ss
      *
      * @param str   the string to be parsed
-     * @param utc   if true then the date is expressed in UTC
-     *              else in local timezone
      * @param columnIndex if this is associated with some column number
      *                    which is used in any exception message
+     * @param utc   if true then the date is expressed in UTC
+     *              else in local timezone
      */
     static DateTime parseDateTime(const std::string& str,
-        const bool utc = true, const uint32_t columnIndex = 0);
+        const uint32_t columnIndex = 0, const bool utc = true);
 
     /**
      * Get the date time representation

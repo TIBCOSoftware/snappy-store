@@ -795,7 +795,7 @@ DateTime Row::convertDate(const thrift::ColumnValue& cv,
       return DateTime(0);
     case thrift::SnappyType::VARCHAR: {
       std::string v = boost::algorithm::trim_copy(*cv.getString());
-      return DateTime::parseDate(v, true, columnIndex);
+      return DateTime::parseDate(v, columnIndex);
     }
     default:
       break;
@@ -814,7 +814,7 @@ DateTime Row::convertTime(const thrift::ColumnValue& cv,
       return DateTime(0);
     case thrift::SnappyType::VARCHAR: {
       std::string v = boost::algorithm::trim_copy(*cv.getString());
-      return DateTime::parseTime(v, true, columnIndex);
+      return DateTime::parseTime(v, columnIndex);
     }
     default:
       break;
@@ -833,7 +833,7 @@ Timestamp Row::convertTimestamp(const thrift::ColumnValue& cv,
       return Timestamp(cv.get<thrift::Time>().secsSinceEpoch);
     case thrift::SnappyType::VARCHAR: {
       std::string v = boost::algorithm::trim_copy(*cv.getString());
-      return Timestamp::parseString(v, true, columnIndex);
+      return Timestamp::parseString(v, columnIndex);
     }
     default:
       break;

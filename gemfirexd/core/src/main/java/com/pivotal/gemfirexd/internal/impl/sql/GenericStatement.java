@@ -747,13 +747,14 @@ public class GenericStatement
                                           final QueryInfoContext qic = new QueryInfoContext(
                                               this.createQueryInfo(),  paramDTDS != null ? paramDTDS.length : 0, isPreparedStatement());
                                           qinfo = qt.computeQueryInfo(qic);
-																					// Only rerouting selects to lead node. Inserts will be handled separately.
-																					// The below should be connection specific.
-																					if (routeQuery && qinfo != null && qinfo.isSelect() && !isPreparedStatement()) {
-																						if (SnappyActivation.isColumnTable((DMLQueryInfo)qinfo, false)) {
-																							return getPreparedStatementForSnappy(true, statementContext, lcc, false, checkCancellation);
-																						}
-																					}
+                                          // Only rerouting selects to lead node. Inserts will be handled separately.
+                                          // The below should be connection specific.
+                                          if (routeQuery && qinfo != null && qinfo.isSelect() && !isPreparedStatement()) {
+                                            if (SnappyActivation.isColumnTable((DMLQueryInfo)qinfo, false)) {
+                                              return getPreparedStatementForSnappy(true, statementContext, lcc,
+                                                  false, checkCancellation);
+                                            }
+                                          }
 
                                           if (qinfo != null && qinfo.isInsert()) {
                                             qinfo = handleInsertAndInsertSubSelect(qinfo, qt);

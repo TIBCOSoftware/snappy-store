@@ -70,7 +70,7 @@ namespace _snappy_impl {
     nano_time_duration() : boost::date_time::time_duration<nano_time_duration,
         boost::date_time::nano_res>(0, 0, 0) {
     }
-    //! Construct from special_values
+    // Construct from special_values
     nano_time_duration(boost::date_time::special_values sv) :
         boost::date_time::time_duration<nano_time_duration,
             boost::date_time::nano_res>(sv) {
@@ -97,8 +97,8 @@ void Timestamp::setNanos(int32_t nanos) {
   }
 }
 
-Timestamp Timestamp::parseString(const std::string& str, const bool utc,
-    const uint32_t columnIndex) {
+Timestamp Timestamp::parseString(const std::string& str,
+    const uint32_t columnIndex, const bool utc) {
   // TODO: PERF: can be made much more efficient by using tight parser
   // of boost::spirit::qi; sscanf is faster but we are sticking to this for now
   try {
