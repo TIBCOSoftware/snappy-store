@@ -215,6 +215,11 @@ public class AlterTableNode extends DDLStatementNode
 			return "ALTER TABLE";
 	}
 
+	public boolean isTruncateTable()
+	{
+		return truncateTable;
+	}
+
 	public	int	getChangeType() { return changeType; }
 
 	// We inherit the generate() method from DDLStatementNode.
