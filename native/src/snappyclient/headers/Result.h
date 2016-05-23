@@ -48,17 +48,19 @@
 
 #include <memory>
 
+using namespace io::snappydata::client::impl;
+
 namespace io {
 namespace snappydata {
 namespace client {
 
   class Result {
   private:
-    std::shared_ptr<impl::ClientService> m_service;
+    std::shared_ptr<ClientService> m_service;
     StatementAttributes m_attrs;
     thrift::StatementResult m_result;
 
-    Result(const std::shared_ptr<impl::ClientService>& service,
+    Result(const std::shared_ptr<ClientService>& service,
         const StatementAttributes& attrs);
 
     Result(const Result&) = delete; // no copy constructor

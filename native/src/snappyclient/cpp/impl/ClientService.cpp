@@ -44,7 +44,8 @@
 #include <boost/asio.hpp>
 #include <boost/log/attributes/current_process_id.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/chrono/process_cpu_clocks.hpp>
+
+#include <thread>
 
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TSSLSocket.h>
@@ -102,7 +103,7 @@ std::string ClientService::s_hostId;
 std::mutex ClientService::s_globalLock;
 
 void DEFAULT_OUTPUT_FN(const char *str) {
-  LogWriter::INFO() << str << _SNAPPY_NEWLINE;
+  LogWriter::info() << str << _SNAPPY_NEWLINE;
 }
 
 void ClientService::staticInitialize(
@@ -155,8 +156,8 @@ void ClientService::staticInitialize(
     globalLogger.initialize(logFile, logLevel);
     apache::thrift::GlobalOutput.setOutputFunction(DEFAULT_OUTPUT_FN);
 
-    if (LogWriter::ERROR_ENABLED()) {
-      LogWriter::CONFIG() << "Starting client on '" << s_hostName
+    if (LogWriter::errorEnabled()) {
+      LogWriter::config() << "Starting client on '" << s_hostName
           << "' with ID='" << s_hostId << '\'' << _SNAPPY_NEWLINE;
     }
   }
@@ -391,16 +392,16 @@ ClientService::ClientService(const std::string& host, const int port,
 void ClientService::openConnection(thrift::HostAddress& hostAddr,
     std::set<thrift::HostAddress>& failedServers) {
   // open the connection
-  boost::thread::id tid;
+  std::thread::id tid;
   NanoTimeThread start;
   NanoDurationThread elapsed;
   if (TraceFlag::ClientStatementHA.global() | TraceFlag::ClientConn.global()) {
     start = InternalUtils::nanoTimeThread();
-    tid = boost::this_thread::get_id();
+    tid = std::this_thread::get_id();
     std::unique_ptr<SQLException> ex(
         TraceFlag::ClientConn.global() ? new GET_SQLEXCEPTION(
             SQLState::UNKNOWN_EXCEPTION, "stack"): NULL);
-    InternalLogger::TRACE_COMPACT(tid, "openConnection_S", NULL, 0, true, 0,
+    InternalLogger::traceCompact(tid, "openConnection_S", NULL, 0, true, 0,
         m_connId, m_token, ex.get());
   }
 
@@ -437,15 +438,15 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
           | TraceFlag::ClientConn.global()) {
 
         elapsed = (InternalUtils::nanoTimeThread() - start);
-        InternalLogger::TRACE_COMPACT(tid, "openConnection_E", NULL, 0,
+        InternalLogger::traceCompact(tid, "openConnection_E", NULL, 0,
         false, elapsed.count(), m_connId, m_token);
 
         if (TraceFlag::ClientHA.global()) {
           if (m_token.empty()) {
-            LogWriter::TRACE(TraceFlag::ClientHA) << "Opened connection @"
+            LogWriter::trace(TraceFlag::ClientHA) << "Opened connection @"
                 << (int64_t)this << " ID=" << m_connId;
           } else {
-            LogWriter::TRACE(TraceFlag::ClientHA) << "Opened connection @"
+            LogWriter::trace(TraceFlag::ClientHA) << "Opened connection @"
                 << (int64_t)this << " ID=" << m_connId << " @"
                 << hexstr(m_token);
           }
@@ -501,7 +502,7 @@ thrift::OpenConnectionArgs& ClientService::initConnectionArgs(
   connArgs.__set_clientHostName(s_hostName);
   std::ostringstream hostId;
   hostId << s_hostId << '|' << Utils::threadName << "<0x" << std::hex
-      << boost::this_thread::get_id() << std::dec << '>';
+      << std::this_thread::get_id() << std::dec << '>';
   connArgs.__set_clientID(hostId.str());
   // TODO: fixed security mechanism for now
   connArgs.__set_security(thrift::SecurityMechanism::PLAIN);

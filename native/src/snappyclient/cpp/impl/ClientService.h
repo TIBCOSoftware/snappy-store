@@ -36,7 +36,7 @@
 #ifndef CLIENTSERVICE_H_
 #define CLIENTSERVICE_H_
 
-#include "ClientBaseImpl.h"
+#include "ClientBase.h"
 
 #include <boost/shared_ptr.hpp>
 #include <mutex>

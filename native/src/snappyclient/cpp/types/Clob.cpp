@@ -37,7 +37,7 @@
  * Clob.cpp
  */
 
-#include "types/Clob.h"
+#include "Types.h"
 
 using namespace io::snappydata::client::types;
 

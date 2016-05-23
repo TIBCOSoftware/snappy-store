@@ -43,7 +43,7 @@
 #ifndef STATEMENTATTRIBUTES_H_
 #define STATEMENTATTRIBUTES_H_
 
-#include "ClientBase.h"
+#include "Types.h"
 
 namespace io {
 namespace snappydata {

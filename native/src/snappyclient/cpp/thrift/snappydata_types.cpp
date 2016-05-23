@@ -415,9 +415,9 @@ const char* _kServerTypeNames[] = {
 const std::map<int, const char*> _ServerType_VALUES_TO_NAMES(::apache::thrift::TEnumIterator(9, _kServerTypeValues, _kServerTypeNames), ::apache::thrift::TEnumIterator(-1, NULL, NULL));
 
 int _kCursorUpdateOperationValues[] = {
-  CursorUpdateOperation::UPDATE,
-  CursorUpdateOperation::INSERT,
-  CursorUpdateOperation::DELETE
+  CursorUpdateOperation::UPDATE_OP,
+  CursorUpdateOperation::INSERT_OP,
+  CursorUpdateOperation::DELETE_OP
 };
 const char* _kCursorUpdateOperationNames[] = {
   "UPDATE",

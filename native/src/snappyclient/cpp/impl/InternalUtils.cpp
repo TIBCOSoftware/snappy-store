@@ -38,6 +38,7 @@
 extern "C" {
 #include <time.h>
 }
+#include <boost/numeric/conversion/cast.hpp>
 
 using namespace io::snappydata::client::impl;
 
@@ -56,7 +57,11 @@ bool InternalUtils::staticInitialize() {
   struct tm t;
   char buf[16], bufA[16];
   std::string bufStr;
+#ifdef _WINDOWS
+  ::localtime_s(&t, &ts);
+#else
   ::localtime_r(&ts, &t);
+#endif
 
   bool addColon = false;
   size_t buflen = ::strftime(buf, sizeof(buf), "%z", &t);
@@ -88,7 +93,8 @@ boost::filesystem::path InternalUtils::getPath(const std::string& pathStr) {
   // convert to wchar_t here on Windows (at least if filename is not ASCII).
 #ifdef _WINDOWS
   std::wstring wlogFile;
-  if (Utils::convertUTF8ToUTF16(logFile.c_str(), logFile.size(), wlogFile)) {
+  if (Utils::convertUTF8ToUTF16(pathStr.c_str(),
+      boost::numeric_cast<int>(pathStr.size()), wlogFile)) {
     return boost::filesystem::path(wlogFile.begin(), wlogFile.end());
   }
 #endif

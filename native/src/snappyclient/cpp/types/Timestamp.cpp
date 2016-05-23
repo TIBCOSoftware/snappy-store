@@ -37,7 +37,7 @@
  * Timestamp.cpp
  */
 
-#include "types/Timestamp.h"
+#include "Types.h"
 #include "../impl/InternalUtils.h"
 
 #include <boost/date_time/time_duration.hpp>
@@ -116,8 +116,9 @@ Timestamp Timestamp::parseString(const std::string& str, const bool utc,
     _snappy_impl::nano_time_duration td =
         boost::date_time::parse_delimited_time_duration<
             _snappy_impl::nano_time_duration>(timeStr);
-    return Timestamp(ymd.year, ymd.month, ymd.day, td.hours(), td.minutes(),
-        td.seconds(), td.fractional_seconds(), utc);
+	// nanoseconds will lie within int32 limits
+	return Timestamp(ymd.year, ymd.month, ymd.day, td.hours(), td.minutes(),
+        td.seconds(), static_cast<int32_t>(td.fractional_seconds()), utc);
   } catch (const std::exception& e) {
     std::string err(str);
     err.append(": ").append(e.what());
@@ -143,7 +144,7 @@ std::string& Timestamp::toString(std::string& str, const bool utc) const {
       return DateTime::toString(uint16_t(ymd.year), ymd.month.as_number(),
           ymd.day.as_number(), td.hours(), td.minutes(), td.seconds(), m_nanos,
           str);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           secsSinceEpoch);
     }
@@ -190,7 +191,7 @@ std::ostream& operator <<(std::ostream& stream, Timestamp ts) {
       return DateTime::toString(uint16_t(ymd.year), ymd.month.as_number(),
           ymd.day.as_number(), td.hours(), td.minutes(), td.seconds(),
           ts.getNanos(), stream);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           secsSinceEpoch);
     }

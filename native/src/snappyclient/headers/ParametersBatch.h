@@ -72,8 +72,8 @@ namespace client {
     }
 
   private:
-    ParametersBatch(const ParametersBatch&); // no copy constructor
-    ParametersBatch operator=(const ParametersBatch&); // no assignment
+    ParametersBatch(const ParametersBatch&) = delete; // no copy constructor
+    ParametersBatch operator=(const ParametersBatch&) = delete; // no assignment
   };
 
 } /* namespace client */

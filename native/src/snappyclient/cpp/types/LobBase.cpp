@@ -37,7 +37,7 @@
  * LobBase.cpp
  */
 
-#include "types/LobBase.h"
+#include "Types.h"
 
 using namespace io::snappydata::client::types;
 

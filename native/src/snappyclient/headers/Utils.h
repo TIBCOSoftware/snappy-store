@@ -45,8 +45,6 @@
 extern "C" {
 #ifdef _LINUX
 #include <sys/prctl.h>
-#else
-#include <pthread.h>
 #endif
 }
 
@@ -238,10 +236,11 @@ namespace client {
     static void convertShortToString(const int16_t v, std::string& result);
     static void convertIntToString(const int32_t v, std::string& result);
     static void convertInt64ToString(const int64_t v, std::string& result);
+    static void convertUInt64ToString(const uint64_t v, std::string& result);
     static void convertFloatToString(const float v, std::string& result,
-        const uint32_t precision = DEFAULT_REAL_PRECISION);
+        const size_t precision = DEFAULT_REAL_PRECISION);
     static void convertDoubleToString(const double v, std::string& result,
-        const uint32_t precision = DEFAULT_REAL_PRECISION);
+        const size_t precision = DEFAULT_REAL_PRECISION);
 
     static std::ostream& toStream(std::ostream& out,
         const thrift::HostAddress& hostAddr);

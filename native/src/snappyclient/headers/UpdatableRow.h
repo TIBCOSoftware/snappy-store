@@ -57,8 +57,8 @@ namespace client {
     thrift::ColumnValue* getColumnValueForUpdate(const uint32_t columnIndex);
 
     // no copy constructor or assignment
-    UpdatableRow(const UpdatableRow& other);
-    UpdatableRow& operator=(const UpdatableRow& other);
+    UpdatableRow(const UpdatableRow& other) = delete;
+    UpdatableRow& operator=(const UpdatableRow& other) = delete;
 
     friend class ResultSet;
 

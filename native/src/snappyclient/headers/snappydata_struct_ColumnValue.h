@@ -210,32 +210,10 @@ private:
   > UnionType;
   UnionType m_val;
 
-  static constexpr std::pair<SnappyType::type, const char*>
-  s_typeMap[VariadicSize<UnionType>::size] = {
-    std::make_pair(SnappyType::BOOLEAN, "bool_val"),
-    std::make_pair(SnappyType::TINYINT, "byte_val"),
-    std::make_pair(SnappyType::SMALLINT, "i16_val"),
-    std::make_pair(SnappyType::INTEGER, "i32_val"),
-    std::make_pair(SnappyType::BIGINT, "i64_val"),
-    std::make_pair(SnappyType::FLOAT, "float_val"),
-    std::make_pair(SnappyType::DOUBLE, "double_val"),
-    std::make_pair(SnappyType::VARCHAR, "string_val"),
-    std::make_pair(SnappyType::DECIMAL, "decimal_val"),
-    std::make_pair(SnappyType::DATE, "date_val"),
-    std::make_pair(SnappyType::TIME, "time_val"),
-    std::make_pair(SnappyType::TIMESTAMP, "timestamp_val"),
-    std::make_pair(SnappyType::VARBINARY, "binary_val"),
-    std::make_pair(SnappyType::BLOB, "blob_val"),
-    std::make_pair(SnappyType::CLOB, "clob_val"),
-    std::make_pair(SnappyType::ARRAY, "array_val"),
-    std::make_pair(SnappyType::MAP, "map_val"),
-    std::make_pair(SnappyType::STRUCT, "struct_val"),
-    std::make_pair(SnappyType::NULLTYPE, "null_val"),
-    std::make_pair(SnappyType::JSON, "json_val"),
-    std::make_pair(SnappyType::JAVA_OBJECT, "java_val")
-  };
+  static const std::pair<SnappyType::type, const char*>
+  s_typeMap[VariadicSize<UnionType>::size];
 
-  friend class std::hash<io::snappydata::thrift::ColumnValue>;
+  friend struct std::hash<io::snappydata::thrift::ColumnValue>;
 
 public:
 

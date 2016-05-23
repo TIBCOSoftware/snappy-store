@@ -38,8 +38,8 @@
 
 #include "common/Base.h"
 
-#include <boost/thread/shared_mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
+#include <shared_mutex>
+#include <mutex>
 
 #include <algorithm>
 
@@ -60,12 +60,12 @@ namespace snappydata {
   template<typename T, typename TLIST = std::vector<T> >
   class ThreadSafeList {
   public:
-    typedef boost::shared_lock<boost::shared_mutex> SharedLock;
-    typedef boost::lock_guard<boost::shared_mutex> LockGuard;
+    typedef std::shared_lock<std::shared_mutex> SharedLock;
+    typedef std::lock_guard<std::shared_mutex> LockGuard;
 
   private:
     TLIST m_list;
-    mutable boost::shared_mutex m_lock;
+    mutable std::shared_mutex m_lock;
 
   public:
     ThreadSafeList() : m_list(), m_lock() {

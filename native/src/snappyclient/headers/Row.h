@@ -73,8 +73,8 @@ namespace client {
     }
 
     // no copy constructor or assignment
-    Row(const Row& other);
-    Row& operator=(const Row& other);
+    Row(const Row& other) = delete;
+    Row& operator=(const Row& other) = delete;
 
     friend class ResultSet;
     friend class Result;
@@ -372,7 +372,7 @@ namespace client {
       return getColumnValue(columnIndex).isNull();
     }
 
-    inline int32_t numColumns() const {
+    size_t numColumns() const {
       return m_values.size();
     }
 

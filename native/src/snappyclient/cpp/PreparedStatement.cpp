@@ -51,7 +51,7 @@ using namespace io::snappydata;
 using namespace io::snappydata::client;
 
 PreparedStatement::PreparedStatement(
-    const std::shared_ptr<impl::ClientService>& service,
+    const std::shared_ptr<ClientService>& service,
     const StatementAttributes& attrs) :
     m_service(service), m_attrs(attrs),
     m_prepResult(), m_warnings(),
@@ -59,7 +59,7 @@ PreparedStatement::PreparedStatement(
 }
 
 PreparedStatement::PreparedStatement(
-    const std::shared_ptr<impl::ClientService>& service,
+    const std::shared_ptr<ClientService>& service,
     const StatementAttributes& attrs,
     const thrift::PrepareResult& prepResult) :
     m_service(service), m_attrs(attrs),

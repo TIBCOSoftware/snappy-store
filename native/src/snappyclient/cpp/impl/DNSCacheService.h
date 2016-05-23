@@ -36,7 +36,7 @@
 #ifndef DNSCACHESERVICE_H_
 #define DNSCACHESERVICE_H_
 
-#include "thrift/snappydata_struct_HostAddress.h"
+#include "snappydata_struct_HostAddress.h"
 
 namespace io {
 namespace snappydata {

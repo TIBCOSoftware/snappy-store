@@ -256,9 +256,9 @@ extern const std::map<int, const char*> _ServerType_VALUES_TO_NAMES;
 
 struct CursorUpdateOperation {
   enum type {
-    UPDATE = 1,
-    INSERT = 2,
-    DELETE = 3
+    UPDATE_OP = 1,
+    INSERT_OP = 2,
+    DELETE_OP = 3
   };
 };
 

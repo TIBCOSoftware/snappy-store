@@ -49,7 +49,7 @@ namespace impl {
   class MessageRegistry
   {
   private:
-    ThreadSafeMap<const std::string, MessageBase*> m_allMessages;
+    ThreadSafeMap<std::string, MessageBase*> m_allMessages;
 
     MessageRegistry();
 

@@ -49,7 +49,7 @@
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 
-Result::Result(const std::shared_ptr<impl::ClientService>& service,
+Result::Result(const std::shared_ptr<ClientService>& service,
     const StatementAttributes& attrs) :
     m_service(service), m_attrs(attrs), m_result() {
 }

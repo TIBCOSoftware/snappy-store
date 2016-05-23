@@ -56,8 +56,8 @@ namespace client {
      * and implicit shallow copy can have unexpected behaviour for the
      * users. Use clone()/shallowClone() as required.
      */
-    Parameters(const Parameters&);
-    Parameters operator=(const Parameters&);
+    Parameters(const Parameters&) = delete;
+    Parameters operator=(const Parameters&) = delete;
 
     // for placement new skip initialization of m_values
     Parameters(bool skipInitialize) :

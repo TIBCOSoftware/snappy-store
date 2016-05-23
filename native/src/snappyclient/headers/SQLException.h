@@ -82,7 +82,7 @@ namespace client {
         const std::string& reason);
 
     SQLException(const char* file, int line,
-        const thrift::SnappyException& snappyException);
+        const thrift::SnappyException& se);
 
     SQLException(const char* file, int line, const std::exception& ex);
 

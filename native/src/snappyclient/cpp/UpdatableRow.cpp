@@ -68,7 +68,7 @@ std::vector<int32_t> UpdatableRow::getChangedColumnsAsVector() {
   if (bitSet != NULL) {
     for (size_t pos = bitSet->find_first(); pos != DynamicBitSet::npos;
         pos = bitSet->find_next(pos)) {
-      changedColumns.push_back(pos);
+      changedColumns.push_back(static_cast<int32_t>(pos));
     }
   }
   return std::move(changedColumns);

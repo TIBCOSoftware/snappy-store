@@ -47,13 +47,15 @@
 
 #include <memory>
 
+using namespace io::snappydata::client::impl;
+
 namespace io {
 namespace snappydata {
 namespace client {
 
   class PreparedStatement {
   private:
-    std::shared_ptr<impl::ClientService> m_service;
+    std::shared_ptr<ClientService> m_service;
     StatementAttributes m_attrs;
     thrift::PrepareResult m_prepResult;
     std::unique_ptr<SQLWarning> m_warnings;
@@ -64,10 +66,10 @@ namespace client {
     friend class Connection;
     friend class Result;
 
-    PreparedStatement(const std::shared_ptr<impl::ClientService>& service,
+    PreparedStatement(const std::shared_ptr<ClientService>& service,
         const StatementAttributes& attrs);
 
-    PreparedStatement(const std::shared_ptr<impl::ClientService>& service,
+    PreparedStatement(const std::shared_ptr<ClientService>& service,
         const StatementAttributes& attrs,
         const thrift::PrepareResult& prepResult);
 
@@ -75,7 +77,7 @@ namespace client {
     PreparedStatement(const PreparedStatement&) = delete;
     PreparedStatement operator=(const PreparedStatement&) = delete;
 
-    inline impl::ClientService& checkAndGetService() const {
+    inline ClientService& checkAndGetService() const {
       if (m_service != NULL) {
         return *m_service;
       } else {
@@ -118,7 +120,7 @@ namespace client {
     ParameterDescriptor getParameterDescriptor(
         const uint32_t parameterIndex);
 
-    uint32_t getColumnCount() const noexcept {
+    size_t getColumnCount() const noexcept {
       return m_prepResult.resultSetMetaData.size();
     }
 

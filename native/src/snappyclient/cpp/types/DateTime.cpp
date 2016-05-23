@@ -37,7 +37,7 @@
  * DateTime.cpp
  */
 
-#include "types/DateTime.h"
+#include "Types.h"
 #include "../impl/InternalUtils.h"
 
 #include <boost/date_time/time_duration.hpp>
@@ -59,7 +59,7 @@ void DateTime::init(const uint16_t year, const uint16_t month,
       boost::posix_time::time_duration sinceEpoch = dateTime
           - InternalUtils::s_epoch;
       setEpochTime(sinceEpoch.ticks() / sinceEpoch.ticks_per_second());
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG2,
           year, month, day, hour, min, sec);
     }
@@ -267,7 +267,7 @@ void DateTime::toDate(std::string& str, const bool utc) const {
       bufp = toDateString(uint16_t(ymd.year), ymd.month.as_number(),
           ymd.day.as_number(), bufp);
       str.append(buf, bufp - &buf[0]);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           m_secsSinceEpoch);
     }
@@ -301,7 +301,7 @@ void DateTime::toTime(std::string& str, const bool utc) const {
 
       bufp = toTimeString(td.hours(), td.minutes(), td.seconds(), bufp);
       str.append(buf, bufp - &buf[0]);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           m_secsSinceEpoch);
     }
@@ -333,7 +333,7 @@ void DateTime::toDateTime(std::string& str, const bool utc) const {
 
       toString(uint16_t(ymd.year), ymd.month.as_number(), ymd.day.as_number(),
           td.hours(), td.minutes(), td.seconds(), 0, str);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           m_secsSinceEpoch);
     }
@@ -362,7 +362,7 @@ struct tm DateTime::toDateTime(const bool utc) const {
       boost::posix_time::ptime dateTime =
           InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
       return boost::posix_time::to_tm(dateTime);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           m_secsSinceEpoch);
     }

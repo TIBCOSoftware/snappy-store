@@ -36,14 +36,11 @@
 #ifndef INTERNALUTILS_H_
 #define INTERNALUTILS_H_
 
-#include "common/Base.h"
-#include "Utils.h"
+#include "Types.h"
 #include "ClientService.h"
 
 #include <boost/chrono/system_clocks.hpp>
-#ifdef BOOST_CHRONO_HAS_THREAD_CLOCK
 #include <boost/chrono/thread_clock.hpp>
-#endif
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/filesystem.hpp>
@@ -138,10 +135,10 @@ namespace impl {
     }
 
   private:
-    InternalUtils(); // no instances
-    ~InternalUtils(); // no instances
-    InternalUtils(const InternalUtils&);
-    InternalUtils operator=(const InternalUtils&);
+    InternalUtils() = delete; // no instances
+    ~InternalUtils() = delete; // no instances
+    InternalUtils(const InternalUtils&) = delete; // no instances
+    InternalUtils operator=(const InternalUtils&) = delete; // no instances
 
     static bool s_initialized;
     static bool staticInitialize();
@@ -152,8 +149,8 @@ namespace impl {
   private:
     void* m_p;
 
-    FreePointer(const FreePointer&); // disable copy constructor
-    FreePointer& operator=(const FreePointer&); // disable assignment
+    FreePointer(const FreePointer&) = delete; // disable copy constructor
+    FreePointer& operator=(const FreePointer&) = delete; // disable assignment
 
   public:
     FreePointer(void* p) noexcept : m_p(p) {

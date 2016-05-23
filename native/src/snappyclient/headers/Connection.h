@@ -56,6 +56,8 @@
 #include <vector>
 #include <memory>
 
+using namespace io::snappydata::client::impl;
+
 namespace io {
 namespace snappydata {
 namespace client {
@@ -144,7 +146,7 @@ namespace client {
 
   class Connection {
   private:
-    std::shared_ptr<impl::ClientService> m_service;
+    std::shared_ptr<ClientService> m_service;
     std::unique_ptr<SQLWarning> m_warnings;
     std::unique_ptr<DatabaseMetaData> m_metadata;
     ResultSetHoldability::type m_defaultHoldability;
@@ -186,7 +188,7 @@ namespace client {
       return m_service != NULL;
     }
 
-    inline impl::ClientService& checkAndGetService() const {
+    inline ClientService& checkAndGetService() const {
       if (m_service != NULL) {
         return *m_service;
       } else {

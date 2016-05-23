@@ -50,7 +50,7 @@ const ResultSet::const_iterator ResultSet::ITR_END_CONST;
 const ResultSet::iterator ResultSet::ITR_END;
 
 ResultSet::ResultSet(thrift::RowSet* rows,
-    const std::shared_ptr<impl::ClientService>& service,
+    const std::shared_ptr<ClientService>& service,
     const StatementAttributes& attrs, const int32_t batchSize, bool updatable,
     bool scrollable, bool isOwner) :
     m_rows(rows), m_service(service), m_attrs(attrs), m_batchSize(batchSize),
@@ -96,14 +96,14 @@ public:
   }
 };
 
-void ResultSet::insertRow(UpdatableRow* row, size_t rowIndex) {
+void ResultSet::insertRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("insertRow");
   if (row != NULL && row->getChangedColumns() != NULL) {
     ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns = row->getChangedColumnsAsVector();
     if (changedColumns.size() > 0) {
       m_service->executeCursorUpdate(m_rows->cursorId,
-          thrift::CursorUpdateOperation::INSERT, *row, changedColumns,
+          thrift::CursorUpdateOperation::INSERT_OP, *row, changedColumns,
           rowIndex);
       return;
     }
@@ -112,14 +112,14 @@ void ResultSet::insertRow(UpdatableRow* row, size_t rowIndex) {
       SQLStateMessage::CURSOR_NOT_POSITIONED_ON_INSERT_ROW_MSG);
 }
 
-void ResultSet::updateRow(UpdatableRow* row, size_t rowIndex) {
+void ResultSet::updateRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("updateRow");
   if (row != NULL && row->getChangedColumns() != NULL) {
     ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns = row->getChangedColumnsAsVector();
     if (changedColumns.size() > 0) {
       m_service->executeCursorUpdate(m_rows->cursorId,
-          thrift::CursorUpdateOperation::UPDATE, *row, changedColumns,
+          thrift::CursorUpdateOperation::UPDATE_OP, *row, changedColumns,
           rowIndex);
       return;
     }
@@ -128,13 +128,13 @@ void ResultSet::updateRow(UpdatableRow* row, size_t rowIndex) {
       SQLStateMessage::INVALID_CURSOR_UPDATE_AT_CURRENT_POSITION_MSG);
 }
 
-void ResultSet::deleteRow(UpdatableRow* row, size_t rowIndex) {
+void ResultSet::deleteRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("deleteRow");
   ClearUpdates clearRow(row);
   m_service->executeBatchCursorUpdate(m_rows->cursorId,
-      Utils::singleVector(thrift::CursorUpdateOperation::DELETE),
+      Utils::singleVector(thrift::CursorUpdateOperation::DELETE_OP),
       std::vector<thrift::Row>(), std::vector<std::vector<int32_t> >(),
-      Utils::singleVector(static_cast<int32_t>(rowIndex)));
+      Utils::singleVector(rowIndex));
 }
 
 ResultSet::const_iterator ResultSet::cbegin(uint32_t pos) const {

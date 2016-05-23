@@ -42,11 +42,8 @@
 
 #include "SQLException.h"
 
-#ifdef _WIN32
-#include <mpir.h>
-#else
 #include <gmp.h>
-#endif
+#include <boost/numeric/conversion/cast.hpp>
 
 namespace io {
 namespace snappydata {
@@ -56,7 +53,7 @@ namespace types {
   class Decimal {
   private:
     void initializeBigInteger(const int8_t signum,
-        const int8_t* magnitude, const uint32_t maglen, const bool bigEndian);
+        const int8_t* magnitude, const size_t maglen, const bool bigEndian);
 
     /** discard fractional part */
     const mpz_t* getBigInteger(mpz_t* copy) const noexcept;
@@ -64,16 +61,16 @@ namespace types {
     static uint32_t TEN_POWERS_TABLE[];
 
     mpz_t m_bigInt;
-    uint32_t m_scale;
-    mutable uint32_t m_precision;
+    size_t m_scale;
+    mutable size_t m_precision;
 
     void parseString(const std::string& str, const uint32_t columnIndex);
 
   public:
     Decimal(const thrift::Decimal& dec);
 
-    Decimal(const int8_t signum, const uint32_t scale,
-        const int8_t* magnitude, const uint32_t maglen, const bool bigEndian);
+    Decimal(const int8_t signum, const size_t scale,
+        const int8_t* magnitude, const size_t maglen, const bool bigEndian);
 
     Decimal(const int32_t v);
 
@@ -83,9 +80,9 @@ namespace types {
 
     Decimal(const uint64_t v);
 
-    Decimal(const float v, const uint32_t precision = DEFAULT_REAL_PRECISION);
+    Decimal(const float v, const size_t precision = DEFAULT_REAL_PRECISION);
 
-    Decimal(const double v, const uint32_t precision = DEFAULT_REAL_PRECISION);
+    Decimal(const double v, const size_t precision = DEFAULT_REAL_PRECISION);
 
     Decimal(const std::string& str, const uint32_t columnIndex = -1);
 
@@ -102,14 +99,14 @@ namespace types {
 
     bool operator!=(const Decimal& other) const;
 
-    uint32_t precision() const noexcept {
+    size_t precision() const noexcept {
       if (m_precision == 0) {
         m_precision = mpz_sizeinbase(m_bigInt, 10);
       }
       return m_precision;
     }
 
-    uint32_t scale() const noexcept {
+    size_t scale() const noexcept {
       return m_scale;
     }
 
@@ -117,24 +114,25 @@ namespace types {
       return mpz_sgn(m_bigInt);
     }
 
-    bool toUnsignedInt64(uint64_t& result, const bool allowOverflow = false) const;
+    bool toUnsignedInt64(uint64_t& result,
+        const bool allowOverflow = false) const;
 
     bool toInt64(int64_t& result, const bool allowOverflow = false) const;
 
     bool toDouble(double& result) const;
 
-    uint32_t toByteArray(std::string& str) const;
+    size_t toByteArray(std::string& str) const;
 
-    bool wholeDigits(uint8_t* bytes, const uint32_t maxLen,
-        uint32_t& actualLen) const noexcept;
+    bool wholeDigits(uint8_t* bytes, const size_t maxLen,
+        size_t& actualLen) const noexcept;
 
     void copyTo(thrift::Decimal& target) const {
       toByteArray(target.magnitude);
       target.signum = signum();
-      target.scale = m_scale;
+      target.scale = boost::numeric_cast<int32_t>(m_scale);
     }
 
-    uint32_t toString(std::string& str) const;
+    size_t toString(std::string& str) const;
 
     ~Decimal();
   };

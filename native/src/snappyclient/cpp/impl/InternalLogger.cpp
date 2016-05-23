@@ -41,11 +41,11 @@ using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
 
-ThreadSafeMap<boost::thread::id, std::string> InternalLogger::s_threadNames;
+ThreadSafeMap<std::thread::id, std::string> InternalLogger::s_threadNames;
 
 std::ostream& InternalLogger::printCompact_(std::ostream& os,
     const LogLevel::type logLevel, const char* flag,
-    const boost::thread::id tid) {
+    const std::thread::id tid) {
   std::ostream* ostr = &os;
   while (true) {
     std::ostream& out = *ostr;
@@ -76,20 +76,20 @@ std::ostream& InternalLogger::printCompact_(std::ostream& os,
 }
 
 void InternalLogger::compactLogThreadName(std::ostream& out,
-    const boost::thread::id tid) {
+    const std::thread::id tid) {
   if (!Utils::supportsThreadNames() || s_threadNames.containsKey(tid)) {
     return;
   }
   std::string tname;
   if (Utils::getCurrentThreadName(NULL, tname)
       && s_threadNames.putIfAbsent(tid, tname)) {
-    printCompact_(out, LogLevel::INFO, "THREAD_NAME", tid) << tid << ' '
+    printCompact_(out, LogLevel::info, "THREAD_NAME", tid) << tid << ' '
         << tname << _SNAPPY_NEWLINE;
   }
 }
 
 void InternalLogger::compactHeader(std::ostream& out,
-    const boost::thread::id tid, const char* opId, const char* opSql,
+    const std::thread::id tid, const char* opId, const char* opSql,
     const int32_t sqlId, const bool isStart, const int64_t nanos,
     const int64_t milliTime, const int32_t connId, const std::string& token) {
   compactLogThreadName(out, tid);
@@ -114,7 +114,7 @@ void InternalLogger::compactHeader(std::ostream& out,
   }
 }
 
-void InternalLogger::TRACE_COMPACT(const boost::thread::id tid,
+void InternalLogger::traceCompact(const std::thread::id tid,
     const char* opId, const char* opSql, const int32_t sqlId,
     const bool isStart, const int64_t nanos, const int32_t connId,
     const std::string& token, const std::exception* se,
@@ -128,7 +128,7 @@ void InternalLogger::TRACE_COMPACT(const boost::thread::id tid,
   out << _SNAPPY_NEWLINE;
 }
 
-void InternalLogger::TRACE_COMPACT(const boost::thread::id tid,
+void InternalLogger::traceCompact(const std::thread::id tid,
     const char* opId, const char* opSql, const int32_t sqlId,
     const bool isStart, const int64_t nanos, const int32_t connId,
     const std::string& token, const SQLException* sqle,

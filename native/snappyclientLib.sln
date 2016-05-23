@@ -1,0 +1,26 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual C++ Express 2010
+
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "snappyclientLib", "snappyclientLib.vcxproj", "{90E77B51-BE0B-339D-B673-DD297FD4E7D9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		x64Debug|Win32=x64Debug|Win32
+		x64Release|Win32=x64Release|Win32
+		x86Debug|Win32=x86Debug|Win32
+		x86Release|Win32=x86Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x64Debug|Win32.ActiveCfg = x64Debug|Win32
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x64Debug|Win32.Build.0 = x64Debug|Win32
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x64Release|Win32.ActiveCfg = x64Release|Win32
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x64Release|Win32.Build.0 = x64Release|Win32
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x86Debug|Win32.ActiveCfg = x86Debug|Win32
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x86Debug|Win32.Build.0 = x86Debug|Win32
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x86Release|Win32.ActiveCfg = x86Release|Win32
+		{90E77B51-BE0B-339D-B673-DD297FD4E7D9}.x86Release|Win32.Build.0 = x86Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

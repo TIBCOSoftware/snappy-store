@@ -36,7 +36,7 @@
 #ifndef INTERNALLOGGER_H_
 #define INTERNALLOGGER_H_
 
-#include <boost/thread/thread.hpp>
+#include <thread>
 
 #include "ThreadSafeMap.h"
 #include "LogWriter.h"
@@ -48,26 +48,26 @@ namespace impl {
 
   class InternalLogger {
   private:
-    InternalLogger(); // no instance
-    ~InternalLogger(); // no instance
-    InternalLogger(const InternalLogger&); // no instance
-    InternalLogger& operator=(const InternalLogger&); // no instance
+    InternalLogger() = delete; // no instance
+	~InternalLogger() = delete; // no instance
+    InternalLogger(const InternalLogger&) = delete; // no instance
+    InternalLogger& operator=(const InternalLogger&) = delete; // no instance
 
     /**
      * the common map from thread ID to its name used by all LogWriters
      * to dump names of any new thread IDs in compact logging
      */
-    static ThreadSafeMap<boost::thread::id, std::string> s_threadNames;
+    static ThreadSafeMap<std::thread::id, std::string> s_threadNames;
 
     static std::ostream& printCompact_(std::ostream& out,
         const LogLevel::type logLevel, const char* flag,
-        const boost::thread::id tid);
+        const std::thread::id tid);
 
     static void compactLogThreadName(std::ostream& out,
-        const boost::thread::id tid);
+        const std::thread::id tid);
 
     static void compactHeader(std::ostream& out,
-        const boost::thread::id tid, const char* opId,
+        const std::thread::id tid, const char* opId,
         const char* opSql, const int32_t sqlId, const bool isStart,
         const int64_t nanos, const int64_t milliTime,
         const int32_t connId, const std::string& token);
@@ -75,13 +75,13 @@ namespace impl {
     friend class io::snappydata::client::LogWriter;
 
   public:
-    static void TRACE_COMPACT(const boost::thread::id tid,
+    static void traceCompact(const std::thread::id tid,
         const char* opId, const char* opSql, const int32_t sqlId,
         const bool isStart, const int64_t nanos, const int32_t connId,
         const std::string& token, const std::exception* se = NULL,
         const int64_t milliTime = 0);
 
-    static void TRACE_COMPACT(const boost::thread::id tid,
+    static void traceCompact(const std::thread::id tid,
         const char* opId, const char* opSql, const int32_t sqlId,
         const bool isStart, const int64_t nanos, const int32_t connId,
         const std::string& token, const SQLException* sqle,

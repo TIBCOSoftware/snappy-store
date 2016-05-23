@@ -33,10 +33,15 @@
  * LICENSE file.
  */
 
+#include "common/Base.h"
 #include "BufferedSocketTransport.h"
 
 extern "C" {
+#ifdef _WINDOWS
+#include <WinSock2.h>
+#else
 #include <arpa/inet.h>
+#endif
 #include <stdlib.h>
 }
 #include <assert.h>
@@ -143,8 +148,8 @@ namespace _snappy_impl {
 
   private:
     // no copy constructor or assignment operator
-    PositionInit(const PositionInit& other);
-    PositionInit& operator=(const PositionInit& other);
+    PositionInit(const PositionInit& other) = delete;
+    PositionInit& operator=(const PositionInit& other) = delete;
   };
 }
 

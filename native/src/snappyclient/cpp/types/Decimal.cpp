@@ -37,7 +37,7 @@
  * Decimal.cpp
  */
 
-#include "types/Decimal.h"
+#include "Types.h"
 
 #include "../impl/InternalUtils.h"
 #include <boost/lexical_cast.hpp>
@@ -66,14 +66,14 @@ Decimal::Decimal(const thrift::Decimal& dec) :
       dec.magnitude.size(), true);
 }
 
-Decimal::Decimal(const int8_t signum, const uint32_t scale,
-    const int8_t* magnitude, const uint32_t maglen, const bool bigEndian) :
+Decimal::Decimal(const int8_t signum, const size_t scale,
+    const int8_t* magnitude, const size_t maglen, const bool bigEndian) :
     m_scale(scale), m_precision(0) {
   initializeBigInteger(signum, magnitude, maglen, bigEndian);
 }
 
 void Decimal::initializeBigInteger(const int8_t signum, const int8_t* magnitude,
-    const uint32_t maglen, const bool bigEndian) {
+    const size_t maglen, const bool bigEndian) {
   if (signum != 0) {
     const int endianness = (bigEndian ? 1 : -1);
 
@@ -101,19 +101,41 @@ Decimal::Decimal(const uint32_t v) :
 
 Decimal::Decimal(const int64_t v) :
     m_scale(0), m_precision(0) {
-  mpz_init_set_si(m_bigInt, v);
+  // fallback to slow conversion from string for 32-bit mpz_init_set_si
+  if (sizeof(signed long int) < sizeof(int64_t)) {
+    std::string vstr;
+    Utils::convertInt64ToString(v, vstr);
+    mpz_init_set_str(m_bigInt, vstr.c_str(), 10);
+  } else {
+    // disable warning about possible data loss that is taken care of above
+#pragma warning(push)
+#pragma warning(disable: 4244)
+    mpz_init_set_si(m_bigInt, v);
+#pragma warning(pop)
+  }
 }
 
 Decimal::Decimal(const uint64_t v) :
     m_scale(0), m_precision(0) {
-  mpz_init_set_ui(m_bigInt, v);
+  // fallback to slow conversion from string for 32-bit mpz_init_set_ui
+  if (sizeof(unsigned long int) < sizeof(uint64_t)) {
+    std::string vstr;
+    Utils::convertUInt64ToString(v, vstr);
+    mpz_init_set_str(m_bigInt, vstr.c_str(), 10);
+  } else {
+    // disable warning about possible data loss that is taken care of above
+#pragma warning(push)
+#pragma warning(disable: 4244)
+    mpz_init_set_ui(m_bigInt, v);
+#pragma warning(pop)
+  }
 }
 
 /* TODO: need to implement conversion from double to BigDecimal
  * (e.g. see Android's code)
 */
 
-Decimal::Decimal(const float v, const uint32_t precision) :
+Decimal::Decimal(const float v, const size_t precision) :
     m_precision(0) {
   // TODO: make this efficient using code like in JDK's BigDecimal
   std::string str;
@@ -121,7 +143,7 @@ Decimal::Decimal(const float v, const uint32_t precision) :
   parseString(str, -1);
 }
 
-Decimal::Decimal(const double v, const uint32_t precision) :
+Decimal::Decimal(const double v, const size_t precision) :
     m_precision(0) {
   // TODO: make this efficient using code like in JDK's BigDecimal
   std::string str;
@@ -228,8 +250,8 @@ const mpz_t* Decimal::getBigInteger(mpz_t* copy) const noexcept {
     mpz_init_set(*copy, m_bigInt);
     uint32_t nPowersOf10 = sizeof(TEN_POWERS_TABLE)
         / sizeof(TEN_POWERS_TABLE[0]);
-    uint32_t scale = m_scale;
-    uint32_t ndivs = scale / nPowersOf10;
+    size_t scale = m_scale;
+    size_t ndivs = scale / nPowersOf10;
     while (--ndivs >= 0) {
       mpz_fdiv_q_ui(*copy, *copy, TEN_POWERS_TABLE[nPowersOf10 - 1]);
       scale -= nPowersOf10;
@@ -282,15 +304,15 @@ bool Decimal::toDouble(double& result) const {
   try {
     result = boost::lexical_cast<double>(str);
     return true;
-  } catch (const std::exception& se) {
+  } catch (const std::exception&) {
     return false;
   }
 }
 
-uint32_t Decimal::toByteArray(std::string& str) const {
-  uint32_t len = str.length();
+size_t Decimal::toByteArray(std::string& str) const {
+  size_t len = str.length();
   // calculate the required length
-  uint32_t nbytes = (mpz_sizeinbase(m_bigInt, 2) + 7) / 8;
+  size_t nbytes = (mpz_sizeinbase(m_bigInt, 2) + 7) / 8;
   // below manipulates internal char* of std::string which should
   // work will all implementations though is undefined as per standard
   if (nbytes > 0) {
@@ -303,8 +325,8 @@ uint32_t Decimal::toByteArray(std::string& str) const {
   return nbytes;
 }
 
-bool Decimal::wholeDigits(uint8_t* bytes, const uint32_t maxLen,
-    uint32_t& actualLen) const noexcept {
+bool Decimal::wholeDigits(uint8_t* bytes, const size_t maxLen,
+    size_t& actualLen) const noexcept {
   mpz_t temp;
   const mpz_t* intVal = getBigInteger(&temp);
   // calculate the required length
@@ -318,12 +340,12 @@ bool Decimal::wholeDigits(uint8_t* bytes, const uint32_t maxLen,
   }
 }
 
-uint32_t Decimal::toString(std::string& str) const {
+size_t Decimal::toString(std::string& str) const {
   // convert the integer to string first
   char buf[thrift::snappydataConstants::DECIMAL_MAX_PRECISION + 4];
   char* bufp = buf;
   io::snappydata::client::impl::FreePointer freep(0);
-  const uint32_t ndigits = mpz_sizeinbase(m_bigInt, 10);
+  const size_t ndigits = mpz_sizeinbase(m_bigInt, 10);
   if (ndigits > 128) {
     bufp = new char[ndigits + 2];
     freep.reset(bufp);
@@ -336,10 +358,10 @@ uint32_t Decimal::toString(std::string& str) const {
     str.append(bufp, ndigits + neg);
     return (ndigits + neg);
   }
-  // check for sign
-  int32_t wholeDigits = (ndigits - m_scale);
-  int32_t wholeDigitsWithSign = wholeDigits + neg;
+  // check for sign (using signed version of size_t)
+  ptrdiff_t wholeDigits = (ndigits - m_scale);
   if (wholeDigits > 0) {
+    size_t wholeDigitsWithSign = static_cast<size_t>(wholeDigits + neg);
     str.append(bufp, wholeDigitsWithSign);
     str += '.';
     str.append(bufp + wholeDigitsWithSign, m_scale);
@@ -353,7 +375,7 @@ uint32_t Decimal::toString(std::string& str) const {
     str.append("0.");
     // add additional zero between '.' and integer
     if (wholeDigits < 0) {
-      str.append(-wholeDigits, '0');
+      str.append(static_cast<size_t>(-wholeDigits), '0');
     }
     str.append(bufp, ndigits);
     return (ndigits + neg + 2);

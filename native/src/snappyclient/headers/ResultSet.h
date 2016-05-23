@@ -43,6 +43,8 @@
 
 #include <memory>
 
+using namespace io::snappydata::client::impl;
+
 namespace io {
 namespace snappydata {
 namespace client {
@@ -50,7 +52,7 @@ namespace client {
   class ResultSet {
   private:
     thrift::RowSet* m_rows;
-    std::shared_ptr<impl::ClientService> m_service;
+    std::shared_ptr<ClientService> m_service;
     const StatementAttributes m_attrs;
     const int32_t m_batchSize;
     const bool m_updatable;
@@ -60,7 +62,7 @@ namespace client {
     mutable std::map<std::string, uint32_t>* m_columnPositionMap;
 
     ResultSet(thrift::RowSet* rows,
-        const std::shared_ptr<impl::ClientService>& service,
+        const std::shared_ptr<ClientService>& service,
         const StatementAttributes& attrs = StatementAttributes::EMPTY,
         const int32_t batchSize = -1, bool updatable = false,
         bool scrollable = false, bool isOwner = true);
@@ -106,9 +108,9 @@ namespace client {
     bool moveToRowSet(int32_t offset, int32_t batchSize,
         bool offsetIsAbsolute = false);
 
-    void insertRow(UpdatableRow* row, size_t rowIndex);
-    void updateRow(UpdatableRow* row, size_t rowIndex);
-    void deleteRow(UpdatableRow* row, size_t rowIndex);
+    void insertRow(UpdatableRow* row, int32_t rowIndex);
+    void updateRow(UpdatableRow* row, int32_t rowIndex);
+    void deleteRow(UpdatableRow* row, int32_t rowIndex);
 
     void cleanupRS();
 
@@ -139,7 +141,7 @@ namespace client {
       }
 
       void init(uint32_t pos, bool isEnd) {
-        auto batchOffset = m_rows->offset;
+        auto batchOffset = static_cast<uint32_t>(m_rows->offset);
         m_operation = NO_OP;
         if (isEnd) {
           m_currentRow = m_endBatch = NULL;
@@ -156,7 +158,7 @@ namespace client {
               m_currentRow = m_endBatch = NULL;
               return;
             }
-            batchOffset = m_rows->offset;
+            batchOffset = static_cast<uint32_t>(m_rows->offset);
             sz = m_rows->rows.size();
           }
           TRow* start = new (&m_rows->rows[0]) TRow(updatable);
@@ -487,35 +489,38 @@ namespace client {
         // TODO: handle SCROLL_SENSITIVE for insertRow/updateRow/deleteRow
         // but first need to add that to server-side
 
-        const size_t position = ((thrift::Row*)m_currentRow - &m_rows->rows[0]);
+        const int32_t position = static_cast<int32_t>(
+            (thrift::Row*)m_currentRow - &m_rows->rows[0]);
         m_resultSet->insertRow(m_insertRow, position);
-        m_operation = thrift::CursorUpdateOperation::INSERT;
+        m_operation = thrift::CursorUpdateOperation::INSERT_OP;
       }
 
       void updateRow() {
         checkUpdatable("updateRow");
 
-        const size_t position = ((thrift::Row*)m_currentRow - &m_rows->rows[0]);
+        const int32_t position = static_cast<int32_t>(
+            (thrift::Row*)m_currentRow - &m_rows->rows[0]);
         m_resultSet->updateRow(m_currentRow, position);
-        m_operation = thrift::CursorUpdateOperation::UPDATE;
+        m_operation = thrift::CursorUpdateOperation::UPDATE_OP;
       }
 
       void deleteRow() {
         checkUpdatable("deleteRow");
 
-        const size_t position = ((thrift::Row*)m_currentRow - &m_rows->rows[0]);
+        const int32_t position = static_cast<int32_t>(
+            (thrift::Row*)m_currentRow - &m_rows->rows[0]);
         m_resultSet->deleteRow(m_currentRow, position);
-        m_operation = thrift::CursorUpdateOperation::DELETE;
+        m_operation = thrift::CursorUpdateOperation::DELETE_OP;
       }
 
       bool rowInserted() const {
-        return m_operation == thrift::CursorUpdateOperation::INSERT;
+        return m_operation == thrift::CursorUpdateOperation::INSERT_OP;
       }
       bool rowUpdated() const {
-        return m_operation == thrift::CursorUpdateOperation::UPDATE;
+        return m_operation == thrift::CursorUpdateOperation::UPDATE_OP;
       }
       bool rowDeleted() const {
-        return m_operation == thrift::CursorUpdateOperation::DELETE;
+        return m_operation == thrift::CursorUpdateOperation::DELETE_OP;
       }
     };
 
@@ -544,7 +549,7 @@ namespace client {
     }
 
     inline bool isOpen() const noexcept {
-      return m_rows;
+      return m_rows != NULL;
     }
 
     inline bool isUpdatable() const noexcept {
@@ -555,7 +560,7 @@ namespace client {
       return m_scrollable;
     }
 
-    uint32_t getColumnCount() const noexcept {
+    size_t getColumnCount() const noexcept {
       checkOpen("getColumnCount");
       return (m_descriptors == NULL ? m_rows->metadata.size()
           : m_descriptors->size());

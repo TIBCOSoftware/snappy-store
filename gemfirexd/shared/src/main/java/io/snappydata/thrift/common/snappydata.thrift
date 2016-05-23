@@ -564,9 +564,9 @@ struct ColumnDescriptor {
 
 // cursor update operation type
 enum CursorUpdateOperation {
-  UPDATE                                                   = 1
-  INSERT                                                   = 2
-  DELETE                                                   = 3
+  UPDATE_OP                                                = 1
+  INSERT_OP                                                = 2
+  DELETE_OP                                                = 3
 }
 
 struct Row {

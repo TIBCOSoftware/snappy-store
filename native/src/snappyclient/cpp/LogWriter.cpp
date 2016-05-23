@@ -40,8 +40,8 @@
 #include "LogWriter.h"
 
 #include <fstream>
+#include <thread>
 #include <boost/make_shared.hpp>
-#include <boost/thread.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/chrono/io/time_point_io.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -58,39 +58,39 @@ using namespace io::snappydata::client;
 std::map<const std::string, LogLevel::type> LogLevel::s_allLogLevels;
 
 void LogLevel::staticInitialize() {
-  s_allLogLevels["all"] = LogLevel::ALL;
-  s_allLogLevels["finest"] = LogLevel::FINEST;
-  s_allLogLevels["finer"] = LogLevel::FINER;
-  s_allLogLevels["fine"] = LogLevel::FINE;
-  s_allLogLevels["config"] = LogLevel::CONFIG;
-  s_allLogLevels["info"] = LogLevel::INFO;
-  s_allLogLevels["warning"] = LogLevel::WARNING;
-  s_allLogLevels["error"] = LogLevel::ERROR;
-  s_allLogLevels["severe"] = LogLevel::SEVERE;
-  s_allLogLevels["none"] = LogLevel::NONE;
+  s_allLogLevels["all"] = LogLevel::all;
+  s_allLogLevels["finest"] = LogLevel::finest;
+  s_allLogLevels["finer"] = LogLevel::finer;
+  s_allLogLevels["fine"] = LogLevel::fine;
+  s_allLogLevels["config"] = LogLevel::config;
+  s_allLogLevels["info"] = LogLevel::info;
+  s_allLogLevels["warning"] = LogLevel::warning;
+  s_allLogLevels["error"] = LogLevel::error;
+  s_allLogLevels["severe"] = LogLevel::severe;
+  s_allLogLevels["none"] = LogLevel::none;
 }
 
 const char* LogLevel::toString(const LogLevel::type logLevel) {
   switch (logLevel) {
-    case ALL:
+    case all:
       return "all";
-    case FINEST:
+    case finest:
       return "finest";
-    case FINER:
+    case finer:
       return "finer";
-    case FINE:
+    case fine:
       return "fine";
-    case CONFIG:
+    case config:
       return "config";
-    case INFO:
+    case info:
       return "info";
-    case WARNING:
+	case warning:
       return "warning";
-    case ERROR:
+    case error:
       return "error";
-    case SEVERE:
+    case severe:
       return "severe";
-    case NONE:
+    case none:
     default:
       return "none";
   }
@@ -190,7 +190,7 @@ void TraceFlag::enableFlag(char* traceFlags, bool enable,
 
 const char* LogWriter::LOGGING_FLAG = "THRIFT_CLIENT";
 
-LogWriter LogWriter::g_logger("", LogLevel::ERROR, false);
+LogWriter LogWriter::g_logger("", LogLevel::error, false);
 const char* LogWriter::NEWLINE = _SNAPPY_NEWLINE_STR;
 
 void LogWriter::staticInitialize() {
@@ -377,7 +377,7 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel, const char* flag) 
       if (Utils::getCurrentThreadName(" <", out)) {
         out << '>';
       }
-      out << " tid=0x" << std::hex << boost::this_thread::get_id()
+      out << " tid=0x" << std::hex << std::this_thread::get_id()
           << std::dec << "] ";
       return out;
     } catch (const std::exception& se) {
@@ -402,40 +402,40 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel, const char* flag) 
 std::ostream& LogWriter::printCompact(const LogLevel::type logLevel,
     const char* flag) {
   std::ostream& out = getRawStream();
-  const boost::thread::id tid = boost::this_thread::get_id();
+  const std::thread::id tid = std::this_thread::get_id();
 
   impl::InternalLogger::compactLogThreadName(out, tid);
   return impl::InternalLogger::printCompact_(out, logLevel, flag, tid);
 }
 
-std::ostream& LogWriter::SEVERE() {
-  return global().print(LogLevel::SEVERE, LOGGING_FLAG);
+std::ostream& LogWriter::severe() {
+  return global().print(LogLevel::severe, LOGGING_FLAG);
 }
-std::ostream& LogWriter::ERROR() {
-  return global().print(LogLevel::ERROR, LOGGING_FLAG);
+std::ostream& LogWriter::error() {
+  return global().print(LogLevel::error, LOGGING_FLAG);
 }
-std::ostream& LogWriter::WARNING() {
-  return global().print(LogLevel::WARNING, LOGGING_FLAG);
+std::ostream& LogWriter::warning() {
+  return global().print(LogLevel::warning, LOGGING_FLAG);
 }
-std::ostream& LogWriter::CONFIG() {
-  return global().print(LogLevel::CONFIG, LOGGING_FLAG);
+std::ostream& LogWriter::config() {
+  return global().print(LogLevel::config, LOGGING_FLAG);
 }
-std::ostream& LogWriter::INFO() {
-  return global().print(LogLevel::INFO, LOGGING_FLAG);
+std::ostream& LogWriter::info() {
+  return global().print(LogLevel::info, LOGGING_FLAG);
 }
-std::ostream& LogWriter::FINE() {
-  return global().print(LogLevel::FINE, LOGGING_FLAG);
+std::ostream& LogWriter::fine() {
+  return global().print(LogLevel::fine, LOGGING_FLAG);
 }
-std::ostream& LogWriter::FINER() {
-  return global().print(LogLevel::FINER, LOGGING_FLAG);
+std::ostream& LogWriter::finer() {
+  return global().print(LogLevel::finer, LOGGING_FLAG);
 }
-std::ostream& LogWriter::FINEST() {
-  return global().print(LogLevel::FINEST, LOGGING_FLAG);
+std::ostream& LogWriter::finest() {
+  return global().print(LogLevel::finest, LOGGING_FLAG);
 }
 
-std::ostream& LogWriter::TRACE(const TraceFlag& flag) {
-  return global().print(LogLevel::INFO, flag.name().c_str());
+std::ostream& LogWriter::trace(const TraceFlag& flag) {
+  return global().print(LogLevel::info, flag.name().c_str());
 }
-std::ostream& LogWriter::TRACE_COMPACT(const TraceFlag& flag) {
-  return global().printCompact(LogLevel::INFO, flag.name().c_str());
+std::ostream& LogWriter::traceCompact(const TraceFlag& flag) {
+  return global().printCompact(LogLevel::info, flag.name().c_str());
 }

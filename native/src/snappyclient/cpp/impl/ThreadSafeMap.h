@@ -38,10 +38,9 @@
 
 #include "common/Base.h"
 
-#include <boost/unordered_map.hpp>
-#include <boost/thread/shared_mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
-#include <boost/atomic/atomic.hpp>
+#include <unordered_map>
+#include <shared_mutex>
+#include <mutex>
 
 namespace io {
 namespace snappydata {
@@ -61,15 +60,15 @@ namespace snappydata {
    * but no pressing need so far.
    */
   template<typename K, typename V,
-      typename TMAP = boost::unordered_map<K, V> >
+      typename TMAP = std::unordered_map<K, V> >
   class ThreadSafeMap {
   public:
-    typedef boost::shared_lock<boost::shared_mutex> SharedLock;
-    typedef boost::lock_guard<boost::shared_mutex> LockGuard;
+    typedef std::shared_lock<std::shared_mutex> SharedLock;
+    typedef std::lock_guard<std::shared_mutex> LockGuard;
 
   private:
     TMAP m_map;
-    mutable boost::shared_mutex m_lock;
+    mutable std::shared_mutex m_lock;
 
   public:
     ThreadSafeMap() : m_map(), m_lock() {

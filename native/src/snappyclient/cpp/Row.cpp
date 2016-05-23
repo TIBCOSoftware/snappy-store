@@ -122,9 +122,15 @@ namespace {
     Decimal d(*cv.getPtr<thrift::Decimal>());
     int64_t result;
     if (d.toInt64(result, false)
-        && result >= std::numeric_limits<NT>::min()
-        && result <= std::numeric_limits<NT>::max()) {
-      return static_cast<NT>(result);
+      // cast min to avoid issues with signed/unsigned conversions
+      && result >= static_cast<int64_t>(std::numeric_limits<NT>::min())
+      // disable signed/unsigned comparison warning for uint64_t since the
+      // comparison against min() above already ensures "result" is positive
+#pragma warning(push)
+#pragma warning(disable: 4018)
+      && result <= std::numeric_limits<NT>::max()) {
+#pragma warning(pop)
+		return static_cast<NT>(result);
     } else {
       std::string s;
       d.toString(s);
@@ -616,7 +622,7 @@ float Row::convertFloat(const thrift::ColumnValue& cv,
       case thrift::SnappyType::SMALLINT:
         return cv.get<int16_t>();
       case thrift::SnappyType::INTEGER:
-        return cv.get<int32_t>();
+        return boost::numeric_cast<float>(cv.get<int32_t>());
       case thrift::SnappyType::BIGINT:
         return boost::numeric_cast<float>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
@@ -789,7 +795,7 @@ DateTime Row::convertDate(const thrift::ColumnValue& cv,
       return DateTime(0);
     case thrift::SnappyType::VARCHAR: {
       std::string v = boost::algorithm::trim_copy(*cv.getString());
-      return DateTime::parseDate(v, columnIndex);
+      return DateTime::parseDate(v, true, columnIndex);
     }
     default:
       break;
@@ -808,7 +814,7 @@ DateTime Row::convertTime(const thrift::ColumnValue& cv,
       return DateTime(0);
     case thrift::SnappyType::VARCHAR: {
       std::string v = boost::algorithm::trim_copy(*cv.getString());
-      return DateTime::parseTime(v, columnIndex);
+      return DateTime::parseTime(v, true, columnIndex);
     }
     default:
       break;
@@ -827,7 +833,7 @@ Timestamp Row::convertTimestamp(const thrift::ColumnValue& cv,
       return Timestamp(cv.get<thrift::Time>().secsSinceEpoch);
     case thrift::SnappyType::VARCHAR: {
       std::string v = boost::algorithm::trim_copy(*cv.getString());
-      return Timestamp::parseString(v, columnIndex);
+      return Timestamp::parseString(v, true, columnIndex);
     }
     default:
       break;

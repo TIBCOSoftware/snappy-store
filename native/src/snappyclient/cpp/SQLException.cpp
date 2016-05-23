@@ -49,6 +49,7 @@ extern "C" {
 #  endif
 }
 
+using namespace io::snappydata;
 using namespace io::snappydata::client;
 
 SQLException::SQLException(const char* file, int line,
@@ -75,12 +76,12 @@ SQLException::SQLException(const char* file, int line, const char* sqlState,
 }
 
 SQLException::SQLException(const char* file, int line,
-    const thrift::SnappyException& snappyException) :
-    m_reason(snappyException.exceptionData.reason),
-    m_state(snappyException.exceptionData.sqlState),
-    m_severity(snappyException.exceptionData.severity), m_next(NULL),
+	const thrift::SnappyException& se) :
+    m_reason(se.exceptionData.reason),
+    m_state(se.exceptionData.sqlState),
+    m_severity(se.exceptionData.severity), m_next(NULL),
     m_file(file), m_line(line) {
-  initNextException(snappyException.nextExceptions);
+  initNextException(se.nextExceptions);
   init();
 }
 
@@ -106,6 +107,7 @@ SQLException* SQLException::clone() const {
   return new SQLException(*this);
 }
 
+#ifdef __GNUC__
 void SQLException::copyStack(void* const * stack, size_t stackSize) {
   if (stack != NULL && stackSize > 0) {
     for (size_t i = 0; i < stackSize; i++) {
@@ -114,6 +116,7 @@ void SQLException::copyStack(void* const * stack, size_t stackSize) {
   }
   m_stackSize = stackSize;
 }
+#endif
 
 void SQLException::init() {
   // TODO: Add stack handling for Windows

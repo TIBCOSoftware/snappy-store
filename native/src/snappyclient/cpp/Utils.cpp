@@ -244,10 +244,10 @@ void Utils::convertUTF16ToUTF8(const wchar_t* utf16Chars, const int utf16Len,
 template<typename TNum>
 class PrecisionPolicy : public boost::spirit::karma::real_policies<TNum> {
 private:
-  const unsigned m_precision2;
+  const size_t m_precision2;
   const TNum m_minFixed;
 
-  static TNum calcMinFixed(unsigned precision) {
+  static TNum calcMinFixed(size_t precision) {
     double n = 1.0;
     precision = (precision * 2) / 3;
     while (precision-- > 0) {
@@ -257,7 +257,7 @@ private:
   }
 
 public:
-  PrecisionPolicy(unsigned precision = DEFAULT_REAL_PRECISION) :
+  PrecisionPolicy(size_t precision = DEFAULT_REAL_PRECISION) :
       m_precision2((precision * 5) / 3), m_minFixed(calcMinFixed(precision)) {
     // using increased precision to take care of insignificant
     // zeros after decimal e.g. .0001 has only one significant decimal;
@@ -276,28 +276,28 @@ public:
     }
   }
 
-  unsigned precision(TNum n) const {
+  size_t precision(TNum n) const {
     return m_precision2;
   }
 
   template<typename OutputIterator>
   bool fraction_part(OutputIterator& sink, const TNum n,
-      const unsigned precision_, const unsigned precision) const {
+      const size_t precision_, const size_t precision) const {
     // The following is equivalent to:
     //    generate(sink, right_align(precision, '0')[ulong], n);
     // but it's spelled out to avoid inter-modular dependencies.
-    unsigned digits = 0;
+    size_t digits = 0;
     TNum n1 = n;
     if (!boost::spirit::traits::test_zero(n)) {
       // the actual precision required is less than inflated m_precision2
-      const unsigned actualPrecision = (m_precision2 * 3) / 5;
+      const size_t actualPrecision = (m_precision2 * 3) / 5;
       TNum d = 1.0;
       while (d <= n) {
         d *= 10.0;
         digits++;
         // if digits exceed actual precision, then reduce n
         if (digits > actualPrecision) {
-          n1 = (n1 + 5.0) / 10.0;
+          n1 = static_cast<TNum>((n1 + 5.0) / 10.0);
         }
       }
     }
@@ -353,8 +353,15 @@ void Utils::convertInt64ToString(const int64_t v, std::string& result) {
   result.append(buffer, pbuf - &buffer[0]);
 }
 
+void Utils::convertUInt64ToString(const uint64_t v, std::string& result) {
+  char buffer[40];
+  char* pbuf = buffer;
+  boost::spirit::karma::generate(pbuf, boost::spirit::ulong_long, v);
+  result.append(buffer, pbuf - &buffer[0]);
+}
+
 void Utils::convertFloatToString(const float v, std::string& result,
-    const uint32_t precision) {
+    const size_t precision) {
   if (precision < 20) {
     char buffer[64];
     char* pbuf = buffer;
@@ -375,7 +382,7 @@ void Utils::convertFloatToString(const float v, std::string& result,
 }
 
 void Utils::convertDoubleToString(const double v, std::string& result,
-    const uint32_t precision) {
+    const size_t precision) {
   if (precision < 20) {
     char buffer[64];
     char* pbuf = buffer;
@@ -516,7 +523,7 @@ void Utils::handleExceptionInDestructor(const char* operation,
     return;
   }
   try {
-    LogWriter::ERROR() << "Exception in destructor of " << operation << ": "
+    LogWriter::error() << "Exception in destructor of " << operation << ": "
         << stack(sqle);
   } catch (...) {
     try {
@@ -534,13 +541,13 @@ void Utils::handleExceptionInDestructor(const char* operation,
   // ignore transport and protocol exceptions due to other side failing
   if (dynamic_cast<const transport::TTransportException*>(&se) == NULL
       && dynamic_cast<const protocol::TProtocolException*>(&se) == NULL) {
-    LogWriter::ERROR() << "Exception in destructor of " << operation << ": "
+    LogWriter::error() << "Exception in destructor of " << operation << ": "
         << stack(se);
   }
 }
 
 void Utils::handleExceptionInDestructor(const char* operation) {
-  LogWriter::ERROR() << "Unknown exception in destructor of " << operation;
+  LogWriter::error() << "Unknown exception in destructor of " << operation;
 }
 
 std::ostream& operator <<(std::ostream& out, const wchar_t* wstr) {

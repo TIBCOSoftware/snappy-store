@@ -66,55 +66,55 @@ namespace client {
        * If the writer's level is <code>ALL</code> then all messages
        * will be logged.
        */
-      ALL = INT_MIN,
+      all = INT_MIN,
       /**
        * If the writer's level is <code>FINEST</code> then
        * finest, finer, fine, config, info, warning, error, and
        * severe messages will be logged.
        */
-      FINEST = 300,
+      finest = 300,
       /**
        * If the writer's level is <code>FINER</code> then
        * finer, fine, config, info, warning, error, and severe messages
        * will be logged.
        */
-      FINER = 400,
+      finer = 400,
       /**
        * If the writer's level is <code>FINE</code> then
        * fine, config, info, warning, error, and severe messages
        * will be logged.
        */
-      FINE = 500,
+      fine = 500,
       /**
        * If the writer's level is <code>CONFIG</code> then
        * config, info, warning, error, and severe messages will be logged.
        */
-      CONFIG = 700,
+      config = 700,
       /**
        * If the writer's level is <code>INFO</code> then
        * info, warning, error, and severe messages will be logged.
        */
-      INFO = 800,
+      info = 800,
       /**
        * If the writer's level is <code>WARNING</code> then
        * warning, error, and severe messages will be logged.
        */
-      WARNING = 900,
+      warning = 900,
       /**
        * If the writer's level is <code>SEVERE</code> then
        * only severe messages will be logged.
        */
-      SEVERE = 1000,
+      severe = 1000,
       /**
        * If the writer's level is <code>ERROR</code> then
        * error and severe messages will be logged.
        */
-      ERROR = ((int)WARNING + (int)SEVERE) / 2,
+      error = ((int)warning + (int)severe) / 2,
       /**
        * If the writer's level is <code>NONE</code> then
        * no messages will be logged.
        */
-      NONE = INT_MAX,
+      none = INT_MAX,
     };
 
   private:
@@ -130,8 +130,8 @@ namespace client {
 
   struct TraceFlag {
   private:
-    TraceFlag(const LogLevel&); // no copy constructor
-    TraceFlag& operator=(const LogLevel&); // no assignment
+    TraceFlag(const LogLevel&) = delete; // no copy constructor
+    TraceFlag& operator=(const LogLevel&) = delete; // no assignment
 
     const std::string m_name;
     const int m_id;
@@ -170,7 +170,7 @@ namespace client {
       return m_globalSet;
     }
 
-    static bool maxGlobalId() noexcept {
+    static int maxGlobalId() noexcept {
       return g_idGenerator;
     }
 
@@ -203,9 +203,8 @@ namespace client {
    */
   class LogWriter {
   private:
-    LogWriter(); // no default constructor
-    LogWriter(const LogWriter&); // no copy constructor
-    LogWriter& operator=(const LogWriter&); // no assignment operator
+    LogWriter(const LogWriter&) = delete; // no copy constructor
+    LogWriter& operator=(const LogWriter&) = delete; // no assignment operator
 
     std::unique_ptr<std::ostream> m_rawStream;
     /**
@@ -280,49 +279,49 @@ namespace client {
 
     std::ostream& log(const LogLevel::type logLevel);
 
-    inline static bool SEVERE_ENABLED() noexcept {
-      return ((int)LogLevel::SEVERE >= (int)g_logger.m_logLevel);
+    inline static bool severeEnabled() noexcept {
+      return ((int)LogLevel::severe >= (int)g_logger.m_logLevel);
     }
-    inline static bool ERROR_ENABLED() noexcept {
-      return ((int)LogLevel::ERROR >= (int)g_logger.m_logLevel);
+    inline static bool errorEnabled() noexcept {
+      return ((int)LogLevel::error >= (int)g_logger.m_logLevel);
     }
-    inline static bool WARNING_ENABLED() noexcept {
-      return ((int)LogLevel::WARNING >= (int)g_logger.m_logLevel);
+    inline static bool warningEnabled() noexcept {
+      return ((int)LogLevel::warning >= (int)g_logger.m_logLevel);
     }
-    inline static bool CONFIG_ENABLED() noexcept {
-      return ((int)LogLevel::CONFIG >= (int)g_logger.m_logLevel);
+    inline static bool configEnabled() noexcept {
+      return ((int)LogLevel::config >= (int)g_logger.m_logLevel);
     }
-    inline static bool INFO_ENABLED() noexcept {
-      return ((int)LogLevel::INFO >= (int)g_logger.m_logLevel);
+    inline static bool infoEnabled() noexcept {
+      return ((int)LogLevel::info >= (int)g_logger.m_logLevel);
     }
-    inline static bool FINE_ENABLED() noexcept {
-      return ((int)LogLevel::FINE >= (int)g_logger.m_logLevel);
+    inline static bool fineEnabled() noexcept {
+      return ((int)LogLevel::fine >= (int)g_logger.m_logLevel);
     }
-    inline static bool FINER_ENABLED() noexcept {
-      return ((int)LogLevel::FINER >= (int)g_logger.m_logLevel);
+    inline static bool finerEnabled() noexcept {
+      return ((int)LogLevel::finer >= (int)g_logger.m_logLevel);
     }
-    inline static bool FINEST_ENABLED() noexcept {
-      return ((int)LogLevel::FINEST >= (int)g_logger.m_logLevel);
+    inline static bool finestEnabled() noexcept {
+      return ((int)LogLevel::finest >= (int)g_logger.m_logLevel);
     }
-    inline static bool TRACE_ENABLED(const TraceFlag& flag) noexcept {
+    inline static bool traceEnabled(const TraceFlag& flag) noexcept {
       return flag.global();
     }
 
-    static std::ostream& SEVERE();
-    static std::ostream& ERROR();
-    static std::ostream& WARNING();
-    static std::ostream& CONFIG();
-    static std::ostream& INFO();
-    static std::ostream& FINE();
-    static std::ostream& FINER();
-    static std::ostream& FINEST();
+    static std::ostream& severe();
+    static std::ostream& error();
+    static std::ostream& warning();
+    static std::ostream& config();
+    static std::ostream& info();
+    static std::ostream& fine();
+    static std::ostream& finer();
+    static std::ostream& finest();
 
-    static std::ostream& TRACE(const TraceFlag& flag);
-    static std::ostream& TRACE_COMPACT(const TraceFlag& flag);
+    static std::ostream& trace(const TraceFlag& flag);
+    static std::ostream& traceCompact(const TraceFlag& flag);
   };
 
 } /* namespace client */
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* CONNECTION_H_ */
+#endif /* LOGGING_H_ */

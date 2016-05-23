@@ -34,6 +34,7 @@
  */
 
 #include "MessageRegistry.h"
+#include <sstream>
 
 using namespace io::snappydata;
 using namespace io::snappydata::impl;

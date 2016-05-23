@@ -37,7 +37,7 @@
  * JSONObject.cpp
  */
 
-#include <types/JSON.h>
+#include "Types.h"
 
 using namespace io::snappydata::client::types;
 

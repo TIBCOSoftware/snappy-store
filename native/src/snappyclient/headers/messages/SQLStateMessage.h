@@ -203,7 +203,7 @@ namespace client {
     /**
      * Message string for "LANG_INVALID_PARAM_POSITION" SQLState.
      */
-    static SQLMessage2<int, int> LANG_INVALID_PARAM_POSITION_MSG;
+    static SQLMessage2<int, size_t> LANG_INVALID_PARAM_POSITION_MSG;
 
     /**
      * SQLState to denote out of memory condition.
@@ -265,7 +265,7 @@ namespace client {
     /**
      * Message string for "INVALID_DESCRIPTOR_INDEX" SQLState.
      */
-    static SQLMessage3<int, int, const char*> INVALID_DESCRIPTOR_INDEX_MSG;
+    static SQLMessage3<int, size_t, const char*> INVALID_DESCRIPTOR_INDEX_MSG;
 
     /**
      * Message string for "INVALID_CTYPE" SQLState.

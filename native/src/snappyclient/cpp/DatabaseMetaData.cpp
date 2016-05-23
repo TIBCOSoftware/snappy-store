@@ -41,6 +41,7 @@
 
 #include <set>
 
+using namespace io::snappydata;
 using namespace io::snappydata::client;
 
 /** default constructor */

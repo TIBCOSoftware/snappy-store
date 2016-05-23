@@ -36,7 +36,7 @@
 #include "messages/SQLStateMessage.h"
 #include "SQLState.h"
 
-#include "thrift/snappydata_types.h"
+#include "snappydata_types.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -70,7 +70,7 @@ SQLMessage1<int64_t> SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1;
 SQLMessage6<int, int, int, int, int, int> SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG2;
 SQLMessage2<int, int> SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG3;
 SQLMessage2<const char*, const char*> SQLStateMessage::LANG_FORMAT_EXCEPTION_MSG;
-SQLMessage2<int, int> SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG;
+SQLMessage2<int, size_t> SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG;
 SQLMessage1<const char*> SQLStateMessage::OUT_OF_MEMORY_MSG;
 SQLMessage1<const char*> SQLStateMessage::NOT_IMPLEMENTED_MSG;
 SQLMessage2<int, const char*> SQLStateMessage::INVALID_BUFFER_LENGTH_MSG;
@@ -82,7 +82,7 @@ SQLMessage2<const char*, const char*> SQLStateMessage::INVALID_CONNECTION_PROPER
 SQLMessage3<const char*, int, int> SQLStateMessage::OPTION_VALUE_CHANGED_MSG;
 SQLMessage1<const char*> SQLStateMessage::OPTION_CANNOT_BE_SET_FOR_STATEMENT_MSG;
 SQLMessage2<const char*, const char*> SQLStateMessage::INVALID_DRIVER_NAME_MSG;
-SQLMessage3<int, int, const char*> SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG;
+SQLMessage3<int, size_t, const char*> SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG;
 SQLMessage2<int, int> SQLStateMessage::INVALID_CTYPE_MSG;
 SQLMessage1<int> SQLStateMessage::INVALID_HANDLE_TYPE_MSG;
 SQLMessage2<int, int> SQLStateMessage::INVALID_PARAMETER_TYPE_MSG;
