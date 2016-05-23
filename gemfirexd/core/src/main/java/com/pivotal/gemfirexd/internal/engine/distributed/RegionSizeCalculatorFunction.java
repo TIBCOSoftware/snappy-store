@@ -26,6 +26,7 @@ import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionContext;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 
 public class RegionSizeCalculatorFunction implements Function , Declarable {
@@ -73,9 +74,12 @@ public class RegionSizeCalculatorFunction implements Function , Declarable {
 
   private long getSizeForAllPrimaryBucketsOfRegion(PartitionedRegion region) {
     long sizeOfRegion = 0;
-    Set<BucketRegion> bucketRegions = region.getDataStore().getAllLocalBucketRegions();
-    for (BucketRegion br: bucketRegions) {
-      sizeOfRegion += br.getTotalBytes();
+    PartitionedRegionDataStore datastore = region.getDataStore();
+    if (datastore != null ) {
+      Set<BucketRegion> bucketRegions = datastore.getAllLocalBucketRegions();
+      for (BucketRegion br : bucketRegions) {
+        sizeOfRegion += br.getTotalBytes();
+      }
     }
     return sizeOfRegion;
   }
