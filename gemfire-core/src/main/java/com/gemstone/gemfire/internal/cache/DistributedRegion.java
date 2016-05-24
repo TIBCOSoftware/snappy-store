@@ -343,7 +343,7 @@ public class DistributedRegion extends LocalRegion implements
     if (event.getVersionTag() != null && event.getVersionTag().getRegionVersion() > 0) {
       return false;
     }
-    if (isTX()) {
+    if (event.getTXState() != null) {
       return false;
     }
     // if we're not allowed to generate a version tag we need to send it to someone who can

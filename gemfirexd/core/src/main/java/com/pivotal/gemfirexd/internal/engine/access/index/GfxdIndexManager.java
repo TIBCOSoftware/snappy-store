@@ -51,30 +51,8 @@ import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.distributed.internal.membership.MembershipManager;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.BucketAdvisor;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.DistributedRegion;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.InitialImageOperation;
-import com.gemstone.gemfire.internal.cache.KeyInfo;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.OperationReattemptException;
-import com.gemstone.gemfire.internal.cache.Oplog;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.Oplog.DiskRegionInfo;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.SortedIndexContainer;
-import com.gemstone.gemfire.internal.cache.SortedIndexRecoveryJob;
-import com.gemstone.gemfire.internal.cache.TXEntryState;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.Token;
-import com.gemstone.gemfire.internal.cache.TransactionMessage;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgument;
@@ -438,8 +416,16 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
               owner.getFullPath());
         }
 
+        boolean isRecovered = false;
+        if (!owner.isInitialized()) {
+          DiskRegion dr = owner.getDiskRegion();
+          if (dr != null) {
+            isRecovered = dr.testIsRecovered(entry, false);
+          }
+        }
         boolean throwEEE = false;
-        if (!posDup && owner.isInitialized()) {
+        if (!posDup && (owner.isInitialized() || (!this.isPartitionedRegion && !owner.isInitialized()
+            && !isRecovered))) {
           if (lastModifiedFromOrigin == -1
               || lastModifiedFromOrigin != entry.getLastModified()) {
             throwEEE = true;
@@ -516,8 +502,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
             }
             throw new EntryExistsException(event.getKey().toString(), OffHeapHelper.getHeapForm(oldValue));
           }
-        }
-        else {
+        } else {
           // for the case of posDup or dup during GII just ignore and return
           if (this.logFineEnabled) {
             traceIndex("GfxdIndexManager#onEvent: ignored "

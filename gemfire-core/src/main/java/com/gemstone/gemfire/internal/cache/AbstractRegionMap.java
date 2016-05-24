@@ -2201,7 +2201,6 @@ RETRY_LOOP:
 
     final LocalRegion owner = _getOwner();
 
-    owner.getLogWriterI18n().fine("SKSK comign here for key " , new Exception("SKSK"));
     final boolean isRegionReady = !inTokenMode;
     boolean cbEventInPending = false;
     LogWriterI18n log = owner.getLogWriterI18n();
