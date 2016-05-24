@@ -1367,6 +1367,7 @@ public interface SQLState {
 	String LANG_ADDING_NON_NULL_COLUMN_TO_NON_EMPTY_TABLE              = "X0Y57.S";
 	String LANG_ADD_PRIMARY_KEY_FAILED1                                = "X0Y58.S";
 	String LANG_ADD_CHECK_CONSTRAINT_FAILED                            = "X0Y59.S";
+	String LANG_INDEX_ROW_COUNT_MISMATCH_PR                            = "X0Y60.S";
 	String LANG_NULL_DATA_IN_PRIMARY_KEY                 	   	   	   = "X0Y63.S";
 	String LANG_NO_COMMIT_IN_NESTED_CONNECTION                         = "X0Y66.S";
 	String LANG_NO_ROLLBACK_IN_NESTED_CONNECTION                       = "X0Y67.S";

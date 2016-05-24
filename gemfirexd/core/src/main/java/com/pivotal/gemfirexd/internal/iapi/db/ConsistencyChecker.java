@@ -142,6 +142,8 @@ public class ConsistencyChecker
 		DataDictionary			dd;
 		TableDescriptor			td;
 		long					baseRowCount = -1;
+		long          basePrimaryBucketsRowCount = 0;
+		long          baseRedundantBucketsRowCount = 0;
 		TransactionController	tc;
 		ConglomerateDescriptor	heapCD;
 		ConglomerateDescriptor	indexCD;
@@ -155,6 +157,7 @@ public class ConsistencyChecker
 		DataValueFactory		dvf;
 		long					indexRows;
 		long          indexRowsForLocalPrimaryBuckets = 0;
+		long          indexRowsForLocalRedundantBuckets = 0;
 		ConglomerateController	baseCC = null;
 		ConglomerateController	indexCC = null;
 		SchemaDescriptor		sd;
@@ -290,15 +293,35 @@ public class ConsistencyChecker
 // GemStone changes END
 					/* Also, get the row location template for index rows */
 					rl = scan.newRowLocationTemplate();
-					scanRL = scan.newRowLocationTemplate();
+//					scanRL = scan.newRowLocationTemplate();
 
-					for (baseRowCount = 0; scan.next(); baseRowCount++) {
-					  scan.fetch(baseRow);
+//					for (baseRowCount = 0; scan.next(); baseRowCount++) {
+//					  scan.fetch(baseRow);
+//					}
+
+					if (region.getDataPolicy().withPartitioning()) {
+						Map<Integer, Integer> bucketSizes = ((PartitionedRegion)region)
+								.getDataStore().getSizeLocally();
+						baseRowCount = 0;
+						basePrimaryBucketsRowCount = 0;
+						baseRedundantBucketsRowCount = 0;
+						Set<Integer> primaryBuckets = ((PartitionedRegion)region)
+								.getDataStore().getAllLocalPrimaryBucketIds();
+						for (Map.Entry<Integer, Integer> e : bucketSizes.entrySet()) {
+							baseRowCount += e.getValue();
+							if (primaryBuckets.contains(e.getKey())) {
+								basePrimaryBucketsRowCount += e.getValue();
+							} else {
+								baseRedundantBucketsRowCount += e.getValue();
+							}
+						}
+					} else {
+						baseRowCount = region.size();
 					}
-						
 
 					scan.close();
 					scan = null;
+
 				}
 //Gemstone changes BEGIN
 				if(indexType.equals(GfxdConstants.LOCAL_SORTEDMAP_INDEX_TYPE) || indexType.equals("BTREE")) {
@@ -355,6 +378,7 @@ public class ConsistencyChecker
 
 				/* Get the index rows and count them */
           indexRowsForLocalPrimaryBuckets = 0;
+					indexRowsForLocalRedundantBuckets = 0;
 				for (indexRows = 0; scan.fetchNext(indexRow); indexRows++)
 				{
 					/*
@@ -372,6 +396,8 @@ public class ConsistencyChecker
 						if (region.getDataPolicy().withPartitioning() &&
 								localPrimaryBucketSet.contains(baseRL.getBucketID())) {
 							indexRowsForLocalPrimaryBuckets ++;
+						} else {
+							indexRowsForLocalRedundantBuckets ++;
 						}
 				  }
 // GemStone changes END
@@ -404,19 +430,6 @@ public class ConsistencyChecker
                                 td.getColumnDescriptor(
                                     baseColumnPositions[column]);
 
-                            /*
-                            System.out.println(
-                                "SQLState.LANG_INDEX_COLUMN_NOT_EQUAL:" +
-                                "indexCD.getConglomerateName()" + indexCD.getConglomerateName() +
-                                ";td.getSchemaName() = " + td.getSchemaName() +
-                                ";td.getName() = " + td.getName() +
-                                ";baseRL.toString() = " + baseRL.toString() +
-                                ";cd.getColumnName() = " + cd.getColumnName() +
-                                ";indexColumn.toString() = " + indexColumn.toString() +
-                                ";baseColumn.toString() = " + baseColumn.toString() +
-                                ";indexRow.toString() = " + indexRow.toString());
-                            */
-
 							throw StandardException.newException(
                                 SQLState.LANG_INDEX_COLUMN_NOT_EQUAL, 
                                 indexCD.getConglomerateName(),
@@ -436,24 +449,29 @@ public class ConsistencyChecker
 				scan = null;
 
 				/*
-				 ** for partitioned regions consider index entries
-				 ** for local primary buckets only
-				 */
-				if (region.getDataPolicy().withPartitioning()) {
-					indexRows = indexRowsForLocalPrimaryBuckets;
-				}
-				/*
 				** The index is supposed to have the same number of rows as the
 				** base conglomerate.
 				*/
 				if (indexRows != baseRowCount)
 				{
-					throw StandardException.newException(SQLState.LANG_INDEX_ROW_COUNT_MISMATCH, 
-										indexCD.getConglomerateName(),
-										td.getSchemaName(),
-										td.getName(),
-										Long.toString(indexRows),
-										Long.toString(baseRowCount));
+					if (!region.getDataPolicy().withPartitioning()) {
+						throw StandardException.newException(SQLState.LANG_INDEX_ROW_COUNT_MISMATCH,
+								indexCD.getConglomerateName(),
+								td.getSchemaName(),
+								td.getName(),
+								Long.toString(indexRows),
+								Long.toString(baseRowCount));
+					} else {
+						throw StandardException.newException(SQLState.LANG_INDEX_ROW_COUNT_MISMATCH_PR,
+								indexCD.getConglomerateName(),
+								td.getSchemaName() + "." + td.getName(),
+								Long.toString(indexRows),
+								Long.toString(baseRowCount),
+								Long.toString(basePrimaryBucketsRowCount),
+								Long.toString(baseRedundantBucketsRowCount),
+								Long.toString(indexRowsForLocalPrimaryBuckets),
+								Long.toString(indexRowsForLocalRedundantBuckets));
+					}
 				}
 // GemStone changes BEGIN
 				}

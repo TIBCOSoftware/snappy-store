@@ -120,7 +120,7 @@ public class CheckTableDUnit extends DistributedSQLTestBase {
           "'TABLE1')");
       fail("SYS.CHECK_TABLE_EX should have thrown an exception");
     } catch (SQLException se1) {
-      if (!se1.getSQLState().equals("X0Y55")) {
+      if (!(se1.getSQLState().equals("X0Y55") || se1.getSQLState().equals("X0Y60"))) {
         throw se1;
       }
     }
