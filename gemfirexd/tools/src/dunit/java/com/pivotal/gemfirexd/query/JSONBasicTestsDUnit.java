@@ -542,58 +542,59 @@ public class JSONBasicTestsDUnit extends DistributedSQLTestBase {
     assertTrue(i == 6);
   }
 
+  // This test should be removed as these restrictions have been removed
   public void testUnsupportedClauses() throws Exception {
     startVMs(1, 3, 0, null, null);
     Connection cxn = TestUtil.getConnection();
     Statement stmt = cxn.createStatement();
-    
+
     try {
-    stmt.execute("CREATE table app.t1(col1 int, col2 json) persistent " +
-        "partition by (col2) " + getSuffix());
-    fail("Tast should have failed as partitioning on json column " +
-    		"is not allowed");
+      stmt.execute("CREATE table app.t1(col1 int, col2 json) persistent " +
+          "partition by (col2) " + getSuffix());
+      fail("Test should have failed as partitioning on json column " +
+          "is not allowed");
     } catch (SQLException se) {
-      if(!se.getSQLState().equals("0A000")) {
+      if (!se.getSQLState().equals("0A000")) {
         throw se;
       }
     }
-    
+
     try {
-    stmt.execute("CREATE table app.t1(col1 int, col2 json) persistent " +
-        "partition by list (col2) (VALUES ('nasdaq','nye'), " +
-        "VALUES ('amex','lse'), VALUES ('fse','hkse','tse')) " + getSuffix());
-    fail("Tast should have failed as partitioning on json column " +
-        "is not allowed");
+      stmt.execute("CREATE table app.t1(col1 int, col2 json) persistent " +
+          "partition by list (col2) (VALUES ('nasdaq','nye'), " +
+          "VALUES ('amex','lse'), VALUES ('fse','hkse','tse')) " + getSuffix());
+      fail("Test should have failed as partitioning on json column " +
+          "is not allowed");
     } catch (SQLException se) {
-      if(!se.getSQLState().equals("0A000")) {
+      if (!se.getSQLState().equals("0A000")) {
         throw se;
       }
     }
-    
+
     try {
       stmt.execute("CREATE table app.t1(col1 int, col2 json primary key)" +
-      		" persistent partition by (col1) " + getSuffix());
-    fail("Tast should have failed as as json column " +
-        "cannot be a PK");
+          " persistent partition by (col1) " + getSuffix());
+      fail("Test should have failed as as json column " +
+          "cannot be a PK");
     } catch (SQLException se) {
-      if(!se.getSQLState().equals("X0X67")) {
+      if (!se.getSQLState().equals("42832")) {
         throw se;
       }
     }
-    
+
     try {
       stmt.execute("CREATE table app.t1(col1 int, col2 json)" +
           " persistent partition by (col1) " + getSuffix());
       stmt.execute("create index app.t1_index on app.t1(col2)");
-    fail("Tast should have failed as as an index cannot be " +
-    		"created on a json column");
+      fail("Test should have failed as as an index cannot be " +
+          "created on a json column");
     } catch (SQLException se) {
-      if(!se.getSQLState().equals("X0X67")) {
+      if (!se.getSQLState().equals("X0X67")) {
         throw se;
       }
     }
   }
-  
+
   public void test51287() throws Exception {
     // Start one client and 3 servers
     startVMs(1, 3, 0, null, null);

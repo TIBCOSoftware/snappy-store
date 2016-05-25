@@ -270,6 +270,12 @@ public interface Property {
       "gemfirexd.datadictionary.allow-startup-errors";
 
   /**
+   * System property to skip index check on restart
+   */
+  public final static String DDLREPLAY_NO_INDEX_CHECK =
+      "gemfirexd.datadictionary.skip-index-check";
+
+  /**
    * gemfirexd.signals.notlogged
    *
    * <BR>

@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -197,7 +198,7 @@ public class Bug43522DUnit extends CacheTestCase {
 
               @Override
               public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-                  boolean holdIndexLock, List<?> bucketEntries) {
+                  boolean holdIndexLock, Iterator<?> bucketEntriesIter) {
                 return false;
               }
 
@@ -527,7 +528,7 @@ public class Bug43522DUnit extends CacheTestCase {
 
               @Override
               public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-                  boolean holdIndexLock, List<?> bucketEntries) {
+                  boolean holdIndexLock, Iterator<?> bucketEntriesIter) {
                 return false;
               }
 
@@ -860,7 +861,7 @@ public class Bug43522DUnit extends CacheTestCase {
 
               @Override
               public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-                  boolean holdIndexLock, List<?> bucketEntries) {
+                  boolean holdIndexLock, Iterator<?> bucketEntriesIter) {
                 return false;
               }
 

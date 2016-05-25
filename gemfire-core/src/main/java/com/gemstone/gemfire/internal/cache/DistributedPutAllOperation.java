@@ -1137,8 +1137,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
     }
   }
-  
-  
+
   public static class PutAllMessage extends AbstractUpdateMessage
    {
 
@@ -1212,11 +1211,12 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
      */
     protected final void doEntryPut(PutAllEntryData entry,
         DistributedRegion rgn, boolean requiresRegionContext,
-        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML) {
+        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML, long lastModifiedTime) {
       EntryEventImpl ev = PutAllMessage.createEntryEvent(entry, getSender(),
           this.context, rgn, requiresRegionContext, this.possibleDuplicate,
           this.needsRouting, this.callbackArg, true, skipCallbacks,
           getLockingPolicy(), tx);
+      ev.setEntryLastModified(lastModifiedTime);
       ev.setFetchFromHDFS(fetchFromHDFS);
       ev.setPutDML(isPutDML);
 //      rgn.getLogWriterI18n().info(LocalizedStrings.DEBUG, "PutAllOp.doEntryPut sender=" + getSender() +
@@ -1306,8 +1306,8 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
     }
 
-    @Override
-    protected void basicOperateOnRegion(EntryEventImpl ev, final DistributedRegion rgn)
+     @Override
+    protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn)
     {
       for (int i = 0; i < putAllDataSize; ++i) {
         if (putAllData[i].versionTag != null) {
@@ -1316,6 +1316,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
       
       final TXStateInterface tx = ev.getTXState(rgn);
+
       rgn.syncPutAll(tx, new Runnable() {
         public void run() {
           final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
@@ -1324,7 +1325,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
               rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
             }
             putAllData[i].setSender(sender);
-            doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML);
+            doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified());
           }
         }
       }, ev.getEventId());

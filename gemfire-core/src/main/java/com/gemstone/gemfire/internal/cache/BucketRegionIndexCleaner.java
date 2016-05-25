@@ -36,7 +36,7 @@ public class BucketRegionIndexCleaner {
   public void clearEntries(List<RegionEntry> entries) {
     IndexUpdater indexUpdater = region.getIndexUpdater();
     boolean indexGiiLockTaken = indexUpdater.clearIndexes(region, lockForGII,
-        holdIndexLock, entries);
+        holdIndexLock, entries.iterator());
     if (indexGiiLockTaken) {
       indexUpdater.unlockForGII(indexGiiLockTaken);
     }

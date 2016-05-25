@@ -512,11 +512,12 @@ public class FromVTI extends FromTable implements VTIEnvironment
                     }
             }
             else if (key.equals(Constants.QueryHints.withSecondaries.name())) {
-              explicitSecondaryBucketSet = Misc.parseBoolean(value);
+              explicitSecondaryBucketSet = true;
+              includeSecondaryBuckets = Misc.parseBoolean(value);
               final CompilerContext cc = getCompilerContext();
               cc.setOptimizeForWrite(!includeSecondaryBuckets);
               cc.setWithSecondaries(includeSecondaryBuckets);
-              
+
               if(value.length() > 0) {
                 setSharedState(Constants.QueryHints.withSecondaries.name(), Boolean.toString(includeSecondaryBuckets));
               }

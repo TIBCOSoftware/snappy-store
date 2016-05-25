@@ -30,6 +30,7 @@ import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 
+import com.pivotal.gemfirexd.internal.engine.distributed.query.HeapThresholdHelper;
 import io.snappydata.test.dunit.VM;
 
 @SuppressWarnings("serial")
@@ -276,57 +277,67 @@ public class GfxdLRUDUnit extends DistributedSQLTestBase {
   }
   
   public void testPRLRUHeapPercDestroy() throws Exception {
-    // The test is valid only for transaction isolation level NONE. 
-    if (isTransactional) {
-      return;
-    }
+    try {
+      // The test is valid only for transaction isolation level NONE.
+      if (isTransactional) {
+        return;
+      }
 
-    startVMs(1, 1);
-    clientSQLExecute(1, "create table trade.bigcustomers (cid int not null, cust_addr clob) " +
-    		"EVICTION BY LRUHEAPPERCENT EVICTACTION destroy");
-    Connection conn = TestUtil.getConnection();
-    CallableStatement cs = conn.prepareCall("call sys.set_critical_heap_percentage_sg(?, ?)");
-    cs.setInt(1, 90);
-    cs.setNull(2, Types.VARCHAR);
-    cs.execute();
-    cs = conn.prepareCall("call sys.set_eviction_heap_percentage_sg(?, ?)");
-    cs.setInt(1, 25);
-    cs.setNull(2, Types.VARCHAR);
-    cs.execute();
-    float evictionHeapPercentage = Misc.getGemFireCache().getResourceManager().getEvictionHeapPercentage();
-    assertEquals(Float.valueOf(25), evictionHeapPercentage);
-    VM servervm = this.serverVMs.get(0);
-    servervm.invoke(GfxdLRUDUnit.class, "assertHeapPercentage", new Object[] {Float.valueOf(evictionHeapPercentage)});
-    PreparedStatement ps = conn.prepareStatement("insert into trade.bigcustomers values(?, ?)");
-    
-    insertNBigElements2(300, ps, 0);
-    final Statement s = conn.createStatement();
+      startVMs(1, 1);
+      clientSQLExecute(1, "create table trade.bigcustomers (cid int not null, cust_addr clob) " +
+          "EVICTION BY LRUHEAPPERCENT EVICTACTION destroy");
+      Connection conn = TestUtil.getConnection();
+      CallableStatement cs = conn.prepareCall("call sys.set_critical_heap_percentage_sg(?, ?)");
+      cs.setInt(1, 90);
+      cs.setNull(2, Types.VARCHAR);
+      cs.execute();
+      cs = conn.prepareCall("call sys.set_eviction_heap_percentage_sg(?, ?)");
+      cs.setInt(1, 25);
+      cs.setNull(2, Types.VARCHAR);
+      cs.execute();
+      float evictionHeapPercentage = Misc.getGemFireCache().getResourceManager().getEvictionHeapPercentage();
+      assertEquals(Float.valueOf(25), evictionHeapPercentage);
+      VM servervm = this.serverVMs.get(0);
+      servervm.invoke(GfxdLRUDUnit.class, "assertHeapPercentage", new Object[]{Float.valueOf(evictionHeapPercentage)});
+      servervm.invoke(GfxdLRUDUnit.class, "setDummytestBytes");
+      PreparedStatement ps = conn.prepareStatement("insert into trade.bigcustomers values(?, ?)");
 
-    servervm.invoke(GfxdLRUDUnit.class, "logVMHeapSizeAndCurrentHeapSize");
-    final WaitCriterion waitCond = new WaitCriterion() {
-      @Override
-      public boolean done() {
-        try {
-          s.execute("select count(*) from trade.bigcustomers");
-          ResultSet rs = s.getResultSet();
-          int cnt = 0;
-          if (rs.next()) {
-            cnt = rs.getInt(1);
+      insertNBigElements2(300, ps, 0);
+      final Statement s = conn.createStatement();
+
+      servervm.invoke(GfxdLRUDUnit.class, "logVMHeapSizeAndCurrentHeapSize");
+      final WaitCriterion waitCond = new WaitCriterion() {
+        @Override
+        public boolean done() {
+          try {
+            s.execute("select count(*) from trade.bigcustomers");
+            ResultSet rs = s.getResultSet();
+            int cnt = 0;
+            if (rs.next()) {
+              cnt = rs.getInt(1);
+            }
+            TestUtil.getLogger().info("cnt: " + cnt);
+            return (cnt < 300);
+          } catch (SQLException sqle) {
+            fail("unexpected exception " + sqle, sqle);
+            return false;
           }
-          TestUtil.getLogger().info("cnt: " + cnt);
-          return (cnt < 300);
-        } catch (SQLException sqle) {
-          fail("unexpected exception " + sqle, sqle);
-          return false;
         }
-      }
 
-      @Override
-      public String description() {
-        return "waiting for LRU destroy";
-      }
-    };
-    waitForCriterion(waitCond, 120000, 500, true);
+        @Override
+        public String description() {
+          return "waiting for LRU destroy";
+        }
+      };
+      waitForCriterion(waitCond, 120000, 500, true);
+    } finally {
+      // resetting it to default value
+      HeapMemoryMonitor.setTestBytesUsedForThresholdSet(-1);
+    }
+  }
+
+  public static void setDummytestBytes() {
+    HeapMemoryMonitor.setTestBytesUsedForThresholdSet(100);
   }
 
   public void testPRLRUHeapPercDestroy_1() throws Exception {
