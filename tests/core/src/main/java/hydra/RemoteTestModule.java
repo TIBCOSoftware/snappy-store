@@ -143,6 +143,7 @@ private static Class c = RMIHydraSocketFactory.class;
         while(retryCnt < 20) {
           try {
             mod = new RemoteTestModule();
+            break;
           } catch (RemoteException re) {
             MasterController.sleepForMs(500);
             if (retryCnt == 19) {
