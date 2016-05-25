@@ -1216,7 +1216,8 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
           this.context, rgn, requiresRegionContext, this.possibleDuplicate,
           this.needsRouting, this.callbackArg, true, skipCallbacks,
           getLockingPolicy(), tx);
-      ev.setEntryLastModified(lastModifiedTime);
+      if (tx == null)
+        ev.setEntryLastModified(lastModifiedTime);
       ev.setFetchFromHDFS(fetchFromHDFS);
       ev.setPutDML(isPutDML);
 //      rgn.getLogWriterI18n().info(LocalizedStrings.DEBUG, "PutAllOp.doEntryPut sender=" + getSender() +

@@ -523,8 +523,8 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
               // make sure a local update inserts a cache de-serializable
               ev.makeSerializedNewValue();
 //            ev.setLocalFilterInfo(r.getFilterProfile().getLocalFilterRouting(ev));
-
-              ev.setEntryLastModified(lastModified);
+              if (tx == null)
+                ev.setEntryLastModified(lastModified);
               // ev will be added into dpao in putLocally()
               // oldValue and real operation will be modified into ev in putLocally()
               // then in basicPutPart3(), the ev is added into dpao
