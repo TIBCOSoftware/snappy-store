@@ -108,10 +108,14 @@ Decimal::Decimal(const int64_t v) :
     mpz_init_set_str(m_bigInt, vstr.c_str(), 10);
   } else {
     // disable warning about possible data loss that is taken care of above
+#ifdef _WINDOWS
 #pragma warning(push)
 #pragma warning(disable: 4244)
+#endif
     mpz_init_set_si(m_bigInt, v);
+#ifdef _WINDOWS
 #pragma warning(pop)
+#endif
   }
 }
 
@@ -124,10 +128,14 @@ Decimal::Decimal(const uint64_t v) :
     mpz_init_set_str(m_bigInt, vstr.c_str(), 10);
   } else {
     // disable warning about possible data loss that is taken care of above
+#ifdef _WINDOWS
 #pragma warning(push)
 #pragma warning(disable: 4244)
+#endif
     mpz_init_set_ui(m_bigInt, v);
+#ifdef _WINDOWS
 #pragma warning(pop)
+#endif
   }
 }
 

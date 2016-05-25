@@ -309,10 +309,6 @@ namespace client {
       }
     }
 
-    int32_t getString(const uint32_t columnIndex, char* outStr,
-        const int32_t outMaxLen, const bool truncate = true,
-        const uint32_t realPrecision = DEFAULT_REAL_PRECISION) const;
-
     std::shared_ptr<Decimal> getDecimal(const uint32_t columnIndex,
         const uint32_t realPrecision = DEFAULT_REAL_PRECISION) const;
 

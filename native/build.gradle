@@ -12,6 +12,13 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
 
   String osName = System.properties['os.name']
   osName = osName.substring(0, 3).toLowerCase()
+  buildRoot = buildRoot.trim()
+  if (!buildRoot.isEmpty()) {
+    buildDir = new File(buildRoot, osName + '/' +  project.path.replace(':', '/'))
+  } else {
+    buildDir = 'build-artifacts/' + osName
+  }
+
   String distDir = "${rootProject.projectDir}/dist"
   String thriftVersion = '1.0.0-1'
   String boostVersion = '1.59.0'
@@ -58,13 +65,6 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
                       "openssl-${opensslVersion}-${osName}.tar.bz2" ]
   }
 
-  buildRoot = buildRoot.trim()
-  if (!buildRoot.isEmpty()) {
-    buildDir = new File(buildRoot, osName + '/' +  project.path.replace(':', '/'))
-  } else {
-    buildDir = 'build-artifacts/' + osName
-  }
-
   task downloadDependencies(type: de.undercouch.gradle.tasks.download.Download) {
     outputs.files   dependencies.collect { "${distDir}/${it}" }
 
@@ -82,13 +82,22 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     dependsOn downloadDependencies
 
     outputs.files dependencies.collect { [ "${distDir}/${it}",
-                                           "${distDir}/${it.replace('.tar.bz2', '')}/${osName}64" ] }.flatten()
+                                           "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}/${osName}64" ] }.flatten()
 
     doLast {
       dependencies.each { tarball ->
-        copy {
-          from tarTree(resources.bzip2("${distDir}/${tarball}"))
-          into "${distDir}"
+        if (osName == 'win') {
+          copy {
+            from tarTree(resources.bzip2("${distDir}/${tarball}"))
+            into distDir
+          }
+        } else {
+          // gradle tarTree does not preserve symlinks (GRADLE-2844)
+          exec {
+            executable 'tar'
+            args 'xfj', "${distDir}/${tarball}"
+            workingDir = distDir
+          }
         }
       }
     }
@@ -110,7 +119,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     }
 
     def boostLibs = [ 'boost_chrono', 'boost_date_time', 'boost_filesystem',
-                      'boost_log', 'boost_log_setup', 'boost_system' ]
+                      'boost_log', 'boost_log_setup', 'boost_system', 'boost_thread' ]
 
     def getArch = { Platform platform ->
       return (platform == platforms.x64) ? "${osName}64" : "${osName}32"
@@ -119,10 +128,10 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
         Platform platform ->
       return "${distDir}/${libName}-${libVersion}/${getArch(platform)}"
     }
-    def getLibPathForPlatform = { String libName, String libVersion,
-        boolean isStatic, boolean isBoost, Platform platform ->
+    def getLibPathForPlatform = { String libName, String distName,
+        String libVersion, boolean isStatic, boolean isBoost, Platform platform ->
       def os = platform.operatingSystem
-      String archDir = getArchDir(libName, libVersion, platform)
+      String archDir = getArchDir(distName, libVersion, platform)
       if (os.windows) {
         String extension = isStatic ? 'lib' : 'dll'
         String extDir = isStatic ? 'lib' : 'bin'
@@ -145,7 +154,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
         boostLibs.each { boostLib ->
           libs.create(boostLib) {
             binaries.withType(StaticLibraryBinary) {
-              staticLibraryFile = file(getLibPathForPlatform(boostLib,
+              staticLibraryFile = file(getLibPathForPlatform(boostLib, 'boost',
                     boostVersion, true, true, targetPlatform))
             }
           }
@@ -153,42 +162,42 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
         thrift {
           binaries.withType(StaticLibraryBinary) {
             headers.srcDir "${distDir}/thrift-${thriftVersion}/${getArch(targetPlatform)}/include"
-            staticLibraryFile = file(getLibPathForPlatform('thrift',
+            staticLibraryFile = file(getLibPathForPlatform('thrift', 'thrift',
                   thriftVersion, true, false, targetPlatform))
           }
         }
         openssl {
           binaries.withType(StaticLibraryBinary) {
-            if (targetPlatform.operatingSystem.windows) {
-              headers.srcDir "${distDir}/openssl-${opensslVersion}/${getArch(targetPlatform)}/include"
-              staticLibraryFile = file(getLibPathForPlatform('openssl',
-                    opensslVersion, true, false, targetPlatform))
-            }
+            headers.srcDir "${distDir}/openssl-${opensslVersion}/${getArch(targetPlatform)}/include"
+            staticLibraryFile = file(getLibPathForPlatform('openssl', 'openssl',
+                  opensslVersion, true, false, targetPlatform))
           }
         }
         mpir {
           binaries.withType(StaticLibraryBinary) {
-            if (targetPlatform.operatingSystem.windows) {
-              headers.srcDir "${distDir}/mpir-${mpirVersion}/include"
-              staticLibraryFile = file(getLibPathForPlatform('mpir',
-                    mpirVersion, true, false, targetPlatform))
-            }
+            headers.srcDir "${distDir}/mpir-${mpirVersion}/include"
+            staticLibraryFile = file(getLibPathForPlatform('mpir', 'mpir',
+                  mpirVersion, true, false, targetPlatform))
           }
         }
       }
     }
     components {
       snappyclient(NativeLibrarySpec) {
-        targetPlatform 'x86'
         targetPlatform 'x64'
+        if (rootProject.hasProperty('bothArch')) {
+          targetPlatform 'x86'
+        }
         sources {
+          cpp.lib library: 'thrift', linkage: 'static'
           cpp.lib library: 'boost', linkage: 'api'
           boostLibs.each { boostLib ->
             cpp.lib library: boostLib, linkage: 'static'
           }
-          cpp.lib library: 'thrift', linkage: 'static'
-          cpp.lib library: 'openssl', linkage: 'static'
-          cpp.lib library: 'mpir', linkage: 'static'
+          if (osName == 'win') {
+            cpp.lib library: 'mpir', linkage: 'static'
+            cpp.lib library: 'openssl', linkage: 'static'
+          }
         }
         // build only static libraries (not being shipped separately yet)
         binaries.withType(SharedLibraryBinarySpec) {
@@ -209,7 +218,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
             }
 
             linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread',
-                        '-rdynamic', '-ldl'
+                        '-rdynamic', '-ldl', '-z', 'defs'
           } else if (toolChain in VisualCpp) {
             // explicitly include UCRT since its still not passed through by gradle
             String VS_2015_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt'
@@ -243,27 +252,41 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
 
     doFirst {
       delete productDir
-      file("${productDir}/lib").mkdirs()
+      file(productDir).mkdirs()
     }
 
     doLast {
-      // copy the release libraries
-      copy {
-        from "${buildDir}/libs/snappyclient/static/x86/release"
-        into "${productDir}/${osName}32/lib"
-      }
-      copy {
-        from "${buildDir}/libs/snappyclient/static/x64/release"
-        into "${productDir}/${osName}64/lib"
-      }
-      // copy the debug libraries
-      copy {
-        from "${buildDir}/libs/snappyclient/static/x86/debug"
-        into "${productDir}/${osName}32/lib/debug"
-      }
-      copy {
-        from "${buildDir}/libs/snappyclient/static/x64/debug"
-        into "${productDir}/${osName}64/lib/debug"
+      // when both 32-bit and 64-bit are built, then use arch specific dirs
+      if (rootProject.hasProperty('bothArch')) {
+        // copy the release libraries
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x64/release"
+          into "${productDir}/${osName}64/lib"
+        }
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x86/release"
+          into "${productDir}/${osName}32/lib"
+        }
+        // copy the debug libraries
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x64/debug"
+          into "${productDir}/${osName}64/lib/debug"
+        }
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x86/debug"
+          into "${productDir}/${osName}32/lib/debug"
+        }
+      } else {
+        // copy the release libraries
+        copy {
+          from "${buildDir}/libs/snappyclient/static/release"
+          into "${productDir}/${osName}64/lib"
+        }
+        // copy the debug libraries
+        copy {
+          from "${buildDir}/libs/snappyclient/static/debug"
+          into "${productDir}/${osName}64/lib/debug"
+        }
       }
       // copy the public headers
       copy {

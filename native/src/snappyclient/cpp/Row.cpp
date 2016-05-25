@@ -126,10 +126,14 @@ namespace {
       && result >= static_cast<int64_t>(std::numeric_limits<NT>::min())
       // disable signed/unsigned comparison warning for uint64_t since the
       // comparison against min() above already ensures "result" is positive
+#ifdef _WINDOWS
 #pragma warning(push)
 #pragma warning(disable: 4018)
+#endif
       && result <= std::numeric_limits<NT>::max()) {
+#ifdef _WINDOWS
 #pragma warning(pop)
+#endif
 		return static_cast<NT>(result);
     } else {
       std::string s;
@@ -158,7 +162,7 @@ namespace {
 
   // Utils uses karma::generate which is the fastest converter
   // that has been tested (beats sprintf easily)
-  class ToString : public boost::static_visitor<std::shared_ptr<std::string> > {
+  class ToString : public boost::static_visitor<std::shared_ptr<std::string>> {
   private:
     const thrift::ColumnValue& m_cv;
     const uint32_t m_columnIndex;
