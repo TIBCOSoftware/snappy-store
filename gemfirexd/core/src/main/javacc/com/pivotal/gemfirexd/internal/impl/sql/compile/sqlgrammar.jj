@@ -233,6 +233,9 @@ import com.pivotal.gemfirexd.internal.engine.procedure.coordinate.DistributedPro
 import com.pivotal.gemfirexd.internal.engine.procedure.coordinate.ProcedureProcessorNode;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+
 // GemStone changes END
 
 public class SQLParser
@@ -417,13 +420,19 @@ public class SQLParser
 	    repPartPersFlags[2] = true;
 		  afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
 	  }
+
+	  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+
 	  if (repPartPersFlags[1] && repPartPersFlags[2]) {
 	    afact.setDataPolicy(DataPolicy.PERSISTENT_PARTITION);
 	    distributionNode.setPersistence(true);
 	    // [sjigyasu] Create versioned region entries for persistent partitioned tables
-	    if(concChecksFlag) {	      	
-		afact.setConcurrencyChecksEnabled(true);
-	    }
+           if (callback.haveRegisteredExternalStore(tableName.getFullTableName())){
+              afact.setConcurrencyChecksEnabled(false);
+           }
+           else if (concChecksFlag) {
+              afact.setConcurrencyChecksEnabled(true);
+           }
 	  }
         if (repPartPersFlags[0]) {
           if (repPartPersFlags[2]) {
@@ -510,7 +519,10 @@ public class SQLParser
 			afact.setDataPolicy(DataPolicy.PERSISTENT_PARTITION);
 			distributionNode.setPersistence(true);
 		    // [sjigyasu] Create versioned region entries for persistent partitioned tables
-		    if (concChecksFlag) {
+		    if (callback.haveRegisteredExternalStore(tableName.getFullTableName())){
+		        afact.setConcurrencyChecksEnabled(false);
+		    }
+		    else if (concChecksFlag) {
     	  		afact.setConcurrencyChecksEnabled(true);
     	  	}
 	      }
