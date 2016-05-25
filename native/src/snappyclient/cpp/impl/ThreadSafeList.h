@@ -57,7 +57,7 @@ namespace snappydata {
    * accepts functors that can act on the result of an index lookup,
    * or old value in a set/remove etc.
    */
-  template<typename T, typename TLIST = std::vector<T> >
+  template<typename T, typename TLIST = std::vector<T>>
   class ThreadSafeList {
   public:
     typedef boost::shared_lock<boost::shared_mutex> SharedLock;

@@ -181,10 +181,6 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
       snappyclient(NativeLibrarySpec) {
         targetPlatform 'x86'
         targetPlatform 'x64'
-        // build only static libraries (not being shipped separately yet)
-        binaries.withType(SharedLibraryBinarySpec) {
-          buildable = false
-        }
         sources {
           cpp.lib library: 'boost', linkage: 'api'
           boostLibs.each { boostLib ->
@@ -194,17 +190,11 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
           cpp.lib library: 'openssl', linkage: 'static'
           cpp.lib library: 'mpir', linkage: 'static'
         }
+        // build only static libraries (not being shipped separately yet)
+        binaries.withType(SharedLibraryBinarySpec) {
+          buildable = false
+        }
         binaries.all {
-          /*
-          if (targetPlatform.operatingSystem.windows) {
-            sources {
-              winLib(CppSourceSet) {
-                lib library: 'openssl', linkage: 'static'
-                lib library: 'mpir', linkage: 'static'
-              }
-            }
-          }
-          */
           // Define toolchain-specific compiler and linker options
           // TODO: precompiled header
           if (toolChain in Gcc) {
@@ -222,8 +212,8 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
                         '-rdynamic', '-ldl'
           } else if (toolChain in VisualCpp) {
             // explicitly include UCRT since its still not passed through by gradle
-            def VS_2015_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt'
-            def VS_2015_LIB_DIR = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/ucrt'
+            String VS_2015_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt'
+            String VS_2015_LIB_DIR = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/ucrt'
             cppCompiler.args '/W3', '/FS', '/Zc:inline', '/WX', '/EHsc',
                              '/Fdsnappyclient.pdb', '/errorReport:prompt',
                              "/I${VS_2015_INCLUDE_DIR}"
@@ -259,15 +249,21 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     doLast {
       // copy the release libraries
       copy {
-        from "${buildDir}/libs/snappyclient/shared/release",
-             "${buildDir}/libs/snappyclient/static/release"
-        into "${productDir}/lib"
+        from "${buildDir}/libs/snappyclient/static/x86/release"
+        into "${productDir}/${osName}32/lib"
+      }
+      copy {
+        from "${buildDir}/libs/snappyclient/static/x64/release"
+        into "${productDir}/${osName}64/lib"
       }
       // copy the debug libraries
       copy {
-        from "${buildDir}/libs/snappyclient/shared/debug",
-             "${buildDir}/libs/snappyclient/static/debug"
-        into "${productDir}/lib/debug"
+        from "${buildDir}/libs/snappyclient/static/x86/debug"
+        into "${productDir}/${osName}32/lib/debug"
+      }
+      copy {
+        from "${buildDir}/libs/snappyclient/static/x64/debug"
+        into "${productDir}/${osName}64/lib/debug"
       }
       // copy the public headers
       copy {
