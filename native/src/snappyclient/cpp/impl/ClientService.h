@@ -105,10 +105,10 @@ namespace impl {
     std::string m_token;
     bool m_isOpen;
 
-    std::map<TransactionAttribute::type, bool> m_pendingTXAttrs;
+    std::map<thrift::TransactionAttribute::type, bool> m_pendingTXAttrs;
     bool m_hasPendingTXAttrs;
-    IsolationLevel::type m_isolationLevel;
-    std::map<TransactionAttribute::type, bool> m_currentTXAttrs;
+    IsolationLevel m_isolationLevel;
+    std::map<thrift::TransactionAttribute::type, bool> m_currentTXAttrs;
 
     // no copy constructor or assignment operator due to obvious issues
     // with usage of same connection by multiple threads concurrently
@@ -170,6 +170,8 @@ namespace impl {
 
     virtual ~ClientService();
 
+    static bool staticInitialize();
+
     static void staticInitialize(
         std::map<std::string, std::string>& props);
 
@@ -189,55 +191,55 @@ namespace impl {
       return m_token.empty() ? NULL : m_token.c_str();
     }
 
-    IsolationLevel::type getCurrentIsolationLevel() const noexcept {
+    IsolationLevel getCurrentIsolationLevel() const noexcept {
       return m_isolationLevel;
     }
 
-    void execute(thrift::StatementResult& _return,
+    void execute(thrift::StatementResult& result,
         const std::string& sql,
         const std::map<int32_t, thrift::OutputParameter>& outputParams,
         const thrift::StatementAttrs& attrs);
 
-    void executeUpdate(thrift::UpdateResult& _return,
+    void executeUpdate(thrift::UpdateResult& result,
         const std::vector<std::string>& sqls,
         const thrift::StatementAttrs& attrs);
 
-    void executeQuery(thrift::RowSet& _return, const std::string& sql,
+    void executeQuery(thrift::RowSet& result, const std::string& sql,
         const thrift::StatementAttrs& attrs);
 
-    void prepareStatement(thrift::PrepareResult& _return,
+    void prepareStatement(thrift::PrepareResult& result,
         const std::string& sql,
         const std::map<int32_t, thrift::OutputParameter>& outputParams,
         const thrift::StatementAttrs& attrs);
 
-    void executePrepared(thrift::StatementResult& _return,
+    void executePrepared(thrift::StatementResult& result,
         thrift::PrepareResult& prepResult, const thrift::Row& params,
         const std::map<int32_t, thrift::OutputParameter>& outputParams);
 
-    void executePreparedUpdate(thrift::UpdateResult& _return,
+    void executePreparedUpdate(thrift::UpdateResult& result,
         thrift::PrepareResult& prepResult, const thrift::Row& params);
 
-    void executePreparedQuery(thrift::RowSet& _return,
+    void executePreparedQuery(thrift::RowSet& result,
         thrift::PrepareResult& prepResult, const thrift::Row& params);
 
-    void executePreparedBatch(thrift::UpdateResult& _return,
+    void executePreparedBatch(thrift::UpdateResult& result,
         thrift::PrepareResult& prepResult,
         const std::vector<thrift::Row>& paramsBatch);
 
-    void prepareAndExecute(thrift::StatementResult& _return,
+    void prepareAndExecute(thrift::StatementResult& result,
         const std::string& sql,
         const std::vector<thrift::Row>& paramsBatch,
         const std::map<int32_t, thrift::OutputParameter>& outputParams,
         const thrift::StatementAttrs& attrs);
 
-    void getNextResultSet(thrift::RowSet& _return,
+    void getNextResultSet(thrift::RowSet& result,
         const int32_t cursorId, const int8_t otherResultSetBehaviour);
 
-    void getBlobChunk(thrift::BlobChunk& _return, const int32_t lobId,
+    void getBlobChunk(thrift::BlobChunk& result, const int32_t lobId,
         const int64_t offset, const int32_t size,
         const bool freeLobAtEnd);
 
-    void getClobChunk(thrift::ClobChunk& _return, const int32_t lobId,
+    void getClobChunk(thrift::ClobChunk& result, const int32_t lobId,
         const int64_t offset, const int32_t size,
         const bool freeLobAtEnd);
 
@@ -247,7 +249,7 @@ namespace impl {
 
     void freeLob(const int32_t lobId);
 
-    void scrollCursor(thrift::RowSet& _return, const int32_t cursorId,
+    void scrollCursor(thrift::RowSet& result, const int32_t cursorId,
         const int32_t offset, const bool offsetIsAbsolute,
         const bool fetchReverse, const int32_t fetchSize);
 
@@ -263,15 +265,14 @@ namespace impl {
         const std::vector<std::vector<int32_t> >& changedColumnsList,
         const std::vector<int32_t>& changedRowIndexes);
 
-    void beginTransaction(const IsolationLevel::type isolationLevel);
+    void beginTransaction(const IsolationLevel isolationLevel);
 
-    void setTransactionAttribute(const TransactionAttribute::type flag,
-        bool isTrue);
+    void setTransactionAttribute(const TransactionAttribute flag, bool isTrue);
 
-    bool getTransactionAttribute(const TransactionAttribute::type flag);
+    bool getTransactionAttribute(const TransactionAttribute flag);
 
-    void getTransactionAttributes(
-        std::map<TransactionAttribute::type, bool>& _return);
+    void getTransactionAttributes(std::map<thrift::TransactionAttribute::type,
+        bool>& result);
 
     void commitTransaction(const bool startNewTransaction);
 
@@ -280,25 +281,25 @@ namespace impl {
     bool prepareCommitTransaction();
 
     void fetchActiveConnections(
-        std::vector<thrift::ConnectionProperties>& _return);
+        std::vector<thrift::ConnectionProperties>& result);
 
-    void fetchActiveStatements(std::map<int32_t, std::string>& _return);
+    void fetchActiveStatements(std::map<int32_t, std::string>& result);
 
-    void getServiceMetaData(thrift::ServiceMetaData& _return);
+    void getServiceMetaData(thrift::ServiceMetaData& result);
 
-    void getSchemaMetaData(thrift::RowSet& _return,
+    void getSchemaMetaData(thrift::RowSet& result,
         const thrift::ServiceMetaDataCall::type schemaCall,
         thrift::ServiceMetaDataArgs& metadataArgs);
 
-    void getIndexInfo(thrift::RowSet& _return,
+    void getIndexInfo(thrift::RowSet& result,
         thrift::ServiceMetaDataArgs& metadataArgs, const bool unique,
         const bool approximate);
 
-    void getUDTs(thrift::RowSet& _return,
+    void getUDTs(thrift::RowSet& result,
         thrift::ServiceMetaDataArgs& metadataArgs,
         const std::vector<thrift::SnappyType::type>& types);
 
-    void getBestRowIdentifier(thrift::RowSet& _return,
+    void getBestRowIdentifier(thrift::RowSet& result,
         thrift::ServiceMetaDataArgs& metadataArgs, const int32_t scope,
         const bool nullable);
 

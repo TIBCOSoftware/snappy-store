@@ -63,14 +63,15 @@ SQLException::SQLException(const char* file, int line,
 SQLException::SQLException(const char* file, int line, const SQLState& state,
     const std::string& reason) :
     m_reason(reason), m_state(state.getSQLState()),
-    m_severity((int32_t)state.getSeverity()), m_next(NULL),
+    m_severity(static_cast<int32_t>(state.getSeverity())), m_next(NULL),
     m_file(file), m_line(line) {
   init();
 }
 
 SQLException::SQLException(const char* file, int line, const char* sqlState,
-    const ExceptionSeverity::type severity, const std::string& reason) :
-    m_reason(reason), m_state(sqlState), m_severity(severity), m_next(NULL),
+    const ExceptionSeverity severity, const std::string& reason) :
+    m_reason(reason), m_state(sqlState), m_severity(
+        static_cast<int32_t>(severity)), m_next(NULL),
     m_file(file), m_line(line) {
   init();
 }
@@ -88,8 +89,8 @@ SQLException::SQLException(const char* file, int line,
 SQLException::SQLException(const char* file, int line,
     const std::exception& stde) :
     m_reason(stde.what()), m_state(SQLState::UNKNOWN_EXCEPTION.getSQLState()),
-    m_severity(ExceptionSeverity::SESSION_SEVERITY), m_next(NULL),
-    m_file(file), m_line(line) {
+    m_severity(static_cast<int32_t>(ExceptionSeverity::SESSION_SEVERITY)),
+    m_next(NULL), m_file(file), m_line(line) {
   init();
 }
 

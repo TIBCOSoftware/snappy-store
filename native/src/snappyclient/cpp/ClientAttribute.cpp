@@ -9,7 +9,10 @@ const char* ClientAttribute::addToHashSet(const char* k) {
   return k;
 }
 
-std::set<std::string> ClientAttribute::s_attributes;
+void ClientAttribute::staticInitialize() {
+}
+
+std::unordered_set<std::string> ClientAttribute::s_attributes;
 
 const std::string ClientAttribute::USERNAME = ClientAttribute::addToHashSet("user");
 const std::string ClientAttribute::USERNAME_ALT = ClientAttribute::addToHashSet("UserName");
@@ -32,15 +35,11 @@ const std::string ClientAttribute::DISABLE_TX_BATCHING = ClientAttribute::addToH
 const std::string ClientAttribute::QUERY_HDFS = ClientAttribute::addToHashSet("query-HDFS");
 const std::string ClientAttribute::LOG_FILE = ClientAttribute::addToHashSet("log-file");
 const std::string ClientAttribute::LOG_LEVEL = ClientAttribute::addToHashSet("log-level");
+const std::string ClientAttribute::LOG_APPEND = ClientAttribute::addToHashSet("log-append");
 const std::string ClientAttribute::LOG_FILE_STAMP = ClientAttribute::addToHashSet("log-file-ns");
-const std::string ClientAttribute::CLIENT_SECURITY_MECHANISM = ClientAttribute::addToHashSet("securityMechanism");
-const std::string ClientAttribute::CLIENT_TRACE_FILE = ClientAttribute::addToHashSet("traceFile");
-const std::string ClientAttribute::CLIENT_TRACE_DIRECTORY = ClientAttribute::addToHashSet("traceDirectory");
-const std::string ClientAttribute::CLIENT_TRACE_APPEND = ClientAttribute::addToHashSet("traceFileAppend");
-const std::string ClientAttribute::CLIENT_TRACE_LEVEL = ClientAttribute::addToHashSet("traceLevel");
-const std::string ClientAttribute::CLIENT_RETRIEVE_MESSAGE_TEXT = ClientAttribute::addToHashSet("retrieveMessageText");
+const std::string ClientAttribute::SECURITY_MECHANISM = ClientAttribute::addToHashSet("security-mechanism");
 const std::string ClientAttribute::SSL = ClientAttribute::addToHashSet("ssl");
+const std::string ClientAttribute::SSL_PROPERTIES = ClientAttribute::addToHashSet("ssl-properties");
 const std::string ClientAttribute::THRIFT_USE_BINARY_PROTOCOL = ClientAttribute::addToHashSet("binary-protocol");
-const std::string ClientAttribute::THRIFT_SSL_PROPERTIES = ClientAttribute::addToHashSet("ssl-properties");
 
 } } }

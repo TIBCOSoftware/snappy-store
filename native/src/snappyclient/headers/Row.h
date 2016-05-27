@@ -184,8 +184,8 @@ namespace client {
       return *this;
     }
 
-    SQLType::type getType(const uint32_t columnIndex) const {
-      return getColumnValue(columnIndex).getType();
+    SQLType getType(const uint32_t columnIndex) const {
+      return static_cast<SQLType>(getColumnValue(columnIndex).getType());
     }
 
     bool getBoolean(const uint32_t columnIndex) const {

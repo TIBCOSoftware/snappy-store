@@ -705,11 +705,13 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
 								numRows = getSemiRowCount(tc);
 							}
 // GemStone changes BEGIN
-              // GemFireXD cannot handle PK create with data or buckets (#40712)
+              // GemFireXD cannot handle PK create with data (#40712)
               if (this.numBuckets > 0) {
-                throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
-                    "PRIMARY KEY create in ALTER TABLE "
-                        + "with data or data history");
+                numRows = getSemiRowCount(tc);
+                if (numRows > 0) {
+                  throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
+                      "PRIMARY KEY create in ALTER TABLE with data");
+                }
               }
               else {
                 this.isPkAdd = true;

@@ -83,11 +83,12 @@ namespace client {
 
     static std::map<std::string, ConnectionProperty> s_properties;
 
-    static bool s_init;
-    static bool init();
+    static void staticInitialize();
+
+    friend class impl::ClientService;
 
     // disable assignment operator
-    const ConnectionProperty& operator=(const ConnectionProperty&);
+    const ConnectionProperty& operator=(const ConnectionProperty&) = delete;
 
   public:
     /** flags for the property */
@@ -122,7 +123,7 @@ namespace client {
     static void addProperty_(const std::string& propName,
         const char* helpMessage, const char** possibleValues, const int flags);
 
-    static const std::set<std::string>& getValidPropertyNames();
+    static const std::unordered_set<std::string>& getValidPropertyNames();
 
     static const ConnectionProperty& getProperty(
         const std::string& propertyName);
@@ -149,7 +150,7 @@ namespace client {
     std::shared_ptr<ClientService> m_service;
     std::unique_ptr<SQLWarning> m_warnings;
     std::unique_ptr<DatabaseMetaData> m_metadata;
-    ResultSetHoldability::type m_defaultHoldability;
+    ResultSetHoldability m_defaultHoldability;
 
     // no copy constructor or assignment operator due to obvious issues
     // with usage of same connection by multiple thread concurrently
@@ -170,7 +171,9 @@ namespace client {
         m_metadata(), m_defaultHoldability(ResultSetHoldability::NONE) {
     }
 
-    static const DriverType::type DRIVER_TYPE = DriverType::ODBC;
+    static constexpr DriverType DRIVER_TYPE = DriverType::ODBC;
+
+    static void initializeService();
 
     void open(const std::string& host, const int port);
 
@@ -254,14 +257,13 @@ namespace client {
 
     // transactions
 
-    void beginTransaction(const IsolationLevel::type isolationLevel);
+    void beginTransaction(const IsolationLevel isolationLevel);
 
-    IsolationLevel::type getCurrentIsolationLevel() const;
+    IsolationLevel getCurrentIsolationLevel() const;
 
-    void setTransactionAttribute(const TransactionAttribute::type flag,
-        bool isTrue);
+    void setTransactionAttribute(const TransactionAttribute flag, bool isTrue);
 
-    bool getTransactionAttribute(const TransactionAttribute::type flag);
+    bool getTransactionAttribute(const TransactionAttribute flag);
 
     void commitTransaction(bool startNewTransaction);
 
@@ -271,33 +273,32 @@ namespace client {
 
     const std::string getNativeSQL(const std::string& sql) const;
 
-    ResultSetHoldability::type getResultSetHoldability() const noexcept;
+    ResultSetHoldability getResultSetHoldability() const noexcept;
 
     // TODO: holdability is not yet carried through to thrift API calls
     // Snappy server does not yet implement HOLD_CURSORS so its okay for now
-    void setResultSetHoldability(ResultSetHoldability::type holdability);
+    void setResultSetHoldability(ResultSetHoldability holdability);
 
     // metadata API
 
     const DatabaseMetaData* getServiceMetaData();
 
     std::unique_ptr<ResultSet> getSchemaMetaData(
-        const DatabaseMetaDataCall::type method,
-        DatabaseMetaDataArgs& args,
-        const DriverType::type driverType = DRIVER_TYPE);
+        const DatabaseMetaDataCall method, DatabaseMetaDataArgs& args,
+        const DriverType driverType = DRIVER_TYPE);
 
     std::unique_ptr<ResultSet> getIndexInfo(DatabaseMetaDataArgs& args,
         bool unique, bool approximate,
-        const DriverType::type driverType = DRIVER_TYPE);
+        const DriverType driverType = DRIVER_TYPE);
 
     std::unique_ptr<ResultSet> getUDTs(DatabaseMetaDataArgs& args,
         const std::string& typeNamePattern,
-        const std::vector<SQLType::type>& types,
-        const DriverType::type driverType = DRIVER_TYPE);
+        const std::vector<SQLType>& types,
+        const DriverType driverType = DRIVER_TYPE);
 
     std::unique_ptr<ResultSet> getBestRowIdentifier(
         DatabaseMetaDataArgs& metadaArgs, int32_t scope, bool nullable,
-        const DriverType::type driverType = DRIVER_TYPE);
+        const DriverType driverType = DRIVER_TYPE);
 
     // end metadata API
 

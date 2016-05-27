@@ -135,9 +135,8 @@ DatabaseMetaDataArgs& DatabaseMetaDataArgs::setTypeName(
   return *this;
 }
 
-DatabaseMetaDataArgs& DatabaseMetaDataArgs::setType(
-    const SQLType::type& type) {
-  m_args.__set_typeId(type);
+DatabaseMetaDataArgs& DatabaseMetaDataArgs::setType(const SQLType& type) {
+  m_args.__set_typeId(static_cast<thrift::SnappyType::type>(type));
   return *this;
 }
 
@@ -186,7 +185,7 @@ bool DatabaseMetaData::searchFeature(
 
 bool DatabaseMetaData::isFeatureSupported(
     DatabaseFeature::type feature) const noexcept {
-  const std::set<DatabaseFeature::type>& supportedFeatures =
+  const std::set<thrift::ServiceFeature::type>& supportedFeatures =
       m_metadata.supportedFeatures;
 
   return supportedFeatures.find(feature) != supportedFeatures.end();
@@ -353,7 +352,7 @@ int32_t DatabaseMetaData::getDefaultResultSetType() const noexcept {
   return m_metadata.defaultResultSetType;
 }
 
-ResultSetHoldability::type DatabaseMetaData::getDefaultHoldability()
+ResultSetHoldability DatabaseMetaData::getDefaultHoldability()
     const noexcept {
   return m_metadata.defaultResultSetHoldabilityHoldCursorsOverCommit
       ? ResultSetHoldability::HOLD_CURSORS_OVER_COMMIT
@@ -364,99 +363,103 @@ bool DatabaseMetaData::isSQLStateXOpen() const noexcept {
   return m_metadata.sqlStateIsXOpen;
 }
 
-RowIdLifetime::type DatabaseMetaData::getDefaultRowIdLifeTime()
-    const noexcept {
-  return m_metadata.rowIdLifeTime;
+RowIdLifetime DatabaseMetaData::getDefaultRowIdLifeTime() const noexcept {
+  return static_cast<RowIdLifetime>(m_metadata.rowIdLifeTime);
 }
 
-bool DatabaseMetaData::supportsConvert(SQLType::type fromType,
-    SQLType::type toType) const noexcept {
+bool DatabaseMetaData::supportsConvert(SQLType fromType,
+    SQLType toType) const noexcept {
   std::map<thrift::SnappyType::type, std::set<thrift::SnappyType::type> >
-      ::const_iterator result = m_metadata.supportedCONVERT.find(fromType);
+      ::const_iterator result = m_metadata.supportedCONVERT.find(
+          static_cast<thrift::SnappyType::type>(fromType));
   if (result != m_metadata.supportedCONVERT.end()) {
-    return result->second.find(toType) != result->second.end();
+    return result->second.find(static_cast<thrift::SnappyType::type>(
+        toType)) != result->second.end();
   } else {
     return false;
   }
 }
 
 bool DatabaseMetaData::supportsTransactionIsolationLevel(
-    IsolationLevel::type isolation) const noexcept {
+    IsolationLevel isolation) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::TRANSACTIONS_SUPPORT_ISOLATION,
-      isolation);
+      static_cast<int32_t>(isolation));
 }
 
 bool DatabaseMetaData::supportsResultSetReadOnly(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_CONCURRENCY_READ_ONLY,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::supportsResultSetUpdatable(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_CONCURRENCY_UPDATABLE,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::othersUpdatesVisible(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OTHERS_UPDATES_VISIBLE,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::othersDeletesVisible(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OTHERS_DELETES_VISIBLE,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::othersInsertsVisible(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OTHERS_INSERTS_VISIBLE,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::ownUpdatesVisible(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OWN_UPDATES_VISIBLE,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::ownDeletesVisible(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OWN_DELETES_VISIBLE,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::ownInsertsVisible(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OWN_INSERTS_VISIBLE,
-      rsType);
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::updatesDetected(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
-      thrift::ServiceFeatureParameterized::RESULTSET_UPDATES_DETECTED, rsType);
+      thrift::ServiceFeatureParameterized::RESULTSET_UPDATES_DETECTED,
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::deletesDetected(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
-      thrift::ServiceFeatureParameterized::RESULTSET_DELETES_DETECTED, rsType);
+      thrift::ServiceFeatureParameterized::RESULTSET_DELETES_DETECTED,
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::insertsDetected(
-    ResultSetType::type rsType) const noexcept {
+    ResultSetType rsType) const noexcept {
   return searchFeature(
-      thrift::ServiceFeatureParameterized::RESULTSET_INSERTS_DETECTED, rsType);
+      thrift::ServiceFeatureParameterized::RESULTSET_INSERTS_DETECTED,
+      static_cast<int32_t>(rsType));
 }

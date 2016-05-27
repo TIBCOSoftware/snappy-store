@@ -1080,7 +1080,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setBool_val(boolean value) {
     setField_ = _Fields.BOOL_VAL;
     primitiveValue = value ? 1L : 0L;
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public byte getByte_val() {
@@ -1094,7 +1094,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setByte_val(byte value) {
     setField_ = _Fields.BYTE_VAL;
     primitiveValue = value;
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public short getI16_val() {
@@ -1108,7 +1108,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setI16_val(short value) {
     setField_ = _Fields.I16_VAL;
     primitiveValue = value;
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public int getI32_val() {
@@ -1122,7 +1122,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setI32_val(int value) {
     setField_ = _Fields.I32_VAL;
     primitiveValue = value;
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public long getI64_val() {
@@ -1136,7 +1136,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setI64_val(long value) {
     setField_ = _Fields.I64_VAL;
     primitiveValue = value;
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public int getFloat_val() {
@@ -1150,7 +1150,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setFloat_val(int value) {
     setField_ = _Fields.FLOAT_VAL;
     primitiveValue = value;
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public double getDouble_val() {
@@ -1164,7 +1164,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setDouble_val(double value) {
     setField_ = _Fields.DOUBLE_VAL;
     primitiveValue = Double.doubleToLongBits(value);
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public String getString_val() {
@@ -1179,6 +1179,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.STRING_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public Decimal getDecimal_val() {
@@ -1193,6 +1194,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.DECIMAL_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public DateTime getDate_val() {
@@ -1207,6 +1209,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.DATE_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public DateTime getTime_val() {
@@ -1221,6 +1224,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.TIME_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public Timestamp getTimestamp_val() {
@@ -1235,6 +1239,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.TIMESTAMP_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public byte[] getBinary_val() {
@@ -1259,6 +1264,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.BINARY_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public BlobChunk getBlob_val() {
@@ -1273,6 +1279,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.BLOB_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public ClobChunk getClob_val() {
@@ -1287,6 +1294,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.CLOB_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public List<ColumnValue> getArray_val() {
@@ -1301,6 +1309,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.ARRAY_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public Map<ColumnValue,ColumnValue> getMap_val() {
@@ -1315,6 +1324,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.MAP_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public List<ColumnValue> getStruct_val() {
@@ -1329,6 +1339,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.STRUCT_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public boolean getNull_val() {
@@ -1342,7 +1353,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public void setNull_val(boolean value) {
     setField_ = _Fields.NULL_VAL;
     primitiveValue = value ? 1L : 0L;
-    value_ = null;
+    value_ = Boolean.TRUE; // dummy value
   }
 
   public JSONObject getJson_val() {
@@ -1357,6 +1368,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.JSON_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public byte[] getJava_val() {
@@ -1381,6 +1393,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     if (value == null) throw new NullPointerException();
     setField_ = _Fields.JAVA_VAL;
     value_ = value;
+    primitiveValue = 0L; // dummy value
   }
 
   public boolean isSetBool_val() {
@@ -1494,12 +1507,17 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
 
   public boolean equals(ColumnValue other) {
     return other != null && getSetField() == other.getSetField() &&
+        primitiveValue == other.primitiveValue &&
         getFieldValue().equals(other.getFieldValue());
   }
 
   @Override
   public int compareTo(ColumnValue other) {
     int lastComparison = org.apache.thrift.TBaseHelper.compareTo(getSetField(), other.getSetField());
+    if (lastComparison == 0) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(primitiveValue,
+          other.primitiveValue);
+    }
     if (lastComparison == 0) {
       return org.apache.thrift.TBaseHelper.compareTo(getFieldValue(), other.getFieldValue());
     }

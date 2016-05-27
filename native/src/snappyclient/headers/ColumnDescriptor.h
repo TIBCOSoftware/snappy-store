@@ -60,7 +60,7 @@ namespace client {
     ~ColumnDescriptor() {
     }
 
-    ColumnUpdatable::type getUpdatable() const noexcept {
+    ColumnUpdatable getUpdatable() const noexcept {
       if (m_descriptor.updatable) {
         return ColumnUpdatable::UPDATABLE;
       } else if (m_descriptor.definitelyUpdatable) {
@@ -74,63 +74,16 @@ namespace client {
       return m_descriptor.autoIncrement;
     }
 
-    bool isCaseSensitive() const noexcept {
-      switch (m_descriptor.type) {
-        case SQLType::CHAR:
-        case SQLType::VARCHAR:
-        case SQLType::CLOB:
-        case SQLType::LONGVARCHAR:
-        case SQLType::SQLXML:
-          return true;
-        default:
-          return false;
-      }
-    }
+    bool isCaseSensitive() const noexcept;
 
     bool isSearchable() const noexcept {
       // we have no restrictions yet, so this is always true
       return true;
     }
 
-    bool isCurrency() const noexcept {
-      return (m_descriptor.type == SQLType::DECIMAL);
-    }
+    bool isCurrency() const noexcept;
 
-    uint32_t getDisplaySize() const noexcept {
-      uint32_t size;
-      switch (m_descriptor.type) {
-        case SQLType::TIMESTAMP:
-          return 26;
-        case SQLType::DATE:
-          return 10;
-        case SQLType::TIME:
-          return 8;
-        case SQLType::INTEGER:
-          return 11;
-        case SQLType::SMALLINT:
-          return 6;
-        case SQLType::REAL:
-        case SQLType::FLOAT:
-          return 13;
-        case SQLType::DOUBLE:
-          return 22;
-        case SQLType::TINYINT:
-          return 4;
-        case SQLType::BIGINT:
-          return 20;
-        case SQLType::BOOLEAN:
-          return 5; // for "false"
-        case SQLType::BINARY:
-        case SQLType::VARBINARY:
-        case SQLType::LONGVARBINARY:
-        case SQLType::BLOB:
-          size = (2 * getPrecision());
-          return (size > 0 ? size : 30);
-        default:
-          size = getPrecision();
-          return (size > 0 ? size : 15);
-      }
-    }
+    uint32_t getDisplaySize() const noexcept;
 
     std::string getLabel() const noexcept {
       if (m_descriptor.__isset.name) {

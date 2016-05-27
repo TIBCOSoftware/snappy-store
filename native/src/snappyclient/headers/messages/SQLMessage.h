@@ -141,7 +141,7 @@ namespace client {
     std::string format(const T1& arg1, const T2& arg2) const {
       std::ostringstream sstr;
       sstr << getMessagePart(0) << arg1 << getMessagePart(1) << arg2
-          << getMessagePart(3);
+          << getMessagePart(2);
       return sstr.str();
     }
   };

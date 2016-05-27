@@ -51,9 +51,9 @@ namespace client {
   class SQLStateMessage {
   private:
     // no constructors or default operators
-    SQLStateMessage();
-    SQLStateMessage(const SQLStateMessage&);
-    const SQLStateMessage& operator=(const SQLStateMessage&);
+    SQLStateMessage() = delete;
+    SQLStateMessage(const SQLStateMessage&) = delete;
+    const SQLStateMessage& operator=(const SQLStateMessage&) = delete;
 
     static void staticInitialize();
     friend class impl::ClientService;

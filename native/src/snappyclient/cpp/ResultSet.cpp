@@ -246,7 +246,7 @@ std::string ResultSet::getCursorName() const {
 }
 
 std::unique_ptr<ResultSet> ResultSet::getNextResults(
-    const NextResultSetBehaviour::type behaviour) {
+    const NextResultSetBehaviour behaviour) {
   checkOpen("getNextResults");
 
   if (m_rows->cursorId != thrift::snappydataConstants::INVALID_ID) {
@@ -255,7 +255,8 @@ std::unique_ptr<ResultSet> ResultSet::getNextResults(
         new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
             m_scrollable));
 
-    m_service->getNextResultSet(*rs, m_rows->cursorId, behaviour);
+    m_service->getNextResultSet(*rs, m_rows->cursorId,
+        static_cast<int8_t>(behaviour));
     return resultSet;
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_CURSOR_STATE_MSG2);
@@ -332,6 +333,7 @@ void ResultSet::close() {
 
 ResultSet::~ResultSet() {
   // destructor should *never* throw an exception
+  // TODO: close from destructor should use bulkClose if valid handle
   try {
     close();
   } catch (const SQLException& sqle) {

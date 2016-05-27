@@ -65,7 +65,6 @@ using namespace io::snappydata::client;
 
 // static definitions declared in Base.h
 const std::string io::snappydata::client::EMPTY_STRING;
-const std::set<thrift::TransactionAttribute::type> io::snappydata::client::EMPTY_TX_FLAGS;
 const std::map<int32_t, OutputParameter> io::snappydata::client::EMPTY_OUTPUT_PARAMS;
 const std::map<int32_t, thrift::OutputParameter> io::snappydata::client::EMPTY_OUT_PARAMS;
 

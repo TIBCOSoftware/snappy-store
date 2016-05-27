@@ -24,6 +24,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   String boostVersion = '1.59.0'
   String mpirVersion = '2.7.2'
   String opensslVersion = '1.0.2h'
+  String googletestVersion = '1.7.0'
   String releasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${thriftVersion}"
   List<String> dependencies = []
 
@@ -48,17 +49,20 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     if (flavour.startsWith('ubuntu14') || flavour.startsWith('ubuntu16') ||
         flavour.startsWith('linuxmint17')) {
       dependencies += [ "thrift-${thriftVersion}-ubuntu14.04.tar.bz2",
-                        "boost-${boostVersion}-ubuntu14.04.tar.bz2" ]
+                        "boost-${boostVersion}-ubuntu14.04.tar.bz2",
+                        "googletest-${googletestVersion}-ubuntu14.04.tar.bz2" ]
     } else if (flavour.startsWith('redhat6') || flavour.startsWith('redhat7') ||
         flavour.startsWith('centos6') || flavour.startsWith('centos7')) {
       dependencies += [ "thrift-${thriftVersion}-rhel6.tar.bz2",
-                        "boost-${boostVersion}-rhel6.tar.bz2" ]
+                        "boost-${boostVersion}-rhel6.tar.bz2",
+                        "googletest-${googletestVersion}-rhel6.tar.bz2" ]
     } else {
       throw new GradleException("Unhandled linux flavour ${flavour}. Use -PlinuxFlavour to force one")
     }
   } else {
     dependencies += [ "thrift-${thriftVersion}-${osName}.tar.bz2",
-                      "boost-${boostVersion}-${osName}.tar.bz2" ]
+                      "boost-${boostVersion}-${osName}.tar.bz2",
+                      "googletest-${googletestVersion}-${osName}.tar.bz2" ]
   }
   if (osName == 'win') {
     dependencies += [ "mpir-${mpirVersion}-${osName}.tar.bz2",

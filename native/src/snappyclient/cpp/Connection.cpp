@@ -58,7 +58,8 @@ using namespace io::snappydata::client::impl;
 
 static const char* YES_NO[] = { "Yes", "No", NULL };
 static const char* NO_YES[] = { "No", "Yes", NULL };
-static const char* SSL_MODES[] = { "none", "basic", "peerAuthentication", NULL };
+static const char* SECURITY_MODES[] = { "plain", "diffie-hellman", NULL };
+static const char* SSL_MODES[] = { "none", "basic", "peer-auth", NULL };
 
 ConnectionProperty::ConnectionProperty(const std::string& propName,
     const char* helpMessage, const char** possibleValues, const int flags) :
@@ -74,9 +75,8 @@ ConnectionProperty::ConnectionProperty(const std::string& propName,
 }
 
 std::map<std::string, ConnectionProperty> ConnectionProperty::s_properties;
-bool ConnectionProperty::s_init = init();
 
-bool ConnectionProperty::init() {
+void ConnectionProperty::staticInitialize() {
   char readTimeoutHelp[256];
   char keepAliveIdleHelp[256];
   char keepAliveIntvlHelp[256];
@@ -105,7 +105,7 @@ bool ConnectionProperty::init() {
       ClientAttribute::DEFAULT_SINGLE_HOP_MAX_CONN_PER_SERVER);
 
   addProperty_(ClientAttribute::USERNAME, "User name to connect with",
-  NULL, F_IS_USER | F_IS_UTF8);
+      NULL, F_IS_USER | F_IS_UTF8);
   addProperty_(ClientAttribute::USERNAME_ALT,
       "" /* empty to skip displaying it */, NULL, F_IS_USER | F_IS_UTF8);
   addProperty_(ClientAttribute::PASSWORD, "Password of the user", NULL,
@@ -120,7 +120,7 @@ bool ConnectionProperty::init() {
   addProperty_(ClientAttribute::KEEPALIVE_IDLE, keepAliveIdleHelp, NULL,
       F_NONE);
   addProperty_(ClientAttribute::KEEPALIVE_INTVL, keepAliveIntvlHelp,
-  NULL, F_NONE);
+      NULL, F_NONE);
   addProperty_(ClientAttribute::KEEPALIVE_CNT, keepAliveCntHelp, NULL, F_NONE);
   addProperty_(ClientAttribute::SINGLE_HOP_ENABLED,
       "Enable single hop queries and update/delete DML operations for "
@@ -142,26 +142,28 @@ bool ConnectionProperty::init() {
       F_IS_BOOLEAN);
   addProperty_(ClientAttribute::LOG_FILE,
       "Path of the log file for any client side logging using module "
-          "trace flags (e.g. gemfirexd.debug.true=TraceClientHA", NULL,
+          "trace flags (e.g. snappydata.debug.true=TraceClientHA", NULL,
       F_IS_UTF8 | F_IS_FILENAME);
-  addProperty_(ClientAttribute::CLIENT_TRACE_FILE,
-      "Path to the trace file for dumping DRDA protocol messages", NULL,
-      F_IS_UTF8 | F_IS_FILENAME);
-  addProperty_(ClientAttribute::CLIENT_TRACE_DIRECTORY,
-      "Directory of the trace file for dumping DRDA protocol messages",
-      NULL, F_IS_UTF8 | F_IS_FILENAME);
-  addProperty_(ClientAttribute::CLIENT_TRACE_LEVEL,
-      "Specify the level of tracing to be used by client as an "
-          "integer (default is TRACE_ALL 0xFFFFFFFF)", NULL, F_NONE);
-  addProperty_(ClientAttribute::CLIENT_TRACE_APPEND,
-      "If set to true then any new trace lines are appended to "
-          "exising trace file, if any, instead of overwriting the file "
-          "(default is false)", NO_YES, F_IS_BOOLEAN);
+  addProperty_(ClientAttribute::LOG_LEVEL,
+      "Logging level to use; one of none, severe, error, warning, info, "
+      "config (default), fine, finer, finest, all ", NULL, F_IS_UTF8);
+  addProperty_(ClientAttribute::LOG_APPEND,
+      "If set to true then logs are appended to exising log-file, if any, "
+          "instead of overwriting the file (default is false)", NO_YES,
+      F_IS_BOOLEAN);
+  addProperty_(ClientAttribute::SECURITY_MECHANISM,
+      "The security mechanism to use for authentication client to server;"
+          " one of plain (default), or diffie-helman", SECURITY_MODES,
+      F_NONE);
   // TODO: SSL support to implement
   addProperty_(ClientAttribute::SSL,
       "Specifies the mode for SSL communication from server to client;"
-          " one of basic, peerAuthentication, or none (the default)", SSL_MODES,
+          " one of basic, peer-auth, or none (the default)", SSL_MODES,
       F_NONE);
+  addProperty_(ClientAttribute::SSL_PROPERTIES,
+      "A comma-separated SSL property key=value pairs that can be set for a "
+          "client SSL connection. See docs for the supported properties",
+      NULL, F_NONE);
   addProperty_(ClientAttribute::TX_SYNC_COMMITS,
       "Wait for 2nd phase commit to complete on all nodes instead of "
           "returning as soon as current server's 2nd phase commit is "
@@ -184,15 +186,22 @@ bool ConnectionProperty::init() {
           "through thin driver will not be supported. The driver will "
           "not ask for statementUUID from the server.(default false)", NO_YES,
       F_IS_BOOLEAN);
-
-  return true;
+  addProperty_(ClientAttribute::THRIFT_USE_BINARY_PROTOCOL,
+      "A connection level property. Use binary protocol instead of compact "
+          "protocol for client-server communication. Requires servers with "
+          "with binary protocol running in the cluster.(default false)",
+      NO_YES, F_IS_BOOLEAN);
+  addProperty_(ClientAttribute::SERVER_GROUPS,
+      "A connection level property. Restrict connection to servers in the "
+          "given server-groups.", NO_YES, F_IS_BOOLEAN);
 }
 
 void ConnectionProperty::addProperty_(const std::string& propName,
     const char* helpMessage, const char** possibleValues, const int flags) {
   // check for valid property name
-  if (ClientAttribute::getAllAttributes().find(propName)
-      != ClientAttribute::getAllAttributes().end()) {
+  const std::unordered_set<std::string>& attrs =
+      ClientAttribute::getAllAttributes();
+  if (attrs.find(propName) != attrs.end()) {
     s_properties.insert(
         std::make_pair(propName,
             ConnectionProperty(propName, helpMessage, possibleValues, flags)));
@@ -203,7 +212,8 @@ void ConnectionProperty::addProperty_(const std::string& propName,
   }
 }
 
-const std::set<std::string>& ConnectionProperty::getValidPropertyNames() {
+const std::unordered_set<std::string>&
+ConnectionProperty::getValidPropertyNames() {
   return ClientAttribute::getAllAttributes();
 }
 
@@ -218,6 +228,10 @@ const ConnectionProperty& ConnectionProperty::getProperty(
   }
 }
 
+void Connection::initializeService() {
+  ClientService::staticInitialize();
+}
+
 void Connection::open(const std::string& host, const int port,
     thrift::OpenConnectionArgs& connArgs) {
   // close any existing service instance first
@@ -228,8 +242,9 @@ void Connection::open(const std::string& host, const int port,
 }
 
 void Connection::checkProperty(const std::string& propertyName) {
-  if (ClientAttribute::getAllAttributes().find(propertyName)
-      == ClientAttribute::getAllAttributes().end()) {
+  const std::unordered_set<std::string>& attrs =
+      ClientAttribute::getAllAttributes();
+  if (attrs.find(propertyName) == attrs.end()) {
     SQLWarning* warning = new SQLWarning(__FILE__, __LINE__,
         SQLState::INVALID_CONNECTION_PROPERTY,
         SQLStateMessage::INVALID_CONNECTION_PROPERTY_MSG.format(
@@ -480,27 +495,26 @@ std::unique_ptr<Result> Connection::prepareAndExecuteBatch(
 
 // transactions
 
-void Connection::beginTransaction(const IsolationLevel::type isolationLevel) {
+void Connection::beginTransaction(const IsolationLevel isolationLevel) {
   ClientService& service = checkAndGetService();
 
   service.beginTransaction(isolationLevel);
 }
 
-IsolationLevel::type Connection::getCurrentIsolationLevel() const {
+IsolationLevel Connection::getCurrentIsolationLevel() const {
   ClientService& service = checkAndGetService();
 
   return service.getCurrentIsolationLevel();
 }
 
-void Connection::setTransactionAttribute(const TransactionAttribute::type flag,
+void Connection::setTransactionAttribute(const TransactionAttribute flag,
     bool isTrue) {
   ClientService& service = checkAndGetService();
 
   service.setTransactionAttribute(flag, isTrue);
 }
 
-bool Connection::getTransactionAttribute(
-    const TransactionAttribute::type flag) {
+bool Connection::getTransactionAttribute(const TransactionAttribute flag) {
   ClientService& service = checkAndGetService();
 
   return service.getTransactionAttribute(flag);
@@ -538,7 +552,7 @@ const std::string Connection::getNativeSQL(const std::string& sql) const {
   return trimSql;
 }
 
-ResultSetHoldability::type Connection::getResultSetHoldability()
+ResultSetHoldability Connection::getResultSetHoldability()
     const noexcept {
   if (m_defaultHoldability == ResultSetHoldability::NONE) {
     return thrift::snappydataConstants::DEFAULT_RESULTSET_HOLD_CURSORS_OVER_COMMIT
@@ -549,8 +563,7 @@ ResultSetHoldability::type Connection::getResultSetHoldability()
   }
 }
 
-void Connection::setResultSetHoldability(
-    ResultSetHoldability::type holdability) {
+void Connection::setResultSetHoldability(ResultSetHoldability holdability) {
   m_defaultHoldability = holdability;
 }
 
@@ -567,50 +580,54 @@ const DatabaseMetaData* Connection::getServiceMetaData() {
 }
 
 std::unique_ptr<ResultSet> Connection::getSchemaMetaData(
-    const DatabaseMetaDataCall::type method, DatabaseMetaDataArgs& args,
-    const DriverType::type driverType) {
+    const DatabaseMetaDataCall method, DatabaseMetaDataArgs& args,
+    const DriverType driverType) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = driverType;
-  service.getSchemaMetaData(*rs, method, args.m_args);
+  args.m_args.driverType = static_cast<int8_t>(driverType);
+  service.getSchemaMetaData(*rs,
+      static_cast<thrift::ServiceMetaDataCall::type>(method), args.m_args);
   return resultSet;
 }
 
 std::unique_ptr<ResultSet> Connection::getIndexInfo(
     DatabaseMetaDataArgs& args, bool unique, bool approximate,
-    const DriverType::type driverType) {
+    const DriverType driverType) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = driverType;
+  args.m_args.driverType = static_cast<int8_t>(driverType);
   service.getIndexInfo(*rs, args.m_args, unique, approximate);
   return resultSet;
 }
 
 std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
     const std::string& typeNamePattern,
-    const std::vector<SQLType::type>& types,
-    const DriverType::type driverType) {
+    const std::vector<SQLType>& types, const DriverType driverType) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = driverType;
-  service.getUDTs(*rs, args.m_args, types);
+  args.m_args.driverType = static_cast<int8_t>(driverType);
+  std::vector<thrift::SnappyType::type> thriftTypes(types.size());
+  for (auto type : types) {
+    thriftTypes.push_back(static_cast<thrift::SnappyType::type>(type));
+  }
+  service.getUDTs(*rs, args.m_args, thriftTypes);
   return resultSet;
 }
 
 std::unique_ptr<ResultSet> Connection::getBestRowIdentifier(
     DatabaseMetaDataArgs& args, int32_t scope, bool nullable,
-    const DriverType::type driverType) {
+    const DriverType driverType) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = driverType;
+  args.m_args.driverType = static_cast<int8_t>(driverType);
   service.getBestRowIdentifier(*rs, args.m_args, scope, nullable);
   return resultSet;
 }
@@ -627,6 +644,7 @@ void Connection::close() {
 
 Connection::~Connection() {
   // destructor should *never* throw an exception
+  // TODO: close from destructor should use bulkClose if valid handle
   try {
     close();
   } catch (const SQLException& sqle) {

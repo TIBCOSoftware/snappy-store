@@ -58,8 +58,8 @@ namespace client {
 
     static StatementAttributes EMPTY;
 
-    ResultSetType::type getResultSetType() const noexcept {
-      return static_cast<ResultSetType::type>(
+    ResultSetType getResultSetType() const noexcept {
+      return static_cast<ResultSetType>(
           m_attrs->__isset.resultSetType ? m_attrs->resultSetType :
               thrift::snappydataConstants::DEFAULT_RESULTSET_TYPE);
     }
@@ -77,7 +77,7 @@ namespace client {
       return *m_attrs;
     }
 
-    ResultSetHoldability::type getResultSetHoldability() const noexcept;
+    ResultSetHoldability getResultSetHoldability() const noexcept;
     bool isFetchDirectionReverse() const noexcept;
     uint32_t getLobChunkSize() const noexcept;
     uint32_t getMaxRows() const noexcept;
@@ -87,8 +87,8 @@ namespace client {
     bool isPoolable() const noexcept;
     bool hasEscapeProcessing() const noexcept;
 
-    void setResultSetType(ResultSetType::type rsType);
-    void setResultSetHoldability(ResultSetHoldability::type holdability);
+    void setResultSetType(ResultSetType rsType);
+    void setResultSetHoldability(ResultSetHoldability holdability);
     void setUpdatable(bool updatable);
     void setBatchSize(uint32_t batchSize);
     void setFetchDirectionReverse(bool fetchDirection);

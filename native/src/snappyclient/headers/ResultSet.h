@@ -586,7 +586,7 @@ namespace client {
     }
 
     std::unique_ptr<ResultSet> getNextResults(
-        const NextResultSetBehaviour::type behaviour =
+        const NextResultSetBehaviour behaviour =
             NextResultSetBehaviour::CLOSE_ALL);
 
     inline bool hasWarnings() const noexcept {

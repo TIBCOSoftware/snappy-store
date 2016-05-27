@@ -293,7 +293,12 @@ public:
   // buffer to read the result into instead of creating a new std::string
   // (though it is dangerous and should avoid unless perf benefit is proven)
   inline void setString(const char* val, const int32_t len) {
-    m_val = std::move(std::shared_ptr<std::string>(new std::string(val, len)));
+    if (len < 0) {
+      m_val = std::move(std::shared_ptr<std::string>(new std::string(val)));
+    } else {
+      m_val = std::move(std::shared_ptr<std::string>(new std::string(val,
+          len)));
+    }
   }
 
   inline void setDecimal(const Decimal& val) {

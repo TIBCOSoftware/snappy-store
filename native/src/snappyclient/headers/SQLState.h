@@ -42,69 +42,73 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  namespace ExceptionSeverity {
-    enum type {
-      /*
-       * Use NO_APPLICABLE_SEVERITY for internal errors and unit
-       * tests that don't need to report or worry about severities.
-       */
-      /**
-       * NO_APPLICABLE_SEVERITY occurs only when the system was
-       * unable to determine the severity.
-       */
-      NO_APPLICABLE_SEVERITY = 0,
+  enum class ExceptionSeverity {
+    /*
+     * Use NO_APPLICABLE_SEVERITY for internal errors and unit
+     * tests that don't need to report or worry about severities.
+     */
+    /**
+     * NO_APPLICABLE_SEVERITY occurs only when the system was
+     * unable to determine the severity.
+     */
+    NO_APPLICABLE_SEVERITY = 0,
 
-      /**
-       * WARNING_SEVERITY is associated with SQLWarnings.
-       */
-      WARNING_SEVERITY = 10000,
+    /**
+     * WARNING_SEVERITY is associated with SQLWarnings.
+     */
+    WARNING_SEVERITY = 10000,
 
-      /**
-       * STATEMENT_SEVERITY is associated with errors which
-       * cause only the current statement to be aborted.
-       */
-      STATEMENT_SEVERITY = 20000,
+    /**
+     * STATEMENT_SEVERITY is associated with errors which
+     * cause only the current statement to be aborted.
+     */
+    STATEMENT_SEVERITY = 20000,
 
-      /**
-       * TRANSACTION_SEVERITY is associated with those errors which
-       * cause the current transaction to be aborted.
-       */
-      TRANSACTION_SEVERITY = 30000,
+    /**
+     * TRANSACTION_SEVERITY is associated with those errors which
+     * cause the current transaction to be aborted.
+     */
+    TRANSACTION_SEVERITY = 30000,
 
-      /**
-       * SESSION_SEVERITY is associated with errors which
-       * cause the current connection to be closed.
-       */
-      SESSION_SEVERITY = 40000,
+    /**
+     * SESSION_SEVERITY is associated with errors which
+     * cause the current connection to be closed.
+     */
+    SESSION_SEVERITY = 40000,
 
-      /**
-       * DATABASE_SEVERITY is associated with errors which
-       * cause the current database to be closed.
-       */
-      DATABASE_SEVERITY = 45000,
+    /**
+     * DATABASE_SEVERITY is associated with errors which
+     * cause the current database to be closed.
+     */
+    DATABASE_SEVERITY = 45000,
 
-      /**
-       * SYSTEM_SEVERITY is associated with internal errors which
-       * cause the system to shut down.
-       */
-      SYSTEM_SEVERITY = 50000
-    };
+    /**
+     * SYSTEM_SEVERITY is associated with internal errors which
+     * cause the system to shut down.
+     */
+    SYSTEM_SEVERITY = 50000
+  };
+
+  namespace impl {
+    class ClientService;
   }
 
   class SQLState {
   private:
     const char* m_state;
-    const ExceptionSeverity::type m_severity;
+    const ExceptionSeverity m_severity;
 
-    SQLState(const char* state,
-        const ExceptionSeverity::type severity);
+    SQLState(const char* state, const ExceptionSeverity severity);
+
+    static void staticInitialize();
+    friend class impl::ClientService;
 
   public:
     const char* getSQLState() const noexcept {
       return m_state;
     }
 
-    ExceptionSeverity::type getSeverity() const noexcept {
+    ExceptionSeverity getSeverity() const noexcept {
       return m_severity;
     }
 

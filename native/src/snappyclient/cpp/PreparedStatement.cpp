@@ -68,22 +68,22 @@ PreparedStatement::PreparedStatement(
 }
 
 void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
-    const SQLType::type type) {
+    const SQLType type) {
   if (m_outParams == NULL) {
     m_outParams.reset(new std::map<int32_t, thrift::OutputParameter>());
   }
   thrift::OutputParameter outParam;
-  outParam.__set_type(type);
+  outParam.__set_type(static_cast<thrift::SnappyType::type>(type));
   m_outParams->operator[](parameterIndex) = outParam;
 }
 
 void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
-    const SQLType::type type, const int32_t scale) {
+    const SQLType type, const int32_t scale) {
   if (m_outParams == NULL) {
     m_outParams.reset(new std::map<int32_t, thrift::OutputParameter>());
   }
   thrift::OutputParameter outParam;
-  outParam.__set_type(type);
+  outParam.__set_type(static_cast<thrift::SnappyType::type>(type));
   outParam.__set_scale(scale);
   m_outParams->operator[](parameterIndex) = outParam;
 }
@@ -171,7 +171,7 @@ std::vector<int32_t> PreparedStatement::executeBatch(
 }
 
 std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
-    const NextResultSetBehaviour::type behaviour) {
+    const NextResultSetBehaviour behaviour) {
   if (m_cursorId != thrift::snappydataConstants::INVALID_ID) {
     int32_t batchSize;
     bool updatable, scrollable;
@@ -182,7 +182,8 @@ std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
         new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
             scrollable));
 
-    m_service->getNextResultSet(*rs, m_cursorId, behaviour);
+    m_service->getNextResultSet(*rs, m_cursorId,
+        static_cast<int8_t>(behaviour));
     if (resultSet->hasWarnings()) {
       // set back in PreparedStatement
       m_warnings = resultSet->getWarnings();
@@ -236,14 +237,16 @@ bool PreparedStatement::cancel() {
 }
 
 void PreparedStatement::close() {
-  if (m_prepResult.statementId != 0) {
+  if (m_prepResult.statementId != thrift::snappydataConstants::INVALID_ID) {
     m_service->closeStatement(m_prepResult.statementId);
   }
+  m_prepResult.statementId = thrift::snappydataConstants::INVALID_ID;
   m_cursorId = thrift::snappydataConstants::INVALID_ID;
 }
 
 PreparedStatement::~PreparedStatement() {
   // destructor should *never* throw an exception
+  // TODO: close from destructor should use bulkClose if valid handle
   try {
     close();
   } catch (const SQLException& sqle) {

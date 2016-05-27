@@ -58,6 +58,7 @@
 
 #include "ClientProperty.h"
 #include "ClientAttribute.h"
+#include "Connection.h"
 
 #include "SQLException.h"
 #include "LogWriter.h"
@@ -106,18 +107,22 @@ void DEFAULT_OUTPUT_FN(const char *str) {
   LogWriter::info() << str << _SNAPPY_NEWLINE;
 }
 
-void ClientService::staticInitialize(
-    std::map<std::string, std::string>& props) {
+bool ClientService::staticInitialize() {
   std::lock_guard<std::mutex> sync(s_globalLock);
 
   if (s_hostName.empty()) {
-
     // first initialize any utilities used by other parts of product
     InternalUtils::staticInitialize();
+    // dummy call to just ensure SQLState is loaded first
+    SQLState::staticInitialize();
     // then initialize the common message library
     SQLStateMessage::staticInitialize();
+    // dummy call to ensure ClientAttribute is loaded
+    ClientAttribute::staticInitialize();
     // and the logger
     LogWriter::staticInitialize();
+    // lastly the ConnectionProperty class
+    ConnectionProperty::staticInitialize();
 
     s_hostName = boost::asio::ip::host_name();
     // use process ID and timestamp for ID
@@ -128,6 +133,17 @@ void ClientService::staticInitialize(
     boost::posix_time::ptime currentTime =
         boost::posix_time::microsec_clock::universal_time();
     s_hostId.append(boost::posix_time::to_simple_string(currentTime));
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void ClientService::staticInitialize(
+    std::map<std::string, std::string>& props) {
+
+  if (staticInitialize()) {
+    std::lock_guard<std::mutex> sync(s_globalLock);
 
     LogWriter& globalLogger = LogWriter::global();
     std::string logFile, logLevelStr;
@@ -376,9 +392,10 @@ ClientService::ClientService(const std::string& host, const int port,
       useSSL = boost::iequals(propValue->second, "true");
       props.erase(propValue);
     }
-    if ((propValue = props.find(ClientAttribute::THRIFT_SSL_PROPERTIES))
+    if ((propValue = props.find(ClientAttribute::SSL_PROPERTIES))
         != props.end()) {
       useSSL = true;
+      // TODO: SW: SSL params support
       //sslParams = Utils::getSSLParameters(propValue->second);
       props.erase(propValue);
     }
@@ -582,7 +599,6 @@ protocol::TProtocol* ClientService::createProtocol(
   DNSCacheService::instance().resolve(hostAddr);
 
   if (useSSL) {
-    // TODO: SW: SSL params support
     TSSLSocketFactory sslSocketFactory;
     sslSocketFactory.authenticate(false);
     boost::shared_ptr<TSocket> sslSocket = sslSocketFactory.createSocket(
@@ -592,7 +608,8 @@ protocol::TProtocol* ClientService::createProtocol(
   } else {
     boost::shared_ptr<TSocket> socket(
         new TSocket(hostAddr.hostName, hostAddr.port));
-    returnTransport.reset(new BufferedSocketTransport(socket, rsz, wsz, true));
+    returnTransport.reset(
+        new BufferedSocketTransport(socket, rsz, wsz, false));
   }
   if (useBinaryProtocol) {
     return new protocol::TBinaryProtocol(returnTransport);
@@ -601,18 +618,18 @@ protocol::TProtocol* ClientService::createProtocol(
   }
 }
 
-void ClientService::execute(thrift::StatementResult& _return,
+void ClientService::execute(thrift::StatementResult& result,
     const std::string& sql,
     const std::map<int32_t, thrift::OutputParameter>& outputParams,
     const thrift::StatementAttrs& attrs) {
   try {
     if (!m_hasPendingTXAttrs) {
-      m_client.execute(_return, m_connId, sql, outputParams, attrs, m_token);
+      m_client.execute(result, m_connId, sql, outputParams, attrs, m_token);
     } else {
       thrift::StatementAttrs newAttrs(attrs);
       setPendingTransactionAttrs(newAttrs);
 
-      m_client.execute(_return, m_connId, sql, outputParams, newAttrs, m_token);
+      m_client.execute(result, m_connId, sql, outputParams, newAttrs, m_token);
 
       clearPendingTransactionAttrs();
     }
@@ -631,17 +648,17 @@ void ClientService::execute(thrift::StatementResult& _return,
   }
 }
 
-void ClientService::executeUpdate(thrift::UpdateResult& _return,
+void ClientService::executeUpdate(thrift::UpdateResult& result,
     const std::vector<std::string>& sqls,
     const thrift::StatementAttrs& attrs) {
   try {
     if (!m_hasPendingTXAttrs) {
-      m_client.executeUpdate(_return, m_connId, sqls, attrs, m_token);
+      m_client.executeUpdate(result, m_connId, sqls, attrs, m_token);
     } else {
       thrift::StatementAttrs newAttrs(attrs);
       setPendingTransactionAttrs(newAttrs);
 
-      m_client.executeUpdate(_return, m_connId, sqls, newAttrs, m_token);
+      m_client.executeUpdate(result, m_connId, sqls, newAttrs, m_token);
 
       clearPendingTransactionAttrs();
     }
@@ -660,16 +677,16 @@ void ClientService::executeUpdate(thrift::UpdateResult& _return,
   }
 }
 
-void ClientService::executeQuery(thrift::RowSet& _return,
+void ClientService::executeQuery(thrift::RowSet& result,
     const std::string& sql, const thrift::StatementAttrs& attrs) {
   try {
     if (!m_hasPendingTXAttrs) {
-      m_client.executeQuery(_return, m_connId, sql, attrs, m_token);
+      m_client.executeQuery(result, m_connId, sql, attrs, m_token);
     } else {
       thrift::StatementAttrs newAttrs(attrs);
       setPendingTransactionAttrs(newAttrs);
 
-      m_client.executeQuery(_return, m_connId, sql, newAttrs, m_token);
+      m_client.executeQuery(result, m_connId, sql, newAttrs, m_token);
 
       clearPendingTransactionAttrs();
     }
@@ -688,19 +705,19 @@ void ClientService::executeQuery(thrift::RowSet& _return,
   }
 }
 
-void ClientService::prepareStatement(thrift::PrepareResult& _return,
+void ClientService::prepareStatement(thrift::PrepareResult& result,
     const std::string& sql,
     const std::map<int32_t, thrift::OutputParameter>& outputParams,
     const thrift::StatementAttrs& attrs) {
   try {
     if (!m_hasPendingTXAttrs) {
-      m_client.prepareStatement(_return, m_connId, sql, outputParams, attrs,
+      m_client.prepareStatement(result, m_connId, sql, outputParams, attrs,
           m_token);
     } else {
       thrift::StatementAttrs newAttrs(attrs);
       setPendingTransactionAttrs(newAttrs);
 
-      m_client.prepareStatement(_return, m_connId, sql, outputParams, newAttrs,
+      m_client.prepareStatement(result, m_connId, sql, outputParams, newAttrs,
           m_token);
 
       clearPendingTransactionAttrs();
@@ -720,14 +737,14 @@ void ClientService::prepareStatement(thrift::PrepareResult& _return,
   }
 }
 
-void ClientService::executePrepared(thrift::StatementResult& _return,
+void ClientService::executePrepared(thrift::StatementResult& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params,
     const std::map<int32_t, thrift::OutputParameter>& outputParams) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.executePrepared(_return, prepResult.statementId, params,
+    m_client.executePrepared(result, prepResult.statementId, params,
         outputParams, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -744,13 +761,13 @@ void ClientService::executePrepared(thrift::StatementResult& _return,
   }
 }
 
-void ClientService::executePreparedUpdate(thrift::UpdateResult& _return,
+void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.executePreparedUpdate(_return, prepResult.statementId, params,
+    m_client.executePreparedUpdate(result, prepResult.statementId, params,
         m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -767,13 +784,13 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& _return,
   }
 }
 
-void ClientService::executePreparedQuery(thrift::RowSet& _return,
+void ClientService::executePreparedQuery(thrift::RowSet& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.executePreparedQuery(_return, prepResult.statementId, params,
+    m_client.executePreparedQuery(result, prepResult.statementId, params,
         m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -790,14 +807,14 @@ void ClientService::executePreparedQuery(thrift::RowSet& _return,
   }
 }
 
-void ClientService::executePreparedBatch(thrift::UpdateResult& _return,
+void ClientService::executePreparedBatch(thrift::UpdateResult& result,
     thrift::PrepareResult& prepResult,
     const std::vector<thrift::Row>& paramsBatch) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.executePreparedBatch(_return, prepResult.statementId, paramsBatch,
+    m_client.executePreparedBatch(result, prepResult.statementId, paramsBatch,
         m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -814,19 +831,19 @@ void ClientService::executePreparedBatch(thrift::UpdateResult& _return,
   }
 }
 
-void ClientService::prepareAndExecute(thrift::StatementResult& _return,
+void ClientService::prepareAndExecute(thrift::StatementResult& result,
     const std::string& sql, const std::vector<thrift::Row>& paramsBatch,
     const std::map<int32_t, thrift::OutputParameter>& outputParams,
     const thrift::StatementAttrs& attrs) {
   try {
     if (!m_hasPendingTXAttrs) {
-      m_client.prepareAndExecute(_return, m_connId, sql, paramsBatch,
+      m_client.prepareAndExecute(result, m_connId, sql, paramsBatch,
           outputParams, attrs, m_token);
     } else {
       thrift::StatementAttrs newAttrs(attrs);
       setPendingTransactionAttrs(newAttrs);
 
-      m_client.prepareAndExecute(_return, m_connId, sql, paramsBatch,
+      m_client.prepareAndExecute(result, m_connId, sql, paramsBatch,
           outputParams, newAttrs, m_token);
 
       clearPendingTransactionAttrs();
@@ -846,13 +863,13 @@ void ClientService::prepareAndExecute(thrift::StatementResult& _return,
   }
 }
 
-void ClientService::getNextResultSet(thrift::RowSet& _return,
+void ClientService::getNextResultSet(thrift::RowSet& result,
     const int32_t cursorId, const int8_t otherResultSetBehaviour) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getNextResultSet(_return, cursorId, otherResultSetBehaviour,
+    m_client.getNextResultSet(result, cursorId, otherResultSetBehaviour,
         m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -869,14 +886,14 @@ void ClientService::getNextResultSet(thrift::RowSet& _return,
   }
 }
 
-void ClientService::getBlobChunk(thrift::BlobChunk& _return,
+void ClientService::getBlobChunk(thrift::BlobChunk& result,
     const int32_t lobId, const int64_t offset, const int32_t size,
     const bool freeLobAtEnd) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getBlobChunk(_return, m_connId, lobId, offset, size,
+    m_client.getBlobChunk(result, m_connId, lobId, offset, size,
         freeLobAtEnd, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -893,14 +910,14 @@ void ClientService::getBlobChunk(thrift::BlobChunk& _return,
   }
 }
 
-void ClientService::getClobChunk(thrift::ClobChunk& _return,
+void ClientService::getClobChunk(thrift::ClobChunk& result,
     const int32_t lobId, const int64_t offset, const int32_t size,
     const bool freeLobAtEnd) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getClobChunk(_return, m_connId, lobId, offset, size,
+    m_client.getClobChunk(result, m_connId, lobId, offset, size,
         freeLobAtEnd, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -984,14 +1001,14 @@ void ClientService::freeLob(const int32_t lobId) {
   }
 }
 
-void ClientService::scrollCursor(thrift::RowSet& _return,
+void ClientService::scrollCursor(thrift::RowSet& result,
     const int32_t cursorId, const int32_t offset, const bool offsetIsAbsolute,
     const bool fetchReverse, const int32_t fetchSize) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.scrollCursor(_return, cursorId, offset, offsetIsAbsolute,
+    m_client.scrollCursor(result, cursorId, offset, offsetIsAbsolute,
         fetchReverse, fetchSize, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -1043,8 +1060,7 @@ void ClientService::executeBatchCursorUpdate(const int32_t cursorId,
   }
 }
 
-void ClientService::beginTransaction(
-    const IsolationLevel::type isolationLevel) {
+void ClientService::beginTransaction(const IsolationLevel isolationLevel) {
   try {
     m_client.beginTransaction(m_connId, static_cast<int8_t>(isolationLevel),
         m_pendingTXAttrs, m_token);
@@ -1066,35 +1082,38 @@ void ClientService::beginTransaction(
 }
 
 void ClientService::setTransactionAttribute(
-    const TransactionAttribute::type flag, bool isTrue) {
-  m_pendingTXAttrs[flag] = isTrue;
+    const TransactionAttribute flag, bool isTrue) {
+  m_pendingTXAttrs[static_cast<thrift::TransactionAttribute::type>(flag)] =
+      isTrue;
   m_hasPendingTXAttrs = true;
 }
 
 bool ClientService::getTransactionAttribute(
-    const TransactionAttribute::type flag) {
-  std::map<TransactionAttribute::type, bool>::const_iterator res;
+    const TransactionAttribute flag) {
+  const thrift::TransactionAttribute::type attr =
+      static_cast<thrift::TransactionAttribute::type>(flag);
+  std::map<thrift::TransactionAttribute::type, bool>::const_iterator res;
   if (m_pendingTXAttrs.size() > 0
-      && (res = m_pendingTXAttrs.find(flag)) != m_pendingTXAttrs.end()) {
+      && (res = m_pendingTXAttrs.find(attr)) != m_pendingTXAttrs.end()) {
     return res->second;
   } else {
     if (m_currentTXAttrs.size() > 0
-        && (res = m_currentTXAttrs.find(flag)) != m_currentTXAttrs.end()) {
+        && (res = m_currentTXAttrs.find(attr)) != m_currentTXAttrs.end()) {
       return res->second;
     } else {
       getTransactionAttributes(m_currentTXAttrs);
-      return m_currentTXAttrs[flag];
+      return m_currentTXAttrs[attr];
     }
   }
 }
 
 void ClientService::getTransactionAttributes(
-    std::map<TransactionAttribute::type, bool>& _return) {
+    std::map<thrift::TransactionAttribute::type, bool>& result) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getTransactionAttributes(_return, m_connId, m_token);
+    m_client.getTransactionAttributes(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1173,12 +1192,12 @@ bool ClientService::prepareCommitTransaction() {
 }
 
 void ClientService::fetchActiveConnections(
-    std::vector<thrift::ConnectionProperties>& _return) {
+    std::vector<thrift::ConnectionProperties>& result) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.fetchActiveConnections(_return, m_connId, m_token);
+    m_client.fetchActiveConnections(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1195,12 +1214,12 @@ void ClientService::fetchActiveConnections(
 }
 
 void ClientService::fetchActiveStatements(
-    std::map<int32_t, std::string>& _return) {
+    std::map<int32_t, std::string>& result) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.fetchActiveStatements(_return, m_connId, m_token);
+    m_client.fetchActiveStatements(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1216,12 +1235,12 @@ void ClientService::fetchActiveStatements(
   }
 }
 
-void ClientService::getServiceMetaData(thrift::ServiceMetaData& _return) {
+void ClientService::getServiceMetaData(thrift::ServiceMetaData& result) {
   try {
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getServiceMetaData(_return, m_connId, m_token);
+    m_client.getServiceMetaData(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1237,7 +1256,7 @@ void ClientService::getServiceMetaData(thrift::ServiceMetaData& _return) {
   }
 }
 
-void ClientService::getSchemaMetaData(thrift::RowSet& _return,
+void ClientService::getSchemaMetaData(thrift::RowSet& result,
     const thrift::ServiceMetaDataCall::type schemaCall,
     thrift::ServiceMetaDataArgs& metadataArgs) {
   metadataArgs.connId = m_connId;
@@ -1248,7 +1267,7 @@ void ClientService::getSchemaMetaData(thrift::RowSet& _return,
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getSchemaMetaData(_return, schemaCall, metadataArgs);
+    m_client.getSchemaMetaData(result, schemaCall, metadataArgs);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1264,7 +1283,7 @@ void ClientService::getSchemaMetaData(thrift::RowSet& _return,
   }
 }
 
-void ClientService::getIndexInfo(thrift::RowSet& _return,
+void ClientService::getIndexInfo(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs, const bool unique,
     const bool approximate) {
   metadataArgs.connId = m_connId;
@@ -1275,7 +1294,7 @@ void ClientService::getIndexInfo(thrift::RowSet& _return,
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getIndexInfo(_return, metadataArgs, unique, approximate);
+    m_client.getIndexInfo(result, metadataArgs, unique, approximate);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1291,7 +1310,7 @@ void ClientService::getIndexInfo(thrift::RowSet& _return,
   }
 }
 
-void ClientService::getUDTs(thrift::RowSet& _return,
+void ClientService::getUDTs(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs,
     const std::vector<thrift::SnappyType::type>& types) {
   metadataArgs.connId = m_connId;
@@ -1302,7 +1321,7 @@ void ClientService::getUDTs(thrift::RowSet& _return,
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getUDTs(_return, metadataArgs, types);
+    m_client.getUDTs(result, metadataArgs, types);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1318,7 +1337,7 @@ void ClientService::getUDTs(thrift::RowSet& _return,
   }
 }
 
-void ClientService::getBestRowIdentifier(thrift::RowSet& _return,
+void ClientService::getBestRowIdentifier(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs, const int32_t scope,
     const bool nullable) {
   metadataArgs.connId = m_connId;
@@ -1329,7 +1348,7 @@ void ClientService::getBestRowIdentifier(thrift::RowSet& _return,
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.getBestRowIdentifier(_return, metadataArgs, scope, nullable);
+    m_client.getBestRowIdentifier(result, metadataArgs, scope, nullable);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {

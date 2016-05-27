@@ -88,10 +88,10 @@ namespace client {
   public:
 
     void registerOutParameter(const int32_t parameterIndex,
-        const SQLType::type type);
+        const SQLType type);
 
     void registerOutParameter(const int32_t parameterIndex,
-        const SQLType::type type, const int32_t scale);
+        const SQLType type, const int32_t scale);
 
     bool unregisterOutParameter(const int32_t parameterIndex);
 
@@ -104,7 +104,7 @@ namespace client {
     std::vector<int32_t> executeBatch(const ParametersBatch& paramsBatch);
 
     std::unique_ptr<ResultSet> getNextResults(
-        const NextResultSetBehaviour::type behaviour =
+        const NextResultSetBehaviour behaviour =
             NextResultSetBehaviour::CLOSE_ALL);
 
     inline bool hasWarnings() const noexcept {

@@ -810,9 +810,10 @@ public class OptimizedElementArray {
         setType(this.size, SnappyType.NULLTYPE);
         this.size++;
         break;
+      default:
+        throw ClientSharedUtils.newRuntimeException("unknown column value: " +
+            (cv.getFieldValue() != null ? cv : "null"), null);
     }
-    throw ClientSharedUtils.newRuntimeException("unknown column value: " + cv,
-        null);
   }
 
   protected final void ensureCapacity() {

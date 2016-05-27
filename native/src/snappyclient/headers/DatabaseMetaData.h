@@ -46,7 +46,12 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  struct RowIdLifetime: thrift::RowIdLifetime {
+  enum class RowIdLifetime {
+    ROWID_UNSUPPORTED = thrift::RowIdLifetime::ROWID_UNSUPPORTED,
+    ROWID_VALID_OTHER = thrift::RowIdLifetime::ROWID_VALID_OTHER,
+    ROWID_VALID_SESSION = thrift::RowIdLifetime::ROWID_VALID_SESSION,
+    ROWID_VALID_TRANSACTION = thrift::RowIdLifetime::ROWID_VALID_TRANSACTION,
+    ROWID_VALID_FOREVER = thrift::RowIdLifetime::ROWID_VALID_FOREVER
   };
 
   class DatabaseMetaDataArgs {
@@ -89,7 +94,7 @@ namespace client {
     DatabaseMetaDataArgs& setAttributeName(
         const std::string& attributeName);
     DatabaseMetaDataArgs& setTypeName(const std::string& typeName);
-    DatabaseMetaDataArgs& setType(const SQLType::type& type);
+    DatabaseMetaDataArgs& setType(const SQLType& type);
   };
 
   class DatabaseMetaData {
@@ -158,24 +163,23 @@ namespace client {
     int32_t maxUserNameLength() const noexcept;
     int32_t defaultTransactionIsolation() const noexcept;
     int32_t getDefaultResultSetType() const noexcept;
-    ResultSetHoldability::type getDefaultHoldability() const noexcept;
+    ResultSetHoldability getDefaultHoldability() const noexcept;
     bool isSQLStateXOpen() const noexcept;
-    RowIdLifetime::type getDefaultRowIdLifeTime() const noexcept;
-    bool supportsConvert(SQLType::type fromType,
-        SQLType::type toType) const noexcept;
+    RowIdLifetime getDefaultRowIdLifeTime() const noexcept;
+    bool supportsConvert(SQLType fromType, SQLType toType) const noexcept;
     bool supportsTransactionIsolationLevel(
-        IsolationLevel::type isolation) const noexcept;
-    bool supportsResultSetReadOnly(ResultSetType::type rsType) const noexcept;
-    bool supportsResultSetUpdatable(ResultSetType::type rsType) const noexcept;
-    bool othersUpdatesVisible(ResultSetType::type rsType) const noexcept;
-    bool othersDeletesVisible(ResultSetType::type rsType) const noexcept;
-    bool othersInsertsVisible(ResultSetType::type rsType) const noexcept;
-    bool ownUpdatesVisible(ResultSetType::type rsType) const noexcept;
-    bool ownDeletesVisible(ResultSetType::type rsType) const noexcept;
-    bool ownInsertsVisible(ResultSetType::type rsType) const noexcept;
-    bool updatesDetected(ResultSetType::type rsType) const noexcept;
-    bool deletesDetected(ResultSetType::type rsType) const noexcept;
-    bool insertsDetected(ResultSetType::type rsType) const noexcept;
+        IsolationLevel isolation) const noexcept;
+    bool supportsResultSetReadOnly(ResultSetType rsType) const noexcept;
+    bool supportsResultSetUpdatable(ResultSetType rsType) const noexcept;
+    bool othersUpdatesVisible(ResultSetType rsType) const noexcept;
+    bool othersDeletesVisible(ResultSetType rsType) const noexcept;
+    bool othersInsertsVisible(ResultSetType rsType) const noexcept;
+    bool ownUpdatesVisible(ResultSetType rsType) const noexcept;
+    bool ownDeletesVisible(ResultSetType rsType) const noexcept;
+    bool ownInsertsVisible(ResultSetType rsType) const noexcept;
+    bool updatesDetected(ResultSetType rsType) const noexcept;
+    bool deletesDetected(ResultSetType rsType) const noexcept;
+    bool insertsDetected(ResultSetType rsType) const noexcept;
   };
 
 } /* namespace client */

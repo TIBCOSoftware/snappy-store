@@ -54,7 +54,7 @@ StatementAttributes::StatementAttributes(const StatementAttributes& attrs) :
     m_attrs(attrs.m_attrs) {
 }
 
-ResultSetHoldability::type StatementAttributes::getResultSetHoldability()
+ResultSetHoldability StatementAttributes::getResultSetHoldability()
     const noexcept {
   return (m_attrs->holdCursorsOverCommit && m_attrs->__isset
       .holdCursorsOverCommit) || thrift::snappydataConstants
@@ -96,13 +96,12 @@ bool StatementAttributes::hasEscapeProcessing() const noexcept {
   return m_attrs->__isset.doEscapeProcessing && m_attrs->doEscapeProcessing;
 }
 
-void StatementAttributes::setResultSetType(
-    ResultSetType::type rsType) {
+void StatementAttributes::setResultSetType(ResultSetType rsType) {
   m_attrs->__set_resultSetType((int8_t)rsType);
 }
 
 void StatementAttributes::setResultSetHoldability(
-    ResultSetHoldability::type holdability) {
+    ResultSetHoldability holdability) {
   m_attrs->__set_holdCursorsOverCommit(
       holdability == ResultSetHoldability::HOLD_CURSORS_OVER_COMMIT);
 }

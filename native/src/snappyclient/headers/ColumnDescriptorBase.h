@@ -46,21 +46,17 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  namespace ColumnNullability {
-    enum type {
-      NONULLS = 0,
-      NULLABLE = 1,
-      UNKNOWN = 2
-    };
-  }
+  enum class ColumnNullability {
+    NONULLS = 0,
+    NULLABLE = 1,
+    UNKNOWN = 2
+  };
 
-  namespace ColumnUpdatable {
-    enum type {
-      READ_ONLY = 0,
-      UPDATABLE = 1,
-      DEFINITELY_UPDATABLE = 2
-    };
-  }
+  enum class ColumnUpdatable {
+    READ_ONLY = 0,
+    UPDATABLE = 1,
+    DEFINITELY_UPDATABLE = 2
+  };
 
   class ColumnDescriptorBase {
   protected:
@@ -84,8 +80,8 @@ namespace client {
       return m_columnIndex;
     }
 
-    SQLType::type getSQLType() const noexcept {
-      return m_descriptor.type;
+    SQLType getSQLType() const noexcept {
+      return static_cast<SQLType>(m_descriptor.type);
     }
 
     const std::string& getName() const noexcept {
@@ -120,7 +116,7 @@ namespace client {
       return m_descriptor.fullTableName;
     }
 
-    ColumnNullability::type getNullability() const noexcept {
+    ColumnNullability getNullability() const noexcept {
       if (m_descriptor.nullable) {
         return ColumnNullability::NULLABLE;
       } else if (m_descriptor.__isset.nullable) {
@@ -130,137 +126,25 @@ namespace client {
       }
     }
 
-    bool isSigned() const noexcept {
-      switch (m_descriptor.type) {
-        case SQLType::TINYINT:
-        case SQLType::SMALLINT:
-        case SQLType::INTEGER:
-        case SQLType::BIGINT:
-        case SQLType::FLOAT:
-        case SQLType::REAL:
-        case SQLType::DOUBLE:
-        case SQLType::DECIMAL:
-          return true;
-        default:
-          return false;
-      }
-    }
+    bool isSigned() const noexcept;
 
     int16_t getPrecision() const noexcept {
       return m_descriptor.precision;
     }
 
-    int16_t getScale() const noexcept {
-      if (m_descriptor.__isset.scale) {
-        return m_descriptor.scale;
-      } else {
-        switch (m_descriptor.type) {
-          case SQLType::BOOLEAN:
-          case SQLType::TINYINT:
-          case SQLType::SMALLINT:
-          case SQLType::INTEGER:
-          case SQLType::BIGINT:
-          case SQLType::FLOAT:
-          case SQLType::REAL:
-          case SQLType::DOUBLE:
-          case SQLType::DATE:
-          case SQLType::TIME:
-            return 0;
-          case SQLType::TIMESTAMP:
-            return 6;
-          default:
-            return thrift::snappydataConstants::COLUMN_SCALE_UNKNOWN;
-        }
-      }
-    }
+    int16_t getScale() const noexcept;
 
     /**
      * Returns the database type name for this column, or "UNKNOWN"
      * if the type cannot be determined.
      */
-    std::string getTypeName() const noexcept {
-      if (m_descriptor.__isset.udtTypeAndClassName) {
-        const std::string& typeAndClass = m_descriptor.udtTypeAndClassName;
-        size_t colonIndex;
-        if ((colonIndex = typeAndClass.find(':')) != std::string::npos) {
-          return typeAndClass.substr(0, colonIndex);
-        } else {
-          return typeAndClass;
-        }
-      } else {
-        switch (m_descriptor.type) {
-          case SQLType::TINYINT:
-            return "TINYINT";
-          case SQLType::SMALLINT:
-            return "SMALLINT";
-          case SQLType::INTEGER:
-            return "INTEGER";
-          case SQLType::BIGINT:
-            return "BIGINT";
-          case SQLType::FLOAT:
-            return "FLOAT";
-          case SQLType::REAL:
-            return "REAL";
-          case SQLType::DOUBLE:
-            return "DOUBLE";
-          case SQLType::DECIMAL:
-            return "DECIMAL";
-          case SQLType::CHAR:
-            return "CHAR";
-          case SQLType::VARCHAR:
-            return "VARCHAR";
-          case SQLType::LONGVARCHAR:
-            return "LONG VARCHAR";
-          case SQLType::DATE:
-            return "DATE";
-          case SQLType::TIME:
-            return "TIME";
-          case SQLType::TIMESTAMP:
-            return "TIMESTAMP";
-          case SQLType::BINARY:
-            return "CHAR FOR BIT DATA";
-          case SQLType::VARBINARY:
-            return "VARCHAR FOR BIT DATA";
-          case SQLType::LONGVARBINARY:
-            return "LONG VARCHAR FOR BIT DATA";
-          case SQLType::JAVA_OBJECT:
-            return "JAVA";
-          case SQLType::BLOB:
-            return "BLOB";
-          case SQLType::CLOB:
-            return "CLOB";
-          case SQLType::BOOLEAN:
-            return "BOOLEAN";
-          case SQLType::SQLXML:
-            return "XML";
-          case SQLType::ARRAY:
-            return "ARRAY";
-          case SQLType::MAP:
-            return "MAP";
-          case SQLType::STRUCT:
-            return "STRUCT";
-          case SQLType::JSON:
-            return "JSON";
-          default:
-            return "UNKNOWN";
-        }
-      }
-    }
+    std::string getTypeName() const noexcept;
 
     /**
      * For a Java user-defined type, return the java class name
      * of the type, else returns empty string ("").
      */
-    std::string getUDTClassName() const noexcept {
-      if (m_descriptor.__isset.udtTypeAndClassName) {
-        const std::string& typeAndClass = m_descriptor.udtTypeAndClassName;
-        size_t colonIndex;
-        if ((colonIndex = typeAndClass.find(':')) != std::string::npos) {
-          return typeAndClass.substr(colonIndex);
-        }
-      }
-      return "";
-    }
+    std::string getUDTClassName() const noexcept;
   };
 
 } /* namespace client */

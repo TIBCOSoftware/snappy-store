@@ -37,7 +37,7 @@
 
 using namespace io::snappydata::client;
 
-SQLState::SQLState(const char* state, const ExceptionSeverity::type severity) :
+SQLState::SQLState(const char* state, const ExceptionSeverity severity) :
     m_state(state), m_severity(severity) {
 }
 
@@ -131,3 +131,6 @@ const SQLState SQLState::DATA_CONTAINER_CLOSED("40XD0",
     ExceptionSeverity::TRANSACTION_SEVERITY);
 const SQLState SQLState::THRIFT_PROTOCOL_ERROR("58015",
     ExceptionSeverity::SESSION_SEVERITY);
+
+void SQLState::staticInitialize() {
+}

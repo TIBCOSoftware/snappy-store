@@ -228,7 +228,7 @@ void SQLStateMessage::staticInitialize() {
       "Driver does not support function ", "");
   FUNCTION_SEQUENCE_ERROR_MSG.initialize(SQLState::FUNCTION_SEQUENCE_ERROR, 1,
       "Function sequence error: ", "");
-  STATEMENT_NOT_PREPARED_MSG.initialize(SQLState::FUNCTION_SEQUENCE_ERROR, 1,
+  STATEMENT_NOT_PREPARED_MSG.initialize(SQLState::FUNCTION_SEQUENCE_ERROR, 2,
       "Cannot execute the statement associated with the handle "
           "as it was not prepared");
   INVALID_DESCRIPTOR_FIELD_ID_MSG.initialize(

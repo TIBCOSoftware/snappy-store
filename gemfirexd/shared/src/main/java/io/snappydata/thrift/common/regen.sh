@@ -1,7 +1,8 @@
 #!/bin/sh
 
-PATH=$PATH:/export/shared/software/thrift-0.9.3/linux64/bin
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/export/shared/software/thrift-0.9.3/linux64/lib
+THRIFT_VERSION=0.9.3
+PATH=$PATH:/export/shared/software/thrift-${THRIFT_VERSION}/linux64/bin
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/export/shared/software/thrift-${THRIFT_VERSION}/linux64/lib
 
 export PATH LD_LIBRARY_PATH
 

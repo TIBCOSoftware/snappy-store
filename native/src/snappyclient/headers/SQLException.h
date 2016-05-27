@@ -78,8 +78,7 @@ namespace client {
         const std::string& reason);
 
     SQLException(const char* file, int line, const char* sqlState,
-        const ExceptionSeverity::type severity,
-        const std::string& reason);
+        const ExceptionSeverity severity, const std::string& reason);
 
     SQLException(const char* file, int line,
         const thrift::SnappyException& se);
