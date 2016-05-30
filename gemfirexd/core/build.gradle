@@ -147,10 +147,15 @@ task doSplit(dependsOn: buildMessages) {
   }
 }
 
-task odbcMeta(dependsOn: "${subprojectBase}gemfirexd-prebuild:processResources") {
+task odbcMeta {
+  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources'
   def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
   outputs.files "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir
+
+  doFirst {
+    metaDir.mkdirs()
+  }
 
   doLast {
     println('Creating ODBC metadata properties')
