@@ -155,7 +155,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
     // With the new logic of not allowing new ddls to be fired when replay is
     // going on the skipping logic is removed and instead an assertion is put
     // that ddl replay should not be in progress when ddl is received.
-    if (memStore.initialDDLReplayInProgress()) {
+    if (!memStore.initialDDLReplayDone()) {
       throw new GfxdDDLReplayInProgressException("Received ddl " + ddl +
           " from sender " + getSender() + " while ddl replay is still in progress");
     }

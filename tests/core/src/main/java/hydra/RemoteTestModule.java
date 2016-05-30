@@ -138,7 +138,20 @@ private static Class c = RMIHydraSocketFactory.class;
       // if parent thread has owner set properly, all children will follow
       for ( int i = 0; i < MyNumThreads; i++ ) {
 
-        RemoteTestModule mod = new RemoteTestModule();
+        RemoteTestModule mod = null;
+        int retryCnt = 0;
+        while(retryCnt < 20) {
+          try {
+            mod = new RemoteTestModule();
+            break;
+          } catch (RemoteException re) {
+            MasterController.sleepForMs(500);
+            if (retryCnt == 19) {
+              throw re;
+            }
+            retryCnt++;
+          }
+        }
         MasterController.sleepForMs(300);
 
         int tid = MyBaseThreadId + i;

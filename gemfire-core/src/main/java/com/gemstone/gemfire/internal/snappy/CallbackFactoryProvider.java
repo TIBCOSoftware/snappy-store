@@ -53,8 +53,7 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public boolean haveRegisteredExternalStore(String tableName) {
-      throw new UnsupportedOperationException("unexpected invocation for "
-          + toString());
+      return false;
     }
 
   };
