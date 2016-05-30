@@ -52,26 +52,10 @@ extern "C" {
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 
-SQLException::SQLException(const char* file, int line,
-    const std::string& reason, const SQLState& state, SQLException* next) :
-    m_reason(reason), m_state(state.getSQLState()),
-    m_severity((int32_t)state.getSeverity()), m_next(next),
-    m_file(file), m_line(line) {
-  init();
-}
-
 SQLException::SQLException(const char* file, int line, const SQLState& state,
-    const std::string& reason) :
+    const std::string& reason, SQLException* next) :
     m_reason(reason), m_state(state.getSQLState()),
-    m_severity(static_cast<int32_t>(state.getSeverity())), m_next(NULL),
-    m_file(file), m_line(line) {
-  init();
-}
-
-SQLException::SQLException(const char* file, int line, const char* sqlState,
-    const ExceptionSeverity severity, const std::string& reason) :
-    m_reason(reason), m_state(sqlState), m_severity(
-        static_cast<int32_t>(severity)), m_next(NULL),
+    m_severity(static_cast<int32_t>(state.getSeverity())), m_next(next),
     m_file(file), m_line(line) {
   init();
 }
@@ -104,6 +88,17 @@ SQLException::SQLException(const SQLException& other) :
   initNextException(other);
 }
 
+SQLException::SQLException(SQLException&& other) :
+    m_reason(std::move(other.m_reason)), m_state(std::move(other.m_state)),
+    m_severity(other.m_severity), m_next(other.m_next),
+    m_file(other.m_file), m_line(other.m_line) {
+  other.m_next = NULL;
+#ifdef __GNUC__
+  copyStack(other.m_stack, other.m_stackSize);
+  other.m_stackSize = 0;
+#endif
+}
+
 SQLException* SQLException::clone() const {
   return new SQLException(*this);
 }
@@ -133,8 +128,9 @@ void SQLException::initNextException(
   if (nextExceptions.size() > 0) {
     SQLException* next = NULL;
     SQLException* current;
-    for (std::vector<thrift::SnappyExceptionData>::const_reverse_iterator iter =
-        nextExceptions.rbegin(); iter != nextExceptions.rend(); ++iter) {
+    // create from the end prepending to the list at the front
+    for (auto iter = nextExceptions.rbegin(); iter != nextExceptions.rend();
+        ++iter) {
       current = createNextException(*iter);
       current->m_next = next;
       next = current;
@@ -215,25 +211,21 @@ SQLException::~SQLException() {
   SQLException* next = m_next;
   SQLException* pnext;
   while (next != NULL) {
-    // iteratively go at the end and start deleting/clearing
+    // iteratively go at the next and start deleting/clearing
     pnext = next->m_next;
     next->m_next = NULL;
     delete next;
     next = pnext;
   }
-}
-
-SQLWarning::SQLWarning(const char* file, int line, const std::string& reason,
-    const SQLState& state, SQLWarning* next) :
-    SQLException(file, line, reason, state, next) {
+  m_next = NULL;
 }
 
 SQLWarning::SQLWarning(const char* file, int line, const SQLState& state,
-    const std::string& reason) :
-    SQLException(file, line, state, reason) {
+    const std::string& reason, SQLWarning* next) :
+    SQLException(file, line, state, reason, next) {
 }
 
-const SQLWarning* SQLWarning::getNextWarning() const noexcept {
+const SQLWarning* SQLWarning::getNextWarning() const {
   const SQLException* next = getNextException();
   return next != NULL ? dynamic_cast<const SQLWarning*>(next) : NULL;
 }
@@ -252,6 +244,10 @@ SQLWarning::SQLWarning(const SQLWarning& other) :
   // virtual call from inside here is fine since this is after
   // base class object construction has been completed
   initNextException(other);
+}
+
+SQLWarning::SQLWarning(SQLWarning&& other) :
+    SQLException(std::move(other)) {
 }
 
 SQLException* SQLWarning::clone() const {

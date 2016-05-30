@@ -42,21 +42,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.thrift.ProcessFunction;
-import org.apache.thrift.TApplicationException;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TMessage;
-import org.apache.thrift.protocol.TMessageType;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TProtocolUtil;
-import org.apache.thrift.protocol.TType;
-
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gnu.trove.THashSet;
-import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
@@ -66,14 +56,24 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.TransactionResourceImpl;
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import io.snappydata.thrift.SnappyException;
-import io.snappydata.thrift.SnappyExceptionData;
-import io.snappydata.thrift.SnappyDataService;
 import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.LocatorService;
 import io.snappydata.thrift.ServerType;
+import io.snappydata.thrift.SnappyDataService;
+import io.snappydata.thrift.SnappyException;
+import io.snappydata.thrift.SnappyExceptionData;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
+import org.apache.thrift.ProcessFunction;
+import org.apache.thrift.TApplicationException;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TMessage;
+import org.apache.thrift.protocol.TMessageType;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TProtocolUtil;
+import org.apache.thrift.protocol.TType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Server-side implementation of thrift LocatorService (see snappydata.thrift).
@@ -84,6 +84,8 @@ public class LocatorServiceImpl implements LocatorService.Iface {
   protected final int hostPort;
   private volatile boolean isActive;
   private final CancelCriterion stopper;
+
+  final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
   public LocatorServiceImpl(String address, int port) {
     this.hostAddress = address;
@@ -162,10 +164,9 @@ public class LocatorServiceImpl implements LocatorService.Iface {
       intersectGroups = null;
     }
     if (SanityManager.TraceClientHA) {
-      SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
-          "getPreferredServer(): getting preferred server for typeGroups="
-              + intersectGroups + (serverGroups != null ? " serverGroups="
-                  + serverGroups : ""));
+      logger.info("getPreferredServer(): getting preferred server for " +
+          "typeGroups=" + intersectGroups + (serverGroups != null
+          ? " serverGroups=" + serverGroups : ""));
     }
 
     ServerLocation prefServer;
@@ -246,9 +247,8 @@ public class LocatorServiceImpl implements LocatorService.Iface {
       throw SnappyException(t);
     }
     if (SanityManager.TraceClientHA) {
-      SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
-          "getAllServersWithPreferredServer(): returning preferred server "
-              + "and all hosts " + prefAndAllServers);
+      logger.info("getAllServersWithPreferredServer(): returning preferred " +
+          "server and all hosts " + prefAndAllServers);
     }
     return prefAndAllServers;
   }
@@ -342,10 +342,9 @@ public class LocatorServiceImpl implements LocatorService.Iface {
         if (!GemFireXDUtils.nodeFailureException(t)) {
           t = getCancelCriterion().generateCancelledException(t);
         }
-      }
-      else {
+      } else {
         // print to server log
-        log("Unexpected error in execution", t, null, true);
+        logger.warn("Unexpected error in execution", t);
       }
       sqle = TransactionResourceImpl.wrapInSQLException(t);
     }
@@ -390,19 +389,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
   protected String getServerInfo() {
     return "Locator=" + this.hostAddress + '[' + this.hostPort + "] Thread="
         + Thread.currentThread().getName();
-  }
-
-  static void log(final String message, Throwable t, String logLevel,
-      boolean forceLog) {
-    if (forceLog | GemFireXDUtils.TraceThriftAPI) {
-      if (logLevel != null) {
-        logLevel = logLevel + ':' + GfxdConstants.TRACE_THRIFT_API;
-      }
-      else {
-        logLevel = GfxdConstants.TRACE_THRIFT_API;
-      }
-      SanityManager.DEBUG_PRINT(logLevel, message, t);
-    }
   }
 
   public final boolean isActive() {

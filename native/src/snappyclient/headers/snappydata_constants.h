@@ -46,6 +46,8 @@ class snappydataConstants {
   static const int8_t ROWSET_LAST_BATCH = 1;
   static const int8_t ROWSET_HAS_MORE_ROWSETS = 2;
   static const int8_t ROWSET_DONE_FOR_LOBS = 4;
+  static const int8_t ROWSET_BEFORE_FIRST = 8;
+  static const int8_t ROWSET_AFTER_LAST = 16;
   static const int8_t BULK_CLOSE_RESULTSET = 1;
   static const int8_t BULK_CLOSE_LOB = 2;
   static const int8_t BULK_CLOSE_STATEMENT = 3;

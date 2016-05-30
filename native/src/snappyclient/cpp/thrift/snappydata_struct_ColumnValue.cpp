@@ -385,7 +385,7 @@ s_typeMap[io::snappydata::VariadicSize<ColumnValue::UnionType>::size] = {
 	std::make_pair(SnappyType::SMALLINT, "i16_val"),
 	std::make_pair(SnappyType::INTEGER, "i32_val"),
 	std::make_pair(SnappyType::BIGINT, "i64_val"),
-	std::make_pair(SnappyType::FLOAT, "float_val"),
+	std::make_pair(SnappyType::REAL, "float_val"),
 	std::make_pair(SnappyType::DOUBLE, "double_val"),
 	std::make_pair(SnappyType::VARCHAR, "string_val"),
 	std::make_pair(SnappyType::DECIMAL, "decimal_val"),

@@ -73,7 +73,7 @@ void DateTime::init(const uint16_t year, const uint16_t month,
     t.tm_sec = sec;
     t.tm_isdst = -1; // no daylight saving information
     const time_t tv = ::mktime(&t);
-    if (tv >= 0) {
+    if (tv != (time_t)-1) {
       setEpochTime(tv);
     } else {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG2,

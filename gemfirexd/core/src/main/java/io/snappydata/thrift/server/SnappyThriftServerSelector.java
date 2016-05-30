@@ -463,7 +463,7 @@ public final class SnappyThriftServerSelector extends TServer {
     // deregister with ConnectionListener
     final ConnectionListener listener = connListener;
     if (listener != null) {
-      listener.connectionClosed(data.clientSocket.getSocket(),
+      listener.connectionClosed(data.clientSocket, data.processor,
           data.connectionNumber);
     }
   }
@@ -537,7 +537,7 @@ public final class SnappyThriftServerSelector extends TServer {
     // register with ConnectionListener
     final ConnectionListener listener = connListener;
     if (listener != null) {
-      listener.connectionOpened(client.getSocket(), connectionNumber);
+      listener.connectionOpened(client, processor, connectionNumber);
     }
 
     return new ClientProcessData(client, connectionNumber, processor, client,

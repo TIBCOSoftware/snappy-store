@@ -102,7 +102,6 @@ namespace client {
     SMALLINT = thrift::SnappyType::SMALLINT,
     INTEGER = thrift::SnappyType::INTEGER,
     BIGINT = thrift::SnappyType::BIGINT,
-    FLOAT = thrift::SnappyType::FLOAT,
     REAL = thrift::SnappyType::REAL,
     DOUBLE = thrift::SnappyType::DOUBLE,
     DECIMAL = thrift::SnappyType::DECIMAL,

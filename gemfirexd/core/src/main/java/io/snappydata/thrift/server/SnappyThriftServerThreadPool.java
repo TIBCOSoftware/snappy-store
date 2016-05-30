@@ -35,7 +35,6 @@
 
 package io.snappydata.thrift.server;
 
-import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -43,7 +42,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.pivotal.gemfirexd.NetworkInterface.ConnectionListener;
-import io.snappydata.thrift.common.SnappyTSocket;
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocol;
@@ -51,7 +49,6 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TServerTransport;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -59,7 +56,7 @@ import org.slf4j.LoggerFactory;
 
 public final class SnappyThriftServerThreadPool extends TServer {
 
-  private final Logger LOGGER = LoggerFactory
+  private final Logger logger = LoggerFactory
       .getLogger(SnappyThriftServerThreadPool.class.getName());
 
   public static final class Args extends AbstractServerArgs<Args> {
@@ -158,7 +155,7 @@ public final class SnappyThriftServerThreadPool extends TServer {
     try {
       serverTransport_.listen();
     } catch (TTransportException tte) {
-      LOGGER.error("Error occurred during listening.", tte);
+      logger.error("Error occurred during listening.", tte);
       return;
     }
 
@@ -177,7 +174,7 @@ public final class SnappyThriftServerThreadPool extends TServer {
         executorService.execute(wp);
       } catch (TTransportException tte) {
         if (!stopped) {
-          LOGGER.warn("Transport error occurred during accept of message.",
+          logger.warn("Transport error occurred during accept of message.",
               tte);
         }
       }
@@ -245,7 +242,6 @@ public final class SnappyThriftServerThreadPool extends TServer {
 
       final ConnectionListener listener = connListener;
       final TTransport client = this.client;
-      Socket clientSocket = null;
 
       try {
         processor = processorFactory_.getProcessor(client);
@@ -260,13 +256,7 @@ public final class SnappyThriftServerThreadPool extends TServer {
         }
         // register with ConnectionListener
         if (listener != null) {
-          if (client instanceof SnappyTSocket) {
-            clientSocket = ((SnappyTSocket)client).getSocket();
-          }
-          else if (client instanceof TSocket) {
-            clientSocket = ((TSocket)client).getSocket();
-          }
-          listener.connectionOpened(clientSocket, this.connectionNumber);
+          listener.connectionOpened(client, processor, this.connectionNumber);
         }
         // we check stopped_ first to make sure we're not supposed to be
         // shutting down. this is necessary for graceful shutdown.
@@ -284,9 +274,9 @@ public final class SnappyThriftServerThreadPool extends TServer {
       } catch (TTransportException tte) {
         // Assume the client died and continue silently
       } catch (TException te) {
-        LOGGER.error("Thrift error occurred during processing of message.", te);
+        logger.error("Thrift error occurred during processing of message.", te);
       } catch (Exception e) {
-        LOGGER.error("Error occurred during processing of message.", e);
+        logger.error("Error occurred during processing of message.", e);
       }
 
       if (eventHandler != null) {
@@ -304,7 +294,7 @@ public final class SnappyThriftServerThreadPool extends TServer {
 
       // deregister with ConnectionListener
       if (listener != null) {
-        listener.connectionClosed(clientSocket, this.connectionNumber);
+        listener.connectionClosed(client, processor, this.connectionNumber);
       }
     }
   }

@@ -71,14 +71,8 @@ namespace client {
 
   class SQLException : std::exception {
   public:
-    SQLException(const char* file, int line, const std::string& reason,
-        const SQLState& state, SQLException* next);
-
     SQLException(const char* file, int line, const SQLState& state,
-        const std::string& reason);
-
-    SQLException(const char* file, int line, const char* sqlState,
-        const ExceptionSeverity severity, const std::string& reason);
+        const std::string& reason, SQLException* next = NULL);
 
     SQLException(const char* file, int line,
         const thrift::SnappyException& se);
@@ -87,6 +81,9 @@ namespace client {
 
     // copy constructor
     SQLException(const SQLException& other);
+
+    // move constructor
+    SQLException(SQLException&& other);
 
     virtual SQLException* clone() const;
 
@@ -169,20 +166,13 @@ namespace client {
     }
 
     SQLException(const char* file, int line, const std::string& reason,
-        const char* state, const int32_t severity, SQLException* next) :
-        m_reason(reason), m_state(state), m_severity(severity),
-        m_next(next), m_file(file), m_line(line) {
-      init();
-    }
-
-    SQLException(const char* file, int line, const std::string& reason,
         const char* state, const int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
 #endif
         ) :
-        m_reason(reason), m_state(state), m_severity(severity), m_file(
-            file), m_line(line) {
+        m_reason(reason), m_state(state), m_severity(severity),
+        m_next(NULL), m_file(file), m_line(line) {
 #ifdef __GNUC__
       copyStack(stack, stackSize);
 #endif
@@ -234,22 +224,23 @@ namespace client {
 
   class SQLWarning : public SQLException {
   public:
-    SQLWarning(const char* file, int line, const std::string& reason,
-        const SQLState& state, SQLWarning* next);
-
     SQLWarning(const char* file, int line, const SQLState& state,
-        const std::string& reason);
+        const std::string& reason, SQLWarning* next = NULL);
 
     SQLWarning(const char* file, int line,
         const thrift::SnappyExceptionData& snappyExceptionData) :
         SQLException(file, line, snappyExceptionData) {
     }
 
+    // copy constructor
     SQLWarning(const SQLWarning& other);
+
+    // move constructor
+    SQLWarning(SQLWarning&& other);
 
     virtual SQLException* clone() const;
 
-    const SQLWarning* getNextWarning() const noexcept;
+    const SQLWarning* getNextWarning() const;
 
     void setNextWarning(SQLWarning* next);
 

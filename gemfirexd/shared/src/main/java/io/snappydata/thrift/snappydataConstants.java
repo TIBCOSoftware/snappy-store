@@ -96,6 +96,10 @@ public class snappydataConstants {
 
   public static final byte ROWSET_DONE_FOR_LOBS = (byte)4;
 
+  public static final byte ROWSET_BEFORE_FIRST = (byte)8;
+
+  public static final byte ROWSET_AFTER_LAST = (byte)16;
+
   public static final byte BULK_CLOSE_RESULTSET = (byte)1;
 
   public static final byte BULK_CLOSE_LOB = (byte)2;

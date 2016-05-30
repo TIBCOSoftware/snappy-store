@@ -143,12 +143,11 @@ public final class ClientRSMetaData implements ResultSetMetaData {
   public boolean isSigned(int column) throws SQLException {
     switch (getDescriptor(column).getType()) {
       case INTEGER:
-      case FLOAT:
+      case REAL:
       case DECIMAL:
       case SMALLINT:
       case BIGINT:
       case TINYINT:
-      case REAL:
       case DOUBLE:
         return true;
       default:
@@ -175,7 +174,6 @@ public final class ClientRSMetaData implements ResultSetMetaData {
       case SMALLINT:
         return 6;
       case REAL:
-      case FLOAT:
         return 13;
       case DOUBLE:
         return 22;
@@ -263,7 +261,6 @@ public final class ClientRSMetaData implements ResultSetMetaData {
         case SMALLINT:
         case INTEGER:
         case BIGINT:
-        case FLOAT:
         case REAL:
         case DOUBLE:
         case DATE:
@@ -340,8 +337,6 @@ public final class ClientRSMetaData implements ResultSetMetaData {
           return "INTEGER";
         case BIGINT:
           return "BIGINT";
-        case FLOAT:
-          return "FLOAT";
         case REAL:
           return "REAL";
         case DOUBLE:
@@ -435,7 +430,6 @@ public final class ClientRSMetaData implements ResultSetMetaData {
         return "java.lang.Integer";
       case BIGINT:
         return "java.lang.Long";
-      case FLOAT:
       case REAL:
         return "java.lang.Float";
       case DOUBLE:

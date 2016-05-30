@@ -85,7 +85,10 @@ import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.SocketParameters;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
+import io.snappydata.thrift.server.SnappyDataServiceImpl;
 import io.snappydata.thrift.server.SnappyThriftServer;
+import org.apache.thrift.TProcessor;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 /**
@@ -881,23 +884,23 @@ public abstract class FabricServiceImpl implements FabricService {
 
     private int serialNumber;
 
-    private BridgeServerAdvisor advisor;
+    protected BridgeServerAdvisor advisor;
 
     // any connection listener added explicitly
-    private ConnectionListener connListener;
+    protected ConnectionListener connListener;
 
     // for connection tracking
     // TODO: add connection statistics
 
     protected volatile ServerLocation location;
 
-    private final ConnectionCountProbe probe;
+    protected final ConnectionCountProbe probe;
 
-    private volatile int totalConnections;
+    protected volatile int totalConnections;
 
-    private int connectionDelta;
+    protected int connectionDelta;
 
-    private int clientCount;
+    protected int clientCount;
 
     private boolean preferIPAddressForClients;
 
@@ -1253,8 +1256,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
     // ConnectionListener methods
 
-    @Override
-    public void connectionOpened(Socket clientSocket, int connectionNumber) {
+    protected void connectionOpened() {
       synchronized (this) {
         ++this.connectionDelta;
         ++this.totalConnections;
@@ -1263,9 +1265,6 @@ public abstract class FabricServiceImpl implements FabricService {
           ++this.clientCount;
         }
         */
-        if (this.connListener != null) {
-          this.connListener.connectionOpened(clientSocket, connectionNumber);
-        }
       }
       if (this.advisor != null && this.advisor.isInitialized()) {
         ConnectionSignaller.getInstance().add(this);
@@ -1273,7 +1272,30 @@ public abstract class FabricServiceImpl implements FabricService {
     }
 
     @Override
-    public void connectionClosed(Socket clientSocket, int connectionNumber) {
+    public void connectionOpened(Socket clientSocket, int connectionNumber) {
+      connectionOpened();
+      final ConnectionListener listener = this.connListener;
+      if (listener != null) {
+        synchronized (this) {
+          listener.connectionOpened(clientSocket, connectionNumber);
+        }
+      }
+    }
+
+    @Override
+    public void connectionOpened(TTransport clientTransport,
+        TProcessor processor, int connectionNumber) {
+      connectionOpened();
+      final ConnectionListener listener = this.connListener;
+      if (listener != null) {
+        synchronized (this) {
+          listener.connectionOpened(clientTransport, processor,
+              connectionNumber);
+        }
+      }
+    }
+
+    protected void connectionClosed() {
       synchronized (this) {
         --this.connectionDelta;
         --this.totalConnections;
@@ -1282,12 +1304,33 @@ public abstract class FabricServiceImpl implements FabricService {
           --this.clientCount;
         }
         */
-        if (this.connListener != null) {
-          this.connListener.connectionClosed(clientSocket, connectionNumber);
-        }
       }
       if (this.advisor != null && this.advisor.isInitialized()) {
         ConnectionSignaller.getInstance().add(this);
+      }
+    }
+
+    @Override
+    public void connectionClosed(Socket clientSocket, int connectionNumber) {
+      connectionClosed();
+      final ConnectionListener listener = this.connListener;
+      if (listener != null) {
+        synchronized (this) {
+          listener.connectionClosed(clientSocket, connectionNumber);
+        }
+      }
+    }
+
+    @Override
+    public void connectionClosed(TTransport clientTransport,
+        TProcessor processor, int connectionNumber) {
+      connectionClosed();
+      final ConnectionListener listener = this.connListener;
+      if (listener != null) {
+        synchronized (this) {
+          listener.connectionClosed(clientTransport, processor,
+              connectionNumber);
+        }
       }
     }
 
@@ -1486,6 +1529,16 @@ public abstract class FabricServiceImpl implements FabricService {
     @Override
     public boolean status() {
       return this.thriftService.isServing();
+    }
+
+    @Override
+    public void connectionClosed(TTransport clientTransport,
+        TProcessor processor, int connectionNumber) {
+      super.connectionClosed(clientTransport, processor, connectionNumber);
+      if (processor instanceof SnappyDataServiceImpl.Processor) {
+        ((SnappyDataServiceImpl.Processor)processor).clientSocketClosed(
+            clientTransport);
+      }
     }
 
     @Override

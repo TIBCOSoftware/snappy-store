@@ -309,6 +309,8 @@ namespace impl {
 
     void closeStatement(const int32_t stmtId);
 
+    void bulkClose(const std::vector<thrift::EntityId>& entities);
+
     void close();
   };
 

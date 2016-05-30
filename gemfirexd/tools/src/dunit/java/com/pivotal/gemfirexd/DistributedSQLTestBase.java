@@ -88,6 +88,8 @@ import org.apache.derby.iapi.services.monitor.Monitor;
 import org.apache.derby.iapi.services.stream.HeaderPrintWriter;
 import org.apache.derbyTesting.junit.CleanDatabaseTestSetup;
 import org.apache.derbyTesting.junit.TestConfiguration;
+import org.apache.thrift.TProcessor;
+import org.apache.thrift.transport.TTransport;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
@@ -1711,7 +1713,19 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     }
 
     @Override
+    public void connectionOpened(TTransport clientSocket, TProcessor processor,
+        int connectionNumber) {
+      numConnectionsOpened.incrementAndGet();
+    }
+
+    @Override
     public void connectionClosed(Socket clientSocket, int connectionNumber) {
+      numConnectionsClosed.incrementAndGet();
+    }
+
+    @Override
+    public void connectionClosed(TTransport clientSocket, TProcessor processor,
+        int connectionNumber) {
       numConnectionsClosed.incrementAndGet();
     }
   };

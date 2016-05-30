@@ -282,9 +282,16 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
         }
       } else {
         // copy the release libraries
-        copy {
-          from "${buildDir}/libs/snappyclient/static/release"
-          into "${productDir}/${osName}64/lib"
+        if (file("${buildDir}/libs/snappyclient/static/release").exists()) {
+          copy {
+            from "${buildDir}/libs/snappyclient/static/release"
+            into "${productDir}/${osName}64/lib"
+          }
+        } else {
+          copy {
+            from "${buildDir}/libs/snappyclient/static"
+            into "${productDir}/${osName}64/lib"
+          }
         }
         // copy the debug libraries
         copy {

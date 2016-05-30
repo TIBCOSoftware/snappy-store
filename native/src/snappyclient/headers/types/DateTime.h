@@ -89,7 +89,7 @@ namespace types {
      *              else in local timezone
      */
     DateTime(const uint16_t year, const uint16_t month,
-        const uint16_t day, const bool utc = true) {
+        const uint16_t day, const bool utc = false) {
       init(year, month, day, 0, 0, 0, utc);
     }
 
@@ -111,7 +111,7 @@ namespace types {
      */
     DateTime(const uint16_t year, const uint16_t month,
         const uint16_t day, const uint16_t hour, const uint16_t min,
-        const uint16_t sec, const bool utc = true) {
+        const uint16_t sec, const bool utc = false) {
       init(year, month, day, hour, min, sec, utc);
     }
 
@@ -160,7 +160,7 @@ namespace types {
      *              else in local timezone
      */
     static DateTime parseDate(const std::string& str,
-        const uint32_t columnIndex = 0, const bool utc = true);
+        const uint32_t columnIndex = 0, const bool utc = false);
 
     /**
      * Create a DateTime instance parsing the time
@@ -173,7 +173,7 @@ namespace types {
      *              else in local timezone
      */
     static DateTime parseTime(const std::string& str,
-        const uint32_t columnIndex = 0, const bool utc = true);
+        const uint32_t columnIndex = 0, const bool utc = false);
 
     /**
      * Create a DateTime instance parsing the date and time
@@ -186,7 +186,7 @@ namespace types {
      *              else in local timezone
      */
     static DateTime parseDateTime(const std::string& str,
-        const uint32_t columnIndex = 0, const bool utc = true);
+        const uint32_t columnIndex = 0, const bool utc = false);
 
     /**
      * Get the date time representation
@@ -207,7 +207,7 @@ namespace types {
      * @param utc   if true then the date is expressed in UTC
      *              else in local timezone
      */
-    void toDate(std::string& str, const bool utc = true) const;
+    void toDate(std::string& str, const bool utc = false) const;
 
     /**
      * Get the UTC or local time representation as string in format
@@ -217,7 +217,7 @@ namespace types {
      * @param utc   if true then the time is expressed in UTC
      *              else in local timezone
      */
-    void toTime(std::string& str, const bool utc = true) const;
+    void toTime(std::string& str, const bool utc = false) const;
 
     /**
      * Get the UTC or local date-time representation as string in format
@@ -227,7 +227,7 @@ namespace types {
      * @param utc   if true then the date-time is expressed in UTC
      *              else in local timezone
      */
-    void toDateTime(std::string& str, const bool utc = true) const;
+    void toDateTime(std::string& str, const bool utc = false) const;
 
     /**
      * Get the date+time fields as C "struct tm"
@@ -235,7 +235,7 @@ namespace types {
      * @param utc   if true then the date-time is expressed in UTC
      *              else in local timezone
      */
-    struct tm toDateTime(const bool utc = true) const;
+    struct tm toDateTime(const bool utc = false) const;
   };
 
 } /* namespace types */

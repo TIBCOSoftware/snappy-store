@@ -89,7 +89,7 @@ namespace types {
      */
     Timestamp(const uint16_t year, const uint16_t month,
         const uint16_t day, const uint16_t hour, const uint16_t min,
-        const uint16_t sec, int32_t nanos, const bool utc = true) :
+        const uint16_t sec, int32_t nanos, const bool utc = false) :
         DateTime(year, month, day, hour, min, sec, utc) {
       setNanos(nanos);
     }
@@ -107,7 +107,7 @@ namespace types {
      * in string form hh:mm:ss hh:mm:ss[.NNNNNNNNN]
      */
     static Timestamp parseString(const std::string& str,
-        const uint32_t columnIndex = 0, const bool utc = true);
+        const uint32_t columnIndex = 0, const bool utc = false);
 
     /**
      * Get the UTC date time representation
@@ -116,7 +116,7 @@ namespace types {
      * and trailing zeros may be removed.
      */
     std::string& toString(std::string& str,
-        const bool utc = true) const;
+        const bool utc = false) const;
   };
 
   struct time_fmt_manip {

@@ -64,6 +64,27 @@ namespace client {
         Row(false) {
     }
 
+    inline void checkBounds(uint32_t paramIndex) const {
+      if (paramIndex >= m_values.size()) {
+        throw GET_SQLEXCEPTION2(
+            SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG, paramIndex,
+            m_values.size());
+      }
+    }
+
+    template<typename T>
+    inline Parameters& set(uint32_t paramNum, const T v) {
+      paramNum--;
+      if (paramNum < m_values.size()) {
+        m_values[paramNum].set(v);
+        return *this;
+      } else {
+        throw GET_SQLEXCEPTION2(
+            SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG, paramNum,
+            m_values.size());
+      }
+    }
+
     friend class ParametersBatch;
 
   public:
@@ -80,86 +101,103 @@ namespace client {
 
     Parameters(const PreparedStatement& pstmt);
 
-    Parameters& setBoolean(const uint32_t index, const bool v);
-
-    Parameters& setByte(const uint32_t index, const int8_t v);
-
-    Parameters& setUnsignedByte(const uint32_t index, const uint8_t v) {
-      // thrift API has no unsigned so need to convert to signed
-      return setByte(index, (const int8_t)v);
+    Parameters& setBoolean(uint32_t paramNum, const bool v) {
+      return set(paramNum, v);
     }
 
-    Parameters& setShort(const uint32_t index, const int16_t v);
-
-    Parameters& setUnsignedShort(const uint32_t index, const uint16_t v) {
-      // thrift API has no unsigned so need to convert to signed
-      return setShort(index, (const int16_t)v);
+    Parameters& setByte(uint32_t paramNum, const int8_t v) {
+      return set(paramNum, v);
     }
 
-    Parameters& setInt(const uint32_t index, const int32_t v);
-
-    Parameters& setUnsignedInt(const uint32_t index, const uint32_t v) {
+    Parameters& setUnsignedByte(uint32_t paramNum, const uint8_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return setInt(index, (const int32_t)v);
+      return set(paramNum, (const int8_t)v);
     }
 
-    Parameters& setInt64(const uint32_t index, const int64_t v);
-
-    Parameters& setUnsignedInt64(const uint32_t index, const uint64_t v) {
-      // thrift API has no unsigned so need to convert to signed
-      return setInt64(index, (const int64_t)v);
+    Parameters& setShort(uint32_t paramNum, const int16_t v) {
+      return set(paramNum, v);
     }
 
-    Parameters& setFloat(const uint32_t index, const float v);
+    Parameters& setUnsignedShort(uint32_t paramNum, const uint16_t v) {
+      // thrift API has no unsigned so need to convert to signed
+      return set(paramNum, (const int16_t)v);
+    }
 
-    Parameters& setDouble(const uint32_t index, const double v);
+    Parameters& setInt(uint32_t paramNum, const int32_t v) {
+      return set(paramNum, v);
+    }
 
-    Parameters& setString(const uint32_t index, const std::string& v);
+    Parameters& setUnsignedInt(uint32_t paramNum, const uint32_t v) {
+      // thrift API has no unsigned so need to convert to signed
+      return set(paramNum, (const int32_t)v);
+    }
 
-    Parameters& setString(const uint32_t index, std::string&& v);
+    Parameters& setInt64(uint32_t paramNum, const int64_t v) {
+      return set(paramNum, v);
+    }
 
-    Parameters& setString(const uint32_t index, const char* v);
+    Parameters& setUnsignedInt64(uint32_t paramNum, const uint64_t v) {
+      // thrift API has no unsigned so need to convert to signed
+      return set(paramNum, (const int64_t)v);
+    }
 
-    Parameters& setString(const uint32_t index, const char* v,
-        const int32_t len);
+    Parameters& setFloat(uint32_t paramNum, const float v) {
+      return set(paramNum, v);
+    }
+
+    Parameters& setDouble(uint32_t paramNum, const double v) {
+      return set(paramNum, v);
+    }
+
+    Parameters& setString(uint32_t paramNum, const std::string& v);
+
+    Parameters& setString(uint32_t paramNum, std::string&& v) {
+      checkBounds(--paramNum);
+      m_values[paramNum].setString(std::move(v));
+      return *this;
+    }
+
+    Parameters& setString(uint32_t paramNum, const char* v);
+
+    Parameters& setString(uint32_t paramNum, const char* v, const int32_t len);
 
     // TODO: somehow have an efficient move version; right now a full
     // transformation copy happens from public Decimal to thrift's Decimal
 
-    Parameters& setDecimal(const uint32_t index, const Decimal& v);
+    Parameters& setDecimal(uint32_t paramNum, const Decimal& v);
 
-    Parameters& setDecimal(const uint32_t index, const int8_t signum,
+    Parameters& setDecimal(uint32_t paramNum, const int8_t signum,
         const int32_t scale, const int8_t* magnitude, const size_t maglen,
         const bool bigEndian);
 
-    Parameters& setDate(const uint32_t index, const DateTime v);
+    Parameters& setDate(uint32_t paramNum, const DateTime v);
 
-    Parameters& setTime(const uint32_t index, const DateTime v);
+    Parameters& setTime(uint32_t paramNum, const DateTime v);
 
-    Parameters& setTimestamp(const uint32_t index, const Timestamp& v);
+    Parameters& setTimestamp(uint32_t paramNum, const Timestamp& v);
 
-    Parameters& setBinary(const uint32_t index, const std::string& v);
+    Parameters& setBinary(uint32_t paramNum, const std::string& v);
 
-    Parameters& setBinary(const uint32_t index, std::string&& v);
+    Parameters& setBinary(uint32_t paramNum, std::string&& v);
 
-    Parameters& setBinary(const uint32_t index, const int8_t* v,
+    Parameters& setBinary(uint32_t paramNum, const int8_t* v,
         const size_t len);
 
-    Parameters& setArray(const uint32_t index, const thrift::Array& v);
+    Parameters& setArray(uint32_t paramNum, const thrift::Array& v);
 
-    Parameters& setArray(const uint32_t index, thrift::Array&& v);
+    Parameters& setArray(uint32_t paramNum, thrift::Array&& v);
 
-    Parameters& setMap(const uint32_t index, const thrift::Map& v);
+    Parameters& setMap(uint32_t paramNum, const thrift::Map& v);
 
-    Parameters& setMap(const uint32_t index, thrift::Map&& v);
+    Parameters& setMap(uint32_t paramNum, thrift::Map&& v);
 
-    Parameters& setStruct(const uint32_t index, const thrift::Struct& v);
+    Parameters& setStruct(uint32_t paramNum, const thrift::Struct& v);
 
-    Parameters& setStruct(const uint32_t index, thrift::Struct&& v);
+    Parameters& setStruct(uint32_t paramNum, thrift::Struct&& v);
 
-    Parameters& setNull(const uint32_t index, const bool v);
+    Parameters& setNull(uint32_t paramNum, const bool v);
 
-    Parameters& setJSON(const uint32_t index, const JSON& v);
+    Parameters& setJSON(uint32_t paramNum, const JSON& v);
   };
 
 } /* namespace client */

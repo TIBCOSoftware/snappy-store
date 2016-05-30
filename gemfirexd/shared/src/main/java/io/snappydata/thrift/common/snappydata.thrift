@@ -110,29 +110,28 @@ enum SnappyType {
   SMALLINT                                                 = 3
   INTEGER                                                  = 4
   BIGINT                                                   = 5
-  FLOAT                                                    = 6
-  REAL                                                     = 7
-  DOUBLE                                                   = 8
-  DECIMAL                                                  = 9
-  CHAR                                                     = 10
-  VARCHAR                                                  = 11
-  LONGVARCHAR                                              = 12
-  DATE                                                     = 13
-  TIME                                                     = 14
-  TIMESTAMP                                                = 15
-  BINARY                                                   = 16
-  VARBINARY                                                = 17
-  LONGVARBINARY                                            = 18
-  BLOB                                                     = 19
-  CLOB                                                     = 20
-  SQLXML                                                   = 21
-  ARRAY                                                    = 22
-  MAP                                                      = 23
-  STRUCT                                                   = 24
-  NULLTYPE                                                 = 25
-  JSON                                                     = 26
-  JAVA_OBJECT                                              = 27 // custom Java serialized object
-  OTHER                                                    = 28 // custom UDTs which will be shipped as clobs
+  REAL                                                     = 6
+  DOUBLE                                                   = 7
+  DECIMAL                                                  = 8
+  CHAR                                                     = 9
+  VARCHAR                                                  = 10
+  LONGVARCHAR                                              = 11
+  DATE                                                     = 12
+  TIME                                                     = 13
+  TIMESTAMP                                                = 14
+  BINARY                                                   = 15
+  VARBINARY                                                = 16
+  LONGVARBINARY                                            = 17
+  BLOB                                                     = 18
+  CLOB                                                     = 19
+  SQLXML                                                   = 20
+  ARRAY                                                    = 21
+  MAP                                                      = 22
+  STRUCT                                                   = 23
+  NULLTYPE                                                 = 24
+  JSON                                                     = 25
+  JAVA_OBJECT                                              = 26 // custom Java serialized object
+  OTHER                                                    = 27 // custom UDTs which will be shipped as clobs
 }
 
 // constants for StatementAttrs.resultSetType
@@ -513,11 +512,11 @@ union ColumnValue {
   3: i16                                                   i16_val       // SMALLINT
   4: i32                                                   i32_val       // INTEGER
   5: i64                                                   i64_val       // BIGINT
-  // using 32-bit integer for FLOAT instead of double to avoid
+  // using 32-bit integer for REAL instead of double to avoid
   // any changes in precision; callers must encode float as 32-bit integer
   // in a manner compatible with Java's Float.floatToIntBits, or like a C/C++
   // union having two fields namely float & int for conversion between the two
-  6: i32                                                   float_val     // FLOAT/REAL
+  6: i32                                                   float_val     // REAL
   7: double                                                double_val    // DOUBLE
   8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR, SQLXML
   9: Decimal                                               decimal_val   // DECIMAL
@@ -598,6 +597,12 @@ const byte ROWSET_HAS_MORE_ROWSETS                         = 2;
 // if all data for BLOB and CLOB columns has been already fetched
 // and does not need to be obtained using LOB calls separately
 const byte ROWSET_DONE_FOR_LOBS                            = 4;
+// set if offset from scrollCursor operation resulted in cursor being placed
+// before first row (RowSet can contain rows after that as per fetch direction)
+const byte ROWSET_BEFORE_FIRST                             = 8;
+// set if offset from scrollCursor operation resulted in cursor being placed
+// after last row (RowSet can contain rows before that as per fetch direction)
+const byte ROWSET_AFTER_LAST                               = 16;
 
 struct RowSet {
   1: required list<Row>                                    rows

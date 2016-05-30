@@ -41,10 +41,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
@@ -63,6 +63,7 @@ final class ConnectionHolder {
   private final ByteBuffer token;
   private final String clientHostName;
   private final String clientID;
+  private final String clientHostId;
   private final String userName;
   private final boolean useStringForDecimal;
   private EmbedStatement reusableStatement;
@@ -105,6 +106,8 @@ final class ConnectionHolder {
 
     this.clientHostName = args.getClientHostName();
     this.clientID = args.getClientID();
+    this.clientHostId = ClientTracker.getClientHostId(this.clientHostName,
+        this.clientID);
     this.userName = args.getUserName();
     this.useStringForDecimal = args.isSetUseStringForDecimal()
         && args.useStringForDecimal;
@@ -113,22 +116,32 @@ final class ConnectionHolder {
     this.sync = new NonReentrantLock(true);
   }
 
-  final class StatementHolder {
+  static class ResultSetHolder {
+    protected ResultSet resultSet;
+    protected int rsCursorId;
+    protected int rsOffset;
+
+    ResultSetHolder(ResultSet rs, int cursorId, int offset) {
+      this.resultSet = rs;
+      this.rsCursorId = cursorId;
+      this.rsOffset = offset;
+    }
+  }
+
+  final class StatementHolder extends ResultSetHolder {
     private final Statement stmt;
     private final StatementAttrs stmtAttrs;
     private final int stmtId;
     private final String sql;
-    private int singleCursorId;
-    private Object resultSets;
-    private TIntArrayList cursorIds;
+    private ArrayList<ResultSetHolder> moreResultSets;
 
     private StatementHolder(Statement stmt, StatementAttrs attrs, int stmtId,
         String sql) {
+      super(null, snappydataConstants.INVALID_ID, 0);
       this.stmt = stmt;
       this.stmtAttrs = attrs;
       this.stmtId = stmtId;
       this.sql = sql;
-      this.singleCursorId = snappydataConstants.INVALID_ID;
     }
 
     final ConnectionHolder getConnectionHolder() {
@@ -151,56 +164,44 @@ final class ConnectionHolder {
       return this.stmtAttrs;
     }
 
-    void addResultSet(ResultSet rs, int cursorId) {
+    ResultSetHolder addResultSet(ResultSet rs, int cursorId) {
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
       try {
-        addResultSetNoLock(rs, cursorId);
+        return addResultSetNoLock(rs, cursorId);
       } finally {
         sync.unlock();
       }
     }
 
-    private void addResultSetNoLock(ResultSet rs, int cursorId) {
-      if (this.resultSets == null) {
-        this.resultSets = rs;
-        this.singleCursorId = cursorId;
-      }
-      else if (this.singleCursorId != snappydataConstants.INVALID_ID) {
-        assert this.resultSets instanceof ResultSet: "unexpected resultset "
-            + this.resultSets;
-
-        ArrayList<Object> results = new ArrayList<>(4);
-        results.add(this.resultSets);
-        results.add(rs);
-        this.resultSets = results;
-        this.cursorIds = new TIntArrayList(4);
-        this.cursorIds.add(this.singleCursorId);
-        this.cursorIds.add(cursorId);
-        this.singleCursorId = snappydataConstants.INVALID_ID;
-      }
-      else {
-        @SuppressWarnings("unchecked")
-        ArrayList<Object> results = (ArrayList<Object>)this.resultSets;
-        results.add(rs);
-        this.cursorIds.add(cursorId);
+    private ResultSetHolder addResultSetNoLock(ResultSet rs, int cursorId) {
+      if (this.resultSet == null) {
+        this.resultSet = rs;
+        this.rsCursorId = cursorId;
+        // offset will always be zero in initial registration
+        this.rsOffset = 0;
+        return this;
+      } else {
+        if (this.moreResultSets == null) {
+          this.moreResultSets = new ArrayList<>(4);
+        }
+        ResultSetHolder holder = new ResultSetHolder(rs, cursorId, 0);
+        this.moreResultSets.add(holder);
+        return holder;
       }
     }
 
-    ResultSet findResultSet(int cursorId) {
-      final TIntArrayList ids;
+    ResultSetHolder findResultSet(int cursorId) {
+      final ArrayList<ResultSetHolder> moreResults;
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
       try {
-        if (this.singleCursorId == cursorId) {
-          return (ResultSet)this.resultSets;
-        }
-        else if ((ids = this.cursorIds) != null) {
-          ArrayList<?> results = (ArrayList<?>)this.resultSets;
-          int index = ids.size();
-          while (--index >= 0) {
-            if (ids.getQuick(index) == cursorId) {
-              return (ResultSet)results.get(index);
+        if (this.rsCursorId == cursorId) {
+          return this;
+        } else if ((moreResults = this.moreResultSets) != null) {
+          for (ResultSetHolder holder : moreResults) {
+            if (holder.rsCursorId == cursorId) {
+              return holder;
             }
           }
         }
@@ -211,45 +212,41 @@ final class ConnectionHolder {
     }
 
     ResultSet removeResultSet(int cursorId) {
-      ResultSet rs = null;
+      final ArrayList<ResultSetHolder> moreResults;
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
       try {
-        final TIntArrayList ids;
-        if (this.singleCursorId == cursorId) {
-          rs = (ResultSet)this.resultSets;
-          this.resultSets = null;
-          this.singleCursorId = snappydataConstants.INVALID_ID;
-        }
-        else if ((ids = this.cursorIds) != null) {
-          ArrayList<?> results = (ArrayList<?>)this.resultSets;
-          int index = ids.size();
-          while (--index >= 0) {
-            if (ids.getQuick(index) == cursorId) {
-              rs = (ResultSet)results.get(index);
-              if (ids.size() == 2) {
-                if (index == 1) {
-                  this.resultSets = results.get(0);
-                  this.singleCursorId = ids.getQuick(0);
-                }
-                else {
-                  this.resultSets = results.get(1);
-                  this.singleCursorId = ids.getQuick(1);
-                }
-                this.cursorIds = null;
+        if (this.rsCursorId == cursorId) {
+          final ResultSet rs = this.resultSet;
+          // move from list if present
+          if ((moreResults = this.moreResultSets) != null) {
+            ResultSetHolder holder = moreResults.remove(moreResults.size() - 1);
+            this.resultSet = holder.resultSet;
+            this.rsCursorId = holder.rsCursorId;
+            this.rsOffset = holder.rsOffset;
+          } else {
+            this.resultSet = null;
+            this.rsCursorId = snappydataConstants.INVALID_ID;
+            this.rsOffset = 0;
+          }
+          return rs;
+        } else if ((moreResults = this.moreResultSets) != null) {
+          Iterator<ResultSetHolder> itr = moreResults.iterator();
+          while (itr.hasNext()) {
+            final ResultSetHolder holder = itr.next();
+            if (holder.rsCursorId == cursorId) {
+              itr.remove();
+              if (moreResults.isEmpty()) {
+                this.moreResultSets = null;
               }
-              else {
-                results.remove(index);
-                ids.remove(index);
-              }
-              break;
+              return holder.resultSet;
             }
           }
         }
       } finally {
         sync.unlock();
       }
-      return rs;
+      return null;
     }
 
     void closeResultSet(int cursorId, final SnappyDataServiceImpl service) {
@@ -265,36 +262,35 @@ final class ConnectionHolder {
     }
 
     void closeAllResultSets(final SnappyDataServiceImpl service) {
-      TIntArrayList ids;
-      if (this.singleCursorId != snappydataConstants.INVALID_ID) {
+      final ArrayList<ResultSetHolder> moreResults;
+      final ResultSet rs = this.resultSet;
+      if (rs != null) {
         try {
-          ((ResultSet)this.resultSets).close();
+          rs.close();
         } catch (SQLException sqle) {
           // ignore exception at this point
-          SnappyDataServiceImpl.log("unexpected exception in ResultSet.close()",
-              sqle, "error", true);
+          service.logger.error("unexpected exception in ResultSet.close()",
+              sqle);
         } finally {
-          service.resultSetMap.removePrimitive(this.singleCursorId);
-          this.resultSets = null;
-          this.singleCursorId = snappydataConstants.INVALID_ID;
+          service.resultSetMap.removePrimitive(this.rsCursorId);
+          this.resultSet = null;
+          this.rsCursorId = snappydataConstants.INVALID_ID;
+          this.rsOffset = 0;
         }
-      }
-      else if ((ids = this.cursorIds) != null) {
-        ArrayList<?> results = (ArrayList<?>)this.resultSets;
-        final int size = ids.size();
-        for (int index = 0; index < size; index++) {
-          try {
-            ((ResultSet)results.get(index)).close();
-          } catch (SQLException sqle) {
-            // ignore exception at this point
-            SnappyDataServiceImpl.log("unexpected exception in ResultSet.close()",
-                sqle, "error", true);
-          } finally {
-            service.resultSetMap.removePrimitive(ids.getQuick(index));
+        if ((moreResults = this.moreResultSets) != null) {
+          for (ResultSetHolder holder : moreResults) {
+            try {
+              holder.resultSet.close();
+            } catch (SQLException sqle) {
+              // ignore exception at this point
+              service.logger.error("unexpected exception in ResultSet.close()",
+                  sqle);
+            } finally {
+              service.resultSetMap.removePrimitive(holder.rsCursorId);
+            }
           }
+          this.moreResultSets = null;
         }
-        this.resultSets = null;
-        this.cursorIds = null;
       }
     }
   }
@@ -336,9 +332,9 @@ final class ConnectionHolder {
   /**
    * Get given session token as a hex string.
    */
-  static String getTokenAsString(ByteBuffer connId) {
-    if (connId != null) {
-      return ClientSharedUtils.toHexString(connId);
+  static String getTokenAsString(ByteBuffer token) {
+    if (token != null) {
+      return ClientSharedUtils.toHexString(token);
     }
     else {
       return "NULL";
@@ -351,6 +347,10 @@ final class ConnectionHolder {
 
   final String getClientID() {
     return this.clientID;
+  }
+
+  final String getClientHostId() {
+    return this.clientHostId;
   }
 
   final String getUserName() {
@@ -459,8 +459,8 @@ final class ConnectionHolder {
             stmt.close();
           } catch (SQLException sqle) {
             // ignore exception at this point
-            SnappyDataServiceImpl.log("unexpected exception in Statement.close()",
-                sqle, "error", true);
+            service.logger.error("unexpected exception in Statement.close()",
+                sqle);
           } finally {
             service.statementMap.removePrimitive(stmtHolder.getStatementId());
           }
@@ -472,8 +472,8 @@ final class ConnectionHolder {
           this.reusableStatement.close();
         } catch (SQLException sqle) {
           // ignore exception at this point
-          SnappyDataServiceImpl.log("unexpected exception in Statement.close()",
-              sqle, "error", true);
+          service.logger.error("unexpected exception in Statement.close()",
+              sqle);
         }
       }
       try {

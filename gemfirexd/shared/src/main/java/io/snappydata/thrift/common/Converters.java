@@ -878,7 +878,7 @@ public abstract class Converters {
     }
   };
 
-  public static final ColumnValueConverter FLOAT_TYPE =
+  public static final ColumnValueConverter REAL_TYPE =
       new ColumnValueConverter() {
 
     @Override
@@ -2633,9 +2633,8 @@ public abstract class Converters {
         case BIGINT:
           typeConverters[type.ordinal()] = LONG_TYPE;
           break;
-        case FLOAT:
         case REAL:
-          typeConverters[type.ordinal()] = FLOAT_TYPE;
+          typeConverters[type.ordinal()] = REAL_TYPE;
           break;
         case DOUBLE:
           typeConverters[type.ordinal()] = DOUBLE_TYPE;
@@ -2826,7 +2825,7 @@ public abstract class Converters {
   }
 
   public static java.sql.Timestamp getTimestamp(Timestamp ts) {
-    java.sql.Timestamp jts = new java.sql.Timestamp(ts.secsSinceEpoch);
+    java.sql.Timestamp jts = new java.sql.Timestamp(ts.secsSinceEpoch * 1000L);
     if (ts.isSetNanos()) {
       jts.setNanos(ts.nanos);
     }
@@ -2834,7 +2833,7 @@ public abstract class Converters {
   }
 
   public static Timestamp getTimestamp(java.sql.Timestamp jts) {
-    Timestamp ts = new Timestamp(jts.getTime());
+    Timestamp ts = new Timestamp(jts.getTime() / 1000L);
     int nanos = jts.getNanos();
     if (nanos != 0) {
       ts.setNanos(nanos);
@@ -2953,8 +2952,6 @@ public abstract class Converters {
         return Types.DECIMAL;
       case DOUBLE:
         return Types.DOUBLE;
-      case FLOAT:
-        return Types.FLOAT;
       case INTEGER:
         return Types.INTEGER;
       case JAVA_OBJECT:
@@ -3022,7 +3019,8 @@ public abstract class Converters {
       case Types.DOUBLE:
         return SnappyType.DOUBLE;
       case Types.FLOAT:
-        return SnappyType.FLOAT;
+        // Derby FLOAT can be DOUBLE or REAL depending on precision
+        return SnappyType.DOUBLE;
       case Types.INTEGER:
         return SnappyType.INTEGER;
       case Types.JAVA_OBJECT:

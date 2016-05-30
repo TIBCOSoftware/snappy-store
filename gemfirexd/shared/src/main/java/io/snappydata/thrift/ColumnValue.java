@@ -1515,8 +1515,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   public int compareTo(ColumnValue other) {
     int lastComparison = org.apache.thrift.TBaseHelper.compareTo(getSetField(), other.getSetField());
     if (lastComparison == 0) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(primitiveValue,
-          other.primitiveValue);
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(primitiveValue, other.primitiveValue);
     }
     if (lastComparison == 0) {
       return org.apache.thrift.TBaseHelper.compareTo(getFieldValue(), other.getFieldValue());

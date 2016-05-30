@@ -41,6 +41,7 @@ import java.security.SecureRandom;
 import java.sql.*;
 import java.sql.Date;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.InternalGemFireError;
@@ -71,12 +72,12 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.reference.JDBC40Translation;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.RowIdLifetime;
 import io.snappydata.thrift.common.Converters;
 import io.snappydata.thrift.common.OptimizedElementArray;
 import io.snappydata.thrift.common.ThriftUtils;
+import io.snappydata.thrift.server.ConnectionHolder.ResultSetHolder;
 import io.snappydata.thrift.server.ConnectionHolder.StatementHolder;
 import org.apache.thrift.ProcessFunction;
 import org.apache.thrift.TApplicationException;
@@ -86,6 +87,7 @@ import org.apache.thrift.protocol.TMessageType;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolUtil;
 import org.apache.thrift.protocol.TType;
+import org.apache.thrift.transport.TTransport;
 
 /**
  * Server-side implementation of thrift SnappyDataService (see snappydata.thrift).
@@ -98,9 +100,14 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   final ConcurrentTLongObjectHashMap<ConnectionHolder> connectionMap;
   final ConcurrentTLongObjectHashMap<StatementHolder> statementMap;
   final ConcurrentTLongObjectHashMap<StatementHolder> resultSetMap;
+  final ConcurrentHashMap<String, ClientTracker> clientTrackerMap;
+  final ConcurrentHashMap<TTransport, ClientTracker> clientSocketTrackerMap;
   final AtomicInteger currentConnectionId;
   final AtomicInteger currentStatementId;
   final AtomicInteger currentCursorId;
+
+  /** stores the current client's hostname + ID for a new openConnection */
+  static final ThreadLocal<String> currentClientHostId = new ThreadLocal<>();
 
   private static final int INVALID_ID = snappydataConstants.INVALID_ID;
 
@@ -117,6 +124,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     this.connectionMap = new ConcurrentTLongObjectHashMap<>();
     this.statementMap = new ConcurrentTLongObjectHashMap<>();
     this.resultSetMap = new ConcurrentTLongObjectHashMap<>();
+    this.clientTrackerMap = new ConcurrentHashMap<>();
+    this.clientSocketTrackerMap = new ConcurrentHashMap<>();
     this.currentConnectionId = new AtomicInteger(1);
     this.currentStatementId = new AtomicInteger(1);
     this.currentCursorId = new AtomicInteger(1);
@@ -146,19 +155,29 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       final ProcessFunction<SnappyDataServiceImpl, ?> fn = fnMap.get(msg.name);
       if (fn != null) {
         fn.process(msg.seqid, in, out, this.inst);
-        // terminate connection on receiving closeConnection
-        // direct class comparison should be the fastest way
-        // TODO: SW: also need to clean up connection artifacts in the case of
-        // client connection failure (ConnectionListener does get a notification
-        // but how to tie the socket/connectionNumber to the connectionID?)
-        return fn.getClass() != SnappyDataService.Processor.closeConnection.class;
-      }
-      else {
+        Class<?> fnClass = fn.getClass();
+        // register socket for a client in its tracker on an openConnection
+        if (fnClass == SnappyDataService.Processor.openConnection.class) {
+          String clientHostId = currentClientHostId.get();
+          currentClientHostId.remove();
+          ClientTracker tracker = ClientTracker.addOrGetTracker(
+              clientHostId, inst);
+          if (tracker != null) {
+            tracker.addClientSocket(in.getTransport(), inst);
+          }
+        } else if (fnClass ==
+            SnappyDataService.Processor.closeConnection.class) {
+          // terminate connection on receiving closeConnection
+          // direct class comparison should be the fastest way
+          return false;
+        }
+        return true;
+      } else {
         TProtocolUtil.skip(in, TType.STRUCT);
         in.readMessageEnd();
         TApplicationException x = new TApplicationException(
-            TApplicationException.UNKNOWN_METHOD, "Invalid method name: '"
-                + msg.name + "'");
+            TApplicationException.UNKNOWN_METHOD, "Invalid method name: '" +
+            msg.name + "'");
         out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION,
             msg.seqid));
         x.write(out);
@@ -166,6 +185,12 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         out.getTransport().flush();
         return true;
       }
+    }
+
+    public void clientSocketClosed(final TTransport clientTransport) {
+      // deregister the socket for client and check if all sockets
+      // from that client have been closed
+      ClientTracker.removeClientSocket(clientTransport, inst);
     }
   }
 
@@ -175,6 +200,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   @Override
   public ConnectionProperties openConnection(OpenConnectionArgs arguments)
       throws SnappyException {
+    currentClientHostId.remove();
     ConnectionHolder connHolder;
     try {
       Properties props = new Properties();
@@ -215,10 +241,20 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           ConnectionProperties connProps = new ConnectionProperties(connId,
               clientHost, clientId);
           connProps.setToken(connHolder.getToken());
+
+          // setup tracker for this client and put in ThreadLocal so that
+          // processor can make the entry for current TSocket
+          final String clientHostId = connHolder.getClientHostId();
+          ClientTracker tracker = ClientTracker.addOrGetTracker(clientHostId,
+              this);
+          if (tracker != null) {
+            tracker.addClientConnection(connId);
+            currentClientHostId.set(clientHostId);
+          }
+
           return connProps;
         }
       }
-
     } catch (Throwable t) {
       throw SnappyException(t);
     }
@@ -235,16 +271,21 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         if (connHolder.equals(token)) {
           connHolder.close(this);
           this.connectionMap.removePrimitive(connId);
-        }
-        else {
+          // also remove from client tracker map
+          ClientTracker tracker = ClientTracker.addOrGetTracker(
+              connHolder.getClientHostId(), this);
+          if (tracker != null) {
+            tracker.removeClientConnection(connId);
+          }
+        } else {
           throw tokenMismatchException(token, "closeConnection [connId="
               + connId + ']');
         }
       }
     } catch (Throwable t) {
       if (!ignoreNonFatalException(t)) {
-        SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_CONN,
-            "Unexpected exception in closeConnection for CONNID=" + connId, t);
+        logger.info("Unexpected exception in closeConnection for CONNID=" +
+            connId, t);
       }
     }
   }
@@ -281,19 +322,56 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       } catch (SnappyException se) {
         if (SQLState.NET_CONNECT_AUTH_FAILED.substring(0, 5).equals(
             se.getExceptionData().getSqlState())) {
-          SanityManager.DEBUG_PRINT("warning:"
-              + SanityManager.TRACE_CLIENT_STMT,
-              "AUTH exception in bulkClose (continuing with other "
-                  + "close operations): " + se);
+          logger.warn("AUTH exception in bulkClose (continuing with other " +
+              "close operations): " + se);
         }
       } catch (Throwable t) {
         if (!ignoreNonFatalException(t)) {
-          SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_STMT,
-              "Unexpected exception in bulkClose (continuing with other "
-                  + "close operations): " + t);
+          logger.info("Unexpected exception in bulkClose (continuing with other " +
+              "close operations): " + t);
         }
       }
     }
+  }
+
+  void forceCloseConnection(int connId) {
+    try {
+      // remove upfront from map in any case
+      ConnectionHolder connHolder = (ConnectionHolder)this.connectionMap
+          .removePrimitive(connId);
+      if (connHolder != null) {
+        connHolder.close(this);
+      }
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      logger.info("Unexpected exception in forceCloseConnection for CONNID=" +
+          connId, t);
+    }
+  }
+
+  @Override
+  public void stop() {
+    // first close all open client connections being served by this instance
+    try {
+      final long[] connIds = this.connectionMap.keys();
+      for (long connId : connIds) {
+        ConnectionHolder connHolder = (ConnectionHolder)this.connectionMap
+            .removePrimitive(connId);
+        if (connHolder != null) {
+          try {
+            connHolder.close(this);
+          } catch (Throwable t) {
+            checkSystemFailure(t);
+            logger.info("Unexpected exception in connection close in stop " +
+                "for CONNID=" + connId, t);
+          }
+        }
+      }
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      logger.info("Unexpected exception in stop", t);
+    }
+    super.stop();
   }
 
   /**
@@ -596,7 +674,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           result.setFloat(index, fltValue);
         }
         break;
-      case FLOAT:
       case DOUBLE:
         double dblValue = rs.getDouble(columnIndex);
         if (rs.wasNull()) {
@@ -1087,11 +1164,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
    * Encapsulates the ResultSet of statement execution as thrift RowSet.
    */
   private RowSet getRowSet(final Statement stmt, StatementHolder stmtHolder,
-      final ResultSet rs, int cursorId, final int connId,
-      final StatementAttrs attrs, final int offset,
+      final ResultSet rs, int cursorId, ResultSetHolder holder,
+      final int connId, final StatementAttrs attrs, int offset,
       final boolean offsetIsAbsolute, final boolean fetchReverse,
       final int fetchSize, final ConnectionHolder connHolder,
-      boolean postExecution, String sql) throws SnappyException {
+      final String sql) throws SnappyException {
     boolean isLastBatch = true;
     try {
       RowSet result = createEmptyRowSet().setConnId(connId);
@@ -1101,13 +1178,14 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       final int columnCount = rsmd.getColumnCount();
       final ArrayList<ColumnDescriptor> descriptors = getRowSetMetaData(rsmd,
           columnCount);
-      if (postExecution) {
+      if (holder == null) { // skip sending descriptors for scrollCursor
         result.setMetadata(descriptors);
       }
       // now fill in the values
       final int batchSize;
       final boolean moveForward = !fetchReverse;
       boolean hasMoreRows = false;
+      byte flags = 0;
       long startTime = 0;
       if (fetchSize > 0) {
         batchSize = fetchSize;
@@ -1120,23 +1198,65 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       }
 
       if (offsetIsAbsolute) {
-        hasMoreRows = rs.absolute(offset);
-        result.setOffset(offset);
-      }
-      else if (offset != 0) {
+        // +ve offset is 0, 1, ... while absolute numbers from 1
+        hasMoreRows = rs.absolute(offset >= 0 ? ++offset : offset);
+        if (!hasMoreRows) {
+          // check if cursor moved to before first or after last
+          if (offset > 0) {
+            flags |= snappydataConstants.ROWSET_AFTER_LAST;
+            // can still fetch after last in reverse
+            if (!moveForward) {
+              // move one previous to land on last row
+              hasMoreRows = rs.previous();
+            }
+          } else {
+            flags |= snappydataConstants.ROWSET_BEFORE_FIRST;
+            // can still fetch before first in forward
+            if (moveForward) {
+              // move one next to land on last row
+              hasMoreRows = rs.next();
+            }
+          }
+        }
+        // getRow() required for -ve offset
+        result.setOffset(Math.max(0, rs.getRow() - 1));
+      } else if (offset == 0) {
+        if (holder == null) { // first call to create result set
+          result.setOffset(0);
+        } else {
+          result.setOffset(holder.rsOffset);
+        }
+      } else {
         hasMoreRows = rs.relative(offset);
-        result.setOffset(rs.getRow() - 1);
-      }
-      else if (!isForwardOnly) {
-        result.setOffset(rs.getRow() - 1);
+        if (!hasMoreRows) {
+          // check if cursor moved to before first or after last
+          if (offset > 0) {
+            flags |= snappydataConstants.ROWSET_AFTER_LAST;
+            // can still fetch after last in reverse
+            if (!moveForward) {
+              // move one previous to land on last row
+              hasMoreRows = rs.previous();
+            }
+          } else {
+            flags |= snappydataConstants.ROWSET_BEFORE_FIRST;
+            // can still fetch before first in forward
+            if (moveForward) {
+              // move one next to land on last row
+              hasMoreRows = rs.next();
+            }
+          }
+        }
+        result.setOffset(Math.max(0, rs.getRow() - 1));
       }
 
       final EmbedConnection conn = connHolder.getConnection();
       final List<Row> rows = result.getRows();
       Row templateRow = null;
+      EmbedStatement estmt = null;
       int nrows = 0;
       if (rs instanceof EmbedResultSet) {
         final EmbedResultSet ers = (EmbedResultSet)rs;
+        estmt = (EmbedStatement)stmt;
         final ColumnDescriptor[] descs = descriptors
             .toArray(new ColumnDescriptor[columnCount]);
         synchronized (conn.getConnectionSynchronization()) {
@@ -1247,7 +1367,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       }
       */
 
-      byte flags = 0;
       if (isLastBatch) flags |= snappydataConstants.ROWSET_LAST_BATCH;
       // TODO: implement multiple RowSets for Callable statements
       // TODO: proper LOB support
@@ -1256,7 +1375,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       // TODO: implement updatable ResultSets
       fillWarnings(result, rs);
       // send cursorId for scrollable, partial resultsets or open LOBs
-      if (isLastBatch && isForwardOnly && conn.getlobHMObj().isEmpty()) {
+      if (isLastBatch && isForwardOnly && conn.getlobHMObj().isEmpty() &&
+          estmt != null && !estmt.hasDynamicResults()) {
          if (stmtHolder == null || cursorId == INVALID_ID) {
           rs.close();
         }
@@ -1264,27 +1384,31 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           stmtHolder.closeResultSet(cursorId, this);
         }
         // setup the Statement for reuse
-        EmbedStatement estmt;
-        if (postExecution && stmt instanceof EmbedStatement
-            && !(estmt = (EmbedStatement)stmt).isPrepared()) {
+        if (holder == null && estmt != null && !estmt.isPrepared()) {
           connHolder.setStatementForReuse(estmt);
         }
         result.setCursorId(INVALID_ID);
         result.setStatementId(INVALID_ID);
-      }
-      else {
-        if (postExecution) {
+      } else {
+        if (holder == null) {
           cursorId = getNextId(this.currentCursorId);
           if (stmtHolder == null) {
-            stmtHolder = registerResultSet(cursorId, rs, connHolder, stmt,
-                attrs, sql);
-          }
-          else {
-            registerResultSet(cursorId, rs, stmtHolder);
+            // upon creation the first ResultSet information will go into
+            // StatementHolder itself, hence (holder = stmtHolder) below
+            holder = stmtHolder = registerResultSet(cursorId, rs, connHolder,
+                stmt, attrs, sql);
+          } else {
+            holder = registerResultSet(cursorId, rs, stmtHolder);
           }
         }
         result.setCursorId(cursorId);
         result.setStatementId(stmtHolder.getStatementId());
+        // update the tracked resultset offset for next scrollCursor call
+        if (moveForward) {
+          holder.rsOffset = result.offset + rows.size();
+        } else {
+          holder.rsOffset = Math.max(0, result.offset - rows.size());
+        }
       }
       return result;
     } catch (SQLException e) {
@@ -1346,10 +1470,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     return stmtHolder;
   }
 
-  private void registerResultSet(int cursorId, ResultSet rs,
+  private ResultSetHolder registerResultSet(int cursorId, ResultSet rs,
       StatementHolder stmtHolder) {
-    stmtHolder.addResultSet(rs, cursorId);
+    ResultSetHolder holder = stmtHolder.addResultSet(rs, cursorId);
     this.resultSetMap.putPrimitive(cursorId, stmtHolder);
+    return holder;
   }
 
   private boolean processPendingTransactionAttributes(StatementAttrs attrs,
@@ -1392,7 +1517,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     }
   }
 
-  private boolean ignoreNonFatalException(Throwable t) {
+  private void checkSystemFailure(Throwable t) {
     final Error err;
     if (t instanceof Error && SystemFailure.isJVMFailureError(
         err = (Error)t)) {
@@ -1407,7 +1532,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     // error condition, so you also need to check to see if the JVM
     // is still usable.
     SystemFailure.checkFailure();
+  }
 
+  private boolean ignoreNonFatalException(Throwable t) {
+    checkSystemFailure(t);
     // ignore for node going down
     return GemFireXDUtils.nodeFailureException(t);
   }
@@ -1449,19 +1577,18 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       StatementResult sr = createEmptyStatementResult();
       RowSet rowSet;
 
-      boolean resultType = stmt.execute(sql);
-      if (resultType) { // Case : result is a ResultSet
+      if (stmt.execute(sql)) { // Case : result is a ResultSet
         rs = stmt.getResultSet();
-        rowSet = getRowSet(stmt, null, rs, INVALID_ID, connId, attrs, 0, false,
-            false, 0, connHolder, true, sql);
+        rowSet = getRowSet(stmt, null, rs, INVALID_ID, null, connId, attrs,
+            0, false, false, 0, connHolder, sql);
         sr.setResultSet(rowSet);
       }
       else { // Case : result is update count
         sr.setUpdateCount(stmt.getUpdateCount());
         rs = stmt.getGeneratedKeys();
         if (rs != null) {
-          rowSet = getRowSet(stmt, null, rs, INVALID_ID, connId, attrs, 0,
-              false, false, 0, connHolder, true, "getGeneratedKeys");
+          rowSet = getRowSet(stmt, null, rs, INVALID_ID, null, connId, attrs,
+              0, false, false, 0, connHolder, "getGeneratedKeys");
           sr.setGeneratedKeys(rowSet);
         }
         else {
@@ -1533,8 +1660,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         connHolder.setStatementForReuse(stmt);
       }
       else {
-        RowSet rowSet = getRowSet(stmt, null, rs, INVALID_ID, connId, attrs, 0,
-            false, false, 0, connHolder, true, "getGeneratedKeys");
+        RowSet rowSet = getRowSet(stmt, null, rs, INVALID_ID, null, connId,
+            attrs, 0, false, false, 0, connHolder, "getGeneratedKeys");
         result.setGeneratedKeys(rowSet);
       }
       // don't attempt stmt cleanup after this point since we are reusing it
@@ -1582,8 +1709,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       stmt = connHolder.createNewStatement(attrs);
       rs = stmt.executeQuery(sql);
-      RowSet rowSet = getRowSet(stmt, null, rs, INVALID_ID, connId, attrs, 0,
-          false, false, 0, connHolder, true, sql);
+      RowSet rowSet = getRowSet(stmt, null, rs, INVALID_ID, null, connId,
+          attrs, 0, false, false, 0, connHolder, sql);
       // don't attempt stmt cleanup after this point since we are reusing it
       stmt = null;
 
@@ -1831,13 +1958,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               pstmt.setFloat(paramIndex, params.getFloat(index));
             }
             break;
-          case FLOAT:
-            if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.FLOAT);
-            } else {
-              pstmt.setDouble(paramIndex, params.getDouble(index));
-            }
-            break;
           case DOUBLE:
             if (params.isNull(index)) {
               pstmt.setNull(paramIndex, Types.DOUBLE);
@@ -1960,7 +2080,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             }
             break;
           case NULLTYPE:
-            pstmt.setNull(index, Types.NULL);
+            pstmt.setNull(paramIndex, Types.NULL);
             break;
           case JAVA_OBJECT:
           case JSON:
@@ -2013,16 +2133,17 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       boolean resultType = pstmt.execute();
       if (resultType) { // Case : result is a ResultSet
         rs = pstmt.getResultSet();
-        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, connId,
-            attrs, 0, false, false, 0, connHolder, true, null /*already set*/);
+        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+            connId, attrs, 0, false, false, 0, connHolder,
+            null /* already set */);
         stmtResult.setResultSet(rowSet);
-      }
-      else { // Case : result is update count
+      } else { // Case : result is update count
         stmtResult.setUpdateCount(pstmt.getUpdateCount());
         rs = pstmt.getGeneratedKeys();
         if (rs != null) {
-          RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, connId,
-              attrs, 0, false, false, 0, connHolder, true, "getGeneratedKeys");
+          RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+              connId, attrs, 0, false, false, 0, connHolder,
+              "getGeneratedKeys");
           stmtResult.setGeneratedKeys(rowSet);
         }
       }
@@ -2066,9 +2187,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       rs = pstmt.getGeneratedKeys();
       if (rs != null) {
-        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, connId,
-            stmtHolder.getStatementAttrs(), 0, false, false, 0, connHolder,
-            true, "getGeneratedKeys");
+        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+            connId, stmtHolder.getStatementAttrs(), 0, false, false, 0,
+            connHolder, "getGeneratedKeys");
         result.setGeneratedKeys(rowSet);
       }
 
@@ -2107,9 +2228,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       updateParameters(params, pstmt, connHolder.getConnection());
 
       rs = pstmt.executeQuery();
-      return getRowSet(pstmt, stmtHolder, rs, INVALID_ID, connId,
-          stmtHolder.getStatementAttrs(), 0, false, false, 0, connHolder, true,
-          null /*already set*/);
+      return getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null, connId,
+          stmtHolder.getStatementAttrs(), 0, false, false, 0, connHolder,
+          null /* already set */);
     } catch (Throwable t) {
       cleanupResultSet(rs);
       throw SnappyException(t);
@@ -2154,9 +2275,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       rs = pstmt.getGeneratedKeys();
       if (rs != null) {
-        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, connId,
-            stmtHolder.getStatementAttrs(), 0, false, false, 0, connHolder,
-            true, "getGeneratedKeys");
+        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+            connId, stmtHolder.getStatementAttrs(), 0, false, false, 0,
+            connHolder, "getGeneratedKeys");
         result.setGeneratedKeys(rowSet);
       }
 
@@ -2435,13 +2556,13 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           cursorId, "scrollCursor");
       ConnectionHolder connHolder = stmtHolder.getConnectionHolder();
       final int connId = connHolder.getConnectionId();
-      ResultSet rs = stmtHolder.findResultSet(cursorId);
-      if (rs != null) {
-        return getRowSet(stmtHolder.getStatement(), stmtHolder, rs, cursorId,
+      ResultSetHolder holder = stmtHolder.findResultSet(cursorId);
+      if (holder != null) {
+        return getRowSet(stmtHolder.getStatement(), stmtHolder,
+            holder.resultSet, holder.rsCursorId, holder,
             connId, stmtHolder.getStatementAttrs(), offset, offsetIsAbsolute,
-            fetchReverse, fetchSize, connHolder, false, null /*already set*/);
-      }
-      else {
+            fetchReverse, fetchSize, connHolder, null /* already set */);
+      } else {
         throw resultSetNotFoundException(cursorId, "scrollCursor");
       }
     } catch (Throwable t) {
@@ -2475,6 +2596,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (stmt == null) {
         return null;
       }
+      // close the previous ResultSet
+      stmtHolder.closeResultSet(cursorId, this);
+
       final boolean moreResults;
       if (otherResultSetBehaviour == 0) {
         moreResults = stmt.getMoreResults();
@@ -2497,9 +2621,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (moreResults) {
         ConnectionHolder connHolder = stmtHolder.getConnectionHolder();
         rs = stmt.getResultSet();
-        return getRowSet(stmt, stmtHolder, rs, INVALID_ID,
+        return getRowSet(stmt, stmtHolder, rs, INVALID_ID, null,
             connHolder.getConnectionId(), stmtHolder.getStatementAttrs(), 0,
-            false, false, 0, connHolder, true, null /*already set*/);
+            false, false, 0, connHolder, null /* already set */);
       }
       else {
         return null;
@@ -3561,8 +3685,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         default:
           throw internalException("unexpected metadata call: " + schemaCall);
       }
-      return getRowSet(null, null, rs, INVALID_ID, args.connId, null, 0, false,
-          false, 0, connHolder, true, "getSchemaMetaData");
+      return getRowSet(null, null, rs, INVALID_ID, null, args.connId, null, 0,
+          false, false, 0, connHolder, "getSchemaMetaData");
     } catch (Throwable t) {
       cleanupResultSet(rs);
       throw SnappyException(t);
@@ -3585,8 +3709,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       rs = isODBC ? dmd.getIndexInfoForODBC(null, args.getSchema(),
           args.getTable(), unique, approximate) : dmd.getIndexInfo(null,
           args.getSchema(), args.getTable(), unique, approximate);
-      return getRowSet(null, null, rs, INVALID_ID, args.connId, null, 0, false,
-          false, 0, connHolder, true, "getIndexInfo");
+      return getRowSet(null, null, rs, INVALID_ID, null, args.connId, null, 0,
+          false, false, 0, connHolder, "getIndexInfo");
     } catch (Throwable t) {
       cleanupResultSet(rs);
       throw SnappyException(t);
@@ -3613,8 +3737,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
       }
       rs = dmd.getUDTs(null, args.getSchema(), args.getTypeName(), sqlTypes);
-      return getRowSet(null, null, rs, INVALID_ID, args.connId, null, 0, false,
-          false, 0, connHolder, true, "getUDTs");
+      return getRowSet(null, null, rs, INVALID_ID, null, args.connId, null, 0,
+          false, false, 0, connHolder, "getUDTs");
     } catch (Throwable t) {
       cleanupResultSet(rs);
       throw SnappyException(t);
@@ -3637,8 +3761,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       rs = isODBC ? dmd.getBestRowIdentifierForODBC(null, args.getSchema(),
           args.getTable(), scope, nullable) : dmd.getBestRowIdentifier(null,
           args.getSchema(), args.getTable(), scope, nullable);
-      return getRowSet(null, null, rs, INVALID_ID, args.connId, null, 0, false,
-          false, 0, connHolder, true, "getBestRowIdentifier");
+      return getRowSet(null, null, rs, INVALID_ID, null, args.connId, null, 0,
+          false, false, 0, connHolder, "getBestRowIdentifier");
     } catch (Throwable t) {
       cleanupResultSet(rs);
       throw SnappyException(t);

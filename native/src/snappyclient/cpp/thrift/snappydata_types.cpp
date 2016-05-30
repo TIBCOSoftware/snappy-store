@@ -28,7 +28,6 @@ int _kSnappyTypeValues[] = {
   SnappyType::SMALLINT,
   SnappyType::INTEGER,
   SnappyType::BIGINT,
-  SnappyType::FLOAT,
   SnappyType::REAL,
   SnappyType::DOUBLE,
   SnappyType::DECIMAL,
@@ -58,7 +57,6 @@ const char* _kSnappyTypeNames[] = {
   "SMALLINT",
   "INTEGER",
   "BIGINT",
-  "FLOAT",
   "REAL",
   "DOUBLE",
   "DECIMAL",
@@ -82,7 +80,7 @@ const char* _kSnappyTypeNames[] = {
   "JAVA_OBJECT",
   "OTHER"
 };
-const std::map<int, const char*> _SnappyType_VALUES_TO_NAMES(::apache::thrift::TEnumIterator(28, _kSnappyTypeValues, _kSnappyTypeNames), ::apache::thrift::TEnumIterator(-1, NULL, NULL));
+const std::map<int, const char*> _SnappyType_VALUES_TO_NAMES(::apache::thrift::TEnumIterator(27, _kSnappyTypeValues, _kSnappyTypeNames), ::apache::thrift::TEnumIterator(-1, NULL, NULL));
 
 int _kTransactionAttributeValues[] = {
   TransactionAttribute::AUTOCOMMIT,

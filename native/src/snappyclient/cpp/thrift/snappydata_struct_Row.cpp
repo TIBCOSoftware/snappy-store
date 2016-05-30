@@ -139,9 +139,6 @@ uint32_t Row::write(::apache::thrift::protocol::TProtocol* oprot) const {
 
 Row::Row(const Row& other) :
     m_values(other.m_values), m_updatable(other.m_updatable) {
-  if (m_changedColumns != NULL) {
-    delete m_changedColumns;
-  }
   if (other.m_changedColumns != NULL) {
     m_changedColumns = new DynamicBitSet(*other.m_changedColumns);
   } else {

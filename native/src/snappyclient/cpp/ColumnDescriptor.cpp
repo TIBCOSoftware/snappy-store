@@ -29,7 +29,6 @@ bool ColumnDescriptorBase::isSigned() const noexcept {
     case thrift::SnappyType::SMALLINT:
     case thrift::SnappyType::INTEGER:
     case thrift::SnappyType::BIGINT:
-    case thrift::SnappyType::FLOAT:
     case thrift::SnappyType::REAL:
     case thrift::SnappyType::DOUBLE:
     case thrift::SnappyType::DECIMAL:
@@ -49,7 +48,6 @@ int16_t ColumnDescriptorBase::getScale() const noexcept {
       case thrift::SnappyType::SMALLINT:
       case thrift::SnappyType::INTEGER:
       case thrift::SnappyType::BIGINT:
-      case thrift::SnappyType::FLOAT:
       case thrift::SnappyType::REAL:
       case thrift::SnappyType::DOUBLE:
       case thrift::SnappyType::DATE:
@@ -86,8 +84,6 @@ std::string ColumnDescriptorBase::getTypeName() const noexcept {
         return "INTEGER";
       case thrift::SnappyType::BIGINT:
         return "BIGINT";
-      case thrift::SnappyType::FLOAT:
-        return "FLOAT";
       case thrift::SnappyType::REAL:
         return "REAL";
       case thrift::SnappyType::DOUBLE:
@@ -178,7 +174,6 @@ uint32_t ColumnDescriptor::getDisplaySize() const noexcept {
     case thrift::SnappyType::SMALLINT:
       return 6;
     case thrift::SnappyType::REAL:
-    case thrift::SnappyType::FLOAT:
       return 13;
     case thrift::SnappyType::DOUBLE:
       return 22;

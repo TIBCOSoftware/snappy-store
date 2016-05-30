@@ -192,7 +192,7 @@ std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
     }
     return resultSet;
   } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_CURSOR_STATE_MSG2);
+    return std::unique_ptr<ResultSet>(nullptr);
   }
 }
 

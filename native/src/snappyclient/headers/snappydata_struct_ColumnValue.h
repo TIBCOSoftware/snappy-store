@@ -314,8 +314,9 @@ public:
     m_val = Timestamp(epochTime, nanos);
   }
 
-  inline bool isNull() const {
-    return boost::get<NullType>(m_val).m_v;
+  inline bool isNull() const BOOST_NOEXCEPT {
+    auto v = getOrNull<NullType>();
+    return v != NULL && v->m_v;
   }
 
   inline void setIsNull(bool val) {

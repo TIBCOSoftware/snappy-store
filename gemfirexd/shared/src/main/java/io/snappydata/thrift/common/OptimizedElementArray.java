@@ -154,7 +154,7 @@ public class OptimizedElementArray {
       }
       switch (type) {
         case INTEGER:
-        case FLOAT:
+        case REAL:
           this.positionMap[index++] = primitivePosition;
           primitivePosition += 4;
           break;
@@ -498,7 +498,7 @@ public class OptimizedElementArray {
         case DATE:
           Date date = (Date)getObject(index);
           if (date != null) {
-            cv.setDate_val(new DateTime(date.getTime()));
+            cv.setDate_val(new DateTime(date.getTime() / 1000L));
           }
           else {
             cv.setNull_val(true);
@@ -507,7 +507,7 @@ public class OptimizedElementArray {
         case TIMESTAMP:
           java.sql.Timestamp ts = (java.sql.Timestamp)getObject(index);
           if (ts != null) {
-            Timestamp tsv = new Timestamp(ts.getTime());
+            Timestamp tsv = new Timestamp(ts.getTime() / 1000L);
             int nanos = ts.getNanos();
             if (nanos != 0) {
               tsv.setNanos(nanos);
@@ -521,13 +521,13 @@ public class OptimizedElementArray {
         case TIME:
           Time time = (Time)getObject(index);
           if (time != null) {
-            cv.setTime_val(new DateTime(time.getTime()));
+            cv.setTime_val(new DateTime(time.getTime() / 1000L));
           }
           else {
             cv.setNull_val(true);
           }
           break;
-        case FLOAT:
+        case REAL:
           cv.setFloat_val(getInt(index));
           break;
         case DOUBLE:
@@ -595,224 +595,235 @@ public class OptimizedElementArray {
 
   public final void addColumnValue(ColumnValue cv) throws SQLException {
     ensureCapacity();
-    // check for primitive types first
-    switch (cv.getSetField()) {
-      case I32_VAL:
-        ensurePrimCapacity(4);
-        this.positionMap[this.size] = this.primSize;
-        setPrimInt(this.primSize, cv.getI32_val());
-        setType(this.size, SnappyType.INTEGER);
-        this.size++;
-        this.primSize += 4;
-        break;
-      case I64_VAL:
-        ensurePrimCapacity(8);
-        this.positionMap[this.size] = this.primSize;
-        setPrimLong(this.primSize, cv.getI64_val());
-        setType(this.size, SnappyType.BIGINT);
-        this.size++;
-        this.primSize += 8;
-        break;
-      case DOUBLE_VAL:
-        ensurePrimCapacity(8);
-        this.positionMap[this.size] = this.primSize;
-        setPrimLong(this.primSize, cv.getI64_val());
-        setType(this.size, SnappyType.DOUBLE);
-        this.size++;
-        this.primSize += 8;
-        break;
-      case STRING_VAL:
-        ensureNonPrimCapacity();
-        String str = (String)cv.getFieldValue();
-        if (str != null) {
-          this.nonPrimitives[this.nonPrimSize++] = str;
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, str.length() <= Limits.DB2_VARCHAR_MAXWIDTH
-              ? SnappyType.VARCHAR : SnappyType.CLOB);
+    final ColumnValue._Fields setField = cv.getSetField();
+    if (setField != null) {
+      // check for primitive types first
+      switch (setField) {
+        case I32_VAL:
+          ensurePrimCapacity(4);
+          this.positionMap[this.size] = this.primSize;
+          setPrimInt(this.primSize, cv.getI32_val());
+          setType(this.size, SnappyType.INTEGER);
           this.size++;
-        }
-        break;
-      case DECIMAL_VAL:
-        ensureNonPrimCapacity();
-        Decimal decimal = (Decimal)cv.getFieldValue();
-        if (decimal != null) {
-          this.nonPrimitives[this.nonPrimSize++] = Converters
-              .getBigDecimal(decimal);
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.DECIMAL);
+          this.primSize += 4;
+          break;
+        case I64_VAL:
+          ensurePrimCapacity(8);
+          this.positionMap[this.size] = this.primSize;
+          setPrimLong(this.primSize, cv.getI64_val());
+          setType(this.size, SnappyType.BIGINT);
           this.size++;
-        }
-        break;
-      case TIMESTAMP_VAL:
-        ensureNonPrimCapacity();
-        Timestamp ts = (Timestamp)cv.getFieldValue();
-        if (ts != null) {
-          this.nonPrimitives[this.nonPrimSize++] = Converters.getTimestamp(ts);
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.TIMESTAMP);
+          this.primSize += 8;
+          break;
+        case DOUBLE_VAL:
+          ensurePrimCapacity(8);
+          this.positionMap[this.size] = this.primSize;
+          setPrimLong(this.primSize,
+              Double.doubleToLongBits(cv.getDouble_val()));
+          setType(this.size, SnappyType.DOUBLE);
           this.size++;
-        }
-        break;
-      case DATE_VAL:
-        ensureNonPrimCapacity();
-        DateTime date = (DateTime)cv.getFieldValue();
-        if (date != null) {
-          this.nonPrimitives[this.nonPrimSize++] = new java.sql.Date(
-              date.secsSinceEpoch);
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.DATE);
-          this.size++;
-        }
-        break;
-      case BOOL_VAL:
-        ensurePrimCapacity(1);
-        this.positionMap[this.size] = this.primSize;
-        setPrimBoolean(this.primSize, cv.getBool_val());
-        setType(this.size, SnappyType.BOOLEAN);
-        this.size++;
-        this.primSize++;
-        break;
-      case BYTE_VAL:
-        ensurePrimCapacity(1);
-        this.positionMap[this.size] = this.primSize;
-        setPrimByte(this.primSize, cv.getByte_val());
-        setType(this.size, SnappyType.TINYINT);
-        this.size++;
-        this.primSize++;
-        break;
-      case FLOAT_VAL:
-        ensurePrimCapacity(4);
-        this.positionMap[this.size] = this.primSize;
-        setPrimInt(this.primSize, cv.getFloat_val());
-        setType(this.size, SnappyType.FLOAT);
-        this.size++;
-        this.primSize += 4;
-        break;
-      case I16_VAL:
-        ensurePrimCapacity(2);
-        this.positionMap[this.size] = this.primSize;
-        setPrimShort(this.primSize, cv.getI16_val());
-        setType(this.size, SnappyType.SMALLINT);
-        this.size++;
-        this.primSize += 2;
-        break;
-      case TIME_VAL:
-        ensureNonPrimCapacity();
-        DateTime time = (DateTime)cv.getFieldValue();
-        if (time != null) {
-          this.nonPrimitives[this.nonPrimSize++] = new java.sql.Time(
-              time.secsSinceEpoch);
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.TIME);
-          this.size++;
-        }
-        break;
-      case BINARY_VAL:
-        ensureNonPrimCapacity();
-        byte[] bytes = cv.getBinary_val();
-        if (bytes != null) {
-          this.nonPrimitives[this.nonPrimSize++] = bytes;
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, bytes.length <= Limits.DB2_VARCHAR_MAXWIDTH
-              ? SnappyType.VARBINARY : SnappyType.BLOB);
-          this.size++;
-        }
-        break;
-      case BLOB_VAL:
-        ensureNonPrimCapacity();
-        BlobChunk blob = (BlobChunk)cv.getFieldValue();
-        if (blob != null) {
-          this.nonPrimitives[this.nonPrimSize++] = blob;
-          this.positionMap[this.size] = -this.nonPrimSize;
-          // also make space for finalizer of BlobChunk if required
-          if (blob.isSetLobId()) {
-            ensureNonPrimCapacity();
-            this.nonPrimSize++;
+          this.primSize += 8;
+          break;
+        case STRING_VAL:
+          ensureNonPrimCapacity();
+          String str = (String)cv.getFieldValue();
+          if (str != null) {
+            this.nonPrimitives[this.nonPrimSize++] = str;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, str.length() <= Limits.DB2_VARCHAR_MAXWIDTH
+                ? SnappyType.VARCHAR : SnappyType.CLOB);
+            this.size++;
           }
-          setType(this.size, SnappyType.BLOB);
-          this.size++;
-        }
-        break;
-      case CLOB_VAL:
-        ensureNonPrimCapacity();
-        ClobChunk clob = (ClobChunk)cv.getFieldValue();
-        if (clob != null) {
-          this.nonPrimitives[this.nonPrimSize++] = clob;
-          this.positionMap[this.size] = -this.nonPrimSize;
-          // also make space for finalizer of ClobChunk if required
-          if (clob.isSetLobId()) {
-            ensureNonPrimCapacity();
-            this.nonPrimSize++;
+          break;
+        case DECIMAL_VAL:
+          ensureNonPrimCapacity();
+          Decimal decimal = (Decimal)cv.getFieldValue();
+          if (decimal != null) {
+            this.nonPrimitives[this.nonPrimSize++] = Converters
+                .getBigDecimal(decimal);
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.DECIMAL);
+            this.size++;
           }
-          setType(this.size, SnappyType.CLOB);
+          break;
+        case TIMESTAMP_VAL:
+          ensureNonPrimCapacity();
+          Timestamp ts = (Timestamp)cv.getFieldValue();
+          if (ts != null) {
+            this.nonPrimitives[this.nonPrimSize++] = Converters.getTimestamp(ts);
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.TIMESTAMP);
+            this.size++;
+          }
+          break;
+        case DATE_VAL:
+          ensureNonPrimCapacity();
+          DateTime date = (DateTime)cv.getFieldValue();
+          if (date != null) {
+            this.nonPrimitives[this.nonPrimSize++] = new java.sql.Date(
+                date.secsSinceEpoch * 1000L);
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.DATE);
+            this.size++;
+          }
+          break;
+        case BOOL_VAL:
+          ensurePrimCapacity(1);
+          this.positionMap[this.size] = this.primSize;
+          setPrimBoolean(this.primSize, cv.getBool_val());
+          setType(this.size, SnappyType.BOOLEAN);
           this.size++;
-        }
-        break;
-      case ARRAY_VAL:
-        ensureNonPrimCapacity();
-        @SuppressWarnings("unchecked")
-        List<ColumnValue> arr = (List<ColumnValue>)cv.getFieldValue();
-        if (arr != null) {
-          this.nonPrimitives[this.nonPrimSize++] = arr;
+          this.primSize++;
+          break;
+        case BYTE_VAL:
+          ensurePrimCapacity(1);
+          this.positionMap[this.size] = this.primSize;
+          setPrimByte(this.primSize, cv.getByte_val());
+          setType(this.size, SnappyType.TINYINT);
+          this.size++;
+          this.primSize++;
+          break;
+        case FLOAT_VAL:
+          ensurePrimCapacity(4);
+          this.positionMap[this.size] = this.primSize;
+          setPrimInt(this.primSize, cv.getFloat_val());
+          setType(this.size, SnappyType.REAL);
+          this.size++;
+          this.primSize += 4;
+          break;
+        case I16_VAL:
+          ensurePrimCapacity(2);
+          this.positionMap[this.size] = this.primSize;
+          setPrimShort(this.primSize, cv.getI16_val());
+          setType(this.size, SnappyType.SMALLINT);
+          this.size++;
+          this.primSize += 2;
+          break;
+        case TIME_VAL:
+          ensureNonPrimCapacity();
+          DateTime time = (DateTime)cv.getFieldValue();
+          if (time != null) {
+            this.nonPrimitives[this.nonPrimSize++] = new java.sql.Time(
+                time.secsSinceEpoch * 1000L);
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.TIME);
+            this.size++;
+          }
+          break;
+        case BINARY_VAL:
+          ensureNonPrimCapacity();
+          byte[] bytes = cv.getBinary_val();
+          if (bytes != null) {
+            this.nonPrimitives[this.nonPrimSize++] = bytes;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, bytes.length <= Limits.DB2_VARCHAR_MAXWIDTH
+                ? SnappyType.VARBINARY : SnappyType.BLOB);
+            this.size++;
+          }
+          break;
+        case BLOB_VAL:
+          ensureNonPrimCapacity();
+          BlobChunk blob = (BlobChunk)cv.getFieldValue();
+          if (blob != null) {
+            this.nonPrimitives[this.nonPrimSize++] = blob;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            // also make space for finalizer of BlobChunk if required
+            if (blob.isSetLobId()) {
+              ensureNonPrimCapacity();
+              this.nonPrimSize++;
+            }
+            setType(this.size, SnappyType.BLOB);
+            this.size++;
+          }
+          break;
+        case CLOB_VAL:
+          ensureNonPrimCapacity();
+          ClobChunk clob = (ClobChunk)cv.getFieldValue();
+          if (clob != null) {
+            this.nonPrimitives[this.nonPrimSize++] = clob;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            // also make space for finalizer of ClobChunk if required
+            if (clob.isSetLobId()) {
+              ensureNonPrimCapacity();
+              this.nonPrimSize++;
+            }
+            setType(this.size, SnappyType.CLOB);
+            this.size++;
+          }
+          break;
+        case ARRAY_VAL:
+          ensureNonPrimCapacity();
+          @SuppressWarnings("unchecked")
+          List<ColumnValue> arr = (List<ColumnValue>)cv.getFieldValue();
+          if (arr != null) {
+            this.nonPrimitives[this.nonPrimSize++] = arr;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.ARRAY);
+            this.size++;
+          }
+          break;
+        case MAP_VAL:
+          ensureNonPrimCapacity();
+          @SuppressWarnings("unchecked")
+          Map<ColumnValue, ColumnValue> map =
+              (Map<ColumnValue, ColumnValue>)cv.getFieldValue();
+          if (map != null) {
+            this.nonPrimitives[this.nonPrimSize++] = map;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.MAP);
+            this.size++;
+          }
+          break;
+        case STRUCT_VAL:
+          ensureNonPrimCapacity();
+          @SuppressWarnings("unchecked")
+          List<ColumnValue> struct = (List<ColumnValue>)cv.getFieldValue();
+          if (struct != null) {
+            this.nonPrimitives[this.nonPrimSize++] = struct;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.STRUCT);
+            this.size++;
+          }
+          break;
+        case JSON_VAL:
+          ensureNonPrimCapacity();
+          JSONObject jsonObj = (JSONObject)cv.getFieldValue();
+          if (jsonObj != null) {
+            this.nonPrimitives[this.nonPrimSize++] = jsonObj;
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.JSON);
+            this.size++;
+          }
+          break;
+        case JAVA_VAL:
+          ensureNonPrimCapacity();
+          byte[] serializedBytes = cv.getJava_val();
+          if (serializedBytes != null) {
+            this.nonPrimitives[this.nonPrimSize++] = Converters.getJavaObject(
+                serializedBytes, this.size);
+            this.positionMap[this.size] = -this.nonPrimSize;
+            setType(this.size, SnappyType.JAVA_OBJECT);
+            this.size++;
+          }
+          break;
+        case NULL_VAL:
+          ensureNonPrimCapacity();
+          this.nonPrimitives[this.nonPrimSize++] = null;
           this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.ARRAY);
+          setType(this.size, SnappyType.NULLTYPE);
           this.size++;
-        }
-        break;
-      case MAP_VAL:
-        ensureNonPrimCapacity();
-        @SuppressWarnings("unchecked")
-        Map<ColumnValue, ColumnValue> map =
-            (Map<ColumnValue, ColumnValue>)cv.getFieldValue();
-        if (map != null) {
-          this.nonPrimitives[this.nonPrimSize++] = map;
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.MAP);
-          this.size++;
-        }
-        break;
-      case STRUCT_VAL:
-        ensureNonPrimCapacity();
-        @SuppressWarnings("unchecked")
-        List<ColumnValue> struct = (List<ColumnValue>)cv.getFieldValue();
-        if (struct != null) {
-          this.nonPrimitives[this.nonPrimSize++] = struct;
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.STRUCT);
-          this.size++;
-        }
-        break;
-      case JSON_VAL:
-        ensureNonPrimCapacity();
-        JSONObject jsonObj = (JSONObject)cv.getFieldValue();
-        if (jsonObj != null) {
-          this.nonPrimitives[this.nonPrimSize++] = jsonObj;
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.JSON);
-          this.size++;
-        }
-        break;
-      case JAVA_VAL:
-        ensureNonPrimCapacity();
-        byte[] serializedBytes = cv.getJava_val();
-        if (serializedBytes != null) {
-          this.nonPrimitives[this.nonPrimSize++] = Converters.getJavaObject(
-              serializedBytes, this.size);
-          this.positionMap[this.size] = -this.nonPrimSize;
-          setType(this.size, SnappyType.JAVA_OBJECT);
-          this.size++;
-        }
-        break;
-      case NULL_VAL:
-        ensureNonPrimCapacity();
-        this.nonPrimitives[this.nonPrimSize++] = null;
-        this.positionMap[this.size] = -this.nonPrimSize;
-        setType(this.size, SnappyType.NULLTYPE);
-        this.size++;
-        break;
-      default:
-        throw ClientSharedUtils.newRuntimeException("unknown column value: " +
-            (cv.getFieldValue() != null ? cv : "null"), null);
+          break;
+        default:
+          throw ClientSharedUtils.newRuntimeException("unknown column value: " +
+              (cv.getFieldValue() != null ? cv : "null"), null);
+      }
+    } else {
+      // treat like null value
+      ensureNonPrimCapacity();
+      this.nonPrimitives[this.nonPrimSize++] = null;
+      this.positionMap[this.size] = -this.nonPrimSize;
+      setType(this.size, SnappyType.NULLTYPE);
+      this.size++;
     }
   }
 

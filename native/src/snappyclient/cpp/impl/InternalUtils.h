@@ -128,12 +128,6 @@ namespace impl {
       return (sinceEpoch.ticks() / sinceEpoch.ticks_per_second());
     }
 
-    static int64_t convertPosixTimeToEpochMillis(
-        const boost::posix_time::ptime dateTime) {
-      boost::posix_time::time_duration sinceEpoch = dateTime - s_epoch;
-      return sinceEpoch.total_milliseconds();
-    }
-
   private:
     InternalUtils() = delete; // no instances
     ~InternalUtils() = delete; // no instances

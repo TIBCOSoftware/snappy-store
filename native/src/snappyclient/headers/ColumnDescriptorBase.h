@@ -88,7 +88,7 @@ namespace client {
       return m_descriptor.name;
     }
 
-    std::string getSchema() const noexcept {
+    std::string getSchema() const {
       if (m_descriptor.__isset.fullTableName) {
         const std::string& tableName = m_descriptor.fullTableName;
         size_t dotPos;
@@ -99,7 +99,7 @@ namespace client {
       return "";
     }
 
-    std::string getTable() const noexcept {
+    std::string getTable() const {
       if (m_descriptor.__isset.fullTableName) {
         const std::string& tableName = m_descriptor.fullTableName;
         size_t dotPos;

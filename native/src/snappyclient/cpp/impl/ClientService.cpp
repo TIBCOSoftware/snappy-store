@@ -1261,7 +1261,7 @@ void ClientService::getSchemaMetaData(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs) {
   metadataArgs.connId = m_connId;
   if (m_token.size() > 0) {
-    metadataArgs.token = m_token;
+    metadataArgs.__set_token(m_token);
   }
   try {
     if (m_hasPendingTXAttrs) {
@@ -1288,7 +1288,7 @@ void ClientService::getIndexInfo(thrift::RowSet& result,
     const bool approximate) {
   metadataArgs.connId = m_connId;
   if (m_token.size() > 0) {
-    metadataArgs.token = m_token;
+    metadataArgs.__set_token(m_token);
   }
   try {
     if (m_hasPendingTXAttrs) {
@@ -1315,7 +1315,7 @@ void ClientService::getUDTs(thrift::RowSet& result,
     const std::vector<thrift::SnappyType::type>& types) {
   metadataArgs.connId = m_connId;
   if (m_token.size() > 0) {
-    metadataArgs.token = m_token;
+    metadataArgs.__set_token(m_token);
   }
   try {
     if (m_hasPendingTXAttrs) {
@@ -1342,7 +1342,7 @@ void ClientService::getBestRowIdentifier(thrift::RowSet& result,
     const bool nullable) {
   metadataArgs.connId = m_connId;
   if (m_token.size() > 0) {
-    metadataArgs.token = m_token;
+    metadataArgs.__set_token(m_token);
   }
   try {
     if (m_hasPendingTXAttrs) {
@@ -1415,6 +1415,25 @@ void ClientService::closeStatement(const int32_t stmtId) {
     handleStdException("closeStatement", stde);
   } catch (...) {
     handleUnknownException("closeStatement");
+  }
+}
+
+void ClientService::bulkClose(
+    const std::vector<thrift::EntityId>& entities) {
+  try {
+    m_client.bulkClose(entities);
+  } catch (const thrift::SnappyException& sqle) {
+    handleSnappyException(sqle);
+  } catch (const TTransportException& tte) {
+    handleTTransportException("closeResultSet", tte);
+  } catch (const protocol::TProtocolException& tpe) {
+    handleTProtocolException("closeResultSet", tpe);
+  } catch (const TException& te) {
+    handleTException("closeResultSet", te);
+  } catch (const std::exception& stde) {
+    handleStdException("closeResultSet", stde);
+  } catch (...) {
+    handleUnknownException("closeResultSet");
   }
 }
 

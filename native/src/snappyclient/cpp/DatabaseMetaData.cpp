@@ -169,7 +169,7 @@ DatabaseMetaData::~DatabaseMetaData() {
 
 bool DatabaseMetaData::searchFeature(
     thrift::ServiceFeatureParameterized::type featureName,
-    int32_t searchFor) const noexcept {
+    int32_t searchFor) const {
   std::map<thrift::ServiceFeatureParameterized::type, std::vector<int32_t> >
       ::const_iterator result = m_metadata.featuresWithParams.find(featureName);
   if (result != m_metadata.featuresWithParams.end()) {
@@ -184,7 +184,7 @@ bool DatabaseMetaData::searchFeature(
 }
 
 bool DatabaseMetaData::isFeatureSupported(
-    DatabaseFeature::type feature) const noexcept {
+    DatabaseFeature::type feature) const {
   const std::set<thrift::ServiceFeature::type>& supportedFeatures =
       m_metadata.supportedFeatures;
 
@@ -368,7 +368,7 @@ RowIdLifetime DatabaseMetaData::getDefaultRowIdLifeTime() const noexcept {
 }
 
 bool DatabaseMetaData::supportsConvert(SQLType fromType,
-    SQLType toType) const noexcept {
+    SQLType toType) const {
   std::map<thrift::SnappyType::type, std::set<thrift::SnappyType::type> >
       ::const_iterator result = m_metadata.supportedCONVERT.find(
           static_cast<thrift::SnappyType::type>(fromType));
@@ -381,84 +381,84 @@ bool DatabaseMetaData::supportsConvert(SQLType fromType,
 }
 
 bool DatabaseMetaData::supportsTransactionIsolationLevel(
-    IsolationLevel isolation) const noexcept {
+    IsolationLevel isolation) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::TRANSACTIONS_SUPPORT_ISOLATION,
       static_cast<int32_t>(isolation));
 }
 
 bool DatabaseMetaData::supportsResultSetReadOnly(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_CONCURRENCY_READ_ONLY,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::supportsResultSetUpdatable(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_CONCURRENCY_UPDATABLE,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::othersUpdatesVisible(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OTHERS_UPDATES_VISIBLE,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::othersDeletesVisible(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OTHERS_DELETES_VISIBLE,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::othersInsertsVisible(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OTHERS_INSERTS_VISIBLE,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::ownUpdatesVisible(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OWN_UPDATES_VISIBLE,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::ownDeletesVisible(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OWN_DELETES_VISIBLE,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::ownInsertsVisible(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_OWN_INSERTS_VISIBLE,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::updatesDetected(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_UPDATES_DETECTED,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::deletesDetected(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_DELETES_DETECTED,
       static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::insertsDetected(
-    ResultSetType rsType) const noexcept {
+    ResultSetType rsType) const {
   return searchFeature(
       thrift::ServiceFeatureParameterized::RESULTSET_INSERTS_DETECTED,
       static_cast<int32_t>(rsType));

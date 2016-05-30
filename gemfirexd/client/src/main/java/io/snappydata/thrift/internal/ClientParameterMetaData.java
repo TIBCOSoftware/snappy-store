@@ -98,12 +98,11 @@ public class ClientParameterMetaData implements ParameterMetaData {
   public boolean isSigned(int param) throws SQLException {
     switch (getDescriptor(param).getType()) {
       case INTEGER:
-      case FLOAT:
+      case REAL:
       case DECIMAL:
       case SMALLINT:
       case BIGINT:
       case TINYINT:
-      case REAL:
       case DOUBLE:
         return true;
       default:
@@ -135,7 +134,6 @@ public class ClientParameterMetaData implements ParameterMetaData {
         case SMALLINT:
         case INTEGER:
         case BIGINT:
-        case FLOAT:
         case REAL:
         case DOUBLE:
         case DATE:
@@ -183,8 +181,6 @@ public class ClientParameterMetaData implements ParameterMetaData {
           return "INTEGER";
         case BIGINT:
           return "BIGINT";
-        case FLOAT:
-          return "FLOAT";
         case REAL:
           return "REAL";
         case DOUBLE:
@@ -253,7 +249,6 @@ public class ClientParameterMetaData implements ParameterMetaData {
         return "java.lang.Integer";
       case BIGINT:
         return "java.lang.Long";
-      case FLOAT:
       case REAL:
         return "java.lang.Float";
       case DOUBLE:

@@ -137,22 +137,22 @@ void ResultSet::deleteRow(UpdatableRow* row, int32_t rowIndex) {
       Utils::singleVector(rowIndex));
 }
 
-ResultSet::const_iterator ResultSet::cbegin(uint32_t pos) const {
+ResultSet::const_iterator ResultSet::cbegin(int32_t offset) const {
   checkOpen("cbegin");
-  if (pos != 0) {
+  if (offset != 0) {
     checkScrollable("cbegin");
   }
 
-  return const_iterator(const_cast<ResultSet*>(this), pos, false);
+  return const_iterator(const_cast<ResultSet*>(this), offset);
 }
 
-ResultSet::iterator ResultSet::begin(uint32_t pos) {
+ResultSet::iterator ResultSet::begin(int32_t offset) {
   checkOpen("begin");
-  if (pos != 0) {
+  if (offset != 0) {
     checkScrollable("begin");
   }
 
-  return iterator(this, pos, false);
+  return iterator(this, offset);
 }
 
 uint32_t ResultSet::getColumnPosition(const std::string& name) const {
@@ -313,15 +313,20 @@ bool ResultSet::cancelStatement() {
   return false;
 }
 
-void ResultSet::close() {
+void ResultSet::close(bool closeStatement) {
   if (m_rows && m_rows->cursorId != thrift::snappydataConstants::INVALID_ID) {
     // need to make the server call only if this is not the last batch
     // or a scrollable cursor with multiple batches, otherwise server
     // would have already closed the ResultSet
-    bool last = (m_rows->flags &
-        thrift::snappydataConstants::ROWSET_LAST_BATCH) != 0;
-    if (!last || (m_scrollable && !(m_rows->offset == 0 && last))) {
+    if ((m_rows->flags &
+        thrift::snappydataConstants::ROWSET_LAST_BATCH) == 0 || m_scrollable) {
       m_service->closeResultSet(m_rows->cursorId);
+    }
+    if (closeStatement) {
+      const auto statementId = m_rows->statementId;
+      if (statementId != thrift::snappydataConstants::INVALID_ID) {
+        m_service->closeStatement(statementId);
+      }
     }
   }
   if (m_isOwner && m_rows) {
@@ -335,7 +340,7 @@ ResultSet::~ResultSet() {
   // destructor should *never* throw an exception
   // TODO: close from destructor should use bulkClose if valid handle
   try {
-    close();
+    close(false);
   } catch (const SQLException& sqle) {
     Utils::handleExceptionInDestructor("result set", sqle);
   } catch (const std::exception& stde) {

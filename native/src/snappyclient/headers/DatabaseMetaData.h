@@ -106,7 +106,7 @@ namespace client {
     friend class Connection;
 
     bool searchFeature(thrift::ServiceFeatureParameterized::type featureName,
-        int32_t searchFor) const noexcept;
+        int32_t searchFor) const;
 
   public:
     /** copy constructor */
@@ -123,7 +123,7 @@ namespace client {
 
     ~DatabaseMetaData();
 
-    bool isFeatureSupported(DatabaseFeature::type feature) const noexcept;
+    bool isFeatureSupported(DatabaseFeature::type feature) const;
     const std::string& getProductName() const noexcept;
     const std::string& getProductVersion() const noexcept;
     int32_t getProductMajorVersion() const noexcept;
@@ -166,20 +166,19 @@ namespace client {
     ResultSetHoldability getDefaultHoldability() const noexcept;
     bool isSQLStateXOpen() const noexcept;
     RowIdLifetime getDefaultRowIdLifeTime() const noexcept;
-    bool supportsConvert(SQLType fromType, SQLType toType) const noexcept;
-    bool supportsTransactionIsolationLevel(
-        IsolationLevel isolation) const noexcept;
-    bool supportsResultSetReadOnly(ResultSetType rsType) const noexcept;
-    bool supportsResultSetUpdatable(ResultSetType rsType) const noexcept;
-    bool othersUpdatesVisible(ResultSetType rsType) const noexcept;
-    bool othersDeletesVisible(ResultSetType rsType) const noexcept;
-    bool othersInsertsVisible(ResultSetType rsType) const noexcept;
-    bool ownUpdatesVisible(ResultSetType rsType) const noexcept;
-    bool ownDeletesVisible(ResultSetType rsType) const noexcept;
-    bool ownInsertsVisible(ResultSetType rsType) const noexcept;
-    bool updatesDetected(ResultSetType rsType) const noexcept;
-    bool deletesDetected(ResultSetType rsType) const noexcept;
-    bool insertsDetected(ResultSetType rsType) const noexcept;
+    bool supportsConvert(SQLType fromType, SQLType toType) const;
+    bool supportsTransactionIsolationLevel(IsolationLevel isolation) const;
+    bool supportsResultSetReadOnly(ResultSetType rsType) const;
+    bool supportsResultSetUpdatable(ResultSetType rsType) const;
+    bool othersUpdatesVisible(ResultSetType rsType) const;
+    bool othersDeletesVisible(ResultSetType rsType) const;
+    bool othersInsertsVisible(ResultSetType rsType) const;
+    bool ownUpdatesVisible(ResultSetType rsType) const;
+    bool ownDeletesVisible(ResultSetType rsType) const;
+    bool ownInsertsVisible(ResultSetType rsType) const;
+    bool updatesDetected(ResultSetType rsType) const;
+    bool deletesDetected(ResultSetType rsType) const;
+    bool insertsDetected(ResultSetType rsType) const;
   };
 
 } /* namespace client */
