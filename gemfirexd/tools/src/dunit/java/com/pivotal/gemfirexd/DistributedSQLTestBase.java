@@ -1646,6 +1646,9 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   public int startNetworkServer(int vmNum, String serverGroups,
       Properties extraProps) throws Exception {
     int netPort = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
+    if (netPort <= 1024) {
+      throw new AssertionError("unexpected random port " + netPort);
+    }
     startNetworkServer(vmNum, serverGroups, extraProps, netPort);
     return netPort;
   }

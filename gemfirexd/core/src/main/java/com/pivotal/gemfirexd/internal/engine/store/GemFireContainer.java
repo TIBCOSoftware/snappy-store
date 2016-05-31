@@ -3319,8 +3319,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       rowList = rows;
     }
     // end for bulk fk check
-    final boolean noLobs = !rf.hasLobs();
-    Map<Object, Object> toBeInsertedRows = new LinkedHashMap<Object, Object>();
+    final boolean noLobs = rf == null || !rf.hasLobs();
+    Map<Object, Object> toBeInsertedRows = new LinkedHashMap<>();
     Object[] callbackArgs = null;
     int j = 0;
     try {
