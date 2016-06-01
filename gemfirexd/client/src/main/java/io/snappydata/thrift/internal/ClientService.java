@@ -582,15 +582,6 @@ public final class ClientService extends ReentrantLock {
     if (rs != null) {
       setSourceConnection(rs);
     }
-    // initialize finalizers for LOBs in the row, if any
-    Row outRow = sr.procedureOutParams;
-    if (outRow != null) {
-      final TIntArrayList lobIndices = outRow.requiresLobFinalizers();
-      if (lobIndices != null) {
-        outRow.initializeLobFinalizers(lobIndices,
-            new ClientCreateLobFinalizer(this.currentHostConnection));
-      }
-    }
   }
 
   private boolean acquireLock(long lockTimeoutMillis) {

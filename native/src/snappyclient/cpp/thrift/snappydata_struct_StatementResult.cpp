@@ -42,7 +42,7 @@ void StatementResult::__set_batchUpdateCounts(const std::vector<int32_t> & val) 
 __isset.batchUpdateCounts = true;
 }
 
-void StatementResult::__set_procedureOutParams(const Row& val) {
+void StatementResult::__set_procedureOutParams(const std::map<int32_t, ColumnValue> & val) {
   this->procedureOutParams = val;
 __isset.procedureOutParams = true;
 }
@@ -119,8 +119,23 @@ uint32_t StatementResult::read(::apache::thrift::protocol::TProtocol* iprot) {
         }
         break;
       case 4:
-        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
-          xfer += this->procedureOutParams.read(iprot);
+        if (ftype == ::apache::thrift::protocol::T_MAP) {
+          {
+            this->procedureOutParams.clear();
+            uint32_t _size316;
+            ::apache::thrift::protocol::TType _ktype317;
+            ::apache::thrift::protocol::TType _vtype318;
+            xfer += iprot->readMapBegin(_ktype317, _vtype318, _size316);
+            uint32_t _i320;
+            for (_i320 = 0; _i320 < _size316; ++_i320)
+            {
+              int32_t _key321;
+              xfer += iprot->readI32(_key321);
+              ColumnValue& _val322 = this->procedureOutParams[_key321];
+              xfer += _val322.read(iprot);
+            }
+            xfer += iprot->readMapEnd();
+          }
           this->__isset.procedureOutParams = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -180,18 +195,27 @@ uint32_t StatementResult::write(::apache::thrift::protocol::TProtocol* oprot) co
     xfer += oprot->writeFieldBegin("batchUpdateCounts", ::apache::thrift::protocol::T_LIST, 3);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->batchUpdateCounts.size()));
-      std::vector<int32_t> ::const_iterator _iter316;
-      for (_iter316 = this->batchUpdateCounts.begin(); _iter316 != this->batchUpdateCounts.end(); ++_iter316)
+      std::vector<int32_t> ::const_iterator _iter323;
+      for (_iter323 = this->batchUpdateCounts.begin(); _iter323 != this->batchUpdateCounts.end(); ++_iter323)
       {
-        xfer += oprot->writeI32((*_iter316));
+        xfer += oprot->writeI32((*_iter323));
       }
       xfer += oprot->writeListEnd();
     }
     xfer += oprot->writeFieldEnd();
   }
   if (this->__isset.procedureOutParams) {
-    xfer += oprot->writeFieldBegin("procedureOutParams", ::apache::thrift::protocol::T_STRUCT, 4);
-    xfer += this->procedureOutParams.write(oprot);
+    xfer += oprot->writeFieldBegin("procedureOutParams", ::apache::thrift::protocol::T_MAP, 4);
+    {
+      xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_I32, ::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->procedureOutParams.size()));
+      std::map<int32_t, ColumnValue> ::const_iterator _iter324;
+      for (_iter324 = this->procedureOutParams.begin(); _iter324 != this->procedureOutParams.end(); ++_iter324)
+      {
+        xfer += oprot->writeI32(_iter324->first);
+        xfer += _iter324->second.write(oprot);
+      }
+      xfer += oprot->writeMapEnd();
+    }
     xfer += oprot->writeFieldEnd();
   }
   if (this->__isset.generatedKeys) {
@@ -227,46 +251,46 @@ void swap(StatementResult &a, StatementResult &b) noexcept {
   swap(a.__isset, b.__isset);
 }
 
-StatementResult::StatementResult(const StatementResult& other317) {
-  resultSet = other317.resultSet;
-  updateCount = other317.updateCount;
-  batchUpdateCounts = other317.batchUpdateCounts;
-  procedureOutParams = other317.procedureOutParams;
-  generatedKeys = other317.generatedKeys;
-  warnings = other317.warnings;
-  preparedResult = other317.preparedResult;
-  __isset = other317.__isset;
+StatementResult::StatementResult(const StatementResult& other325) {
+  resultSet = other325.resultSet;
+  updateCount = other325.updateCount;
+  batchUpdateCounts = other325.batchUpdateCounts;
+  procedureOutParams = other325.procedureOutParams;
+  generatedKeys = other325.generatedKeys;
+  warnings = other325.warnings;
+  preparedResult = other325.preparedResult;
+  __isset = other325.__isset;
 }
-StatementResult::StatementResult( StatementResult&& other318) noexcept {
-  resultSet = std::move(other318.resultSet);
-  updateCount = std::move(other318.updateCount);
-  batchUpdateCounts = std::move(other318.batchUpdateCounts);
-  procedureOutParams = std::move(other318.procedureOutParams);
-  generatedKeys = std::move(other318.generatedKeys);
-  warnings = std::move(other318.warnings);
-  preparedResult = std::move(other318.preparedResult);
-  __isset = std::move(other318.__isset);
+StatementResult::StatementResult( StatementResult&& other326) noexcept {
+  resultSet = std::move(other326.resultSet);
+  updateCount = std::move(other326.updateCount);
+  batchUpdateCounts = std::move(other326.batchUpdateCounts);
+  procedureOutParams = std::move(other326.procedureOutParams);
+  generatedKeys = std::move(other326.generatedKeys);
+  warnings = std::move(other326.warnings);
+  preparedResult = std::move(other326.preparedResult);
+  __isset = std::move(other326.__isset);
 }
-StatementResult& StatementResult::operator=(const StatementResult& other319) {
-  resultSet = other319.resultSet;
-  updateCount = other319.updateCount;
-  batchUpdateCounts = other319.batchUpdateCounts;
-  procedureOutParams = other319.procedureOutParams;
-  generatedKeys = other319.generatedKeys;
-  warnings = other319.warnings;
-  preparedResult = other319.preparedResult;
-  __isset = other319.__isset;
+StatementResult& StatementResult::operator=(const StatementResult& other327) {
+  resultSet = other327.resultSet;
+  updateCount = other327.updateCount;
+  batchUpdateCounts = other327.batchUpdateCounts;
+  procedureOutParams = other327.procedureOutParams;
+  generatedKeys = other327.generatedKeys;
+  warnings = other327.warnings;
+  preparedResult = other327.preparedResult;
+  __isset = other327.__isset;
   return *this;
 }
-StatementResult& StatementResult::operator=(StatementResult&& other320) noexcept {
-  resultSet = std::move(other320.resultSet);
-  updateCount = std::move(other320.updateCount);
-  batchUpdateCounts = std::move(other320.batchUpdateCounts);
-  procedureOutParams = std::move(other320.procedureOutParams);
-  generatedKeys = std::move(other320.generatedKeys);
-  warnings = std::move(other320.warnings);
-  preparedResult = std::move(other320.preparedResult);
-  __isset = std::move(other320.__isset);
+StatementResult& StatementResult::operator=(StatementResult&& other328) noexcept {
+  resultSet = std::move(other328.resultSet);
+  updateCount = std::move(other328.updateCount);
+  batchUpdateCounts = std::move(other328.batchUpdateCounts);
+  procedureOutParams = std::move(other328.procedureOutParams);
+  generatedKeys = std::move(other328.generatedKeys);
+  warnings = std::move(other328.warnings);
+  preparedResult = std::move(other328.preparedResult);
+  __isset = std::move(other328.__isset);
   return *this;
 }
 void StatementResult::printTo(std::ostream& out) const {

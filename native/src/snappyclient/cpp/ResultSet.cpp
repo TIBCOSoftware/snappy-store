@@ -257,7 +257,12 @@ std::unique_ptr<ResultSet> ResultSet::getNextResults(
 
     m_service->getNextResultSet(*rs, m_rows->cursorId,
         static_cast<int8_t>(behaviour));
-    return resultSet;
+    // check for empty ResultSet
+    if (rs->metadata.empty()) {
+      return std::unique_ptr<ResultSet>(nullptr);
+    } else {
+      return resultSet;
+    }
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_CURSOR_STATE_MSG2);
   }

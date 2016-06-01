@@ -356,7 +356,7 @@ public final class GenericParameterValueSet implements ParameterValueSet
 		{
 // GemStone changes BEGIN
 		  strbuf.append(";value=").append(parms[ctr]).append(",type=")
-		      .append(parms[ctr].getSQLType());
+		      .append(parms[ctr].getRegisterOutputType());
 		  /*
 			strbuf.append("begin parameter #" + (ctr + 1) + ": ");
 			strbuf.append(parms[ctr].toString());

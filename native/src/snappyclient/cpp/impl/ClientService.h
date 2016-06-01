@@ -39,7 +39,7 @@
 #include "ClientBase.h"
 
 #include <boost/shared_ptr.hpp>
-#include <mutex>
+#include <boost/thread/mutex.hpp>
 
 #include "../thrift/SnappyDataService.h"
 
@@ -110,6 +110,10 @@ namespace impl {
     IsolationLevel m_isolationLevel;
     std::map<thrift::TransactionAttribute::type, bool> m_currentTXAttrs;
 
+    // using boost::mutex and not std::mutex due to superior implementation on
+    // Windows compared to that provided by VS (which always does kernel call)
+    boost::mutex m_lock;
+
     // no copy constructor or assignment operator due to obvious issues
     // with usage of same connection by multiple threads concurrently
     ClientService(const ClientService&) = delete;
@@ -156,13 +160,16 @@ namespace impl {
 
     void setPendingTransactionAttrs(thrift::StatementAttrs& stmtAttrs);
 
+    void getTransactionAttributesNoLock(
+        std::map<thrift::TransactionAttribute::type, bool>& result);
+
     void destroyTransport() noexcept;
 
   private:
     // the static hostName and hostId used by all connections
     static std::string s_hostName;
     static std::string s_hostId;
-    static std::mutex s_globalLock;
+    static boost::mutex s_globalLock;
 
   public:
     ClientService(const std::string& host, const int port,

@@ -88,7 +88,8 @@ namespace client {
 
     const std::vector<int32_t>& getBatchUpdateCounts() const noexcept;
 
-    const Row* getOutputParameters() const;
+    const std::map<int32_t, thrift::ColumnValue>& getOutputParameters()
+        const noexcept;
 
     std::unique_ptr<ResultSet> getGeneratedKeys();
 

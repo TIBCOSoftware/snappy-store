@@ -112,26 +112,27 @@ enum SnappyType {
   BIGINT                                                   = 5
   REAL                                                     = 6
   DOUBLE                                                   = 7
-  DECIMAL                                                  = 8
-  CHAR                                                     = 9
-  VARCHAR                                                  = 10
-  LONGVARCHAR                                              = 11
-  DATE                                                     = 12
-  TIME                                                     = 13
-  TIMESTAMP                                                = 14
-  BINARY                                                   = 15
-  VARBINARY                                                = 16
-  LONGVARBINARY                                            = 17
-  BLOB                                                     = 18
-  CLOB                                                     = 19
-  SQLXML                                                   = 20
-  ARRAY                                                    = 21
-  MAP                                                      = 22
-  STRUCT                                                   = 23
-  NULLTYPE                                                 = 24
-  JSON                                                     = 25
-  JAVA_OBJECT                                              = 26 // custom Java serialized object
-  OTHER                                                    = 27 // custom UDTs which will be shipped as clobs
+  FLOAT                                                    = 8
+  DECIMAL                                                  = 9
+  CHAR                                                     = 10
+  VARCHAR                                                  = 11
+  LONGVARCHAR                                              = 12
+  DATE                                                     = 13
+  TIME                                                     = 14
+  TIMESTAMP                                                = 15
+  BINARY                                                   = 16
+  VARBINARY                                                = 17
+  LONGVARBINARY                                            = 18
+  BLOB                                                     = 19
+  CLOB                                                     = 20
+  SQLXML                                                   = 21
+  ARRAY                                                    = 22
+  MAP                                                      = 23
+  STRUCT                                                   = 24
+  NULLTYPE                                                 = 25
+  JSON                                                     = 26
+  JAVA_OBJECT                                              = 27 // custom Java serialized object
+  OTHER                                                    = 28 // custom UDTs which will be shipped as clobs
 }
 
 // constants for StatementAttrs.resultSetType
@@ -517,7 +518,7 @@ union ColumnValue {
   // in a manner compatible with Java's Float.floatToIntBits, or like a C/C++
   // union having two fields namely float & int for conversion between the two
   6: i32                                                   float_val     // REAL
-  7: double                                                double_val    // DOUBLE
+  7: double                                                double_val    // DOUBLE/FLOAT
   8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR, SQLXML
   9: Decimal                                               decimal_val   // DECIMAL
  10: DateTime                                              date_val      // DATE (only the date portion is used)
@@ -656,7 +657,7 @@ struct StatementResult {
   2: optional i32                                          updateCount
   // for batch updates in prepareAndExecute
   3: optional list<i32>                                    batchUpdateCounts
-  4: optional Row                                          procedureOutParams
+  4: optional map<i32, ColumnValue>                        procedureOutParams
   5: optional RowSet                                       generatedKeys
   6: optional SnappyExceptionData                          warnings
   // for prepareAndExecute

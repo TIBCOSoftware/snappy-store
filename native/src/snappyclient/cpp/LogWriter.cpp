@@ -40,11 +40,11 @@
 #include "LogWriter.h"
 
 #include <fstream>
-#include <thread>
 #include <boost/make_shared.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/chrono/io/time_point_io.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/thread/thread.hpp>
 
 #include "SQLException.h"
 #include "Utils.h"
@@ -377,7 +377,7 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel, const char* flag) 
       if (Utils::getCurrentThreadName(" <", out)) {
         out << '>';
       }
-      out << " tid=0x" << std::hex << std::this_thread::get_id()
+      out << " tid=0x" << std::hex << boost::this_thread::get_id()
           << std::dec << "] ";
       return out;
     } catch (const std::exception& se) {
@@ -402,7 +402,7 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel, const char* flag) 
 std::ostream& LogWriter::printCompact(const LogLevel::type logLevel,
     const char* flag) {
   std::ostream& out = getRawStream();
-  const std::thread::id tid = std::this_thread::get_id();
+  const boost::thread::id tid = boost::this_thread::get_id();
 
   impl::InternalLogger::compactLogThreadName(out, tid);
   return impl::InternalLogger::printCompact_(out, logLevel, flag, tid);

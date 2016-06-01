@@ -184,6 +184,14 @@ namespace client {
       return *this;
     }
 
+    void addColumn(const thrift::ColumnValue& v) {
+      m_values.push_back(v);
+    }
+
+    void addColumn(thrift::ColumnValue&& v) {
+      m_values.push_back(std::move(v));
+    }
+
     SQLType getType(const uint32_t columnNum) const {
       return static_cast<SQLType>(getColumnValue(columnNum).getType());
     }

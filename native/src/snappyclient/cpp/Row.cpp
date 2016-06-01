@@ -351,6 +351,7 @@ bool Row::convertBoolean(const thrift::ColumnValue& cv,
     case thrift::SnappyType::TINYINT:
       return cv.get<int8_t>() != 0;
     case thrift::SnappyType::DOUBLE:
+    case thrift::SnappyType::FLOAT:
       return cv.get<double>() != 0.0;
     case thrift::SnappyType::REAL:
       return cv.get<float>() != 0.0f;
@@ -386,6 +387,7 @@ int8_t Row::convertByte(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<int8_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<int8_t>(cv.get<float>());
@@ -417,6 +419,7 @@ uint8_t Row::convertUnsignedByte(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<uint8_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<uint8_t>(cv.get<float>());
@@ -448,6 +451,7 @@ int16_t Row::convertShort(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<int16_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<int16_t>(cv.get<float>());
@@ -479,6 +483,7 @@ uint16_t Row::convertUnsignedShort(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<uint16_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<uint16_t>(cv.get<float>());
@@ -510,6 +515,7 @@ int32_t Row::convertInt(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<int32_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<int32_t>(cv.get<float>());
@@ -541,6 +547,7 @@ uint32_t Row::convertUnsignedInt(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<uint32_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<uint32_t>(cv.get<float>());
@@ -572,6 +579,7 @@ int64_t Row::convertInt64(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<int64_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<int64_t>(cv.get<float>());
@@ -603,6 +611,7 @@ uint64_t Row::convertUnsignedInt64(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1 : 0;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<uint64_t>(cv.get<double>());
       case thrift::SnappyType::REAL:
         return boost::numeric_cast<uint64_t>(cv.get<float>());
@@ -636,6 +645,7 @@ float Row::convertFloat(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BOOLEAN:
         return cv.get<bool>() ? 1.0f : 0.0f;
       case thrift::SnappyType::DOUBLE:
+      case thrift::SnappyType::FLOAT:
         return boost::numeric_cast<float>(cv.get<double>());
       case thrift::SnappyType::DECIMAL:
         return ::decimalToApproxNumeric<float>(cv, columnNum, "FLOAT");
@@ -707,6 +717,7 @@ std::shared_ptr<Decimal> Row::convertDecimal(const thrift::ColumnValue& cv,
       return std::shared_ptr<Decimal>(
           new Decimal(cv.get<float>(), realPrecision));
     case thrift::SnappyType::DOUBLE:
+    case thrift::SnappyType::FLOAT:
       return std::shared_ptr<Decimal>(
           new Decimal(cv.get<double>(), realPrecision));
     case thrift::SnappyType::VARCHAR:
@@ -770,7 +781,8 @@ std::shared_ptr<thrift::Decimal> Row::convertTDecimal(const thrift::ColumnValue&
       dec.copyTo(*tdec);
       return std::move(tdec);
     }
-    case thrift::SnappyType::DOUBLE: {
+    case thrift::SnappyType::DOUBLE:
+    case thrift::SnappyType::FLOAT: {
       Decimal dec(cv.get<double>(), realPrecision);
       std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
       dec.copyTo(*tdec);

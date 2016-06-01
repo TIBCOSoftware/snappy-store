@@ -60,7 +60,7 @@ class StatementResult {
   RowSet resultSet;
   int32_t updateCount;
   std::vector<int32_t>  batchUpdateCounts;
-  Row procedureOutParams;
+  std::map<int32_t, ColumnValue>  procedureOutParams;
   RowSet generatedKeys;
   SnappyExceptionData warnings;
   PrepareResult preparedResult;
@@ -73,7 +73,7 @@ class StatementResult {
 
   void __set_batchUpdateCounts(const std::vector<int32_t> & val);
 
-  void __set_procedureOutParams(const Row& val);
+  void __set_procedureOutParams(const std::map<int32_t, ColumnValue> & val);
 
   void __set_generatedKeys(const RowSet& val);
 

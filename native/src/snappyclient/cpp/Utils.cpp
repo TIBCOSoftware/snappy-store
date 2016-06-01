@@ -90,6 +90,8 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
       return "DECIMAL";
     case thrift::SnappyType::DOUBLE:
       return "DOUBLE";
+    case thrift::SnappyType::FLOAT:
+      return "FLOAT";
     case thrift::SnappyType::INTEGER:
       return "INTEGER";
     case thrift::SnappyType::JAVA_OBJECT:

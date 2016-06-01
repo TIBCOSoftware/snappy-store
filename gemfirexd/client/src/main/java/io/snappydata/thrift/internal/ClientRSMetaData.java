@@ -149,6 +149,7 @@ public final class ClientRSMetaData implements ResultSetMetaData {
       case BIGINT:
       case TINYINT:
       case DOUBLE:
+      case FLOAT:
         return true;
       default:
         return false;
@@ -176,10 +177,10 @@ public final class ClientRSMetaData implements ResultSetMetaData {
       case REAL:
         return 13;
       case DOUBLE:
+      case FLOAT:
         return 22;
       case TINYINT:
         return 15;
-
       case BIGINT:
         return 20;
       case BOOLEAN:
@@ -263,6 +264,7 @@ public final class ClientRSMetaData implements ResultSetMetaData {
         case BIGINT:
         case REAL:
         case DOUBLE:
+        case FLOAT:
         case DATE:
         case TIME:
           return 0;
@@ -341,6 +343,8 @@ public final class ClientRSMetaData implements ResultSetMetaData {
           return "REAL";
         case DOUBLE:
           return "DOUBLE";
+        case FLOAT:
+          return "FLOAT";
         case DECIMAL:
           return "DECIMAL";
         case CHAR:
@@ -433,6 +437,7 @@ public final class ClientRSMetaData implements ResultSetMetaData {
       case REAL:
         return "java.lang.Float";
       case DOUBLE:
+      case FLOAT:
         return "java.lang.Double";
       case DECIMAL:
         return "java.math.BigDecimal";

@@ -104,6 +104,7 @@ public class ClientParameterMetaData implements ParameterMetaData {
       case BIGINT:
       case TINYINT:
       case DOUBLE:
+      case FLOAT:
         return true;
       default:
         return false;
@@ -136,6 +137,7 @@ public class ClientParameterMetaData implements ParameterMetaData {
         case BIGINT:
         case REAL:
         case DOUBLE:
+        case FLOAT:
         case DATE:
         case TIME:
           return 0;
@@ -185,6 +187,8 @@ public class ClientParameterMetaData implements ParameterMetaData {
           return "REAL";
         case DOUBLE:
           return "DOUBLE";
+        case FLOAT:
+          return "FLOAT";
         case DECIMAL:
           return "DECIMAL";
         case CHAR:
@@ -252,6 +256,7 @@ public class ClientParameterMetaData implements ParameterMetaData {
       case REAL:
         return "java.lang.Float";
       case DOUBLE:
+      case FLOAT:
         return "java.lang.Double";
       case DECIMAL:
         return "java.math.BigDecimal";

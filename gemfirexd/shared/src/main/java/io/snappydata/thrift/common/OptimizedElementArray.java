@@ -160,6 +160,7 @@ public class OptimizedElementArray {
           break;
         case BIGINT:
         case DOUBLE:
+        case FLOAT:
           this.positionMap[index++] = primitivePosition;
           primitivePosition += 8;
           break;
@@ -498,7 +499,7 @@ public class OptimizedElementArray {
         case DATE:
           Date date = (Date)getObject(index);
           if (date != null) {
-            cv.setDate_val(new DateTime(date.getTime() / 1000L));
+            cv.setDate_val(Converters.getDateTime(date));
           }
           else {
             cv.setNull_val(true);
@@ -507,12 +508,7 @@ public class OptimizedElementArray {
         case TIMESTAMP:
           java.sql.Timestamp ts = (java.sql.Timestamp)getObject(index);
           if (ts != null) {
-            Timestamp tsv = new Timestamp(ts.getTime() / 1000L);
-            int nanos = ts.getNanos();
-            if (nanos != 0) {
-              tsv.setNanos(nanos);
-            }
-            cv.setTimestamp_val(tsv);
+            cv.setTimestamp_val(Converters.getTimestamp(ts));
           }
           else {
             cv.setNull_val(true);
@@ -521,7 +517,7 @@ public class OptimizedElementArray {
         case TIME:
           Time time = (Time)getObject(index);
           if (time != null) {
-            cv.setTime_val(new DateTime(time.getTime() / 1000L));
+            cv.setTime_val(Converters.getDateTime(time));
           }
           else {
             cv.setNull_val(true);
@@ -531,6 +527,7 @@ public class OptimizedElementArray {
           cv.setFloat_val(getInt(index));
           break;
         case DOUBLE:
+        case FLOAT:
           cv.setDouble_val(getDouble(index));
           break;
         case BINARY:
@@ -547,11 +544,7 @@ public class OptimizedElementArray {
         case JAVA_OBJECT:
           Object o = getObject(index);
           if (o != null) {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream os = new ObjectOutputStream(bos);
-            os.writeObject(o);
-            os.flush();
-            cv.setJava_val(bos.toByteArray());
+            cv.setJava_val(Converters.getJavaObjectAsBytes(o));
           }
           else {
             cv.setNull_val(true);
@@ -585,11 +578,10 @@ public class OptimizedElementArray {
           }
           break;
         default:
-          throw new AssertionError("setInto: unhandled type=" + sqlType);
+          throw new IOException("setInto: unhandled type=" + sqlType);
       }
-    }
-    else {
-      throw new AssertionError("setInfo: unexpected invocation for types=null");
+    } else {
+      throw new IOException("setInfo: unexpected invocation for types=null");
     }
   }
 

@@ -36,10 +36,23 @@
 #ifndef INTERNALLOGGER_H_
 #define INTERNALLOGGER_H_
 
-#include <thread>
+#include <boost/thread/thread.hpp>
 
 #include "ThreadSafeMap.h"
 #include "LogWriter.h"
+
+namespace boost {
+  extern std::size_t hash_value(const thread::id &v);
+}
+
+namespace std {
+  template<>
+  struct hash<boost::thread::id> {
+    std::size_t operator()(const boost::thread::id& v) const {
+      return boost::hash_value(v);
+    }
+  };
+}
 
 namespace io {
 namespace snappydata {
@@ -57,17 +70,17 @@ namespace impl {
      * the common map from thread ID to its name used by all LogWriters
      * to dump names of any new thread IDs in compact logging
      */
-    static ThreadSafeMap<std::thread::id, std::string> s_threadNames;
+    static ThreadSafeMap<boost::thread::id, std::string> s_threadNames;
 
     static std::ostream& printCompact_(std::ostream& out,
         const LogLevel::type logLevel, const char* flag,
-        const std::thread::id tid);
+        const boost::thread::id tid);
 
     static void compactLogThreadName(std::ostream& out,
-        const std::thread::id tid);
+        const boost::thread::id tid);
 
     static void compactHeader(std::ostream& out,
-        const std::thread::id tid, const char* opId,
+        const boost::thread::id tid, const char* opId,
         const char* opSql, const int32_t sqlId, const bool isStart,
         const int64_t nanos, const int64_t milliTime,
         const int32_t connId, const std::string& token);
@@ -75,13 +88,13 @@ namespace impl {
     friend class io::snappydata::client::LogWriter;
 
   public:
-    static void traceCompact(const std::thread::id tid,
+    static void traceCompact(const boost::thread::id tid,
         const char* opId, const char* opSql, const int32_t sqlId,
         const bool isStart, const int64_t nanos, const int32_t connId,
         const std::string& token, const std::exception* se = NULL,
         const int64_t milliTime = 0);
 
-    static void traceCompact(const std::thread::id tid,
+    static void traceCompact(const boost::thread::id tid,
         const char* opId, const char* opSql, const int32_t sqlId,
         const bool isStart, const int64_t nanos, const int32_t connId,
         const std::string& token, const SQLException* sqle,

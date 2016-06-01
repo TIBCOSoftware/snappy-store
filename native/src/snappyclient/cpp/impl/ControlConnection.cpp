@@ -90,7 +90,7 @@ ControlConnection::ControlConnection() {
   }
 
 const std::vector<ControlConnection> ControlConnection::s_allConnections(2);
-const std::mutex ControlConnection::s_allConnsLock;
+const boost::mutex ControlConnection::s_allConnsLock;
 
 ControlConnection::ControlConnection(const ClientService& service) :
     m_snappyServerType(service.m_reqdServerType), m_snappyServerTypeSet(
@@ -104,13 +104,13 @@ const ControlConnection& ControlConnection::getOrCreateControlConnection(
     const thrift::HostAddress& hostAddr, const ClientService& service) {
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
-  std::lock_guard<std::mutex> globalGuard(s_allConnsLock);
+  boost::lock_guard<boost::mutex> globalGuard(s_allConnsLock);
 
   size_t index = s_allConnections.size();
   while (--index >= 0) {
     std::unique_ptr<ControlConnection>& controlService = s_allConnections[index];
 
-    std::lock_guard<std::mutex> serviceGuard(
+    boost::lock_guard<boost::mutex> serviceGuard(
         controlService->m_lock);
     if (controlService->m_controlHostSet.find(hostAddr)
         != controlService->m_controlHostSet.end()) {

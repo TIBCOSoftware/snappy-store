@@ -38,7 +38,7 @@
 
 #include "ClientService.h"
 
-#include <mutex>
+#include <boost/thread/mutex.hpp>
 
 #include "../thrift/LocatorService.h"
 
@@ -81,7 +81,7 @@ namespace impl {
     const std::unordered_set<thrift::HostAddress> m_controlHostSet;
     const std::set<std::string>& m_serverGroups;
 
-    const std::mutex m_lock;
+    const boost::mutex m_lock;
 
     /**
      * Since one DS is supposed to have one ControlConnection, so we expect the
@@ -89,7 +89,7 @@ namespace impl {
      */
     static const std::vector<ControlConnection> s_allConnections;
     /** Global lock for {@link allConnections} */
-    static const std::mutex s_allConnsLock;
+    static const boost::mutex s_allConnsLock;
 
     void failoverToAvailableHost(std::set<thrift::HostAddress>& failedServers,
         const std::exception* failure);

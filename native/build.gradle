@@ -217,8 +217,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
             if (buildType == buildTypes.debug) {
               cppCompiler.args '-g3', '-O0'
             } else {
-              cppCompiler.define 'NDEBUG'
-              cppCompiler.args '-O3'
+              cppCompiler.args '-g', '-O2'
             }
 
             linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread',
@@ -235,7 +234,6 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
               cppCompiler.args '/Od', '/Gm', '/ZI', '/RTC1', '/MDd'
               linker.args '/DEBUG'
             } else {
-              cppCompiler.define 'NDEBUG'
               cppCompiler.args '/Ox', '/GL', '/Oi', '/Gm-', '/Zi', '/MD'
             }
             if (targetPlatform == platforms.x64) {

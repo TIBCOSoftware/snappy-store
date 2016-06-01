@@ -455,8 +455,6 @@ namespace client {
         return *this;
       }
 
-      // TODO: SW: cleanup the reverse iteration pattern to be like STL
-      // currently have to check isOnRow() for checking if before first
       Itr& operator-=(const uint32_t n) {
         size_t sz;
         m_operation = NO_OP;

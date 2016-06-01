@@ -89,13 +89,9 @@ const std::vector<int32_t>& Result::getBatchUpdateCounts() const noexcept {
   return m_result.batchUpdateCounts;
 }
 
-const Row* Result::getOutputParameters() const {
-  if (m_result.__isset.procedureOutParams) {
-    return new (const_cast<thrift::Row*>(&m_result.procedureOutParams)) Row(
-        false);
-  } else {
-    return NULL;
-  }
+const std::map<int32_t, thrift::ColumnValue>& Result::getOutputParameters()
+    const noexcept {
+  return m_result.procedureOutParams;
 }
 
 std::unique_ptr<ResultSet> Result::getGeneratedKeys() {

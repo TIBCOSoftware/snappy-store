@@ -92,7 +92,7 @@ namespace thrift {
 namespace std {
   template<>
   struct hash<io::snappydata::thrift::ColumnValue> {
-    size_t operator()(const io::snappydata::thrift::ColumnValue& v) const;
+    std::size_t operator()(const io::snappydata::thrift::ColumnValue& v) const;
   };
 }
 
@@ -191,8 +191,8 @@ private:
     int16_t, // SMALLINT
     int32_t, // INTEGER
     int64_t, // BIGINT
-    float, // FLOAT/REAL
-    double, // DOUBLE
+    float, // REAL
+    double, // DOUBLE/FLOAT
     std::shared_ptr<std::string>, // VARCHAR
     std::shared_ptr<Decimal>, // DECIMAL
     Date, // DATE (epoch value)
@@ -381,7 +381,7 @@ inline size_t hash_value(const io::snappydata::thrift::NullType& v) {
 
 }}} // namespace
 
-inline size_t std::hash<io::snappydata::thrift::ColumnValue>::operator()(
+inline std::size_t std::hash<io::snappydata::thrift::ColumnValue>::operator()(
     const io::snappydata::thrift::ColumnValue& v) const {
   return boost::hash_value(v.m_val);
 }

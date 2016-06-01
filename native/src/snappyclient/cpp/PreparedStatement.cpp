@@ -184,13 +184,19 @@ std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
 
     m_service->getNextResultSet(*rs, m_cursorId,
         static_cast<int8_t>(behaviour));
-    if (resultSet->hasWarnings()) {
-      // set back in PreparedStatement
-      m_warnings = resultSet->getWarnings();
+    m_cursorId = rs->cursorId;
+    // check for empty ResultSet
+    if (rs->metadata.empty()) {
+      return std::unique_ptr<ResultSet>(nullptr);
     } else {
-      m_warnings.reset();
+      if (resultSet->hasWarnings()) {
+        // set back in PreparedStatement
+        m_warnings = resultSet->getWarnings();
+      } else {
+        m_warnings.reset();
+      }
+      return resultSet;
     }
-    return resultSet;
   } else {
     return std::unique_ptr<ResultSet>(nullptr);
   }

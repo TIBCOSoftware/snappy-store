@@ -19,26 +19,27 @@ public enum SnappyType implements org.apache.thrift.TEnum {
   BIGINT(5),
   REAL(6),
   DOUBLE(7),
-  DECIMAL(8),
-  CHAR(9),
-  VARCHAR(10),
-  LONGVARCHAR(11),
-  DATE(12),
-  TIME(13),
-  TIMESTAMP(14),
-  BINARY(15),
-  VARBINARY(16),
-  LONGVARBINARY(17),
-  BLOB(18),
-  CLOB(19),
-  SQLXML(20),
-  ARRAY(21),
-  MAP(22),
-  STRUCT(23),
-  NULLTYPE(24),
-  JSON(25),
-  JAVA_OBJECT(26),
-  OTHER(27);
+  FLOAT(8),
+  DECIMAL(9),
+  CHAR(10),
+  VARCHAR(11),
+  LONGVARCHAR(12),
+  DATE(13),
+  TIME(14),
+  TIMESTAMP(15),
+  BINARY(16),
+  VARBINARY(17),
+  LONGVARBINARY(18),
+  BLOB(19),
+  CLOB(20),
+  SQLXML(21),
+  ARRAY(22),
+  MAP(23),
+  STRUCT(24),
+  NULLTYPE(25),
+  JSON(26),
+  JAVA_OBJECT(27),
+  OTHER(28);
 
   private final int value;
 
@@ -74,44 +75,46 @@ public enum SnappyType implements org.apache.thrift.TEnum {
       case 7:
         return DOUBLE;
       case 8:
-        return DECIMAL;
+        return FLOAT;
       case 9:
-        return CHAR;
+        return DECIMAL;
       case 10:
-        return VARCHAR;
+        return CHAR;
       case 11:
-        return LONGVARCHAR;
+        return VARCHAR;
       case 12:
-        return DATE;
+        return LONGVARCHAR;
       case 13:
-        return TIME;
+        return DATE;
       case 14:
-        return TIMESTAMP;
+        return TIME;
       case 15:
-        return BINARY;
+        return TIMESTAMP;
       case 16:
-        return VARBINARY;
+        return BINARY;
       case 17:
-        return LONGVARBINARY;
+        return VARBINARY;
       case 18:
-        return BLOB;
+        return LONGVARBINARY;
       case 19:
-        return CLOB;
+        return BLOB;
       case 20:
-        return SQLXML;
+        return CLOB;
       case 21:
-        return ARRAY;
+        return SQLXML;
       case 22:
-        return MAP;
+        return ARRAY;
       case 23:
-        return STRUCT;
+        return MAP;
       case 24:
-        return NULLTYPE;
+        return STRUCT;
       case 25:
-        return JSON;
+        return NULLTYPE;
       case 26:
-        return JAVA_OBJECT;
+        return JSON;
       case 27:
+        return JAVA_OBJECT;
+      case 28:
         return OTHER;
       default:
         return null;

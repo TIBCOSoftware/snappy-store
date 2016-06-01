@@ -45,9 +45,11 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
+import com.gemstone.gnu.trove.TIntArrayList;
 import com.gemstone.gnu.trove.TIntIntHashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import io.snappydata.thrift.ColumnValue;
 import io.snappydata.thrift.OutputParameter;
 import io.snappydata.thrift.Row;
 import io.snappydata.thrift.StatementResult;
@@ -119,18 +121,36 @@ public final class ClientCallableStatement extends ClientPreparedStatement
   }
 
   @Override
-  protected void initializeProcedureOutParams(StatementResult sr) {
+  protected void initializeProcedureOutParams(
+      StatementResult sr) throws SQLException {
     final TreeMap<Integer, OutputParameter> outParams = this.outParams;
     if (outParams != null) {
-      if ((this.outParamValues = sr.getProcedureOutParams()) != null) {
+      Map<Integer, ColumnValue> outValues;
+      if ((outValues = sr.getProcedureOutParams()) != null &&
+          outValues.size() > 0) {
         setCurrentSource(snappydataConstants.BULK_CLOSE_STATEMENT, statementId,
             null);
         this.outParamsPositionInRow = new TIntIntHashMap(outParams.size());
         // starting index at 1 since get on TIntIntHashMap will give 0 if absent
         int outIndex = 1;
+        // copy as a Row to outParamValues which also tracks ClientFinalizer
+        // and makes the getters for all params in parent class uniform
+        this.outParamValues = new Row();
         for (Integer parameterIndex : outParams.keySet()) {
-          this.outParamsPositionInRow.put(parameterIndex.intValue(), outIndex);
-          outIndex++;
+          ColumnValue outValue = outValues.get(parameterIndex);
+          if (outValue != null) {
+            this.outParamValues.addColumnValue(outValue);
+            this.outParamsPositionInRow.put(parameterIndex, outIndex);
+            outIndex++;
+          }
+        }
+        // initialize finalizers for LOBs in the row, if any
+        final TIntArrayList lobIndices =
+            this.outParamValues.requiresLobFinalizers();
+        if (lobIndices != null) {
+          this.outParamValues.initializeLobFinalizers(lobIndices,
+              this.service.new ClientCreateLobFinalizer(
+                  this.service.getCurrentHostConnection()));
         }
       }
     }

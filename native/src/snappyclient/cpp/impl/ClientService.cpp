@@ -44,8 +44,8 @@
 #include <boost/asio.hpp>
 #include <boost/log/attributes/current_process_id.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
-#include <thread>
+#include <boost/thread/thread.hpp>
+#include <boost/thread/lock_guard.hpp>
 
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TSSLSocket.h>
@@ -101,14 +101,14 @@ bool thrift::HostAddress::operator <(const HostAddress& other) const {
 
 std::string ClientService::s_hostName;
 std::string ClientService::s_hostId;
-std::mutex ClientService::s_globalLock;
+boost::mutex ClientService::s_globalLock;
 
 void DEFAULT_OUTPUT_FN(const char *str) {
   LogWriter::info() << str << _SNAPPY_NEWLINE;
 }
 
 bool ClientService::staticInitialize() {
-  std::lock_guard<std::mutex> sync(s_globalLock);
+  boost::lock_guard<boost::mutex> sync(s_globalLock);
 
   if (s_hostName.empty()) {
     // first initialize any utilities used by other parts of product
@@ -143,7 +143,7 @@ void ClientService::staticInitialize(
     std::map<std::string, std::string>& props) {
 
   if (staticInitialize()) {
-    std::lock_guard<std::mutex> sync(s_globalLock);
+    boost::lock_guard<boost::mutex> sync(s_globalLock);
 
     LogWriter& globalLogger = LogWriter::global();
     std::string logFile, logLevelStr;
@@ -342,7 +342,7 @@ ClientService::ClientService(const std::string& host, const int port,
     m_transport(), m_client(createDummyProtocol()),
     m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
     m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
-    m_isolationLevel(IsolationLevel::NONE) {
+    m_isolationLevel(IsolationLevel::NONE), m_lock() {
   std::map<std::string, std::string>& props = connArgs.properties;
   std::map<std::string, std::string>::iterator propValue;
 
@@ -409,12 +409,12 @@ ClientService::ClientService(const std::string& host, const int port,
 void ClientService::openConnection(thrift::HostAddress& hostAddr,
     std::set<thrift::HostAddress>& failedServers) {
   // open the connection
-  std::thread::id tid;
+  boost::thread::id tid;
   NanoTimeThread start;
   NanoDurationThread elapsed;
   if (TraceFlag::ClientStatementHA.global() | TraceFlag::ClientConn.global()) {
     start = InternalUtils::nanoTimeThread();
-    tid = std::this_thread::get_id();
+    tid = boost::this_thread::get_id();
     std::unique_ptr<SQLException> ex(
         TraceFlag::ClientConn.global() ? new GET_SQLEXCEPTION(
             SQLState::UNKNOWN_EXCEPTION, "stack"): NULL);
@@ -456,7 +456,7 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
 
         elapsed = (InternalUtils::nanoTimeThread() - start);
         InternalLogger::traceCompact(tid, "openConnection_E", NULL, 0,
-        false, elapsed.count(), m_connId, m_token);
+            false, elapsed.count(), m_connId, m_token);
 
         if (TraceFlag::ClientHA.global()) {
           if (m_token.empty()) {
@@ -519,7 +519,7 @@ thrift::OpenConnectionArgs& ClientService::initConnectionArgs(
   connArgs.__set_clientHostName(s_hostName);
   std::ostringstream hostId;
   hostId << s_hostId << '|' << Utils::threadName << "<0x" << std::hex
-      << std::this_thread::get_id() << std::dec << '>';
+      << boost::this_thread::get_id() << std::dec << '>';
   connArgs.__set_clientID(hostId.str());
   // TODO: fixed security mechanism for now
   connArgs.__set_security(thrift::SecurityMechanism::PLAIN);
@@ -623,6 +623,8 @@ void ClientService::execute(thrift::StatementResult& result,
     const std::map<int32_t, thrift::OutputParameter>& outputParams,
     const thrift::StatementAttrs& attrs) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (!m_hasPendingTXAttrs) {
       m_client.execute(result, m_connId, sql, outputParams, attrs, m_token);
     } else {
@@ -652,6 +654,8 @@ void ClientService::executeUpdate(thrift::UpdateResult& result,
     const std::vector<std::string>& sqls,
     const thrift::StatementAttrs& attrs) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (!m_hasPendingTXAttrs) {
       m_client.executeUpdate(result, m_connId, sqls, attrs, m_token);
     } else {
@@ -680,6 +684,8 @@ void ClientService::executeUpdate(thrift::UpdateResult& result,
 void ClientService::executeQuery(thrift::RowSet& result,
     const std::string& sql, const thrift::StatementAttrs& attrs) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (!m_hasPendingTXAttrs) {
       m_client.executeQuery(result, m_connId, sql, attrs, m_token);
     } else {
@@ -710,6 +716,8 @@ void ClientService::prepareStatement(thrift::PrepareResult& result,
     const std::map<int32_t, thrift::OutputParameter>& outputParams,
     const thrift::StatementAttrs& attrs) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (!m_hasPendingTXAttrs) {
       m_client.prepareStatement(result, m_connId, sql, outputParams, attrs,
           m_token);
@@ -741,6 +749,8 @@ void ClientService::executePrepared(thrift::StatementResult& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params,
     const std::map<int32_t, thrift::OutputParameter>& outputParams) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -764,6 +774,8 @@ void ClientService::executePrepared(thrift::StatementResult& result,
 void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -787,6 +799,8 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
 void ClientService::executePreparedQuery(thrift::RowSet& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -811,6 +825,8 @@ void ClientService::executePreparedBatch(thrift::UpdateResult& result,
     thrift::PrepareResult& prepResult,
     const std::vector<thrift::Row>& paramsBatch) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -836,6 +852,8 @@ void ClientService::prepareAndExecute(thrift::StatementResult& result,
     const std::map<int32_t, thrift::OutputParameter>& outputParams,
     const thrift::StatementAttrs& attrs) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (!m_hasPendingTXAttrs) {
       m_client.prepareAndExecute(result, m_connId, sql, paramsBatch,
           outputParams, attrs, m_token);
@@ -866,6 +884,8 @@ void ClientService::prepareAndExecute(thrift::StatementResult& result,
 void ClientService::getNextResultSet(thrift::RowSet& result,
     const int32_t cursorId, const int8_t otherResultSetBehaviour) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -890,6 +910,8 @@ void ClientService::getBlobChunk(thrift::BlobChunk& result,
     const int32_t lobId, const int64_t offset, const int32_t size,
     const bool freeLobAtEnd) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -914,6 +936,8 @@ void ClientService::getClobChunk(thrift::ClobChunk& result,
     const int32_t lobId, const int64_t offset, const int32_t size,
     const bool freeLobAtEnd) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -936,6 +960,8 @@ void ClientService::getClobChunk(thrift::ClobChunk& result,
 
 int32_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -959,6 +985,8 @@ int32_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
 
 int32_t ClientService::sendClobChunk(thrift::ClobChunk& chunk) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -982,6 +1010,8 @@ int32_t ClientService::sendClobChunk(thrift::ClobChunk& chunk) {
 
 void ClientService::freeLob(const int32_t lobId) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1005,6 +1035,8 @@ void ClientService::scrollCursor(thrift::RowSet& result,
     const int32_t cursorId, const int32_t offset, const bool offsetIsAbsolute,
     const bool fetchReverse, const int32_t fetchSize) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1040,6 +1072,8 @@ void ClientService::executeBatchCursorUpdate(const int32_t cursorId,
     const std::vector<std::vector<int32_t> >& changedColumnsList,
     const std::vector<int32_t>& changedRowIndexes) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1062,6 +1096,8 @@ void ClientService::executeBatchCursorUpdate(const int32_t cursorId,
 
 void ClientService::beginTransaction(const IsolationLevel isolationLevel) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     m_client.beginTransaction(m_connId, static_cast<int8_t>(isolationLevel),
         m_pendingTXAttrs, m_token);
     clearPendingTransactionAttrs();
@@ -1081,33 +1117,44 @@ void ClientService::beginTransaction(const IsolationLevel isolationLevel) {
   }
 }
 
-void ClientService::setTransactionAttribute(
-    const TransactionAttribute flag, bool isTrue) {
-  m_pendingTXAttrs[static_cast<thrift::TransactionAttribute::type>(flag)] =
-      isTrue;
-  m_hasPendingTXAttrs = true;
-}
+void ClientService::setTransactionAttribute(const TransactionAttribute flag,
+    bool isTrue) {
+  try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
 
-bool ClientService::getTransactionAttribute(
-    const TransactionAttribute flag) {
-  const thrift::TransactionAttribute::type attr =
-      static_cast<thrift::TransactionAttribute::type>(flag);
-  std::map<thrift::TransactionAttribute::type, bool>::const_iterator res;
-  if (m_pendingTXAttrs.size() > 0
-      && (res = m_pendingTXAttrs.find(attr)) != m_pendingTXAttrs.end()) {
-    return res->second;
-  } else {
-    if (m_currentTXAttrs.size() > 0
-        && (res = m_currentTXAttrs.find(attr)) != m_currentTXAttrs.end()) {
-      return res->second;
-    } else {
-      getTransactionAttributes(m_currentTXAttrs);
-      return m_currentTXAttrs[attr];
-    }
+    m_pendingTXAttrs[static_cast<thrift::TransactionAttribute::type>(flag)] =
+        isTrue;
+    m_hasPendingTXAttrs = true;
+  } catch (const std::exception& stde) {
+    handleStdException("setTransactionAttribute", stde);
   }
 }
 
-void ClientService::getTransactionAttributes(
+bool ClientService::getTransactionAttribute(const TransactionAttribute flag) {
+  try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
+    const thrift::TransactionAttribute::type attr =
+        static_cast<thrift::TransactionAttribute::type>(flag);
+    std::map<thrift::TransactionAttribute::type, bool>::const_iterator res;
+    if (m_pendingTXAttrs.size() > 0
+        && (res = m_pendingTXAttrs.find(attr)) != m_pendingTXAttrs.end()) {
+      return res->second;
+    } else {
+      if (m_currentTXAttrs.size() > 0
+          && (res = m_currentTXAttrs.find(attr)) != m_currentTXAttrs.end()) {
+        return res->second;
+      } else {
+        getTransactionAttributesNoLock(m_currentTXAttrs);
+        return m_currentTXAttrs[attr];
+      }
+    }
+  } catch (const std::exception& stde) {
+    handleStdException("getTransactionAttribute", stde);
+  }
+}
+
+void ClientService::getTransactionAttributesNoLock(
     std::map<thrift::TransactionAttribute::type, bool>& result) {
   try {
     if (m_hasPendingTXAttrs) {
@@ -1129,8 +1176,21 @@ void ClientService::getTransactionAttributes(
   }
 }
 
+void ClientService::getTransactionAttributes(
+    std::map<thrift::TransactionAttribute::type, bool>& result) {
+  try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
+    getTransactionAttributesNoLock(result);
+  } catch (const std::exception& stde) {
+    handleStdException("getTransactionAttributes", stde);
+  }
+}
+
 void ClientService::commitTransaction(const bool startNewTransaction) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     m_client.commitTransaction(m_connId, startNewTransaction, m_pendingTXAttrs,
         m_token);
     clearPendingTransactionAttrs();
@@ -1151,6 +1211,8 @@ void ClientService::commitTransaction(const bool startNewTransaction) {
 
 void ClientService::rollbackTransaction(const bool startNewTransaction) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     m_client.rollbackTransaction(m_connId, startNewTransaction,
         m_pendingTXAttrs, m_token);
     clearPendingTransactionAttrs();
@@ -1171,6 +1233,8 @@ void ClientService::rollbackTransaction(const bool startNewTransaction) {
 
 bool ClientService::prepareCommitTransaction() {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     return m_client.prepareCommitTransaction(m_connId, m_pendingTXAttrs,
         m_token);
     clearPendingTransactionAttrs();
@@ -1194,6 +1258,8 @@ bool ClientService::prepareCommitTransaction() {
 void ClientService::fetchActiveConnections(
     std::vector<thrift::ConnectionProperties>& result) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1216,6 +1282,8 @@ void ClientService::fetchActiveConnections(
 void ClientService::fetchActiveStatements(
     std::map<int32_t, std::string>& result) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1237,6 +1305,8 @@ void ClientService::fetchActiveStatements(
 
 void ClientService::getServiceMetaData(thrift::ServiceMetaData& result) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1259,11 +1329,13 @@ void ClientService::getServiceMetaData(thrift::ServiceMetaData& result) {
 void ClientService::getSchemaMetaData(thrift::RowSet& result,
     const thrift::ServiceMetaDataCall::type schemaCall,
     thrift::ServiceMetaDataArgs& metadataArgs) {
-  metadataArgs.connId = m_connId;
-  if (m_token.size() > 0) {
-    metadataArgs.__set_token(m_token);
-  }
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
+    metadataArgs.connId = m_connId;
+    if (m_token.size() > 0) {
+      metadataArgs.__set_token(m_token);
+    }
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1286,11 +1358,13 @@ void ClientService::getSchemaMetaData(thrift::RowSet& result,
 void ClientService::getIndexInfo(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs, const bool unique,
     const bool approximate) {
-  metadataArgs.connId = m_connId;
-  if (m_token.size() > 0) {
-    metadataArgs.__set_token(m_token);
-  }
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
+    metadataArgs.connId = m_connId;
+    if (m_token.size() > 0) {
+      metadataArgs.__set_token(m_token);
+    }
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1313,11 +1387,13 @@ void ClientService::getIndexInfo(thrift::RowSet& result,
 void ClientService::getUDTs(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs,
     const std::vector<thrift::SnappyType::type>& types) {
-  metadataArgs.connId = m_connId;
-  if (m_token.size() > 0) {
-    metadataArgs.__set_token(m_token);
-  }
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
+    metadataArgs.connId = m_connId;
+    if (m_token.size() > 0) {
+      metadataArgs.__set_token(m_token);
+    }
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1340,11 +1416,13 @@ void ClientService::getUDTs(thrift::RowSet& result,
 void ClientService::getBestRowIdentifier(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs, const int32_t scope,
     const bool nullable) {
-  metadataArgs.connId = m_connId;
-  if (m_token.size() > 0) {
-    metadataArgs.__set_token(m_token);
-  }
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
+    metadataArgs.connId = m_connId;
+    if (m_token.size() > 0) {
+      metadataArgs.__set_token(m_token);
+    }
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1366,6 +1444,8 @@ void ClientService::getBestRowIdentifier(thrift::RowSet& result,
 
 void ClientService::closeResultSet(const int32_t cursorId) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     m_client.closeResultSet(cursorId, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -1383,7 +1463,14 @@ void ClientService::closeResultSet(const int32_t cursorId) {
 }
 
 void ClientService::cancelStatement(const int32_t stmtId) {
+  // TODO: SW: need a separate connection for this to work
+  // Preferably the whole class should be changed to use pool of connections
+  // with key being server+port+connProps and a queue of pooled connections
+  if (true) throw GET_SQLEXCEPTION(SQLState::FUNCTION_NOT_SUPPORTED,
+      "cancelStatement not supported");
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     m_client.cancelStatement(stmtId, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -1402,6 +1489,8 @@ void ClientService::cancelStatement(const int32_t stmtId) {
 
 void ClientService::closeStatement(const int32_t stmtId) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     m_client.closeStatement(stmtId, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -1421,6 +1510,8 @@ void ClientService::closeStatement(const int32_t stmtId) {
 void ClientService::bulkClose(
     const std::vector<thrift::EntityId>& entities) {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     m_client.bulkClose(entities);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
@@ -1439,6 +1530,8 @@ void ClientService::bulkClose(
 
 void ClientService::close() {
   try {
+    boost::lock_guard<boost::mutex> sync(m_lock);
+
     BufferedSocketTransport* transport = m_transport.get();
     if (transport != NULL) {
       m_client.closeConnection(m_connId, m_token);

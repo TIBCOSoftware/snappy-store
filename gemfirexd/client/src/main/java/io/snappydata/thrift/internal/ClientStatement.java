@@ -742,7 +742,8 @@ public class ClientStatement extends ClientFetchColumnValue implements
     }
   }
 
-  protected void initializeProcedureOutParams(StatementResult sr) {
+  protected void initializeProcedureOutParams(
+      StatementResult sr) throws SQLException {
   }
 
   /**

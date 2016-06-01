@@ -36,7 +36,10 @@
 package io.snappydata.thrift.common;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -53,13 +56,7 @@ import java.util.Map;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.JDBC40Translation;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.BlobChunk;
-import io.snappydata.thrift.ClobChunk;
-import io.snappydata.thrift.Decimal;
-import io.snappydata.thrift.JSONObject;
-import io.snappydata.thrift.SnappyType;
-import io.snappydata.thrift.Timestamp;
-import io.snappydata.thrift.snappydataConstants;
+import io.snappydata.thrift.*;
 
 /**
  * Conversion utilities from thrift API values/enums to JDBC/SnappyData equivalent
@@ -2637,6 +2634,7 @@ public abstract class Converters {
           typeConverters[type.ordinal()] = REAL_TYPE;
           break;
         case DOUBLE:
+        case FLOAT:
           typeConverters[type.ordinal()] = DOUBLE_TYPE;
           break;
         case DECIMAL:
@@ -2754,6 +2752,10 @@ public abstract class Converters {
     BigInteger bi = decimal.unscaledValue();
     return new Decimal((byte)bi.signum(), decimal.scale(), ByteBuffer.wrap(bi
         .abs().toByteArray()));
+  }
+
+  public static DateTime getDateTime(java.util.Date date) {
+    return new DateTime(date.getTime() / 1000L);
   }
 
   public static BigDecimal adjustScale(final BigDecimal decimal) {
@@ -2927,6 +2929,14 @@ public abstract class Converters {
     return obj;
   }
 
+  public static byte[] getJavaObjectAsBytes(Object o) throws IOException {
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutputStream os = new ObjectOutputStream(bos);
+    os.writeObject(o);
+    os.flush();
+    return bos.toByteArray();
+  }
+
   /**
    * Get JDBC {@link Types} type for given {@link SnappyType}.
    */
@@ -2952,6 +2962,8 @@ public abstract class Converters {
         return Types.DECIMAL;
       case DOUBLE:
         return Types.DOUBLE;
+      case FLOAT:
+        return Types.FLOAT;
       case INTEGER:
         return Types.INTEGER;
       case JAVA_OBJECT:
@@ -3020,7 +3032,7 @@ public abstract class Converters {
         return SnappyType.DOUBLE;
       case Types.FLOAT:
         // Derby FLOAT can be DOUBLE or REAL depending on precision
-        return SnappyType.DOUBLE;
+        return SnappyType.FLOAT;
       case Types.INTEGER:
         return SnappyType.INTEGER;
       case Types.JAVA_OBJECT:
