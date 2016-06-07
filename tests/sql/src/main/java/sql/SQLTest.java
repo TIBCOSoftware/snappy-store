@@ -195,6 +195,7 @@ public class SQLTest {
   public static int numOfWorkers = (int) TestConfig.tab().longAt(SQLPrms.numOfWorkers, 6);
   public static boolean hasPersistentTables = TestConfig.tab().booleanAt(GfxdHelperPrms.persistTables, false);
   public static boolean isWanTest = TestConfig.tab().booleanAt(SQLWanPrms.isWanTest, false);
+  public static boolean isSnappyTest = TestConfig.tab().booleanAt(SQLPrms.isSnappyTest, false);
   protected static boolean useWriterForWriteThrough = TestConfig.tab().booleanAt(SQLPrms.useWriterForWriteThrough, false);
   protected static boolean testLoaderCreateRandomRow = TestConfig.tab().booleanAt(SQLPrms.testLoaderCreateRandomRow, false);  
   public static boolean hasTx = TestConfig.tab().booleanAt(SQLPrms.hasTx, false);
