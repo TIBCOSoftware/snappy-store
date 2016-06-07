@@ -252,9 +252,6 @@ public class SnappyActivation extends BaseActivation {
               continue;
             }
             String tabName = t.getFullTableName();
-            if (t.getSchemaName().equalsIgnoreCase("APP")) {
-              tabName = t.getTableName();
-            }
             boolean isColumnTable = extCatalog.isColumnTable(tabName, skipLocks);
             if (GemFireXDUtils.TraceQuery) {
               SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,

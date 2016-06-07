@@ -215,6 +215,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import org.apache.hadoop.hbase.regionserver.StoreUtils;
 
 /**
  * Masquerades as a ContainerHandle, but has almost none of the behavior of one.
@@ -5557,7 +5558,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
           if (ec != null && lcc != null && lcc.isQueryRoutingEnabled() &&
               Misc.initialDDLReplayDone()) {
-            if (ec.isColumnTable(table.toString(), true)) {
+            String fullyQualifiedName =
+                (schemaName != null) ? schemaName + "." + table.toString() : table.toString();
+            if (ec.isColumnTable(fullyQualifiedName, true)) {
               dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
             }
           }
