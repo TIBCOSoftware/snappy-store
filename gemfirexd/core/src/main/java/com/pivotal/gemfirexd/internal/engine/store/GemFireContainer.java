@@ -5558,7 +5558,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
           if (ec != null && lcc != null && lcc.isQueryRoutingEnabled() &&
               Misc.initialDDLReplayDone()) {
-            if (ec.isColumnTable(Misc.getFullTableName(schemaName , tableName , lcc), true)) {
+            if (ec.isColumnTable(Misc.getFullTableName(schemaName, table.toString(), lcc), true)) {
               dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
             }
           }
