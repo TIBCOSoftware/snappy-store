@@ -41,7 +41,7 @@ package hydra;
 public class VersionPrms extends BasePrms {
 
   /** Supported values for {@link #version}. */
-  public static final String[] SUPPORTED_VERSIONS = {"100", "130", "131"};
+  public static final String[] SUPPORTED_VERSIONS = {"100", "130", "131", "141"};
 
   /**
    * (String(s))

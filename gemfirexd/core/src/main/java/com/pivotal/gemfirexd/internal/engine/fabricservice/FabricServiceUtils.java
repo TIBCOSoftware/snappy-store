@@ -349,6 +349,7 @@ public final class FabricServiceUtils {
           && !propName.startsWith("derbyTesting.")
           && !propName.startsWith("snappydata.")
           && !propName.startsWith("metastore-")
+          && !propName.startsWith("spark.")
           && !GfxdConstants.validExtraGFXDProperties.contains(propName)
           && !"BootPassword".equalsIgnoreCase(propName)
           && !"encryptionAlgorithm".equalsIgnoreCase(propName)

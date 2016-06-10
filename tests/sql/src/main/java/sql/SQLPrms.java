@@ -977,6 +977,11 @@ public class SQLPrms extends BasePrms{
   *
   */
   public static Long testEviction;
+
+  /** (boolean) whether the test should avoid the lockservice and proceed in case of snappy cluster
+   *
+   */
+  public static Long isSnappyTest;
   
   /** (boolean) whether the test eviction use heap percentage
   *

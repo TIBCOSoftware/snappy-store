@@ -192,6 +192,13 @@ implements Serializable {
       classpath.add(hd.getExtraTestDir());
     }
 
+    // test jars
+    classpath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "gemfirexd-hydra-tests-" +
+            ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
+
+    classpath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
+            "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "gemfirexd-scala-tests"));
+
     // product jars for this version
     classpath.add(gfh + hd.getFileSep() + "lib"
                       + hd.getFileSep() + "gemfirexd-" +
