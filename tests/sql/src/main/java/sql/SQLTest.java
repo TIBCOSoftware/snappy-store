@@ -195,6 +195,7 @@ public class SQLTest {
   public static int numOfWorkers = (int) TestConfig.tab().longAt(SQLPrms.numOfWorkers, 6);
   public static boolean hasPersistentTables = TestConfig.tab().booleanAt(GfxdHelperPrms.persistTables, false);
   public static boolean isWanTest = TestConfig.tab().booleanAt(SQLWanPrms.isWanTest, false);
+  public static boolean isSnappyTest = TestConfig.tab().booleanAt(SQLPrms.isSnappyTest, false);
   protected static boolean useWriterForWriteThrough = TestConfig.tab().booleanAt(SQLPrms.useWriterForWriteThrough, false);
   protected static boolean testLoaderCreateRandomRow = TestConfig.tab().booleanAt(SQLPrms.testLoaderCreateRandomRow, false);  
   public static boolean hasTx = TestConfig.tab().booleanAt(SQLPrms.hasTx, false);
@@ -3127,6 +3128,19 @@ public class SQLTest {
     return rs1;
   }
 
+
+  protected void getCountQueryResult(Connection conn, String query, String tableName) {
+    try {
+      ResultSet rs = conn.createStatement().executeQuery(query);
+      while (rs.next()) {
+        Log.getLogWriter().info("Query:: " + query + "\nResult in GemFireXD:: " + rs.getLong(1));
+        SQLBB.getBB().getSharedMap().put(tableName, rs.getLong(1));
+      }
+    } catch (SQLException se) {
+      SQLHelper.handleSQLException(se);
+    }
+  }
+
   //verify two results from derby and gemfirexd are same
   protected boolean verifyResultSets(ResultSet rs1, ResultSet rs2) {
     return ResultSetHelper.compareResultSets(rs1, rs2);
@@ -3161,6 +3175,19 @@ public class SQLTest {
     
     closeDiscConnection(dConn);
     closeGFEConnection(gConn);
+  }
+
+  protected void writeCountQueryResultsToBB() {
+    Connection gConn = null;
+    gConn = getGFEConnection();
+    String selectQuery = "select count(*) from ";
+    ArrayList<String[]> tables = getTableNames(gConn);
+    SQLBB.getBB().getSharedMap().put("tableNames", tables);
+    for (String[] table : tables) {
+      String schemaTableName = table[0] + "." + table[1];
+      String query = selectQuery + schemaTableName.toLowerCase();
+      getCountQueryResult(gConn, query, schemaTableName);
+    }
   }
   
   public static void HydraTask_VerifyResultSetsStandalone(){
@@ -3693,6 +3720,10 @@ public class SQLTest {
   
   public static void HydraTask_verifyResultSets() {
     sqlTest.verifyResultSets();
+  }
+
+  public static void HydraTask_writeCountQueryResultsToSQLBB() {
+    sqlTest.writeCountQueryResultsToBB();
   }
 
   public static void HydraTask_clearTables() {
