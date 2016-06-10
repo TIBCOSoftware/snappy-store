@@ -215,7 +215,6 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import org.apache.hadoop.hbase.regionserver.StoreUtils;
 
 /**
  * Masquerades as a ContainerHandle, but has almost none of the behavior of one.

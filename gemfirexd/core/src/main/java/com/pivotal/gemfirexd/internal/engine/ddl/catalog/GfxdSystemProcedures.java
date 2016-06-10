@@ -2241,7 +2241,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
    * @param table The  name of column table.
    * @throws SQLException if table is not found or is not a column table
    */
-  public static void GET_COLUMN_TABLE_SCHEMA( String schema , String table,
+  public static void GET_COLUMN_TABLE_SCHEMA(String schema, String table,
       Clob[] schemaAsJson) throws SQLException {
 
     String schemaString = Misc.getMemStoreBooting().getExternalCatalog()
