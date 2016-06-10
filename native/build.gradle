@@ -189,7 +189,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     components {
       snappyclient(NativeLibrarySpec) {
         targetPlatform 'x64'
-        if (rootProject.hasProperty('bothArch')) {
+        if (bothArch == '1') {
           targetPlatform 'x86'
         }
         sources {
@@ -259,7 +259,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
 
     doLast {
       // when both 32-bit and 64-bit are built, then use arch specific dirs
-      if (rootProject.hasProperty('bothArch')) {
+      if (bothArch == '1') {
         // copy the release libraries
         copy {
           from "${buildDir}/libs/snappyclient/static/x64/release"
