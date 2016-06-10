@@ -47,10 +47,10 @@ namespace snappydata {
 namespace client {
 
   enum class ParameterMode {
-    UNKNOWN = 0,
-    IN = 1,
-    INOUT = 2,
-    OUT = 4
+    MODE_UNKNOWN = 0,
+    MODE_IN = 1,
+    MODE_INOUT = 2,
+    MODE_OUT = 4
   };
 
   class ParameterDescriptor: public ColumnDescriptorBase {
@@ -68,12 +68,12 @@ namespace client {
 
     ParameterMode getParameterMode() const noexcept {
       if (m_descriptor.parameterIn) {
-        return m_descriptor.parameterOut ? ParameterMode::INOUT
-            : ParameterMode::IN;
+        return m_descriptor.parameterOut ? ParameterMode::MODE_INOUT
+            : ParameterMode::MODE_IN;
       } else if (m_descriptor.parameterOut) {
-        return ParameterMode::OUT;
+        return ParameterMode::MODE_OUT;
       } else {
-        return ParameterMode::UNKNOWN;
+        return ParameterMode::MODE_UNKNOWN;
       }
     }
   };

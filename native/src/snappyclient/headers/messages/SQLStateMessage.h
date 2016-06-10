@@ -154,7 +154,7 @@ namespace client {
     /**
      * Message string for "COLUMN_NOT_FOUND" SQLState.
      */
-    static SQLMessage2<int, int> COLUMN_NOT_FOUND_MSG1;
+    static SQLMessage2<int, size_t> COLUMN_NOT_FOUND_MSG1;
 
     /**
      * Message string for "COLUMN_NOT_FOUND" SQLState.
@@ -171,7 +171,7 @@ namespace client {
      * Message string for numeric overflow with
      * "LANG_OUTSIDE_RANGE_FOR_DATATYPE" SQLState.
      */
-    static SQLMessage2<int, int> LANG_OUTSIDE_RANGE_FOR_NUMERIC_MSG;
+    static SQLMessage2<int, size_t> LANG_OUTSIDE_RANGE_FOR_NUMERIC_MSG;
 
     /**
      * Message string for "LANG_DATA_TYPE_GET_MISMATCH" SQLState.
@@ -228,12 +228,12 @@ namespace client {
     /**
      * Message string for "STRING_TRUNCATED" SQLState.
      */
-    static SQLMessage2<const char*, int> STRING_TRUNCATED_MSG;
+    static SQLMessage2<const char*, size_t> STRING_TRUNCATED_MSG;
 
     /**
      * Message string for "NUMERIC_TRUNCATED" SQLState.
      */
-    static SQLMessage2<const char*, int> NUMERIC_TRUNCATED_MSG;
+    static SQLMessage2<const char*, size_t> NUMERIC_TRUNCATED_MSG;
 
     /**
      * Message string for "INVALID_CONNECTION_PROPERTY" SQLState.
@@ -249,7 +249,7 @@ namespace client {
     /**
      * Message string for "OPTION_VALUE_CHANGED" SQLState.
      */
-    static SQLMessage3<const char*, int, int> OPTION_VALUE_CHANGED_MSG;
+    static SQLMessage3<const char*, size_t, int> OPTION_VALUE_CHANGED_MSG;
 
     /**
      * Message string for "OPTION_CANNOT_BE_SET" SQLState
@@ -334,7 +334,7 @@ namespace client {
     /**
      * Message string for "INVALID_ATTRIBUTE_VALUE" SQLState.
      */
-    static SQLMessage2<int, const char*> INVALID_ATTRIBUTE_VALUE_MSG;
+    static SQLMessage2<size_t, const char*> INVALID_ATTRIBUTE_VALUE_MSG;
 
     /**
      * Message string for "INVALID_ATTRIBUTE_VALUE" SQLState

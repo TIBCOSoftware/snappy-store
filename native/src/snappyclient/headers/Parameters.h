@@ -159,7 +159,7 @@ namespace client {
 
     Parameters& setString(uint32_t paramNum, const char* v);
 
-    Parameters& setString(uint32_t paramNum, const char* v, const int32_t len);
+    Parameters& setString(uint32_t paramNum, const char* v, const size_t len);
 
     // TODO: somehow have an efficient move version; right now a full
     // transformation copy happens from public Decimal to thrift's Decimal

@@ -171,7 +171,8 @@ namespace client {
         m_metadata(), m_defaultHoldability(ResultSetHoldability::NONE) {
     }
 
-    static constexpr DriverType DRIVER_TYPE = DriverType::ODBC;
+    static constexpr io::snappydata::client::DriverType DRIVER_TYPE =
+        io::snappydata::client::DriverType::ODBC;
 
     static void initializeService();
 
@@ -284,21 +285,17 @@ namespace client {
     const DatabaseMetaData* getServiceMetaData();
 
     std::unique_ptr<ResultSet> getSchemaMetaData(
-        const DatabaseMetaDataCall method, DatabaseMetaDataArgs& args,
-        const DriverType driverType = DRIVER_TYPE);
+        const DatabaseMetaDataCall method, DatabaseMetaDataArgs& args);
 
     std::unique_ptr<ResultSet> getIndexInfo(DatabaseMetaDataArgs& args,
-        bool unique, bool approximate,
-        const DriverType driverType = DRIVER_TYPE);
+        bool unique, bool approximate);
 
     std::unique_ptr<ResultSet> getUDTs(DatabaseMetaDataArgs& args,
         const std::string& typeNamePattern,
-        const std::vector<SQLType>& types,
-        const DriverType driverType = DRIVER_TYPE);
+        const std::vector<SQLType>& types);
 
     std::unique_ptr<ResultSet> getBestRowIdentifier(
-        DatabaseMetaDataArgs& metadaArgs, int32_t scope, bool nullable,
-        const DriverType driverType = DRIVER_TYPE);
+        DatabaseMetaDataArgs& metadaArgs, int32_t scope, bool nullable);
 
     // end metadata API
 

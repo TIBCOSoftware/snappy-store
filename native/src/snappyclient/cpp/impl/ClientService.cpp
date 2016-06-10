@@ -1152,6 +1152,7 @@ bool ClientService::getTransactionAttribute(const TransactionAttribute flag) {
   } catch (const std::exception& stde) {
     handleStdException("getTransactionAttribute", stde);
   }
+  return false;
 }
 
 void ClientService::getTransactionAttributesNoLock(

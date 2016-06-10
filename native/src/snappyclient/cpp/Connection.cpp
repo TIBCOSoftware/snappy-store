@@ -580,38 +580,36 @@ const DatabaseMetaData* Connection::getServiceMetaData() {
 }
 
 std::unique_ptr<ResultSet> Connection::getSchemaMetaData(
-    const DatabaseMetaDataCall method, DatabaseMetaDataArgs& args,
-    const DriverType driverType) {
+    const DatabaseMetaDataCall method, DatabaseMetaDataArgs& args) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = static_cast<int8_t>(driverType);
+  args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   service.getSchemaMetaData(*rs,
       static_cast<thrift::ServiceMetaDataCall::type>(method), args.m_args);
   return resultSet;
 }
 
 std::unique_ptr<ResultSet> Connection::getIndexInfo(
-    DatabaseMetaDataArgs& args, bool unique, bool approximate,
-    const DriverType driverType) {
+    DatabaseMetaDataArgs& args, bool unique, bool approximate) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = static_cast<int8_t>(driverType);
+  args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   service.getIndexInfo(*rs, args.m_args, unique, approximate);
   return resultSet;
 }
 
 std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
     const std::string& typeNamePattern,
-    const std::vector<SQLType>& types, const DriverType driverType) {
+    const std::vector<SQLType>& types) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = static_cast<int8_t>(driverType);
+  args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   std::vector<thrift::SnappyType::type> thriftTypes(types.size());
   for (auto type : types) {
     thriftTypes.push_back(static_cast<thrift::SnappyType::type>(type));
@@ -621,13 +619,12 @@ std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
 }
 
 std::unique_ptr<ResultSet> Connection::getBestRowIdentifier(
-    DatabaseMetaDataArgs& args, int32_t scope, bool nullable,
-    const DriverType driverType) {
+    DatabaseMetaDataArgs& args, int32_t scope, bool nullable) {
   ClientService& service = checkAndGetService();
 
   thrift::RowSet* rs = new thrift::RowSet();
   std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
-  args.m_args.driverType = static_cast<int8_t>(driverType);
+  args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   service.getBestRowIdentifier(*rs, args.m_args, scope, nullable);
   return resultSet;
 }

@@ -164,22 +164,22 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
           }
         }
         thrift {
+          headers.srcDir "${distDir}/thrift-${thriftVersion}/include"
           binaries.withType(StaticLibraryBinary) {
-            headers.srcDir "${distDir}/thrift-${thriftVersion}/${getArch(targetPlatform)}/include"
             staticLibraryFile = file(getLibPathForPlatform('thrift', 'thrift',
                   thriftVersion, true, false, targetPlatform))
           }
         }
         openssl {
+          headers.srcDir "${distDir}/openssl-${opensslVersion}/include"
           binaries.withType(StaticLibraryBinary) {
-            headers.srcDir "${distDir}/openssl-${opensslVersion}/${getArch(targetPlatform)}/include"
             staticLibraryFile = file(getLibPathForPlatform('openssl', 'openssl',
                   opensslVersion, true, false, targetPlatform))
           }
         }
         mpir {
+          headers.srcDir "${distDir}/mpir-${mpirVersion}/include"
           binaries.withType(StaticLibraryBinary) {
-            headers.srcDir "${distDir}/mpir-${mpirVersion}/include"
             staticLibraryFile = file(getLibPathForPlatform('mpir', 'mpir',
                   mpirVersion, true, false, targetPlatform))
           }
@@ -234,7 +234,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
               cppCompiler.args '/Od', '/Gm', '/ZI', '/RTC1', '/MDd'
               linker.args '/DEBUG'
             } else {
-              cppCompiler.args '/Ox', '/GL', '/Oi', '/Gm-', '/Zi', '/MD'
+              cppCompiler.args '/O2', '/GL', '/Oi', '/Gm-', '/Zi', '/MD'
             }
             if (targetPlatform == platforms.x64) {
               linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x64"

@@ -42,7 +42,11 @@
 
 #include "SQLException.h"
 
+#ifdef _WINDOWS
+#include <mpir.h>
+#else
 #include <gmp.h>
+#endif
 #include <boost/numeric/conversion/cast.hpp>
 
 namespace io {

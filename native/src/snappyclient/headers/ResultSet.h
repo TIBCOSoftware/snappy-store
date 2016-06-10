@@ -148,7 +148,8 @@ namespace client {
         } else if (offset >= 0) {
           // offset from start of the resultset; check if in current batch
           size_t sz = m_rows->rows.size();
-          if (offset >= batchOffset && offset < (batchOffset + sz)) {
+          if (offset >= batchOffset &&
+              offset < static_cast<int32_t>(batchOffset + sz)) {
             m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
             m_endBatch = m_currentRow + sz;
             m_currentRow += (offset - batchOffset);
@@ -172,7 +173,7 @@ namespace client {
           // offset from end of the resultset; check if in current batch
           size_t sz = m_rows->rows.size();
           if ((m_rows->flags & thrift::snappydataConstants::
-              ROWSET_LAST_BATCH) != 0 && (-offset <= sz)) {
+              ROWSET_LAST_BATCH) != 0 && (sz + offset) >= 0) {
             m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
             m_endBatch = m_currentRow + sz;
             m_currentRow += (sz + offset);
@@ -432,7 +433,8 @@ namespace client {
               & thrift::snappydataConstants::ROWSET_LAST_BATCH) == 0) {
             // jump to an appropriate relative offset so that +n is at start
             // of the new batch fetched from server
-            int32_t offset = n - (m_endBatch - m_currentRow);
+            int32_t offset = static_cast<int32_t>(
+                n - (m_endBatch - m_currentRow));
             // move to the required batch offset
             size_t sz;
             if (m_resultSet->moveToRowSet(offset, m_resultSet->m_batchSize,
@@ -605,10 +607,10 @@ namespace client {
       return m_scrollable;
     }
 
-    size_t getColumnCount() const {
+    uint32_t getColumnCount() const {
       checkOpen("getColumnCount");
-      return (m_descriptors == NULL ? m_rows->metadata.size()
-          : m_descriptors->size());
+      return static_cast<uint32_t>(m_descriptors == NULL
+          ? m_rows->metadata.size() : m_descriptors->size());
     }
 
     int32_t getBatchSize() const noexcept {

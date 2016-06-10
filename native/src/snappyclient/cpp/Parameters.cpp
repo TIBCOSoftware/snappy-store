@@ -44,7 +44,7 @@ using namespace io::snappydata;
 using namespace io::snappydata::client;
 
 Parameters::Parameters(const PreparedStatement& pstmt) :
-    Row(pstmt.getParameterCount()) {
+    Row(static_cast<size_t>(pstmt.getParameterCount())) {
   m_values.resize(pstmt.getParameterCount());
 }
 
@@ -61,7 +61,7 @@ Parameters& Parameters::setString(uint32_t paramNum, const char* v) {
 }
 
 Parameters& Parameters::setString(uint32_t paramNum, const char* v,
-    const int32_t len) {
+    const size_t len) {
   checkBounds(--paramNum);
   m_values[paramNum].setString(v, len);
   return *this;

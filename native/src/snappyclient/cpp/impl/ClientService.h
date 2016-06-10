@@ -150,7 +150,7 @@ namespace impl {
 
     virtual void handleUnknownException(const char* op);
 
-    void throwSQLExceptionForNodeFailure(const char* op,
+    BOOST_NORETURN void throwSQLExceptionForNodeFailure(const char* op,
         const std::exception& se);
 
     void openConnection(thrift::HostAddress& hostAddr,

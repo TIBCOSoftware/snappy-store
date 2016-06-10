@@ -113,15 +113,15 @@ namespace client {
 
     std::unique_ptr<SQLWarning> getWarnings();
 
-    size_t getParameterCount() const noexcept {
-      return m_prepResult.parameterMetaData.size();
+    uint32_t getParameterCount() const noexcept {
+      return static_cast<uint32_t>(m_prepResult.parameterMetaData.size());
     }
 
     ParameterDescriptor getParameterDescriptor(
         const uint32_t parameterIndex);
 
-    size_t getColumnCount() const noexcept {
-      return m_prepResult.resultSetMetaData.size();
+    uint32_t getColumnCount() const noexcept {
+      return static_cast<uint32_t>(m_prepResult.resultSetMetaData.size());
     }
 
     ColumnDescriptor getColumnDescriptor(const uint32_t columnIndex);

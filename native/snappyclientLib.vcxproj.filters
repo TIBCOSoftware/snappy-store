@@ -21,6 +21,9 @@
     <ClCompile Include="src\snappyclient\cpp\ClientProperty.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\ColumnDescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\common\MessageBase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
