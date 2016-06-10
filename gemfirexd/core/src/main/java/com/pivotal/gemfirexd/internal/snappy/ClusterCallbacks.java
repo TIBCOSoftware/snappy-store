@@ -37,7 +37,7 @@ public interface ClusterCallbacks {
 
   void stopExecutor();
 
-  SparkSQLExecute getSQLExecute(String sql, LeadNodeExecutionContext ctx, Version v);
+  SparkSQLExecute getSQLExecute(String sql, String schema, LeadNodeExecutionContext ctx, Version v);
 
   /**
    * Deserialize the SnappyResultHolder object per batch.

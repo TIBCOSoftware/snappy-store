@@ -1813,9 +1813,10 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           GFXD_SYS_PROC_CLASSNAME, false);
     }
     {
-      // GET_COLUMN_TABLE_SCHEMA(String,Clob[])
-      String[] arg_names = new String[]{"TABLE", "SCHEMA_AS_JSON"};
+      // GET_COLUMN_TABLE_SCHEMA(String,String,Clob[])
+      String[] arg_names = new String[]{"SCHEMA", "TABLE", "SCHEMA_AS_JSON"};
       TypeDescriptor[] arg_types = new TypeDescriptor[]{
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
           DataTypeDescriptor.getCatalogType(Types.CLOB)
       };

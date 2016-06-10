@@ -53,10 +53,12 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   private String sql;
   private LeadNodeExecutionContext ctx;
   private transient SparkSQLExecute exec;
+  private String schema;
 
-  public LeadNodeExecutorMsg(String sql, LeadNodeExecutionContext ctx,
+  public LeadNodeExecutorMsg(String sql, String schema, LeadNodeExecutionContext ctx,
       GfxdResultCollector<Object> rc) {
     super(rc, null, false, true);
+    this.schema = schema;
     this.sql = sql;
     this.ctx = ctx;
   }
@@ -115,7 +117,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       InternalDistributedMember m = this.getSenderForReply();
       final Version v = m.getVersionObject();
       exec = CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(
-          sql, ctx, v);
+          sql, schema, ctx, v);
       SnappyResultHolder srh = new SnappyResultHolder(exec);
 
       srh.prepareSend(this);
@@ -158,7 +160,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
 
   @Override
   protected LeadNodeExecutorMsg clone() {
-    final LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(this.sql, this.ctx,
+    final LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(this.sql, this.schema, this.ctx,
         (GfxdResultCollector<Object>)this.userCollector);
     msg.exec = this.exec;
     return msg;
@@ -173,6 +175,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     super.fromData(in);
     this.sql = DataSerializer.readString(in);
+    this.schema = DataSerializer.readString(in);
     this.ctx = DataSerializer.readObject(in);
   }
 
@@ -180,6 +183,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public void toData(final DataOutput out) throws IOException {
     super.toData(out);
     DataSerializer.writeString(this.sql, out);
+    DataSerializer.writeString(this.schema , out);
     DataSerializer.writeObject(ctx, out);
   }
 }
