@@ -31,6 +31,10 @@ void PrepareResult::__set_statementId(const int32_t val) {
   this->statementId = val;
 }
 
+void PrepareResult::__set_statementType(const int8_t val) {
+  this->statementType = val;
+}
+
 void PrepareResult::__set_parameterMetaData(const std::vector<ColumnDescriptor> & val) {
   this->parameterMetaData = val;
 }
@@ -57,6 +61,7 @@ uint32_t PrepareResult::read(::apache::thrift::protocol::TProtocol* iprot) {
   using ::apache::thrift::protocol::TProtocolException;
 
   bool isset_statementId = false;
+  bool isset_statementType = false;
   bool isset_parameterMetaData = false;
 
   while (true)
@@ -76,6 +81,14 @@ uint32_t PrepareResult::read(::apache::thrift::protocol::TProtocol* iprot) {
         }
         break;
       case 2:
+        if (ftype == ::apache::thrift::protocol::T_BYTE) {
+          xfer += iprot->readByte(this->statementType);
+          isset_statementType = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 3:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->parameterMetaData.clear();
@@ -95,7 +108,7 @@ uint32_t PrepareResult::read(::apache::thrift::protocol::TProtocol* iprot) {
           xfer += iprot->skip(ftype);
         }
         break;
-      case 3:
+      case 4:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->resultSetMetaData.clear();
@@ -115,7 +128,7 @@ uint32_t PrepareResult::read(::apache::thrift::protocol::TProtocol* iprot) {
           xfer += iprot->skip(ftype);
         }
         break;
-      case 4:
+      case 5:
         if (ftype == ::apache::thrift::protocol::T_STRUCT) {
           xfer += this->warnings.read(iprot);
           this->__isset.warnings = true;
@@ -134,6 +147,8 @@ uint32_t PrepareResult::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   if (!isset_statementId)
     throw TProtocolException(TProtocolException::INVALID_DATA);
+  if (!isset_statementType)
+    throw TProtocolException(TProtocolException::INVALID_DATA);
   if (!isset_parameterMetaData)
     throw TProtocolException(TProtocolException::INVALID_DATA);
   return xfer;
@@ -147,7 +162,11 @@ uint32_t PrepareResult::write(::apache::thrift::protocol::TProtocol* oprot) cons
   xfer += oprot->writeI32(this->statementId);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("parameterMetaData", ::apache::thrift::protocol::T_LIST, 2);
+  xfer += oprot->writeFieldBegin("statementType", ::apache::thrift::protocol::T_BYTE, 2);
+  xfer += oprot->writeByte(this->statementType);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("parameterMetaData", ::apache::thrift::protocol::T_LIST, 3);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->parameterMetaData.size()));
     std::vector<ColumnDescriptor> ::const_iterator _iter295;
@@ -160,7 +179,7 @@ uint32_t PrepareResult::write(::apache::thrift::protocol::TProtocol* oprot) cons
   xfer += oprot->writeFieldEnd();
 
   if (this->__isset.resultSetMetaData) {
-    xfer += oprot->writeFieldBegin("resultSetMetaData", ::apache::thrift::protocol::T_LIST, 3);
+    xfer += oprot->writeFieldBegin("resultSetMetaData", ::apache::thrift::protocol::T_LIST, 4);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->resultSetMetaData.size()));
       std::vector<ColumnDescriptor> ::const_iterator _iter296;
@@ -173,7 +192,7 @@ uint32_t PrepareResult::write(::apache::thrift::protocol::TProtocol* oprot) cons
     xfer += oprot->writeFieldEnd();
   }
   if (this->__isset.warnings) {
-    xfer += oprot->writeFieldBegin("warnings", ::apache::thrift::protocol::T_STRUCT, 4);
+    xfer += oprot->writeFieldBegin("warnings", ::apache::thrift::protocol::T_STRUCT, 5);
     xfer += this->warnings.write(oprot);
     xfer += oprot->writeFieldEnd();
   }
@@ -186,6 +205,7 @@ void swap(PrepareResult &a, PrepareResult &b) noexcept {
   using ::std::swap;
   static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.statementId, b.statementId);
+  swap(a.statementType, b.statementType);
   swap(a.parameterMetaData, b.parameterMetaData);
   swap(a.resultSetMetaData, b.resultSetMetaData);
   swap(a.warnings, b.warnings);
@@ -194,6 +214,7 @@ void swap(PrepareResult &a, PrepareResult &b) noexcept {
 
 PrepareResult::PrepareResult(const PrepareResult& other297) {
   statementId = other297.statementId;
+  statementType = other297.statementType;
   parameterMetaData = other297.parameterMetaData;
   resultSetMetaData = other297.resultSetMetaData;
   warnings = other297.warnings;
@@ -201,6 +222,7 @@ PrepareResult::PrepareResult(const PrepareResult& other297) {
 }
 PrepareResult::PrepareResult( PrepareResult&& other298) noexcept {
   statementId = std::move(other298.statementId);
+  statementType = std::move(other298.statementType);
   parameterMetaData = std::move(other298.parameterMetaData);
   resultSetMetaData = std::move(other298.resultSetMetaData);
   warnings = std::move(other298.warnings);
@@ -208,6 +230,7 @@ PrepareResult::PrepareResult( PrepareResult&& other298) noexcept {
 }
 PrepareResult& PrepareResult::operator=(const PrepareResult& other299) {
   statementId = other299.statementId;
+  statementType = other299.statementType;
   parameterMetaData = other299.parameterMetaData;
   resultSetMetaData = other299.resultSetMetaData;
   warnings = other299.warnings;
@@ -216,6 +239,7 @@ PrepareResult& PrepareResult::operator=(const PrepareResult& other299) {
 }
 PrepareResult& PrepareResult::operator=(PrepareResult&& other300) noexcept {
   statementId = std::move(other300.statementId);
+  statementType = std::move(other300.statementType);
   parameterMetaData = std::move(other300.parameterMetaData);
   resultSetMetaData = std::move(other300.resultSetMetaData);
   warnings = std::move(other300.warnings);
@@ -226,6 +250,7 @@ void PrepareResult::printTo(std::ostream& out) const {
   using ::apache::thrift::to_string;
   out << "PrepareResult(";
   out << "statementId=" << to_string(statementId);
+  out << ", " << "statementType=" << to_string(statementType);
   out << ", " << "parameterMetaData=" << to_string(parameterMetaData);
   out << ", " << "resultSetMetaData="; (__isset.resultSetMetaData ? (out << to_string(resultSetMetaData)) : (out << "<null>"));
   out << ", " << "warnings="; (__isset.warnings ? (out << to_string(warnings)) : (out << "<null>"));

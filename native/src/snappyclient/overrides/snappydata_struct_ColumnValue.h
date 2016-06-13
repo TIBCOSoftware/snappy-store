@@ -292,7 +292,7 @@ public:
   // Similarly when getting column values as result, we could send a char*
   // buffer to read the result into instead of creating a new std::string
   // (though it is dangerous and should avoid unless perf benefit is proven)
-  inline void setString(const char* val, const int32_t len) {
+  inline void setString(const char* val, const size_t len) {
     if (len < 0) {
       m_val = std::move(std::shared_ptr<std::string>(new std::string(val)));
     } else {

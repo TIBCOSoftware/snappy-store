@@ -46,11 +46,12 @@ class PrepareResult {
   PrepareResult(PrepareResult&&) noexcept;
   PrepareResult& operator=(const PrepareResult&);
   PrepareResult& operator=(PrepareResult&&) noexcept;
-  PrepareResult() : statementId(0) {
+  PrepareResult() : statementId(0), statementType(0) {
   }
 
   virtual ~PrepareResult() noexcept;
   int32_t statementId;
+  int8_t statementType;
   std::vector<ColumnDescriptor>  parameterMetaData;
   std::vector<ColumnDescriptor>  resultSetMetaData;
   SnappyExceptionData warnings;
@@ -58,6 +59,8 @@ class PrepareResult {
   _PrepareResult__isset __isset;
 
   void __set_statementId(const int32_t val);
+
+  void __set_statementType(const int8_t val);
 
   void __set_parameterMetaData(const std::vector<ColumnDescriptor> & val);
 
@@ -68,6 +71,8 @@ class PrepareResult {
   bool operator == (const PrepareResult & rhs) const
   {
     if (!(statementId == rhs.statementId))
+      return false;
+    if (!(statementType == rhs.statementType))
       return false;
     if (!(parameterMetaData == rhs.parameterMetaData))
       return false;

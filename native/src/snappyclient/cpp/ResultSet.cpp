@@ -100,7 +100,8 @@ void ResultSet::insertRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("insertRow");
   if (row != NULL && row->getChangedColumns() != NULL) {
     ClearUpdates clearRow(row);
-    std::vector<int32_t> changedColumns = row->getChangedColumnsAsVector();
+    std::vector<int32_t> changedColumns(
+        std::move(row->getChangedColumnsAsVector()));
     if (changedColumns.size() > 0) {
       m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::INSERT_OP, *row, changedColumns,
@@ -116,7 +117,8 @@ void ResultSet::updateRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("updateRow");
   if (row != NULL && row->getChangedColumns() != NULL) {
     ClearUpdates clearRow(row);
-    std::vector<int32_t> changedColumns = row->getChangedColumnsAsVector();
+    std::vector<int32_t> changedColumns(
+        std::move(row->getChangedColumnsAsVector()));
     if (changedColumns.size() > 0) {
       m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::UPDATE_OP, *row, changedColumns,

@@ -134,9 +134,10 @@ public class GenericStatement
         public final static short IS_CALLABLE_STATEMENT = 0x200;
 
         public static final Pattern SKIP_CANCEL_STMTS = Pattern.compile(
-            "^\\s*(DROP|TRUNCATE)\\s+(TABLE|INDEX)\\s+", Pattern.CASE_INSENSITIVE);
+            "^\\s*\\{?\\s*(DROP|TRUNCATE)\\s+(TABLE|INDEX)\\s+",
+            Pattern.CASE_INSENSITIVE);
 	public static final Pattern DELETE_STMT = Pattern.compile(
-			"^\\s*DELETE\\s+FROM\\s+.*", Pattern.CASE_INSENSITIVE);
+            "^\\s*\\{?\\s*DELETE\\s+FROM\\s+.*", Pattern.CASE_INSENSITIVE);
         private static final Pattern ignoreStmts = Pattern.compile(
             ("\\s.*(\"SYSSTAT\"|SYS.\")"), Pattern.CASE_INSENSITIVE);
         //private ProcedureProxy procProxy;

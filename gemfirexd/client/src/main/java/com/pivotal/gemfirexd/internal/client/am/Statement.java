@@ -2800,7 +2800,8 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
         String tokenFound = null;
         char next;
 
-        while (idx < sql.length() && tokenFound == null) {
+        final int sqlLen = sql.length();
+        while (idx < sqlLen && tokenFound == null) {
             next = sql.charAt(idx);
 
             switch (state) {
@@ -2835,7 +2836,7 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
                         tokenFound = "/";
                     } else if (sql.charAt(idx + 1) == '-') {
                         state = INSIDE_SIMPLECOMMENT;
-                        idx = idx++;
+                        idx++;
                     }
 
                     idx++;

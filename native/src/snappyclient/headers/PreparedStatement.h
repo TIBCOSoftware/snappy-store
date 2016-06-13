@@ -107,6 +107,10 @@ namespace client {
         const NextResultSetBehaviour behaviour =
             NextResultSetBehaviour::CLOSE_ALL);
 
+    int8_t getStatementType() const noexcept {
+      return m_prepResult.statementType;
+    }
+
     inline bool hasWarnings() const noexcept {
       return m_warnings != NULL || m_prepResult.__isset.warnings;
     }

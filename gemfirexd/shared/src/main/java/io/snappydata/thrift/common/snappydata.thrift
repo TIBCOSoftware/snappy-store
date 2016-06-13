@@ -634,11 +634,18 @@ struct RowSet {
  12: optional list<i64>                                    rowIdsForUpdateOrDelete
 }
 
+// statement types
+const byte STATEMENT_TYPE_SELECT                           = 0;
+const byte STATEMENT_TYPE_INSERT                           = 1;
+const byte STATEMENT_TYPE_UPDATE                           = 2;
+const byte STATEMENT_TYPE_DELETE                           = 3;
+
 struct PrepareResult {
   1: required i32                                          statementId
-  2: required list<ColumnDescriptor>                       parameterMetaData
-  3: optional list<ColumnDescriptor>                       resultSetMetaData
-  4: optional SnappyExceptionData                          warnings
+  2: required byte                                         statementType
+  3: required list<ColumnDescriptor>                       parameterMetaData
+  4: optional list<ColumnDescriptor>                       resultSetMetaData
+  5: optional SnappyExceptionData                          warnings
 }
 
 struct UpdateResult {

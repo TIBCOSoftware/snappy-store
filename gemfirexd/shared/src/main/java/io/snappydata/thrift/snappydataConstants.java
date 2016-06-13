@@ -100,6 +100,14 @@ public class snappydataConstants {
 
   public static final byte ROWSET_AFTER_LAST = (byte)16;
 
+  public static final byte STATEMENT_TYPE_SELECT = (byte)0;
+
+  public static final byte STATEMENT_TYPE_INSERT = (byte)1;
+
+  public static final byte STATEMENT_TYPE_UPDATE = (byte)2;
+
+  public static final byte STATEMENT_TYPE_DELETE = (byte)3;
+
   public static final byte BULK_CLOSE_RESULTSET = (byte)1;
 
   public static final byte BULK_CLOSE_LOB = (byte)2;

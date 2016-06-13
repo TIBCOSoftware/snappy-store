@@ -2054,7 +2054,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       stmtHolder = connHolder.registerStatement(pstmt, attrs, pstmtId, sql);
       this.statementMap.putPrimitive(pstmtId, stmtHolder);
 
-      PrepareResult result = new PrepareResult(pstmtId, pmDescs);
+      PrepareResult result = new PrepareResult(pstmtId,
+          // TODO: SW: determine correct type
+          snappydataConstants.STATEMENT_TYPE_SELECT, pmDescs);
       if (sqlw != null) {
         result.setWarnings(sqlw);
       }
