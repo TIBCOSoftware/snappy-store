@@ -42,6 +42,7 @@
 
 #include <boost/date_time/time_duration.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/local_time/local_time.hpp>
 
 #include <boost/spirit/include/karma.hpp>
 
@@ -51,34 +52,27 @@ using namespace io::snappydata::client::types;
 void DateTime::init(const uint16_t year, const uint16_t month,
     const uint16_t day, const uint16_t hour, const uint16_t min,
     const uint16_t sec, const bool utc) {
-  if (utc) {
-    try {
+  try {
+    if (utc) {
       boost::posix_time::ptime dateTime(
           boost::gregorian::date(year, month, day),
           boost::posix_time::time_duration(hour, min, sec));
       boost::posix_time::time_duration sinceEpoch = dateTime
           - InternalUtils::s_epoch;
-      setEpochTime(sinceEpoch.ticks() / sinceEpoch.ticks_per_second());
-    } catch (const std::exception&) {
-      throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG2,
-          year, month, day, hour, min, sec);
-    }
-  } else {
-    struct tm t;
-    t.tm_year = year - 1900;
-    t.tm_mon = month - 1;
-    t.tm_mday = day;
-    t.tm_hour = hour;
-    t.tm_min = min;
-    t.tm_sec = sec;
-    t.tm_isdst = -1; // no daylight saving information
-    const time_t tv = ::mktime(&t);
-    if (tv != (time_t)-1) {
-      setEpochTime(tv);
+      setEpochTime(sinceEpoch.total_seconds());
     } else {
-      throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG2,
-          year, month, day, hour, min, sec);
+      boost::local_time::local_date_time localTime(
+          boost::gregorian::date(year, month, day),
+          boost::posix_time::time_duration(hour, min, sec),
+          InternalUtils::s_localTimeZone,
+          boost::local_time::local_date_time::EXCEPTION_ON_ERROR);
+      boost::posix_time::time_duration sinceEpoch = localTime.utc_time()
+          - InternalUtils::s_epoch;
+      setEpochTime(sinceEpoch.total_seconds());
     }
+  } catch (const std::exception&) {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG2,
+      year, month, day, hour, min, sec);
   }
 }
 
