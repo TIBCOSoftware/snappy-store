@@ -84,16 +84,6 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
   }
 
   @Override
-  public long getAndSet(T obj, long newValue) {
-    return unsafe.getAndSetLong(obj, this.offset, newValue);
-  }
-
-  @Override
-  public long getAndAdd(T obj, long delta) {
-    return unsafe.getAndAddLong(obj, this.offset, delta);
-  }
-
-  @Override
   public long addAndGet(T obj, long delta) {
     return getAndAdd(obj, delta) + delta;
   }

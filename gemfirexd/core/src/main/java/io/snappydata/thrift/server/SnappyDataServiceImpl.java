@@ -1641,7 +1641,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
    */
   private static RowSet createEmptyRowSet() {
     RowSet rs = new RowSet();
-    rs.setRows(new ArrayList<>());
+    rs.setRows(new ArrayList<Row>());
     return rs;
   }
 

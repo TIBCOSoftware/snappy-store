@@ -138,7 +138,7 @@ public final class SnappyThriftServer {
 
       serverArgs.processor(processor).protocolFactory(protocolFactory);
       this.thriftExecutor = new ThreadPoolExecutor(parallelism * 2,
-          maxThreads, 30L, TimeUnit.SECONDS, new SynchronousQueue<>());
+          maxThreads, 30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
       serverArgs.setExecutorService(this.thriftExecutor).setConnectionListener(
           listener);
 
@@ -156,9 +156,9 @@ public final class SnappyThriftServer {
       serverArgs.processor(processor).protocolFactory(protocolFactory)
           .setNumSelectors(numSelectors).setConnectionListener(listener);
       this.thriftExecutor = new ThreadPoolExecutor(1, maxThreads, 30L,
-          TimeUnit.SECONDS, new SynchronousQueue<>());
+          TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
       this.thriftThreadPerConnExecutor = new ThreadPoolExecutor(1, numThreads,
-          30L, TimeUnit.SECONDS, new SynchronousQueue<>());
+          30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
       serverArgs.setExecutorService(this.thriftExecutor);
       serverArgs.setThreadPerConnExecutor(this.thriftThreadPerConnExecutor);
       this.thriftServer = new SnappyThriftServerSelector(serverArgs);
