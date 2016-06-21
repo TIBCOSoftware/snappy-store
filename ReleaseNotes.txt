@@ -1,0 +1,9 @@
+####################################################################################################
+# PLEASE KEEP THE WIDTH OF THE LINES BELOW WITHIN 100 CHARACTERS.                                  #
+# MOST RECENT CHANGE AT THE TOP.                                                                   #
+# KEEP THE DESCRIPTION OF EACH OF YOUR CHANGES THAT NEEDS TO BE PUT INTO THE RELEASE NOTES TO ONE  #
+# TO THREE LINES.                                                                                  #
+# KEEP A LINE BLANK BETWEEN TWO NOTES.                                                             #
+# ADD THE JIRA TICKET ID, IF APPLICABLE.                                                           #
+####################################################################################################
+

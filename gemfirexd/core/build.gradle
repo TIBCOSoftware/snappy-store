@@ -215,14 +215,17 @@ javadoc.dependsOn.clear()
 shadowJar {
   dependsOn odbcMeta, doSplit, jar
   zip64 = true
-  baseName = 'gemfirexd'
+  baseName = 'snappydata-store'
   classifier = ''
 
   mergeServiceFiles()
 }
 
+archivesBaseName = 'snappydata-store-core'
+
 jar {
   dependsOn odbcMeta, doSplit
+  baseName = 'snappydata-store-core'
 
   doLast {
     // copy the native JNI library

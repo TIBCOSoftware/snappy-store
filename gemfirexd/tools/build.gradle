@@ -85,9 +85,9 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
 }
 compileJava.dependsOn generatePropertiesFiles
 
-archivesBaseName = 'gemfirexd-tools'
+archivesBaseName = 'snappydata-store-tools'
 jar {
-  baseName = 'gemfirexd-tools'
+  baseName = 'snappydata-store-tools'
 
   from {
     configurations.runtime.collect {

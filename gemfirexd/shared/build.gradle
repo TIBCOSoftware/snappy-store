@@ -37,4 +37,4 @@ javadoc {
 }
 javadoc.dependsOn.clear()
 
-archivesBaseName = 'gemfirexd-shared'
+archivesBaseName = 'snappydata-store-shared'

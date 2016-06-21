@@ -102,7 +102,7 @@ allprojects {
         'gemfirexd.product.external.version': "${DERBY_MAJOR}.${DERBY_MINOR}.${DERBY_MAINT}",
         'gemfirexd.version.beta': 'true',
         'gemfirexd.product.vendor': PRODUCT_VENDOR,
-        'gemfirexd.product.file': 'gemfirexd.jar' ]
+        'gemfirexd.product.file': 'snappydata-store.jar' ]
   }
 
   buildRoot = buildRoot.trim()
