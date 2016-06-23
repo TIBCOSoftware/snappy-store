@@ -804,6 +804,8 @@ def includeJar(def jarFile) {
     jarName.contains('jline')
 }
 
+jar.enabled = false
+
 // pack the entire GemFireXD product tree
 task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
     subprojectBase + 'gemfirexd-core:shadowJar',
