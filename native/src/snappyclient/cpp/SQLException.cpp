@@ -202,7 +202,7 @@ std::ostream& SQLException::printStackTrace(std::ostream& out) const {
 }
 
 void SQLException::toString(std::ostream& out) const {
-  out << getName() << " SQLSTATE=" << m_state << " SEVERITY=" << m_severity
+  out << "SQLSTATE=" << m_state << " SEVERITY=" << m_severity
       << ": " << m_reason << _SNAPPY_NEWLINE_STR "\tat " << m_file << ':'
       << m_line;
 }

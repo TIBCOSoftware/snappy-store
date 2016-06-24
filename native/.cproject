@@ -33,6 +33,7 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1267859366" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/src/snappyclient/headers}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.59.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/unixODBC-2.3.4/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-1/include}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.pic.838987422" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" useByScannerDiscovery="false" value="true" valueType="boolean"/>
@@ -116,6 +117,7 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1138089048" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/src/snappyclient/headers}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.59.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/unixODBC-2.3.4/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-1/include}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1200452339" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -DPIC" valueType="string"/>
