@@ -20,6 +20,7 @@
  */
 
 package com.pivotal.gemfirexd.internal.impl.services.reflect;
+import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.pivotal.gemfirexd.internal.iapi.util.ByteArray;
 
 /**
@@ -101,12 +102,16 @@ public final class ReflectClassesJava2 extends DatabaseClasses
               cl = ((ClassLoader)
 			      java.security.AccessController.doPrivileged(this));
         	}
-			
-			foundClass = (cl != null) ?  cl.loadClass(name) 
+
+			foundClass = (cl != null) ?  cl.loadClass(name)
 				      :Class.forName(name);
         } catch (ClassNotFoundException cnfe) {
-            foundClass = Class.forName(name);
-        }
+				try {
+					foundClass = Class.forName(name);
+				} catch ( ClassNotFoundException cnf )  {
+					foundClass = ClassPathLoader.getLatest().forName(name);
+				}
+				}
 		return foundClass;
 	}
 }
