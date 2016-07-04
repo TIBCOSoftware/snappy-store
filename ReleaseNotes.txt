@@ -68,6 +68,30 @@ Bug Fixes
              convert those updates to put convertible which has absolute value rather than 
              other column references.
 
+* 47330    - Lock timed out in alter table. Simplification of ddl replay fixed it.
+
+* 51379    - select query with group by failed with Java exception: 'mismatch of versions:
+             formatter=2, fromBytes=1: java.lang.AssertionError. Another manifestation of SNAP-766.
+
+* 50430    - A restarted data node is stuck at UpdateAttributesProcessor.waitForProfileResponse.
+             Simplification of ddl replay fixed it.
+
+* 51082    - Can not DROP or TRUNCATE once low memory is hit, failed at prepare statement.
+             Even if low memory is detected by resource manager these actions are let through as
+             they clean the memory
+
+* 51255    - Incorrect XCL54 exception thrown when there should be enough heap memory. A very
+             transient spike in memory was leading to this. Now the generation of low memory
+             exception is delayed a bit to check if the heap has come back to normal.
+
+* 44936    - An insert was successful in replicated table on some of the nodes even though it
+             gets constraint violation. An insert coming before the gii is completed on a restarted
+             or new node could lead to this. These are categorized as suspect events and
+             re-processed at the end of gii.
+
+* 51328    - UTFDataFormatException while executing select query in thin client Ha test. Wrong
+             rowformatter being picked after alter table and node restart.
+
 * GEMXD-3  - Initializing netserver with all the properties. Some configuration properties were
              missing when reconnecting automatically.
 
