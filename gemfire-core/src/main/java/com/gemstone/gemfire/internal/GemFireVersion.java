@@ -562,7 +562,7 @@ public class GemFireVersion {
      * @param printSourceInfo
      *        Should information about the source code be printed?
      */
-    public static void print(PrintWriter pw, 
+    public static void print(PrintWriter pw,
                              boolean printSourceInfo) {
         String jarVersion = stripSpaces(GemFireVersion.getJavaCodeVersion());
         pw.println("Java version:   " + jarVersion);
