@@ -41,6 +41,7 @@
 package com.pivotal.gemfirexd.internal.impl.sql;
 
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Collections;
@@ -144,7 +145,8 @@ public class GenericStatement
         private final GfxdHeapThresholdListener thresholdListener;
         private THashMap ncjMetaData = null;
 	      private static final String STREAMING_DDL_PREFIX = "STREAMING";
-	      private static final String INSERT_INTO_TABLE_PATTERN = ".*INSERT\\s+INTO\\s+TABLE.*";
+	      private static final String INSERT_INTO_TABLE_SELECT_PATTERN = ".*INSERT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
+	      private static final String PUT_INTO_TABLE_SELECT_PATTERN = ".*PUT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
 // GemStone changes END
 	/**
 	 * Constructor for a Statement given the text of the statement in a String
@@ -564,7 +566,16 @@ public class GenericStatement
 				//StatementNode qt = p.parseStatement(statementText, paramDefaults);
 				StatementNode qt;
 				try {
-				    qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
+					//Route all "insert/put into tab select .. " queries to spark
+
+					if (routeQuery && (Pattern.matches(INSERT_INTO_TABLE_SELECT_PATTERN, getSource().toUpperCase()) ||
+							Pattern.matches(PUT_INTO_TABLE_SELECT_PATTERN, getSource().toUpperCase()))) {
+						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
+							cc.markAsDDLForSnappyUse(true);
+							return getPreparedStatementForSnappy(false, statementContext, lcc, cc.isMarkedAsDDLForSnappyUse(), checkCancellation);
+						}
+					}
+					qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
 				}
 				catch (StandardException ex) {
 				    //SanityManager.DEBUG_PRINT("DEBUG", "Parse: exception routeQuery=" + routeQuery + " ,sql=" + this.getSource() + " ,flag=" + cc.isDDL4routing());
@@ -574,9 +585,7 @@ public class GenericStatement
 		&& getSource().substring(0, STREAMING_DDL_PREFIX.length()).equalsIgnoreCase(STREAMING_DDL_PREFIX)) {
               cc.markAsDDLForSnappyUse(true);
             }
-						if(Pattern.matches(INSERT_INTO_TABLE_PATTERN, getSource().toUpperCase())){
-							cc.markAsDDLForSnappyUse(true);
-						}
+
             return getPreparedStatementForSnappy(false, statementContext, lcc, cc.isMarkedAsDDLForSnappyUse(), checkCancellation);
           }
           throw ex;
