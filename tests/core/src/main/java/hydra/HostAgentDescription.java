@@ -139,7 +139,7 @@ implements Serializable {
       }
       if ( hd.getGemFireHome() != null ) {
         classPath.add(hd.getGemFireHome() + hd.getFileSep() + "lib"
-                                          + hd.getFileSep() + "gemfirexd-" +
+                                          + hd.getFileSep() + "snappydata-store-" +
                 ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
        }
 

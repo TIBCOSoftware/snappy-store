@@ -136,7 +136,7 @@ public class Java {
       throw new HydraRuntimeException(s);
     }
     Vector bootpath = new Vector();
-    bootpath.add(gemfire + sep + "lib" + sep + "gemfirexd-" +
+    bootpath.add(gemfire + sep + "lib" + sep + "snappydata-store-" +
             ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
     bootpath.add(System.getProperty("JTESTS"));
 

@@ -121,7 +121,7 @@ implements Serializable {
     String gfh = vmd.getHostDescription().getGemFireHome();
     if (gfh != null) {
       classpath.add(gfh + hd.getFileSep() + "lib"
-                        + hd.getFileSep() + "gemfirexd-" +
+                        + hd.getFileSep() + "snappydata-store-" +
               ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
     }
 

@@ -201,7 +201,7 @@ implements Serializable {
 
     // product jars for this version
     classpath.add(gfh + hd.getFileSep() + "lib"
-                      + hd.getFileSep() + "gemfirexd-" +
+                      + hd.getFileSep() + "snappydata-store-" +
             ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
 
     return EnvHelper.asPath(classpath, hd);
