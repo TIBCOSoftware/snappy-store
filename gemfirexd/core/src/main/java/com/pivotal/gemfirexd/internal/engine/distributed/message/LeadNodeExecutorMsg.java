@@ -68,8 +68,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     super(true);
   }
 
-  @Override
-  public Set<DistributedMember> getMembers() {
+  public static Set<DistributedMember> getLead() {
     GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
     InternalDistributedSystem ids = Misc.getDistributedSystem();
     if (ids.isLoner()) {
@@ -85,6 +84,15 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
         s.add(m);
         return Collections.unmodifiableSet(s);
       }
+    }
+    return Collections.emptySet();
+  }
+
+  @Override
+  public Set<DistributedMember> getMembers() {
+    Set<DistributedMember> lead = getLead();
+    if (!lead.isEmpty()) {
+      return lead;
     }
     throw new NoDataStoreAvailableException(LocalizedStrings
         .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION

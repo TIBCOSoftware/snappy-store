@@ -17,11 +17,13 @@
 
 package com.pivotal.gemfirexd.internal.snappy;
 
+import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 
+import java.io.Externalizable;
 import java.util.HashSet;
 
 /**
@@ -63,6 +65,9 @@ public abstract class CallbackFactoryProvider {
 
     }
 
+    @Override
+    public void updateBlockMap(DistributedMember dm, Externalizable blockId) {
+    }
   };
 
   public static ClusterCallbacks getClusterCallbacks() {

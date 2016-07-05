@@ -339,4 +339,6 @@ public interface GfxdSerializable extends GfxdDSFID {
   public final static byte LEAD_NODE_EXN_MSG = 119;
 
   public final static byte SNAPPY_RESULT_HOLDER = 120;
+
+  public final static byte UPDATE_SPARK_EXE_MSG = 121;
 }
