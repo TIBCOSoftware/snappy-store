@@ -10,7 +10,7 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
   doLast {
     println('Creating DRDA client properties')
     derbyProps.put('gemfirexd.product.technology.name', "${DERBY_NAME} Network Client")
-    derbyProps.put('gemfirexd.product.file', "gemfirexd-client.jar")
+    derbyProps.put('gemfirexd.product.file', "snappydata-store-client.jar")
     writeProperties(infoDir, 'dnc.properties', COPYRIGHT, derbyProps)
 
     println('Creating Thrift client properties')
@@ -24,7 +24,7 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
         'gemfirexd.product.external.version': PRODUCT_VERSION,
         'gemfirexd.version.beta'            : 'true',
         'gemfirexd.product.vendor'          : PRODUCT_VENDOR,
-        'gemfirexd.product.file'            : 'gemfirexd-client.jar'])
+        'gemfirexd.product.file'            : 'snappydata-store-client.jar'])
   }
 }
 
@@ -33,9 +33,9 @@ compileJava {
   dependsOn generatePropertiesFiles
 }
 
-archivesBaseName = 'gemfirexd-client'
+archivesBaseName = 'snappydata-store-client'
 jar {
-  baseName = 'gemfirexd-client'
+  baseName = 'snappydata-store-client'
 
   from {
     configurations.runtime.collect {

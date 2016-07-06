@@ -96,7 +96,7 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.load.Import;
-import com.pivotal.gemfirexd.thrift.ServerType;
+import io.snappydata.thrift.ServerType;
 
 /**
  * GemFireXD built-in system procedures that will get executed on every

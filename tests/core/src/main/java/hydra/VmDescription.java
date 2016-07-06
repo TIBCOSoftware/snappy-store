@@ -253,10 +253,10 @@ implements Serializable {
       }
 
       // classPath -- test jars
-      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "gemfirexd-hydra-tests-" +
+      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
               ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
       classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-              "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "gemfirexd-scala-tests"));
+              "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
 
       // classPath -- set at last
       vmd.setClassPath(EnvHelper.asPath(classPath, hd));

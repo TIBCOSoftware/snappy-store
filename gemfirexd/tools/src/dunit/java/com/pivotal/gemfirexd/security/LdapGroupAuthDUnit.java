@@ -49,8 +49,6 @@ public class LdapGroupAuthDUnit extends DistributedSQLTestBase {
     Properties bootProps = SecurityTestUtils
         .startLdapServerAndGetBootProperties(locatorPort, 0, sysUser);
 
-    super.baseSetUp();
-
     // start the locator with authentication first
     startLocatorVM("localhost", locatorPort, null, bootProps);
     // start a client and servers next
@@ -73,11 +71,6 @@ public class LdapGroupAuthDUnit extends DistributedSQLTestBase {
     if (server.isServerStarted()) {
       server.stopService();
     }
-  }
-
-  // setup nodes only once at the start in beforeClass
-  @Override
-  protected void baseSetUp() {
   }
 
   // shutdown nodes only once at the end in afterClass

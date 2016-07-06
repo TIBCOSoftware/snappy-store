@@ -67,8 +67,8 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import com.pivotal.gemfirexd.thrift.ServerType;
 import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
+import io.snappydata.thrift.ServerType;
 
 /**
  * Message used to obtain and set various configuration parameters of
@@ -80,7 +80,7 @@ import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
  * 
  * @param <T>
  *          the type of result returned by the {@link ResultCollector} passed to
- *          {@link #executeFunction(ResultCollector, boolean)}
+ *          the constructor
  */
 public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
 
@@ -96,7 +96,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
 
   private transient boolean serializeMembers;
 
-  private static enum AllMembers {
+  private enum AllMembers {
     GIVEN_MEMBERS,
     ALL_MEMBERS,
     ALL_MEMBERS_INCLUDING_ADMIN
@@ -109,7 +109,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
   public final static int GFXDPROPS_INDEX = 2;
   public final static int ALLPROPS_MAXINDEX = GFXDPROPS_INDEX;
 
-  public static enum Operation {
+  public enum Operation {
     GET_SYSPROPS {
       @Override
       public Set<DistributedMember> getTargetMembers(
@@ -120,7 +120,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
       @Override
       public Object process(Object arg, Set<DistributedMember> members,
           GfxdConfigMessage<?> msg) {
-        final TreeMap<Object, Object> props = new TreeMap<Object, Object>();
+        final TreeMap<Object, Object> props = new TreeMap<>();
         addSYSProps(props);
         return props;
       }
@@ -135,7 +135,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
       @Override
       public Object process(Object arg, Set<DistributedMember> members,
           GfxdConfigMessage<?> msg) {
-        final TreeMap<Object, Object> props = new TreeMap<Object, Object>();
+        final TreeMap<Object, Object> props = new TreeMap<>();
         addGFEProps(props);
         return props;
       }
@@ -150,7 +150,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
       @Override
       public Object process(Object arg, Set<DistributedMember> members,
           GfxdConfigMessage<?> msg) {
-        final TreeMap<Object, Object> props = new TreeMap<Object, Object>();
+        final TreeMap<Object, Object> props = new TreeMap<>();
         addGFXDProps(props);
         return props;
       }
@@ -191,7 +191,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
       @Override
       public Object process(Object arg, Set<DistributedMember> members,
           GfxdConfigMessage<?> msg) {
-        TreeMap<Object, Object> map = new TreeMap<Object, Object>();
+        TreeMap<Object, Object> map = new TreeMap<>();
         // GC information
         for (GarbageCollectorMXBean gcBean : ManagementFactory
             .getGarbageCollectorMXBeans()) {
@@ -235,7 +235,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
       @Override
       public Object process(Object arg, Set<DistributedMember> members,
           GfxdConfigMessage<?> msg) {
-        final boolean enableOrDisable = ((Boolean)arg).booleanValue();
+        final boolean enableOrDisable = (Boolean)arg;
         GemFireXDUtils.setOptimizerTrace(enableOrDisable);
         if (enableOrDisable) {
           GemFireXDQueryObserverHolder
@@ -262,16 +262,16 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
             .getObserver(GemFireXDQueryTimeStatistics.class);
         if (stats != null) {
           final ArrayList<HashMap<String, Object>> statsMapList =
-            new ArrayList<HashMap<String, Object>>();
+              new ArrayList<>();
           HashMap<String, Object> statsMap;
           Iterator<Map.Entry<String, QueryStatistics[]>> mapIter = stats
               .getIterator();
           while (mapIter.hasNext()) {
             Map.Entry<String, QueryStatistics[]> entry = mapIter.next();
-            statsMap = new HashMap<String, Object>();
+            statsMap = new HashMap<>();
             QueryStatistics[] queryStats = entry.getValue();
             statsMap.put(QueryStatisticsVTI.QUERYSTRING, entry.getKey());
-            statsMap.put(QueryStatisticsVTI.PARAMSSIZE, Integer.valueOf(0));
+            statsMap.put(QueryStatisticsVTI.PARAMSSIZE, 0);
             QueryStatistics optimStats = queryStats[StatType.QUERY_OPTIMIZATION
                 .ordinal()];
             String plan = (String)optimStats.getCustomObject();
@@ -281,21 +281,21 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
             statsMap.put(QueryStatisticsVTI.QUERYPLAN, plan);
             QueryStatistics totalStats = queryStats[StatType.TOTAL_EXECUTION
                 .ordinal()];
-            statsMap.put(QueryStatisticsVTI.NUMINVOCATIONS, Integer
-                .valueOf(totalStats.getNumInvocations()));
-            statsMap.put(QueryStatisticsVTI.TOTALNANOS, Long.valueOf(totalStats
-                .getTotalTimeInNanos()));
+            statsMap.put(QueryStatisticsVTI.NUMINVOCATIONS,
+                totalStats.getNumInvocations());
+            statsMap.put(QueryStatisticsVTI.TOTALNANOS,
+                totalStats.getTotalTimeInNanos());
             QueryStatistics distribStats = queryStats[StatType.TOTAL_DISTRIBUTION
                 .ordinal()];
-            statsMap.put(QueryStatisticsVTI.DISTRIBNANOS, Long
-                .valueOf(distribStats.getTotalTimeInNanos()));
+            statsMap.put(QueryStatisticsVTI.DISTRIBNANOS,
+                distribStats.getTotalTimeInNanos());
             long serNanos = queryStats[StatType.RESULT_HOLDER_SERIALIZATION
                 .ordinal()].getTotalTimeInNanos();
             if (serNanos <= 0) {
               serNanos = queryStats[StatType.RESULT_HOLDER_READ.ordinal()]
                   .getTotalTimeInNanos();
             }
-            statsMap.put(QueryStatisticsVTI.SERNANOS, Long.valueOf(serNanos));
+            statsMap.put(QueryStatisticsVTI.SERNANOS, serNanos);
             QueryStatistics stmtStats = queryStats[StatType.RESULT_HOLDER_EXECUTE
                 .ordinal()];
             long execNanos = stmtStats.getTotalTimeInNanos();
@@ -308,10 +308,10 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
                 execNanos = stmtStats.getTotalTimeInNanos();
               }
             }
-            statsMap.put(QueryStatisticsVTI.EXECNANOS, Long.valueOf(execNanos));
+            statsMap.put(QueryStatisticsVTI.EXECNANOS, execNanos);
             QueryStatistics ormStats = queryStats[StatType.ORM_TIME.ordinal()];
-            statsMap.put(QueryStatisticsVTI.ORMNANOS, Long.valueOf(ormStats
-                .getTotalTimeInNanos()));
+            statsMap.put(QueryStatisticsVTI.ORMNANOS,
+                ormStats.getTotalTimeInNanos());
             statsMapList.add(statsMap);
           }
           return statsMapList;
@@ -389,10 +389,10 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
           sizer.initialize(false, "!");
           sizer.setQueryHints(null);
           
-          final LinkedHashMap<String, Object[]> result = new LinkedHashMap<String, Object[]>();
+          final LinkedHashMap<String, Object[]> result = new LinkedHashMap<>();
 
           ArrayList<GemFireContainer> targetContainers =
-            new ArrayList<GemFireContainer>();
+              new ArrayList<>();
           ObjectSizer.getTargetContainers(targetContainers);
 
           for (int idx = 0, size = targetContainers.size(); idx < size; idx++) {
@@ -503,7 +503,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
         }
         final boolean dumpBackingMap;
         if (arg != null && arg instanceof Boolean) {
-          dumpBackingMap = ((Boolean)arg).booleanValue();
+          dumpBackingMap = (Boolean)arg;
         }
         else {
           dumpBackingMap = false;
@@ -686,7 +686,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
         return;
       }
       Map<Object, Object> bootProps = memStore.getBootProperties();
-      if (bootProps != null) {
+      if (bootProps.size() > 0) {
         props.putAll(bootProps);
       }
     }
@@ -712,7 +712,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
     super(collector, null /* no TX for config messages */,
         DistributionStats.enableClockStats, true);
     if (members != null) {
-      this.members = new HashSet<DistributedMember>();
+      this.members = new HashSet<>();
       final Set<DistributedMember> allMembers = getAllDSMembers();
       for (DistributedMember member : members) {
         if (allMembers.contains(member)) {
@@ -742,7 +742,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
       throws StandardException {
     super(other);
     if (other.members != null) {
-      this.members = new HashSet<DistributedMember>();
+      this.members = new HashSet<>();
       final Set<DistributedMember> allMembers = getAllDSMembers();
       for (DistributedMember member : other.members) {
         if (allMembers.contains(member)) {
@@ -836,7 +836,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
   @Override
   protected GfxdFunctionReplyMessageProcessor<T> createReplyProcessor(DM dm,
       Set<DistributedMember> members) {
-    return new GfxdConfigReplyProcessor<T>(dm, members, this);
+    return new GfxdConfigReplyProcessor<>(dm, members, this);
   }
 
   @Override
@@ -864,7 +864,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
     this.opArg = DataSerializer.readObject(in);
     int numMembers = InternalDataSerializer.readArrayLength(in);
     if (numMembers > 0) {
-      this.members = new HashSet<DistributedMember>(numMembers);
+      this.members = new HashSet<>(numMembers);
       for (int count = 1; count <= numMembers; ++count) {
         final InternalDistributedMember member = new InternalDistributedMember();
         member.fromData(in);
@@ -894,7 +894,7 @@ public final class GfxdConfigMessage<T> extends MemberExecutorMessage<T> {
   @Override
   protected GfxdConfigMessage<T> clone() {
     try {
-      return new GfxdConfigMessage<T>(this);
+      return new GfxdConfigMessage<>(this);
     } catch (StandardException se) {
       throw GemFireXDRuntimeException.newRuntimeException(null, se);
     }

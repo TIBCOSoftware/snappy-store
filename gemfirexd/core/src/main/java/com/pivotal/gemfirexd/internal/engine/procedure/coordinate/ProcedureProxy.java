@@ -295,7 +295,7 @@ public final class ProcedureProxy implements
         for (int i = 0; i < numParameters; ++i) {
           inParameters[i] = pvs.getParameter(i);
           GenericParameter gp = pvs.getGenericParameter(i);
-          parameterInfo[i][0] = gp.getSQLType();
+          parameterInfo[i][0] = gp.getRegisterOutputType();
           parameterInfo[i][1] = gp.getScale();
           parameterInfo[i][2] = gp.getPrecision();
         }

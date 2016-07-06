@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.jdbc;
 
@@ -25,8 +43,8 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.am.Utils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ClientExceptionUtil;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import com.pivotal.gemfirexd.thrift.internal.ClientConfiguration;
-import com.pivotal.gemfirexd.thrift.internal.ClientConnection;
+import io.snappydata.thrift.internal.ClientConfiguration;
+import io.snappydata.thrift.internal.ClientConnection;
 
 /**
  * Client driver encapsulating both Thrift and DRDA protocols as per protocol
@@ -97,9 +115,5 @@ public class ClientDriver extends ClientDRDADriver {
   protected java.sql.Connection createThriftConnection(String server, int port,
       java.util.Properties props) throws SQLException {
     return ClientConnection.create(server, port, props);
-  }
-
-  public static ClientDriver getRegisteredDriver() {
-    return (ClientDriver)registeredDriver__;
   }
 }

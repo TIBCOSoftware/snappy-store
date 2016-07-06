@@ -11,7 +11,7 @@
 @set gfxd=%gfxd%\product-gfxd
 
 @set MX4J_JARS=%gfxd%\lib\commons-logging-1.1.1.jar;%gfxd%\lib\commons-modeler-2.0.jar;%gfxd%\lib\mx4j.jar;%gfxd%\lib\mx4j-remote.jar;%gfxd%\lib\mx4j-tools.jar
-@set GFXD_JARS=%gfxd%\lib\gemfirexd.jar;%gfxd%\lib\gemfirexd-tools.jar;%gfxd%\lib\gemfirexd-client.jar;%gfxd%\lib\jline-1.0.jar;%gfxd%\lib\commons-cli-1.2.jar;%gfxd%\lib\pulse-dependencies.jar
+@set GFXD_JARS=%gfxd%\lib\snappydata-store-core.jar;%gfxd%\lib\snappydata-store-tools.jar;%gfxd%\lib\snappydata-store-client.jar;%gfxd%\lib\jline-1.0.jar;%gfxd%\lib\commons-cli-1.2.jar;%gfxd%\lib\pulse-dependencies.jar
 
 @set DDLUTILS_JARS=%gfxd%\lib\ddlutils\ant\ant.jar
 @for %%J IN (%gfxd%\lib\ddlutils\lib\*.jar %gfxd%\lib\ddlutils\dist\*.jar) do @set DDLUTILS_JARS=!DDLUTILS_JARS!;%%J

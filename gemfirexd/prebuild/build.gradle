@@ -4,3 +4,4 @@ dependencies {
   provided files("${System.getProperty('java.home')}/../lib/tools.jar")
   provided "org.apache.ant:ant:${antVersion}"
 }
+jar.baseName = 'snappydata-store-prebuild'

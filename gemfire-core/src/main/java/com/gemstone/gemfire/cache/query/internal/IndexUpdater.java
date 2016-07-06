@@ -17,7 +17,6 @@
 package com.gemstone.gemfire.cache.query.internal;
 
 import java.util.Iterator;
-import java.util.List;
 
 import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.Region;
@@ -116,15 +115,16 @@ public interface IndexUpdater {
    * @param bucketEntriesIter
    *         iterator on List of RegionEntry belonging to the bucket which is being destroyed.
    *         null is passed for non bucket regions.
+   * @param destroyOffline
    * @return  Returns whether write lock was acqired by clearIndex or not
    */
 
   boolean clearIndexes(LocalRegion region, boolean lockForGII,
-      boolean holdIndexLock, Iterator<?> bucketEntriesIter);
+      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline);
 
   /**
    * should be invoked if "holdIndexLock" argument was true in
-   * {@link #clearIndexes(LocalRegion, boolean, boolean, Iterator)}
+   * {@link #clearIndexes(LocalRegion, boolean, boolean, Iterator, boolean)}
    */
   public void releaseIndexLock(LocalRegion region);
 

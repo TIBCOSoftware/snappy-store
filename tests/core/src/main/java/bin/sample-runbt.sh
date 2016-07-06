@@ -74,20 +74,21 @@ processArgs() {
 
 processArgs $*
 
-list=`ls $GEMFIRE/lib/gemfirexd-client-*`
+#list=`ls $GEMFIRE/lib/gemfirexd-client-*`
+list=`ls $JTESTS/../../libs/snappydata-store-hydra-tests-*`
 filename=`tr "/" "\n" <<< $list | tail -1`
 
-export releaseVersion=`echo "${filename%*.*}"| cut -d'-' -f3-4`
+export releaseVersion=`echo "${filename%*.*}"| cut -d'-' -f5-6`
 
 assemblyJarName=`ls $GEMFIRE/../snappy/lib/snappydata-assembly*`
 assemblyJarFilename=`tr "/" "\n" <<< $assemblyJarName | tail -1`
 export assemblyJarVersion=`echo "${assemblyJarFilename%*.*}"| cut -d'_' -f2`
 
-snappyTestsJarName=`ls $SNAPPYDATADIR/dtests/build-artifacts/scala-2.10/libs/gemfirexd-scala-tests*`
+snappyTestsJarName=`ls $SNAPPYDATADIR/dtests/build-artifacts/scala-2.10/libs/snappydata-store-scala-tests*`
 snappyTestsJarFilename=`tr "/" "\n" <<< $snappyTestsJarName | tail -1`
-export snappyTestsJarVersion=`echo "${snappyTestsJarFilename%*.*}"| cut -d'-' -f4-6`
+export snappyTestsJarVersion=`echo "${snappyTestsJarFilename%*.*}"| cut -d'-' -f5-6`
 
-export CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../libs/gemfirexd-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.10/libs/gemfirexd-scala-tests-${snappyTestsJarVersion}.jar:$GEMFIRE/../snappy/lib/snappydata-assembly_${assemblyJarVersion}.jar
+export CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.10/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar:$GEMFIRE/../snappy/lib/snappydata-assembly_${assemblyJarVersion}.jar
 export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/main
 #export JTESTS_RESOURCES=$SNAPPYDATADIR/store/tests/core/src/main/java
 

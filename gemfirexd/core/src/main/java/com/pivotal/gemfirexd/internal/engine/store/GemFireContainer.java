@@ -23,48 +23,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.InternalGemFireError;
-import com.gemstone.gemfire.cache.AttributesFactory;
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheListener;
-import com.gemstone.gemfire.cache.CacheLoader;
-import com.gemstone.gemfire.cache.CacheWriter;
-import com.gemstone.gemfire.cache.CustomEvictionAttributes;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.EntryDestroyedException;
-import com.gemstone.gemfire.cache.EntryEvent;
-import com.gemstone.gemfire.cache.EntryExistsException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.EvictionAction;
-import com.gemstone.gemfire.cache.EvictionAttributes;
-import com.gemstone.gemfire.cache.ExpirationAttributes;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.PartitionResolver;
-import com.gemstone.gemfire.cache.PartitionedRegionDistributionException;
-import com.gemstone.gemfire.cache.PartitionedRegionStorageException;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.RegionExistsException;
-import com.gemstone.gemfire.cache.Scope;
-import com.gemstone.gemfire.cache.TimeoutException;
-import com.gemstone.gemfire.cache.TransactionException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import com.gemstone.gemfire.cache.query.IndexMaintenanceException;
@@ -74,37 +38,10 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.CacheMap;
-import com.gemstone.gemfire.internal.cache.CachePerfStats;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.DistributedPutAllOperation;
-import com.gemstone.gemfire.internal.cache.DistributedRegion;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.EntrySnapshot;
-import com.gemstone.gemfire.internal.cache.InternalDataView;
-import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
-import com.gemstone.gemfire.internal.cache.KeyWithRegionContext;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
-import com.gemstone.gemfire.internal.cache.PartitionAttributesImpl;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.SizeEntry;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.PrimaryBucketException;
-import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException.PutAllPartialResult;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionQueue;
-import com.gemstone.gemfire.internal.cache.SortedIndexContainer;
-import com.gemstone.gemfire.internal.cache.SortedIndexKey;
-import com.gemstone.gemfire.internal.cache.TXEntry;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.Token;
-import com.gemstone.gemfire.internal.cache.VMIdAdvisor;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
@@ -201,14 +138,7 @@ import com.pivotal.gemfirexd.internal.iapi.store.raw.Page;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.RecordHandle;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.Transaction;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.log.LogInstant;
-import com.pivotal.gemfirexd.internal.iapi.types.DataType;
-import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLBoolean;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLChar;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLLongvarchar;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLVarchar;
+import com.pivotal.gemfirexd.internal.iapi.types.*;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.SYSTABLESRowFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
@@ -3389,8 +3319,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       rowList = rows;
     }
     // end for bulk fk check
-    
-    Map<Object, Object> toBeInsertedRows = new LinkedHashMap<Object, Object>();
+    final boolean noLobs = rf == null || !rf.hasLobs();
+    Map<Object, Object> toBeInsertedRows = new LinkedHashMap<>();
     Object[] callbackArgs = null;
     int j = 0;
     try {
@@ -3404,8 +3334,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             }
             else {
               regionKey = new CompactCompositeRegionKey(
-                  !rf.hasLobs() ? (byte[])val :  ((byte[][])val)[0],
-                  this.tableInfo);
+                  noLobs ? (byte[])val : ((byte[][])val)[0], this.tableInfo);
             }
             final Object routingObject = GemFireXDUtils
                 .getRoutingObjectFromGlobalIndex(this.region, regionKey, val);
@@ -4361,8 +4290,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    * updates via DML scan executions.
    * 
    * Don't use for primary key based updates: use {@link #replacePartialRow(
-   *    Object, FormatableBitSet, DataValueDescriptor[], Object,
-   *     GemFireTransaction, LanguageConnectionContext)} for that case.
+   *   Object, FormatableBitSet, DataValueDescriptor[], Object,
+   *   GemFireTransaction, TXStateInterface, LanguageConnectionContext,
+   *   MultipleKeyValueHolder, boolean)} for that case.
    * 
    * @param entry
    *          the region entry

@@ -2765,7 +2765,7 @@ public class EmbedStatement extends ConnectionChild
             return;
           }
 
-        // Now this connection is closed for all
+        // Now this connection is closed for allh
         // future use.
         active = false;
         	
@@ -2794,6 +2794,10 @@ public class EmbedStatement extends ConnectionChild
 	  SQLText = null;
 	  batchStatements = null;
 	  clearParameters();
+	}
+
+	public boolean hasDynamicResults() {
+	  return this.dynamicResults != null;
 	}
 
 	void clearResultSets(boolean isPreparedBatch) throws SQLException {

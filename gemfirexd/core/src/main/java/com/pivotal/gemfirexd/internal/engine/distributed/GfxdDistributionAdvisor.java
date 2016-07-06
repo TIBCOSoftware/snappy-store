@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.engine.distributed;
 
@@ -37,8 +55,6 @@ import com.gemstone.gemfire.distributed.Locator;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisee;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
-import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
-import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.ProfileId;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalLocator;
@@ -70,9 +86,9 @@ import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
-import com.pivotal.gemfirexd.thrift.HostAddress;
-import com.pivotal.gemfirexd.thrift.ServerType;
-import com.pivotal.gemfirexd.thrift.common.ThriftUtils;
+import io.snappydata.thrift.HostAddress;
+import io.snappydata.thrift.ServerType;
+import io.snappydata.thrift.common.ThriftUtils;
 
 /**
  * This {@link DistributionAdvisor} keeps track of the server groups of various
@@ -143,13 +159,10 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     this.mapLock = new StoppableReentrantReadWriteLock(false, true,
         cache.getCancelCriterion());
     this.newMemberLock = cache.getSystem().getVMIdAdvisor().getNewMemberLock();
-    this.serverGroupMap =
-      new HashMap<String, Map<InternalDistributedMember, VMKind>>();
-    this.locatorMap = new HashMap<InternalDistributedMember, String>();
-    this.thriftServers =
-        new HashMap<InternalDistributedMember, Set<HostAddress>>();
-    this.drdaServerMap =
-      new HashMap<InternalDistributedMember, Set<String>>();
+    this.serverGroupMap = new HashMap<>();
+    this.locatorMap = new HashMap<>();
+    this.thriftServers = new HashMap<>();
+    this.drdaServerMap = new HashMap<>();
   }
 
   public static GfxdDistributionAdvisor createGfxdDistributionAdvisor(
@@ -270,9 +283,6 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
    */
   @Override
   protected final synchronized boolean basicAddProfile(Profile p) {
-    assert p instanceof GfxdProfile || p instanceof BridgeServerProfile
-        || p instanceof ControllerProfile;
-
     boolean isAdded = false;
     boolean mapLockAcquired = false;
     final InternalDistributedMember m = p.getDistributedMember();
@@ -718,7 +728,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
           .getDistributionManagerId();
       final Set<String> networkServers;
       if (myId.equals(member)) {
-        networkServers = new TreeSet<String>();
+        networkServers = new TreeSet<>();
         final FabricService service = FabricServiceManager
             .currentFabricServiceInstance();
         if (service != null) {
@@ -781,7 +791,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
         }
       }
       if (this.keepServers) {
-        if (hostAddr.getServerType().isThriftGFXD()) {
+        if (hostAddr.getServerType().isThriftSnappy()) {
           this.outServers.add(hostAddr);
         }
       }

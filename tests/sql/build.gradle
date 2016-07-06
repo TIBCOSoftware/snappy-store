@@ -78,5 +78,5 @@ shadowJar {
   }
 }
 
-archivesBaseName = 'gemfirexd-hydra-tests'
+archivesBaseName = 'snappydata-store-hydra-tests'
 jar.dependsOn shadowJar

@@ -13,7 +13,7 @@ task createVersionPropertiesFile(dependsOn: 'processResources') {
   doLast {
     def props = [
       "Product-Name"      : PRODUCT_NAME,
-      "Product-Version"   : version,
+      "Product-Version"   : version + ' ' + PRODUCT_RELEASE_STAGE,
       "Build-Id"          : System.env.USER + ' ' + buildNumber,
       "Build-Date"        : buildDate,
       "Build-Platform"    : "${osName.getName()} ${osVersion} ${osArch}",
@@ -37,4 +37,4 @@ javadoc {
 }
 javadoc.dependsOn.clear()
 
-archivesBaseName = 'gemfirexd-shared'
+archivesBaseName = 'snappydata-store-shared'

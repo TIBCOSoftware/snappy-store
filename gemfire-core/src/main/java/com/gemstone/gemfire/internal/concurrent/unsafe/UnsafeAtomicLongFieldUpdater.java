@@ -26,7 +26,7 @@ import sun.misc.Unsafe;
 /**
  * Optimized implementation of {@link AtomicLongFieldUpdater} using the internal
  * Unsafe class if possible avoiding the various class checks.
- * 
+ *
  * @author swale
  * @since gfxd 1.0
  */
@@ -81,5 +81,30 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
   @Override
   public long get(T obj) {
     return unsafe.getLongVolatile(obj, this.offset);
+  }
+
+  @Override
+  public long addAndGet(T obj, long delta) {
+    return getAndAdd(obj, delta) + delta;
+  }
+
+  @Override
+  public long getAndIncrement(T obj) {
+    return getAndAdd(obj, 1);
+  }
+
+  @Override
+  public long getAndDecrement(T obj) {
+    return getAndAdd(obj, -1);
+  }
+
+  @Override
+  public long incrementAndGet(T obj) {
+    return getAndAdd(obj, 1) + 1;
+  }
+
+  @Override
+  public long decrementAndGet(T obj) {
+    return getAndAdd(obj, -1) - 1;
   }
 }

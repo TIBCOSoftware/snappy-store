@@ -1750,7 +1750,8 @@ ijResult
 RE_StartStatement()
 throws SQLException
 :
-{   ijResult	result = null;;
+{
+   ijResult	result = null;;
    Token groupalias = null;
    Token hosts = null;
    Token num = null;
@@ -1798,21 +1799,20 @@ throws SQLException
      }
    )
    {
-     if (newRestartCommand != null)     {
+     if (newRestartCommand != null)
+     {
        String restartcmd = stringValue(newRestartCommand.image);
-	   System.out.println("KN: restarting command is: " + restartcmd);     }
+     }
      if (isServer)
      {
        if (memId != null)
        {
          String id = stringValue(memId.image);
-		 System.out.println("KN: restarting member with id: " + id);
 		 return null;
        }
        else if (groupalias != null)
        {
          String group = stringValue(groupalias.image);
-		 System.out.println("KN: restarting server on group: " + group);
 		 return null;
        }
        else if (num != null)
@@ -1820,24 +1820,20 @@ throws SQLException
          String numInstStr = num.image;
 	     int numInst = Integer.parseInt(numInstStr);
 	     String host = stringValue(hosts.image);
-	     System.out.println("KN: restarting servers numinst: " + numInst + " on host: " + host);
 		 return null;
        }
        else if (servGroup != null)
        {
          String group = stringValue(servGroup.image);
-		 System.out.println("KN: restarting server on server group: " + group);
 		 return null;
        }
        else if (restartAll)
        {
-          System.out.println("KN: restarting all server and locator members");
           return null;
        }
        else
        {    
          String allHosts = stringValue(hosts.image);
-	     System.out.println("KN: restarting server on hosts: " + allHosts);
 		 return null;
        }
      }
@@ -1846,7 +1842,6 @@ throws SQLException
        if (groupalias != null)
        {
          String group = stringValue(groupalias.image);
-		 System.out.println("KN: restarting locator on group: " + group);
 		 return null;
        }
        else if (num != null)
@@ -1854,13 +1849,11 @@ throws SQLException
          String numInstStr = num.image;
 	     int numInst = Integer.parseInt(numInstStr);
 	     String host = stringValue(hosts.image);
-	     System.out.println("KN: restarting servers numinst: " + numInst + " on host: " + host);
 		 return null;
        }
        else
        {    
          String allHosts = stringValue(hosts.image);
-	     System.out.println("KN: restarting locator on hosts: " + allHosts);
 		 return null;
        }
      }
@@ -1871,7 +1864,8 @@ ijResult
 StopStatement()
 throws SQLException
 :
-{   ijResult	result = null;;
+{
+   ijResult	result = null;;
    Token groupalias = null;
    Token hosts = null;
    Token num = null;
@@ -1922,14 +1916,14 @@ throws SQLException
    {
      if (isServer)
      {
-       if (memId != null)       {
+       if (memId != null)
+       {
          String id = stringValue(memId.image);
-		 System.out.println("KN: stopping member with id: " + id);
-		 return null;       }
+		 return null;
+       }
        else if (groupalias != null)
        {
          String group = stringValue(groupalias.image);
-		 System.out.println("KN: stopping server on group: " + group);
 		 return null;
        }
        else if (num != null)
@@ -1937,20 +1931,20 @@ throws SQLException
          String numInstStr = num.image;
 	     int numInst = Integer.parseInt(numInstStr);
 	     String host = stringValue(hosts.image);
-	     System.out.println("KN: stopping servers numinst: " + numInst + " on host: " + host);
 		 return null;
        }
-       else if (servGroup != null)       {
+       else if (servGroup != null)
+       {
          String group = stringValue(servGroup.image);
-		 System.out.println("KN: stopping server on server group: " + group);
-		 return null;       }
-       else if (shutDownAll)       {
-          System.out.println("KN: stopping all server and locator members");
+		 return null;
+       }
+       else if (shutDownAll)
+       {
           return null;
        }
-       else       {    
+       else
+       {    
          String allHosts = stringValue(hosts.image);
-	     System.out.println("KN: stopping server on hosts: " + allHosts);
 		 return null;
        }
      }
@@ -1959,7 +1953,6 @@ throws SQLException
        if (groupalias != null)
        {
          String group = stringValue(groupalias.image);
-		 System.out.println("KN: stopping locator on group: " + group);
 		 return null;
        }
        else if (num != null)
@@ -1967,13 +1960,11 @@ throws SQLException
          String numInstStr = num.image;
 	     int numInst = Integer.parseInt(numInstStr);
 	     String host = stringValue(hosts.image);
-	     System.out.println("KN: stopping servers numinst: " + numInst + " on host: " + host);
 		 return null;
        }
        else
        {    
          String allHosts = stringValue(hosts.image);
-	     System.out.println("KN: stopping locator on hosts: " + allHosts);
 		 return null;
        }
      }
@@ -1984,7 +1975,8 @@ ijResult
 StartStatement()
 throws SQLException
 :
-{   ijResult	result = null;;
+{
+   ijResult	result = null;;
    Token groupalias = null;
    String cmd = null;
    Token hosts = null;
@@ -1992,7 +1984,8 @@ throws SQLException
    Token command = null;
    boolean isServer = true;
 }
-{   <START>
+{
+   <START>
    (
      <SERVER>
      (
@@ -2006,7 +1999,8 @@ throws SQLException
        <NUM> num = <INTEGER> <ON> hosts = <STRING> command = <STRING>
      )
    |
-     <LOCATOR>     (
+     <LOCATOR>
+     (
        <ON>
        (
          <GROUP> groupalias = <STRING> command = <STRING>
@@ -2017,35 +2011,16 @@ throws SQLException
        <NUM> num = <INTEGER> <ON> hosts = <STRING> command = <STRING>
      )
      {
-       isServer = false;     }
+       isServer = false;
+     }
    )
    {
-     if (isServer)     {
-       if (groupalias != null)       {         String group = stringValue(groupalias.image);
-		 cmd = stringValue(command.image);
-		 System.out.println("KN: starting server on group: " + group + ", with command: " + cmd);
-		 return null;
-       }
-       else if (num != null)       {
-         String numInstStr = num.image;
-	     int numInst = Integer.parseInt(numInstStr);
-	     cmd = stringValue(command.image);
-	     String host = stringValue(hosts.image);
-	     System.out.println("KN: starting servers numinst: " + numInst + " on host: " + host + ", command: " + cmd);
-		 return null;       }
-       else       {
-         String allHosts = stringValue(hosts.image);
-	     cmd = stringValue(command.image);
-	     System.out.println("KN: starting server on hosts: " + allHosts + ", command: " + cmd);
-		 return null;
-       }
-     }
-     else     {
+     if (isServer)
+     {
        if (groupalias != null)
        {
          String group = stringValue(groupalias.image);
 		 cmd = stringValue(command.image);
-		 System.out.println("KN: starting locator on group: " + group + ", with command: " + cmd);
 		 return null;
        }
        else if (num != null)
@@ -2054,14 +2029,35 @@ throws SQLException
 	     int numInst = Integer.parseInt(numInstStr);
 	     cmd = stringValue(command.image);
 	     String host = stringValue(hosts.image);
-	     System.out.println("KN: starting locator numinst: " + numInst + " on host: " + host + ", command: " + cmd);
 		 return null;
        }
        else
        {
          String allHosts = stringValue(hosts.image);
 	     cmd = stringValue(command.image);
-	     System.out.println("KN: starting locator on hosts: " + allHosts + ", command: " + cmd);
+		 return null;
+       }
+     }
+     else
+     {
+       if (groupalias != null)
+       {
+         String group = stringValue(groupalias.image);
+		 cmd = stringValue(command.image);
+		 return null;
+       }
+       else if (num != null)
+       {
+         String numInstStr = num.image;
+	     int numInst = Integer.parseInt(numInstStr);
+	     cmd = stringValue(command.image);
+	     String host = stringValue(hosts.image);
+		 return null;
+       }
+       else
+       {
+         String allHosts = stringValue(hosts.image);
+	     cmd = stringValue(command.image);
 		 return null;
        }
      }
@@ -2085,7 +2081,7 @@ throws SQLException
 	}
 |
 	<CONNECT> <PEER>
-	( result = dynamicConnection("jdbc:snappydata:;", false, true) )
+	( result = dynamicConnection("jdbc:gemfirexd:;", false, true) )
 	{
 		return result;
 	}
@@ -2098,7 +2094,8 @@ throws SQLException
 	*/
 |
     <CONNECT> <HOSTS>
-    ( result = listOfHostsAndAgents() )    {
+    ( result = listOfHostsAndAgents() )
+    {
         return result;
     }
 // GemStone changes END
@@ -2129,32 +2126,32 @@ throws SQLException
 {
     s = <STRING> [ <GROUP> <ALIAS> alias = <STRING> ]
 	{
-	  if (alias != null)	  {	    aliasStr = stringValue(alias.image);
+	  if (alias != null)
+	  {
+	    aliasStr = stringValue(alias.image);
 	  }
 	  String hostAgentListStr = stringValue(s.image);
-	  //System.out.println("KN: READ: " + hostAgentListStr + " and alias: " + aliasStr);
 	  String[] allHostAgents = hostAgentListStr.split(",");
 	  HostsAndAgents hostAgents = new HostsAndAgents();
-	  if (alias == null)	  {
-	    hostAgents.setNoAliasSpecified();	  }
-	  //System.out.println("KN: CP 0 and allHostAgents: " + allHostAgents);
+	  if (alias == null)
+	  {
+	    hostAgents.setNoAliasSpecified();
+	  }
 	  hostAgents.setAlias(aliasStr);
-	  if (allHostAgents == null || ( len = allHostAgents.length) == 0)	  {
+	  if (allHostAgents == null || ( len = allHostAgents.length) == 0)
+	  {
 	    hostAgents.setImproperHostsSpecified(hostAgentListStr);
 	    return hostAgents;
 	  }
 
-	  //System.out.println("KN: CP 1 and len: " + len);
-	  for (int i=0; i<len; i++)	  {
-	    //System.out.println("KN: CP 2 and loop num: " + i);
+	  for (int i=0; i<len; i++)
+	  {
 	    String oneHostAgent = allHostAgents[i];
-	    //System.out.println("KN: CP 3 and onehostagent: " + oneHostAgent);
 	    String[] hostPort = oneHostAgent.split(":");
-	    //System.out.println("KN: CP 4 and hostPort[]: " + hostPort);
 	    String host = hostPort[0];
-	    //System.out.println("KN: CP 5 and host: " + host);
 	    String netAgentPort = null;
-	    if (hostPort.length > 1)	    {
+	    if (hostPort.length > 1)
+	    {
 	      netAgentPort = hostPort[1];
 	    }
 	    hostAgents.addHostAndAgent(host, netAgentPort);
@@ -2256,7 +2253,8 @@ throws SQLException
 			final int propsIndex = sVal.indexOf(';');
 			if (propsIndex > 0) {
 				sVal = sVal.substring(0, propsIndex) + '/'
-					+ sVal.substring(propsIndex);			}
+					+ sVal.substring(propsIndex);
+			}
 		}
 		// add named protocol if it was specified
 		if (p != null && protocolPrefix.length() == 0) {
@@ -3562,14 +3560,17 @@ MaximumDisplayWidthStatement() :
 				LocalizedResource.OutputWriter().println(
 					JDBCDisplayUtil.getMaxColumnWidth(columnName));
 			}
-			else {				LocalizedResource.OutputWriter().println(
+			else {
+				LocalizedResource.OutputWriter().println(
 					JDBCDisplayUtil.getMaxDisplayWidth());
 			}
 			return null;
 		}
-		if (columnName != null) {			JDBCDisplayUtil.setMaxDisplayWidth(columnName, maxWidth);
+		if (columnName != null) {
+			JDBCDisplayUtil.setMaxDisplayWidth(columnName, maxWidth);
 		}
-		else {			JDBCDisplayUtil.setMaxDisplayWidth(maxWidth);
+		else {
+			JDBCDisplayUtil.setMaxDisplayWidth(maxWidth);
 		}
 		return null;
 	/* (original code)

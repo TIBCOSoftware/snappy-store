@@ -95,7 +95,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
     TestRunner.run(new TestSuite(FabricServerTest.class));
   }
 
-  private static final String PROP_FILE_NAME = "gemfirexd-server.properties";
+  private static final String PROP_FILE_NAME = "snappydata-store-server.properties";
 
   /**
    * Test for the NativeCalls implementation methods.
@@ -184,8 +184,9 @@ public class FabricServerTest extends TestUtil implements UnitTest {
   // bug #50257
   public void testGfxdServerLauncherStartupOptions() throws Exception {
 
-    // check that gemfirexd-tools.jar and gemfirexd-client.jar should not be too large
-    // (indicates that gemfirexd.jar components are getting pulled in)
+    // check that snappydata-store-tools.jar and snappydata-store-client.jar
+    // should not be too large (indicates that snappydata-store-core.jar
+    //   components are getting pulled in)
     final URI clientJarFile = ClientDriver.class.getProtectionDomain()
         .getCodeSource().getLocation().toURI();
     final File clientJar = new File(clientJarFile);

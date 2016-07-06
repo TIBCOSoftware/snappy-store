@@ -20,7 +20,9 @@ package com.pivotal.gemfirexd;
 import java.net.Socket;
 import java.util.Properties;
 
-import com.pivotal.gemfirexd.thrift.ServerType;
+import io.snappydata.thrift.ServerType;
+import org.apache.thrift.TProcessor;
+import org.apache.thrift.transport.TTransport;
 
 /**
  * Encapsulates a network listener that clients can use to connect using
@@ -208,6 +210,20 @@ public interface NetworkInterface {
     void connectionOpened(Socket clientSocket, int connectionNumber);
 
     /**
+     * Indicates that a new connection has been opened to this thrift server.
+     *
+     * @param clientTransport
+     *          the transport object created for the client
+     * @param processor
+     *          the processor object created for the client connection
+     * @param connectionNumber
+     *          the connection number for this client connection that gets
+     *          incremented for every new client connection
+     */
+    void connectionOpened(TTransport clientTransport, TProcessor processor,
+        int connectionNumber);
+
+    /**
      * Indicates that the a connection to this network server has been closed.
      * 
      * @param clientSocket
@@ -217,6 +233,20 @@ public interface NetworkInterface {
      *          incremented for every new client connection
      */
     void connectionClosed(Socket clientSocket, int connectionNumber);
+
+    /**
+     * Indicates that the a connection to this thrift server has been closed.
+     *
+     * @param clientTransport
+     *          the transport object created for the client
+     * @param processor
+     *          the processor object created for the client connection
+     * @param connectionNumber
+     *          the connection number for this client connection that gets
+     *          incremented for every new client connection
+     */
+    void connectionClosed(TTransport clientTransport, TProcessor processor,
+        int connectionNumber);
 
     /**
      * Close any artifacts of this connection listener. Invoked when the network

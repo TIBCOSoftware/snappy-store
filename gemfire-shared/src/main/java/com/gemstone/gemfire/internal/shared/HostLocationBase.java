@@ -22,9 +22,6 @@ import java.net.UnknownHostException;
 
 /**
  * Common base methods for <code>ServerLocation</code>, <code>HostAddress</code>
- * 
- * @author swale
- * @since gfxd 2.0
  */
 public abstract class HostLocationBase<T extends HostLocationBase<T>>
     implements Comparable<T>, Serializable {
@@ -64,12 +61,7 @@ public abstract class HostLocationBase<T extends HostLocationBase<T>>
     if (this == obj) {
       return true;
     }
-    if (obj instanceof HostLocationBase) {
-      return equals((HostLocationBase<?>)obj);
-    }
-    else {
-      return false;
-    }
+    return obj instanceof HostLocationBase && equals((HostLocationBase<?>)obj);
   }
 
   public boolean equals(HostLocationBase<?> other) {

@@ -198,7 +198,7 @@ public class ImportBase extends ImportAbstract{
 	 *                         appended.(0 - append , > 0 Replace the data)
      * @param lobsInExtFile true, if the lobs data is stored in an external file,
      *                      and the reference to it is stored in the main import file.
- 	 * @exception SQL Exception on errors
+ 	 * @exception SQLException on errors
 	 */
 
 	public static void importTable(Connection connection, String schemaName, 

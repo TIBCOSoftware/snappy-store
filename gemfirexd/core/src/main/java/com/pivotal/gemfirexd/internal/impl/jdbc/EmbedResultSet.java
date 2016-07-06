@@ -48,6 +48,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.ResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.procedure.coordinate.ProcedureProcessorResultSet;
@@ -164,12 +165,12 @@ public abstract class EmbedResultSet extends ConnectionChild
 	private Object	currentStream;
 
 	// immutable state
-	private final ResultSet theResults;
+	public final ResultSet theResults;
       
       /**
        * Indicates whether results are being locally processed.<br>
        * In other words, isLocallyProcessing is <code>true</code> iff <br>
-       * <code> {@link ResultHolder#setupResults(GfxdResultCollector, Activation)} </code>
+       * <code>{@link ResultHolder#setupResults(GfxdResultCollector, Activation)}</code>
        * <br>
        * is invoked.<br>
        * <br>
@@ -287,8 +288,8 @@ public abstract class EmbedResultSet extends ConnectionChild
 		SanityManager.ASSERT(resultsToWrap!=null);
                 
                 theResults = resultsToWrap;
-                
-		
+
+
 		// ResultSet's for metadata are single use, they are created
 		// with a PreparedStatement internally, but that statement is
 		// never returned to the application.

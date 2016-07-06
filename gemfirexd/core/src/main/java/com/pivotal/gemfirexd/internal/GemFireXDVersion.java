@@ -54,7 +54,7 @@ public class GemFireXDVersion {
     }
   }
 
-  private static native String _getNativeVersion();
+  public static native String _getNativeVersion();
 
   public static void loadProperties() {
     GemFireVersion.getInstance(GemFireXDVersion.class,

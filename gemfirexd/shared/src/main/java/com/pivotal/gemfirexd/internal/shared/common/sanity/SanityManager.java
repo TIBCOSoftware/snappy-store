@@ -54,7 +54,7 @@ import java.nio.ByteBuffer;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
-import com.pivotal.gemfirexd.thrift.gfxdConstants;
+import io.snappydata.thrift.snappydataConstants;
 // GemStone changes END
 
 /**
@@ -830,7 +830,7 @@ public class SanityManager {
                 sb.append(sql.toString()).append(' ');
               }
             }
-            else if ((sqlId = this.sqlId) != gfxdConstants.INVALID_ID) {
+            else if ((sqlId = this.sqlId) != snappydataConstants.INVALID_ID) {
               sb.append("ID=").append(sqlId).append(' ');
             }
             sb.append(this.connId);
@@ -877,8 +877,8 @@ public class SanityManager {
         static public void DEBUG_PRINT_COMPACT(String opId, final String opSql,
             long connId, ByteBuffer sessionToken, long nanoTime,
             boolean isStart, Throwable t) {
-          DEBUG_PRINT_COMPACT(opId, opSql, gfxdConstants.INVALID_ID, connId,
-              sessionToken, nanoTime, isStart, t);
+          DEBUG_PRINT_COMPACT(opId, opSql, snappydataConstants.INVALID_ID,
+              connId, sessionToken, nanoTime, isStart, t);
         }
 
         static public void DEBUG_PRINT_COMPACT(String opId, final String opSql,

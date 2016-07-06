@@ -1,0 +1,318 @@
+plugins {
+  id "de.undercouch.download" version "3.0.0"
+}
+
+apply plugin: 'wrapper'
+
+if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative'))
+    || rootProject.hasProperty('native')) {
+
+  apply plugin: 'cpp'
+  apply plugin: 'visual-studio'
+
+  String osName = System.properties['os.name']
+  osName = osName.substring(0, 3).toLowerCase()
+  buildRoot = buildRoot.trim()
+  if (!buildRoot.isEmpty()) {
+    buildDir = new File(buildRoot, osName + '/' +  project.path.replace(':', '/'))
+  } else {
+    buildDir = 'build-artifacts/' + osName
+  }
+
+  String distDir = "${rootProject.projectDir}/dist"
+  String thriftVersion = '1.0.0-1'
+  String boostVersion = '1.59.0'
+  String mpirVersion = '2.7.2'
+  String opensslVersion = '1.0.2h'
+  String unixodbcVersion = '2.3.4'
+  String googletestVersion = '1.7.0'
+  String releasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${thriftVersion}"
+  List<String> dependencies = []
+
+  def getLinuxFlavour = { ByteArrayOutputStream out ->
+    exec {
+      executable 'lsb_release'
+      args '-sir'
+      standardOutput = out
+    }
+  }
+
+  if (osName == 'lin') {
+    // get the OS installation flavour
+    String flavour = ''
+    if (project.hasProperty('linuxFlavour')) {
+      flavour = linuxFlavour
+    } else {
+      def out = new ByteArrayOutputStream()
+      getLinuxFlavour(out)
+      flavour = out.toString().replaceAll('[\r\n\f]', '').toLowerCase()
+    }
+    if (flavour.startsWith('ubuntu14') || flavour.startsWith('ubuntu16') ||
+        flavour.startsWith('linuxmint17')) {
+      dependencies += [ "thrift-${thriftVersion}-ubuntu14.04.tar.bz2",
+                        "boost-${boostVersion}-ubuntu14.04.tar.bz2",
+                        "unixODBC-${unixodbcVersion}-ubuntu14.04.tar.bz2",
+                        "googletest-${googletestVersion}-ubuntu14.04.tar.bz2" ]
+    } else if (flavour.startsWith('redhat6') || flavour.startsWith('redhat7') ||
+        flavour.startsWith('centos6') || flavour.startsWith('centos7')) {
+      dependencies += [ "thrift-${thriftVersion}-rhel6.tar.bz2",
+                        "boost-${boostVersion}-rhel6.tar.bz2",
+                        "unixODBC-${unixodbcVersion}-rhel6.tar.bz2",
+                        "googletest-${googletestVersion}-rhel6.tar.bz2" ]
+    } else {
+      throw new GradleException("Unhandled linux flavour ${flavour}. Use -PlinuxFlavour to force one")
+    }
+  } else {
+    dependencies += [ "thrift-${thriftVersion}-${osName}.tar.bz2",
+                      "boost-${boostVersion}-${osName}.tar.bz2",
+                      "googletest-${googletestVersion}-${osName}.tar.bz2" ]
+  }
+  if (osName == 'win') {
+    dependencies += [ "mpir-${mpirVersion}-${osName}.tar.bz2",
+                      "openssl-${opensslVersion}-${osName}.tar.bz2" ]
+  }
+
+  task downloadDependencies(type: de.undercouch.gradle.tasks.download.Download) {
+    outputs.files   dependencies.collect { "${distDir}/${it}" }
+
+    src      dependencies.collect { "${releasesDir}/${it}" }
+    dest     distDir
+    compress false
+    acceptAnyCertificate true
+
+    doFirst {
+      mkdir(distDir)
+    }
+  }
+
+  task extractDependencies {
+    dependsOn downloadDependencies
+
+    outputs.files dependencies.collect { [ "${distDir}/${it}",
+                                           "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}/${osName}64" ] }.flatten()
+
+    doLast {
+      dependencies.each { tarball ->
+        if (osName == 'win') {
+          copy {
+            from tarTree(resources.bzip2("${distDir}/${tarball}"))
+            into distDir
+          }
+        } else {
+          // gradle tarTree does not preserve symlinks (GRADLE-2844)
+          exec {
+            executable 'tar'
+            args 'xfj', "${distDir}/${tarball}"
+            workingDir = distDir
+          }
+        }
+      }
+    }
+  }
+
+  // C++ client
+  model {
+    buildTypes {
+      debug
+      release
+    }
+    platforms {
+      x86 {
+        architecture "x86"
+      }
+      x64 {
+        architecture "x86_64"
+      }
+    }
+
+    def boostLibs = [ 'boost_chrono', 'boost_date_time', 'boost_filesystem',
+                      'boost_log', 'boost_log_setup', 'boost_system', 'boost_thread' ]
+
+    def getArch = { Platform platform ->
+      return (platform == platforms.x64) ? "${osName}64" : "${osName}32"
+    }
+    def getArchDir = { String libName, String libVersion,
+        Platform platform ->
+      return "${distDir}/${libName}-${libVersion}/${getArch(platform)}"
+    }
+    def getLibPathForPlatform = { String libName, String distName,
+        String libVersion, boolean isStatic, boolean isBoost, Platform platform ->
+      def os = platform.operatingSystem
+      String archDir = getArchDir(distName, libVersion, platform)
+      if (os.windows) {
+        String extension = isStatic ? 'lib' : 'dll'
+        String extDir = isStatic ? 'lib' : 'bin'
+        return isBoost ? "${archDir}/${extDir}${libName}.${extension}"
+                       : "${archDir}/${extDir}/${libName}.${extension}"
+      } else if (isStatic) {
+        return "${archDir}/lib${libName}.a"
+      } else if (os.macOsX) {
+        return "${archDir}/lib${libName}.dylib"
+      } else {
+        return "${archDir}/lib${libName}.so"
+      }
+    }
+
+    repositories {
+      libs(PrebuiltLibraries) { libs ->
+        boost {
+          headers.srcDir "${distDir}/boost-${boostVersion}/include"
+        }
+        boostLibs.each { boostLib ->
+          libs.create(boostLib) {
+            binaries.withType(StaticLibraryBinary) {
+              staticLibraryFile = file(getLibPathForPlatform(boostLib, 'boost',
+                    boostVersion, true, true, targetPlatform))
+            }
+          }
+        }
+        thrift {
+          headers.srcDir "${distDir}/thrift-${thriftVersion}/include"
+          binaries.withType(StaticLibraryBinary) {
+            staticLibraryFile = file(getLibPathForPlatform('thrift', 'thrift',
+                  thriftVersion, true, false, targetPlatform))
+          }
+        }
+        openssl {
+          headers.srcDir "${distDir}/openssl-${opensslVersion}/include"
+          binaries.withType(StaticLibraryBinary) {
+            staticLibraryFile = file(getLibPathForPlatform('openssl', 'openssl',
+                  opensslVersion, true, false, targetPlatform))
+          }
+        }
+        mpir {
+          headers.srcDir "${distDir}/mpir-${mpirVersion}/include"
+          binaries.withType(StaticLibraryBinary) {
+            staticLibraryFile = file(getLibPathForPlatform('mpir', 'mpir',
+                  mpirVersion, true, false, targetPlatform))
+          }
+        }
+      }
+    }
+    components {
+      snappyclient(NativeLibrarySpec) {
+        targetPlatform 'x64'
+        if (bothArch == '1') {
+          targetPlatform 'x86'
+        }
+        sources {
+          cpp.lib library: 'thrift', linkage: 'static'
+          cpp.lib library: 'boost', linkage: 'api'
+          boostLibs.each { boostLib ->
+            cpp.lib library: boostLib, linkage: 'static'
+          }
+          if (osName == 'win') {
+            cpp.lib library: 'mpir', linkage: 'static'
+            cpp.lib library: 'openssl', linkage: 'static'
+          }
+        }
+        // build only static libraries (not being shipped separately yet)
+        binaries.withType(SharedLibraryBinarySpec) {
+          buildable = false
+        }
+        binaries.all {
+          // Define toolchain-specific compiler and linker options
+          // TODO: precompiled header
+          if (toolChain in Gcc) {
+            cppCompiler.define 'PIC'
+            cppCompiler.args '-Wall', '-Wno-unused-local-typedefs',
+                             '-fPIC', '-std=c++11'
+            if (buildType == buildTypes.debug) {
+              cppCompiler.args '-g3', '-O0'
+            } else {
+              cppCompiler.args '-g', '-O2'
+            }
+
+            linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread',
+                        '-rdynamic', '-ldl', '-z', 'defs'
+          } else if (toolChain in VisualCpp) {
+            // explicitly include UCRT since its still not passed through by gradle
+            String VS_2015_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt'
+            String VS_2015_LIB_DIR = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/ucrt'
+            cppCompiler.args '/W3', '/FS', '/Zc:inline', '/WX', '/EHsc',
+                             '/Fdsnappyclient.pdb', '/errorReport:prompt',
+                             "/I${VS_2015_INCLUDE_DIR}"
+            if (buildType == buildTypes.debug) {
+              cppCompiler.define '_DEBUG'
+              cppCompiler.args '/Od', '/Gm', '/ZI', '/RTC1', '/MDd'
+              linker.args '/DEBUG'
+            } else {
+              cppCompiler.args '/O2', '/GL', '/Oi', '/Gm-', '/Zi', '/MD'
+            }
+            if (targetPlatform == platforms.x64) {
+              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x64"
+            } else {
+              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x86"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  assemble.dependsOn extractDependencies
+
+  jar.enabled = false
+  task product(dependsOn: assemble) {
+    String productDir = "${buildDir}/snappyclient"
+
+    doFirst {
+      delete productDir
+      file(productDir).mkdirs()
+    }
+
+    doLast {
+      // when both 32-bit and 64-bit are built, then use arch specific dirs
+      if (bothArch == '1') {
+        // copy the release libraries
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x64/release"
+          into "${productDir}/${osName}64/lib"
+        }
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x86/release"
+          into "${productDir}/${osName}32/lib"
+        }
+        // copy the debug libraries
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x64/debug"
+          into "${productDir}/${osName}64/lib/debug"
+        }
+        copy {
+          from "${buildDir}/libs/snappyclient/static/x86/debug"
+          into "${productDir}/${osName}32/lib/debug"
+        }
+      } else {
+        // copy the release libraries
+        if (file("${buildDir}/libs/snappyclient/static/release").exists()) {
+          copy {
+            from "${buildDir}/libs/snappyclient/static/release"
+            into "${productDir}/${osName}64/lib"
+          }
+        } else {
+          copy {
+            from "${buildDir}/libs/snappyclient/static"
+            into "${productDir}/${osName}64/lib"
+          }
+        }
+        // copy the debug libraries
+        copy {
+          from "${buildDir}/libs/snappyclient/static/debug"
+          into "${productDir}/${osName}64/lib/debug"
+        }
+      }
+      // copy the public headers
+      copy {
+        from "${projectDir}/src/snappyclient/headers"
+        into "${productDir}/include"
+      }
+
+      if (project.hasProperty('copyTo')) {
+        copy {
+          from productDir
+          into copyTo
+        }
+      }
+    }
+  }
+}

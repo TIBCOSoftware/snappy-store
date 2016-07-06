@@ -20,6 +20,7 @@ package com.pivotal.gemfirexd.internal.engine.ddl.resolver;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -76,7 +77,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
  * Since the same resolver and activation instance can be used by multiple
  * threads, it makes use of a ThreadLocal object to store the DVDs for a
  * particular call to getRoutingObject() for the expression evaluator class.
- * 
+ *
  * @author kneeraj
  * @author swale
  */
@@ -103,8 +104,7 @@ public final class GfxdPartitionByExpressionResolver extends
   private String[] partColsOrigOrder;
 
   /** map of partitioning column name to partitioning index (0 based) */
-  private final Map<String, Integer> columnToIndexMap =
-    new HashMap<String, Integer>();
+  private final Map<String, Integer> columnToIndexMap = new HashMap<>();
 
   private boolean defaultPartitioning;
 
@@ -121,10 +121,10 @@ public final class GfxdPartitionByExpressionResolver extends
 
   public GfxdPartitionByExpressionResolver(ValueNode node) {
     if (node instanceof ColumnReference) {
-      String columnName = ((ColumnReference)node).getColumnName();
+      String columnName = node.getColumnName();
       this.partColsOrigOrder = new String[1];
       this.partColsOrigOrder[0] = columnName;
-      this.columnToIndexMap.put(columnName, Integer.valueOf(0));
+      this.columnToIndexMap.put(columnName, 0);
       this.partitionColumnNames = this.partColsOrigOrder.clone();
       this.exprCompiler = null;
     }
@@ -139,7 +139,7 @@ public final class GfxdPartitionByExpressionResolver extends
     for (int index = 0; index < columns.length; ++index) {
       String columnName = ((ColumnReference)columns[index]).getColumnName();
       this.partColsOrigOrder[index] = columnName;
-      this.columnToIndexMap.put(columnName, Integer.valueOf(index));
+      this.columnToIndexMap.put(columnName, index);
     }
     this.partitionColumnNames = this.partColsOrigOrder.clone();
     this.exprCompiler = null;
@@ -253,7 +253,7 @@ public final class GfxdPartitionByExpressionResolver extends
     this.partColsOrigOrder = new String[pkColumnNames.size()];
     for (String pkColumnName : pkColumnNames) {
       this.partColsOrigOrder[cnt] = pkColumnName;
-      this.columnToIndexMap.put(pkColumnName, Integer.valueOf(cnt));
+      this.columnToIndexMap.put(pkColumnName, cnt);
       ++cnt;
     }
     this.partitionColumnNames = this.partColsOrigOrder.clone();
@@ -331,10 +331,8 @@ public final class GfxdPartitionByExpressionResolver extends
     // then getRoutingObject() will not need to do the re-arrangement.
     if (this.isSubSetOfPrimary) {
       boolean isContiguous = true;
-      HashSet<String> partCols = new HashSet<String>();
-      for (String partCol : this.partColsOrigOrder) {
-        partCols.add(partCol);
-      }
+      HashSet<String> partCols = new HashSet<>();
+      Collections.addAll(partCols, this.partColsOrigOrder);
       int cnt = 0;
       if (pkMap != null) {
         for (String pkCol : pkMap.keySet()) {
@@ -386,9 +384,9 @@ public final class GfxdPartitionByExpressionResolver extends
                 + td.getQualifiedName());
       }
       // set the column to index map
-      this.columnToIndexMap.put(columnName, Integer.valueOf(index));
+      this.columnToIndexMap.put(columnName, index);
       // set the indexes of partitioning columns
-      this.columnPositionsInRow[index] = colIndex.intValue();
+      this.columnPositionsInRow[index] = colIndex;
     }
     if (this.exprCompiler != null) {
       // Check exprCompiler to make sure that this executed only
@@ -402,13 +400,16 @@ public final class GfxdPartitionByExpressionResolver extends
       // if there is a parent, then use its policy to compute routing object
       final String colocatedTable;
       if ((colocatedTable = distDescp.getColocateTableName()) != null) {
-        this.requiresSerializedHash = ((GfxdPartitionByExpressionResolver)
-            GemFireXDUtils.getResolver((AbstractRegion)Misc.getRegionForTableByPath(
-                colocatedTable, true))).requiresSerializedHash;
-      }
-      else {
+        GfxdPartitionByExpressionResolver resolver =
+            (GfxdPartitionByExpressionResolver)GemFireXDUtils.getResolver(
+                (AbstractRegion)Misc.getRegionForTableByPath(
+                    colocatedTable, true));
+        if (resolver != null) {
+          this.requiresSerializedHash = resolver.requiresSerializedHash;
+        }
+      } else {
         // in this case we will calculate hash from serialized value during puts
-        this.requiresSerializedHash = customHashing ? false : true;
+        this.requiresSerializedHash = !customHashing;
       }
       // update requiresSerializedHash for any child tables (#43628)
       PartitionedRegion pr = (PartitionedRegion)Misc
@@ -452,7 +453,7 @@ public final class GfxdPartitionByExpressionResolver extends
   public int getPartitioningColumnIndex(String partitionColumn) {
     Integer idx = this.columnToIndexMap.get(partitionColumn);
     if (idx != null) {
-      return idx.intValue();
+      return idx;
     }
     return -1;
   }
@@ -467,9 +468,9 @@ public final class GfxdPartitionByExpressionResolver extends
     if (this.exprCompiler == null) {
       // case of partitioning by columns
       if (snappyStore && customHashing) {
-        return Integer.valueOf(Misc.getUnifiedHashCodeFromDVD(dvd));
+        return Misc.getUnifiedHashCodeFromDVD(dvd);
       } else {
-        return Integer.valueOf(Misc.getHashCodeFromDVD(dvd));
+        return Misc.getHashCodeFromDVD(dvd);
       }
     } else {
       // case of partitioning by general expression
@@ -482,7 +483,7 @@ public final class GfxdPartitionByExpressionResolver extends
     if (this.exprCompiler == null) {
       // case of partitioning by some columns or generated primary key
       if (snappyStore && customHashing) {
-        return Integer.valueOf(Misc.getUnifiedHashCodeFromDVD(dvds));
+        return Misc.getUnifiedHashCodeFromDVD(dvds);
       } else {
         int hash = 0;
         if (dvds.length == 1) {
@@ -494,7 +495,7 @@ public final class GfxdPartitionByExpressionResolver extends
             hash ^= Misc.getHashCodeFromDVD(dvds[index]);
           }
         }
-        return Integer.valueOf(hash);
+        return hash;
       }
 
     } else {
@@ -536,7 +537,7 @@ public final class GfxdPartitionByExpressionResolver extends
       if (observer != null) {
         observer.afterGetRoutingObject(res);
       }
-      return Integer.valueOf(res.hashCode());
+      return res.hashCode();
     } catch (StandardException ex) {
       throw GemFireXDRuntimeException.newRuntimeException(
           "GfxdPartitionByExpressionResolver: "+this+" unexpected exception", ex);
@@ -553,7 +554,7 @@ public final class GfxdPartitionByExpressionResolver extends
     assert !this.requiresSerializedHash && this.exprCompiler != null:
       "GfxdPartitionByExpressionResolver.getRoutingObjectForExpression: should"
       + " never use hash based partitioning: " + toString();
-    return Integer.valueOf(Misc.getHashCodeFromDVD(expressionValue));
+    return Misc.getHashCodeFromDVD(expressionValue);
   }
 
   @Override
@@ -570,7 +571,7 @@ public final class GfxdPartitionByExpressionResolver extends
     if (this.requiresSerializedHash) {
       final DataTypeDescriptor dtd = this.gfContainer.getCurrentRowFormatter()
           .getType(this.columnPositionsInRow[0]);
-      return Integer.valueOf(computeHashCode(partColumnValue, dtd, 0));
+      return computeHashCode(partColumnValue, dtd, 0);
     }
     return calcRoutingObject(partColumnValue, null);
   }
@@ -597,7 +598,7 @@ public final class GfxdPartitionByExpressionResolver extends
         pos = this.columnPositionsInRow[index];
         hash = computeHashCode(values[pos - 1], rf.getType(pos), hash);
       }
-      return Integer.valueOf(hash);
+      return hash;
     }
     DataValueDescriptor[] valuesInOrder = new DataValueDescriptor[numColumns];
     for (int index = 0; index < numColumns; ++index) {
@@ -616,8 +617,7 @@ public final class GfxdPartitionByExpressionResolver extends
       final DataTypeDescriptor dtd = this.gfContainer.getCurrentRowFormatter()
           .getType(this.columnPositionsInRow[0]);
       for (int index = 0; index < keys.length; ++index) {
-        routingObjects[index] = Integer
-            .valueOf(computeHashCode(keys[index], dtd, 0));
+        routingObjects[index] = computeHashCode(keys[index], dtd, 0);
       }
       return routingObjects;
     }
@@ -640,7 +640,7 @@ public final class GfxdPartitionByExpressionResolver extends
           hash = computeHashCode(partitioningColumnObjects[index],
               rf.getType(this.columnPositionsInRow[index]), hash);
         }
-        return Integer.valueOf(hash);
+        return hash;
       }
       return calcRoutingObject(partitioningColumnObjects, null);
     }
@@ -660,9 +660,9 @@ public final class GfxdPartitionByExpressionResolver extends
       if (lowerBound.equals(upperBound) && lowerBoundInclusive
           && upperBoundInclusive) {
         if (this.requiresSerializedHash) {
-          return new Object[] { Integer.valueOf(computeHashCode(lowerBound,
+          return new Object[] {computeHashCode(lowerBound,
               this.gfContainer.getCurrentRowFormatter().getType(
-                  this.columnPositionsInRow[0]), 0)) };
+                  this.columnPositionsInRow[0]), 0)};
         }
         return new Object[] { calcRoutingObject(lowerBound, null) };
       }
@@ -680,14 +680,11 @@ public final class GfxdPartitionByExpressionResolver extends
     // [sumedh] do we need to check that the target resolver has matching column
     // types or let the user have different column types?
     if (rslvr instanceof GfxdPartitionByExpressionResolver) {
-      GfxdPartitionByExpressionResolver passed = (GfxdPartitionByExpressionResolver)rslvr;
+      GfxdPartitionByExpressionResolver passed =
+          (GfxdPartitionByExpressionResolver)rslvr;
       // Minimal check do determine if both have them have expr node at least
-      if (this.exprCompiler != null && passed.exprCompiler == null
-          || this.exprCompiler == null && passed.exprCompiler != null) {
-        return false;
-      }
-
-      return true;
+      return !(this.exprCompiler != null && passed.exprCompiler == null
+          || this.exprCompiler == null && passed.exprCompiler != null);
     }
     return false;
   }
@@ -801,10 +798,9 @@ public final class GfxdPartitionByExpressionResolver extends
                   "GfxdPartitionByExpressionResolver#getRoutingObject");
             }
           }
-          final int hash = kbytes != null ? computeHashCode(kbytes, rf,
+          routingObject = kbytes != null ? computeHashCode(kbytes, rf,
               keyPositions, numCols) : computeHashCode(kbs, rf, keyPositions,
               numCols);
-          routingObject = Integer.valueOf(hash);
         } finally {
           if (kbs != null) {
             ccrk.releaseValueByteSource(kbs);
@@ -847,9 +843,8 @@ public final class GfxdPartitionByExpressionResolver extends
           // RowFormatter and not any of the previous ones before ALTER TABLEs
           final RowFormatter rf = this.gfContainer.getCurrentRowFormatter();
           // compute hashCode directly from serialized form
-          final int hash = computeHashCode(val, rf,
+          routingObject = computeHashCode(val, rf,
               this.columnPositionsInRow, this.columnPositionsInRow.length);
-          routingObject = Integer.valueOf(hash);
         }
         else if (numCols == 1) {
           assert this.columnPositionsInRow.length == 1: "unexpected positions "
@@ -870,14 +865,14 @@ public final class GfxdPartitionByExpressionResolver extends
           "expected to find global index in resolver " + this.toString()
           + " and the key: " + gfkey;
         LocalRegion globalIndex = this.globalIndexContainer.getRegion();
-        boolean queryHDFS = false;                
+        boolean queryHDFS = false;
         if (region instanceof PartitionedRegion) {
           queryHDFS = ((PartitionedRegion) region).includeHDFSResults();
         }
         if (globalIndex instanceof PartitionedRegion) {
           ((PartitionedRegion) globalIndex).setQueryHDFS(queryHDFS);
-        }  
-        
+        }
+
         // lookup in the global index
         routingObject = getRoutingObjectFromGlobalIndex(
             this.globalIndexContainer, gfkey);
@@ -898,11 +893,11 @@ public final class GfxdPartitionByExpressionResolver extends
     return routingObject;
   }
 
-  public static final Integer getGeneratedKeyRoutingObject(Object key) {
-    return Integer.valueOf(key.hashCode());
+  public static Integer getGeneratedKeyRoutingObject(Object key) {
+    return key.hashCode();
   }
 
-  private static final int computeHashCode(final byte[] bytes,
+  private static int computeHashCode(final byte[] bytes,
       final RowFormatter rf, final int[] columnPositions, int numPositions) {
     int hash = 0;
     if (columnPositions != null) {
@@ -918,7 +913,7 @@ public final class GfxdPartitionByExpressionResolver extends
     return hash;
   }
 
-  private static final int computeHashCode(final byte[][] byteArrays,
+  private static int computeHashCode(final byte[][] byteArrays,
       final RowFormatter rf, final int[] columnPositions, int numPositions) {
     int hash = 0;
     if (columnPositions != null) {
@@ -937,7 +932,7 @@ public final class GfxdPartitionByExpressionResolver extends
     return hash;
   }
 
-  private static final int computeHashCode(@Unretained final Object val,
+  private static int computeHashCode(@Unretained final Object val,
       final RowFormatter rf, final int[] columnPositions, int numPositions) {
 
     @Unretained final OffHeapRow bsRow;
@@ -1009,7 +1004,7 @@ public final class GfxdPartitionByExpressionResolver extends
     return hash;
   }
 
-  public static final int computeHashCode(final DataValueDescriptor dvd,
+  public static int computeHashCode(final DataValueDescriptor dvd,
       final DataTypeDescriptor dtd, int hash) {
     if (dvd != null && !dvd.isNull()) {
       return dvd.computeHashCode(dtd != null ? dtd.getMaximumWidth()
@@ -1023,7 +1018,7 @@ public final class GfxdPartitionByExpressionResolver extends
       // side for example IntCoulmnRoutingObjectInfo.computeHashCode
       // sjould also change accordingly. Other types for which single hop is
       // supported should also be looked into.
-      return ResolverUtils.addByteToBucketHash((byte)0, hash, 
+      return ResolverUtils.addByteToBucketHash((byte)0, hash,
           dtd.getTypeId().getTypeFormatId());
     }
   }

@@ -26,7 +26,7 @@ import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
-import com.pivotal.gemfirexd.thrift.gfxdConstants;
+import io.snappydata.thrift.snappydataConstants;
 
 /**
  * A collection of constants used in GemFireXD.
@@ -800,7 +800,8 @@ public interface GfxdConstants {
   // --------------------- Defaults for GFXD connection/transaction props
 
   /** Default for autocommit in GFXD is false. */
-  final boolean GFXD_AUTOCOMMIT_DEFAULT = gfxdConstants.DEFAULT_AUTOCOMMIT;
+  final boolean GFXD_AUTOCOMMIT_DEFAULT =
+      snappydataConstants.DEFAULT_AUTOCOMMIT;
 
   /** Default for {@link #GFXD_DISABLE_STREAMING} is false. */
   final boolean GFXD_STREAMING_DEFAULT = true;

@@ -2,13 +2,13 @@
 @setlocal enableextensions
 @set scriptdir=%~dp0
 @set gfxd=%scriptdir:\bin\=%
-@if exist "%gfxd%\lib\gemfirexd-__VERSION__.jar" @goto gfxdok
+@if exist "%gfxd%\lib\snappydata-store-core-__VERSION__.jar" @goto gfxdok
 @echo Could not determine GemFire XD location
 @verify other 2>nul
 @goto done
 :gfxdok
 
-@set GFXD_JARS=%gfxd%\lib\gemfirexd-__VERSION__.jar;%gfxd%\lib\gemfirexd-tools-__VERSION__.jar;%gfxd%\lib\gemfirexd-client-__VERSION__.jar;%gfxd%\lib\pulse-dependencies.jar
+@set GFXD_JARS=%gfxd%\lib\snappydata-store-__VERSION__.jar;%gfxd%\lib\snappydata-store-tools-__VERSION__.jar;%gfxd%\lib\snappydata-store-client-__VERSION__.jar;%gfxd%\lib\pulse-dependencies.jar
 
 @if defined CLASSPATH set GFXD_JARS=%GFXD_JARS%;%CLASSPATH%
 
