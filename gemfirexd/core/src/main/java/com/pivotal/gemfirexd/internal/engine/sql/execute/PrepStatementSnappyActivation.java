@@ -30,8 +30,6 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.Token;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
-
-import java.sql.SQLException;
 import java.util.List;
 
 public class PrepStatementSnappyActivation extends GemFireSelectDistributionActivation {
