@@ -329,9 +329,10 @@ public final class GenericStatementContext
 				SanityManager.DEBUG_PRINT("GenericStatementContext.clearSavePoint()",
 										  internalSavePointName);
 			}
+
 		}
 
-		pleaseBeOnStack();
+//		pleaseBeOnStack();
 
 		if (SanityManager.DEBUG)
 		{

@@ -16,10 +16,11 @@
  */
 package batterytest.greplogs;
 import java.io.*;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
-
-import java.util.regex.Matcher;
 
 /**
  * @author kbanks
@@ -38,7 +39,7 @@ public class GrepLogs {
   private int repeatLimit = 5;
   
   /** All gfxd unittest result directories start with this prefix */
-  private static String GFXD_UNITTEST_PREFIX = "gemfirexd-";
+  private static String GFXD_UNITTEST_PREFIX = "snappydata-store-";
   private static String PARALLEL_SUFFIX = "-parallel";
   private String type = "";
   private File resultPath = null;

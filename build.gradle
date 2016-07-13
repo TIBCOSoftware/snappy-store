@@ -56,7 +56,7 @@ allprojects {
     //hadoopVersion = '2.4.1-gphd-3.2.0.0-54'
 
     // product and release properties
-    PRODUCT_NAME = 'SnappyData'
+    PRODUCT_NAME = 'SnappyData RowStore'
 
     GEMFIRE_PRODUCT = 'Pivotal GemFire'
     GEMFIRE_VERSION = '7.5.Beta'
@@ -69,7 +69,8 @@ allprojects {
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
     PRODUCT_MAINT = '0'
-    PRODUCT_CLASSFIER = '-SNAPSHOT'
+    PRODUCT_CLASSFIER = ''
+    PRODUCT_RELEASE_STAGE = 'GA'
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSFIER}"
     PRODUCT_VENDOR = 'SnappyData, Inc.'
     COPYRIGHT = "Copyright 2016, ${PRODUCT_VENDOR} All rights reserved."
@@ -164,7 +165,7 @@ def getManifest(def symname, def imports, def exports, def otherAttrs) {
   def attrs = [
     "Manifest-Version"        : "1.0",
     "Title"                   : PRODUCT_NAME,
-    "Bundle-Name"             : "${PRODUCT_NAME} ${PRODUCT_VERSION}",
+    "Bundle-Name"             : "${PRODUCT_NAME} ${PRODUCT_VERSION} ${PRODUCT_RELEASE_STAGE}",
     "Bundle-Version"          : PRODUCT_VERSION,
     "Bundle-Vendor"           : PRODUCT_VENDOR,
     "Bundle-SymbolicName"     : symname,

@@ -30,7 +30,6 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.Token;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
-
 import java.util.List;
 
 public class PrepStatementSnappyActivation extends GemFireSelectDistributionActivation {
@@ -79,7 +78,7 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
         querySql = this.sql;
       }
       SnappyActivation.executeOnLeadNode((SnappySelectResultSet)rs, rc,
-          querySql, enableStreaming , this.getConnectionID());
+          querySql, enableStreaming, this.getConnectionID(), lcc.getCurrentSchemaName());
     } else {
       throw StandardException.newException(
           SQLState.LANG_UNEXPECTED_USER_EXCEPTION,

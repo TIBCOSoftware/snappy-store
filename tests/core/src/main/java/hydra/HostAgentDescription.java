@@ -139,7 +139,7 @@ implements Serializable {
       }
       if ( hd.getGemFireHome() != null ) {
         classPath.add(hd.getGemFireHome() + hd.getFileSep() + "lib"
-                                          + hd.getFileSep() + "gemfirexd-" +
+                                          + hd.getFileSep() + "snappydata-store-" +
                 ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
        }
 
@@ -147,11 +147,11 @@ implements Serializable {
       classPath.add(hd.getTestDir() + hd.getFileSep() + "junit.jar");
 
       //Needed to run hydra tests on multiple hosts
-      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "gemfirexd-hydra-tests-" +
+      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
               ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
       classPath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-              "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "gemfirexd-scala-tests"));
+              "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
 
       had.setClassPath(EnvHelper.asPath(classPath, hd));
 

@@ -49,7 +49,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public SparkSQLExecute getSQLExecute(String sql, LeadNodeExecutionContext ctx, Version v) {
+    public SparkSQLExecute getSQLExecute(String sql, String schema, LeadNodeExecutionContext ctx, Version v) {
        return null;
     }
 

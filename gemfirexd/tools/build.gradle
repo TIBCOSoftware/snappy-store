@@ -21,7 +21,7 @@ dependencies {
 
   // use dunit support from snappydata
   if (subprojectBase == ':') {
-    testCompile 'io.snappydata:dunit:1.0.2'
+    testCompile 'io.snappydata:dunit:1.0.4-1'
   } else {
     testCompile project(':dunit')
   }

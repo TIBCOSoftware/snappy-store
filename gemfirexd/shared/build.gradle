@@ -21,6 +21,7 @@ task createVersionPropertiesFile(dependsOn: 'processResources') {
       "Source-Date"       : sourceDate,
       "Source-Revision"   : commitId,
       "Source-Repository" : gitBranch,
+      "Product-Stage"     : PRODUCT_RELEASE_STAGE,
       "GemFire-Version"   : GEMFIRE_VERSION
     ]
 

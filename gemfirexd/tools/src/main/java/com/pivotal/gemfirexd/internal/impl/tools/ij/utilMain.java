@@ -267,7 +267,8 @@ public class utilMain implements java.security.PrivilegedAction {
 				version = "?";
 			}
 			*/
-			out.println(convertGfxdMessageToSnappy(langUtil.getTextMessage("IJ_IjVers30C199", GemFireXDVersion.getGemFireXDVersion())));
+//			out.println(convertGfxdMessageToSnappy(langUtil.getTextMessage("IJ_IjVers30C199", GemFireXDVersion.getGemFireXDVersion())));
+			out.println(GemFireXDVersion.getProductName() + " " + GemFireXDVersion.getGemFireXDVersion() + " " + GemFireXDVersion.getGemFireXDReleaseStage());
 			// GemStone changes END
 			for (int i = connEnv.length - 1; i >= 0; i--) { // print out any initial warnings...
 				Connection c = connEnv[i].getConnection();

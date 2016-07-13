@@ -321,7 +321,46 @@ public class ExportImportTestDUnit extends DistributedSQLTestBase {
       new File("import_test_data.txt").delete();
     }
   }
-  
+
+
+  /**
+   * Import data on selective columns with special charactors. The column names are
+   * given in first line in the data file.
+   */
+  public void testImportWithSelectiveSpecialColumnNamesAsParamsAndInDataFile_PR() throws Exception {
+    try {
+      // Start one client a three servers
+      startVMs(1, 3);
+
+      //create the table
+      clientSQLExecute(1, "create table app.t1(\"~flight_id\" int not null, "
+          + "segment_number int not null, aircraft varchar(20), "
+          + "CONSTRAINT FLIGHTS_PK PRIMARY KEY ( SEGMENT_NUMBER))");
+
+      //create import data file from which data is to be imported into the table
+      PrintWriter p = new PrintWriter(new File("import_test_data.txt"));
+      p.println("\"~flight_id\",\"SEGMENT_NUMBER\"");
+      p.println("1354,11");
+      p.println("7363,12");
+      p.close();
+
+      //call import data procedure. Column names are part of data file above.
+      clientSQLExecute(1,
+          "CALL SYSCS_UTIL.IMPORT_DATA('APP', 'T1', null, null, 'import_test_data.txt', null, null, null, 1)");
+
+      //verify data has been imported successfully
+      Connection conn = TestUtil.getConnection();
+      Statement st = conn.createStatement();
+      st.execute("select count(*) from app.t1");
+      ResultSet rs = st.getResultSet();
+      assertTrue(rs.next());
+      assertEquals("Number of rows in table should be 2", 2, rs.getInt(1));
+    } finally {
+      //delete the import data file
+      new File("import_test_data.txt").delete();
+    }
+  }
+
   /**
    * Import data with no column names specified, neither through parameters to the 
    * procedure nor in the data file.

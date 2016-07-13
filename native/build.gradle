@@ -252,6 +252,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
 
   assemble.dependsOn extractDependencies
 
+  jar.enabled = false
   task product(dependsOn: assemble) {
     String productDir = "${buildDir}/snappyclient"
 

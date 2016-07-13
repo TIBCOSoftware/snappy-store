@@ -4350,7 +4350,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
   @Override
   public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-      boolean holdIndexLock, Iterator<?> bucketEntriesIter) {
+      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
     EmbedConnection conn = null;
     GemFireContainer gfc = null;
     LanguageConnectionContext lcc = null;
@@ -4395,10 +4395,10 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           giiLockAcquired = true;
         }
       }
-     
+
       // for the case of replicated region, simply blow away the entire
       // local indexes
-      if (!region.isUsedForPartitionedRegionBucket()) {
+      if (!region.isUsedForPartitionedRegionBucket() && !destroyOffline) {
         if (indexes != null) {
           for (GemFireContainer index : indexes) {
             index.clear(lcc, tc);
@@ -4414,7 +4414,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           entry = (RegionEntry) bucketEntriesIter.next();
           try {
             if (indexes != null) {
-              basicClearEntry(region, tc, indexes, entry);
+              basicClearEntry(region, tc, indexes, entry, destroyOffline);
             }
           } catch (Throwable th) {
             if (logger != null) {
@@ -4451,7 +4451,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   }
 
   void basicClearEntry(LocalRegion region, GemFireTransaction tc,
-      final List<GemFireContainer> indexes, RegionEntry entry)
+      final List<GemFireContainer> indexes, RegionEntry entry, boolean destroyOffline)
       throws StandardException, InternalGemFireError, Error {
     ExecRow oldRow;
     synchronized (entry) {
@@ -4468,8 +4468,15 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           // value
           // is a ListOfDeltas in which case ignore the destroy (bug #41529)
           if (oldRow != null) {
-            EntryEventImpl event = EntryEventImpl.create(region,
+            // destroyOffline flag is a hack set when bucket region is not created
+            // and instead a PR is passed as region. Avoid passing region tp
+            // EntryEventImpl.create if destroyOffline is set as it
+            // will try to find routing object if region is passed
+            EntryEventImpl event = EntryEventImpl.create(destroyOffline ? null : region,
                 Operation.DESTROY, entry.getKey(), null, null, false, null);
+            if (destroyOffline) {
+              event.setRegion(region);
+            }
             event.setOldValue(val, true);
             event.setPossibleDuplicate(true);
             //mark the vent with set duplicate as true as it is possible that 

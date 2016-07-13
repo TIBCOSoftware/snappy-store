@@ -543,7 +543,7 @@ public final class ProxyBucketRegion implements Bucket {
     if (iup != null) {
       RegionMap rmap = diskRegion.getRecoveredEntryMap();
       if (rmap != null && rmap.regionEntries() != null) {
-        iup.clearIndexes(this.partitionedRegion, true, false, rmap.regionEntries().iterator());
+        iup.clearIndexes(this.partitionedRegion, true, false, rmap.regionEntries().iterator(), true);
       }
     }
   }

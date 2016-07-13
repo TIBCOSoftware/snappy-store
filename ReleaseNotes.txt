@@ -7,3 +7,94 @@
 # ADD THE JIRA TICKET ID, IF APPLICABLE.                                                           #
 ####################################################################################################
 
+New Features
+
+* A new tool to collect the debug artifacts like logs, stats file and stack dumps, automatically 
+  and output as a tar zipped file. Time range based collection is also provided.
+
+* Index checker validates the consistency and integrity of indexes and gets automatically recreated
+  upon restart, if required.
+ 
+* New procedures to check the sanity of indexes during run time as well.
+
+* New SnappyData start and stop scripts to start and shut down cluster.
+
+* Much faster re-balance operations. The rebalance takes in consideration all the Partitioned 
+  Regions rather than one by one.
+
+Bug Fixes
+
+* snap-849 - Batch insert failed with false duplicate key violation exception when an entry reached
+             a secondary copy through gii as well as direct distribution. This was a problm only 
+             when a member is starting up. 
+
+* snap-761 - After an alter table which was adding a lob column, sometimes after a restart a wrong
+             rowformatter object was being used to deserialize a row resulting in 
+             ClassCastExceptions.
+
+* snap-766 - Another manifestation of wrong rowformatter being picked up after an alter table 
+             happened resulting in java.lang.AssertionError
+
+* snap-619 - Index maintenance exception thrown while performing update in a transaction. This 
+             could lead to unnecessary failure of the operation.
+
+* snap-709 - Not getting expected conflicts when a child was performing foreign key constraint 
+             check on parent table.
+
+* snap-762 - Closing underlying nio channel which was not letting to delete the nfs directory, used
+             for diskstore, even after the process was shut down.
+
+* snap-736 - Delete operations on replicated tables were not getting committed.
+
+* snap-700 - An older region version vector was getting recorded when an event was coming both 
+             through gii as well as direct distribution to secondary. This was happening in a 
+             very small window of time when a new member was coming up and declaring itself to
+             its peers and at the same time an update was coming.
+
+* snap-702 - The flushing of persisted index entries during rollover was getting very slow when 
+             eviction was up. When the number of entries was high this was very slow and made the
+             system look to be in a hung state. Now flushing it in a much bigger batch fixed it.
+
+* snap-687 - The client connection was losing its default schema information on failover.
+
+* 41995    - [trac] Even Delete and Truncate statements were getting cancelled due to low memory 
+             exceptions. Now letting these statements execute so that they can free up heap space.
+
+* 52173    - [trac] Because of an underlying NegativeArraySizeException in the JGroups layer some
+             of the replies were never coming and the system hung. Ported from Geode. 
+
+* 51906    - [trac] Fix for ClassCastException. ColumnQueryInfo cannot be cast to 
+             com.pivotal.gemfirexd.internal.engine.distributed.metadata.ValueQueryInfo. Only 
+             convert those updates to put convertible which has absolute value rather than 
+             other column references.
+
+* 47330    - Lock timed out in alter table. Simplification of ddl replay fixed it.
+
+* 51379    - select query with group by failed with Java exception: 'mismatch of versions:
+             formatter=2, fromBytes=1: java.lang.AssertionError. Another manifestation of SNAP-766.
+
+* 50430    - A restarted data node is stuck at UpdateAttributesProcessor.waitForProfileResponse.
+             Simplification of ddl replay fixed it.
+
+* 51082    - Can not DROP or TRUNCATE once low memory is hit, failed at prepare statement.
+             Even if low memory is detected by resource manager these actions are let through as
+             they clean the memory
+
+* 51255    - Incorrect XCL54 exception thrown when there should be enough heap memory. A very
+             transient spike in memory was leading to this. Now the generation of low memory
+             exception is delayed a bit to check if the heap has come back to normal.
+
+* 44936    - An insert was successful in replicated table on some of the nodes even though it
+             gets constraint violation. An insert coming before the gii is completed on a restarted
+             or new node could lead to this. These are categorized as suspect events and
+             re-processed at the end of gii.
+
+* 51328    - UTFDataFormatException while executing select query in thin client Ha test. Wrong
+             rowformatter being picked after alter table and node restart.
+
+* GEMXD-3  - Initializing netserver with all the properties. Some configuration properties were
+             missing when reconnecting automatically.
+
+* GEMXD-19 - Cleaning the index corresponding to rows in previously hosted bucket but discarded
+             on restart. This was resulting on wrong counts when where clause contained indexes 
+             and the query plan picked indexes instead of table scan.

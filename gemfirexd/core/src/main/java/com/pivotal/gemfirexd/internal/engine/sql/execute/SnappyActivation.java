@@ -64,7 +64,7 @@ public class SnappyActivation extends BaseActivation {
 
   @Override
   public void setupActivation(final ExecPreparedStatement ps,
-     final boolean scrollable, final String stmt_text) throws StandardException {
+      final boolean scrollable, final String stmt_text) throws StandardException {
   }
 
 
@@ -79,7 +79,7 @@ public class SnappyActivation extends BaseActivation {
       SnappySelectResultSet rs = createResultSet(0);
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-                "SnappyActivation.execute: Created SnappySelectResultSet: " + rs);
+            "SnappyActivation.execute: Created SnappySelectResultSet: " + rs);
       }
       rs.open();
       this.resultSet = rs;
@@ -87,7 +87,7 @@ public class SnappyActivation extends BaseActivation {
       this.currentRS = rs;
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-                "SnappyActivation.execute: Done");
+            "SnappyActivation.execute: Done");
       }
       return rs;
     } catch (GemFireXDRuntimeException gfxdrtex) {
@@ -111,26 +111,25 @@ public class SnappyActivation extends BaseActivation {
   }
 
   protected SnappySelectResultSet createResultSet(int resultsetNumber)
-    throws StandardException {
+      throws StandardException {
     return new SnappySelectResultSet(this, this.returnRows);
   }
 
   protected void executeWithResultSet(SnappySelectResultSet rs)
-    throws StandardException {
+      throws StandardException {
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = null;
-    rc = getResultCollector( enableStreaming, rs);
-    executeOnLeadNode(rs, rc, sql, enableStreaming, this.getConnectionID());
+    rc = getResultCollector(enableStreaming, rs);
+    executeOnLeadNode(rs, rc, sql, enableStreaming, this.getConnectionID(), this.lcc.getCurrentSchemaName());
   }
 
   protected GfxdResultCollector<Object> getResultCollector(
-    final boolean enableStreaming, final SnappySelectResultSet rs)
-    throws StandardException {
+      final boolean enableStreaming, final SnappySelectResultSet rs)
+      throws StandardException {
     final GfxdResultCollector<Object> rc;
     if (enableStreaming) {
       rc = new GfxdQueryStreamingResultCollector();
-    }
-    else {
+    } else {
       rc = new GfxdQueryResultCollector();
     }
     rs.setupRC(rc);
@@ -145,7 +144,7 @@ public class SnappyActivation extends BaseActivation {
   @Override
   public Vector getParentResultSet(String resultSetId) {
     throw new UnsupportedOperationException("SnappyActivation::"
-      + "getParentResultSet: not implemented");
+        + "getParentResultSet: not implemented");
   }
 
   @Override
@@ -170,7 +169,7 @@ public class SnappyActivation extends BaseActivation {
 
   @Override
   public void informOfRowCount(NoPutResultSet resultSet, long rowCount)
-    throws StandardException {
+      throws StandardException {
     throw new UnsupportedOperationException("SnappyActivation::informOfRowCount: not implemented");
 
   }
@@ -225,17 +224,17 @@ public class SnappyActivation extends BaseActivation {
   }
 
   public static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc, String sql,
-      boolean enableStreaming , long connId)
-          throws StandardException {
+      boolean enableStreaming, long connId, String schema)
+      throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
-    LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, ctx, rc);
+    LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc);
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
     } catch (SQLException se) {
       throw Misc.processFunctionException(
-              "SnappyActivation::execute", se, null, null);
+          "SnappyActivation::execute", se, null, null);
     }
   }
 
@@ -252,14 +251,11 @@ public class SnappyActivation extends BaseActivation {
               continue;
             }
             String tabName = t.getFullTableName();
-            if (t.getSchemaName().equalsIgnoreCase("APP")) {
-              tabName = t.getTableName();
-            }
-            boolean isColumnTable = extCatalog.isColumnTable(tabName, skipLocks);
+            boolean isColumnTable = extCatalog.isColumnTable(t.getSchemaName(), t.getTableName(), skipLocks);
             if (GemFireXDUtils.TraceQuery) {
               SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-                      "SnappyActivation.isColumnTable: table-name=" + tabName +
-                              " ,isColumnTable=" + isColumnTable);
+                  "SnappyActivation.isColumnTable: table-name=" + tabName +
+                      " ,isColumnTable=" + isColumnTable);
             }
             return isColumnTable;
           }
@@ -268,7 +264,7 @@ public class SnappyActivation extends BaseActivation {
     }
     if (GemFireXDUtils.TraceQuery) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-              "SnappyActivation.isColumnTable: return false");
+          "SnappyActivation.isColumnTable: return false");
     }
     return false;
   }

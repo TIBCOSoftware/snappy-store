@@ -193,15 +193,15 @@ implements Serializable {
     }
 
     // test jars
-    classpath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "gemfirexd-hydra-tests-" +
+    classpath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
             ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
     classpath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-            "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "gemfirexd-scala-tests"));
+            "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
 
     // product jars for this version
     classpath.add(gfh + hd.getFileSep() + "lib"
-                      + hd.getFileSep() + "gemfirexd-" +
+                      + hd.getFileSep() + "snappydata-store-" +
             ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
 
     return EnvHelper.asPath(classpath, hd);

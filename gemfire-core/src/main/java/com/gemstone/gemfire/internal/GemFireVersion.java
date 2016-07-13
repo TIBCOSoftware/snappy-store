@@ -46,6 +46,9 @@ public class GemFireVersion {
   /** Constant for the GemFire version Resource Property entry */
   private static final String GEMFIRE_VERSION = "Product-Version";
 
+  /** Constant for the GemFire release stage Resource Property entry */
+  private static final String GEMFIRE_RELEASE_STAGE = "Product-Stage";
+
   /**
    * For GemFireXD product, the constant for the underlying GemFire version
    * Resource Property entry. For GemFire product the one used is
@@ -93,6 +96,8 @@ public class GemFireVersion {
    * product while for GemFireXD this will be the version of GemFireXD product.
    */
   private String productVersion;
+
+  private String productReleaseStage;
 
   /**
    * For GemFireXD product, the version of underlying GemFire layer. For GemFire,
@@ -256,6 +261,16 @@ public class GemFireVersion {
     }
     else {
       return v.productVersion;
+    }
+  }
+
+  public static String getProductReleaseStage() {
+    GemFireVersion v = getInstance();
+    if (v.error != null) {
+      return v.error;
+    }
+    else {
+      return v.productReleaseStage;
     }
   }
 
@@ -426,6 +441,10 @@ public class GemFireVersion {
       error = LocalizedStrings.GemFireVersion_MISSING_PROPERTY_0_FROM_RESOURCE_COM_GEMSTONE_GEMFIRE_INTERNAL_1.toLocalizedString(new Object[] {GEMFIRE_VERSION, resourceName});
       return;
     }
+    this.productReleaseStage = props.getProperty(GEMFIRE_RELEASE_STAGE);
+    if (this.productReleaseStage == null) {
+      this.productReleaseStage = "";
+    }
     // below setting for GemFireXD is to indicate the underlying GemFire
     // version being used in GemFireXD product; for GemFire this will not
     // be set and instead this.productVersion is used where required
@@ -562,7 +581,7 @@ public class GemFireVersion {
      * @param printSourceInfo
      *        Should information about the source code be printed?
      */
-    public static void print(PrintWriter pw, 
+    public static void print(PrintWriter pw,
                              boolean printSourceInfo) {
         String jarVersion = stripSpaces(GemFireVersion.getJavaCodeVersion());
         pw.println("Java version:   " + jarVersion);
