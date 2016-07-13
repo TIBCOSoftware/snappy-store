@@ -271,7 +271,11 @@ abstract class DatabaseClasses
 		Throwable loadError;
 		try {
 			try {
+				// only if no contextLoader is defined otherwise will end up in stackOverflow
+				if (Thread.currentThread().getContextClassLoader() == null )
 				return loadClassNotInDatabaseJar(className);
+				else
+					throw new ClassNotFoundException(className);
 			} catch (ClassNotFoundException cnfe) {
 				if (applicationLoader == null)
 					throw cnfe;
@@ -305,7 +309,7 @@ abstract class DatabaseClasses
 		}
 		throw new ClassNotFoundException(className + " : " + loadError.getMessage());
 	}
-	
+
 	abstract Class loadClassNotInDatabaseJar(String className)
 		throws ClassNotFoundException;
 
