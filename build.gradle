@@ -791,6 +791,7 @@ task generateSources {
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'
   dependsOn subprojectBase + 'gemfirexd-shared:createVersionPropertiesFile'
   dependsOn subprojectBase + 'gemfirexd-core:doSplit'
+  dependsOn subprojectBase + 'gemfirexd-core:odbcMeta'
   dependsOn subprojectBase + 'gemfirexd-client:generatePropertiesFiles'
   dependsOn subprojectBase + 'gemfirexd-tools:compileJavacc'
   dependsOn subprojectBase + 'gemfirexd-tools:generatePropertiesFiles'

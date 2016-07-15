@@ -61,9 +61,7 @@ import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.partitioned.PREntriesIterator;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
-import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderEventProcessor;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
-import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.serial.SerialGatewaySenderQueue;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentSkipListMap;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
@@ -83,7 +81,7 @@ import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.RegionEntryUtils;
-import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
+import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRow;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -91,6 +89,7 @@ import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableHashtable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
@@ -426,7 +425,6 @@ public class ObjectSizer {
   public LinkedHashMap<String, Object[]> size(final GemFireContainer c,
       final PreQualifier preQualifier) throws IllegalArgumentException,
       IllegalAccessException, InterruptedException, StandardException {
-
     final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<String, Object[]>();
     try {
 
@@ -631,6 +629,7 @@ public class ObjectSizer {
     long maxSize = 0;
     long maxOffheapSize = 0;
     long rowCount = 0;
+    long columnRowCount = 0;
     long keyInMemoryCount = 0;
     long valInMemoryCount = 0;
     long valInOffheapCount = 0;
@@ -735,6 +734,7 @@ public class ObjectSizer {
 
         // No need to add SZ_REF since it is already accounted for by entrySize
         OUTER: while (value != null) {
+
           final Class<?> valClass = value.getClass();
           if (valClass == byte[].class) {
             valInMemoryCount++;
@@ -746,6 +746,11 @@ public class ObjectSizer {
             break OUTER;
           }
           else if (valClass == byte[][].class) {
+
+            if (isColumnTable(c.getQualifiedTableName())) {
+              columnRowCount += getRowCountFromColumnTable(c, (byte[][])value);
+            }
+
             valInMemoryCount++;
             byte[][] values = ((byte[][])value);  // add in size of Object[]
             long len = SIZE_OF_UTIL.sizeof(value);
@@ -870,7 +875,7 @@ public class ObjectSizer {
       retEstimates.put(key, new Object[] {
           new long[] { constantOverhead, entrySize, keySize, valInMemorySize,
               valInOffheapSize, rowCount, keyInMemoryCount, valInMemoryCount,
-              valInOffheapCount }, bucketDistInfo });
+              valInOffheapCount, columnRowCount }, bucketDistInfo });
     }
     else {
       long[] numericVals = (long[])val[0];
@@ -884,6 +889,7 @@ public class ObjectSizer {
       numericVals[i++] += keyInMemoryCount;
       numericVals[i++] += valInMemoryCount;
       numericVals[i++] += valInOffheapCount;
+      numericVals[i++] += columnRowCount;
 
       if (bucketDistInfo.length() > 0) {
         StringBuilder info = (StringBuilder)val[1];
@@ -891,6 +897,20 @@ public class ObjectSizer {
       }
     }
 
+  }
+
+  private Boolean isColumnTable(String fullyQualifiedTable) {
+    return fullyQualifiedTable.matches("SNAPPYSYS_INTERNAL(.*)_COLUMN_STORE_");
+  }
+
+  private int getRowCountFromColumnTable(GemFireContainer c, byte[][] value) throws StandardException {
+    int rowCount = 0;
+    RowFormatter rf = c.getRowFormatter(value);
+    ColumnDescriptor cd = c.getTableDescriptor().getColumnDescriptor("NUMROWS");
+    if (cd != null)
+      rowCount = rf.getColumn(cd.getPosition(), value).getInt();
+
+    return rowCount;
   }
 
   private static void createDistributionInfo(StringBuilder miscInfo,

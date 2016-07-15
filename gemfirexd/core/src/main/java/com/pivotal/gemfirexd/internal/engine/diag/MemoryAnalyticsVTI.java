@@ -243,7 +243,11 @@ public class MemoryAnalyticsVTI extends GfxdVTITemplate implements
       res = formatSizeValue(totalsize, new StringBuilder());
     }
     else if (NUM_ROWS.equals(columnName)) {
-      res = currVal[5];
+      if (currVal.length >9 && currVal[9] > 0 ) {
+        res = currVal[9];
+      } else {
+        res = currVal[5];
+      }
     }
     else if (NUM_KEYS_MEMORY.equals(columnName)) {
       res = currVal[6];
