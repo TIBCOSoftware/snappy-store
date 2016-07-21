@@ -272,10 +272,7 @@ abstract class DatabaseClasses
 		try {
 			try {
 				// only if no contextLoader is defined otherwise will end up in stackOverflow
-				if (Thread.currentThread().getContextClassLoader() == null )
 				return loadClassNotInDatabaseJar(className);
-				else
-					throw new ClassNotFoundException(className);
 			} catch (ClassNotFoundException cnfe) {
 				if (applicationLoader == null)
 					throw cnfe;
@@ -318,6 +315,23 @@ abstract class DatabaseClasses
 		return loadApplicationClass(classDescriptor.getName());
 	}
 
+	public final Class loadClassFromDB(String name) throws ClassNotFoundException {
+		ClassNotFoundException cnfe = new ClassNotFoundException(name);
+		if (applicationLoader == null) throw cnfe;
+		// if DDL replay has not started then ignore
+		final GemFireStore memStore = GemFireStore
+				.getBootingInstance();
+		if (memStore == null || !(memStore
+				.initialDDLReplayInProgress()
+				|| memStore.initialDDLReplayDone())) {
+			throw cnfe;
+		}
+		Class c = applicationLoader.loadClass(name, true);
+		if (c == null)
+			throw cnfe;
+		return c;
+
+	}
 	public boolean isApplicationClass(Class theClass) {
 
 		return theClass.getClassLoader()
