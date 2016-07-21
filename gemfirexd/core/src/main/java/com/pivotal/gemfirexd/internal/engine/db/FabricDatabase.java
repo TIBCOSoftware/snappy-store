@@ -89,6 +89,7 @@ import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.DistributionObserver;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
+import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.db.Database;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
 import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
@@ -134,6 +135,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINTableDescriptor;
 import com.pivotal.gemfirexd.internal.io.StorageFile;
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
+import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
 /**
  * The Database interface provides control over the physical database (that is,
@@ -504,7 +506,10 @@ public final class FabricDatabase implements ModuleControl,
       }
 
       // Initialize the catalog
-      if (this.memStore.isSnappyStore() && this.memStore.getMyVMKind() == GemFireStore.VMKind.DATASTORE) {
+      final boolean isLead = ServerGroupUtils.isGroupMember(
+          CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup());
+      if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
+          GemFireStore.VMKind.DATASTORE || isLead)) {
         // Take write lock on data dictionary. Because of this all the servers will will initiate their
         // hive client one by one. This is important as we have downgraded the ISOLATION LEVEL from
         // SERIALIZABLE to REPEATABLE READ
@@ -518,6 +523,10 @@ public final class FabricDatabase implements ModuleControl,
             this.dd.unlockAfterWriting(tc, false);
           }
         }
+      }
+
+      if (isLead) {
+        checkSnappyCatalogConsistency(embedConn);
       }
     } catch (Throwable t) {
       try {
@@ -552,6 +561,139 @@ public final class FabricDatabase implements ModuleControl,
       throw StandardException.newException(SQLState.BOOT_DATABASE_FAILED, t,
           Attribute.GFXD_DBNAME);
     }
+  }
+
+  public static void checkSnappyCatalogConsistency(
+      EmbedConnection embedConn)
+      throws StandardException, SQLException {
+    final LanguageConnectionContext lcc = embedConn.getLanguageConnection();
+    final GemFireTransaction tc = (GemFireTransaction)lcc
+        .getTransactionExecute();
+    HashMap<String, List<String>> hiveDBTablesMap = null;
+    HashMap<String, List<String>> gfDBTablesMap = null;
+
+    try {
+      lcc.getDataDictionary().lockForReading(tc);
+      hiveDBTablesMap =
+          Misc.getMemStoreBooting().getExternalCatalog().getAllTables(true);
+      gfDBTablesMap = getAllStoreTables();
+    } finally {
+      lcc.getDataDictionary().unlockAfterReading(tc);
+    }
+    SanityManager.DEBUG_PRINT("info", "hiveDBTablesMap = " + hiveDBTablesMap);
+
+    hiveDBTablesMap.remove("DEFAULT");
+    gfDBTablesMap.remove("HIVE_METASTORE");
+    List<String> internalColumnTablesList = gfDBTablesMap.remove("SNAPPYSYS_INTERNAL");
+    Set<String> internalColumnTablesSet = new HashSet<>();
+    if (internalColumnTablesList != null) {
+      internalColumnTablesSet.addAll(internalColumnTablesList);
+    }
+
+    SanityManager.DEBUG_PRINT("info", "gfDBTablesMap = " + gfDBTablesMap);
+    SanityManager.DEBUG_PRINT("info", "internalColumnTablesSet = " + internalColumnTablesSet);
+
+
+    for (Map.Entry<String, List<String>> storeEntry : gfDBTablesMap.entrySet()) {
+      List<String> hiveTableList = hiveDBTablesMap.get(storeEntry.getKey());
+      List<String> storeTablesList = new LinkedList<>(storeEntry.getValue());
+
+      // remove tables that are in datadictionary store but not in Hivestore
+      if (!(hiveTableList == null || hiveTableList.isEmpty())) {
+        storeTablesList.removeAll(hiveTableList);
+      }
+      if (!(storeTablesList == null || storeTablesList.isEmpty())) {
+        SanityManager.DEBUG_PRINT("info",
+            "Catalog inconsistency detected: following tables " +
+                "in datadictionary are not in Hive metastore: " +
+                "schema = " + storeEntry.getKey() + " tables = " + storeTablesList);
+        dropTables(embedConn, storeEntry.getKey(), storeTablesList);
+      }
+
+      // DD contains row buffer but not the column buffer of the table
+      List<String> tablesMissingColumnBuffer = new LinkedList<>();
+      for (String storeTable : storeEntry.getValue()) {
+        if (Misc.getMemStoreBooting().getExternalCatalog().
+            isColumnTable(storeEntry.getKey(), storeTable, false)) {
+          String cachedBatchTable = com.gemstone.gemfire.
+              internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
+              cachedBatchTableName(storeEntry.getKey() + "." + storeTable);
+          cachedBatchTable = cachedBatchTable.substring(cachedBatchTable.indexOf(".") + 1);
+          SanityManager.DEBUG_PRINT("info", "cachedBatchTable = " + cachedBatchTable);
+          if (!internalColumnTablesSet.contains(cachedBatchTable)) {
+            tablesMissingColumnBuffer.add(storeTable);
+          }
+        }
+      }
+      if (!tablesMissingColumnBuffer.isEmpty()) {
+        SanityManager.DEBUG_PRINT("info",
+            "Catalog inconsistency detected: following column tables " +
+                "do not have column buffer: " +
+                "schema = " + storeEntry.getKey() + " tables = " + tablesMissingColumnBuffer);
+        dropTables(embedConn, storeEntry.getKey(), tablesMissingColumnBuffer);
+        removeTableFromHivestore(storeEntry.getKey(), tablesMissingColumnBuffer);
+      }
+    }
+
+    // remove tables that are in Hive store but not in datadictionary
+    for (Map.Entry<String, List<String>> hiveEntry : hiveDBTablesMap.entrySet()) {
+      List<String> storeTableList = gfDBTablesMap.get(hiveEntry.getKey());
+      List<String> hiveTableList = new LinkedList<>(hiveEntry.getValue());
+      if (!(storeTableList == null || storeTableList.isEmpty())) {
+        hiveTableList.removeAll(storeTableList);
+      }
+
+      if (!(hiveTableList == null || hiveTableList.isEmpty())) {
+        SanityManager.DEBUG_PRINT("info",
+            "Catalog inconsistency detected: following tables " +
+                "in Hive metastore are not in datadictionary: " +
+                "schema = " + hiveEntry.getKey() + " tables = " + hiveTableList);
+        removeTableFromHivestore(hiveEntry.getKey(), hiveTableList);
+      }
+    }
+  }
+
+  private static final void removeTableFromHivestore(String schema, List<String> tables) {
+    for (String table : tables) {
+      SanityManager.DEBUG_PRINT("info", "Removing table " +
+          schema + "." + table + " from Hive metastore");
+      Misc.getMemStoreBooting().getExternalCatalog().removeTable(schema, table, false);
+    }
+  }
+
+  private static final void dropTables(EmbedConnection embedConn,
+      String schema, List<String> tables) throws SQLException {
+    for (String table : tables) {
+      SanityManager.DEBUG_PRINT("info", "Dropping table " +
+          schema + "." + table);
+
+      // drop column table
+      String cachedBatchTableName = com.gemstone.gemfire.
+          internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
+          cachedBatchTableName(schema + "." + table);
+      embedConn.createStatement().execute(
+          "DROP TABLE IF EXISTS " + cachedBatchTableName);
+
+      // drop row buffer
+      embedConn.createStatement().execute(
+          "DROP TABLE IF EXISTS " + schema + "." + table);
+    }
+  }
+
+  private static final HashMap<String, List<String>> getAllStoreTables() {
+    List<GemFireContainer> gfContainers = Misc.getMemStoreBooting().getAllContainers();
+    HashMap<String, List<String>> gfDBTablesMap = new HashMap<>();
+    for (GemFireContainer gc : gfContainers) {
+      if (gc.isApplicationTable()) {
+        List<String> tableList = gfDBTablesMap.get(gc.getSchemaName());
+        if (tableList == null) {
+          tableList = new LinkedList<>();
+        }
+        tableList.add(gc.getTableName());
+        gfDBTablesMap.put(gc.getSchemaName(), tableList);
+      }
+    }
+    return gfDBTablesMap;
   }
 
   /**

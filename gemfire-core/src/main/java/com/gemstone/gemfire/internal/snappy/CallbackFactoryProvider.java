@@ -56,6 +56,12 @@ public abstract class CallbackFactoryProvider {
       return false;
     }
 
+    @Override
+    public String cachedBatchTableName(String tableName) {
+      throw new UnsupportedOperationException("unexpected invocation for "
+          + toString());
+    }
+
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {
