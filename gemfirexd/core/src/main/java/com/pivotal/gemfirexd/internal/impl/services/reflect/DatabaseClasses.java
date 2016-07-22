@@ -271,7 +271,6 @@ abstract class DatabaseClasses
 		Throwable loadError;
 		try {
 			try {
-				// only if no contextLoader is defined otherwise will end up in stackOverflow
 				return loadClassNotInDatabaseJar(className);
 			} catch (ClassNotFoundException cnfe) {
 				if (applicationLoader == null)
