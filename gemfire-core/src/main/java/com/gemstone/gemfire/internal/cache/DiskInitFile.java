@@ -564,6 +564,7 @@ public class DiskInitFile implements DiskInitFileInterpreter {
       // Instead of calling randomUUID which uses SecureRandom which can be slow
       // return UUID.randomUUID();
       // create a UUID using the cheaper Random class.
+      // [sumedh] performance does not matter here, so stick with randomUUID()
       return new DiskStoreID(UUID.randomUUID());
     }
     DiskStoreID result = null;

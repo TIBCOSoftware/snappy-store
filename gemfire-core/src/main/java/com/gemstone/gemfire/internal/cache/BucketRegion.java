@@ -263,6 +263,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private volatile AtomicLong5 eventSeqNum = null;
 
+  static final UUID zeroUUID = new UUID(0, 0);
+
   private volatile UUID batchUUID = null;
 
   public ReentrantReadWriteLock putAllLock = new ReentrantReadWriteLock();
@@ -792,7 +794,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   private synchronized void generateAndSetBatchIDIfNULL() {
-    if (this.batchUUID == null || this.batchUUID.equals(new UUID(0, 0))) {
+    if (this.batchUUID == null || this.batchUUID.equals(zeroUUID)) {
       this.batchUUID = UUID.randomUUID();
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()

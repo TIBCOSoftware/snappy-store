@@ -153,7 +153,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
  * @author Rahul Dubey
  * @author swale
  * @author asif
- * @todo determine if ContainerHandle interface can be removed somehow
+ * TODO determine if ContainerHandle interface can be removed somehow
  */
 public final class GemFireContainer extends AbstractGfxdLockable implements
     ContainerHandle, SortedIndexContainer {
@@ -2358,7 +2358,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    * @return DOCUMENT ME!
    */
   public long getRowSize() {
-    boolean queryHDFS = false;
+    boolean queryHDFS;
     LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
     if (lcc != null) {
       queryHDFS = lcc.getQueryHDFS();
@@ -2379,8 +2379,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     if (sz > 0) {
       return sz;
     }
-
-
 
     if (this.regionAttributes.getDataPolicy().withPartitioning()) {
       assert this.region instanceof PartitionedRegion;
@@ -3534,13 +3532,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   private Long getGeneratedKey() throws StandardException {
     // generate a new unique long to use as region key
     try {
-      return Long.valueOf(newUUIDForRegionKey());
+      return newUUIDForRegionKey();
     } catch (IllegalStateException ise) {
       throw StandardException.newException(SQLState.GENERATED_KEY_OVERFLOW,
           ise, getQualifiedTableName());
     }
   }
-  
+
   private Long getGeneratedKey(final int[] primaryKeyColumns)
       throws StandardException {
     if (primaryKeyColumns == null) {
@@ -4459,11 +4457,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   private boolean indexTraceOnForThisTable;
 
-  /*
-  private final short MAX_COUNTER = 1000;
+  private static final short MAX_COUNTER = 1000;
 
-  private final short counter = MAX_COUNTER;
-  */
+  private short counter = MAX_COUNTER;
 
   public final long getNumRows() {
 
@@ -4514,11 +4510,16 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   public void updateNumRows(boolean dec) {
+    // deliberate non-volatile, thread-unsafe writes and reads
     if (dec) {
       --this.previousNumRows;
-    }
-    else {
+    } else {
       ++this.previousNumRows;
+    }
+    // reset rowSize for re-calculation after many inserts/updates
+    if (this.counter-- <= 0) {
+      this.counter = MAX_COUNTER;
+      this.rowSize = 0;
     }
   }
 

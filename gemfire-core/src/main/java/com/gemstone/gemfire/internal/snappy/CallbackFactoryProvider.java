@@ -30,7 +30,8 @@ public abstract class CallbackFactoryProvider {
   private static StoreCallbacks storeCallbacks = new StoreCallbacks() {
 
     @Override
-    public Set createCachedBatch(BucketRegion region, UUID batchID, int bucketID) {
+    public Set<Object> createCachedBatch(BucketRegion region, UUID batchID,
+        int bucketID) {
       return null;
     }
 
@@ -65,5 +66,4 @@ public abstract class CallbackFactoryProvider {
   public static StoreCallbacks getStoreCallbacks() {
     return storeCallbacks;
   }
-
 }

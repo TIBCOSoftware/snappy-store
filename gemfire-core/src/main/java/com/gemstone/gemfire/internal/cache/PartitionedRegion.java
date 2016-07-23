@@ -2491,10 +2491,16 @@ public class PartitionedRegion extends LocalRegion implements
   }
 
 
+  private volatile Boolean columnBatching;
   public boolean needsBatching() {
+    final Boolean columnBatching = this.columnBatching;
+    if (columnBatching != null) {
+      return columnBatching;
+    }
     // Find all the child region and see if they anyone of them has name ending
     // with _SHADOW_
     if (this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+      this.columnBatching = false;
       return false;
     } else {
       boolean needsBatching = false;
@@ -2502,6 +2508,7 @@ public class PartitionedRegion extends LocalRegion implements
       for (PartitionedRegion pr : childRegions) {
         needsBatching |= pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
       }
+      this.columnBatching = needsBatching;
       return needsBatching;
     }
   }
