@@ -20,7 +20,7 @@ ext {
 dependencies {
   provided project(subprojectBase + 'gemfire-core')
   compile project(subprojectBase + 'gemfire-tests')
-  provided project(subprojectBase + 'gemfirexd-client')
+  compile project(subprojectBase + 'gemfirexd-client')
   provided project(subprojectBase + 'gemfirexd-tools')
   provided project(subprojectBase + 'gemfirexd-core')
 

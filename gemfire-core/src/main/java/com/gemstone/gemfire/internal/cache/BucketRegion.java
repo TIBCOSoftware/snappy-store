@@ -267,7 +267,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private volatile UUID batchUUID = null;
 
-  public ReentrantReadWriteLock putAllLock = new ReentrantReadWriteLock();
+  public final ReentrantReadWriteLock columnBatchFlushLock =
+      new ReentrantReadWriteLock();
 
   public final AtomicLong5 getEventSeqNum() {
     return eventSeqNum;
@@ -723,7 +724,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   public final boolean createAndInsertCachedBatch(boolean forceFlush) {
-    final ReentrantReadWriteLock.WriteLock sync = putAllLock.writeLock();
+    // do nothing if a flush is already in progress
+    if (this.columnBatchFlushLock.isWriteLocked()) {
+      return false;
+    }
+    final ReentrantReadWriteLock.WriteLock sync =
+        this.columnBatchFlushLock.writeLock();
     sync.lock();
     try {
       return internalCreateAndInsertCachedBatch(forceFlush);
@@ -815,8 +821,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private Set createCachedBatchAndPutInColumnTable() {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    Set keysToDestroy = callback.createCachedBatch(this, this.batchUUID, this.getId());
-    return keysToDestroy;
+    return callback.createCachedBatch(this, this.batchUUID, this.getId());
   }
 
   // TODO: Suranjan Not optimized way to destroy all entries, as changes at level of RVV required.

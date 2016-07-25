@@ -14,24 +14,36 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package sql.datagen;
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
-import hydra.Log;
+package sql.datagen;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
 
-import sql.SQLPrms;
-
-/**
- * 
- * @author Rahul Diyewar
- */
+import hydra.Log;
 
 public class ColumnMetaData {
-  private Random rand = new Random(SQLPrms.getRandSeed());
+  private final Random rand;
 
   private String columnName;
   private String fullTableName;
@@ -46,10 +58,11 @@ public class ColumnMetaData {
   private Map<Integer, LinkedList<Object>> fkValuesMap;
   private Map<Integer, LinkedList<Object>> fkValuesMap_bk;
 
-  public ColumnMetaData() {
-    lastNumMap = new HashMap<Integer, Long>();
-    fkValuesMap = new HashMap<Integer, LinkedList<Object>>();
-    fkValuesMap_bk = new HashMap<Integer, LinkedList<Object>>();
+  public ColumnMetaData(Random r) {
+    lastNumMap = new HashMap<>();
+    fkValuesMap = new HashMap<>();
+    fkValuesMap_bk = new HashMap<>();
+    rand = r;
   }
 
   public String getColumnName() {
@@ -163,7 +176,7 @@ public class ColumnMetaData {
     if (isFKParent()) {
       LinkedList<Object> l = fkValuesMap.get(tid);
       if (l == null) {
-        l = new LinkedList<Object>();
+        l = new LinkedList<>();
         fkValuesMap.put(tid, l);
       }
 
@@ -181,7 +194,7 @@ public class ColumnMetaData {
       if (unique) {
         value = l.remove();
         if(l_bk == null){
-          l_bk = new LinkedList<Object>();
+          l_bk = new LinkedList<>();
           fkValuesMap_bk.put(tid, l_bk);
         }
         l_bk.add(value);
@@ -197,8 +210,8 @@ public class ColumnMetaData {
   public void resetFKValueMap() {
     Log.getLogWriter().info("Reset FKValueMap for " + getFullColumnName());
     for (Integer t : fkValuesMap_bk.keySet()) {
-      LinkedList l = fkValuesMap.get(t);
-      LinkedList l_bk = fkValuesMap_bk.get(t);
+      LinkedList<Object> l = fkValuesMap.get(t);
+      LinkedList<Object> l_bk = fkValuesMap_bk.get(t);
       l.addAll(l_bk);
       l_bk.clear();
     }
@@ -206,14 +219,14 @@ public class ColumnMetaData {
 
   @Override
   public String toString() {
-    StringBuffer sb = new StringBuffer();
-    sb.append(this.getClass().getName() + "[")
-        .append("columnName=" + getFullColumnName())
-        .append(",isFKParent=" + isFKParent())
-        .append(",dataType=" + dataType).append(",isPrimary=" + isPrimary())
-        .append(",isUnique=" + isUnique()).append(",columnSize=" + columnSize)
-        .append(",decimalDigits=" + decimalDigits)
-        .append(",mappedColumn=" + mappedColumn).append("]");
-    return sb.toString();
+    return this.getClass().getName() + '[' +
+        "columnName=" + getFullColumnName() +
+        ",isFKParent=" + isFKParent() +
+        ",dataType=" + dataType +
+        ",isPrimary=" + isPrimary() +
+        ",isUnique=" + isUnique() +
+        ",columnSize=" + columnSize +
+        ",decimalDigits=" + decimalDigits +
+        ",mappedColumn=" + mappedColumn + ']';
   }
 }
