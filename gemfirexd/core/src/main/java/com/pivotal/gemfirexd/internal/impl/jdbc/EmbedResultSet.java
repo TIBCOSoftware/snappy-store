@@ -149,8 +149,8 @@ public abstract class EmbedResultSet extends ConnectionChild
 	 * The currentRow contains the data of the current row of the resultset.
 	 * If currentRow is null, the cursor is not postioned on a row 
 	 */
-	protected /* GemStone change private */ ExecRow currentRow;
-    
+	public /* GemStone change private */ ExecRow currentRow;
+
     /**
      * Set if this ResultSet is definitely closed.
      * If the connection has been closed, or the database
