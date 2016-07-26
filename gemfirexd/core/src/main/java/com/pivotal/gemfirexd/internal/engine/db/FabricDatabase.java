@@ -507,7 +507,8 @@ public final class FabricDatabase implements ModuleControl,
 
       // Initialize the catalog
       final boolean isLead = ServerGroupUtils.isGroupMember(
-          CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup());
+          CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup())
+          || Misc.getDistributedSystem().isLoner();
       if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
           GemFireStore.VMKind.DATASTORE || isLead)) {
         // Take write lock on data dictionary. Because of this all the servers will will initiate their

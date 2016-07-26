@@ -1775,7 +1775,21 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           RoutineAliasInfo.MODIFIES_SQL_DATA, null, newlyCreatedRoutines, tc,
           GFXD_SYS_PROC_CLASSNAME, false);
     }
-    
+
+    {
+      // procedure argument names
+      String[] argNames = new String[] { "REPAIR" };
+
+      // procedure argument types
+      TypeDescriptor[] argTypes = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.INTEGER) };
+
+      super.createSystemProcedureOrFunction("CHECK_CATALOG", sysUUID,
+          argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
+    }
+
     {
       // SYS.CANCEL_STATEMENT(long statementId, long connectionId, long
       // executionId)

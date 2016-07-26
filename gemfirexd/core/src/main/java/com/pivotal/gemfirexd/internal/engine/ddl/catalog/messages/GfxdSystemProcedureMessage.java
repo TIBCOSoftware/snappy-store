@@ -49,6 +49,7 @@ import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
+import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLPreprocess;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
@@ -58,6 +59,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore.VMKind;
+import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.ContextId;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
@@ -84,6 +86,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.TablePrivilegeInfo;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
 /**
  * System Procedure Message that is sent out to members to execute procedures
@@ -1379,6 +1382,45 @@ public final class GfxdSystemProcedureMessage extends
       @Override
       String getSQLStatement(Object[] params) throws StandardException {
         return "CALL SYS.DUMP_STACKS(1)";
+      }
+    },
+
+    checkCatalog {
+      @Override
+      boolean allowExecution(Object[] params) {
+        // allow execution only on lead node
+        final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
+        return isLead;
+      }
+
+      @Override
+      public void processMessage(Object[] params, DistributedMember sender) throws
+          StandardException {
+        Object repair = params[0];
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+            "GfxdSystemProcedureMessage: invoking CHECK_CATALOG() procedure");
+        try {
+          GfxdSystemProcedures.runCatalogConsistencyChecks();
+        } catch (SQLException sq) {
+          throw StandardException.unexpectedUserException(sq);
+        }
+      }
+
+      @Override
+      public Object[] readParams(DataInput in, short flags) throws IOException,
+          ClassNotFoundException {
+        return new Object[] { DataSerializer.readInteger(in) };
+      }
+
+      @Override
+      public void writeParams(Object[] params, DataOutput out)
+          throws IOException {
+        DataSerializer.writeInteger((Integer)params[0], out);
+      }
+
+      @Override
+      String getSQLStatement(Object[] params) throws StandardException {
+        return "CALL SYS.CHECK_CATALOG(1)";
       }
     },
     

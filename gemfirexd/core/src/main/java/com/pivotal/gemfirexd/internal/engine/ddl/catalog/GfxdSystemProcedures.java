@@ -49,6 +49,7 @@ import com.pivotal.gemfirexd.internal.catalog.SystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
+import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLQueueEntry;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue;
@@ -63,6 +64,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.utils.SecurityUtils;
 import com.pivotal.gemfirexd.internal.engine.store.CustomRowsResultSet;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
+import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.db.PropertyInfo;
 import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -82,6 +84,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
 import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 import com.pivotal.gemfirexd.internal.impl.jdbc.TransactionResourceImpl;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
@@ -95,6 +98,7 @@ import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.load.Import;
 import io.snappydata.thrift.ServerType;
 
@@ -2034,6 +2038,32 @@ public class GfxdSystemProcedures extends SystemProcedures {
    */
   public static String GET_NATIVE_NANOTIMER_TYPE() {
     return NanoTimer.getNativeTimerType();
+  }
+
+  public static Boolean CHECK_CATALOG(int repair) throws SQLException, StandardException {
+    if (GemFireXDUtils.TraceExecute) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure CHECK_CATALOG(" + repair + ")");
+    }
+    final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
+    final Object[] params = new Object[]{repair};
+    if (isLead || Misc.getDistributedSystem().isLoner()) {
+      runCatalogConsistencyChecks();
+    } else {
+      publishMessage(params, false,
+          GfxdSystemProcedureMessage.SysProcMethod.checkCatalog, false, false);
+    }
+    return true;
+  }
+
+  public static void runCatalogConsistencyChecks()
+      throws SQLException, StandardException {
+    EmbedConnection conn = GemFireXDUtils.createNewInternalConnection(false);
+    try {
+      FabricDatabase.checkSnappyCatalogConsistency(conn);
+    } finally {
+      conn.close();
+    }
   }
 
   /**
