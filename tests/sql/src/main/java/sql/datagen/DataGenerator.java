@@ -14,57 +14,66 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package sql.datagen;
 
+import com.gemstone.gemfire.LogWriter;
 import hydra.Log;
 import hydra.ProcessMgr;
-import hydra.RemoteTestModule;
 import hydra.TestConfig;
+import sql.SQLPrms;
+import util.TestException;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.Connection;
+import java.sql.*;
 import java.sql.Date;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-
-import sql.SQLPrms;
-import sql.generic.SqlUtilityHelper;
-import util.TestException;
-
-import com.gemstone.gemfire.LogWriter;
-
-/**
- * DataGenerator
- * 
- * @author Rahul Diyewar
- */
+import java.util.*;
 
 public class DataGenerator {
-  public LogWriter log;
   protected static String url = "jdbc:gemfirexd://localhost:1530/";
   protected static String driver = "com.pivotal.gemfirexd.jdbc.ClientDriver";
-  public static final Random rand = new Random(SQLPrms.getRandSeed());
+
+  protected LogWriter log;
+  protected final Random rand;
 
   private static DataGenerator datagen = null;
   final private Mapper mapper;
-  private Map<String, TableMetaData> tableMetaMap = new HashMap<String, TableMetaData>();
+  private Map<String, TableMetaData> tableMetaMap = new HashMap<>();
   private int totalThreads = -1;
+  // disable header as it is not supported for derby
+  protected boolean printHeader = false;
 
-  private DataGenerator() {
+  private DataGenerator(long seed) {
     log = Log.getLogWriter();
+    rand = new Random(seed);
     log.info("DataGenerator initialize in this vm");
     mapper = Mapper.getMapper();
+  }
+
+  private DataGenerator() {
+    this(SQLPrms.getRandSeed());
   }
 
   public static DataGenerator getDataGenerator() {
@@ -125,9 +134,6 @@ public class DataGenerator {
     long startTime = System.currentTimeMillis();
     final char sep = getFieldSeparator();
 
-    // disable header as it is not supported for derby
-    boolean printHeader = false;
-
     int rows = table.getTotalRows();
     int batchNum = 1000;
     if (rows > 10000)
@@ -146,7 +152,7 @@ public class DataGenerator {
       BufferedWriter out = new BufferedWriter(fstream);
 
       // export column names first
-      if (printHeader == true) {
+      if (printHeader) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < columnList.size(); i++) {
           String column = columnList.get(i).getColumnName();
@@ -206,13 +212,13 @@ public class DataGenerator {
     log.info("Generated " + expectedRows + " new rows for table "
         + table.getTableName());
 
-    List<Map<String, Object>> data = new ArrayList<Map<String, Object>>();
+    List<Map<String, Object>> data = new ArrayList<>();
     List<String> pkList = table.getPKList();
-    List<String> uniqueList = table.getUniqueList();
+    //List<String> uniqueList = table.getUniqueList();
     List<FKContraint> fkConstraintList = table.getFKList();
 
     int pkCnt = pkList.size();
-    int uniqueCnt = uniqueList.size();
+    //int uniqueCnt = uniqueList.size();
     int fkCnt = fkConstraintList.size();
 
     List<Integer> tids = getTidsList();
@@ -226,8 +232,8 @@ public class DataGenerator {
     boolean done = false;
     while (newRows < expectedRows && !done) {
       int tid = tids.get(rand.nextInt(totalThreads));
-      List<String> excludeCols = new ArrayList<String>();
-      Map<String, Object> colMap = new HashMap<String, Object>();
+      List<String> excludeCols = new ArrayList<>();
+      Map<String, Object> colMap = new HashMap<>();
 
       if (fkCnt == 0) {
         // no fk
@@ -267,7 +273,7 @@ public class DataGenerator {
                     .nextInt(Math.abs(maxRepeatVal - minRepeatVal));
               }
 
-              colMap.put("TID", new Integer(tid));
+              colMap.put("TID", tid);
               colMap.put(pkCol.getColumnName(), pkVal);
               for (int i = 0; i < repeatVal; i++) {
                 Map<String, Object> rowData = getRow(table, colMap, tid);
@@ -309,7 +315,7 @@ public class DataGenerator {
               repeatVal += rand.nextInt(Math.abs(maxRepeatVal - minRepeatVal));
             }
 
-            colMap.put("TID", new Integer(tid));
+            colMap.put("TID", tid);
             colMap.put(fkCol.getColumnName(), fkValue);
             for (int i = 0; i < repeatVal; i++) {
               Map<String, Object> rowData = getRow(table, colMap, tid);
@@ -342,11 +348,11 @@ public class DataGenerator {
   public Map<String, Object> getRow(TableMetaData table,
       Map<String, Object> columnValueMap, int tid) {
     table.increamentCurrentRowID();
-    Map<String, Object> rowData = new HashMap<String, Object>();
+    Map<String, Object> rowData = new HashMap<>();
     Set<String> keyset = columnValueMap.keySet();
     for (ColumnMetaData columnMeta : table.getColumns()) {
       String colName = columnMeta.getColumnName();
-      Object value = null;
+      Object value;
       if (keyset.contains(colName)) {
         value = columnValueMap.get(colName);
       } else {
@@ -362,8 +368,7 @@ public class DataGenerator {
 
       if (value.equals(Mapper.nullToken)) {
         rowData.put(colName, null);
-      } else if (value == Mapper.skipToken) {
-      } else {
+      } else if (value != Mapper.skipToken) {
         rowData.put(colName, value);
       }
     }
@@ -374,7 +379,7 @@ public class DataGenerator {
   private Object getValueForColumn(TableMetaData table,
       ColumnMetaData columnMeta, Map<String, Object> columnValueMap, int tid) {
     MappedColumnInfo mapped = columnMeta.getMappedColumn();
-    Object value = null;
+    Object value;
     if (mapped == null) {
       value = new RandomValueGenerator().generateValues(table, columnMeta, tid);
     } else if (mapped instanceof FixedTokenMappedColumn) {
@@ -470,11 +475,16 @@ public class DataGenerator {
   }
 
   public List<Integer> getTidsList() {
-    ArrayList<Integer> tids = new ArrayList<Integer>();
-    TestConfig tc = TestConfig.getInstance();
-    int num = tc.getTotalThreads();
+    ArrayList<Integer> tids = new ArrayList<>();
+    int num;
+    if (totalThreads <= 0) {
+      TestConfig tc = TestConfig.getInstance();
+      num = tc.getTotalThreads();
+    } else {
+      num = totalThreads;
+    }
     for (int i = 0; i < num; i++) {
-      tids.add(new Integer(i));
+      tids.add(i);
     }
     return tids;
   }
@@ -503,17 +513,19 @@ public class DataGenerator {
 
   public static void main(String[] args) {
     if (args.length == 0) {
-      String usage = "Usage: DataGenerator <table-names> [<host:port> <row-counts> <mapper-file>]"
+      String usage = "Usage: DataGenerator <table-names> [<host:port> <row-counts> <mapper-file> <threads>]"
           + "\n table-names  => comma separated table names"
           + "\n row-counts   => comma separated row-counts"
-          + "\n mapper-file  => column mapper files";
+          + "\n mapper-file  => column mapper files"
+          + "\n threads      => number of threads to use for data generation";
       System.out.println(usage);
       System.exit(1);
     }
 
-    String[] tableNames = null;
+    String[] tableNames;
     int[] rowCounts = null;
     String mapperFile = null;
+    int threads = 1;
 
     // tablenames[]
     tableNames = args[0].split(",");
@@ -538,17 +550,25 @@ public class DataGenerator {
       mapperFile = args[3];
     }
 
+    // threads
+    if (args.length > 4) {
+      threads = Integer.parseInt(args[4]);
+    }
+
     String[] outputFiles = new String[tableNames.length];
     for (int i = 0; i < tableNames.length; i++) {
       outputFiles[i] = tableNames[i] + ".csv";
     }
 
     Connection conn = getConnection();
-    DataGenerator dg = null;
+    DataGenerator dg;
+    final LogWriter logger = Log.createLogWriter("datagenerator",
+        "datagenerator_" + ProcessMgr.getProcessId(), true, "INFO", 0);
     try {
-      dg = new DataGenerator();
-      dg.log = Log.createLogWriter("datagenerator", "datagenerator_"
-          + ProcessMgr.getProcessId(), true, "INFO", 0);
+      dg = new DataGenerator(System.nanoTime());
+      dg.log = logger;
+      dg.totalThreads = threads;
+      datagen = dg;
       dg.parseMapperFile(mapperFile, conn);
       dg.generateCSVs(tableNames, rowCounts, outputFiles, conn);
     } catch (Exception e) {
