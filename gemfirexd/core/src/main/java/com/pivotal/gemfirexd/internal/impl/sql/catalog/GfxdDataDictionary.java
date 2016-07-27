@@ -1777,17 +1777,9 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
-      // procedure argument names
-      String[] argNames = new String[] { "REPAIR" };
-
-      // procedure argument types
-      TypeDescriptor[] argTypes = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.INTEGER) };
-
-      super.createSystemProcedureOrFunction("CHECK_CATALOG", sysUUID,
-          argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
-          DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
+      super.createSystemProcedureOrFunction("REPAIR_CATALOG", sysUUID,
+          null, null, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
+          null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
     }
 
     {

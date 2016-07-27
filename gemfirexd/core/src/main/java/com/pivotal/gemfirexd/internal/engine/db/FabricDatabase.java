@@ -665,19 +665,23 @@ public final class FabricDatabase implements ModuleControl,
   private static final void dropTables(EmbedConnection embedConn,
       String schema, List<String> tables) throws SQLException {
     for (String table : tables) {
-      SanityManager.DEBUG_PRINT("info", "Dropping table " +
-          schema + "." + table);
+      try {
+        SanityManager.DEBUG_PRINT("info", "Dropping table " +
+            schema + "." + table);
 
-      // drop column table
-      String cachedBatchTableName = com.gemstone.gemfire.
-          internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
-          cachedBatchTableName(schema + "." + table);
-      embedConn.createStatement().execute(
-          "DROP TABLE IF EXISTS " + cachedBatchTableName);
+        // drop column table
+        String cachedBatchTableName = com.gemstone.gemfire.
+            internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
+            cachedBatchTableName(schema + "." + table);
+        embedConn.createStatement().execute(
+            "DROP TABLE IF EXISTS " + cachedBatchTableName);
 
-      // drop row buffer
-      embedConn.createStatement().execute(
-          "DROP TABLE IF EXISTS " + schema + "." + table);
+        // drop row buffer
+        embedConn.createStatement().execute(
+            "DROP TABLE IF EXISTS " + schema + "." + table);
+      } catch(SQLException se) {
+        SanityManager.DEBUG_PRINT("info", "SQLException: ", se);
+      }
     }
   }
 

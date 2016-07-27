@@ -1385,7 +1385,7 @@ public final class GfxdSystemProcedureMessage extends
       }
     },
 
-    checkCatalog {
+    repairCatalog {
       @Override
       boolean allowExecution(Object[] params) {
         // allow execution only on lead node
@@ -1398,7 +1398,7 @@ public final class GfxdSystemProcedureMessage extends
           StandardException {
         Object repair = params[0];
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "GfxdSystemProcedureMessage: invoking CHECK_CATALOG() procedure");
+            "GfxdSystemProcedureMessage: invoking REPAIR_CATALOG() procedure");
         try {
           GfxdSystemProcedures.runCatalogConsistencyChecks();
         } catch (SQLException sq) {
@@ -1420,7 +1420,7 @@ public final class GfxdSystemProcedureMessage extends
 
       @Override
       String getSQLStatement(Object[] params) throws StandardException {
-        return "CALL SYS.CHECK_CATALOG(1)";
+        return "CALL SYS.REPAIR_CATALOG(1)";
       }
     },
     

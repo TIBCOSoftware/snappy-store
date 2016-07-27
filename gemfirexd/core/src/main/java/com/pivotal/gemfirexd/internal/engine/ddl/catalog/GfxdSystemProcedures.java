@@ -64,7 +64,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.utils.SecurityUtils;
 import com.pivotal.gemfirexd.internal.engine.store.CustomRowsResultSet;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
-import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.db.PropertyInfo;
 import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -98,7 +97,6 @@ import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.load.Import;
 import io.snappydata.thrift.ServerType;
 
@@ -2040,20 +2038,25 @@ public class GfxdSystemProcedures extends SystemProcedures {
     return NanoTimer.getNativeTimerType();
   }
 
-  public static Boolean CHECK_CATALOG(int repair) throws SQLException, StandardException {
+  /**
+   * Repair Snappy catalog (Hive MetaStore and data dictionary) by removing
+   * inconsistent entries in the catalog.
+   * @throws SQLException
+   * @throws StandardException
+   */
+  public static void REPAIR_CATALOG() throws SQLException, StandardException {
     if (GemFireXDUtils.TraceExecute) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure CHECK_CATALOG(" + repair + ")");
+          "in procedure REPAIR_CATALOG()");
     }
     final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
-    final Object[] params = new Object[]{repair};
+    final Object[] params = new Object[]{1}; //dummy (unused)
     if (isLead || Misc.getDistributedSystem().isLoner()) {
       runCatalogConsistencyChecks();
     } else {
       publishMessage(params, false,
-          GfxdSystemProcedureMessage.SysProcMethod.checkCatalog, false, false);
+          GfxdSystemProcedureMessage.SysProcMethod.repairCatalog, false, false);
     }
-    return true;
   }
 
   public static void runCatalogConsistencyChecks()
