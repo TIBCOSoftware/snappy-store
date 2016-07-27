@@ -34,4 +34,5 @@ public interface StoreCallbacks {
   public int getHashCodeSnappy(Object dvds[]);
   public boolean haveRegisteredExternalStore(String tableName);
   public String cachedBatchTableName(String tableName);
+  public String snappyInternalSchemaName();
 }

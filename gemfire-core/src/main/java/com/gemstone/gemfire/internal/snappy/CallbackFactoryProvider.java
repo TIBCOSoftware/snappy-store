@@ -62,6 +62,12 @@ public abstract class CallbackFactoryProvider {
           + toString());
     }
 
+    @Override
+    public String snappyInternalSchemaName() {
+      throw new UnsupportedOperationException("unexpected invocation for "
+          + toString());
+    }
+
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

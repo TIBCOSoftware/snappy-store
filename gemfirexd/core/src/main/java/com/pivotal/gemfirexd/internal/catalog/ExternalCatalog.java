@@ -59,5 +59,11 @@ public interface ExternalCatalog {
    */
   boolean removeTable(String schema, String table, boolean skipLocks);
 
+  /**
+   * Returns the schema in which this catalog is created
+   * @return
+   */
+  public String catalogSchemaName();
+
   void stop();
 }

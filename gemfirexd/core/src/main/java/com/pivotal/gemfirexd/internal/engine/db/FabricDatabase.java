@@ -581,19 +581,23 @@ public final class FabricDatabase implements ModuleControl,
     } finally {
       lcc.getDataDictionary().unlockAfterReading(tc);
     }
-    SanityManager.DEBUG_PRINT("info", "hiveDBTablesMap = " + hiveDBTablesMap);
+//    SanityManager.DEBUG_PRINT("info", "hiveDBTablesMap = " + hiveDBTablesMap);
 
     hiveDBTablesMap.remove("DEFAULT");
-    gfDBTablesMap.remove("HIVE_METASTORE");
-    List<String> internalColumnTablesList = gfDBTablesMap.remove("SNAPPYSYS_INTERNAL");
+    //remove Hive store's tables
+    gfDBTablesMap.remove(
+        Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
+    // tables in SNAPPYSYS_INTERNAL
+    List<String> internalColumnTablesList =
+        gfDBTablesMap.remove(com.gemstone.gemfire.internal.snappy.
+            CallbackFactoryProvider.getStoreCallbacks().snappyInternalSchemaName());
     Set<String> internalColumnTablesSet = new HashSet<>();
     if (internalColumnTablesList != null) {
       internalColumnTablesSet.addAll(internalColumnTablesList);
     }
 
-    SanityManager.DEBUG_PRINT("info", "gfDBTablesMap = " + gfDBTablesMap);
-    SanityManager.DEBUG_PRINT("info", "internalColumnTablesSet = " + internalColumnTablesSet);
-
+//    SanityManager.DEBUG_PRINT("info", "gfDBTablesMap = " + gfDBTablesMap);
+//    SanityManager.DEBUG_PRINT("info", "internalColumnTablesSet = " + internalColumnTablesSet);
 
     for (Map.Entry<String, List<String>> storeEntry : gfDBTablesMap.entrySet()) {
       List<String> hiveTableList = hiveDBTablesMap.get(storeEntry.getKey());
@@ -620,7 +624,7 @@ public final class FabricDatabase implements ModuleControl,
               internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
               cachedBatchTableName(storeEntry.getKey() + "." + storeTable);
           cachedBatchTable = cachedBatchTable.substring(cachedBatchTable.indexOf(".") + 1);
-          SanityManager.DEBUG_PRINT("info", "cachedBatchTable = " + cachedBatchTable);
+//          SanityManager.DEBUG_PRINT("info", "cachedBatchTable = " + cachedBatchTable);
           if (!internalColumnTablesSet.contains(cachedBatchTable)) {
             tablesMissingColumnBuffer.add(storeTable);
           }
