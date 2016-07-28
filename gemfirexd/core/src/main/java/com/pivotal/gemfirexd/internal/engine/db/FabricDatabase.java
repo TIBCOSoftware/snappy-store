@@ -506,7 +506,7 @@ public final class FabricDatabase implements ModuleControl,
       }
 
       // Initialize the catalog
-      final boolean isLead = ServerGroupUtils.isGroupMember(
+      final boolean isLead = this.memStore.isSnappyStore() && ServerGroupUtils.isGroupMember(
           CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup())
           || Misc.getDistributedSystem().isLoner();
       if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
@@ -564,6 +564,13 @@ public final class FabricDatabase implements ModuleControl,
     }
   }
 
+  /**
+   * Detect catalog inconsistencies (between store DD and Hive MetaStore)
+   * and remove those
+   * @param embedConn
+   * @throws StandardException
+   * @throws SQLException
+   */
   public static void checkSnappyCatalogConsistency(
       EmbedConnection embedConn)
       throws StandardException, SQLException {
@@ -576,15 +583,15 @@ public final class FabricDatabase implements ModuleControl,
     try {
       lcc.getDataDictionary().lockForReading(tc);
       hiveDBTablesMap =
-          Misc.getMemStoreBooting().getExternalCatalog().getAllTables(true);
-      gfDBTablesMap = getAllStoreTables();
+          Misc.getMemStoreBooting().getExternalCatalog().getAllStoreTablesInCatalog(true);
+      gfDBTablesMap = getAllGFXDTables();
     } finally {
       lcc.getDataDictionary().unlockAfterReading(tc);
     }
 //    SanityManager.DEBUG_PRINT("info", "hiveDBTablesMap = " + hiveDBTablesMap);
 
     hiveDBTablesMap.remove("DEFAULT");
-    //remove Hive store's tables
+    //remove Hive store's own tables
     gfDBTablesMap.remove(
         Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
     // tables in SNAPPYSYS_INTERNAL
@@ -596,9 +603,27 @@ public final class FabricDatabase implements ModuleControl,
       internalColumnTablesSet.addAll(internalColumnTablesList);
     }
 
-//    SanityManager.DEBUG_PRINT("info", "gfDBTablesMap = " + gfDBTablesMap);
-//    SanityManager.DEBUG_PRINT("info", "internalColumnTablesSet = " + internalColumnTablesSet);
+    // SanityManager.DEBUG_PRINT("info", "tables in hive store = " + hiveDBTablesMap);
+    // SanityManager.DEBUG_PRINT("info", "tables in DD  = " + gfDBTablesMap);
+    removeInconsistentDDEntries(embedConn, hiveDBTablesMap,
+        gfDBTablesMap, internalColumnTablesSet);
+    removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap);
+  }
 
+  /**
+   * Removes any table entries that are just in DD but not in store.
+   * Removes column table entries for which internal column buffer is
+   * missing but row buffer exists
+   * @param embedConn
+   * @param hiveDBTablesMap  schema to tables map of hive metastore entries
+   * @param gfDBTablesMap   schema to tables map of DD entries
+   * @param internalColumnTablesSet internal column buffer tables
+   * @throws SQLException
+   */
+  private static void removeInconsistentDDEntries(EmbedConnection embedConn,
+      HashMap<String, List<String>> hiveDBTablesMap,
+      HashMap<String, List<String>> gfDBTablesMap,
+      Set<String> internalColumnTablesSet) throws SQLException {
     for (Map.Entry<String, List<String>> storeEntry : gfDBTablesMap.entrySet()) {
       List<String> hiveTableList = hiveDBTablesMap.get(storeEntry.getKey());
       List<String> storeTablesList = new LinkedList<>(storeEntry.getValue());
@@ -639,7 +664,16 @@ public final class FabricDatabase implements ModuleControl,
         removeTableFromHivestore(storeEntry.getKey(), tablesMissingColumnBuffer);
       }
     }
+  }
 
+  /**
+   * Remove Hive entries for which there is no DD entry
+   * @param hiveDBTablesMap schema to tables map of hive metastore entries
+   * @param gfDBTablesMap schema to tables map of DD entries
+   */
+  private static void removeInconsistentHiveEntries(
+      HashMap<String, List<String>> hiveDBTablesMap,
+      HashMap<String, List<String>> gfDBTablesMap) {
     // remove tables that are in Hive store but not in datadictionary
     for (Map.Entry<String, List<String>> hiveEntry : hiveDBTablesMap.entrySet()) {
       List<String> storeTableList = gfDBTablesMap.get(hiveEntry.getKey());
@@ -689,7 +723,7 @@ public final class FabricDatabase implements ModuleControl,
     }
   }
 
-  private static final HashMap<String, List<String>> getAllStoreTables() {
+  private static final HashMap<String, List<String>> getAllGFXDTables() {
     List<GemFireContainer> gfContainers = Misc.getMemStoreBooting().getAllContainers();
     HashMap<String, List<String>> gfDBTablesMap = new HashMap<>();
     for (GemFireContainer gc : gfContainers) {

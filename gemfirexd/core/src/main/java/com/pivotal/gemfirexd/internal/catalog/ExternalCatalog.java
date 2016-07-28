@@ -50,9 +50,10 @@ public interface ExternalCatalog {
   String getColumnTableSchemaAsJson(String schema, String tableName, boolean skipLocks);
 
   /**
-   * Retruns a map of DBs to list of tables in catalog
+   * Retruns a map of DBs to list of store tables(those tables that
+   * are in store DD) in catalog
    */
-  HashMap<String, List<String>> getAllTables(boolean skipLocks);
+  HashMap<String, List<String>> getAllStoreTablesInCatalog(boolean skipLocks);
 
   /**
    *  Removes a table from the external catalog
