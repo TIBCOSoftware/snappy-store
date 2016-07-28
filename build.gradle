@@ -46,7 +46,7 @@ allprojects {
     jettyVersion = '8.1.14.v20131031'
     hadoopVersion = '2.4.1'
     protobufVersion = '2.6.1'
-    jerseyVersion = '1.9'
+    jerseyVersion = '1.19.1'
     hadoopJettyVersion = '6.1.26'
     jsr305Version = '1.3.9'
     hbaseVersion = '0.98.17-hadoop2'

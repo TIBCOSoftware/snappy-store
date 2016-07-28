@@ -2186,28 +2186,28 @@ public class BugsTest extends JdbcTestBase {
     
     st.execute("select * from chartab where tsn='2011'");
     ResultSet rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals("2011"));
     
     st.execute("select * from chartab where tsn>'2012' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());    
     assertTrue(rs.getString(1).trim().equals("2014"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());    
     assertTrue(rs.getString(1).trim().equals("2017"));
     
     st.execute("select * from chartab where tsn<'2020' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());    
     assertTrue(rs.getString(1).trim().equals("2011"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());    
     assertTrue(rs.getString(1).trim().equals("2014"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());    
     assertTrue(rs.getString(1).trim().equals("2017"));
     
@@ -2218,28 +2218,28 @@ public class BugsTest extends JdbcTestBase {
     
     st.execute("select * from varchartab where tsn='2012'");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2012"));
     
     st.execute("select * from varchartab where tsn>'2010' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2012"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2014"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2016"));
 
     st.execute("select * from varchartab where tsn<'2015' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2012"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2014"));    
     
@@ -2250,38 +2250,38 @@ public class BugsTest extends JdbcTestBase {
     st.execute("insert into pchartab values ('2017')");
     st.execute("select * from pchartab where tsn='2013'");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals("2013"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals("2013"));
 
     st.execute("insert into pchartab values ('')");
     st.execute("select * from pchartab where tsn=''");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals(""));
     
     st.execute("select * from pchartab where tsn>'2013' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals("2015"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals("2017"));
 
     st.execute("select * from pchartab where tsn<'2014' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals(""));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals("2013"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getString(1).length());
     assertTrue(rs.getString(1).trim().equals("2013"));
     
@@ -2290,29 +2290,29 @@ public class BugsTest extends JdbcTestBase {
     st.execute("insert into pvarchartab values ('2014')");
     st.execute("select * from pvarchartab where tsn='2014'");
     rs = st.getResultSet();
-    rs.next();    
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2014"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2014"));
     
     st.execute("insert into pvarchartab values ('')");
     st.execute("select * from pvarchartab where tsn=''");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(0, rs.getString(1).length());
     assertTrue(rs.getString(1).equals(""));
     
     st.execute("select * from pvarchartab where tsn>='' order by tsn");
     rs = st.getResultSet();
-    rs.next();    
+    assertTrue(rs.next());
     assertEquals(0, rs.getString(1).length());
     assertTrue(rs.getString(1).equals(""));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2014"));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(4, rs.getString(1).length());
     assertTrue(rs.getString(1).equals("2014"));
 
@@ -2324,23 +2324,22 @@ public class BugsTest extends JdbcTestBase {
     st.execute("insert into charfbd values (x'414244')");
     st.execute("select * from charfbd where tsn=x'414243'");
     rs = st.getResultSet();
-    rs.next();
-    rs.getBytes(1);
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);
     assertTrue(Arrays.equals(expectedBytes, rs.getBytes(1)));
     st.execute("insert into charfbd values (x'')");
     st.execute("select * from charfbd where tsn=x''");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);
     assertTrue(Arrays.equals(spaceBytes, rs.getBytes(1))); 
     
     st.execute("select * from charfbd where tsn>x'41' and tsn<x'414245' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);
     assertTrue(Arrays.equals(expectedBytes, rs.getBytes(1)));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);
     byte[] expected = {65, 66, 68, 32, 32, 32, 32, 32, 32, 32};
     assertTrue(Arrays.equals(expected, rs.getBytes(1)));
@@ -2351,21 +2350,21 @@ public class BugsTest extends JdbcTestBase {
     st.execute("insert into pcharfbd values (x'414244')");
     st.execute("select * from pcharfbd where tsn=x'414243'");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);
     assertTrue(Arrays.equals(expectedBytes, rs.getBytes(1)));
     st.execute("insert into pcharfbd values (x'')");
     st.execute("select * from pcharfbd where tsn=x''");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);
     assertTrue(Arrays.equals(spaceBytes, rs.getBytes(1)));
     st.execute("select * from pcharfbd where tsn>x'41' and tsn<x'414245' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);
     assertTrue(Arrays.equals(expectedBytes, rs.getBytes(1)));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(10, rs.getBytes(1).length);    
     assertTrue(Arrays.equals(expected, rs.getBytes(1)));
     
@@ -2374,17 +2373,17 @@ public class BugsTest extends JdbcTestBase {
     st.execute("insert into varcharfbd values (x'414244')");
     st.execute("select * from varcharfbd where tsn=x'414243'");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(3, rs.getBytes(1).length);
     assertTrue(Arrays.equals(varcharBytes, rs.getBytes(1))); 
     st.execute("insert into varcharfbd values (x'')");
     st.execute("select * from varcharfbd where tsn=x''");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(0, rs.getBytes(1).length);
     st.execute("select * from varcharfbd where tsn>x'41' and tsn<x'414245' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(3, rs.getBytes(1).length);
     assertTrue(Arrays.equals(varcharBytes, rs.getBytes(1)));
     rs.next();
@@ -2397,30 +2396,30 @@ public class BugsTest extends JdbcTestBase {
     st.execute("insert into pvarcharfbd values (x'414244')");
     st.execute("select * from pvarcharfbd where tsn=x'414243'");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(3, rs.getBytes(1).length);
     assertTrue(Arrays.equals(varcharBytes, rs.getBytes(1)));
     st.execute("insert into pvarcharfbd values (x'')");
     st.execute("select * from pvarcharfbd where tsn=x''");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(0, rs.getBytes(1).length);
     st.execute("select * from varcharfbd where tsn>x'41' and tsn<x'414245' order by tsn");
     rs = st.getResultSet();
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(3, rs.getBytes(1).length);
     assertTrue(Arrays.equals(varcharBytes, rs.getBytes(1)));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(3, rs.getBytes(1).length);
     assertTrue(Arrays.equals(expectedVarchar, rs.getBytes(1)));
     st.execute("select * from varcharfbd where tsn<x'414245' order by tsn");
     rs = st.getResultSet();
-    rs.next();
-    assertEquals(0, rs.getBytes(1).length);    
-    rs.next();
+    assertTrue(rs.next());
+    assertEquals(0, rs.getBytes(1).length);
+    assertTrue(rs.next());
     assertEquals(3, rs.getBytes(1).length);
     assertTrue(Arrays.equals(varcharBytes, rs.getBytes(1)));
-    rs.next();
+    assertTrue(rs.next());
     assertEquals(3, rs.getBytes(1).length);
     assertTrue(Arrays.equals(expectedVarchar, rs.getBytes(1)));
   }

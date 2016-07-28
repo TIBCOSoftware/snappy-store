@@ -84,6 +84,15 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
   }
 
   @Override
+  public final long getAndAdd(T obj, final long delta) {
+    long v;
+    do {
+      v = unsafe.getLongVolatile(obj, this.offset);
+    } while(!unsafe.compareAndSwapLong(obj, this.offset, v, v + delta));
+    return v;
+  }
+
+  @Override
   public long addAndGet(T obj, long delta) {
     return getAndAdd(obj, delta) + delta;
   }

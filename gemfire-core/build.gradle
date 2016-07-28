@@ -56,6 +56,8 @@ dependencies {
   provided "com.google.protobuf:protobuf-java:${protobufVersion}"
   provided "com.sun.jersey:jersey-core:${jerseyVersion}"
   provided "com.sun.jersey:jersey-server:${jerseyVersion}"
+  provided "com.sun.jersey:jersey-servlet:${jerseyVersion}"
+  provided 'javax.ws.rs:jsr311-api:1.1.1'
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
@@ -81,6 +83,7 @@ dependencies {
     exclude(group: 'commons-math', module: 'commons-math')
     exclude(group: 'org.slf4j', module: 'slf4j-api')
     exclude(group: 'com.sun.jersey', module: 'jersey-server')
+    exclude(group: 'com.sun.jersey', module: 'jersey-servlet')
     exclude(group: 'com.sun.jersey', module: 'jersey-core')
     exclude(group: 'com.sun.jersey', module: 'jersey-json')
     exclude(group: 'commons-io', module: 'commons-io')

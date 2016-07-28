@@ -82,4 +82,56 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
   public int get(T obj) {
     return unsafe.getIntVolatile(obj, this.offset);
   }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndAdd(T obj, int delta) {
+    int v;
+    do {
+      v = unsafe.getIntVolatile(obj, this.offset);
+    } while (!unsafe.compareAndSwapInt(obj, this.offset, v, v + delta));
+    return v;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int addAndGet(T obj, int delta) {
+    return getAndAdd(obj, delta) + delta;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndIncrement(T obj) {
+    return getAndAdd(obj, 1);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndDecrement(T obj) {
+    return getAndAdd(obj, -1);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int incrementAndGet(T obj) {
+    return getAndAdd(obj, 1) + 1;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int decrementAndGet(T obj) {
+    return getAndAdd(obj, -1) - 1;
+  }
 }

@@ -2634,7 +2634,7 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.VARCHAR_TYPE_ID:
       case StoredFormatIds.CLOB_TYPE_ID: {
         // byte[]s are immutable in GemFireXD, so avoid copy if not required
-        if (inBytes != null && columnWidth > 0) {
+        if (inBytes != null && columnWidth >= 0) {
           if (offset == 0 && columnWidth == inBytes.length) {
             return inBytes;
           } else {
@@ -2681,7 +2681,7 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         // off-heap always has to create a new byte[] so avoid extra calls of
         // getLength by just calling readBytes
-        if (columnWidth > 0) {
+        if (columnWidth >= 0) {
           final byte[] bytes = new byte[columnWidth];
           UnsafeMemoryChunk.readAbsoluteBytes(memAddr, addrOffset, bytes, 0,
               columnWidth);
