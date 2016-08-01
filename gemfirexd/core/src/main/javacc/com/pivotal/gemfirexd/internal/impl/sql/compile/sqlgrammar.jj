@@ -421,16 +421,11 @@ public class SQLParser
 		  afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
 	  }
 
-	  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-
 	  if (repPartPersFlags[1] && repPartPersFlags[2]) {
 	    afact.setDataPolicy(DataPolicy.PERSISTENT_PARTITION);
 	    distributionNode.setPersistence(true);
 	    // [sjigyasu] Create versioned region entries for persistent partitioned tables
-           if (callback.haveRegisteredExternalStore(tableName.getFullTableName())){
-              afact.setConcurrencyChecksEnabled(false);
-           }
-           else if (concChecksFlag) {
+            if (concChecksFlag && !repPartPersFlags[7]) {
               afact.setConcurrencyChecksEnabled(true);
            }
 	  }
@@ -506,7 +501,7 @@ public class SQLParser
 			afact.setDataPolicy(DataPolicy.HDFS_PERSISTENT_PARTITION);
 			distributionNode.setPersistence(true);
 	    	// [sjigyasu] Create versioned region entries for persistent partitioned tables
-	    	if (concChecksFlag) {
+	    	if (concChecksFlag && !repPartPersFlags[7]) {
       			afact.setConcurrencyChecksEnabled(true);
       		}
 	      }
@@ -519,10 +514,7 @@ public class SQLParser
 			afact.setDataPolicy(DataPolicy.PERSISTENT_PARTITION);
 			distributionNode.setPersistence(true);
 		    // [sjigyasu] Create versioned region entries for persistent partitioned tables
-		    if (callback.haveRegisteredExternalStore(tableName.getFullTableName())){
-		        afact.setConcurrencyChecksEnabled(false);
-		    }
-		    else if (concChecksFlag) {
+		     if (concChecksFlag && !repPartPersFlags[7]) {
     	  		afact.setConcurrencyChecksEnabled(true);
     	  	}
 	      }
@@ -3109,6 +3101,7 @@ TOKEN [IGNORE_CASE] :
 |	<PURGEINTERVAL: "purgeinterval">
 |	<WRITEONLY: "writeonly">
 |   <ENABLE: "enable" >
+|   <DISABLE: "disable" >
 |   <CONCURRENCY: "concurrency" >
 |   <CHECKS: "checks" >
 |	<MAXWRITEONLYFILESIZE: "maxwriteonlyfilesize">
@@ -11513,8 +11506,9 @@ tableDefinition() throws StandardException :
     // index 4 = eviction attributes set or not
     // index 5 = HDFS store set or not
     // index 6 = whether EVICTION BY CRITERIA has been set
+    // index 7 = whether to disable concurrency checks or not
     boolean[] repPartPersFlags = new boolean[] { false, false, false, false,
-        false, false, false };
+        false, false, false , false };
     DistributionDefinitionNode distributionNode =
         (DistributionDefinitionNode) nodeFactory.getNode(C_NodeTypes.DISTRIBUTION_DEFINTION_NODE,
                                                          Integer.valueOf(DistributionDescriptor.NONE),
@@ -11610,6 +11604,7 @@ tableDefinition() throws StandardException :
 	                           serverGroups,
 	                           initSize);
 	            queryExpression.setDistributionDefinition(distributionNode);
+
             // GemStone changes END
                 int textToBeReplacedBegin;
                 if (columnListToken != null) {
@@ -12197,7 +12192,7 @@ fabricTableAttribute(AttributesFactory afact,
 |
 	memScaleDefinition(afact)
 |
-    concurrencyChecksDefinition(afact)
+    concurrencyChecksDefinition(afact , repPartPersFlags)
    )
 }
 
@@ -13252,7 +13247,7 @@ memScaleDefinition(AttributesFactory afact)
 }
 
 void
-concurrencyChecksDefinition(AttributesFactory afact)
+concurrencyChecksDefinition(AttributesFactory afact ,  boolean[] repPartPersFlags)
   throws StandardException :
 {
 }
@@ -13261,6 +13256,12 @@ concurrencyChecksDefinition(AttributesFactory afact)
   {
     afact.setConcurrencyChecksEnabled(true);
   }
+  |
+   <DISABLE> <CONCURRENCY> <CHECKS>
+   {
+   afact.setConcurrencyChecksEnabled(false);
+   repPartPersFlags[7] = true;
+   }
 }
 
 // GemStone changes END
@@ -18035,6 +18036,7 @@ nonReservedKeyword()  :
 	|	tok = <PURGEINTERVAL>
 	|	tok = <WRITEONLY>
 	|   tok = <ENABLE>
+	|   tok = <DISABLE>
 	|   tok = <CONCURRENCY>
 	|   tok = <CHECKS>	
 	|   tok = <MAXWRITEONLYFILESIZE>
