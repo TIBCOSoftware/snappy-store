@@ -42,7 +42,6 @@ package com.pivotal.gemfirexd.internal.impl.tools.ij;
                 
 
 import com.gemstone.gemfire.internal.GemFireVersion;
-import com.pivotal.gemfirexd.internal.GemFireXDVersion;
 import com.pivotal.gemfirexd.internal.iapi.services.info.ProductGenusNames;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.*;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
