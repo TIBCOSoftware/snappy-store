@@ -473,7 +473,9 @@ public final class SystemManagementService extends BaseManagementService {
       }
 
       jmxAdapter.unregisterMBean(objectName);
-      localManager.unMarkForFederation(objectName);
+      if (localManager != null) {
+        localManager.unMarkForFederation(objectName);
+      }
     }
 
     return matchingMBeans;

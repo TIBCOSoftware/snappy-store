@@ -63,6 +63,10 @@ public class RegionDestroyedException extends CacheRuntimeException {
     return this.isRemote;
   }
 
+  public void setNotRemote() {
+    this.isRemote = false;
+  }
+
   // Overrides to set "isRemote" flag after deserialization
 
   private synchronized void writeObject(final java.io.ObjectOutputStream out)

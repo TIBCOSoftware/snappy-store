@@ -26,8 +26,7 @@ import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.pivotal.gemfirexd.internal.engine.Misc;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.FunctionUtils.
-    GetFunctionMembers;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.FunctionUtils.GetFunctionMembers;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 
 /**
@@ -57,7 +56,7 @@ public abstract class MemberExecutorMessage<T> extends GfxdFunctionMessage<T>
   }
 
   @Override
-  protected final void executeFunction(boolean enableStreaming)
+  protected void executeFunction(boolean enableStreaming)
       throws StandardException, SQLException {
     Set<DistributedMember> members = getMembers();
     if (members == null) {

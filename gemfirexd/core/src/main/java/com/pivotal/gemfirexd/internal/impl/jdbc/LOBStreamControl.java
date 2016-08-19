@@ -49,8 +49,9 @@ import java.io.File;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.security.SecureRandom;
+import java.util.Random;
 
+import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.shared.FinalizeHolder;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -141,7 +142,7 @@ class LOBStreamControl {
 //                    // clean this file up on exit
 //                    f.deleteOnExit();
                     File f = null;
-                    SecureRandom random = new SecureRandom();
+                    Random random = PartitionedRegion.rand;
                     long n;
                     String child;
                     String tmpDir = System.getProperty("java.io.tmpdir");
@@ -474,7 +475,7 @@ class LOBStreamControl {
     }
     /**
      * Invalidates all the variables and closes file handle if open.
-     * @throws IOexception
+     * @throws IOException
      */
     void free() throws IOException {
 // GemStone changes BEGIN
@@ -504,7 +505,7 @@ class LOBStreamControl {
      * @param stPos inclusive starting position of current block
      * @param endPos exclusive end position of current block
      * @return Current position after write.
-     * @throws IOExcepton if writing to temporary file fails
+     * @throws IOException if writing to temporary file fails
      * @throws StandardException
      */
     synchronized long replaceBytes (byte [] buf, long stPos, long endPos)

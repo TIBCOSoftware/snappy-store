@@ -164,8 +164,8 @@ public class UpdateOperation extends AbstractUpdateOperation
     static final int IS_PUT_DML = getNextByteMask(HAS_DELTA_WITH_FULL_VALUE);
 
     private long tailKey = 0L;
-    private UUID batchUUID = new UUID(0,0);
-    
+    private UUID batchUUID = BucketRegion.zeroUUID;
+
     public UpdateMessage() {
     }
     /**  

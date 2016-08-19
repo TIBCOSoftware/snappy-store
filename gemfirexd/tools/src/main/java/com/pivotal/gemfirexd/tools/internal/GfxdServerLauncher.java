@@ -63,7 +63,7 @@ import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.LocalizedResource;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.tools.GfxdUtilLauncher;
-import scala.tools.jline.console.ConsoleReader;
+import jline.console.ConsoleReader;
 
 /**
  * Launcher class for the GFXD server script. This extends

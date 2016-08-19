@@ -266,9 +266,12 @@ public final class GfxdPartitionByExpressionResolver extends
       throw new AssertionError(
           "GfxdPartitionByExpressionResolver: td cannot be null");
     }
+
+
     final DistributionDescriptor distDescp = td.getDistributionDescriptor();
     final LanguageConnectionContext lcc = activation
         .getLanguageConnectionContext();
+
     final Map<String, Integer> pkMap = GemFireXDUtils
         .getPrimaryKeyColumnNamesToIndexMap(td, lcc);
     if (this.defaultPartitioning) {
@@ -468,7 +471,7 @@ public final class GfxdPartitionByExpressionResolver extends
     if (this.exprCompiler == null) {
       // case of partitioning by columns
       if (snappyStore && customHashing) {
-        return Misc.getUnifiedHashCodeFromDVD(dvd);
+        return Misc.getUnifiedHashCodeFromDVD(dvd, this.numBuckets);
       } else {
         return Misc.getHashCodeFromDVD(dvd);
       }
@@ -483,7 +486,7 @@ public final class GfxdPartitionByExpressionResolver extends
     if (this.exprCompiler == null) {
       // case of partitioning by some columns or generated primary key
       if (snappyStore && customHashing) {
-        return Misc.getUnifiedHashCodeFromDVD(dvds);
+        return Misc.getUnifiedHashCodeFromDVD(dvds, this.numBuckets);
       } else {
         int hash = 0;
         if (dvds.length == 1) {

@@ -4938,10 +4938,12 @@ public final class Oplog implements CompactableOplog {
             }
           } catch (FileNotFoundException ex) {
             // handle exception; we couldn't open the krf file
-            throw new IllegalStateException("could not create krf " + this.krf.f, ex);
+            throw new IllegalStateException("could not create krf " +
+                this.krf.f.getAbsolutePath(), ex);
           } catch (IOException ex) {
             // handle io exceptions; we failed to write to the file
-            throw new IllegalStateException("failed writing krf " + this.krf.f, ex);
+            throw new IllegalStateException("failed writing krf " +
+                this.krf.f.getAbsolutePath(), ex);
           } finally {
             synchronized (this.krfCreated) {
               this.krfCreated.notifyAll();

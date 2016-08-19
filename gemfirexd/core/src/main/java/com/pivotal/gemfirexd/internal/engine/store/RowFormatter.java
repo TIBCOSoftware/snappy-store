@@ -55,14 +55,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptorList;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.store.access.Qualifier;
 import com.pivotal.gemfirexd.internal.iapi.store.access.RowUtil;
-import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.DataTypeUtilities;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialBlob;
-import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLChar;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLDecimal;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
+import com.pivotal.gemfirexd.internal.iapi.types.*;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericColumnDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
@@ -233,19 +226,6 @@ public final class RowFormatter implements Serializable {
 
   /** indicator for default value */
   public static final long OFFSET_AND_WIDTH_IS_DEFAULT = -6;
-
-  /**
-   * Mask to extract column width from the result of
-   * {@link #getOffsetAndWidth(int, byte[])}.
-   */
-  public static final long LOWER_INT32_MASK = (1L << Integer.SIZE) - 1L;
-
-  /**
-   * Mask to extract offset from the result of
-   * {@link #getOffsetAndWidth(int, byte[])}.
-   */
-  public static final long UPPER_INT32_MASK =
-      (LOWER_INT32_MASK << Integer.SIZE);
 
   /** Fixed delimiter character used internally for PXF formatting */
   public static final int DELIMITER_FOR_PXF = ',';
@@ -901,7 +881,6 @@ public final class RowFormatter implements Serializable {
     int intValue = (b & 0xFF);
     int shift = 8;
     while (++memOffset < endAddr) {
-      // intValue |= (int) (((int) (bytes[offset + 1])) << (8 * 1));
       b = unsafe.getByte(memOffset);
       intValue |= ((b & 0xFF) << shift);
       shift += 8;
@@ -931,7 +910,6 @@ public final class RowFormatter implements Serializable {
     final int endPos = offset + numBytesToBeRead;
     int shift = 8;
     while (++offset < endPos) {
-      // intValue |= (int) (((int) (bytes[offset + 1])) << (8 * 1));
       b = bytes[offset];
       intValue |= ((b & 0xFF) << shift);
       shift += 8;
@@ -5419,8 +5397,8 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int) (offsetAndWidth & LOWER_INT32_MASK);
-      final int offset = (int) (offsetAndWidth >>> Integer.SIZE);
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       dvd = cd.columnType.getNull();
       final int bytesRead = dvd.readBytes(bytes, offset, columnWidth);
       assert bytesRead == columnWidth : "bytesRead=" + bytesRead
@@ -5481,8 +5459,8 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int) (offsetAndWidth & LOWER_INT32_MASK);
-      final int offset = (int) (offsetAndWidth >>> Integer.SIZE);
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       dvd = cd.columnType.getNull();
       final int bytesRead = dvd.readBytes(unsafe, memAddr + offset,
           columnWidth, row);
@@ -5550,8 +5528,8 @@ public final class RowFormatter implements Serializable {
         final long offsetAndWidth = getOffsetAndWidth(index, unsafe,
             memAddr0th, bytesLen0th, offsetFromMap, cd);
         if (offsetAndWidth >= 0) {
-          final int columnWidth = (int) (offsetAndWidth & 0xFFFFFFFF);
-          final int offset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int columnWidth = (int)offsetAndWidth;
+          final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
           dvd = cd.columnType.getNull();
           final int bytesRead = dvd.readBytes(unsafe, memAddr0th + offset,
               columnWidth, byteArrays);
@@ -5627,8 +5605,8 @@ public final class RowFormatter implements Serializable {
         final long offsetAndWidth = getOffsetAndWidth(index, bytes,
             offsetFromMap, cd);
         if (offsetAndWidth >= 0) {
-          final int columnWidth = (int) (offsetAndWidth & 0xFFFFFFFF);
-          final int offset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int columnWidth = (int)offsetAndWidth;
+          final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
           dvd = cd.columnType.getNull();
           final int bytesRead = dvd.readBytes(bytes, offset, columnWidth);
           assert bytesRead == columnWidth : "bytesRead=" + bytesRead
@@ -5695,7 +5673,7 @@ public final class RowFormatter implements Serializable {
     final int typeId = cd.columnType.getTypeId().getTypeFormatId();
     int offset, width;
     if (offsetAndWidth >= 0) {
-      width = (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+      width = (int)offsetAndWidth;
       offset = (int)(offsetAndWidth >>> Integer.SIZE);
       if (typeId == StoredFormatIds.VARCHAR_TYPE_ID) {
         int idx = offset + width - 1;
@@ -5769,7 +5747,7 @@ public final class RowFormatter implements Serializable {
     final int typeId = cd.columnType.getTypeId().getTypeFormatId();
     int offset, width;
     if (offsetAndWidth >= 0) {
-      width = (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+      width = (int)offsetAndWidth;
       offset = (int)(offsetAndWidth >>> Integer.SIZE);
       if (typeId == StoredFormatIds.VARCHAR_TYPE_ID) {
         final long offsetAddr = memAddr + offset;
@@ -5849,8 +5827,8 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int) (offsetAndWidth & LOWER_INT32_MASK);
-      final int offset = (int) (offsetAndWidth >>> Integer.SIZE);
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final DataTypeDescriptor dtd = cd.columnType;
       if (result.getTypeFormatId() == dtd.getDVDTypeFormatId()) {
         // if target and source types match, then directly read into the DVD
@@ -5891,7 +5869,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final DataTypeDescriptor dtd = cd.columnType;
       if (result.getTypeFormatId() == dtd.getDVDTypeFormatId()) {
@@ -6320,7 +6298,7 @@ public final class RowFormatter implements Serializable {
         offsetAndWidth = getOffsetAndWidth(varPosition, rowBytes,
             truncateSpaces);
         if (offsetAndWidth >= 0) {
-          sz += (int) (offsetAndWidth & LOWER_INT32_MASK);
+          sz += (int)offsetAndWidth;
         } else if (offsetAndWidth == OFFSET_AND_WIDTH_IS_DEFAULT) {
           final byte[] defaultBytes = this.columns[varPosition
               - 1].columnDefaultBytes;
@@ -6351,8 +6329,8 @@ public final class RowFormatter implements Serializable {
       // now write the variable width columns
       for (int index = 0; index < numVarWidths; ++index) {
         if ((offsetAndWidth = offsetAndWidths[index]) >= 0) {
-          width = (int) (offsetAndWidth & LOWER_INT32_MASK);
-          offset = (int) (offsetAndWidth >>> Integer.SIZE);
+          width = (int)offsetAndWidth;
+          offset = (int)(offsetAndWidth >>> Integer.SIZE);
           out.write(rowBytes, offset, width);
           // change offsetAndWidth to offset to be written at the end
           offsetAndWidths[index] = targetFormat.getVarDataOffset(varOffset);
@@ -6366,7 +6344,7 @@ public final class RowFormatter implements Serializable {
       }
       // finally write the variable width column offsets
       for (int index = 0; index < numVarWidths; ++index) {
-        writeInt(out, (int) offsetAndWidths[index], targetFormatOffsetBytes);
+        writeInt(out, (int)offsetAndWidths[index], targetFormatOffsetBytes);
       }
     }
   }
@@ -6409,7 +6387,7 @@ public final class RowFormatter implements Serializable {
         offsetAndWidth = getOffsetAndWidth(varColumns[index], unsafe, memAddr,
             bytesLen, truncateSpaces);
         if (offsetAndWidth >= 0) {
-          sz += (int) (offsetAndWidth & LOWER_INT32_MASK);
+          sz += (int)offsetAndWidth;
         }
         sz += targetFormatOffsetBytes;
         offsetAndWidths[index] = offsetAndWidth;
@@ -6435,8 +6413,8 @@ public final class RowFormatter implements Serializable {
       // now write the variable width columns
       for (int index = 0; index < numVarWidths; ++index) {
         if ((offsetAndWidth = offsetAndWidths[index]) >= 0) {
-          width = (int) (offsetAndWidth & LOWER_INT32_MASK);
-          offset = (int) (offsetAndWidth >>> Integer.SIZE);
+          width = (int)offsetAndWidth;
+          offset = (int)(offsetAndWidth >>> Integer.SIZE);
           OffHeapRegionEntryHelper.copyBytesToDataOutput(unsafe,
               memAddr + offset, width, out);
           // change offsetAndWidth to offset to be written at the end
@@ -6460,7 +6438,7 @@ public final class RowFormatter implements Serializable {
       }
       // finally write the variable width column offsets
       for (int index = 0; index < numVarWidths; ++index) {
-        writeInt(out, (int) offsetAndWidths[index], targetFormatOffsetBytes);
+        writeInt(out, (int)offsetAndWidths[index], targetFormatOffsetBytes);
       }
     }
   }
@@ -6546,7 +6524,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       DataTypeUtilities.writeAsUTF8BytesForPXF(bytes, offset, columnWidth,
           cd.columnType, buffer);
@@ -6588,7 +6566,7 @@ public final class RowFormatter implements Serializable {
       final long offsetAndWidth = getOffsetAndWidth(index, bytes,
           offsetFromMap, cd);
       if (offsetAndWidth >= 0) {
-        columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+        columnWidth = (int)offsetAndWidth;
         offset = (int)(offsetAndWidth >>> Integer.SIZE);
       }
       else {
@@ -6615,7 +6593,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       DataTypeUtilities.writeAsUTF8BytesForPXF(unsafe, memAddr + offset,
           columnWidth, bs, cd.columnType, buffer);
@@ -7254,7 +7232,7 @@ public final class RowFormatter implements Serializable {
     if (hasUnknown || maxDataLength > Integer.MAX_VALUE) {
       maxDataLength = Integer.MAX_VALUE;
     }
-    calcNumOffsetBytesToUse((int) maxDataLength, result[VAR_DATA_OFFSET_POS],
+    calcNumOffsetBytesToUse((int)maxDataLength, result[VAR_DATA_OFFSET_POS],
         result);
     return result;
   }
@@ -7285,7 +7263,7 @@ public final class RowFormatter implements Serializable {
     if (hasUnknown || maxDataLength > Integer.MAX_VALUE) {
       maxDataLength = Integer.MAX_VALUE;
     }
-    calcNumOffsetBytesToUse((int) maxDataLength, result[VAR_DATA_OFFSET_POS],
+    calcNumOffsetBytesToUse((int)maxDataLength, result[VAR_DATA_OFFSET_POS],
         result);
     return result;
   }
@@ -7317,7 +7295,7 @@ public final class RowFormatter implements Serializable {
     if (hasUnknown || maxDataLength > Integer.MAX_VALUE) {
       maxDataLength = Integer.MAX_VALUE;
     }
-    calcNumOffsetBytesToUse((int) maxDataLength, result[VAR_DATA_OFFSET_POS],
+    calcNumOffsetBytesToUse((int)maxDataLength, result[VAR_DATA_OFFSET_POS],
         result);
     return result;
   }
@@ -7348,7 +7326,7 @@ public final class RowFormatter implements Serializable {
     if (hasUnknown || maxDataLength > Integer.MAX_VALUE) {
       maxDataLength = Integer.MAX_VALUE;
     }
-    calcNumOffsetBytesToUse((int) maxDataLength, result[VAR_DATA_OFFSET_POS],
+    calcNumOffsetBytesToUse((int)maxDataLength, result[VAR_DATA_OFFSET_POS],
         result);
     return result;
   }
@@ -7375,7 +7353,7 @@ public final class RowFormatter implements Serializable {
     if (hasUnknown || maxDataLength > Integer.MAX_VALUE) {
       maxDataLength = Integer.MAX_VALUE;
     }
-    calcNumOffsetBytesToUse((int) maxDataLength, result[VAR_DATA_OFFSET_POS],
+    calcNumOffsetBytesToUse((int)maxDataLength, result[VAR_DATA_OFFSET_POS],
         result);
     return result;
   }
@@ -8048,7 +8026,7 @@ public final class RowFormatter implements Serializable {
       final long offsetAndWidth = getOffsetAndWidth(index, bytes,
           offsetFromMap, cd);
       if (offsetAndWidth >= 0) {
-        final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+        final int columnWidth = (int)offsetAndWidth;
         final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
 
         // check if targetFormat is variable width then need to skip the column
@@ -8116,7 +8094,7 @@ public final class RowFormatter implements Serializable {
       final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddress,
           bytesLen, offsetFromMap, cd);
       if (offsetAndWidth >= 0) {
-        final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+        final int columnWidth = (int)offsetAndWidth;
         final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
 
         // check if targetFormat is variable width then need to skip the column
@@ -8315,7 +8293,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsString(bytes, offset, columnWidth,
           cd.columnType, wasNull);
@@ -8383,7 +8361,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsString(unsafe, memAddr + offset,
           columnWidth, bs, cd.columnType, wasNull);
@@ -8471,7 +8449,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsObject(bytes, offset, columnWidth,
           cd.columnType, wasNull);
@@ -8539,7 +8517,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsObject(unsafe, memAddr + offset,
           columnWidth, bs, cd.columnType, wasNull);
@@ -8627,7 +8605,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBoolean(bytes, offset, columnWidth,
           cd.columnType, wasNull);
@@ -8685,7 +8663,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBoolean(unsafe, memAddr + offset,
           columnWidth, bs, cd.columnType, wasNull);
@@ -8751,7 +8729,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsByte(bytes, offset, columnWidth,
           cd, wasNull);
@@ -8809,7 +8787,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsByte(unsafe, memAddr + offset,
           columnWidth, bs, cd, wasNull);
@@ -8875,7 +8853,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsShort(bytes, offset, columnWidth,
           cd, wasNull);
@@ -8933,7 +8911,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsShort(unsafe, memAddr + offset,
           columnWidth, bs, cd, wasNull);
@@ -8999,7 +8977,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsInt(bytes, offset, columnWidth,
           cd, wasNull);
@@ -9057,7 +9035,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsInt(unsafe, memAddr + offset,
           columnWidth, bs, cd, wasNull);
@@ -9123,7 +9101,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsLong(bytes, offset, columnWidth,
           cd, wasNull);
@@ -9181,7 +9159,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsLong(unsafe, memAddr + offset,
           columnWidth, bs, cd, wasNull);
@@ -9247,7 +9225,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsFloat(bytes, offset, columnWidth,
           cd, wasNull);
@@ -9305,7 +9283,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsFloat(unsafe, memAddr + offset,
           columnWidth, bs, cd, wasNull);
@@ -9371,7 +9349,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsDouble(bytes, offset, columnWidth,
           cd, wasNull);
@@ -9429,7 +9407,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsDouble(unsafe, memAddr + offset,
           columnWidth, bs, cd, wasNull);
@@ -9495,7 +9473,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBigDecimal(bytes, offset, columnWidth,
           cd, wasNull);
@@ -9553,7 +9531,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBigDecimal(unsafe, memAddr + offset,
           columnWidth, bs, cd, wasNull);
@@ -9619,7 +9597,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBytes(bytes, offset, columnWidth,
           cd.columnType, wasNull);
@@ -9687,7 +9665,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return DataTypeUtilities.getAsBytes(unsafe, memAddr, offset, columnWidth,
           bs, cd.columnType, wasNull);
@@ -9776,7 +9754,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final java.sql.Date v = DataTypeUtilities.getAsDate(bytes, offset,
           columnWidth, cal, cd.columnType);
@@ -9843,7 +9821,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final java.sql.Date v = DataTypeUtilities.getAsDate(unsafe, memAddr
           + offset, columnWidth, bs, cal, cd.columnType);
@@ -9919,7 +9897,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final java.sql.Time v = DataTypeUtilities.getAsTime(bytes, offset,
           columnWidth, cal, cd.columnType);
@@ -9986,7 +9964,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final java.sql.Time v = DataTypeUtilities.getAsTime(unsafe, memAddr
           + offset, columnWidth, bs, cal, cd.columnType);
@@ -10062,7 +10040,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
         cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final java.sql.Timestamp v = DataTypeUtilities.getAsTimestamp(bytes,
           offset, columnWidth, cal, cd.columnType);
@@ -10130,7 +10108,7 @@ public final class RowFormatter implements Serializable {
     final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
         bytesLen, offsetFromMap, cd);
     if (offsetAndWidth >= 0) {
-      final int columnWidth = (int)(offsetAndWidth & LOWER_INT32_MASK);
+      final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       final java.sql.Timestamp v = DataTypeUtilities.getAsTimestamp(unsafe,
           memAddr + offset, columnWidth, bs, cal, cd.columnType);

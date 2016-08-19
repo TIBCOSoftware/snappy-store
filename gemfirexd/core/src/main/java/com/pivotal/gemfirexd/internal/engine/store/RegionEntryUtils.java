@@ -1031,7 +1031,7 @@ public final class RegionEntryUtils {
           /* ExtraInfo reference */
           + ReflectionSingleObjectSizer.REFERENCE_SIZE;
         } else if (keyClass == CompactCompositeRegionKey.class) {
-          return (int) ((CompactCompositeRegionKey) key).estimateMemoryUsage();
+          return (int)((CompactCompositeRegionKey) key).estimateMemoryUsage();
         } else if (keyClass == Long.class) {
           return (Long.SIZE / 8) + ReflectionSingleObjectSizer.OBJECT_SIZE;
         } else if (keyClass == CompositeRegionKey.class) {
@@ -1662,8 +1662,8 @@ public final class RegionEntryUtils {
                     key, offsetFromMap, pkrf.columns[keyIndex]);
                 if (offsetAndWidth >= 0) {
                   int idx = 0;
-                  offset = (int) (offsetAndWidth >>> Integer.SIZE);
-                  width = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+                  offset = (int)(offsetAndWidth >>> Integer.SIZE);
+                  width = (int)offsetAndWidth;
                   // hash = ResolverUtils.addBytesToHash(key, offset, width,
                   // hash);
                   int typeId = pkrf.getColumnDescriptor(keyIndex).getType()
@@ -1779,8 +1779,8 @@ public final class RegionEntryUtils {
           offsetAndWidth = rf.getOffsetAndWidth(keyIndex, vbytes, offsetFromMap, rf.columns[keyIndex]);
           if (offsetAndWidth >= 0) {
             int varCharWidth = 0;
-            offset = (int) (offsetAndWidth >>> Integer.SIZE);
-            width = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+            offset = (int)(offsetAndWidth >>> Integer.SIZE);
+            width = (int)offsetAndWidth;
             // hash = ResolverUtils.addBytesToHash(vbytes, offset, width, hash);
             int typeId = rf.getColumnDescriptor(keyIndex).getType().getTypeId()
                 .getTypeFormatId();
@@ -1876,8 +1876,8 @@ public final class RegionEntryUtils {
               bytesLen, offsetFromMap, rf.columns[keyIndex]);
           if (offsetAndWidth >= 0) {
             int varCharWidth = 0;
-            offset = (int) (offsetAndWidth >>> Integer.SIZE);
-            width = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+            offset = (int)(offsetAndWidth >>> Integer.SIZE);
+            width = (int)offsetAndWidth;
             int typeId = rf.getColumnDescriptor(keyIndex).getType().getTypeId()
                 .getTypeFormatId();
             if (typeId == StoredFormatIds.VARCHAR_TYPE_ID) {
@@ -1954,7 +1954,7 @@ public final class RegionEntryUtils {
         /* ExtraInfo reference */
         + ReflectionSingleObjectSizer.REFERENCE_SIZE;
       } else if (keyClass == CompactCompositeRegionKey.class) {
-        return (int) ((CompactCompositeRegionKey) key).estimateMemoryUsage();
+        return (int)((CompactCompositeRegionKey) key).estimateMemoryUsage();
       } else if (keyClass == Long.class) {
         return (Long.SIZE / 8) + ReflectionSingleObjectSizer.OBJECT_SIZE;
       } else if (keyClass == CompositeRegionKey.class) {
@@ -2864,9 +2864,9 @@ public final class RegionEntryUtils {
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
           columnBytes, targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareBytes(row, columnOffset, columnWidth, columnBytes,
               targetOffset);
         }
@@ -2876,7 +2876,7 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareCharBytes(row, columnOffset, columnWidth, columnBytes,
               targetOffset, targetWidth);
         }
@@ -3015,9 +3015,9 @@ public final class RegionEntryUtils {
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
           columnBytes, targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareBytes(unsafe, memAddr, columnOffset, columnWidth,
               columnBytes, targetOffset);
         }
@@ -3027,7 +3027,7 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareCharBytes(unsafe, memAddr, columnOffset, columnWidth,
               columnBytes, targetOffset, targetWidth);
         }
@@ -3176,9 +3176,9 @@ public final class RegionEntryUtils {
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
           unsafe, targetMemAddr, bytesLen, targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareBytes(row, columnOffset, columnWidth, unsafe,
               targetMemAddr + targetOffset);
         }
@@ -3188,7 +3188,7 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareCharBytes(row, columnOffset, columnWidth, unsafe,
               targetMemAddr + targetOffset, targetWidth);
         }
@@ -3338,9 +3338,9 @@ public final class RegionEntryUtils {
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
           unsafe, targetMemAddr, bytesLen, targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareBytes(unsafe, memAddr, columnOffset, columnWidth,
               targetMemAddr + targetOffset);
         }
@@ -3350,7 +3350,7 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareCharBytes(unsafe, memAddr, columnOffset, columnWidth,
               targetMemAddr + targetOffset, targetWidth);
         }

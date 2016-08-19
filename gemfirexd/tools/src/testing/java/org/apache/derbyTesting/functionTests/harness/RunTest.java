@@ -224,7 +224,7 @@ public class RunTest
 // Gemstone changes BEGIN
 	  System.setProperty(GfxdConstants.GFXD_LOG_FILE, "gemfirexd.log");
 	  // allow running in background that gets stuck due to jline usage
-	  System.setProperty("jline.terminal", "scala.tools.jline.UnsupportedTerminal");
+	  System.setProperty("jline.terminal", "jline.UnsupportedTerminal");
 // Gemstone changes END
 		Locale.setDefault(Locale.US);
 		skiptestReason.setLength(0); // 0 out for useprocess
@@ -1610,7 +1610,7 @@ clp.list(System.out);
             ap.put("gemfire.log-level", "fine");
             ap.put(GfxdConstants.GFXD_LOG_FILE, "gemfirexd.log");
             // allow running in background that gets stuck due to jline usage
-            ap.put("jline.terminal", "scala.tools.jline.UnsupportedTerminal");
+            ap.put("jline.terminal", "jline.UnsupportedTerminal");
 // GemStone changes END 
 
             bos = new BufferedOutputStream(new FileOutputStream(appPropFile));

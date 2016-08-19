@@ -1,14 +1,21 @@
-apply plugin: 'wrapper'
+/*
+ * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
-buildscript {
-  repositories {
-    maven { url "https://plugins.gradle.org/m2" }
-    jcenter()
-  }
-  dependencies {
-    classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
-  }
-}
+apply plugin: 'wrapper'
 
 allprojects {
   // We want to see all test results.  This is equivalent to setting --continue
@@ -16,14 +23,10 @@ allprojects {
   gradle.startParameter.continueOnFailure = true
 
   repositories {
-    jcenter()
-    maven { url 'http://repo.spring.io/release' }
-    maven { url 'http://repo.spring.io/milestone' }
-    maven { url 'http://repo.spring.io/snapshot' }
-    maven { url 'http://repo.spring.io/libs-release' }
-    maven { url 'http://repo.spring.io/ext-release-local' }
+    mavenCentral()
     maven { url 'https://dl.bintray.com/big-data/maven' }
-    mavenLocal()
+    maven { url 'http://repo.spring.io/libs-release' }
+    maven { url 'https://app.camunda.com/nexus/content/repositories/public' }
   }
 
   gradle.taskGraph.whenReady( { graph ->
@@ -34,23 +37,27 @@ allprojects {
   })
 
   ext {
-    scalaBinaryVersion = '2.10'
-    scalaVersion = scalaBinaryVersion + '.6'
-    springVersion = '3.2.12.RELEASE'
+    scalaBinaryVersion = '2.11'
+    scalaVersion = scalaBinaryVersion + '.8'
+    springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
-    slf4jVersion = '1.7.12'
-    junitVersion = '4.11'
-    antVersion = '1.8.4'
+    slf4jVersion = '1.7.21'
+    junitVersion = '4.12'
+    antVersion = '1.9.7'
     pxfVersion = '2.5.1.0'
     osgiVersion = '6.0.0'
-    jettyVersion = '8.1.14.v20131031'
-    hadoopVersion = '2.4.1'
+    jettyVersion = '9.2.16.v20160414'
+    hadoopVersion = '2.7.2'
     protobufVersion = '2.6.1'
-    jerseyVersion = '1.9'
+    sunJerseyVersion = '1.19.1'
     hadoopJettyVersion = '6.1.26'
-    jsr305Version = '1.3.9'
+    jsr305Version = '3.0.1'
+    servletAPIVersion = '3.1.0'
+    derbyVersion = '10.12.1.1'
     hbaseVersion = '0.98.17-hadoop2'
-    derbyVersion = '10.10.2.0'
+    guavaVersion = '14.0.1'
+    nettyAllVersion = '4.0.29.Final'
+    jlineVersion = '2.14.2'
     //hbaseVersion = '0.94.4-gemfire-r45047'
     //hadoopVersion = '2.2.0-gphd-3.1.0.0'
     //hadoopVersion = '2.4.1-gphd-3.2.0.0-54'
@@ -68,9 +75,9 @@ allprojects {
 
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
-    PRODUCT_MAINT = '0'
-    PRODUCT_CLASSFIER = ''
-    PRODUCT_RELEASE_STAGE = 'GA'
+    PRODUCT_MAINT = '1'
+    PRODUCT_CLASSFIER = '-SNAPSHOT'
+    PRODUCT_RELEASE_STAGE = ''
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSFIER}"
     PRODUCT_VENDOR = 'SnappyData, Inc.'
     COPYRIGHT = "Copyright 2016, ${PRODUCT_VENDOR} All rights reserved."
@@ -107,7 +114,7 @@ allprojects {
   }
 
   buildRoot = buildRoot.trim()
-  def osDir = osName.getFamilyName().replace(" ", "").toLowerCase()
+  def osDir = osName.getFamilyName().replace(' ', '').toLowerCase()
   if (!buildRoot.isEmpty()) {
     buildDir = new File(buildRoot, osDir + '/' +  project.path.replace(':', '/'))
   } else {
@@ -118,7 +125,7 @@ allprojects {
     productDir = file("${rootProject.buildDir}/store")
     locDir = 'com/pivotal/gemfirexd/internal/loc'
     clientMsgOutDir = "${project(subprojectBase + 'gemfirexd-core').buildDir}/client/${locDir}"
-    if (!project.hasProperty("sanity")) {
+    if (!project.hasProperty('sanity')) {
       isSane = 'true'
     } else {
       isSane = sanity
@@ -163,16 +170,16 @@ def writeTestProperties(def parent, def name) {
 
 def getManifest(def symname, def imports, def exports, def otherAttrs) {
   def attrs = [
-    "Manifest-Version"        : "1.0",
-    "Title"                   : PRODUCT_NAME,
-    "Bundle-Name"             : "${PRODUCT_NAME} ${PRODUCT_VERSION} ${PRODUCT_RELEASE_STAGE}",
-    "Bundle-Version"          : PRODUCT_VERSION,
-    "Bundle-Vendor"           : PRODUCT_VENDOR,
-    "Bundle-SymbolicName"     : symname,
-    "Bundle-ActivationPolicy" : "lazy",
-    "Bundle-NativeCode"       : "com/sun/jna/win32-x86/jnidispatch.dll; processor=x86;osname=win32, com/sun/jna/win32-x86-64/jnidispatch.dll; processor=x86-64;osname=win32, com/sun/jna/w32ce-arm/jnidispatch.dll; processor=arm;osname=wince,  com/sun/jna/sunos-x86/libjnidispatch.so; processor=x86;osname=sunos, com/sun/jna/sunos-x86-64/libjnidispatch.so; processor=x86-64;osname=sunos, com/sun/jna/sunos-sparc/libjnidispatch.so; processor=sparc;osname=sunos, com/sun/jna/sunos-sparcv9/libjnidispatch.so; processor=sparcv9;osname=sunos,  com/sun/jna/aix-ppc/libjnidispatch.a; processor=ppc;osname=aix, com/sun/jna/aix-ppc64/libjnidispatch.a; processor=ppc64;osname=aix,  com/sun/jna/linux-ppc/libjnidispatch.so; processor=ppc;osname=linux, com/sun/jna/linux-ppc64/libjnidispatch.so; processor=ppc64;osname=linux, com/sun/jna/linux-x86/libjnidispatch.so; processor=x86;osname=linux, com/sun/jna/linux-x86-64/libjnidispatch.so; processor=x86-64;osname=linux, com/sun/jna/linux-arm/libjnidispatch.so; processor=arm;osname=linux, com/sun/jna/linux-ia64/libjnidispatch.so; processor=ia64;osname=linux,  com/sun/jna/freebsd-x86/libjnidispatch.so; processor=x86;osname=freebsd, com/sun/jna/freebsd-x86-64/libjnidispatch.so; processor=x86-64;osname=freebsd, com/sun/jna/openbsd-x86/libjnidispatch.so; processor=x86;osname=openbsd, com/sun/jna/openbsd-x86-64/libjnidispatch.so; processor=x86-64;osname=openbsd,  com/sun/jna/darwin/libjnidispatch.jnilib; osname=macosx;processor=x86;processor=x86-64;processor=ppc",
-    "DynamicImport-Package"   : imports,
-    "Export-Package"          : exports
+    'Manifest-Version'        : '1.0',
+    'Title'                   : PRODUCT_NAME,
+    'Bundle-Name'             : "${PRODUCT_NAME} ${PRODUCT_VERSION} ${PRODUCT_RELEASE_STAGE}",
+    'Bundle-Version'          : PRODUCT_VERSION,
+    'Bundle-Vendor'           : PRODUCT_VENDOR,
+    'Bundle-SymbolicName'     : symname,
+    'Bundle-ActivationPolicy' : 'lazy',
+    'Bundle-NativeCode'       : 'com/sun/jna/win32-x86/jnidispatch.dll; processor=x86;osname=win32, com/sun/jna/win32-x86-64/jnidispatch.dll; processor=x86-64;osname=win32, com/sun/jna/w32ce-arm/jnidispatch.dll; processor=arm;osname=wince,  com/sun/jna/sunos-x86/libjnidispatch.so; processor=x86;osname=sunos, com/sun/jna/sunos-x86-64/libjnidispatch.so; processor=x86-64;osname=sunos, com/sun/jna/sunos-sparc/libjnidispatch.so; processor=sparc;osname=sunos, com/sun/jna/sunos-sparcv9/libjnidispatch.so; processor=sparcv9;osname=sunos,  com/sun/jna/aix-ppc/libjnidispatch.a; processor=ppc;osname=aix, com/sun/jna/aix-ppc64/libjnidispatch.a; processor=ppc64;osname=aix,  com/sun/jna/linux-ppc/libjnidispatch.so; processor=ppc;osname=linux, com/sun/jna/linux-ppc64/libjnidispatch.so; processor=ppc64;osname=linux, com/sun/jna/linux-x86/libjnidispatch.so; processor=x86;osname=linux, com/sun/jna/linux-x86-64/libjnidispatch.so; processor=x86-64;osname=linux, com/sun/jna/linux-arm/libjnidispatch.so; processor=arm;osname=linux, com/sun/jna/linux-ia64/libjnidispatch.so; processor=ia64;osname=linux,  com/sun/jna/freebsd-x86/libjnidispatch.so; processor=x86;osname=freebsd, com/sun/jna/freebsd-x86-64/libjnidispatch.so; processor=x86-64;osname=freebsd, com/sun/jna/openbsd-x86/libjnidispatch.so; processor=x86;osname=openbsd, com/sun/jna/openbsd-x86-64/libjnidispatch.so; processor=x86-64;osname=openbsd,  com/sun/jna/darwin/libjnidispatch.jnilib; osname=macosx;processor=x86;processor=x86-64;processor=ppc',
+    'DynamicImport-Package'   : imports,
+    'Export-Package'          : exports
   ]
   attrs.putAll(otherAttrs)
   return attrs
@@ -205,7 +212,7 @@ def replaceRegex(def fileDir, def fileName, def regex, def replacement) {
 
 def getProcessId() {
   def name = java.lang.mangement.ManagementFactory.getRuntimeMXBean().getName()
-  return name[0..name.indexOf("@") - 1]
+  return name[0..name.indexOf('@') - 1]
 }
 
 def getStackTrace(def t) {
@@ -356,7 +363,7 @@ subprojects {
       bottom = '<i>Copyright &copy; 2010-2015 Pivotal Software, Inc. All rights reserved.</i>'
       use = true
       links = [ 'http://docs.oracle.com/javase/7/docs/api/' ]
-      verbose = true
+      // verbose = true
     }
   }
 
@@ -424,7 +431,7 @@ subprojects {
   javadoc.classpath += configurations.provided
 
   dependencies {
-    compile 'com.google.code.findbugs:annotations:3.0.0'
+    provided 'com.google.code.findbugs:annotations:3.0.1'
     compile "log4j:log4j:${log4jVersion}"
     compile "org.slf4j:slf4j-api:${slf4jVersion}"
     compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
@@ -445,7 +452,7 @@ subprojects {
     minHeapSize = '768m'
     maxHeapSize = '768m'
 
-    def single = System.getProperty("junit.single")
+    def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
       include '**/*Test.class'
       exclude '**/*DUnitTest.class'
@@ -467,7 +474,7 @@ subprojects {
     reports.junitXml.destination = file(workingDir)
   }
   task junitSingle1(type: Test) {
-    def single = System.getProperty("junit.single")
+    def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
       include '**/BugsTest.class'
       include '**/DDLPersistenceHDFSTest.class'
@@ -486,7 +493,7 @@ subprojects {
   task junit {
     def testClasses = new ArrayList()
     testClasses.addAll(junitSingle1.getCandidateClassFiles().getFiles())
-    def single = System.getProperty("junit.single")
+    def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
       testClasses.addAll(junitSingle2.getCandidateClassFiles().getFiles())
     }
@@ -510,7 +517,7 @@ subprojects {
     minHeapSize = '512m'
     maxHeapSize = '512m'
 
-    def single = System.getProperty("dunit.single")
+    def single = System.getProperty('dunit.single')
     if (single == null || single.length() == 0) {
       include '**/*DUnitTest.class'
       include '**/*DUnit.class'
@@ -550,7 +557,7 @@ subprojects {
     minHeapSize = '512m'
     maxHeapSize = '512m'
 
-    def single = System.getProperty("wan.single")
+    def single = System.getProperty('wan.single')
     if (single == null || single.length() == 0) {
       include '**/pivotal/gemfirexd/wan/**/*DUnit.class'
     } else {
@@ -607,7 +614,10 @@ subprojects {
     tasks.withType(Test).each { test ->
       test.configure {
 
-        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxPermSize=128M', '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC', '-XX:CMSInitiatingOccupancyFraction=50', '-XX:+CMSClassUnloadingEnabled', '-ea']
+        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxPermSize=128M',
+                   '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC',
+                   '-XX:CMSInitiatingOccupancyFraction=50',
+                   '-XX:+CMSClassUnloadingEnabled', '-ea']
 
         testLogging.exceptionFormat = 'full'
 
@@ -636,23 +646,23 @@ subprojects {
           def eol = System.getProperty('line.separator')
           beforeTest { desc ->
             def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-            def progress = new File(workingDir, "progress.txt")
-            def output = new File(workingDir, "output.txt")
+            def progress = new File(workingDir, 'progress.txt')
+            def output = new File(workingDir, 'output.txt')
             progress << "${now} Starting test ${desc.className} ${desc.name}${eol}"
             output << "${now} STARTING TEST ${desc.className} ${desc.name}${eol}${eol}"
           }
           onOutput { desc, event ->
-            def output = new File(workingDir, "output.txt")
+            def output = new File(workingDir, 'output.txt')
             def msg = event.message
             if (event.destination.toString() == 'StdErr') {
-              msg = msg.replace("\n", "\n[stderr]  ")
+              msg = msg.replace('\n', '\n[stderr]  ')
             }
             output << msg
           }
           afterTest { desc, result ->
             def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-            def progress = new File(workingDir, "progress.txt")
-            def output = new File(workingDir, "output.txt")
+            def progress = new File(workingDir, 'progress.txt')
+            def output = new File(workingDir, 'output.txt')
             progress << "${now} Completed test ${desc.className} ${desc.name} with result: ${result.resultType}${eol}"
             output << "${eol}${now} COMPLETED TEST ${desc.className} ${desc.name} with result: ${result.resultType}${eol}${eol}"
             result.exceptions.each { t ->
@@ -707,10 +717,10 @@ subprojects {
         mavenDeployer {
           beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-          repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+          repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
             authentication(userName: ossrhUsername, password: ossrhPassword)
           }
-          snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+          snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots/') {
             authentication(userName: ossrhUsername, password: ossrhPassword)
           }
 
@@ -809,9 +819,9 @@ def includeJar(def jarFile) {
 jar.enabled = false
 
 // pack the entire GemFireXD product tree
-task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
+task product(dependsOn: [ subprojectBase + 'gemfirexd-client:shadowJar',
     subprojectBase + 'gemfirexd-core:shadowJar',
-    subprojectBase + 'gemfirexd-tools:jar' ]) << {
+    subprojectBase + 'gemfirexd-tools:shadowJar' ]) << {
 
   delete productDir
 
@@ -831,13 +841,13 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
   // first copy the product and dependent jars
   copy {
     from(clientProject.jar.destinationDir) {
-      include clientProject.jar.archiveName
+      include clientProject.shadowJar.archiveName
     }
     from(coreProject.jar.destinationDir) {
       include coreProject.shadowJar.archiveName
     }
     from(toolsProject.jar.destinationDir) {
-      include toolsProject.jar.archiveName
+      include toolsProject.shadowJar.archiveName
     }
     from extraJars
     into "${productDir}/lib"

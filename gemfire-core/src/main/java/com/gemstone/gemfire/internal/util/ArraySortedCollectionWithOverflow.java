@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
-import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.GemFireIOException;
@@ -242,7 +241,7 @@ public class ArraySortedCollectionWithOverflow extends
       int maxExceptionsTolerance = 100;
       while (true) {
         overflowFile = new File(overflowDir, "sortOverflow-"
-            + UUID.randomUUID().toString());
+            + IOUtils.newNonSecureRandomUUID().toString());
         try {
           if (overflowFile.createNewFile()) {
             break;
@@ -325,9 +324,7 @@ public class ArraySortedCollectionWithOverflow extends
       if (element != null) {
         DataSerializer.writeObject(element, dos);
         numElements++;
-        continue;
-      }
-      else {
+      } else {
         break;
       }
     }
@@ -553,10 +550,8 @@ public class ArraySortedCollectionWithOverflow extends
       if (this.size-- > 0) {
         try {
           return readElement(this.data);
-        } catch (ClassNotFoundException cnfe) {
-          handleIOException(cnfe, null);
-        } catch (IOException ioe) {
-          handleIOException(ioe, null);
+        } catch (ClassNotFoundException | IOException e) {
+          handleIOException(e, null);
         }
       }
       return null;

@@ -638,8 +638,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 	  return value;
 	}
 
-	private BigDecimal	getBigDecimal()
-	{
+	public final BigDecimal getBigDecimal()	{
 // GemStone changes BEGIN
 	  if (this.value != null) {
 	    return this.value;

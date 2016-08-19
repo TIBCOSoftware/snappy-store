@@ -1138,11 +1138,11 @@ public final class DataTypeDescriptor implements Formatable
 		//If we are dealing with territory based collation and returnDVD is 
 		//of type StringDataValue, then we need to return a StringDataValue   
 		//with territory based collation.
-		if (returnDVD instanceof StringDataValue) {
+		if (returnDVD instanceof SQLChar) {
 			try {
 				RuleBasedCollator rbs = ConnectionUtil.getCurrentLCC().getDataValueFactory().
 				getCharacterCollator(typeDescriptor.getCollationType());
-				return ((StringDataValue)returnDVD).getValue(rbs);
+				return ((SQLChar)returnDVD).getValue(rbs);
 			}
 			catch( java.sql.SQLException sqle)
 			{

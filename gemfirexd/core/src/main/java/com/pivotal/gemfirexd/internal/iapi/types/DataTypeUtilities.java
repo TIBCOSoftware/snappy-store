@@ -61,6 +61,7 @@ import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import java.math.BigDecimal;
 import java.sql.Types;
 import java.sql.ResultSetMetaData;
+import java.util.Arrays;
 import java.util.Calendar;
 
 /**
@@ -2626,16 +2627,25 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.BIT_TYPE_ID:
       case StoredFormatIds.VARBIT_TYPE_ID:
       case StoredFormatIds.LONGVARBIT_TYPE_ID:
-      case StoredFormatIds.BLOB_TYPE_ID: {
+      case StoredFormatIds.BLOB_TYPE_ID:
+      // UTF8 bytes
+      case StoredFormatIds.CHAR_TYPE_ID:
+      case StoredFormatIds.LONGVARCHAR_TYPE_ID:
+      case StoredFormatIds.VARCHAR_TYPE_ID:
+      case StoredFormatIds.CLOB_TYPE_ID: {
         // byte[]s are immutable in GemFireXD, so avoid copy if not required
-        if (offset == 0 && columnWidth == inBytes.length) {
-          return inBytes;
-        }
-        else {
-          // TODO:Asif: avoid the extra byte array created
-          final byte[] bytes = new byte[columnWidth];
-          System.arraycopy(inBytes, offset, bytes, 0, columnWidth);
-          return bytes;
+        if (inBytes != null && columnWidth >= 0) {
+          if (offset == 0 && columnWidth == inBytes.length) {
+            return inBytes;
+          } else {
+            // TODO:Asif: avoid the extra byte array created
+            final byte[] bytes = new byte[columnWidth];
+            System.arraycopy(inBytes, offset, bytes, 0, columnWidth);
+            return bytes;
+          }
+        } else {
+          wasNull.setWasNull();
+          return null;
         }
       }
       default: {
@@ -2663,13 +2673,23 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.BIT_TYPE_ID:
       case StoredFormatIds.VARBIT_TYPE_ID:
       case StoredFormatIds.LONGVARBIT_TYPE_ID:
-      case StoredFormatIds.BLOB_TYPE_ID: {
+      case StoredFormatIds.BLOB_TYPE_ID:
+      // UTF8 bytes
+      case StoredFormatIds.CHAR_TYPE_ID:
+      case StoredFormatIds.LONGVARCHAR_TYPE_ID:
+      case StoredFormatIds.VARCHAR_TYPE_ID:
+      case StoredFormatIds.CLOB_TYPE_ID: {
         // off-heap always has to create a new byte[] so avoid extra calls of
         // getLength by just calling readBytes
-        final byte[] bytes = new byte[columnWidth];
-        UnsafeMemoryChunk.readAbsoluteBytes(memAddr, addrOffset, bytes, 0,
-            columnWidth);
-        return bytes;
+        if (columnWidth >= 0) {
+          final byte[] bytes = new byte[columnWidth];
+          UnsafeMemoryChunk.readAbsoluteBytes(memAddr, addrOffset, bytes, 0,
+              columnWidth);
+          return bytes;
+        } else {
+          wasNull.setWasNull();
+          return null;
+        }
       }
       default: {
         final DataValueDescriptor dvd = dtd.getNull();

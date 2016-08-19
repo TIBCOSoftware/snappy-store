@@ -201,7 +201,7 @@ public abstract class jvm {
         v.addElement("-Duser.country=US");
 // GemStone changes BEGIN
         // allow running in background that gets stuck due to jline usage
-        v.addElement("-Djline.terminal=scala.tools.jline.UnsupportedTerminal");
+        v.addElement("-Djline.terminal=jline.UnsupportedTerminal");
 // Gemstone changes END
         if ( (flags != null) && (flags.length()>0) )
         {

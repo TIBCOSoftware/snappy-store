@@ -26,6 +26,7 @@ import com.gemstone.gemfire.internal.cache.TXState;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeExecutorMsg;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -277,7 +278,8 @@ public final class SnappySelectResultSet
       // expect at least one result (for metadata)
       this.currentResultHolder = this.firstResultHolder =
           (SnappyResultHolder)srhIterator.next();
-    } catch (Exception ex) {
+    } catch (RuntimeException ex) {
+      ex = LeadNodeExecutorMsg.handleLeadNodeException(ex);
       throw Misc.processFunctionException("SnappySelectResultSet:setup",
           ex, null, null);
     }

@@ -63,7 +63,7 @@
       <!-- GemStone changes BEGIN -->
       <sysproperty key="ij.database" value="jdbc:gemfirexd:;mcast-port=0"/>
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <!-- original code
       <sysproperty key="ij.database" value="jdbc:derby:toursdb;create=true"/>
       -->
@@ -85,7 +85,7 @@
       <!-- GemStone changes BEGIN -->
       <sysproperty key="ij.database" value="jdbc:gemfirexd:;mcast-port=0"/>
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <!-- original code
       <sysproperty key="ij.database" value="jdbc:derby:toursdb;create=true"/>
       -->
@@ -103,7 +103,7 @@
       </classpath>
       <!-- GemStone changes BEGIN -->
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <!-- GemStone changes END -->
     </java>
     <java classname="com.pivotal.gemfirexd.internal.tools.ij"
@@ -116,7 +116,7 @@
       </classpath>
       <!-- GemStone changes BEGIN -->
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <!-- GemStone changes END -->
       <arg value="disconnect.sql"/>
     </java>

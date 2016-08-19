@@ -229,6 +229,8 @@ public final class SystemProperties {
           || "com.pivotal.gemfirexd.tools.GfxdSystemAdmin"
                .equals(frameCls)
           || "com.pivotal.gemfirexd.internal.GemFireXDVersion"
+              .equals(frameCls)
+          || "io.snappydata.gemxd.SnappyDataVersion$"
               .equals(frameCls)) {
         return true;
       }
