@@ -53,7 +53,6 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
@@ -74,6 +73,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentTLongObjectHashMap;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.FinalizeHolder;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
@@ -180,7 +180,7 @@ public abstract class EmbedConnection implements EngineConnection
 
 	TransactionResourceImpl tr; // always access tr thru getTR()
 
-	private HashMap lobHashMap = null;
+	private ConcurrentTLongObjectHashMap<Object> lobHashMap = null;
 	private int lobHMKey = 0;
 
     /**
@@ -1538,10 +1538,6 @@ public abstract class EmbedConnection implements EngineConnection
        * Same as prepareStatement() above, but allows change in query node
        * parameter.
        * 
-       * @param resultSetType
-       *          a result set type, see ResultSet.TYPE_XXX
-       * @param resultSetConcurrency
-       *          a concurrency type, see ResultSet.CONCUR_XXX
        * @return a new PreparedStatement object containing the pre-compiled SQL
        *         statement
        * @exception SQLException
@@ -3851,8 +3847,7 @@ public abstract class EmbedConnection implements EngineConnection
 	public int addLOBMapping(Object LOBReference) {
 		int loc = getIncLOBKey();
 // GemStone changes BEGIN
-		// changed to Integer.valueOf()
-		getlobHMObj().put(Integer.valueOf(loc), LOBReference);
+		getlobHMObj().putPrimitive(loc, LOBReference);
 		/* (original code)
 		getlobHMObj().put(new Integer(loc), LOBReference);
 		*/
@@ -3868,7 +3863,7 @@ public abstract class EmbedConnection implements EngineConnection
 	public void removeLOBMapping(int key) {
 // GemStone changes BEGIN
 		// changed to Integer.valueOf()
-		getlobHMObj().remove(Integer.valueOf(key));
+		getlobHMObj().removePrimitive(key);
 		/* (original code)
 		getlobHMObj().remove(new Integer(key));
 		*/
@@ -3882,7 +3877,7 @@ public abstract class EmbedConnection implements EngineConnection
 	*/
 	public Object getLOBMapping(int key) {
 // GemStone changes BEGIN
-		return getlobHMObj().get(Integer.valueOf(key));
+		return getlobHMObj().getPrimitive(key);
 		// changed to use Integer.valueOf()
 		/* (original code)
 		return getlobHMObj().get(new Integer(key));
@@ -3921,6 +3916,7 @@ public abstract class EmbedConnection implements EngineConnection
 	* @return an integer that represents the most recent locator value.
 	*/
 	private int getIncLOBKey() {
+	    synchronized (getConnectionSynchronization()) {
                 int newKey = ++rootConnection.lobHMKey;
                 // Skip 0x8000, 0x8002, 0x8004, 0x8006, for DERBY-3243
                 // Earlier versions of the Derby Network Server (<10.3) didn't
@@ -3934,11 +3930,12 @@ public abstract class EmbedConnection implements EngineConnection
                     newKey = ++rootConnection.lobHMKey;
                 // Also roll over when the high bit of four byte locator is set.
                 // This will prevent us from sending a negative locator to the
-                // client. Don't allow zero since it is not a valid locator for the 
+                // client. Don't allow zero since it is not a valid locator for the
                 // client.
                 if (newKey == 0x80000000 || newKey == 0)
                     newKey = rootConnection.lobHMKey = 1;
                 return newKey;
+	    }
 	}
 
     /**
@@ -3957,9 +3954,9 @@ public abstract class EmbedConnection implements EngineConnection
 	* Return the Hash Map in the root connection
 	* @return the HashMap that contains the locator to LOB object mapping
 	*/
-	public HashMap getlobHMObj() {
+	public final ConcurrentTLongObjectHashMap<Object> getlobHMObj() {
 		if (rootConnection.lobHashMap == null) {
-			rootConnection.lobHashMap = new HashMap();
+			rootConnection.lobHashMap = new ConcurrentTLongObjectHashMap<Object>();
 		}
 		return rootConnection.lobHashMap;
 	}
@@ -4330,12 +4327,11 @@ public abstract class EmbedConnection implements EngineConnection
   /**
    * The returned object should <b>NEVER</b> be held as a hard reference other
    * than local variable, else it will be a BIG time resource leak. Use & see
-   * EmbedConnectionContext#getNestedConnection instead whereever possible.
+   * EmbedConnectionContext#getNestedConnection instead wherever possible.
    * <p>
    * This is primarily a hack for nested connection to execute DDLs by flexibly
    * switching on autoCommit at
-   * {@link EmbedStatement#executeStatement(Activation, boolean, boolean,
-   *                                        boolean, boolean, boolean)}.
+   * {@link EmbedStatement#executeStatement}.
    * 
    * @return most root connection i.e. original user created connection.
    * @author soubhikc

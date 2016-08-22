@@ -68,8 +68,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     Constructor<?> cons;
     Field strChars;
     try {
-      cons = BigInteger.class.getDeclaredConstructor(new Class[] { int[].class,
-          int.class });
+      cons = BigInteger.class.getDeclaredConstructor(int[].class, int.class);
       cons.setAccessible(true);
     } catch (Exception e) {
       cons = null;
@@ -212,8 +211,8 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     private static final long serialVersionUID = -1475537216488457161L;
 
     /**
-     * If object is null, the {{@link #isExclusive} true means -infinity else
-     * +infinity
+     * If object is null, the <code>isExclusive</code> true means -infinity
+     * else +infinity
      */
     protected Comparable obj;
 
@@ -331,12 +330,12 @@ public abstract class ResolverUtils extends ClientResolverUtils {
      * 
      * Also requires the SQL command string that is prepended to the exception
      * messages.
-     * 
-     * @throws StandardException
-     *           if either of start or end is not {@link Comparable}, or both
-     *           are null or the two are part of completely different type
-     *           hierarchies
      */
+//     * @throws StandardException
+//     *           if either of start or end is not {@link Comparable}, or both
+//     *           are null or the two are part of completely different type
+//     *           hierarchies
+//     */
     public GfxdRange(String command, Object start, Object end)
         /*throws StandardException*/ {
       if (start != null) {
@@ -426,7 +425,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     }
 
     /**
-     * Invalidate this range so that any further {@link #inRange(Object)} calls
+     * Invalidate this range so that any further {@link #inRange} calls
      * throw {@link ClassCastException}s.
      */
     public void invalidate() {
@@ -849,8 +848,8 @@ public abstract class ResolverUtils extends ClientResolverUtils {
    * Compute the hashCode of a BigInteger using provided magnitude without
    * serializing the value to bytes. The value returned is the same as would be
    * obtained by serializing to bytes using
-   * {@link #serializeBigIntMagnitudeToBytes(int[], byte[], int)} and then
-   * invoking {@link GemFireXDUtils#addBytesToBucketHash(byte[], int)} on the result.
+   * <code></code>InternalDataSerializer#serializeBigIntMagnitudeToBytes</code>
+   * and then invoking {@link #addBytesToBucketHash} on the result.
    */
   public static int computeHashCode(final int[] magnitude, int hash, 
       int formatId) {
@@ -909,25 +908,6 @@ public abstract class ResolverUtils extends ClientResolverUtils {
       }
     }
     return getChars(s, slen);
-  }
-
-  /**
-   * Get the internal char[] handle for this string so use with extreme care.
-   * Returns null if it cannot get the handle for some reason, or if the string
-   * does not start at zero offset.
-   */
-  public static char[] getInternalCharsOnly(final String s) {
-    if (stringChars != null) {
-      try {
-        final char[] chars = (char[])stringChars.get(s);
-        if (chars != null && chars.length == s.length()) {
-          return chars;
-        }
-      } catch (Exception ex) {
-        throw ClientSharedUtils.newRuntimeException("unexpected exception", ex);
-      }
-    }
-    return null;
   }
 
   /**

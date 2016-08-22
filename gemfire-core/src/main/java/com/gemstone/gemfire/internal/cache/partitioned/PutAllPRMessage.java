@@ -460,7 +460,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
       }
     }
     if (!notificationOnly) {
-      bucketRegion.putAllLock.readLock().lock();
+      //bucketRegion.columnBatchFlushLock.readLock().lock();
       try {
         if (putAllPRData.length > 0) {
           if (this.posDup && bucketRegion.getConcurrencyChecksEnabled()) {
@@ -647,7 +647,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           if (tx == null) {
             bucketRegion.removeAndNotifyKeys(keys);
           }
-          bucketRegion.putAllLock.readLock().unlock();
+          //bucketRegion.columnBatchFlushLock.readLock().unlock();
           // TODO: For tx it may change.
           // TODO: For concurrent putALLs, this will club other putall as well
           // the putAlls in worst case so cachedbatchsize may be large?

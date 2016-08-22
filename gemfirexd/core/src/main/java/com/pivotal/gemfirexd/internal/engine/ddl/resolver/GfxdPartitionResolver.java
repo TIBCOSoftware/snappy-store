@@ -18,16 +18,7 @@
 package com.pivotal.gemfirexd.internal.engine.ddl.resolver;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.Vector;
+import java.util.*;
 
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.Declarable;
@@ -40,15 +31,7 @@ import com.gemstone.gemfire.cache.execute.FunctionContext;
 import com.gemstone.gemfire.cache.execute.RegionFunctionContext;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
-import com.gemstone.gemfire.internal.cache.BucketAdvisor;
-import com.gemstone.gemfire.internal.cache.CacheMap;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.EntryOperationImpl;
-import com.gemstone.gemfire.internal.cache.InternalPartitionResolver;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.Token;
-import com.gemstone.gemfire.internal.cache.WrappedCallbackArgument;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.partitioned.RegionAdvisor;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.pivotal.gemfirexd.internal.catalog.IndexDescriptor;
@@ -107,6 +90,8 @@ public abstract class GfxdPartitionResolver implements
   protected String masterTable;
 
   protected GemFireContainer gfContainer;
+
+  protected int numBuckets;
 
   protected GfxdPartitionResolver masterResolver;
 
@@ -334,6 +319,8 @@ public abstract class GfxdPartitionResolver implements
       this.gfContainer = (GemFireContainer)Misc.getRegionForTableByPath(
           Misc.getFullTableName(td, null), true).getUserAttribute();
     }
+    this.numBuckets = this.gfContainer.getRegionAttributes()
+        .getPartitionAttributes().getTotalNumBuckets();
   }
 
   public abstract void setColumnInfo(TableDescriptor td, Activation activation)
@@ -749,7 +736,7 @@ public abstract class GfxdPartitionResolver implements
       // now get the bucket information and set in the single hop info object
       PartitionedRegion region = (PartitionedRegion)this.gfContainer
           .getRegion();
-      int numBuckets = region.getPartitionAttributes().getTotalNumBuckets();
+      final int numBuckets = this.numBuckets;
       int redundancy = region.getPartitionAttributes().getRedundantCopies();
       RegionAdvisor rAdvisor = region.getRegionAdvisor();
       ArrayList bansiList = new ArrayList();
@@ -810,7 +797,6 @@ public abstract class GfxdPartitionResolver implements
       // now get the bucket information and set in the single hop info object
       PartitionedRegion region = (PartitionedRegion)this.gfContainer
           .getRegion();
-      int numBuckets = region.getPartitionAttributes().getTotalNumBuckets();
       RegionAdvisor rAdvisor = region.getRegionAdvisor();
       // try to create all buckets if not already created.
       for (int bid = 0; bid < numBuckets; bid++) {

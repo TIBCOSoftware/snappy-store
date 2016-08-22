@@ -372,7 +372,6 @@ public class CacheServerLauncher  {
     final Properties props = new Properties();
     options.put(PROPERTIES, props);
 
-    boolean hasSecRndArg = false;
     for (final String arg : args) {
       if(arg == null) {
         continue;
@@ -425,8 +424,6 @@ public class CacheServerLauncher  {
           this.initialHeapSize = vmArg.substring(4);
         } else if (vmArg.startsWith(MAX_PERM_SIZE)) {
           this.maxPermGenSize = vmArg;
-        } else if (vmArg.startsWith("-Djava.security.egd")) {
-          hasSecRndArg = true;
         } else if (vmArg.startsWith(thriftArg = ("-D"
             + SystemProperties.getServerInstance().getSystemPropertyNamePrefix()
             + ClientSharedUtils.USE_THRIFT_AS_DEFAULT_PROP))) {
@@ -480,10 +477,6 @@ public class CacheServerLauncher  {
     // configure commons-logging to use Log4J logging
     vmArgs.add("-Dorg.apache.commons.logging.Log=" +
         "org.apache.commons.logging.impl.Log4JLogger");
-
-    if (!hasSecRndArg && NativeCalls.getInstance().getOSType().isPOSIX()) {
-      vmArgs.add("-Djava.security.egd=file:/dev/./urandom");
-    }
 
     vmArgs = postProcessOptions(vmArgs, options);
     options.put(VMARGS, vmArgs);

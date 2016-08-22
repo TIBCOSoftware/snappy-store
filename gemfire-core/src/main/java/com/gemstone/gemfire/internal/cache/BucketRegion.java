@@ -263,9 +263,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private volatile AtomicLong5 eventSeqNum = null;
 
+  static final UUID zeroUUID = new UUID(0, 0);
+
   private volatile UUID batchUUID = null;
 
-  public ReentrantReadWriteLock putAllLock = new ReentrantReadWriteLock();
+  public final ReentrantReadWriteLock columnBatchFlushLock =
+      new ReentrantReadWriteLock();
 
   public final AtomicLong5 getEventSeqNum() {
     return eventSeqNum;
@@ -721,7 +724,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   public final boolean createAndInsertCachedBatch(boolean forceFlush) {
-    final ReentrantReadWriteLock.WriteLock sync = putAllLock.writeLock();
+    // do nothing if a flush is already in progress
+    if (this.columnBatchFlushLock.isWriteLocked()) {
+      return false;
+    }
+    final ReentrantReadWriteLock.WriteLock sync =
+        this.columnBatchFlushLock.writeLock();
     sync.lock();
     try {
       return internalCreateAndInsertCachedBatch(forceFlush);
@@ -792,7 +800,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   private synchronized void generateAndSetBatchIDIfNULL() {
-    if (this.batchUUID == null || this.batchUUID.equals(new UUID(0, 0))) {
+    if (this.batchUUID == null || this.batchUUID.equals(zeroUUID)) {
       this.batchUUID = UUID.randomUUID();
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
@@ -813,8 +821,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private Set createCachedBatchAndPutInColumnTable() {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    Set keysToDestroy = callback.createCachedBatch(this, this.batchUUID, this.getId());
-    return keysToDestroy;
+    return callback.createCachedBatch(this, this.batchUUID, this.getId());
   }
 
   // TODO: Suranjan Not optimized way to destroy all entries, as changes at level of RVV required.

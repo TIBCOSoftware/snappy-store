@@ -335,7 +335,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     // parallel wan is enabled
     private long tailKey = 0L;
 
-    private UUID batchUUID = new UUID(0,0);
+    private UUID batchUUID = BucketRegion.zeroUUID;
 
     public VersionTag versionTag;
 

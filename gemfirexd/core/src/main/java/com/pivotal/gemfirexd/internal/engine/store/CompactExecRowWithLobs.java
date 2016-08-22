@@ -83,7 +83,7 @@ public final class CompactExecRowWithLobs extends AbstractCompactExecRow {
    * Construct a CompactExecRowWithLobs with the given RowFormatter and with all
    * null values.
    */
-  CompactExecRowWithLobs(final RowFormatter rf) {
+  private CompactExecRowWithLobs(final RowFormatter rf) {
     super(rf);
     this.source = null; // treated as all null valued fields
   }

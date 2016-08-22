@@ -1,8 +1,24 @@
-plugins {
-  id "ca.coglinc.javacc" version "2.3.1"
-}
+/*
+ * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
-apply plugin: 'com.github.johnrengelman.shadow'
+plugins {
+  id 'ca.coglinc.javacc' version '2.3.1'
+  id 'com.github.johnrengelman.shadow' version '1.2.3'
+}
 
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
@@ -15,7 +31,7 @@ dependencies {
   provided "com.pivotal:pxf-api:${pxfVersion}"
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
-  compile 'javax.servlet:javax.servlet-api:3.0.1'
+  compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
 
   provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
@@ -23,8 +39,9 @@ dependencies {
   provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
   provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${jerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${jerseyVersion}"
+  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
@@ -32,27 +49,36 @@ dependencies {
 
 // move javacc output directory to a place where IDEA can easily register
 def javaccOut = 'src/generated/javacc'
-compileJavacc.outputDirectory = file(javaccOut)
 
 sourceSets.main.java.srcDirs = [ 'src/main/java', javaccOut, 'src/drda/java' ]
 
 // update javacc generated files as per in original derby build
-compileJavacc.doLast {
-  def grammarDir = 'com/pivotal/gemfirexd/internal/impl/sql/compile'
-  def matcherDir = 'com/pivotal/gemfirexd/internal/engine/sql/compile'
+compileJavacc {
+  arguments = [ grammar_encoding: 'UTF-8' ]
+  outputDirectory = file(javaccOut)
 
-  println 'Replacing all occurrances of GetImage() to GetImage(jjmatchedKind)'
+  doLast {
+    def grammarDir = 'com/pivotal/gemfirexd/internal/impl/sql/compile'
+    def matcherDir = 'com/pivotal/gemfirexd/internal/engine/sql/compile'
 
-  replaceRegex("${compileJavacc.outputDirectory}/${grammarDir}", 'SQLParser.java',
-      'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
-  replaceRegex("${compileJavacc.outputDirectory}/${grammarDir}", 'SQLParserTokenManager.java',
-      'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
+    println 'Replacing all occurrances of GetImage() to GetImage(jjmatchedKind)'
 
-  replaceRegex("${compileJavacc.outputDirectory}/${matcherDir}", 'SQLMatcher.java',
-      'GetImage\\(\\)', "GetImage(jjmatchedKind)")
-  replaceRegex("${compileJavacc.outputDirectory}/${matcherDir}", 'SQLMatcherTokenManager.java',
-      'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
+    replaceRegex("${compileJavacc.outputDirectory}/${grammarDir}", 'SQLParser.java',
+        'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
+    replaceRegex("${compileJavacc.outputDirectory}/${grammarDir}", 'SQLParserTokenManager.java',
+        'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
+
+    replaceRegex("${compileJavacc.outputDirectory}/${matcherDir}", 'SQLMatcher.java',
+        'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
+    replaceRegex("${compileJavacc.outputDirectory}/${matcherDir}", 'SQLMatcherTokenManager.java',
+        'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
+  }
 }
+
+task deleteGenerated(type: Delete) {
+  delete javaccOut
+}
+clean.dependsOn deleteGenerated
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
   def infoDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/info")
@@ -183,12 +209,12 @@ task createClassSizeCatalog {
     "${internalOut}/iapi/services/cache/SizedCacheable.class" ]
   outputs.file "src/main/java/${internalDir}/iapi/services/cache/ClassSizeCatalog.java"
 
-  def internalCP = "com.pivotal.gemfirexd.internal"
+  def internalCP = 'com.pivotal.gemfirexd.internal'
   javaexec {
     main = 'org.apache.derbyBuild.ClassSizeCrawler'
     classpath = sourceSets.main.runtimeClasspath
     // TODO: SW: incomplete code ...
-    args = [ "-DWS=${workspace}", "-DclassDir=${out.dir}", "-Dout=${derby.engine.src.dir}/${derby.dir}/iapi/services/cache/ClassSizeCatalog.java", "-Dprefix.1=${internalCP}.iapi.types", "-Dprefix.2=com.pivotal.gemfirexd.internal.impl", com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor" ]
+    args = [ "-DWS=${workspace}", "-DclassDir=${out.dir}", "-Dout=${derby.engine.src.dir}/${derby.dir}/iapi/services/cache/ClassSizeCatalog.java", "-Dprefix.1=${internalCP}.iapi.types", '-Dprefix.2=com.pivotal.gemfirexd.internal.impl, com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor' ]
   }
 }
 */

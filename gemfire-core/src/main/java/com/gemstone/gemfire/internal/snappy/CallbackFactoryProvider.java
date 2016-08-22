@@ -30,7 +30,8 @@ public abstract class CallbackFactoryProvider {
   private static StoreCallbacks storeCallbacks = new StoreCallbacks() {
 
     @Override
-    public Set createCachedBatch(BucketRegion region, UUID batchID, int bucketID) {
+    public Set<Object> createCachedBatch(BucketRegion region, UUID batchID,
+        int bucketID) {
       return null;
     }
 
@@ -40,13 +41,13 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public int getHashCodeSnappy(Object dvd) {
+    public int getHashCodeSnappy(Object dvd, int numPartitions) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
 
     @Override
-    public int getHashCodeSnappy(Object[] dvds) {
+    public int getHashCodeSnappy(Object[] dvds, int numPartitions) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
@@ -65,5 +66,4 @@ public abstract class CallbackFactoryProvider {
   public static StoreCallbacks getStoreCallbacks() {
     return storeCallbacks;
   }
-
 }

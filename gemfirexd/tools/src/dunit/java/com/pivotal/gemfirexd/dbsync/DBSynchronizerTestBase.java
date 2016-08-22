@@ -109,8 +109,6 @@ public class DBSynchronizerTestBase extends DistributedSQLTestBase{
 
     Statement derbyStmt = derbyConn.createStatement();
 
-    derbyStmt.execute("drop procedure validateTestEnd ");
-    derbyConn.commit();
     org.apache.derby.iapi.services.monitor.Monitor.getStream().println(
         "<ExpectedException action=add>lock could not be obtained"
             + "</ExpectedException>");
@@ -132,6 +130,10 @@ public class DBSynchronizerTestBase extends DistributedSQLTestBase{
         "<ExpectedException action=remove>lock could not be obtained"
             + "</ExpectedException>");
     derbyConn.commit();
+
+    derbyStmt.execute("drop procedure validateTestEnd ");
+    derbyConn.commit();
+
     derbyConn.close();
   }
 

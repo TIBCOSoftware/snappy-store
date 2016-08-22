@@ -64,7 +64,7 @@ import com.pivotal.gemfirexd.internal.iapi.tools.i18n.PagedLocalizedOutput;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.RedirectedLocalizedOutput;
 import com.pivotal.gemfirexd.internal.impl.tools.ij.ijException;
 import com.pivotal.gemfirexd.internal.shared.common.StopWatch;
-import scala.tools.jline.console.ConsoleReader;
+import jline.console.ConsoleReader;
 
 /**
 	

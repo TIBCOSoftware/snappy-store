@@ -23,9 +23,11 @@ import java.util.concurrent.CountDownLatch;
 
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.lang.StringUtils;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.HandlerCollection;
-import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.webapp.WebAppContext;
 
 /**
@@ -86,15 +88,16 @@ public class JettyHelper {
     return jetty;
   }
 
-  private static void setAddressAndPort(final Server jetty,
+  private static void setAddressAndPort(final Server jettyServer,
       final String bindAddress, final int port) {
-    SelectChannelConnector connector = new SelectChannelConnector();
+    HttpConfiguration httpConfig = new HttpConfiguration();
+    ServerConnector connector = new ServerConnector(jettyServer, new HttpConnectionFactory(httpConfig));
     connector.setPort(port);
 
     if (!StringUtils.isBlank(bindAddress)) {
       connector.setHost(bindAddress);
     }
-    jetty.addConnector(connector);
+    jettyServer.addConnector(connector);
   }
 
   private static String getWebAppBaseDirectory(final String context) {

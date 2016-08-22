@@ -985,7 +985,7 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
   /**
    * Get a clone of a DataValueDescriptor from an ExecRow.
    *
-   * @param columnPosition (1 based)
+   * @param position (1 based)
    */
   public final DataValueDescriptor cloneColumn(int position) {
     try {

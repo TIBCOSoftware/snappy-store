@@ -39,11 +39,11 @@ import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.SerializableDelta;
-import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
-import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.engine.store.RegionEntryUtils;
 import com.pivotal.gemfirexd.internal.engine.store.RegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
+import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
+import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
@@ -131,7 +131,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
     @Override
     public final int computeHashCode(final Object obj, final long offsetAndWidth) {
       final byte[] bytes = (byte[])obj;
-      final int width = (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+      final int width = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return ResolverUtils.addBytesToHash(bytes, offset, width, 0);
     }
@@ -143,7 +143,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
       // right side object is the incoming bytes
       final byte[] bytes = (byte[])obj1;
       final byte[] otherBytes = (byte[])obj2;
-      final int width = (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+      final int width = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       if (bytes.length == width) {
         for (int index = 0; index < bytes.length; ++index) {
@@ -391,8 +391,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
               .getTypeId().getTypeFormatId();
           routingObject = ResolverUtils.addBytesToBucketHash(kbytes,
               (int)(offsetAndWidth >>> Integer.SIZE),
-              (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK), 0, 
-              typeId);
+              (int)offsetAndWidth, 0, typeId);
         }
       }
       else if (offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT) {
@@ -449,8 +448,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
                 .getType().getTypeId().getTypeFormatId();
             routingObject = ResolverUtils.addBytesToBucketHash(vbytes,
                 (int)(offsetAndWidth >>> Integer.SIZE),
-                (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK), 0,
-                typeId);
+                (int)offsetAndWidth, 0, typeId);
           }
         }
         else if (offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT) {

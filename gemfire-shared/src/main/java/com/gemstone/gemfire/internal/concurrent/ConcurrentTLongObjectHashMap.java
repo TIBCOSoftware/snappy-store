@@ -28,7 +28,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
-import com.gemstone.gnu.trove.*;
+import com.gemstone.gnu.trove.HashingStats;
+import com.gemstone.gnu.trove.PrimeFinder;
+import com.gemstone.gnu.trove.THash;
+import com.gemstone.gnu.trove.TLongObjectProcedure;
+import com.gemstone.gnu.trove.TLongProcedure;
+import com.gemstone.gnu.trove.TObjectProcedure;
 
 /**
  * A concurrent version of Trove's <tt>TLongObjectHashMap</tt>.

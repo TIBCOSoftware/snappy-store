@@ -43,7 +43,7 @@ package com.pivotal.gemfirexd.internal.impl.tools.ij;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.*;
 import com.pivotal.gemfirexd.internal.shared.common.StopWatch;
 import com.pivotal.gemfirexd.internal.tools.JDBCDisplayUtil;
-import scala.tools.jline.console.ConsoleReader;
+import jline.console.ConsoleReader;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;

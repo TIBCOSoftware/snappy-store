@@ -637,22 +637,24 @@ public abstract class Misc {
     return hash;
   }
 
-  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor dvd) {
+  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor dvd,
+      int numPartitions) {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    int hash = 0;
     if (dvd != null) {
-      hash = callback.getHashCodeSnappy(dvd);
+      return callback.getHashCodeSnappy(dvd, numPartitions);
+    } else {
+      return 0;
     }
-    return hash;
   }
 
-  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor[] dvds) {
+  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor[] dvds,
+      int numPartitions) {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    int hash = 0;
     if (dvds != null) {
-      hash = callback.getHashCodeSnappy(dvds);
+      return callback.getHashCodeSnappy(dvds, numPartitions);
+    } else {
+      return 0;
     }
-    return hash;
   }
 
   // added by jing for processing the exception

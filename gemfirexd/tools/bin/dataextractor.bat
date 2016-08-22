@@ -8,7 +8,7 @@
 @goto done
 :gfxdok
 
-@set GFXD_JARS=%gfxd%\lib\snappydata-store-__VERSION__.jar;%gfxd%\lib\snappydata-store-tools-__VERSION__.jar;%gfxd%\lib\snappydata-store-client-__VERSION__.jar;%gfxd%\lib\pulse-dependencies.jar
+@set GFXD_JARS=%gfxd%\lib\snappydata-store-__VERSION__.jar;%gfxd%\lib\snappydata-tools-__VERSION__.jar;%gfxd%\lib\snappydata-client-__VERSION__.jar;%gfxd%\lib\pulse-dependencies.jar
 
 @if defined CLASSPATH set GFXD_JARS=%GFXD_JARS%;%CLASSPATH%
 

@@ -14,6 +14,25 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package sql.datagen;
 
 import java.math.BigDecimal;
@@ -23,11 +42,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Random;
 
-/**
- * 
- * @author Rahul Diyewar
- */
-
 public class RandomValueGenerator {
   private Random rand;
   private int totalThreads;
@@ -35,7 +49,7 @@ public class RandomValueGenerator {
   public RandomValueGenerator() {
     DataGenerator datagen = DataGenerator.getDataGenerator();
     totalThreads = datagen.getTotalThreads();
-    rand = DataGenerator.rand;
+    rand = datagen.rand;
   }
 
   public Object generateValues(TableMetaData table, ColumnMetaData column,
@@ -50,7 +64,7 @@ public class RandomValueGenerator {
     Long lastNum = column.getLastNum(tid);
     Long newNum = lastNum;
     if (lastNum == null) {
-      newNum = new Long(tid);
+      newNum = (long)tid;
     } else {
       if (isPrimary || isUnique) {
         newNum = getNextNumber(lastNum.longValue(), totalThreads);
@@ -185,7 +199,7 @@ public class RandomValueGenerator {
 
   protected String generateString(int len, boolean absoluteLength) {
     if (len < 1)
-      return new String();
+      return "";
   
     if (len > 32000) {
       len = 32000;
@@ -193,11 +207,11 @@ public class RandomValueGenerator {
     if (!absoluteLength)
       len = rand.nextInt(len) + 1;
     
-    String chars = new String();
+    StringBuilder chars = new StringBuilder(len);
     for (int i = 0; i < len; i++) {
-      chars += chooseChars[rand.nextInt(chooseChars.length)];
+      chars.append(chooseChars[rand.nextInt(chooseChars.length)]);
     }
-    return new String(chars);
+    return chars.toString();
   }
 
   protected char[] generateBytes(int len, boolean absoluteLength) {
@@ -220,31 +234,28 @@ public class RandomValueGenerator {
   protected Date generateDate(long offset) {
     final SimpleDateFormat formatterTimestamp = new SimpleDateFormat(
         getFormatterTimestamp());
-    java.util.Date baseDate = null;
+    java.util.Date baseDate;
     try {
       baseDate = formatterTimestamp.parse(getBaseTime());
     } catch (ParseException e) {
       throw new RuntimeException("Error is formating Date ", e);
     }
-    long newTime = baseDate.getTime() + (long) offset;
-    Date newDate = new Date(newTime);
-    return newDate;
+    long newTime = baseDate.getTime() + offset;
+    return new Date(newTime);
   }
 
   protected Timestamp generateTimestamp(long offset) {
 
     final SimpleDateFormat formatterTimestamp = new SimpleDateFormat(
         getFormatterTimestamp());
-    java.util.Date baseDate = null;
+    java.util.Date baseDate;
     try {
       baseDate = formatterTimestamp.parse(getBaseTime());
     } catch (ParseException e) {
       throw new RuntimeException("Error is formating TimeStamp ", e);
     }
-    long newTime = baseDate.getTime() + (long) offset;
-    Timestamp newDate = new Timestamp(newTime);
-
-    return newDate;
+    long newTime = baseDate.getTime() + offset;
+    return new Timestamp(newTime);
   }
 
   final char[] chooseInts = new char[] { '0', '1', '2', '3', '4', '5', '6',
@@ -260,16 +271,12 @@ public class RandomValueGenerator {
         major = rand.nextInt(major) + 1;
     }
 
-    String majorChars = new String();
+    StringBuilder num = new StringBuilder(major);
     if (major > 0) {
       for (int i = 0; i < major; i++) {
-        majorChars += chooseInts[rand.nextInt(chooseInts.length)];
+        num.append(chooseInts[rand.nextInt(chooseInts.length)]);
       }
-    } else {
-      majorChars += "";
     }
-
-    String num = majorChars;
 
     if (prec > 0) {
       if (!absoluteLength)
@@ -280,9 +287,9 @@ public class RandomValueGenerator {
         precChars[i] = chooseInts[rand.nextInt(chooseInts.length)];
       }
 
-      num += "." + new String(precChars);
+      num.append('.').append(precChars);
     }
-    return num;
+    return num.toString();
   }
 
   protected long getNextNumber(long lastNum, int totalThreads) {

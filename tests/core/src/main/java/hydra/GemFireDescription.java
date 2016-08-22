@@ -1375,15 +1375,17 @@ implements Serializable {
       }
       // add default classPath -- test classes, junit,  and product jar
       classPath.add(mhd.getTestDir());
-      classPath.add(mhd.getTestDir()  + mhd.getFileSep() + "junit.jar");
-      if ( mhd.getExtraTestDir() != null ) {
-        classPath.add( mhd.getExtraTestDir() );
+      classPath.add(mhd.getTestDir() + mhd.getFileSep() + "junit.jar");
+      if (mhd.getExtraTestDir() != null) {
+        classPath.add(mhd.getExtraTestDir());
       }
-      if ( mhd.getGemFireHome() != null ) {
+      if (mhd.getGemFireHome() != null) {
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib"
                 + mhd.getFileSep() + "snappydata-store-" +
                 ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib");
+        classPath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
+                "build-artifacts" + hd.getFileSep() + "scala-2.11" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
       }
       // set classpath at last
       Vector expandedClassPath = EnvHelper.expandEnvVars(classPath, mhd);

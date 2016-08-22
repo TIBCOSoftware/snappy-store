@@ -20,24 +20,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.net.InetAddress;
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
-
-import org.apache.derby.drda.NetworkServerControl;
-import org.apache.derby.iapi.error.ShutdownException;
 
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
@@ -49,15 +38,16 @@ import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.callbacks.Event;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.tools.GfxdSystemAdmin;
-
 import io.snappydata.test.dunit.RMIException;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
+import org.apache.derby.drda.NetworkServerControl;
+import org.apache.derby.shared.common.error.ShutdownException;
 
 @SuppressWarnings("serial")
 public class SerialDBSynchronizerPart1DUnit extends DBSynchronizerTestBase {

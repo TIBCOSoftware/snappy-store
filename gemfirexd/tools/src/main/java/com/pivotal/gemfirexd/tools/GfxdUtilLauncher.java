@@ -34,8 +34,8 @@ import com.pivotal.gemfirexd.internal.tools.ij;
 import com.pivotal.gemfirexd.tools.internal.JarTools;
 import com.pivotal.gemfirexd.tools.internal.MiscTools;
 import com.pivotal.gemfirexd.tools.internal.GfxdServerLauncher;
-import scala.tools.jline.console.ConsoleReader;
-import scala.tools.jline.console.history.FileHistory;
+import jline.console.ConsoleReader;
+import jline.console.history.FileHistory;
 
 /**
  * Extends GemFireUtilLauncher to map the GemFireXD utilities to their
@@ -198,7 +198,7 @@ public class GfxdUtilLauncher extends GemFireUtilLauncher {
     if (System.console() != null) {
       try {
         // use jline to go into the character reading mode
-        if (!"scala.tools.jline.UnsupportedTerminal".equals(System
+        if (!"jline.UnsupportedTerminal".equals(System
             .getProperty("jline.terminal"))) {
           final ConsoleReader reader = new ConsoleReader();
           Runtime.getRuntime().addShutdownHook(new Thread() {

@@ -17,32 +17,39 @@
 
 package com.pivotal.gemfirexd.internal.engine.distributed.message;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.cache.DiskAccessException;
+import com.gemstone.gemfire.cache.RegionDestroyedException;
+import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.ReplyException;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 import com.pivotal.gemfirexd.internal.snappy.SparkSQLExecute;
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Route query to Snappy Spark Lead node.
@@ -131,8 +138,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
                 "LeadNodeExecutorMsg.execute: Sent Last result ");
       }
     } catch (Exception ex) {
-    // Catch all exceptions and convert so can be caugh at XD side
-    Throwable cause = ex;
+      // Catch all exceptions and convert so can be caught at XD side
+      Throwable cause = ex;
       while (cause != null) {
         if (cause.getClass().getName().contains("AnalysisException")) {
           throw StandardException.newException(
@@ -156,6 +163,40 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       }
       throw ex;
     }
+  }
+
+  @Override
+  protected void executeFunction(boolean enableStreaming)
+      throws StandardException, SQLException {
+    try {
+      super.executeFunction(enableStreaming);
+    } catch (RuntimeException re) {
+      throw handleLeadNodeException(re);
+    }
+  }
+
+  public static RuntimeException handleLeadNodeException(
+      RuntimeException re) {
+    Throwable cause = re;
+    if (re instanceof GemFireXDRuntimeException ||
+        re instanceof FunctionException ||
+        re instanceof FunctionExecutionException ||
+        re instanceof ReplyException) {
+      cause = re.getCause();
+    }
+    if (cause instanceof RegionDestroyedException) {
+      RegionDestroyedException rde = (RegionDestroyedException)cause;
+      // don't mark as remote so that no retry is done (SNAP-961)
+      // a top-level exception can only have been from lead node itself
+      if (rde.isRemote()) rde.setNotRemote();
+    }
+    if (cause instanceof DiskAccessException) {
+      DiskAccessException dae = (DiskAccessException)cause;
+      // don't mark as remote so that no retry is done (SNAP-961)
+      // a top-level exception can only have been from lead node itself
+      if (dae.isRemote()) dae.setNotRemote();
+    }
+    return re;
   }
 
   @Override

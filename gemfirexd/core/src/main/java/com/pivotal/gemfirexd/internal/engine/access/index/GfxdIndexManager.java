@@ -4550,7 +4550,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
   }
 
-  public List<ConglomerateDescriptor> getIndexConglomerateDescriptors() {
+  public final List<ConglomerateDescriptor> getIndexConglomerateDescriptors() {
     return this.indexDescs;
   }
 

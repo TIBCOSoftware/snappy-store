@@ -347,7 +347,6 @@ public class GFJGBasicAdapter implements GFBasicAdapter {
 
     // GemStoneAddition
     byte gfFlags = in.readByte();
-    log.info("read gfFlags " + gfFlags);
     if ( (gfFlags & CACHE_OP) != 0 )
       msg.isCacheOperation = true;
     if ( (gfFlags & HIGH_PRIORITY) != 0 )

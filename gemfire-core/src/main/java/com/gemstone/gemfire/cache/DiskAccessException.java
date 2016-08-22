@@ -128,6 +128,10 @@ public class DiskAccessException extends CacheRuntimeException {
     return this.isRemote;
   }
 
+  public final void setNotRemote() {
+    this.isRemote = false;
+  }
+
   // Overrides to set "isRemote" flag after deserialization
 
   private synchronized void writeObject(final java.io.ObjectOutputStream out)

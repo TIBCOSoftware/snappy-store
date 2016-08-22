@@ -197,7 +197,7 @@ implements Serializable {
             ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
     classpath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-            "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
+            "build-artifacts" + hd.getFileSep() + "scala-2.11" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
 
     // product jars for this version
     classpath.add(gfh + hd.getFileSep() + "lib"

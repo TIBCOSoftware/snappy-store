@@ -2772,7 +2772,7 @@ public class EntryEventImpl extends KeyInfo implements
   }
 
   protected long tailKey = -1L;
-  protected UUID batchUUID = new UUID(0, 0);
+  protected UUID batchUUID = BucketRegion.zeroUUID;
 
   /**
    * Return true if this event came from a server by the client doing a get.
@@ -3324,7 +3324,7 @@ public class EntryEventImpl extends KeyInfo implements
     this.deltaBytes = null;
     this.txState = null;
     this.tailKey = -1L;
-    this.batchUUID = new UUID(0,0);
+    this.batchUUID = BucketRegion.zeroUUID;
     this.versionTag = null;
     if (!keepLastModifiedTime) {
       this.entryLastModified = -1L;
