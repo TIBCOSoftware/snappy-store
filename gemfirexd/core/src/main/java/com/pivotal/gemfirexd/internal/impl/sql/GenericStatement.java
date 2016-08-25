@@ -69,7 +69,6 @@ import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
 import com.pivotal.gemfirexd.internal.engine.reflect.GemFireActivationClass;
 import com.pivotal.gemfirexd.internal.engine.reflect.SnappyActivationClass;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -101,8 +100,10 @@ import com.pivotal.gemfirexd.internal.impl.sql.compile.ExecSPSNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.InsertNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
 import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineArbiter;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
 
 //GemStone changes BEGIN
 
@@ -759,13 +760,23 @@ public class GenericStatement
                                           qinfo = qt.computeQueryInfo(qic);
                                           // Only rerouting selects to lead node. Inserts will be handled separately.
                                           // The below should be connection specific.
-                                          if (routeQuery && qinfo != null && qinfo.isSelect() && !isPreparedStatement()) {
-                                            if (SnappyActivation.isColumnTable((DMLQueryInfo)qinfo, false)) {
-                                              return getPreparedStatementForSnappy(true, statementContext, lcc,
-                                                  false, checkCancellation);
-                                            }
-                                          }
+                                          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION ,
+                                              "ExecutionEngine::provided in QueryHint is " + cc.getExecutionEngine().name());
 
+                                          if ((routeQuery && qinfo != null && qinfo.isSelect()
+                                              && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)
+                                              && (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
+                                              (new ExecutionEngineArbiter().getExecutionEngine((DMLQueryInfo)qinfo) == ExecutionEngine.SPARK))
+                                              ) {
+                                            GenericPreparedStatement gps = getPreparedStatementForSnappy(true,
+                                                statementContext, lcc, false, checkCancellation);
+
+                                            if (observer != null) {
+                                              observer.queryInfoObjectFromOptmizedParsedTree(qinfo, gps, lcc);
+                                            }
+
+                                            return gps;
+                                          }
                                           if (qinfo != null && qinfo.isInsert()) {
                                             qinfo = handleInsertAndInsertSubSelect(qinfo, qt);
                                           }
