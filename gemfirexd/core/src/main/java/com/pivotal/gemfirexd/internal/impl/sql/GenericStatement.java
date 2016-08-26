@@ -766,6 +766,8 @@ public class GenericStatement
 																										false, checkCancellation);
 																							}
 																							else if (qinfo.isUpdate() | qinfo.isDelete()) {
+																								// Temporarily using the below sqlstate as this unsupported operation
+																								// will be supported soon in future
 																								throw StandardException.newException(SQLState.LANG_INVALID_OPERATION_ON_VIEW,
 																										"UPDATE/DELETE (Column Table) ", qinfo.getFullTableName());
 																							}
