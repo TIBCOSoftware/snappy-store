@@ -763,7 +763,8 @@ public class GenericStatement
                                           if ((routeQuery && qinfo != null && qinfo.isSelect()
                                               && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)
                                               && (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
-                                              (new ExecutionEngineArbiter().getExecutionEngine((DMLQueryInfo)qinfo) == ExecutionEngine.SPARK))
+                                              (new ExecutionEngineArbiter().getExecutionEngine((DMLQueryInfo)qinfo)
+                                                 == ExecutionEngine.SPARK))
                                               ) {
                                             GenericPreparedStatement gps = getPreparedStatementForSnappy(true,
                                                 statementContext, lcc, false, checkCancellation);
