@@ -16,40 +16,60 @@
  */
 
 package com.pivotal.gemfirexd.internal.impl.sql.rules;
+
+import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfo;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
+import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 class AnyOneOfExecutionEngineRule extends ExecutionEngineRule {
-  boolean executeOnSpark = false;
+  private enum RuleName {
+    DISTINCT_QUERY_RULE,
+    GROUPBY_QUERY_RULE,
+    UNION_OR_INTERSECT_QUERY_RULE,
+    None
+  }
+
+  RuleName rule = RuleName.None;
 
   @Override
   protected boolean findExecutionEngine(DMLQueryInfo qInfo) {
-    
+
     //check for distinct and special case of outer join
-    if (!executeOnSpark && qInfo.isQuery(QueryInfo.HAS_DISTINCT, QueryInfo.HAS_DISTINCT_SCAN)
+    if (rule == RuleName.None &&
+        qInfo.isQuery(QueryInfo.HAS_DISTINCT, QueryInfo.HAS_DISTINCT_SCAN)
         || qInfo.isOuterJoinSpecialCase()) {
-      executeOnSpark = true;
+      rule = RuleName.DISTINCT_QUERY_RULE;
     }
 
     //check for the "group by" queries
-    if (!executeOnSpark && qInfo.isQuery(QueryInfo.HAS_GROUPBY)) {
+    if (rule == RuleName.None && qInfo.isQuery(QueryInfo.HAS_GROUPBY)) {
       // it is a group by query . need to check if it has indexes in the where clause.
       if (qInfo.getPrimaryKey() == null && qInfo.getLocalIndexKey() == null) {
-        executeOnSpark = true;
+        rule = RuleName.GROUPBY_QUERY_RULE;
       }
     }
 
-    return executeOnSpark;
+
+    if (rule == RuleName.None &&
+        (qInfo.hasUnionNode() || qInfo.hasIntersectOrExceptNode())) {
+      rule = RuleName.GROUPBY_QUERY_RULE;
+    }
+
+
+    return (rule == RuleName.None ? false : true);
   }
 
   @Override
   public ExecutionEngine getExecutionEngine() {
-    if (executeOnSpark)
-      return ExecutionEngine.SPARK;
-    else
+    if (rule == RuleName.None) {
       return ExecutionEngine.NOT_DECIDED;
-  }
+    }
 
+    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+        "AnyOneOfExecutionEngineRule:" + rule.name() + ":SPARK");
+    return ExecutionEngine.SPARK;
+  }
 }
 

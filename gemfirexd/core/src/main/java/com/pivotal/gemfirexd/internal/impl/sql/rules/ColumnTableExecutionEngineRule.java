@@ -17,8 +17,10 @@
 
 package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
+import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
+import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 
 class ColumnTableExecutionEngineRule extends ExecutionEngineRule {
@@ -35,8 +37,11 @@ class ColumnTableExecutionEngineRule extends ExecutionEngineRule {
 
   @Override
   public ExecutionEngine getExecutionEngine() {
-    if (executeOnSpark)
+    if (executeOnSpark) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "ColumnTableExecutionEngineRule.getExecutionEngine: SPARK");
       return ExecutionEngine.SPARK;
+    }
     else
        return ExecutionEngine.NOT_DECIDED;
   }

@@ -72,6 +72,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.FromBaseTable;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.SelectNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
 
 // Borrowed the idea from the current GFE OQL testing system
 
@@ -1678,4 +1679,11 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
     }
   }
 
+  @Override
+  public void testExecutionEngineDecision(QueryInfo queryInfo, ExecutionEngineRule.ExecutionEngine engine, String queryText) {
+    final GemFireXDQueryObserver[] observers = this.observerCollection;
+    for (GemFireXDQueryObserver observer : observers) {
+      observer.testExecutionEngineDecision(queryInfo, engine, queryText);
+    }
+  }
 }

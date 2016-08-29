@@ -19,6 +19,8 @@ package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
 import java.util.LinkedList;
 
+import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
+import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -26,6 +28,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.Executi
 
 public class ExecutionEngineArbiter {
   LinkedList<ExecutionEngineRule> executionEngineRules = new LinkedList<>();
+
 
   public ExecutionEngineArbiter() {
     //Rules That needs to be applied regardless of the GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK flag
@@ -36,9 +39,7 @@ public class ExecutionEngineArbiter {
     if (Boolean.parseBoolean(
         PropertyUtil.getSystemProperty(
             GfxdConstants.GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK , "true"))) {
-      executionEngineRules.add(new ColumnTableExecutionEngineRule());
       executionEngineRules.add(new ReplicatedTableExecutionEngineRule());
-      executionEngineRules.add(new UnionOrIntersectExecutionEngineRule());
       executionEngineRules.add(new AnyOneOfExecutionEngineRule());
     }
   }
@@ -46,13 +47,14 @@ public class ExecutionEngineArbiter {
   // These rules are applied recursively for each queryInfo
   // and subQueryInfo
   public ExecutionEngine getExecutionEngine(DMLQueryInfo qInfo) {
-        for (ExecutionEngineRule rule : executionEngineRules) {
-      ExecutionEngine engine = rule.applyRule(qInfo).getExecutionEngine();
-      if (engine != ExecutionEngine.NOT_DECIDED)
-        return engine;
-    }
 
-    return ExecutionEngine.STORE;
+    for (ExecutionEngineRule rule : executionEngineRules) {
+      ExecutionEngine engine = rule.applyRule(qInfo).getExecutionEngine();
+      if (engine != ExecutionEngine.NOT_DECIDED) {
+        return engine;
+      }
+    }
+    return  ExecutionEngine.STORE;
   }
 
 }

@@ -19,17 +19,22 @@ abstract public class ExecutionEngineRule {
 
 
   public ExecutionEngineRule applyRule(DMLQueryInfo qInfo) {
-    if (!executionEngineFound) {
-      if (!(executionEngineFound = findExecutionEngine(qInfo))) {
-        if (qInfo.hasSubSelect()) {
-          List<SubQueryInfo> subqueries = qInfo.getSubqueryInfoList();
-          for (DMLQueryInfo subquery : subqueries) {
-            applyRule(qInfo);
-          }
+
+    if (executionEngineFound) {
+      return this;
+    }
+
+    executionEngineFound = findExecutionEngine(qInfo);
+
+    if (! executionEngineFound) {
+      List<SubQueryInfo> subqueries = qInfo.getSubqueryInfoList();
+      if (subqueries.size() > 0) {
+        for (DMLQueryInfo subquery : subqueries) {
+          applyRule(subquery);
         }
       }
-
     }
+
     return this;
   }
 

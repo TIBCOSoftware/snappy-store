@@ -760,9 +760,6 @@ public class GenericStatement
                                           qinfo = qt.computeQueryInfo(qic);
                                           // Only rerouting selects to lead node. Inserts will be handled separately.
                                           // The below should be connection specific.
-                                          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION ,
-                                              "ExecutionEngine::provided in QueryHint is " + cc.getExecutionEngine().name());
-
                                           if ((routeQuery && qinfo != null && qinfo.isSelect()
                                               && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)
                                               && (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
@@ -771,12 +768,17 @@ public class GenericStatement
                                             GenericPreparedStatement gps = getPreparedStatementForSnappy(true,
                                                 statementContext, lcc, false, checkCancellation);
 
-                                            if (observer != null) {
-                                              observer.queryInfoObjectFromOptmizedParsedTree(qinfo, gps, lcc);
+                                            if (observer != null ) {
+                                              observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                             }
 
                                             return gps;
                                           }
+
+                                          if (observer != null && qinfo.isSelect()) {
+                                            observer.testExecutionEngineDecision(qinfo, ExecutionEngine.STORE, this.statementText);
+                                          }
+
                                           if (qinfo != null && qinfo.isInsert()) {
                                             qinfo = handleInsertAndInsertSubSelect(qinfo, qt);
                                           }
