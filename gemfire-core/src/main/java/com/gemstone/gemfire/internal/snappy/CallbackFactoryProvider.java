@@ -56,6 +56,11 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void invalidateReplicatedTableCache(LocalRegion region) {
     }
+
+    @Override
+    public void cleanUpCachedObjects(String table,
+        Boolean sentFromExternalCluster) {
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

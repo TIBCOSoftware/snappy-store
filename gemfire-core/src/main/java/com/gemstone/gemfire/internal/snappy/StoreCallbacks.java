@@ -38,4 +38,6 @@ public interface StoreCallbacks {
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
   void invalidateReplicatedTableCache(LocalRegion region);
+
+  void cleanUpCachedObjects(String table, Boolean sentFromExternalCluster);
 }
