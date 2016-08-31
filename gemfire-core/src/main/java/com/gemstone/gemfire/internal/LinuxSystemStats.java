@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal;
 
@@ -46,6 +64,8 @@ public class LinuxSystemStats
   final static int cachedMemoryINT = 16;
   final static int dirtyMemoryINT = 17;
   final static int cpuNonUserINT = 18;
+  final static int threadsINT = 19;
+  final static int threadsSystemMaxINT = 20;
 
   final static int loopbackPacketsLONG = 0;
   final static int loopbackBytesLONG = 1;
@@ -75,6 +95,7 @@ public class LinuxSystemStats
   final static int iosInProgressLONG = 25;
   final static int timeIosInProgressLONG = 26;
   final static int ioTimeLONG = 27;
+  final static int threadsMaxLONG = 28;
 
   final static int loadAverage1DOUBLE = 0;
   final static int loadAverage15DOUBLE = 1;
@@ -149,7 +170,14 @@ public class LinuxSystemStats
                             f.createIntGauge("cpuNonUser",
                                                 "The percentage of total available time that has been used to execute non-user code.(includes system, iowait, irq, softirq etc.)",
                                                 "%"),
-
+                            f.createIntGauge("threads",
+                                "The total number of threads in the computer at the time of " +
+                                    "data collection. Notice that this is an instantaneous " +
+                                    "count, not an average over the time interval.",
+                                "threads"),
+                            f.createIntGauge("threadsSystemMax",
+                                "The OS limit of maximum number of threads in this computer.",
+                                "threads"),
 
                             f.createLongCounter("loopbackPackets",
                                              "The number of network packets sent (or received) on the loopback interface",
@@ -235,6 +263,9 @@ public class LinuxSystemStats
                             f.createLongCounter("diskTime",
                                                 "The total number of milliseconds that measures both completed disk operations and any accumulating backlog of in progress ops.",
                                                 "milliseconds"),
+                            f.createLongGauge("threadsMax",
+                                "The OS limit of maximum number of threads in current session",
+                                "threads"),
 
 
                             f.createDoubleGauge("loadAverage1",
@@ -267,6 +298,8 @@ public class LinuxSystemStats
     checkOffset("cachedMemory", cachedMemoryINT);
     checkOffset("dirtyMemory", dirtyMemoryINT);
     checkOffset("cpuNonUser", cpuNonUserINT);
+    checkOffset("threads", threadsINT);
+    checkOffset("threadsSystemMax", threadsSystemMaxINT);
 
     checkOffset("loopbackPackets", loopbackPacketsLONG);
     checkOffset("loopbackBytes", loopbackBytesLONG);
@@ -296,6 +329,7 @@ public class LinuxSystemStats
     checkOffset("diskOpsInProgress", iosInProgressLONG);
     checkOffset("diskTimeInProgress", timeIosInProgressLONG);
     checkOffset("diskTime", ioTimeLONG);
+    checkOffset("threadsMax", threadsMaxLONG);
 
     checkOffset("loadAverage1", loadAverage1DOUBLE);
     checkOffset("loadAverage15", loadAverage15DOUBLE);

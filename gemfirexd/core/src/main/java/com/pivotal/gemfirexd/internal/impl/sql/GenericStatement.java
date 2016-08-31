@@ -760,20 +760,25 @@ public class GenericStatement
                                           qinfo = qt.computeQueryInfo(qic);
                                           // Only rerouting selects to lead node. Inserts will be handled separately.
                                           // The below should be connection specific.
-                                          if ((routeQuery && qinfo != null && qinfo.isSelect()
-                                              && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)
-                                              && (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
-                                              (new ExecutionEngineArbiter().getExecutionEngine((DMLQueryInfo)qinfo)
-                                                 == ExecutionEngine.SPARK))
-                                              ) {
-                                            GenericPreparedStatement gps = getPreparedStatementForSnappy(true,
-                                                statementContext, lcc, false, checkCancellation);
+                                          if ((routeQuery && qinfo != null && qinfo.isDML()
+                                              && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)) {
 
-                                            if (observer != null ) {
-                                              observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+                                            if (qinfo.isSelect() && (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
+                                                (new ExecutionEngineArbiter().getExecutionEngine((DMLQueryInfo)qinfo)
+                                                    == ExecutionEngine.SPARK))) {
+                                              if (observer != null) {
+                                                observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+                                              }
+
+                                              return getPreparedStatementForSnappy(true,
+                                                  statementContext, lcc, false, checkCancellation);
+
+                                            } else if (qinfo.isUpdate() | qinfo.isDelete()) {
+                                              // Temporarily using the below sqlstate as this unsupported operation
+                                              // will be supported soon in future
+                                              throw StandardException.newException(SQLState.LANG_INVALID_OPERATION_ON_VIEW,
+                                                  "UPDATE/DELETE (Column Table) ", qinfo.getFullTableName());
                                             }
-
-                                            return gps;
                                           }
 
                                           if (observer != null && qinfo.isSelect()) {

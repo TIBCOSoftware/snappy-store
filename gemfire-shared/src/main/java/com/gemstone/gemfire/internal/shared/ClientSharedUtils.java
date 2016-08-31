@@ -14,13 +14,33 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.shared;
 
+import java.io.Console;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.net.Inet4Address;
@@ -38,7 +58,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.directory.Attribute;
@@ -153,47 +172,59 @@ public abstract class ClientSharedUtils {
   private static Logger DEFAULT_LOGGER = Logger.getLogger("");
   private static Logger logger = DEFAULT_LOGGER;
 
-  private static final JdkHelper helper;
-
+  private static final Constructor<?> stringInternalConstructor;
+  private static final int stringInternalConsVersion;
   private static final Field bigIntMagnitude;
 
-  static {
-    // JdkHelper instance initialization
-    final String[] classNames = new String[] {
-        "com.gemstone.gemfire.internal.shared.Jdk6Helper",
-        "com.gemstone.gemfire.internal.shared.Jdk5Helper"
-      };
-    JdkHelper impl = null;
-    Exception lastEx = null;
-    for (int index = 0; index < classNames.length; ++index) {
-      try {
-        final Class<?> c = Class.forName(classNames[index]);
-        if (c != null) {
-          impl = (JdkHelper)c.newInstance();
-          break;
-        }
-      } catch (Exception ex) {
-        // ignore and try to load next JdkHelper implementation
-        lastEx = ex;
-      }
-    }
-    if (impl == null) {
-      final IllegalStateException ise = new IllegalStateException(
-          "failed to load any JdkHelper class; last exception");
-      ise.initCause(lastEx);
-      throw ise;
-    }
-    helper = impl;
+  // JDK5/6 String(int, int, char[])
+  private static final int STRING_CONS_VER1 = 1;
+  // JDK7 String(char[], boolean)
+  private static final int STRING_CONS_VER2 = 2;
+  // GCJ String(char[], int, int, boolean)
+  private static final int STRING_CONS_VER3 = 3;
 
+  static {
     InetAddress lh = null;
     try {
       lh = getHostAddress();
     } catch (UnknownHostException e) {
       e.printStackTrace();
-    } catch (SocketException e) {
+    } catch (SocketException ignored) {
     }
     localHost = lh;
     cre = new ClientRunTimeException();
+
+    // string constructor search by reflection
+    Constructor<?> constructor = null;
+    int version = 0;
+    try {
+      // first check the JDK7 version since an inefficient version of JDK5/6 is
+      // present in JDK7
+      constructor = String.class.getDeclaredConstructor(char[].class,
+          boolean.class);
+      constructor.setAccessible(true);
+      version = STRING_CONS_VER2;
+    } catch (Exception e1) {
+      try {
+        // next check the JDK6 version
+        constructor = String.class.getDeclaredConstructor(int.class, int.class,
+            char[].class);
+        constructor.setAccessible(true);
+        version = STRING_CONS_VER1;
+      } catch (Exception e2) {
+        // gcj has a different version
+        try {
+          constructor = String.class.getDeclaredConstructor(char[].class,
+              int.class, int.class, boolean.class);
+          constructor.setAccessible(true);
+          version = STRING_CONS_VER3;
+        } catch (Exception e3) {
+          // ignored
+        }
+      }
+    }
+    stringInternalConstructor = constructor;
+    stringInternalConsVersion = version;
 
     Field mag;
     try {
@@ -219,8 +250,59 @@ public abstract class ClientSharedUtils {
     bigIntMagnitude = mag;
   }
 
-  public static final JdkHelper getJdkHelper() {
-    return helper;
+  public static String newWrappedString(final char[] chars, final int offset,
+      final int size) {
+    if (size >= 0) {
+      try {
+        switch (stringInternalConsVersion) {
+          case STRING_CONS_VER1:
+            return (String)stringInternalConstructor.newInstance(offset, size,
+                chars);
+          case STRING_CONS_VER2:
+            if (offset == 0 && size == chars.length) {
+              return (String)stringInternalConstructor.newInstance(chars, true);
+            }
+            else {
+              return new String(chars, offset, size);
+            }
+          case STRING_CONS_VER3:
+            return (String)stringInternalConstructor.newInstance(chars, offset,
+                size, true);
+          default:
+            return new String(chars, offset, size);
+        }
+      } catch (Exception ex) {
+        throw ClientSharedUtils.newRuntimeException("unexpected exception", ex);
+      }
+    }
+    else {
+      throw new AssertionError("unexpected size=" + size);
+    }
+  }
+
+  public static String readChars(final InputStream in, final boolean noecho) {
+    final Console console;
+    if (noecho && (console = System.console()) != null) {
+      return new String(console.readPassword());
+    } else {
+      final StringBuilder sb = new StringBuilder();
+      char c;
+      try {
+        int value = in.read();
+        if (value != -1 && (c = (char)value) != '\n' && c != '\r') {
+          // keep waiting till a key is pressed
+          sb.append(c);
+        }
+        while (in.available() > 0 && (value = in.read()) != -1
+            && (c = (char)value) != '\n' && c != '\r') {
+          // consume till end of line
+          sb.append(c);
+        }
+      } catch (IOException ioe) {
+        throw ClientSharedUtils.newRuntimeException(ioe.getMessage(), ioe);
+      }
+      return sb.toString();
+    }
   }
 
   /**
@@ -362,8 +444,7 @@ public abstract class ClientSharedUtils {
       NetworkInterface face = interfaces.nextElement();
       boolean faceIsUp = false;
       try {
-        // invoking using JdkHelper since GemFireXD JDBC3 clients require JDK 1.5
-        faceIsUp = helper.isInterfaceUp(face);
+        faceIsUp = face.isUp();
       } catch (SocketException se) {
         final Logger log = getLogger();
         if (log != null) {
@@ -843,7 +924,7 @@ public abstract class ClientSharedUtils {
   public static String toHexString(final byte[] data, int offset,
       final int length) {
     final char[] chars = toHexChars(data, offset, length);
-    return getJdkHelper().newWrappedString(chars, 0, chars.length);
+    return newWrappedString(chars, 0, chars.length);
   }
 
   /**
@@ -876,7 +957,7 @@ public abstract class ClientSharedUtils {
       chars[++index] = HEX_DIGITS_UCASE[lowByte];
       ++offset;
     }
-    return getJdkHelper().newWrappedString(chars, 0, chars.length);
+    return newWrappedString(chars, 0, chars.length);
   }
 
   /**
@@ -938,7 +1019,7 @@ public abstract class ClientSharedUtils {
         ++pos;
         index = toHexChars(b, chars, index);
       }
-      return getJdkHelper().newWrappedString(chars, 0, chars.length);
+      return newWrappedString(chars, 0, chars.length);
     }
   }
 

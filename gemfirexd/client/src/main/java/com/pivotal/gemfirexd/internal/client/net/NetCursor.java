@@ -40,8 +40,6 @@
 
 package com.pivotal.gemfirexd.internal.client.net;
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.JdkHelper;
 import com.pivotal.gemfirexd.internal.client.am.Agent;
 import com.pivotal.gemfirexd.internal.client.am.Blob;
 import com.pivotal.gemfirexd.internal.client.am.Clob;
@@ -673,10 +671,7 @@ public class NetCursor extends com.pivotal.gemfirexd.internal.client.am.Cursor {
             // ASSERT: the server always returns the EXTDTA objects in ascending order
             {
 // GemStone changes BEGIN
-                // changed to use Integer.valueOf() if possible
-                final JdkHelper helper = ClientSharedUtils.getJdkHelper();
-                extdtaPositions_.put(helper.newInteger(i + 1),
-                    helper.newInteger(currentPosition++));
+                extdtaPositions_.put(i + 1, currentPosition++);
                 /* (original code)
                 extdtaPositions_.put(new Integer(i + 1), new Integer(currentPosition++));
                 */
@@ -1073,8 +1068,7 @@ public class NetCursor extends com.pivotal.gemfirexd.internal.client.am.Cursor {
 
         // locate the EXTDTA bytes, if any
 // GemStone changes BEGIN
-        // changed to use Integer.valueOf() if possible
-        final Integer key = ClientSharedUtils.getJdkHelper().newInteger(column);
+        final Integer key = column;
         /* (original code)
         Integer key = new Integer(column);
         */

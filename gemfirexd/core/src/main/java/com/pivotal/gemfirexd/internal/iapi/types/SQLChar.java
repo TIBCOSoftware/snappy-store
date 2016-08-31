@@ -740,7 +740,7 @@ public class SQLChar
         }
         if (this.rawLength != -1) {
           if (this.rawData != null) {
-            this.value = ClientSharedUtils.getJdkHelper().newWrappedString(
+            this.value = ClientSharedUtils.newWrappedString(
                 this.rawData, 0, this.rawLength);
             return this.value;
           }
@@ -750,7 +750,7 @@ public class SQLChar
         /*
         try {
           if (readFromStream()) {
-            this.value = ClientSharedUtils.getJdkHelper().newWrappedString(
+            this.value = ClientSharedUtils.newWrappedString(
                 this.rawData, 0, this.rawLength);
             return this.value;
           }
@@ -3235,13 +3235,13 @@ readingLoop:
           return this.value;
         }
         if (this.rawLength != -1) {
-          return ClientSharedUtils.getJdkHelper().newWrappedString(
+          return ClientSharedUtils.newWrappedString(
               this.rawData, 0, this.rawLength);
         }
         /*
         try {
           if (readFromStream()) {
-            return ClientSharedUtils.getJdkHelper().newWrappedString(
+            return ClientSharedUtils.newWrappedString(
                 this.rawData, 0, this.rawLength);
           }
         } catch (EOFException eofe) {
@@ -3705,7 +3705,7 @@ readingLoop:
     try {
       final char[] data = getCharArray(false);
       if (this.rawLength != -1 && this.value == null) {
-        this.value = ClientSharedUtils.getJdkHelper().newWrappedString(data, 0,
+        this.value = ClientSharedUtils.newWrappedString(data, 0,
             this.rawLength);
       }
     } catch (StandardException se) {
@@ -5357,7 +5357,7 @@ readingLoop:
     if (size > strlen) {
       appendBlanks(chars, strlen, size - strlen);
     }
-    return ClientSharedUtils.getJdkHelper().newWrappedString(chars, 0, size);
+    return ClientSharedUtils.newWrappedString(chars, 0, size);
   }
 
   static final String getAsString(final UnsafeWrapper inBytes,
@@ -5372,7 +5372,7 @@ readingLoop:
     if (size > strlen) {
       appendBlanks(chars, strlen, size - strlen);
     }
-    return ClientSharedUtils.getJdkHelper().newWrappedString(chars, 0, size);
+    return ClientSharedUtils.newWrappedString(chars, 0, size);
   }
 
   /**

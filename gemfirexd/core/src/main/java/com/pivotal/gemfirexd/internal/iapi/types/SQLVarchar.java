@@ -239,16 +239,14 @@ public class SQLVarchar
     final int strlen = readIntoCharsFromByteArray(inBytes, offset, columnWidth, chars);
     if (columnWidth == strlen) {
       // don't make a copy
-      return ClientSharedUtils.getJdkHelper()
-          .newWrappedString(chars, 0, strlen);
+      return ClientSharedUtils.newWrappedString(chars, 0, strlen);
     }
     else {
       // trim to required length
       assert columnWidth > strlen: "width=" + columnWidth + ", len=" + strlen;
       final char[] trimmed = new char[strlen];
       System.arraycopy(chars, 0, trimmed, 0, strlen);
-      return ClientSharedUtils.getJdkHelper().newWrappedString(trimmed, 0,
-          strlen);
+      return ClientSharedUtils.newWrappedString(trimmed, 0, strlen);
     }
   }
 
@@ -259,16 +257,14 @@ public class SQLVarchar
         columnWidth, bs, chars);
     if (columnWidth == strlen) {
       // don't make a copy
-      return ClientSharedUtils.getJdkHelper()
-          .newWrappedString(chars, 0, strlen);
+      return ClientSharedUtils.newWrappedString(chars, 0, strlen);
     }
     else {
       // trim to required length
       assert columnWidth > strlen: "width=" + columnWidth + ", len=" + strlen;
       final char[] trimmed = new char[strlen];
       System.arraycopy(chars, 0, trimmed, 0, strlen);
-      return ClientSharedUtils.getJdkHelper().newWrappedString(trimmed, 0,
-          strlen);
+      return ClientSharedUtils.newWrappedString(trimmed, 0, strlen);
     }
   }
 

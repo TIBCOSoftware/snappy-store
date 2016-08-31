@@ -210,7 +210,7 @@ public class SanityManager {
 	public static boolean isFinerEnabled = false;
 
 	static {
-          DebugFlags = ClientSharedUtils.getJdkHelper().newConcurrentMap(16, 4);
+          DebugFlags = new ConcurrentHashMap(16, 0.75f, 4);
         }
 // GemStone changes END
 	/**
@@ -561,8 +561,7 @@ public class SanityManager {
             String connectionName) {
           final StringBuilder sb = new StringBuilder(lineSeparator);
           final Thread thread = Thread.currentThread();
-          final long threadId = ClientSharedUtils.getJdkHelper()
-              .getThreadId(thread);
+          final long threadId = thread.getId();
           final long millis = System.currentTimeMillis();
           sb.append('[');
           if (level != null) {
@@ -753,8 +752,7 @@ public class SanityManager {
                 // wait for user input before further output
                 out.print(continuePrompt);
                 out.flush();
-                String chars = ClientSharedUtils.getJdkHelper()
-                    .readChars(in, noecho);
+                String chars = ClientSharedUtils.readChars(in, noecho);
                 out.println();
                 if (chars != null && chars.length() > 0
                     && (chars.charAt(0) == 'q' || chars.charAt(0) == 'Q')) {

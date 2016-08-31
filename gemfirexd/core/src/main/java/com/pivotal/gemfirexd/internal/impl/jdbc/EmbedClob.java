@@ -273,7 +273,7 @@ final class EmbedClob extends ConnectionChild implements Clob, EngineLOB
                 result = "";
             } else {
 // GemStone changes BEGIN
-                result = ClientSharedUtils.getJdkHelper().newWrappedString(
+                result = ClientSharedUtils.newWrappedString(
                     chars, 0, charsRead);
                 /* (original code)
                 result = String.copyValueOf(chars, 0, charsRead);
@@ -733,7 +733,7 @@ restartScan:
      * the number of
      * characters in the <code>Clob</code>
      *
-     * @throws SQLException.
+     * @throws SQLException on error
      */
     public java.io.Reader getCharacterStream(long pos, long length)
         throws SQLException {
