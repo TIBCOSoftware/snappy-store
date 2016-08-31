@@ -18,18 +18,26 @@ package com.pivotal.gemfirexd.internal.engine.distributed;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 
+import com.gemstone.gemfire.cache.CacheClosedException;
+import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.Declarable;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionContext;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.DistributedRegion;
+import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
+import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.management.internal.cli.functions.CliFunctionResult;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.tools.sizer.GemFireXDInstrumentation;
 
-public class RegionSizeCalculatorFunction implements Function , Declarable {
+public class RegionSizeCalculatorFunction implements Function, Declarable {
 
   public static String ID = "RegionSizeCalculatorFunction";
 
@@ -46,14 +54,18 @@ public class RegionSizeCalculatorFunction implements Function , Declarable {
   @Override
   public void execute(FunctionContext context) {
     HashMap<String, Long> regionSizeInfo = new HashMap<>();
-
-    Set<PartitionedRegion> partitionedRegions = Misc.getGemFireCache().getPartitionedRegions();
-    for (PartitionedRegion pr : partitionedRegions) {
-      long valueSizeOfRegion = getSizeForAllPrimaryBucketsOfRegion(pr);
-      String qualifiedTableName = Misc.getFullTableNameFromRegionPath(pr.getFullPath());
-      regionSizeInfo.put(qualifiedTableName, valueSizeOfRegion);
+    try {
+      Set<PartitionedRegion> partitionedRegions = Misc.getGemFireCache().getPartitionedRegions();
+      for (PartitionedRegion pr : partitionedRegions) {
+        long valueSizeOfRegion = getSizeForAllPrimaryBucketsOfRegion(pr);
+        String qualifiedTableName = Misc.getFullTableNameFromRegionPath(pr.getFullPath());
+        regionSizeInfo.put(qualifiedTableName, valueSizeOfRegion);
+      }
+      context.getResultSender().lastResult(regionSizeInfo);
+    } catch (CacheClosedException e) {
+      context.getResultSender().lastResult(regionSizeInfo);
     }
-    context.getResultSender().lastResult(regionSizeInfo);
+
   }
 
   @Override
@@ -75,7 +87,7 @@ public class RegionSizeCalculatorFunction implements Function , Declarable {
   private long getSizeForAllPrimaryBucketsOfRegion(PartitionedRegion region) {
     long sizeOfRegion = 0;
     PartitionedRegionDataStore datastore = region.getDataStore();
-    if (datastore != null ) {
+    if (datastore != null) {
       Set<BucketRegion> bucketRegions = datastore.getAllLocalBucketRegions();
       for (BucketRegion br : bucketRegions) {
         sizeOfRegion += br.getTotalBytes();
