@@ -1494,16 +1494,11 @@ public final class CompilerContextImpl extends ContextImpl
     this.hasQueryHDFS = hasQueryHDFS;
   }
 
-	@Override
-	public void setExecutionEngine(ExecutionEngine engine) {
-		this.executionEngine = engine;
-	}
+  @Override
+  public void setExecutionEngine(ExecutionEngine engine) { this.executionEngine = engine; }
 
-
-	@Override
-	public ExecutionEngine getExecutionEngine() {
-		return this.executionEngine;
-	}
+  @Override
+  public ExecutionEngine getExecutionEngine() { return this.executionEngine; }
 
   @Override
   public void setOriginalExecFlags(short execFlags) {

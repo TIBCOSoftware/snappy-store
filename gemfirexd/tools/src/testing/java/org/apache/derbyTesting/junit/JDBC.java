@@ -2017,8 +2017,7 @@ public class JDBC {
 
 		@Override
 		public void testExecutionEngineDecision(QueryInfo queryInfo,
-				ExecutionEngineRule.ExecutionEngine engine, String queryText) {
-
+	  ExecutionEngineRule.ExecutionEngine engine, String queryText) {
 		}
 
 		private void setNumExpectedRegionClearCalls(int numExpected) {

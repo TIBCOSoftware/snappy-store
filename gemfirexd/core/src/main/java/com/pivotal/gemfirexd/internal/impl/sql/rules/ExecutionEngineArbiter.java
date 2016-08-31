@@ -19,8 +19,6 @@ package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
 import java.util.LinkedList;
 
-import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
-import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -29,6 +27,9 @@ import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.Executi
 public class ExecutionEngineArbiter {
   LinkedList<ExecutionEngineRule> executionEngineRules = new LinkedList<>();
 
+  private static Boolean  enableRoutingArbitor = Boolean.parseBoolean(
+      PropertyUtil.getSystemProperty(
+  GfxdConstants.GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK , "true"));
 
   public ExecutionEngineArbiter() {
     //Rules That needs to be applied regardless of the GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK flag
@@ -36,9 +37,7 @@ public class ExecutionEngineArbiter {
     executionEngineRules.add(new ColumnTableExecutionEngineRule());
 
     //Rules that applies  on the store Queries
-    if (Boolean.parseBoolean(
-        PropertyUtil.getSystemProperty(
-            GfxdConstants.GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK , "true"))) {
+    if (enableRoutingArbitor) {
       executionEngineRules.add(new ReplicatedTableExecutionEngineRule());
       executionEngineRules.add(new AnyOneOfExecutionEngineRule());
     }
@@ -47,9 +46,9 @@ public class ExecutionEngineArbiter {
   // These rules are applied recursively for each queryInfo
   // and subQueryInfo
   public ExecutionEngine getExecutionEngine(DMLQueryInfo qInfo) {
-
+     ExecutionRuleContext context = new ExecutionRuleContext(ExecutionEngine.NOT_DECIDED);
     for (ExecutionEngineRule rule : executionEngineRules) {
-      ExecutionEngine engine = rule.applyRule(qInfo).getExecutionEngine();
+      ExecutionEngine engine = rule.getExecutionEngine(qInfo, context);
       if (engine != ExecutionEngine.NOT_DECIDED) {
         return engine;
       }

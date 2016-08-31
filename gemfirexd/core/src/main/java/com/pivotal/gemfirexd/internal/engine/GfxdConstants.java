@@ -802,7 +802,7 @@ public interface GfxdConstants {
    */
 
   final String GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK =
-      GFXD_PREFIX + "route-selected-store-queries-to-spark";
+      GFXD_PREFIX + "enable-routing-arbiter";
 
   // --------------------- Defaults for GFXD connection/transaction props
 

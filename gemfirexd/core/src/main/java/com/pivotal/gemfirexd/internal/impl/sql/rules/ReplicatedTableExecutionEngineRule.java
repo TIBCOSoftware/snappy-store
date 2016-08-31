@@ -18,31 +18,28 @@
 package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
 import java.util.List;
+
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 
-class ReplicatedTableExecutionEngineRule extends ExecutionEngineRule {
-
-  private boolean partitionedTableFound = false;
+class ReplicatedTableExecutionEngineRule extends AccumulativeExecutionEngineRule {
 
   @Override
-  protected boolean findExecutionEngine(DMLQueryInfo qInfo) {
+  protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo , ExecutionRuleContext context) {
     List<GemFireContainer> containers = qInfo.getContainerList();
     for (GemFireContainer container : containers) {
       if (container.getRegion() instanceof PartitionedRegion) {
-        partitionedTableFound = true;
+        context.setExtraDecisionMakerParam(new Boolean(true));
       }
     }
-    return partitionedTableFound;
+    return ExecutionEngine.NOT_DECIDED;
   }
+
 
   @Override
-  public ExecutionEngine getExecutionEngine() {
-    if (partitionedTableFound)
-      return ExecutionEngine.NOT_DECIDED;
-    else
-      return ExecutionEngine.STORE;
+  ExecutionEngine applyAccumulativeRuleAndGetEngine(ExecutionRuleContext context) {
+      if (context.getExtraDecisionMakerParam() == null) return ExecutionEngine.STORE;
+      else return ExecutionEngine.NOT_DECIDED;
   }
-
 }

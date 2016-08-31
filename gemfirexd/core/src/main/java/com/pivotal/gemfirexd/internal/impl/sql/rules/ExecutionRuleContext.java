@@ -17,17 +17,28 @@
 
 package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
-import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
+public class ExecutionRuleContext {
+  ExecutionEngineRule.ExecutionEngine engine;
+  Object extraDecisionMakerParam;
 
+  ExecutionRuleContext(ExecutionEngineRule.ExecutionEngine engine) {
+    this.engine = engine;
+    this.extraDecisionMakerParam = null;
+  }
 
-class ColumnTableExecutionEngineRule extends ExecutionEngineRule {
+  public Object getExtraDecisionMakerParam() {
+    return extraDecisionMakerParam;
+  }
 
-  @Override
-  protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo,ExecutionRuleContext context) {
-    if (SnappyActivation.isColumnTable(qInfo, false)) {
-      return ExecutionEngine.SPARK;
-    }
-    return ExecutionEngine.NOT_DECIDED;
+  public void setExtraDecisionMakerParam(Object extraDecisionMakerParam) {
+    this.extraDecisionMakerParam = extraDecisionMakerParam;
+  }
+
+  public ExecutionEngineRule.ExecutionEngine getEngine() {
+    return engine;
+  }
+
+  public void setEngine(ExecutionEngineRule.ExecutionEngine engine) {
+    this.engine = engine;
   }
 }

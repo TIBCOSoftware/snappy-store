@@ -1067,7 +1067,7 @@ implements Cloneable
 			}
 			else if (key.equals(Constants.QueryHints.executionEngine.name()))
 			{
-				 setUserSpecifiedExecutionEngine(value);
+			        setUserSpecifiedExecutionEngine(value);
 			}
                         /*(original code) else if (key.equals("hashInitialCapacity"))*/
 			else if (key.equals(Constants.QueryHints.hashInitialCapacity.name()))

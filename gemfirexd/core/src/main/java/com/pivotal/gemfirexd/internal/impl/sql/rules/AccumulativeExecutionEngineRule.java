@@ -18,16 +18,15 @@
 package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 
-
-class ColumnTableExecutionEngineRule extends ExecutionEngineRule {
+public abstract class AccumulativeExecutionEngineRule extends ExecutionEngineRule {
 
   @Override
-  protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo,ExecutionRuleContext context) {
-    if (SnappyActivation.isColumnTable(qInfo, false)) {
-      return ExecutionEngine.SPARK;
-    }
-    return ExecutionEngine.NOT_DECIDED;
+  public ExecutionEngine getExecutionEngine(DMLQueryInfo qInfo, ExecutionRuleContext context) {
+    super.getExecutionEngine(qInfo, context);
+    return applyAccumulativeRuleAndGetEngine(context);
   }
+
+  abstract ExecutionEngine applyAccumulativeRuleAndGetEngine(ExecutionRuleContext context);
+
 }

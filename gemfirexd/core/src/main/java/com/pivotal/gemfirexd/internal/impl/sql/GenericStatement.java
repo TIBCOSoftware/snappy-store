@@ -148,6 +148,7 @@ public class GenericStatement
 	      private static final String STREAMING_DDL_PREFIX = "STREAMING";
 	      private static final String INSERT_INTO_TABLE_SELECT_PATTERN = ".*INSERT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
 	      private static final String PUT_INTO_TABLE_SELECT_PATTERN = ".*PUT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
+	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
 // GemStone changes END
 	/**
 	 * Constructor for a Statement given the text of the statement in a String
@@ -764,7 +765,7 @@ public class GenericStatement
                                               && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)) {
 
                                             if (qinfo.isSelect() && (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
-                                                (new ExecutionEngineArbiter().getExecutionEngine((DMLQueryInfo)qinfo)
+                                                (engineArbiter.getExecutionEngine((DMLQueryInfo)qinfo)
                                                     == ExecutionEngine.SPARK))) {
                                               if (observer != null) {
                                                 observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
