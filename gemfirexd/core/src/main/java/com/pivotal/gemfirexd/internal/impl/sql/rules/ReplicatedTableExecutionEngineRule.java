@@ -19,6 +19,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
 import java.util.List;
 
+import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
@@ -29,8 +30,8 @@ class ReplicatedTableExecutionEngineRule extends AccumulativeExecutionEngineRule
   protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo , ExecutionRuleContext context) {
     List<GemFireContainer> containers = qInfo.getContainerList();
     for (GemFireContainer container : containers) {
-      if (container.getRegion() instanceof PartitionedRegion) {
-        context.setExtraDecisionMakerParam(new Boolean(true));
+      if (container.getRegion().getDataPolicy() == DataPolicy.PARTITION) {
+        context.setExtraDecisionMakerParam(Boolean.TRUE);
       }
     }
     return ExecutionEngine.NOT_DECIDED;
