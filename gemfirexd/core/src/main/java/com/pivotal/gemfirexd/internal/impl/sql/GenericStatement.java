@@ -764,21 +764,23 @@ public class GenericStatement
                                           if ((routeQuery && qinfo != null && qinfo.isDML()
                                               && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)) {
 
-                                            if (qinfo.isSelect() && (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
-                                                (engineArbiter.getExecutionEngine((DMLQueryInfo)qinfo)
-                                                    == ExecutionEngine.SPARK))) {
-                                              if (observer != null) {
-                                                observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+                                            if (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
+                                                engineArbiter.getExecutionEngine((DMLQueryInfo)qinfo)
+                                                    == ExecutionEngine.SPARK) {
+                                              if (qinfo.isSelect()) {
+                                                if (observer != null) {
+                                                  observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+                                                }
+
+                                                return getPreparedStatementForSnappy(true,
+                                                    statementContext, lcc, false, checkCancellation);
+
+                                              } else if (qinfo.isUpdate() | qinfo.isDelete()) {
+                                                // Temporarily using the below sqlstate as this unsupported operation
+                                                // will be supported soon in future
+                                                throw StandardException.newException(SQLState.LANG_INVALID_OPERATION_ON_VIEW,
+                                                    "UPDATE/DELETE (Column Table) ", qinfo.getFullTableName());
                                               }
-
-                                              return getPreparedStatementForSnappy(true,
-                                                  statementContext, lcc, false, checkCancellation);
-
-                                            } else if (qinfo.isUpdate() | qinfo.isDelete()) {
-                                              // Temporarily using the below sqlstate as this unsupported operation
-                                              // will be supported soon in future
-                                              throw StandardException.newException(SQLState.LANG_INVALID_OPERATION_ON_VIEW,
-                                                  "UPDATE/DELETE (Column Table) ", qinfo.getFullTableName());
                                             }
                                           }
 
