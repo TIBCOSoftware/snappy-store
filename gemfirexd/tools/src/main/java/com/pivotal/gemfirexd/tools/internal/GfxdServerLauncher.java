@@ -203,12 +203,11 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     if (gfxdLogFile == null || gfxdLogFile.length() == 0) {
       gfxdLogFile = props.getProperty(DistributionConfig.LOG_FILE_NAME);
       if (gfxdLogFile == null || gfxdLogFile.length() == 0) {
-        if (defaultLogFileName != null && defaultLogFileName.length() > 0) {
+        if (defaultLogFileName.length() > 0) {
           props.setProperty(DistributionConfig.LOG_FILE_NAME,
               defaultLogFileName);
           gfxdLogFile = defaultLogFileName;
-        }
-        else {
+        } else {
           gfxdLogFile = null;
         }
       }
@@ -216,6 +215,29 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     if (gfxdLogFile != null) {
       System.setProperty(GfxdConstants.GFXD_LOG_FILE, gfxdLogFile);
     }
+
+    // also set the statistic-archive-file if not provided
+    String statsFile = props.getProperty(
+        DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME);
+    if (statsFile == null) {
+      if (gfxdLogFile != null) {
+        statsFile = gfxdLogFile;
+      } else if ((statsFile = props.getProperty(
+          DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME)) == null) {
+        statsFile = defaultLogFileName;
+      }
+      if (statsFile.endsWith(".log")) {
+        statsFile = statsFile.replaceAll("\\.log$", ".gfs");
+      } else {
+        statsFile = statsFile + ".gfs";
+      }
+      props.setProperty(DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME,
+          statsFile);
+    } else if (statsFile.length() == 0) {
+      // disable stats file for this case
+      props.remove(DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME);
+    }
+
     // set the critical/eviction heap percentage if provided
     float threshold = getCriticalHeapPercent(options);
     if (threshold > 0.0f) {

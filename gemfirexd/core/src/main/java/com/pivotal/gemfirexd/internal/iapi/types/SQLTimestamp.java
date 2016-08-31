@@ -1506,7 +1506,7 @@ public final class SQLTimestamp extends DataType
         SQLDate.getDay(encodedDate), SQLTime.getHour(encodedTime),
         SQLTime.getMinute(encodedTime), SQLTime.getSecond(encodedTime), -1,
         nanos, false);
-    return ClientSharedUtils.getJdkHelper().newWrappedString(str, 0, strlen);
+    return ClientSharedUtils.newWrappedString(str, 0, strlen);
   }
 
   static String getAsString(final UnsafeWrapper unsafe, long memOffset) {
@@ -1523,7 +1523,7 @@ public final class SQLTimestamp extends DataType
         SQLDate.getDay(encodedDate), SQLTime.getHour(encodedTime),
         SQLTime.getMinute(encodedTime), SQLTime.getSecond(encodedTime), -1,
         nanos, false);
-    return ClientSharedUtils.getJdkHelper().newWrappedString(str, 0, strlen);
+    return ClientSharedUtils.newWrappedString(str, 0, strlen);
   }
 
   /** Used by PXF. Only micros portion of nanos is set. */

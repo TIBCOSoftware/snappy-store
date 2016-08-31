@@ -2067,7 +2067,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
         s[i] = '0';
       }
       if (buffer == null) {
-        return ClientSharedUtils.getJdkHelper().newWrappedString(s, 0, size);
+        return ClientSharedUtils.newWrappedString(s, 0, size);
       }
       else {
         buffer.writeBytes(s, 0, size);

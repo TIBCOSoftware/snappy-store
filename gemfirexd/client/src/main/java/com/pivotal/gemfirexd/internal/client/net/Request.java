@@ -39,7 +39,6 @@
  */
 package com.pivotal.gemfirexd.internal.client.net;
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.am.DisconnectException;
 import com.pivotal.gemfirexd.internal.client.am.EncryptionManager;
 import com.pivotal.gemfirexd.internal.client.am.ClientMessageId;
@@ -1170,8 +1169,7 @@ public class Request {
                 // if an entry exists, replace the protocolType with the overrideLid
 // GemStone changes BEGIN
                 // changed to use Integer.valueOf() if possible
-                entry = map.get(ClientSharedUtils.getJdkHelper()
-                    .newInteger(protocolType));
+                entry = map.get(protocolType);
                 /* (original code)
                 entry = map.get(new Integer(protocolType));
                 */

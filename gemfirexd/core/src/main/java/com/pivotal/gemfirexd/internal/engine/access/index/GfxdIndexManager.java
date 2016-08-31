@@ -64,6 +64,7 @@ import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
@@ -1045,7 +1046,11 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           this.container, getObjectString(indexes), entry, success,
           event);
     }
-    if(event.getTXState() != null && event.isCustomEviction()) {      
+    if (owner.isUsedForUserReplicatedTable()) {
+      CallbackFactoryProvider.getStoreCallbacks()
+          .invalidateReplicatedTableCache(owner);
+    }
+    if (event.getTXState() != null && event.isCustomEviction()) {
       return;
     }
     final Operation op = event.getOperation();
@@ -3120,7 +3125,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
    * 
    * @param event
    *          from underlying region.
-   * @param newEntery
+   * @param rl
    *          from underlying region doing the create.
    */
   private void checkForeignKeyConstraint(EntryEventImpl event,

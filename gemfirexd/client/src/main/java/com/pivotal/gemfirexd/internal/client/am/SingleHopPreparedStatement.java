@@ -14,40 +14,26 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package com.pivotal.gemfirexd.internal.client.am;
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.JdkHelper;
-import com.pivotal.gemfirexd.internal.client.ClientPooledConnection;
-import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
-import com.pivotal.gemfirexd.internal.client.net.NetConnection;
-import com.pivotal.gemfirexd.internal.client.net.NetConnection.DSConnectionInfo;
-import com.pivotal.gemfirexd.internal.client.net.FinalizeSingleHopResultSet;
-import com.pivotal.gemfirexd.internal.client.net.NetResultSet;
-import com.pivotal.gemfirexd.internal.client.net.SingleHopResultSet;
-import com.pivotal.gemfirexd.internal.shared.common.AbstractRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.CharColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.ClientColumnResolver;
-import com.pivotal.gemfirexd.internal.shared.common.ClientListResolver;
-import com.pivotal.gemfirexd.internal.shared.common.ClientRangeResolver;
-import com.pivotal.gemfirexd.internal.shared.common.ClientResolver;
-import com.pivotal.gemfirexd.internal.shared.common.Converter;
-import com.pivotal.gemfirexd.internal.shared.common.DecimalColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.DoubleColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.IntColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.LongIntColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.MultiColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.RangeRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.RealColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
-import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
-import com.pivotal.gemfirexd.internal.shared.common.SingleHopInformation;
-import com.pivotal.gemfirexd.internal.shared.common.SmallIntRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.SingleHopInformation.BucketAndNetServerInfo;
-import com.pivotal.gemfirexd.internal.shared.common.VarCharColumnRoutingObjectInfo;
-import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
+package com.pivotal.gemfirexd.internal.client.am;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -57,6 +43,19 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+
+import com.pivotal.gemfirexd.internal.client.ClientPooledConnection;
+import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
+import com.pivotal.gemfirexd.internal.client.net.FinalizeSingleHopResultSet;
+import com.pivotal.gemfirexd.internal.client.net.NetConnection;
+import com.pivotal.gemfirexd.internal.client.net.NetConnection.DSConnectionInfo;
+import com.pivotal.gemfirexd.internal.client.net.NetResultSet;
+import com.pivotal.gemfirexd.internal.client.net.SingleHopResultSet;
+import com.pivotal.gemfirexd.internal.shared.common.*;
+import com.pivotal.gemfirexd.internal.shared.common.SingleHopInformation.BucketAndNetServerInfo;
+import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
 
 /**
  * This prepared statement will be returned to the user in case single hop is
@@ -905,8 +904,7 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
         }
         int bid = robj.intValue() % this.noOfBuckets;
         int bucketId = Math.abs(bid);
-        allRoutingObjects.add(ClientSharedUtils.getJdkHelper().newInteger(
-            bucketId));
+        allRoutingObjects.add(bucketId);
       }
     }
 
@@ -1040,17 +1038,16 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
               + robj);
     }
 
-    final JdkHelper helper = ClientSharedUtils.getJdkHelper();
     if (useOnlyPrimary) {
       server = this.primaryServers[bucketId];
       HashSet routingObjSet = (HashSet)serverAddressesToRoutingObject
           .get(server);
       if (routingObjSet != null) {
-        routingObjSet.add(helper.newInteger(bucketId));
+        routingObjSet.add(bucketId);
       }
       else {
         HashSet newRoutingObjSet = new HashSet();
-        newRoutingObjSet.add(helper.newInteger(bucketId));
+        newRoutingObjSet.add(bucketId);
         serverAddressesToRoutingObject.put(server, newRoutingObjSet);
       }
     }
@@ -1062,7 +1059,7 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
           list = new HashSet();
           serverAddressesToRoutingObject.put(server, list);
         }
-        list.add(helper.newInteger(bucketId));
+        list.add(bucketId);
       }
       else {
         server = selectBestServer(serverAddressesToRoutingObject, bucketId);
@@ -1165,7 +1162,6 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
         return this.primaryServers[bucketId];
       }
 
-      final JdkHelper helper = ClientSharedUtils.getJdkHelper();
       while (numOfRemainingServerArray > 0) {
         HostPort server = null;
         int randArrayNumber = this.randomServerSelector
@@ -1188,7 +1184,7 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
 
         if (serverMapEmpty) {
           HashSet values = new HashSet();
-          values.add(helper.newInteger(bucketId));
+          values.add(bucketId);
           bestServer = server;
           serverAddressesToRoutingObject.put(bestServer, values);
           break;
@@ -1197,7 +1193,7 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
         Object routingObjectsList = serverAddressesToRoutingObject.get(server);
         if (routingObjectsList != null) {
           HashSet listOfRoutingObjects = (HashSet)routingObjectsList;
-          listOfRoutingObjects.add(helper.newInteger(bucketId));
+          listOfRoutingObjects.add(bucketId);
           bestServer = server;
           break;
         }
@@ -1216,7 +1212,7 @@ public abstract class SingleHopPreparedStatement extends PreparedStatement {
           return null;
         }
         HashSet values = new HashSet();
-        values.add(helper.newInteger(bucketId));
+        values.add(bucketId);
         bestServer = serverArray[bucketId];
         serverAddressesToRoutingObject.put(bestServer, values);
       }

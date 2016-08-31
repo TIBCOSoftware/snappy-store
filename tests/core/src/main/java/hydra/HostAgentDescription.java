@@ -137,11 +137,13 @@ implements Serializable {
       if ( hd.getExtraTestDir() != null ) {
         classPath.add( hd.getExtraTestDir() );
       }
-      if ( hd.getGemFireHome() != null ) {
+      if (hd.getGemFireHome() != null) {
         classPath.add(hd.getGemFireHome() + hd.getFileSep() + "lib"
-                                          + hd.getFileSep() + "snappydata-store-" +
+                + hd.getFileSep() + "snappydata-store-" +
                 ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
-       }
+        //classPath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "lib", "snappydata-assembly"));
+        classPath.add(VmDescription.getAllSnappyJars(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "jars"));
+      }
 
       //Needed to run DUnit on multiple hosts
       classPath.add(hd.getTestDir() + hd.getFileSep() + "junit.jar");
@@ -151,7 +153,7 @@ implements Serializable {
               ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
       classPath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-              "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
+              "build-artifacts" + hd.getFileSep() + "scala-2.11" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
 
       had.setClassPath(EnvHelper.asPath(classPath, hd));
 

@@ -47,7 +47,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.ClientPooledConnection;
 import com.pivotal.gemfirexd.internal.client.net.FdocaConstants;
 import com.pivotal.gemfirexd.internal.client.net.NetResultSet;
@@ -718,8 +717,7 @@ public class PreparedStatement extends Statement
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.BIT;
 // GemStone changes BEGIN
                 // changed to Short.valueOf() if possible
-                setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-                    .newShort((short)(x ? 1 : 0)));
+                setInput(parameterIndex, (short)(x ? 1 : 0));
                 /* (original code)
                 setInput(parameterIndex, new Short((short) (x ? 1 : 0)));
                 */
@@ -754,8 +752,7 @@ public class PreparedStatement extends Statement
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.TINYINT;
 // GemStone changes BEGIN
                 // changed to use Short.valueOf() if possible
-                setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-                    .newShort(x));
+                setInput(parameterIndex, x);
                 /* (original code)
                 setInput(parameterIndex, new Short(x));
                 */
@@ -802,7 +799,7 @@ public class PreparedStatement extends Statement
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.SMALLINT;
 // GemStone changes BEGIN
         // changed to use Short.valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper().newShort(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Short(x));
         */
@@ -842,8 +839,7 @@ public class PreparedStatement extends Statement
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.INTEGER;
 // GemStone changes BEGIN
         // changed to use Integer.valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-            .newInteger(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Integer(x));
         */
@@ -884,7 +880,7 @@ public class PreparedStatement extends Statement
                 = java.sql.Types.BIGINT;
 // GemStone changes BEGIN
         // changed to use valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper().newLong(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Long(x));
         */

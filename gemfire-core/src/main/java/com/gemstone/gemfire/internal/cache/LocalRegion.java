@@ -507,6 +507,8 @@ public class LocalRegion extends AbstractRegion
 
   final private boolean isUsedForIndex;
 
+  private boolean isUsedForUserReplicatedTable;
+
   final private SerialGatewaySenderImpl serialGatewaySender;
 
   protected volatile boolean hasLocalSerialAEQorWAN;
@@ -2929,6 +2931,14 @@ public class LocalRegion extends AbstractRegion
   {
     checkReadiness();
     this.regionUserAttribute = value;
+  }
+
+  public final boolean isUsedForUserReplicatedTable() {
+    return this.isUsedForUserReplicatedTable;
+  }
+
+  public final void setIsUsedForUserReplicatedTable(boolean flag) {
+    this.isUsedForUserReplicatedTable = flag;
   }
 
   public final boolean containsKey(Object key) {

@@ -93,6 +93,16 @@ public interface ClassFactory {
 	public Class loadApplicationClass(ObjectStreamClass classDescriptor)
 		throws ClassNotFoundException;
 
+
+
+	/**
+	 Load an application class, or a class that is potentially an application class.
+
+	 @exception ClassNotFoundException Class cannot be found, or
+	 a SecurityException or LinkageException was thrown loading the class.
+	 */
+	public Class loadClassFromDB(String className)
+			throws ClassNotFoundException;
 	/**
 		Was the passed in class loaded by a ClassManager.
 

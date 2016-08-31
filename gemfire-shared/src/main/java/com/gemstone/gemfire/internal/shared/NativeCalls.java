@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.shared;
 
@@ -32,6 +50,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import com.gemstone.gemfire.internal.shared.jna.OSType;
 
 /**
  * Encapsulates native C/C++ calls via JNA. To obtain an instance of
@@ -59,69 +79,6 @@ public abstract class NativeCalls {
   public static volatile HashSet<String> TEST_CHK_FALLOC_DIRS;
   public static volatile HashSet<String> TEST_NO_FALLOC_DIRS;
 
-  /**
-   * Static instance of NativeCalls implementation. This can be one of JNA
-   * implementations in <code>NativeCallsJNAImpl</code> or can fallback to a
-   * generic implementation in case JNA is not available for the platform.
-   * 
-   * Note: this variable is deliberately not final since other drivers like
-   * those for ADO.NET or ODBC will plugin their own native implementations of
-   * NativeCalls.
-   */
-  protected static final NativeCalls instance;
-
-  static {
-    NativeCalls inst;
-    try {
-      // try to load JNA implementation first
-      // we do it via reflection since some clients like ADO.NET/ODBC
-      // may not have it
-      final Class<?> c = Class
-          .forName("com.gemstone.gemfire.internal.shared.NativeCallsJNAImpl");
-      inst = (NativeCalls)c.getMethod("getInstance").invoke(null);
-      // never catch Throwable or Error blindly because JVM only
-      // guarantees OutOfMemoryError will be seen at least once
-      // by one thread and this might be it
-    } catch (ClassNotFoundException e) {
-      inst = null;
-    } catch (IllegalAccessException e) {
-      inst = null;
-    } catch (InvocationTargetException e) {
-      inst = null;
-    } catch (NoSuchMethodException e) {
-      inst = null;
-    } catch (LinkageError e) {
-      inst = null;
-    }
-    if (inst == null) {
-      // In case JNA implementations cannot be loaded, fallback to generic
-      // implementations.
-      // Other clients like ADO.NET/ODBC will plugin their own implementations.
-      try {
-        // using reflection to get the implementation based on OSProcess
-        // since this is also used by GemFireXD client; at some point all the
-        // functionality of OSProcess should be folded into the JNA impl
-        final Class<?> c = Class
-            .forName("com.gemstone.gemfire.internal.OSProcess$NativeOSCalls");
-        inst = (NativeCalls)c.newInstance();
-        // never catch Throwable or Error blindly because JVM only
-        // guarantees OutOfMemoryError will be seen at least once
-        // by one thread and this might be it
-      } catch (ClassNotFoundException e) {
-        inst = null;
-      } catch (InstantiationException e) {
-        inst = null;
-      } catch (IllegalAccessException e) {
-        inst = null;
-      }
-    }
-    if (inst == null) {
-      // fallback to generic impl in case of a problem
-      inst = new NativeCallsGeneric();
-    }
-    instance = inst;
-  }
-
   public NativeCalls() {
   }
 
@@ -130,7 +87,7 @@ public abstract class NativeCalls {
    * platform.
    */
   public static NativeCalls getInstance() {
-    return instance;
+    return NativeCallsInst.instance;
   }
 
   @SuppressWarnings("unchecked")
@@ -588,6 +545,10 @@ public abstract class NativeCalls {
     return false;
   }
 
+  public long getMaxAllowedThreads() {
+    return 0;
+  }
+
   /**
    * A generic fallback implementation of {@link NativeCalls} when no JNA based
    * implementation could be initialized (e.g. if JNA itself does not provide an
@@ -696,5 +657,60 @@ public abstract class NativeCalls {
       throw new UnsupportedOperationException("setting native socket options "
           + optValueMap.keySet() + " not possible in generic implementation");
     }
+  }
+}
+
+final class NativeCallsInst {
+  /**
+   * Static instance of NativeCalls implementation. This can be one of JNA
+   * implementations in <code>NativeCallsJNAImpl</code> or can fallback to a
+   * generic implementation in case JNA is not available for the platform.
+   *
+   * Note: this variable is deliberately not final since other drivers like
+   * those for ADO.NET or ODBC will plugin their own native implementations of
+   * NativeCalls.
+   */
+  protected static final NativeCalls instance;
+
+  static {
+    NativeCalls inst;
+    try {
+      // try to load JNA implementation first
+      // we do it via reflection since some clients like ADO.NET/ODBC
+      // may not have it
+      final Class<?> c = Class.forName(
+          "com.gemstone.gemfire.internal.shared.jna.NativeCallsJNAImpl");
+      inst = (NativeCalls)c.getMethod("getInstance").invoke(null);
+      // never catch Throwable or Error blindly because JVM only
+      // guarantees OutOfMemoryError will be seen at least once
+      // by one thread and this might be it
+    } catch (ClassNotFoundException | IllegalAccessException |
+        InvocationTargetException | LinkageError | NoSuchMethodException e) {
+      inst = null;
+    }
+    if (inst == null) {
+      // In case JNA implementations cannot be loaded, fallback to generic
+      // implementations.
+      // Other clients like ADO.NET/ODBC will plugin their own implementations.
+      try {
+        // using reflection to get the implementation based on OSProcess
+        // since this is also used by GemFireXD client; at some point all the
+        // functionality of OSProcess should be folded into the JNA impl
+        final Class<?> c = Class
+            .forName("com.gemstone.gemfire.internal.OSProcess$NativeOSCalls");
+        inst = (NativeCalls)c.newInstance();
+        // never catch Throwable or Error blindly because JVM only
+        // guarantees OutOfMemoryError will be seen at least once
+        // by one thread and this might be it
+      } catch (ClassNotFoundException | InstantiationException |
+          IllegalAccessException e) {
+        inst = null;
+      }
+    }
+    if (inst == null) {
+      // fallback to generic impl in case of a problem
+      inst = new NativeCalls.NativeCallsGeneric();
+    }
+    instance = inst;
   }
 }

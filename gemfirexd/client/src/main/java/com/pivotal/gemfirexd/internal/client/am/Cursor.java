@@ -41,8 +41,6 @@
 package com.pivotal.gemfirexd.internal.client.am;
 // GemStone changes BEGIN
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
 import com.pivotal.gemfirexd.internal.iapi.reference.JDBC40Translation;
 
 import java.io.IOException;
@@ -1620,14 +1618,11 @@ public abstract class Cursor {
         switch (jdbcTypes_[column - 1]) {
         case java.sql.Types.SMALLINT:
 // GemStone changes BEGIN
-            // changed to use *.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger(
-                get_SMALLINT(column)); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
+            return get_SMALLINT(column); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
         case java.sql.Types.INTEGER:
-            return ClientSharedUtils.getJdkHelper().newInteger(
-                get_INTEGER(column));
+            return get_INTEGER(column);
         case java.sql.Types.BIGINT:
-            return ClientSharedUtils.getJdkHelper().newLong(get_BIGINT(column));
+            return get_BIGINT(column);
             /* (original code)
             return new Integer(get_SMALLINT(column)); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
         case java.sql.Types.INTEGER:
@@ -1637,9 +1632,9 @@ public abstract class Cursor {
             */
 // GemStone changes END
         case java.sql.Types.REAL:
-            return new Float(get_FLOAT(column));
+            return get_FLOAT(column);
         case java.sql.Types.DOUBLE:
-            return new Double(get_DOUBLE(column));
+            return get_DOUBLE(column);
         case java.sql.Types.DECIMAL:
             return get_DECIMAL(column);
         case java.sql.Types.DATE:

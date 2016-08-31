@@ -422,7 +422,7 @@ final class UpdateLoader implements LockOwner {
 	}
 
 	private GfxdLockSet getLockSet() {
-	  ClassFactoryContext cfc = (ClassFactoryContext)ContextService
+/*	  ClassFactoryContext cfc = (ClassFactoryContext)ContextService
 	      .getContextOrNull(ClassFactoryContext.CONTEXT_ID);
 
 	  // This method can be called from outside of the database
@@ -440,7 +440,7 @@ final class UpdateLoader implements LockOwner {
 	      throw GemFireXDRuntimeException.newRuntimeException(
 	          "unexpected exception in getting lock set", se);
 	    }
-	  }
+	  }*/
 	  return this.compat;
 	}
 

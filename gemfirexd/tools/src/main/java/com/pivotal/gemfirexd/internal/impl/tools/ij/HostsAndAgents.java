@@ -21,7 +21,6 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
 
-import com.gemstone.gemfire.internal.shared.JdkHelper;
 import com.gemstone.gnu.trove.TIntArrayList;
 
 /**

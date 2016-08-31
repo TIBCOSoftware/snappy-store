@@ -18,11 +18,12 @@
 package com.gemstone.gemfire.internal.shared;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.GregorianCalendar;
 
 public final class ClientSharedData {
 
-  public static final Charset UTF8 = Charset.forName("utf-8");
+  public static final Charset UTF8 = StandardCharsets.UTF_8;
 
   public static final byte[] BYTES_PREFIX_CLIENT_VERSION = new byte[] {
       0x7e, -0x3a, 0x74, -0x1f, 0x7d, -0x4d, 0x1b, 0x65 };

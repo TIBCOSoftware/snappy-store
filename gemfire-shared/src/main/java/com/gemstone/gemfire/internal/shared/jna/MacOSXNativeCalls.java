@@ -33,29 +33,51 @@
  * LICENSE file.
  */
 
-package com.pivotal.gemfirexd.internal.shared.common;
+package com.gemstone.gemfire.internal.shared.jna;
+
+import com.gemstone.gemfire.internal.shared.NativeCalls;
+import com.gemstone.gemfire.internal.shared.TCPSocketOptions;
 
 /**
- * 
- * @author kneeraj
- * 
+ * Implementation of {@link NativeCalls} for MacOSX platform.
  */
-public class ClientColumnResolver extends AbstractClientResolver {
+final class MacOSXNativeCalls extends POSIXNativeCalls {
 
-  private final int[] typeIdArray;
+  // #define values for keepalive options in /usr/include/netinet/tcp.h
+  private static final int OPT_TCP_KEEPALIVE = 0x10;
 
-  public ClientColumnResolver(int[] typeArray, boolean requiresSerializedHash) {
-    this.typeIdArray = typeArray;
+  private static final int ENOPROTOOPT = 42;
+
+  private static final int RLIMIT_NPROC = 7;
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public OSType getOSType() {
+    return OSType.MACOSX;
   }
 
-  // TODO: KN right now it is catering to single columns only
-  public Object getRoutingObject(RoutingObjectInfo rinfo,
-      SingleHopInformation sinfo, boolean requiresSerializedHash) {
-    assert rinfo instanceof AbstractRoutingObjectInfo;
-    AbstractRoutingObjectInfo cRInfo = (AbstractRoutingObjectInfo)rinfo;
-    int hashCode = cRInfo.computeHashCode(0, sinfo.getResolverByte(),
-        requiresSerializedHash);
+  @Override
+  protected int getPlatformOption(TCPSocketOptions opt)
+      throws UnsupportedOperationException {
+    switch (opt) {
+      case OPT_KEEPIDLE:
+        return OPT_TCP_KEEPALIVE;
+      case OPT_KEEPINTVL:
+      case OPT_KEEPCNT:
+        return UNSUPPORTED_OPTION;
+      default:
+        throw new UnsupportedOperationException("unknown option " + opt);
+    }
+  }
 
-    return hashCode;
+  @Override
+  protected boolean isNoProtocolOptionCode(int errno) {
+    return (errno == ENOPROTOOPT);
+  }
+
+  protected int getRLimitNProcResourceId() {
+    return RLIMIT_NPROC;
   }
 }

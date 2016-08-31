@@ -17,7 +17,11 @@
 
 package hydra;
 
-import util.TestException;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
+import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -154,25 +158,43 @@ implements Serializable {
     return map;
   }
 
-  protected static String getSnappyJarPath(String jarPath, final String jarName) {
-    String snappyJar = null;
-    try {
-      File parent = new File(jarPath);
-      File[] files = parent.listFiles(new FilenameFilter() {
-        @Override
-        public boolean accept(File dir, String name) {
-          if (name.startsWith(jarName))
-            return true;
-          else return false;
+    protected static String getSnappyJarPath(String jarPath, final String jarName) {
+        String snappyJar = null;
+        try {
+            File parent = new File(jarPath);
+            File[] files = parent.listFiles(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    if (name.startsWith(jarName))
+                        return true;
+                    else return false;
+                }
+            });
+            File snappyJarFile = files[0];
+            snappyJar = snappyJarFile.getAbsolutePath();
+        } catch (Exception e) {
+            Log.getLogWriter().info("Unable to find " + jarName + " jar at " + jarPath + " location.");
         }
-      });
-      File snappyJarFile = files[0];
-      snappyJar = snappyJarFile.getAbsolutePath();
-    } catch (Exception e) {
-      Log.getLogWriter().info("Unable to find " + jarName + " jar at " + jarPath + " location.");
+        return snappyJar;
     }
-    return snappyJar;
-  }
+
+    protected static String getAllSnappyJars(String jarPath) {
+        ArrayList<String> jarFiles = new ArrayList<>();
+        String SnappyJarsList = null;
+        File baseDir = new File(jarPath);
+        try {
+            IOFileFilter filter = new WildcardFileFilter("*.jar");
+            List<File> files = (List<File>) FileUtils.listFiles(baseDir, filter, TrueFileFilter.INSTANCE);
+            Log.getLogWriter().info("Jar files found: " + Arrays.asList(files));
+            for (File file1 : files) {
+                jarFiles.add(file1.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            Log.getLogWriter().info("Unable to find " + jarPath + " location.");
+        }
+        SnappyJarsList = StringUtils.join(jarFiles, ":");
+        return SnappyJarsList;
+    }
 
   //////////////////////////////////////////////////////////////////////////////
   ////    CONFIGURATION                                                     ////
@@ -226,9 +248,9 @@ implements Serializable {
           }
 
           // cache unconverted extra classpaths for versioning
-          vmd.setUnconvertedExtraClassPath(paths);
+            vmd.setUnconvertedExtraClassPath(paths);
 
-          if (paths.size() > 0) {
+            if (paths.size() > 0) {
             paths = EnvHelper.expandEnvVars(paths, hd);
             classPath.addAll(paths);
           }
@@ -237,29 +259,30 @@ implements Serializable {
         //             and needs no conversion except perhaps pseudo-envvars
       }
 
-      // classPath -- junit.jar
-      classPath.add(hd.getTestDir() + hd.getFileSep() + "junit.jar");
+        // classPath -- junit.jar
+        classPath.add(hd.getTestDir() + hd.getFileSep() + "junit.jar");
 
-      // classPath -- test classes
-      classPath.add(hd.getTestDir());
+        // classPath -- test classes
+        classPath.add(hd.getTestDir());
 
-      if (hd.getExtraTestDir() != null) {
-        classPath.add(hd.getExtraTestDir());
-      }
+        if (hd.getExtraTestDir() != null) {
+            classPath.add(hd.getExtraTestDir());
+        }
 
-      // classPath -- product jars
-      if (hd.getGemFireHome() != null) {
-        classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "lib", "snappydata-assembly"));
-      }
+        // classPath -- product jars
+        if (hd.getGemFireHome() != null) {
+            //classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "lib", "snappydata-assembly"));
+            classPath.add(VmDescription.getAllSnappyJars(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "jars"));
+        }
 
-      // classPath -- test jars
-      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
-              ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
-      classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-              "build-artifacts" + hd.getFileSep() + "scala-2.10" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
+        // classPath -- test jars
+        classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+                ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
+        classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
+                "build-artifacts" + hd.getFileSep() + "scala-2.11" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
 
-      // classPath -- set at last
-      vmd.setClassPath(EnvHelper.asPath(classPath, hd));
+        // classPath -- set at last
+        vmd.setClassPath(EnvHelper.asPath(classPath, hd));
 
       // libPath
       Vector libPath = new Vector();

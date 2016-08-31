@@ -1222,8 +1222,7 @@ public final class SQLDate extends DataType
     SharedUtils.dateTimeToString(str, 0, SQLDate.getYear(encodedDate),
         SQLDate.getMonth(encodedDate), SQLDate.getDay(encodedDate), -1, -1, -1,
         -1, -1, false);
-    return ClientSharedUtils.getJdkHelper()
-        .newWrappedString(str, 0, DATE_CHARS);
+    return ClientSharedUtils.newWrappedString(str, 0, DATE_CHARS);
   }
 
   static String getAsString(final UnsafeWrapper unsafe, final long memOffset) {
@@ -1233,8 +1232,7 @@ public final class SQLDate extends DataType
     SharedUtils.dateTimeToString(str, 0, SQLDate.getYear(encodedDate),
         SQLDate.getMonth(encodedDate), SQLDate.getDay(encodedDate), -1, -1, -1,
         -1, -1, false);
-    return ClientSharedUtils.getJdkHelper()
-        .newWrappedString(str, 0, DATE_CHARS);
+    return ClientSharedUtils.newWrappedString(str, 0, DATE_CHARS);
   }
 
   static void writeAsString(final byte[] inBytes, final int offset,

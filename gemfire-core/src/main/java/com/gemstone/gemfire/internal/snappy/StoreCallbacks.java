@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.LocalRegion;
 
 public interface StoreCallbacks {
 
@@ -36,9 +37,9 @@ public interface StoreCallbacks {
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
-  boolean haveRegisteredExternalStore(String tableName);
-
   public String cachedBatchTableName(String tableName);
 
   public String snappyInternalSchemaName();
+
+  void invalidateReplicatedTableCache(LocalRegion region);
 }

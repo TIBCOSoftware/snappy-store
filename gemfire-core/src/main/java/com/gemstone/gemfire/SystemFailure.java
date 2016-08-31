@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
 package com.gemstone.gemfire;
 
 import com.gemstone.gemfire.internal.LocalLogWriter;
@@ -282,9 +279,18 @@ public final class SystemFailure {
   public static boolean isJVMFailureError(Error err) {
     // all VirtualMachineErrors are not fatal to the JVM, in particular
     // StackOverflowError is not
-    return err instanceof OutOfMemoryError || err instanceof UnknownError;
+    if (err instanceof OutOfMemoryError) {
+      // ignore OOMEs thrown by Spark
+      String message = err.getMessage();
+      return !message.contains("Unable to acquire") &&
+          !message.contains("error while calling spill") &&
+          !message.contains("enough memory for aggregation") &&
+          !message.contains("enough memory to grow");
+    } else {
+      return false;
+    }
   }
-  
+
   /**
    * Check to see if a throwable is a JVM error and handle it if so.
    */

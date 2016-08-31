@@ -315,7 +315,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 //                int len = ((SQLChar)key).getCharArray(chars, 0);
 //                SQLChar.appendBlanks(chars, len, maxLength - len);
 //                // Set value to the padded string
-//                key.setValue(ClientSharedUtils.getJdkHelper().newWrappedString(
+//                key.setValue(ClientSharedUtils.newWrappedString(
 //                    chars, 0, maxLength));
 //              }
 //            }

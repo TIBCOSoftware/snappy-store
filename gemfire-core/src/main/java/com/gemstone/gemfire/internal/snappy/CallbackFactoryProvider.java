@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.LocalRegion;
 
 public abstract class CallbackFactoryProvider {
 
@@ -53,8 +54,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public boolean haveRegisteredExternalStore(String tableName) {
-      return false;
+    public void invalidateReplicatedTableCache(LocalRegion region) {
     }
 
     @Override
@@ -68,7 +68,6 @@ public abstract class CallbackFactoryProvider {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
-
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {
