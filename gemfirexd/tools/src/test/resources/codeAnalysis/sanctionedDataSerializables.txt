@@ -2682,3 +2682,6 @@ com/pivotal/gemfirexd/tools/planexporter/ExecutionPlanMessage$ExecutionPlanReply
 fromData,14,2a2bb700042a2bb80005b50001b1
 toData,14,2a2bb700062ab400012bb80007b1
 
+com/pivotal/gemfirexd/internal/engine/distributed/SnappyRemoveCachedObjectsFunction$SnappyRemoveCachedObjectsFunctionArgs,2
+fromData,22,2a2bb80006b500022a2bb900070100b80008b50003b1
+toData,17,2ab400022bb800042ab400032bb80005b1
