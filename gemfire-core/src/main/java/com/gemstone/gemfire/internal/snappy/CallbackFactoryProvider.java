@@ -68,6 +68,11 @@ public abstract class CallbackFactoryProvider {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
+
+    @Override
+    public void cleanUpCachedObjects(String table,
+        Boolean sentFromExternalCluster) {
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

@@ -42,4 +42,6 @@ public interface StoreCallbacks {
   public String snappyInternalSchemaName();
 
   void invalidateReplicatedTableCache(LocalRegion region);
+
+  void cleanUpCachedObjects(String table, Boolean sentFromExternalCluster);
 }
