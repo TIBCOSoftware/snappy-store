@@ -44,4 +44,6 @@ public interface StoreCallbacks {
   void invalidateReplicatedTableCache(LocalRegion region);
 
   void cleanUpCachedObjects(String table, Boolean sentFromExternalCluster);
+
+  void registerRelationDestroyForHiveStore();
 }

@@ -73,6 +73,10 @@ public abstract class CallbackFactoryProvider {
     public void cleanUpCachedObjects(String table,
         Boolean sentFromExternalCluster) {
     }
+
+    @Override
+    public void registerRelationDestroyForHiveStore() {
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

@@ -53,6 +53,7 @@ import java.util.*;
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.DataPolicy;
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.ClassPathLoader;
@@ -591,20 +592,22 @@ public final class FabricDatabase implements ModuleControl,
 //    SanityManager.DEBUG_PRINT("info", "hiveDBTablesMap = " + hiveDBTablesMap);
 
     hiveDBTablesMap.remove("DEFAULT");
-    //remove Hive store's own tables
+    // remove Hive store's own tables
     gfDBTablesMap.remove(
         Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
     // tables in SNAPPYSYS_INTERNAL
     List<String> internalColumnTablesList =
         gfDBTablesMap.remove(com.gemstone.gemfire.internal.snappy.
             CallbackFactoryProvider.getStoreCallbacks().snappyInternalSchemaName());
+    // creating a set here just for lookup, will not consume too much
+    // memory as size limited by no of tables
     Set<String> internalColumnTablesSet = new HashSet<>();
     if (internalColumnTablesList != null) {
       internalColumnTablesSet.addAll(internalColumnTablesList);
     }
 
-    // SanityManager.DEBUG_PRINT("info", "tables in hive store = " + hiveDBTablesMap);
-    // SanityManager.DEBUG_PRINT("info", "tables in DD  = " + gfDBTablesMap);
+//     SanityManager.DEBUG_PRINT("info", "tables in hive store = " + hiveDBTablesMap);
+//     SanityManager.DEBUG_PRINT("info", "tables in DD  = " + gfDBTablesMap);
     removeInconsistentDDEntries(embedConn, hiveDBTablesMap,
         gfDBTablesMap, internalColumnTablesSet);
     removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap);
@@ -704,20 +707,53 @@ public final class FabricDatabase implements ModuleControl,
       String schema, List<String> tables) throws SQLException {
     for (String table : tables) {
       try {
-        SanityManager.DEBUG_PRINT("info", "Dropping table " +
-            schema + "." + table);
+        String tableName = schema + "." + table;
+        SanityManager.DEBUG_PRINT("info", "FabricDatabase.dropTables " +
+            " processing " + tableName);
 
-        // drop column table
+        // drop cached batch table
         String cachedBatchTableName = com.gemstone.gemfire.
             internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
-            cachedBatchTableName(schema + "." + table);
-        embedConn.createStatement().execute(
-            "DROP TABLE IF EXISTS " + cachedBatchTableName);
+            cachedBatchTableName(tableName);
+        // set to true only if cached batch table is present and could not be removed
+        boolean cachedBatchTableExists = false;
+        final Region<?, ?> targetRegion =
+            Misc.getRegionForTable(cachedBatchTableName, false);
+        if (targetRegion != null) {
+          // make sure that corresponding row buffer also does not contain data
+          final Region<?, ?> rowTableRegion =
+              Misc.getRegionForTable(tableName, false);
+          if (targetRegion.size() == 0 &&
+              (rowTableRegion == null || rowTableRegion.size() == 0)) {
+            SanityManager.DEBUG_PRINT("info", "Dropping table " +
+                cachedBatchTableName);
+            embedConn.createStatement().execute(
+                "DROP TABLE IF EXISTS " + cachedBatchTableName);
+          } else {
+            cachedBatchTableExists = true;
+            SanityManager.DEBUG_PRINT("info", "Not dropping table " +
+                cachedBatchTableName + " as it is not empty");
+          }
+        }
 
-        // drop row buffer
-        embedConn.createStatement().execute(
-            "DROP TABLE IF EXISTS " + schema + "." + table);
-      } catch(SQLException se) {
+        // drop row table
+
+        // don't drop if corresponding cached batch table could not removed
+        if (!cachedBatchTableExists) {
+          final Region<?, ?> rowTableRegion =
+              Misc.getRegionForTable(tableName, false);
+          if (rowTableRegion != null) {
+            if (rowTableRegion.size() == 0) {
+              SanityManager.DEBUG_PRINT("info", "Dropping table " + tableName);
+              embedConn.createStatement().execute(
+                  "DROP TABLE IF EXISTS " + tableName);
+            } else {
+              SanityManager.DEBUG_PRINT("info", "Not dropping table " +
+                  tableName + " as it is not empty");
+            }
+          }
+        }
+      } catch (SQLException se) {
         SanityManager.DEBUG_PRINT("info", "SQLException: ", se);
       }
     }
@@ -731,9 +767,9 @@ public final class FabricDatabase implements ModuleControl,
         List<String> tableList = gfDBTablesMap.get(gc.getSchemaName());
         if (tableList == null) {
           tableList = new LinkedList<>();
+          gfDBTablesMap.put(gc.getSchemaName(), tableList);
         }
         tableList.add(gc.getTableName());
-        gfDBTablesMap.put(gc.getSchemaName(), tableList);
       }
     }
     return gfDBTablesMap;

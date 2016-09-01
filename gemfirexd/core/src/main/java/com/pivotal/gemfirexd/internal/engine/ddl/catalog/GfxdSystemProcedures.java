@@ -41,6 +41,7 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.auth.callback.UserAuthenticator;
@@ -2064,6 +2065,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     EmbedConnection conn = GemFireXDUtils.createNewInternalConnection(false);
     try {
       FabricDatabase.checkSnappyCatalogConsistency(conn);
+      CallbackFactoryProvider.getStoreCallbacks().registerRelationDestroyForHiveStore();
     } finally {
       conn.close();
     }
