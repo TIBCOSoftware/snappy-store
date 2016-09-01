@@ -98,6 +98,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
 
@@ -2013,8 +2014,13 @@ public class JDBC {
   implements GemFireXDQueryObserver{
 	private int numExpectedRegionClearCalls = 0;
 	private int currentCallCount = 0;
-	  
-	private void setNumExpectedRegionClearCalls(int numExpected) {
+
+		@Override
+		public void testExecutionEngineDecision(QueryInfo queryInfo,
+	  ExecutionEngineRule.ExecutionEngine engine, String queryText) {
+		}
+
+		private void setNumExpectedRegionClearCalls(int numExpected) {
 	  this.numExpectedRegionClearCalls = numExpected;
 	  this.currentCallCount = 0;
 	}

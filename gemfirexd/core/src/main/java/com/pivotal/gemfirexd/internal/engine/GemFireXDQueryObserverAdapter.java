@@ -67,6 +67,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.FromBaseTable;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.SelectNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
 
 @SuppressWarnings("serial")
 public class GemFireXDQueryObserverAdapter implements GemFireXDQueryObserver,
@@ -690,5 +691,10 @@ public class GemFireXDQueryObserverAdapter implements GemFireXDQueryObserver,
   @Override
   public boolean testIndexRecreate() {
     return false;
+  }
+
+  @Override
+  public void testExecutionEngineDecision(QueryInfo queryInfo,
+      ExecutionEngineRule.ExecutionEngine engine, String queryText) {
   }
 }

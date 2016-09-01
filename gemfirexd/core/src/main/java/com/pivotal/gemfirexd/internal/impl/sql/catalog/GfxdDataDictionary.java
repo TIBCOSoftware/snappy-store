@@ -1582,7 +1582,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
         String[] argNames = new String[] { "TABLE_NAME", "BUCKETS"};
         TypeDescriptor[] argTypes = new TypeDescriptor[] {
             DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-            DataTypeDescriptor.getCatalogType(Types.INTEGER)
+            DataTypeDescriptor.getCatalogType(Types.VARCHAR)
             };
         super.createSystemProcedureOrFunction("SET_BUCKETS_FOR_LOCAL_EXECUTION", sysUUID, argNames,
             argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,

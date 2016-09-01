@@ -797,6 +797,13 @@ public interface GfxdConstants {
   final String GFXD_ENABLE_GETALL_LOCALINDEX_EMBED_GFE = GFXD_PREFIX
       + Attribute.ENABLE_GETALL_LOCALINDEX_EMBED_GFE;
 
+  /**
+   * System property to certain store queries to spark for better performance
+   */
+
+  final String GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK =
+      GFXD_PREFIX + "enable-routing-arbiter";
+
   // --------------------- Defaults for GFXD connection/transaction props
 
   /** Default for autocommit in GFXD is false. */

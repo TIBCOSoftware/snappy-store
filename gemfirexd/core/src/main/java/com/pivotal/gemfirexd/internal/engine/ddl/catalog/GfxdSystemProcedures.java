@@ -1986,16 +1986,19 @@ public class GfxdSystemProcedures extends SystemProcedures {
 	 */
 
 	public static void SET_BUCKETS_FOR_LOCAL_EXECUTION(String tableName,
-			int bucket) throws SQLException, StandardException {
+			String buckets) throws SQLException, StandardException {
 		if (tableName == null) {
 			throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
 		}
-		Set<Integer> bucketSet = new HashSet<Integer>();
-	    bucketSet.add(bucket);
 		Region region = Misc.getRegionForTable(tableName, true);
 		LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-		lcc.setExecuteLocally(bucketSet, region, false, null);
-        if (lcc instanceof GenericLanguageConnectionContext)
+        Set<Integer> bucketSet = new HashSet();
+        StringTokenizer st = new StringTokenizer(buckets,",");
+        while(st.hasMoreTokens()){
+          bucketSet.add(Integer.parseInt(st.nextToken()));
+        }
+        lcc.setExecuteLocally(bucketSet, region, false, null);
+         if (lcc instanceof GenericLanguageConnectionContext)
             ((GenericLanguageConnectionContext) lcc).setBucketRetentionForLocalExecution(true);
 	}
   

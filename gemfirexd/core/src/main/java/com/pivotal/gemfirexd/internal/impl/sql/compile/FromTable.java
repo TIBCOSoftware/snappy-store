@@ -65,7 +65,8 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.util.JBitSet;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.HashScanResultSet;
-
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
 /**
  * A FromTable represents a table in the FROM clause of a DML statement.
  * It can be either a base table, a subquery or a project restrict.
@@ -84,6 +85,7 @@ abstract class FromTable extends ResultSetNode implements Optimizable
 	String		correlationName;
 	TableName	corrTableName;
 	int			tableNumber;
+	ExecutionEngine executionEngine = ExecutionEngine.NOT_DECIDED;
 	/* (Query block) level is 0-based. */
 	/* RESOLVE - View resolution will have to update the level within
 	 * the view tree.
@@ -1691,7 +1693,23 @@ abstract class FromTable extends ResultSetNode implements Optimizable
           String upperValue = StringUtil.SQLToUpperCase(value);
           this.userSpecifiedJoinStrategy = upperValue;
         }
-        
+
+        /**
+         * @param value the executionEngine to set
+         */
+        protected void setUserSpecifiedExecutionEngine(String value) {
+          if (StringUtil.SQLEqualsIgnoreCase(value, ExecutionEngine.STORE.name())) {
+            this.executionEngine = ExecutionEngine.STORE;
+          } else if (StringUtil.SQLEqualsIgnoreCase(value,  ExecutionEngine.SPARK.name())) {
+            this.executionEngine = ExecutionEngine.SPARK;
+          }
+          getCompilerContext().setExecutionEngine(executionEngine);
+        }
+
+        protected ExecutionEngineRule.ExecutionEngine getExecutionEngine() {
+          return executionEngine;
+        }
+
         @Override
         public int getNumPartitioningCols() throws StandardException {
       

@@ -69,7 +69,6 @@ import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
 import com.pivotal.gemfirexd.internal.engine.reflect.GemFireActivationClass;
 import com.pivotal.gemfirexd.internal.engine.reflect.SnappyActivationClass;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -101,8 +100,10 @@ import com.pivotal.gemfirexd.internal.impl.sql.compile.ExecSPSNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.InsertNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
 import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineArbiter;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
 
 //GemStone changes BEGIN
 
@@ -147,6 +148,7 @@ public class GenericStatement
 	      private static final String STREAMING_DDL_PREFIX = "STREAMING";
 	      private static final String INSERT_INTO_TABLE_SELECT_PATTERN = ".*INSERT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
 	      private static final String PUT_INTO_TABLE_SELECT_PATTERN = ".*PUT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
+	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
 // GemStone changes END
 	/**
 	 * Constructor for a Statement given the text of the statement in a String
@@ -759,19 +761,31 @@ public class GenericStatement
                                           qinfo = qt.computeQueryInfo(qic);
                                           // Only rerouting selects to lead node. Inserts will be handled separately.
                                           // The below should be connection specific.
-                                          if (routeQuery && qinfo != null && qinfo.isDML() && !isPreparedStatement()) {
-                                            if (SnappyActivation.isColumnTable((DMLQueryInfo)qinfo, false)) {
+                                          if ((routeQuery && qinfo != null && qinfo.isDML()
+                                              && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)) {
+
+                                            if (cc.getExecutionEngine() == ExecutionEngine.SPARK ||
+                                                engineArbiter.getExecutionEngine((DMLQueryInfo)qinfo)
+                                                    == ExecutionEngine.SPARK) {
                                               if (qinfo.isSelect()) {
-                                                return getPreparedStatementForSnappy(true, statementContext, lcc,
-                                                  false, checkCancellation);
-                                              }
-                                              else if (qinfo.isUpdate() | qinfo.isDelete()) {
+                                                if (observer != null) {
+                                                  observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+                                                }
+
+                                                return getPreparedStatementForSnappy(true,
+                                                    statementContext, lcc, false, checkCancellation);
+
+                                              } else if (qinfo.isUpdate() | qinfo.isDelete()) {
                                                 // Temporarily using the below sqlstate as this unsupported operation
                                                 // will be supported soon in future
                                                 throw StandardException.newException(SQLState.LANG_INVALID_OPERATION_ON_VIEW,
-                                                  "UPDATE/DELETE (Column Table) ", qinfo.getFullTableName());
-                                               }
+                                                    "UPDATE/DELETE (Column Table) ", qinfo.getFullTableName());
+                                              }
                                             }
+                                          }
+
+                                          if (observer != null && qinfo.isSelect()) {
+                                            observer.testExecutionEngineDecision(qinfo, ExecutionEngine.STORE, this.statementText);
                                           }
 
                                           if (qinfo != null && qinfo.isInsert()) {

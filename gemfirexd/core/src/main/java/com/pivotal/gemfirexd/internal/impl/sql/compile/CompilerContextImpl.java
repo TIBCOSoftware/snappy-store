@@ -81,7 +81,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
-
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
 import java.sql.SQLWarning;
 import java.util.Vector;
 import java.util.Properties;
@@ -1147,6 +1147,7 @@ public final class CompilerContextImpl extends ContextImpl
     private boolean convertCharConstToVarchar = false;
 	private boolean ddlForSnappyUse = false;
 	private boolean snappyForcedDDLRouting = false;
+    private ExecutionEngine executionEngine = ExecutionEngine.NOT_DECIDED;
     
     private short originalExecFlags = 0;
     // NOTE: when adding new flags here always take care to reset them in
@@ -1492,7 +1493,13 @@ public final class CompilerContextImpl extends ContextImpl
   public void setHasQueryHDFS(boolean hasQueryHDFS) {
     this.hasQueryHDFS = hasQueryHDFS;
   }
-  
+
+  @Override
+  public void setExecutionEngine(ExecutionEngine engine) { this.executionEngine = engine; }
+
+  @Override
+  public ExecutionEngine getExecutionEngine() { return this.executionEngine; }
+
   @Override
   public void setOriginalExecFlags(short execFlags) {
     this.originalExecFlags = execFlags;
