@@ -98,3 +98,11 @@ Bug Fixes
 * GEMXD-19 - Cleaning the index corresponding to rows in previously hosted bucket but discarded
              on restart. This was resulting on wrong counts when where clause contained indexes 
              and the query plan picked indexes instead of table scan.
+
+* GEMXD-39 - Added few more items to LinuxSystemStats:
+             totalFileDescriptors - total number of open file handles in this machine
+             fileDescriptorsSystemMax - OS limit of maximum number of open file handles
+             totalThreads - total number of threads in this machine
+             threadsSessionMax - OS limit of maximum number of threads+processes in current session
+             threadsSystemMax - OS limit of maximum number of threads+processes in this machine
+
