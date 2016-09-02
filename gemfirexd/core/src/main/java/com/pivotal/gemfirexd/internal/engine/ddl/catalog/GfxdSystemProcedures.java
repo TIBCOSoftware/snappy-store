@@ -2056,8 +2056,10 @@ public class GfxdSystemProcedures extends SystemProcedures {
     final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
     final Object[] params = new Object[]{1}; //dummy (unused)
     if (isLead || Misc.getDistributedSystem().isLoner()) {
+      // in case proc invoked on lead directly
       runCatalogConsistencyChecks();
     } else {
+      // publish a message if not lead
       publishMessage(params, false,
           GfxdSystemProcedureMessage.SysProcMethod.repairCatalog, false, false);
     }
