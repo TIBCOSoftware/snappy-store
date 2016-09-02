@@ -510,8 +510,9 @@ public final class FabricDatabase implements ModuleControl,
       final boolean isLead = this.memStore.isSnappyStore() && ServerGroupUtils.isGroupMember(
           CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup())
           || Misc.getDistributedSystem().isLoner();
+      Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
       if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
-          GemFireStore.VMKind.DATASTORE || isLead)) {
+          GemFireStore.VMKind.DATASTORE || (isLead && servers.size() > 0))) {
         // Take write lock on data dictionary. Because of this all the servers will will initiate their
         // hive client one by one. This is important as we have downgraded the ISOLATION LEVEL from
         // SERIALIZABLE to REPEATABLE READ
@@ -527,7 +528,7 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
 
-      if (isLead) {
+      if (isLead && servers.size() > 0) {
         checkSnappyCatalogConsistency(embedConn);
       }
     } catch (Throwable t) {
@@ -591,7 +592,6 @@ public final class FabricDatabase implements ModuleControl,
     }
 //    SanityManager.DEBUG_PRINT("info", "hiveDBTablesMap = " + hiveDBTablesMap);
 
-    hiveDBTablesMap.remove("DEFAULT");
     // remove Hive store's own tables
     gfDBTablesMap.remove(
         Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
