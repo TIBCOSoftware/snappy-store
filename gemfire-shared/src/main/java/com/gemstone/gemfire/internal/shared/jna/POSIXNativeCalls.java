@@ -154,6 +154,8 @@ class POSIXNativeCalls extends NativeCalls {
    */
   private SignalHandler hupHandler;
 
+  protected final RLimit rlimit = new RLimit();
+
   /**
    * the <code>RehashServerOnSIGHUP</code> instance provided to
    * {@link #daemonize}
@@ -448,13 +450,14 @@ class POSIXNativeCalls extends NativeCalls {
   }
 
   @Override
-  public long getMaxAllowedThreads() {
-    RLimit rlim = new RLimit();
+  public synchronized long getSessionThreadLimit() {
     int nProcResourceId = getRLimitNProcResourceId();
     if (nProcResourceId >= 0) {
       try {
-        if (getrlimit(nProcResourceId, rlim) == 0) {
-          return rlim.rlim_cur;
+        rlimit.rlim_cur = 0;
+        rlimit.rlim_max = 0;
+        if (getrlimit(nProcResourceId, rlimit) == 0) {
+          return rlimit.rlim_cur;
         }
       } catch (LastErrorException ignored) {
       }

@@ -502,6 +502,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
     }
   }
 
+  @Override
   protected int getRLimitNProcResourceId() {
     return RLIMIT_NPROC;
   }

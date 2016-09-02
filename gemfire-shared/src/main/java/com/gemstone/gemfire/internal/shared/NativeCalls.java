@@ -545,8 +545,8 @@ public abstract class NativeCalls {
     return false;
   }
 
-  public long getMaxAllowedThreads() {
-    return 0;
+  public long getSessionThreadLimit() {
+    return 0L;
   }
 
   /**

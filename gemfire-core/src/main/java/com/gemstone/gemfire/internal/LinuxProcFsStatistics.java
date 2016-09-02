@@ -163,10 +163,11 @@ public class LinuxProcFsStatistics {
 
   static void refreshSystem(int[] ints, long[] longs, double[] doubles) {
     ints[LinuxSystemStats.processesINT] = getProcessCount();
-    ints[LinuxSystemStats.threadsSystemMaxINT] = getThreadSystemMax();
     ints[LinuxSystemStats.cpusINT] = sys_cpus;
-    longs[LinuxSystemStats.threadsMaxLONG] =
-        NativeCalls.getInstance().getMaxAllowedThreads();
+    getSystemFileDescriptorStats(longs);
+    longs[LinuxSystemStats.threadsSessionMaxLONG] =
+        NativeCalls.getInstance().getSessionThreadLimit();
+    longs[LinuxSystemStats.threadsSystemMaxLONG] = getSystemThreadLimit();
 
     try (BufferedReader br = Files.newBufferedReader(Paths.get("/proc/stat"),
         StandardCharsets.UTF_8)) {
@@ -208,7 +209,7 @@ public class LinuxProcFsStatistics {
       }
     } catch ( IOException ioe ) {
     }
-    getLoadAvg(doubles, ints);
+    getLoadAvg(doubles, longs);
     getMemInfo(ints);
     getDiskStats(longs);
     getNetStats(longs);
@@ -220,10 +221,9 @@ public class LinuxProcFsStatistics {
 
   // Example of /proc/loadavg
   // 0.00 0.00 0.07 1/218 7907
-  private static void getLoadAvg(double[] doubles, int[] ints) {
-    try (BufferedReader br = Files.newBufferedReader(Paths.get("/proc/loadavg"),
-        StandardCharsets.UTF_8)) {
-      String line = br.readLine();
+  private static void getLoadAvg(double[] doubles, long[] longs) {
+    try {
+      String line = getLineFromFile("/proc/loadavg");
       if ( line == null ) {
         return;
       }
@@ -236,14 +236,14 @@ public class LinuxProcFsStatistics {
       if (threadLoad != null) {
         int slashIndex = threadLoad.indexOf('/');
         if (slashIndex >= 0) {
-          try {
-            ints[LinuxSystemStats.threadsINT] = Integer.parseInt(
-                threadLoad.substring(slashIndex + 1));
-          } catch (NumberFormatException ignored) {
-          }
+          threadLoad = threadLoad.substring(slashIndex + 1);
+        }
+        try {
+          longs[LinuxSystemStats.totalThreadsLONG] = Long.parseLong(threadLoad);
+        } catch (NumberFormatException ignored) {
         }
       }
-    } catch ( NoSuchElementException | IOException ignored) {
+    } catch (NoSuchElementException ignored) {
     } finally {
       st.releaseResources();
     }
@@ -620,22 +620,47 @@ Inter-|   Receive                                                |  Transmit
   }
 
   /**
+   * Get the current total number of threads across system and maximum number
+   * of file descriptors threads allowed by OS for the machine.
+   */
+  private static void getSystemFileDescriptorStats(long[] longs) {
+    String line = getLineFromFile("/proc/sys/fs/file-nr");
+    if (line != null) {
+      String[] parts = line.split("[ \t]");
+      if (parts.length > 0) {
+        try {
+          longs[LinuxSystemStats.totalFileDescriptorsLONG] =
+              Long.parseLong(parts[0]);
+        } catch (NumberFormatException ignored) {
+        }
+        if (parts.length > 2) {
+          try {
+            longs[LinuxSystemStats.fileDescriptorsSystemMaxLONG] =
+                Long.parseLong(parts[2]);
+          } catch (NumberFormatException ignored) {
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Get the maximum number of threads allowed by OS for the machine.
    * This returns smaller of threads-max and pid_max from /proc/sys/kernel.
    */
-  private static int getThreadSystemMax() {
-    String s = getLineFromFile("/proc/sys/kernel/threads-max");
-    int threadsMax = 0;
-    if (s != null) {
+  private static long getSystemThreadLimit() {
+    String line = getLineFromFile("/proc/sys/kernel/threads-max");
+    long threadsMax = 0;
+    if (line != null) {
       try {
-        threadsMax = Integer.parseInt(s);
+        threadsMax = Long.parseLong(line);
       } catch (NumberFormatException ignored) {
       }
     }
-    s = getLineFromFile("/proc/sys/kernel/pid_max");
-    if (s != null) {
+    line = getLineFromFile("/proc/sys/kernel/pid_max");
+    if (line != null) {
       try {
-        int pidMax = Integer.parseInt(s);
+        long pidMax = Long.parseLong(line);
         threadsMax = threadsMax > 0 ? Math.min(threadsMax, pidMax) : pidMax;
       } catch (NumberFormatException ignored) {
       }

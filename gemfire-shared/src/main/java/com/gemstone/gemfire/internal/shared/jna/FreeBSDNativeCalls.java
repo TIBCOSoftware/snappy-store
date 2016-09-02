@@ -80,6 +80,7 @@ final class FreeBSDNativeCalls extends POSIXNativeCalls {
     return (errno == ENOPROTOOPT);
   }
 
+  @Override
   protected int getRLimitNProcResourceId() {
     return RLIMIT_NPROC;
   }

@@ -77,6 +77,7 @@ final class MacOSXNativeCalls extends POSIXNativeCalls {
     return (errno == ENOPROTOOPT);
   }
 
+  @Override
   protected int getRLimitNProcResourceId() {
     return RLIMIT_NPROC;
   }
