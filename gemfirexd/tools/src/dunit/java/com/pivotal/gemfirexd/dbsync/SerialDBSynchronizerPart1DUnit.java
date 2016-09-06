@@ -47,7 +47,7 @@ import io.snappydata.test.dunit.RMIException;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import org.apache.derby.drda.NetworkServerControl;
-import org.apache.derby.shared.common.error.ShutdownException;
+import org.apache.derby.iapi.error.ShutdownException;
 
 @SuppressWarnings("serial")
 public class SerialDBSynchronizerPart1DUnit extends DBSynchronizerTestBase {

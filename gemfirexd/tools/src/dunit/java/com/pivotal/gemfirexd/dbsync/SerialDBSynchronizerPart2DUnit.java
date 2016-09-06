@@ -52,7 +52,7 @@ import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import org.apache.derby.drda.NetworkServerControl;
-import org.apache.derby.shared.common.error.ShutdownException;
+import org.apache.derby.iapi.error.ShutdownException;
 import org.apache.derbyTesting.junit.JDBC;
 
 @SuppressWarnings("serial")
