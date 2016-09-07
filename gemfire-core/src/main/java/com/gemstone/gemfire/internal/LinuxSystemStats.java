@@ -271,7 +271,7 @@ public class LinuxSystemStats
                                     "count, not an average over the time interval.",
                                 "threads"),
                             f.createLongGauge("threadsSessionMax",
-                                "The OS limit of maximum number of threads+processes in current session.",
+                                "The OS limit of maximum number of threads+processes in current login session.",
                                 "threads"),
                             f.createLongGauge("threadsSystemMax",
                                 "The OS limit of maximum number of threads+processes in this computer.",

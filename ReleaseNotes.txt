@@ -103,6 +103,7 @@ Bug Fixes
              totalFileDescriptors - total number of open file handles in this machine
              fileDescriptorsSystemMax - OS limit of maximum number of open file handles
              totalThreads - total number of threads in this machine
-             threadsSessionMax - OS limit of maximum number of threads+processes in current session
-             threadsSystemMax - OS limit of maximum number of threads+processes in this machine
+             threadsSessionMax - OS limit of maximum number of threads+processes
+               for current login session
+             threadsSystemMax - OS limit of maximum number of threads+processes on this machine
 
