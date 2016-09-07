@@ -172,25 +172,6 @@ public class LinuxSystemStats
                             f.createIntGauge("cpuNonUser",
                                                 "The percentage of total available time that has been used to execute non-user code.(includes system, iowait, irq, softirq etc.)",
                                                 "%"),
-                            f.createLongGauge("totalFileDescriptors",
-                                "The total number of open file handles in this computer " +
-                                    "at the time of data collection. Notice that this is an " +
-                                    "instantaneous count, not an average over the time interval.",
-                                "fds"),
-                            f.createLongGauge("fileDescriptorsSystemMax",
-                                "The OS limit of maximum number of open file handles in this computer.",
-                                "fds"),
-                            f.createLongGauge("totalThreads",
-                                "The total number of threads in the computer at the time of " +
-                                    "data collection. Notice that this is an instantaneous " +
-                                    "count, not an average over the time interval.",
-                                "threads"),
-                            f.createLongGauge("threadsSessionMax",
-                                "The OS limit of maximum number of threads+processes in current session.",
-                                "threads"),
-                            f.createLongGauge("threadsSystemMax",
-                                "The OS limit of maximum number of threads+processes in this computer.",
-                                "threads"),
 
                             f.createLongCounter("loopbackPackets",
                                              "The number of network packets sent (or received) on the loopback interface",
@@ -276,10 +257,25 @@ public class LinuxSystemStats
                             f.createLongCounter("diskTime",
                                                 "The total number of milliseconds that measures both completed disk operations and any accumulating backlog of in progress ops.",
                                                 "milliseconds"),
-                            f.createLongGauge("threadsMax",
-                                "The OS limit of maximum number of threads in current session",
+                            f.createLongGauge("totalFileDescriptors",
+                                "The total number of open file handles in this computer " +
+                                    "at the time of data collection. Notice that this is an " +
+                                    "instantaneous count, not an average over the time interval.",
+                                "fds"),
+                            f.createLongGauge("fileDescriptorsSystemMax",
+                                "The OS limit of maximum number of open file handles in this computer.",
+                                "fds"),
+                            f.createLongGauge("totalThreads",
+                                "The total number of threads in the computer at the time of " +
+                                    "data collection. Notice that this is an instantaneous " +
+                                    "count, not an average over the time interval.",
                                 "threads"),
-
+                            f.createLongGauge("threadsSessionMax",
+                                "The OS limit of maximum number of threads+processes in current session.",
+                                "threads"),
+                            f.createLongGauge("threadsSystemMax",
+                                "The OS limit of maximum number of threads+processes in this computer.",
+                                "threads"),
 
                             f.createDoubleGauge("loadAverage1",
                                                 "The average number of threads in the run queue or waiting for disk I/O over the last minute.",
