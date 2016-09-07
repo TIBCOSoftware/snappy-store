@@ -99,7 +99,6 @@ import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
-import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
@@ -117,6 +116,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
+import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 
 /**
  * DOCUMENT ME!
@@ -186,6 +186,8 @@ public class MemHeapScanController implements MemScanController, RowCountable,
   protected int forUpdate;
 
   protected GemFireContainer gfContainer;
+
+  protected boolean isOffHeap;
 
   private boolean addRegionAndKey = false;
 
@@ -263,6 +265,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
       throws StandardException {
     this.gfContainer = conglomerate.getGemFireContainer();
     assert this.gfContainer != null;
+    this.isOffHeap = this.gfContainer.isOffHeap();
     conglomerate.openContainer(tran, openMode, lockLevel, locking);
     this.tran = tran;
     this.openMode = openMode;
@@ -952,7 +955,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
           }
         }
         else {
-          if (this.gfContainer.isOffHeap()) {
+          if (this.isOffHeap) {
             final OffHeapResourceHolder offheapOwner = this.offheapOwner != null
                 ? this.offheapOwner : this.tran;
             if (this.currentExecRow != null) {

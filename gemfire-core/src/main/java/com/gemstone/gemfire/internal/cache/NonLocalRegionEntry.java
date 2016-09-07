@@ -613,9 +613,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public boolean isMarkedForEviction() {
-    throw new UnsupportedOperationException(LocalizedStrings
-        .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
-            .toLocalizedString());
+    return false;
   }
   @Override
   public void setMarkedForEviction() {

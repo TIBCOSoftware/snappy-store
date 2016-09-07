@@ -2134,7 +2134,8 @@ RETRYLOOP:
 
     HashEntry<K, V> lastReturned;
 
-    final ArrayList<HashEntry<K, V>> currentList;
+    private HashEntry<K, V> currentEntry;
+    private final ArrayList<HashEntry<K, V>> currentList;
 
     int currentListIndex;
 
@@ -2142,7 +2143,7 @@ RETRYLOOP:
       this.currentSegmentIndex = CustomEntryConcurrentHashMap.this
           .segments.length;
       this.nextTableIndex = -1;
-      this.currentList = new ArrayList<HashEntry<K, V>>(5);
+      this.currentList = new ArrayList<>(5);
       this.currentListIndex = 0;
       advance();
     }
@@ -2153,7 +2154,17 @@ RETRYLOOP:
 
     final void advance() {
 // GemStone changes BEGIN
-      if (this.currentListIndex < this.currentList.size()) {
+      if (this.currentListIndex == 0) {
+        if (this.currentEntry != null) {
+          this.nextEntry = this.currentEntry;
+          this.currentListIndex = 1;
+          return;
+        } else if (this.currentList.size() > 0) {
+          this.nextEntry = this.currentList.get(0);
+          this.currentListIndex = 1;
+          return;
+        }
+      } else if (this.currentListIndex < this.currentList.size()) {
         this.nextEntry = this.currentList.get(this.currentListIndex++);
         return;
       }
@@ -2222,11 +2233,26 @@ RETRYLOOP:
       assert segments[currentSegmentIndex] != null: "unexpected null currentSegment";
       assert segments[currentSegmentIndex].listUpdateLock.numReaders() > 0;
 
-      this.currentList.clear();
+      this.currentEntry = null;
+      if (this.currentList.size() > 0) {
+        this.currentList.clear();
+      }
       this.currentListIndex = 0;
+      boolean useEntry = true;
       for (HashEntry<K, V> p = this.nextEntry.getNextEntry(); p != null; p = p
           .getNextEntry()) {
-        this.currentList.add(p);
+        if (useEntry) {
+          if (this.currentEntry == null) {
+            this.currentEntry = p;
+          } else {
+            this.currentList.add(this.currentEntry);
+            this.currentList.add(p);
+            this.currentEntry = null;
+            useEntry = false;
+          }
+        } else {
+          this.currentList.add(p);
+        }
       }
     }
 

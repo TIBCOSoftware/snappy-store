@@ -963,7 +963,8 @@ public interface DiskEntry extends RegionEntry {
     @Retained
     public static Object getValueOffHeapOrDiskWithoutFaultIn(DiskEntry entry, LocalRegion region) {
       @Retained Object v = entry._getValueRetain(region, true); // TODO:KIRK:OK Object v = entry.getValueWithContext(region);
-      if (v == null || Token.isRemovedFromDisk(v)
+      final boolean isRemovedFromDisk = Token.isRemovedFromDisk(v);
+      if ((v == null || isRemovedFromDisk)
           && !region.isIndexCreationThread()) {
         synchronized (entry) {
           v = entry._getValueRetain(region, true); // TODO:KIRK:OK v = entry.getValueWithContext(region);
@@ -973,7 +974,7 @@ public interface DiskEntry extends RegionEntry {
           }
         }
       }
-      if (Token.isRemovedFromDisk(v)) {
+      if (isRemovedFromDisk) {
         // fix for bug 31800
         v = null;
       } else if (v instanceof ByteSource) {
@@ -986,6 +987,35 @@ public interface DiskEntry extends RegionEntry {
         }
       }
       return v;
+    }
+
+    @Retained
+    public static Object getValueHeapOrDiskWithoutFaultIn(DiskEntry entry,
+        LocalRegion region) {
+      Object v;
+      if (region.compressor == null) {
+        v = entry._getValue();
+      } else {
+        v = AbstractRegionEntry.decompress(region, entry._getValue());
+      }
+      if (v != null && !Token.isRemovedFromDisk(v)) {
+        return v;
+      } else if (!region.isIndexCreationThread()) {
+        synchronized (entry) {
+          if (region.compressor == null) {
+            v = entry._getValue();
+          } else {
+            v = AbstractRegionEntry.decompress(region, entry._getValue());
+          }
+          if (v == null) {
+            v = Helper.getOffHeapValueOnDiskOrBuffer(entry,
+                region.getDiskRegion(), region, false);
+          }
+        }
+        return v;
+      } else {
+        return null;
+      }
     }
 
     @Retained

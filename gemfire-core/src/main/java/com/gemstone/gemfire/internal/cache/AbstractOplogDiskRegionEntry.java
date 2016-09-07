@@ -96,6 +96,10 @@ public abstract class AbstractOplogDiskRegionEntry
     return Helper.getValueInVMOrDiskWithoutFaultIn(this, owner);
   }
   @Retained
+  public final Object getHeapValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
+    return Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
+  }
+  @Retained
   @Override
   public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner) {
     return Helper.getValueOffHeapOrDiskWithoutFaultIn(this, owner);

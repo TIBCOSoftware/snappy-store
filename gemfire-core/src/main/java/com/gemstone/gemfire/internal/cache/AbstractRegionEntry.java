@@ -536,12 +536,27 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     SimpleMemoryAllocatorImpl.setReferenceCountOwner(null);
     return result;
   }
-  
+
   @Retained
   public  Object getValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
    return getValueInVM(owner);
   }
-  
+
+  @Retained
+  public Object getHeapValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
+    final Object v;
+    if (owner.compressor == null) {
+      v = _getValue();
+    } else {
+      v = decompress(owner, _getValue());
+    }
+    if (v != null) { // should only be possible if disk entry
+      return v;
+    } else {
+      return Token.NOT_AVAILABLE;
+    }
+  }
+
   @Override
   @Retained
   public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner) {
@@ -1209,7 +1224,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
             QueuedSynchronizer, AbstractRegionEntry, Void>() {
 
     /**
-     * @see MapCallback#newValue(Object, Object)
+     * @see MapCallback#newValue
      */
     @Override
     public final QueuedSynchronizer newValue(final RegionEntry key,
@@ -2665,9 +2680,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   }
 
   static boolean isCompressible(RegionEntryContext context, Object value) {
-    return ((value != null) && (context != null)
-        && (context.getCompressor() != null) && !Token
-          .isInvalidOrRemoved(value));
+    return (context != null && context.getCompressor() != null &&
+        value != null && !Token.isInvalidOrRemoved(value));
   }
 
   /* subclasses supporting versions must override this */

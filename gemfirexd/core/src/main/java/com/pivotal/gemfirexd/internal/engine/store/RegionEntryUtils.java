@@ -121,10 +121,11 @@ public final class RegionEntryUtils {
   }
 
   private static final boolean isValueToken(Object value) {
-    if (Misc.getMemStoreBooting().isHadoopGfxdLonerMode())
-      return Token.isInvalidOrRemoved(value);
-    else
+    if (!Misc.getMemStoreBooting().isHadoopGfxdLonerMode()) {
       return Token.isInvalidOrRemoved(value) || value == Token.NOT_AVAILABLE;
+    } else {
+      return Token.isInvalidOrRemoved(value);
+    }
   }
 
   /**
@@ -1561,9 +1562,8 @@ public final class RegionEntryUtils {
     }
 
     // assumes val to be non null
-    public int getBucketIdFromRegionEntry(RegionEntry val) {
-      RowLocation rl = (RowLocation) val;
-      return rl.getBucketID();
+    public final int getBucketIdFromRegionEntry(RegionEntry val) {
+      return ((RowLocation)val).getBucketID();
     }
 
     @Override

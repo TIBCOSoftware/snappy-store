@@ -612,7 +612,7 @@ public class VersionedBucketRowLocationThinDiskLRURegionEntryHeap extends RowLoc
   }
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.getValueInVMOrDiskWithoutFaultIn(owner);
+    return this.getHeapValueInVMOrDiskWithoutFaultIn(owner);
   }
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {

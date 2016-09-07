@@ -7032,11 +7032,14 @@ public class PartitionedRegion extends LocalRegion implements
     }
   }
 
-  private final class PRLocalScanIterator implements PREntriesIterator<Object>, CloseableIterator<Object> {
+  public final class PRLocalScanIterator implements PREntriesIterator<Object>,
+      CloseableIterator<Object> {
 
     private final Iterator<Integer> bucketIdsIter;
 
     private final TXState txState;
+
+    private final boolean includeHDFS;
 
     private final boolean forUpdate;
 
@@ -7055,7 +7058,7 @@ public class PartitionedRegion extends LocalRegion implements
     private final long numEntries;
     
     private boolean diskIteratorInitialized;
-    
+
     private final StaticSystemCallbacks cb;
 
     private final boolean fetchRemoteEntries;
@@ -7103,6 +7106,7 @@ public class PartitionedRegion extends LocalRegion implements
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.diskIteratorInitialized = false;
+      this.includeHDFS = includeHDFSResults();
       this.cb = GemFireCacheImpl.getInternalProductCallbacks();
     }
 
@@ -7111,6 +7115,7 @@ public class PartitionedRegion extends LocalRegion implements
       Iterator<Integer> iter = null;
       long numEntries = -1;
       PartitionedRegionDataStore ds = dataStore;
+
       if (ds == null) {
         // region may not have storage or region may not have been initialized
         // (e.g. delayed initialization in GemFireXD while CREATE INDEX may open
@@ -7140,11 +7145,12 @@ public class PartitionedRegion extends LocalRegion implements
       this.includeValues = includeValues;
       this.numEntries = numEntries;
       this.diskIteratorInitialized = false;
+      this.includeHDFS = includeHDFSResults();
       this.cb = GemFireCacheImpl.getInternalProductCallbacks();
     }
 
     private void ensureBucketsForHDFS() {
-      if (isHDFSReadWriteRegion() && includeHDFSResults()) {
+      if (isHDFSReadWriteRegion() && includeHDFS) {
         getRegionAdvisor().accept(new BucketVisitor<Object>() {
           @Override
           public boolean visit(RegionAdvisor advisor, ProxyBucketRegion pbr, Object obj) {
@@ -7174,17 +7180,18 @@ public class PartitionedRegion extends LocalRegion implements
           if (this.bucketEntriesIter != null
               && this.bucketEntriesIter.hasNext()) {
             final RegionEntry val = this.bucketEntriesIter.next();
-            if (val != null && !(val instanceof NonLocalRegionEntry) && !includeHDFSResults()
-                && val.isMarkedForEviction() && !this.forUpdate) {
-              // entry has been faulted in from HDFS, skip
-              continue;
-            }
-
-            // KN: If DiskIterator has been initialized then we need to change
-            // the current bucket id and the current bucket region accordingly
-            // as otherwise there will be a mismatch
-            if (val != null && !(val instanceof NonLocalRegionEntry) && this.diskIteratorInitialized) {
-              setCurrRegionAndBucketId(val);
+            if (val != null) {
+              if (val.isMarkedForEviction() && !includeHDFS && !forUpdate) {
+                // entry has been faulted in from HDFS, skip
+                continue;
+              }
+              // KN: If DiskIterator has been initialized then we need to change
+              // the current bucket id and the current bucket region accordingly
+              // as otherwise there will be a mismatch
+              if (this.diskIteratorInitialized
+                  && !(val instanceof NonLocalRegionEntry)) {
+                setCurrRegionAndBucketId(val);
+              }
             }
             //TODO: Suranjan How will it work for tx? There will be no BucketRegion for NonLocalRegionEntry
             // Ideally for tx there shouldn't be a case of iterator fetching remote entry
@@ -7380,7 +7387,7 @@ public class PartitionedRegion extends LocalRegion implements
       if (this.cb != null) {
         int bucketId = this.cb.getBucketIdFromRegionEntry(val);
         this.currentBucketId = bucketId;
-        this.currentBucketRegion = dataStore.getLocalBucketById(bucketId);
+        this.currentBucketRegion = dataStore.localBucket2RegionMap.get(bucketId);
       }
     }
 
@@ -11546,7 +11553,7 @@ public class PartitionedRegion extends LocalRegion implements
     return this.enableConflation;
   }
 
-  public Iterator<?> getAppropriateLocalEntriesIterator(Set<Integer> bucketSet,
+  public PRLocalScanIterator getAppropriateLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
       LocalRegion currRegion, boolean fetchRemote) {
     if (bucketSet != null && !bucketSet.isEmpty()) {

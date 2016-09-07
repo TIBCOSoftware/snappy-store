@@ -2155,7 +2155,7 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     return new RegionSnapshotServiceImpl(this);
   }
   
-  public Compressor getCompressor() {
+  public final Compressor getCompressor() {
     return this.compressor;
   }
 

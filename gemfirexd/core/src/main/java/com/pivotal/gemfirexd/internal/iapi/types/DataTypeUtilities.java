@@ -61,7 +61,6 @@ import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import java.math.BigDecimal;
 import java.sql.Types;
 import java.sql.ResultSetMetaData;
-import java.util.Arrays;
 import java.util.Calendar;
 
 /**
@@ -1112,8 +1111,7 @@ public abstract class DataTypeUtilities {
             columnWidth);
         if (bd != null) {
           return SQLDecimal.getBoolean(bd);
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return false;
         }
@@ -1133,34 +1131,21 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          return !(str.equals("0") || str.equals("false"));
-        }
-        else {
-          wasNull.setWasNull();
-          return false;
-        }
+        return !(str.equals("0") || str.equals("false"));
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
       case StoredFormatIds.VARCHAR_TYPE_ID:
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          return !(str.equals("0") || str.equals("false"));
-        }
-        else {
-          wasNull.setWasNull();
-          return false;
-        }
+        return !(str.equals("0") || str.equals("false"));
       }
       default: {
         final DataValueDescriptor dvd = dtd.getNull();
         dvd.readBytes(inBytes, offset, columnWidth);
         if (!dvd.isNull()) {
           return dvd.getBoolean();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return false;
         }
@@ -1191,8 +1176,7 @@ public abstract class DataTypeUtilities {
             columnWidth);
         if (bd != null) {
           return SQLDecimal.getBoolean(bd);
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return false;
         }
@@ -1212,34 +1196,21 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(unsafe, memOffset, columnWidth,
             bs, dtd).trim();
-        if (str != null) {
-          return !(str.equals("0") || str.equals("false"));
-        }
-        else {
-          wasNull.setWasNull();
-          return false;
-        }
+        return !(str.equals("0") || str.equals("false"));
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
       case StoredFormatIds.VARCHAR_TYPE_ID:
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(unsafe, memOffset,
             columnWidth, bs, dtd).trim();
-        if (str != null) {
-          return !(str.equals("0") || str.equals("false"));
-        }
-        else {
-          wasNull.setWasNull();
-          return false;
-        }
+        return !(str.equals("0") || str.equals("false"));
       }
       default: {
         final DataValueDescriptor dvd = dtd.getNull();
         dvd.readBytes(unsafe, memOffset, columnWidth, bs);
         if (!dvd.isNull()) {
           return dvd.getBoolean();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return false;
         }
@@ -1285,8 +1256,7 @@ public abstract class DataTypeUtilities {
                 SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
                 cd.getColumnName());
           }
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (byte)0;
         }
@@ -1321,18 +1291,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Byte.parseByte(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Byte.parseByte(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -1340,18 +1304,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Byte.parseByte(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Byte.parseByte(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+              cd.getColumnName());
         }
       }
       default: {
@@ -1359,8 +1317,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(inBytes, offset, columnWidth);
         if (!dvd.isNull()) {
           return dvd.getByte();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (byte)0;
         }
@@ -1407,8 +1364,7 @@ public abstract class DataTypeUtilities {
                 SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT",
                 cd.getColumnName());
           }
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (byte)0;
         }
@@ -1443,18 +1399,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(unsafe, memOffset, columnWidth,
             bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Byte.parseByte(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Byte.parseByte(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -1462,18 +1412,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(unsafe, memOffset,
             columnWidth, bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Byte.parseByte(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Byte.parseByte(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "TINYINT",
+              cd.getColumnName());
         }
       }
       default: {
@@ -1481,8 +1425,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(unsafe, memOffset, columnWidth, bs);
         if (!dvd.isNull()) {
           return dvd.getByte();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (byte)0;
         }
@@ -1531,8 +1474,7 @@ public abstract class DataTypeUtilities {
                 SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
                 cd.getColumnName());
           }
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (short)0;
         }
@@ -1559,18 +1501,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Short.parseShort(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Short.parseShort(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -1578,18 +1514,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Short.parseShort(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Short.parseShort(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+              cd.getColumnName());
         }
       }
       default: {
@@ -1597,8 +1527,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(inBytes, offset, columnWidth);
         if (!dvd.isNull()) {
           return dvd.getShort();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (short)0;
         }
@@ -1646,8 +1575,7 @@ public abstract class DataTypeUtilities {
                 SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT",
                 cd.getColumnName());
           }
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (short)0;
         }
@@ -1674,18 +1602,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(unsafe, memOffset, columnWidth,
             bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Short.parseShort(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Short.parseShort(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -1693,18 +1615,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(unsafe, memOffset,
             columnWidth, bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Short.parseShort(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Short.parseShort(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "SMALLINT",
+              cd.getColumnName());
         }
       }
       default: {
@@ -1712,8 +1628,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(unsafe, memOffset, columnWidth, bs);
         if (!dvd.isNull()) {
           return dvd.getShort();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return (short)0;
         }
@@ -1754,8 +1669,7 @@ public abstract class DataTypeUtilities {
                 SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
                 cd.getColumnName());
           }
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0;
         }
@@ -1782,18 +1696,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Integer.parseInt(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Integer.parseInt(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -1801,18 +1709,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Integer.parseInt(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Integer.parseInt(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+              cd.getColumnName());
         }
       }
       default: {
@@ -1820,8 +1722,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(inBytes, offset, columnWidth);
         if (!dvd.isNull()) {
           return dvd.getInt();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0;
         }
@@ -1863,8 +1764,7 @@ public abstract class DataTypeUtilities {
                 SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER",
                 cd.getColumnName());
           }
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0;
         }
@@ -1891,18 +1791,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(unsafe, memOffset, columnWidth,
             bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Integer.parseInt(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Integer.parseInt(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -1910,18 +1804,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(unsafe, memOffset,
             columnWidth, bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Integer.parseInt(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Integer.parseInt(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "INTEGER",
+              cd.getColumnName());
         }
       }
       default: {
@@ -1929,8 +1817,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(unsafe, memOffset, columnWidth, bs);
         if (!dvd.isNull()) {
           return dvd.getInt();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0;
         }
@@ -1964,8 +1851,7 @@ public abstract class DataTypeUtilities {
             columnWidth);
         if (bd != null) {
           return SQLDecimal.getLong(bd);
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0l;
         }
@@ -1987,18 +1873,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Long.parseLong(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Long.parseLong(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -2006,18 +1886,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Long.parseLong(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Long.parseLong(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+              cd.getColumnName());
         }
       }
       default: {
@@ -2025,8 +1899,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(inBytes, offset, columnWidth);
         if (!dvd.isNull()) {
           return dvd.getLong();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0;
         }
@@ -2061,8 +1934,7 @@ public abstract class DataTypeUtilities {
             columnWidth);
         if (bd != null) {
           return SQLDecimal.getLong(bd);
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0l;
         }
@@ -2084,18 +1956,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(unsafe, memOffset, columnWidth,
             bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Long.parseLong(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Long.parseLong(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -2103,18 +1969,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(unsafe, memOffset,
             columnWidth, bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Long.parseLong(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Long.parseLong(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+              cd.getColumnName());
         }
       }
       default: {
@@ -2122,8 +1982,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(unsafe, memOffset, columnWidth, bs);
         if (!dvd.isNull()) {
           return dvd.getLong();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0;
         }
@@ -2154,8 +2013,7 @@ public abstract class DataTypeUtilities {
             offset, columnWidth);
         if (localValue != null) {
           return NumberDataType.normalizeREAL(localValue.floatValue());
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0f;
         }
@@ -2169,18 +2027,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Float.parseFloat(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Float.parseFloat(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -2188,18 +2040,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Float.parseFloat(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Float.parseFloat(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, "BIGINT",
+              cd.getColumnName());
         }
       }
       default: {
@@ -2207,8 +2053,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(inBytes, offset, columnWidth);
         if (!dvd.isNull()) {
           return dvd.getFloat();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0f;
         }
@@ -2240,8 +2085,7 @@ public abstract class DataTypeUtilities {
             memOffset, columnWidth);
         if (localValue != null) {
           return NumberDataType.normalizeREAL(localValue.floatValue());
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0f;
         }
@@ -2255,18 +2099,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(unsafe, memOffset, columnWidth,
             bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Float.parseFloat(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME,
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Float.parseFloat(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME,
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -2274,18 +2112,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(unsafe, memOffset,
             columnWidth, bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Float.parseFloat(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME,
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Float.parseFloat(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, TypeId.REAL_NAME,
+              cd.getColumnName());
         }
       }
       default: {
@@ -2293,8 +2125,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(unsafe, memOffset, columnWidth, bs);
         if (!dvd.isNull()) {
           return dvd.getFloat();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0f;
         }
@@ -2302,7 +2133,7 @@ public abstract class DataTypeUtilities {
     }
   }
 
-  public static final double getAsDouble(final byte[] inBytes,
+  public static double getAsDouble(final byte[] inBytes,
       final int offset, final int columnWidth, final ColumnDescriptor cd,
       final ResultWasNull wasNull) throws StandardException {
 
@@ -2319,8 +2150,7 @@ public abstract class DataTypeUtilities {
             columnWidth);
         if (bd != null) {
           return SQLDecimal.getDouble(bd);
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0;
         }
@@ -2333,18 +2163,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Double.parseDouble(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0;
+        try {
+          return Double.parseDouble(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -2352,18 +2176,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(inBytes, offset, columnWidth,
             dtd).trim();
-        if (str != null) {
-          try {
-            return Double.parseDouble(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0.0;
+        try {
+          return Double.parseDouble(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+              cd.getColumnName());
         }
       }
       default:
@@ -2371,8 +2189,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(inBytes, offset, columnWidth);
         if (!dvd.isNull()) {
           return dvd.getDouble();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0;
         }
@@ -2397,8 +2214,7 @@ public abstract class DataTypeUtilities {
             columnWidth);
         if (bd != null) {
           return SQLDecimal.getDouble(bd);
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0;
         }
@@ -2411,18 +2227,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CHAR_TYPE_ID: {
         final String str = SQLChar.getAsString(unsafe, memOffset, columnWidth,
             bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Double.parseDouble(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0.0;
+        try {
+          return Double.parseDouble(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+              cd.getColumnName());
         }
       }
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
@@ -2430,18 +2240,12 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.CLOB_TYPE_ID: {
         final String str = SQLVarchar.getAsString(unsafe, memOffset,
             columnWidth, bs, dtd).trim();
-        if (str != null) {
-          try {
-            return Double.parseDouble(str);
-          } catch (NumberFormatException nfe) {
-            throw StandardException.newException(
-                SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
-                cd.getColumnName());
-          }
-        }
-        else {
-          wasNull.setWasNull();
-          return 0.0;
+        try {
+          return Double.parseDouble(str);
+        } catch (NumberFormatException nfe) {
+          throw StandardException.newException(
+              SQLState.LANG_FORMAT_EXCEPTION, TypeId.DOUBLE_NAME,
+              cd.getColumnName());
         }
       }
       default:
@@ -2449,8 +2253,7 @@ public abstract class DataTypeUtilities {
         dvd.readBytes(unsafe, memOffset, columnWidth, bs);
         if (!dvd.isNull()) {
           return dvd.getDouble();
-        }
-        else {
+        } else {
           wasNull.setWasNull();
           return 0.0;
         }
@@ -2471,8 +2274,7 @@ public abstract class DataTypeUtilities {
               columnWidth);
           if (bd != null) {
             return bd;
-          }
-          else {
+          } else {
             wasNull.setWasNull();
             return null;
           }
@@ -2500,31 +2302,18 @@ public abstract class DataTypeUtilities {
         case StoredFormatIds.CHAR_TYPE_ID: {
           final String str = SQLChar.getAsString(inBytes, offset, columnWidth,
               dtd);
-          if (str != null) {
-            return new BigDecimal(str);
-          }
-          else {
-            wasNull.setWasNull();
-            return BigDecimal.ZERO;
-          }
+          return new BigDecimal(str);
         }
         case StoredFormatIds.LONGVARCHAR_TYPE_ID:
         case StoredFormatIds.VARCHAR_TYPE_ID:
           String str = SQLVarchar.getAsString(inBytes, offset, columnWidth);
-          if (str != null) {
-            return new BigDecimal(str);
-          }
-          else {
-            wasNull.setWasNull();
-            return BigDecimal.ZERO;
-          }
+          return new BigDecimal(str);
         default: {
           final DataValueDescriptor dvd = dtd.getNull();
           dvd.readBytes(inBytes, offset, columnWidth);
           if (!dvd.isNull()) {
             return SQLDecimal.getBigDecimal(dvd);
-          }
-          else {
+          } else {
             wasNull.setWasNull();
             return null;
           }
@@ -2551,8 +2340,7 @@ public abstract class DataTypeUtilities {
               columnWidth);
           if (bd != null) {
             return bd;
-          }
-          else {
+          } else {
             wasNull.setWasNull();
             return null;
           }
@@ -2580,32 +2368,19 @@ public abstract class DataTypeUtilities {
         case StoredFormatIds.CHAR_TYPE_ID: {
           final String str = SQLChar.getAsString(unsafe, memOffset,
               columnWidth, bs, dtd);
-          if (str != null) {
-            return new BigDecimal(str);
-          }
-          else {
-            wasNull.setWasNull();
-            return BigDecimal.ZERO;
-          }
+          return new BigDecimal(str);
         }
         case StoredFormatIds.LONGVARCHAR_TYPE_ID:
         case StoredFormatIds.VARCHAR_TYPE_ID:
           String str = SQLVarchar.getAsString(unsafe, memOffset, columnWidth,
               bs);
-          if (str != null) {
-            return new BigDecimal(str);
-          }
-          else {
-            wasNull.setWasNull();
-            return BigDecimal.ZERO;
-          }
+          return new BigDecimal(str);
         default: {
           final DataValueDescriptor dvd = dtd.getNull();
           dvd.readBytes(unsafe, memOffset, columnWidth, bs);
           if (!dvd.isNull()) {
             return SQLDecimal.getBigDecimal(dvd);
-          }
-          else {
+          } else {
             wasNull.setWasNull();
             return null;
           }
