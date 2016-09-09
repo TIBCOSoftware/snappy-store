@@ -995,12 +995,16 @@ public interface DiskEntry extends RegionEntry {
       Object v;
       if (region.compressor == null) {
         v = entry._getValue();
+        if (v != null && !Token.isRemovedFromDisk(v)) {
+          return v;
+        }
       } else {
         v = AbstractRegionEntry.decompress(region, entry._getValue());
+        if (v != null && !Token.isRemovedFromDisk(v)) {
+          return v;
+        }
       }
-      if (v != null && !Token.isRemovedFromDisk(v)) {
-        return v;
-      } else if (!region.isIndexCreationThread()) {
+      if (!region.isIndexCreationThread()) {
         synchronized (entry) {
           if (region.compressor == null) {
             v = entry._getValue();

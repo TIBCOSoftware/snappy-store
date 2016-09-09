@@ -547,13 +547,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     final Object v;
     if (owner.compressor == null) {
       v = _getValue();
+      // null should only be possible if disk entry
+      return v != null ? v : Token.NOT_AVAILABLE;
     } else {
       v = decompress(owner, _getValue());
-    }
-    if (v != null) { // should only be possible if disk entry
-      return v;
-    } else {
-      return Token.NOT_AVAILABLE;
+      return v != null ? v : Token.NOT_AVAILABLE;
     }
   }
 
