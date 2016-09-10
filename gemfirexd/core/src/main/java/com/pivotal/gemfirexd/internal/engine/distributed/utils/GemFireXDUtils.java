@@ -2269,6 +2269,15 @@ public final class GemFireXDUtils {
     return null;
   }
 
+  /**
+   * Get the {@link GemFireContainer} for given table name.
+   */
+  public static GemFireContainer getGemFireContainer(String tableName,
+      boolean throwIfNotFound) {
+    return (GemFireContainer)Misc.getRegionForTable(tableName,
+        throwIfNotFound).getUserAttribute();
+  }
+
   public static int[] getPrimaryKeyColumns(TableDescriptor td)
       throws StandardException {
     if (td != null) {

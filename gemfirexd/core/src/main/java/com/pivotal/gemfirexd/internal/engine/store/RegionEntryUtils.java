@@ -625,7 +625,7 @@ public final class RegionEntryUtils {
     }
   }
 
-  private static AbstractCompactExecRow fillRowUsingAddress(
+  public static AbstractCompactExecRow fillRowUsingAddress(
       final GemFireContainer baseContainer, final LocalRegion region,
       final OffHeapRegionEntry entry, final AbstractCompactExecRow row,
       boolean faultIn) {
