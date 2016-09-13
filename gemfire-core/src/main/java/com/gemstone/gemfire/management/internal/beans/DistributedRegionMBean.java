@@ -327,5 +327,13 @@ public class DistributedRegionMBean implements DistributedRegionMXBean {
     return bridge.getEstimatedSizeForHDFSRegion();
   }
 
+  @Override
+  public long getRowsInCachedBatches(){
+    return bridge.getRowsInCachedBatches();
+  }
 
+  @Override
+  public boolean isColumnTable(){
+    return bridge.isColumnTable();
+  }
 }

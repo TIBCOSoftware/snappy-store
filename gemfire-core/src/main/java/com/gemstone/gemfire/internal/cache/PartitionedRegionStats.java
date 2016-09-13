@@ -166,8 +166,13 @@ public class PartitionedRegionStats {
   private static final int rebalancePrimaryTransfersCompletedId;
   private static final int rebalancePrimaryTransfersFailedId;
   private static final int rebalancePrimaryTransferTimeId;
-  
+
+
   private static final int prMetaDataSentCountId;
+
+
+  //Column table Stats
+  private static final int prNumRowsInCachedBatches;
   
   static {
     final boolean largerIsBetter = true;
@@ -544,8 +549,13 @@ public class PartitionedRegionStats {
         f.createLongCounter(
                 "prMetaDataSentCount",
                 "total number of times meta data refreshed sent on client's request.",
-                "operation", false),    
-            
+                "operation", false),
+        f.createLongCounter(
+              "prNumRowsInCachedBatches",
+              "total number of rows which are part of cached batches.",
+              "entries", false),
+
+
       });
     
     bucketCountId = type.nameToId("bucketCount");
@@ -643,6 +653,7 @@ public class PartitionedRegionStats {
     putLocalTimeId = type.nameToId("putLocalTime");
     
     prMetaDataSentCountId = type.nameToId("prMetaDataSentCount");
+    prNumRowsInCachedBatches = type.nameToId("prNumRowsInCachedBatches");
   }
   
   private final Statistics stats;
@@ -1217,8 +1228,17 @@ type, name /* fixes bug 42343 */);
   public void incPRMetaDataSentCount(){
     this.stats.incLong(prMetaDataSentCountId, 1);
   }
-  
+
   public long getPRMetaDataSentCount(){
     return this.stats.getLong(prMetaDataSentCountId);
+  }
+
+
+  public void incPRNumRowsInCachedBatches(int inc){
+    this.stats.incLong(prNumRowsInCachedBatches, inc);
+  }
+
+  public long getPRNumRowsInCachedBatches() {
+    return this.stats.getLong(prNumRowsInCachedBatches);
   }
 }

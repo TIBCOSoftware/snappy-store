@@ -23,6 +23,7 @@ import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionStats;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.management.FixedPartitionAttributesData;
 import com.gemstone.gemfire.management.PartitionAttributesData;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
@@ -73,6 +74,8 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
 
   private StatsAverageLatency remotePutAvgLatency;
 
+  private boolean isColumnTable = false;
+
   public static final String PAR_REGION_MONITOR = "PartitionedRegionMonitor";
   
   public static <K, V> PartitionedRegionBridge<K, V> getInstance(Region<K, V> region) {
@@ -92,6 +95,8 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
     super(region);
     this.parRegion = (PartitionedRegion)region;
     this.prStats = parRegion.getPrStats();
+
+    this.isColumnTable = parRegion.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
     
     PartitionAttributes<K, V>  partAttrs = parRegion.getPartitionAttributes();    
     
@@ -316,5 +321,15 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
 
   public long getEstimatedSizeForHDFSRegion() {
     return -1;
+  }
+
+  @Override
+  public boolean isColumnTable() {
+    return isColumnTable;
+  }
+
+  @Override
+  public long getRowsInCachedBatches() {
+    return this.prStats.getPRNumRowsInCachedBatches();
   }
 }

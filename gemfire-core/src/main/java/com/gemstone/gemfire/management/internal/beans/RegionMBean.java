@@ -320,4 +320,13 @@ public class RegionMBean<K, V> extends NotificationBroadcasterSupport implements
     return bridge.getEstimatedSizeForHDFSRegion();
   }
 
+  @Override
+  public boolean isColumnTable() {
+    return bridge.isColumnTable();
+  }
+
+  @Override
+  public long getRowsInCachedBatches() {
+    return bridge.getRowsInCachedBatches();
+  }
 }

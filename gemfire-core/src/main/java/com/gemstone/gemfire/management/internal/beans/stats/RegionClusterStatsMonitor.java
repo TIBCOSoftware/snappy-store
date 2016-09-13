@@ -115,6 +115,10 @@ public class RegionClusterStatsMonitor {
   
   private static final String ESTIMATED_SIZE_FOR_HDFS_REGION = "EstimatedSizeForHDFSRegion";
 
+  private static final String ROWS_IN_CACHED_BATCHES = "RowsInCachedBatches";
+
+  private static final String COLUMNTABLE = "ColumnTable";
+
   private volatile long lastAccessedTime = 0;
 
   private volatile long lastModifiedTime = 0;
@@ -130,8 +134,10 @@ public class RegionClusterStatsMonitor {
   private Boolean gatewayEnabled;
 
   private Boolean persistentEnabled;
+
+  private Boolean isColumnTable;
   
-  private long entryCount = 0;
+  private volatile long entryCount = 0;
 
   /**
    * Eviction attributes
@@ -193,6 +199,7 @@ public class RegionClusterStatsMonitor {
     typeMap.put(AVERAGE_WRITES, Float.TYPE);
     typeMap.put(ENTRY_SIZE, Long.TYPE);
     typeMap.put(ESTIMATED_SIZE_FOR_HDFS_REGION, Long.TYPE);
+    typeMap.put(ROWS_IN_CACHED_BATCHES, Long.TYPE);
 
   }
 
@@ -375,6 +382,10 @@ public class RegionClusterStatsMonitor {
     return aggregator.getLongValue(ENTRY_SIZE);
   }
 
+  public long getRowsInCachedBatches() {
+    return aggregator.getLongValue(ROWS_IN_CACHED_BATCHES);
+  }
+
   private void setFixedAttributes(FederationComponent newState,
       FederationComponent oldState) {
     if (this.regionName == null) {
@@ -430,6 +441,16 @@ public class RegionClusterStatsMonitor {
       }
 
     }
+
+    if (isColumnTable == null) {
+      if (newState != null) {
+        if (newState.getValue(COLUMNTABLE) != null) {
+          isColumnTable = (Boolean) newState.getValue(COLUMNTABLE);
+        }
+
+      }
+
+    }
   }
 
   public String getName() {
@@ -458,5 +479,9 @@ public class RegionClusterStatsMonitor {
   
   public long getEntryCount() {
     return this.entryCount;
+  }
+
+  public boolean isColumnTable(){
+    return isColumnTable;
   }
 }
