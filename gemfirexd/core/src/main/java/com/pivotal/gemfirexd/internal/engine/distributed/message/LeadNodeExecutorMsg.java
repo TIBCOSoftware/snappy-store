@@ -20,6 +20,7 @@ package com.pivotal.gemfirexd.internal.engine.distributed.message;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashSet;
@@ -33,6 +34,7 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -128,9 +130,6 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       SnappyResultHolder srh = new SnappyResultHolder(exec);
 
       srh.prepareSend(this);
-      //sendresult and lastResult is called via prepareSend
-//      this.sendResult(srh);
-//      this.lastResult(srh);
       this.lastResultSent = true;
       this.endMessage();
       if (GemFireXDUtils.TraceQuery) {
@@ -138,31 +137,51 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
                 "LeadNodeExecutorMsg.execute: Sent Last result ");
       }
     } catch (Exception ex) {
-      // Catch all exceptions and convert so can be caught at XD side
-      Throwable cause = ex;
-      while (cause != null) {
-        if (cause.getClass().getName().contains("AnalysisException")) {
-          throw StandardException.newException(
-              SQLState.LANG_UNEXPECTED_USER_EXCEPTION, cause, cause.getMessage());
-        } else if (cause.getClass().getName().contains("apache.spark.storage")) {
-          throw StandardException.newException(
-              SQLState.DATA_UNEXPECTED_EXCEPTION, cause, cause.getMessage());
-        } else if (cause.getClass().getName().contains("apache.spark.sql")) {
-          Throwable nestedCause = cause.getCause();
-          while (nestedCause != null) {
-            if (nestedCause.getClass().getName().contains("ErrorLimitExceededException")) {
-              throw StandardException.newException(
-                  SQLState.LANG_UNEXPECTED_USER_EXCEPTION, nestedCause, nestedCause.getMessage());
-            }
-            nestedCause = nestedCause.getCause();
-          }
-          throw StandardException.newException(
-              SQLState.LANG_UNEXPECTED_USER_EXCEPTION, cause, cause.getMessage());
-        }
-        cause = cause.getCause();
-      }
-      throw ex;
+      throw getExceptionToSendToServer(ex);
     }
+  }
+
+  private static class SparkExceptionWrapper extends Exception {
+    public SparkExceptionWrapper(Exception ex) {
+      super(ex.getClass().getName() + ": " + ex.getMessage(), ex.getCause());
+      this.setStackTrace(ex.getStackTrace());
+    }
+  }
+
+  private Exception getExceptionToSendToServer(Exception ex) {
+    // Catch all exceptions and convert so can be caught at XD side
+    // Check if the exception can be serialized or not
+    SparkExceptionWrapper wrapperEx = null;
+    try {
+      HeapDataOutputStream hdos = new HeapDataOutputStream();
+      DataSerializer.writeObject(ex, hdos);
+    } catch (Exception e) {
+      wrapperEx = new SparkExceptionWrapper(ex);
+    }
+    Throwable cause = ex;
+    while (cause != null) {
+      if (cause.getClass().getName().contains("AnalysisException")) {
+        return StandardException.newException(
+            SQLState.LANG_UNEXPECTED_USER_EXCEPTION, (wrapperEx == null ? cause : wrapperEx), cause.getMessage());
+      } else if (cause.getClass().getName().contains("apache.spark.storage")) {
+        return StandardException.newException(
+            SQLState.DATA_UNEXPECTED_EXCEPTION, (wrapperEx == null ? cause : wrapperEx), cause.getMessage());
+      } else if (cause.getClass().getName().contains("apache.spark.sql")) {
+        Throwable nestedCause = cause.getCause();
+        while (nestedCause != null) {
+          if (nestedCause.getClass().getName().contains("ErrorLimitExceededException")) {
+            return StandardException.newException(
+                SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+                (wrapperEx == null ? nestedCause : wrapperEx), nestedCause.getMessage());
+          }
+          nestedCause = nestedCause.getCause();
+        }
+        return StandardException.newException(
+            SQLState.LANG_UNEXPECTED_USER_EXCEPTION, (wrapperEx == null ? cause : wrapperEx), cause.getMessage());
+      }
+      cause = cause.getCause();
+    }
+    return ex;
   }
 
   @Override
