@@ -142,7 +142,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   }
 
   private static class SparkExceptionWrapper extends Exception {
-    public SparkExceptionWrapper(Exception ex) {
+    public SparkExceptionWrapper(Throwable ex) {
       super(ex.getClass().getName() + ": " + ex.getMessage(), ex.getCause());
       this.setStackTrace(ex.getStackTrace());
     }
@@ -151,33 +151,42 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   private Exception getExceptionToSendToServer(Exception ex) {
     // Catch all exceptions and convert so can be caught at XD side
     // Check if the exception can be serialized or not
-    SparkExceptionWrapper wrapperEx = null;
+    boolean wrapExcepton = false;
+    HeapDataOutputStream hdos = null;
     try {
-      HeapDataOutputStream hdos = new HeapDataOutputStream();
+      hdos = new HeapDataOutputStream();
       DataSerializer.writeObject(ex, hdos);
     } catch (Exception e) {
-      wrapperEx = new SparkExceptionWrapper(ex);
+      wrapExcepton = true;
+    } finally {
+      if (hdos != null) {
+        hdos.close();
+      }
     }
+
     Throwable cause = ex;
     while (cause != null) {
       if (cause.getClass().getName().contains("AnalysisException")) {
         return StandardException.newException(
-            SQLState.LANG_UNEXPECTED_USER_EXCEPTION, (wrapperEx == null ? cause : wrapperEx), cause.getMessage());
+            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
       } else if (cause.getClass().getName().contains("apache.spark.storage")) {
         return StandardException.newException(
-            SQLState.DATA_UNEXPECTED_EXCEPTION, (wrapperEx == null ? cause : wrapperEx), cause.getMessage());
+            SQLState.DATA_UNEXPECTED_EXCEPTION,
+            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
       } else if (cause.getClass().getName().contains("apache.spark.sql")) {
         Throwable nestedCause = cause.getCause();
         while (nestedCause != null) {
           if (nestedCause.getClass().getName().contains("ErrorLimitExceededException")) {
             return StandardException.newException(
                 SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-                (wrapperEx == null ? nestedCause : wrapperEx), nestedCause.getMessage());
+                (!wrapExcepton ? nestedCause : new SparkExceptionWrapper(nestedCause)), nestedCause.getMessage());
           }
           nestedCause = nestedCause.getCause();
         }
         return StandardException.newException(
-            SQLState.LANG_UNEXPECTED_USER_EXCEPTION, (wrapperEx == null ? cause : wrapperEx), cause.getMessage());
+            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
       }
       cause = cause.getCause();
     }
