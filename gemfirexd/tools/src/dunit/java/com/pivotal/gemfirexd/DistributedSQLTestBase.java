@@ -85,7 +85,7 @@ import org.apache.derby.drda.NetworkServerControl;
 import org.apache.derby.iapi.services.monitor.ModuleFactory;
 import org.apache.derby.iapi.services.monitor.Monitor;
 import org.apache.derby.iapi.services.stream.HeaderPrintWriter;
-import org.apache.derby.iapi.error.ShutdownException;
+import org.apache.derby.shared.common.error.ShutdownException;
 import org.apache.derbyTesting.junit.CleanDatabaseTestSetup;
 import org.apache.derbyTesting.junit.TestConfiguration;
 import org.apache.thrift.TProcessor;

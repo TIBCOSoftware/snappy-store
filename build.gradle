@@ -53,7 +53,7 @@ allprojects {
     hadoopJettyVersion = '6.1.26'
     jsr305Version = '3.0.1'
     servletAPIVersion = '3.1.0'
-    derbyVersion = '10.8.2.2'
+    derbyVersion = '10.12.1.1'
     hbaseVersion = '0.98.17-hadoop2'
     guavaVersion = '14.0.1'
     nettyAllVersion = '4.0.29.Final'
