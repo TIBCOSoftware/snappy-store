@@ -540,7 +540,7 @@ public final class IdentityValueManager {
       if (this.increment != 0) {
         result = IdentityValueManager.getInstance().getAfterRetrievedValue(
             this.table, this.start, this.increment, getSenderForReply());
-        if (GemFireXDUtils.TraceExecute | GemFireXDUtils.TraceFunctionException) {
+        if (GemFireXDUtils.TraceExecution | GemFireXDUtils.TraceFunctionException) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
               "IDENTITY: GetRetrievedIdentityValues: after identity generator "
                   + "start/failure, got retrieved value = " + result
@@ -550,7 +550,7 @@ public final class IdentityValueManager {
       else { // for clear
         IdentityValueManager.getInstance().clearRetrievedValue(this.table);
         result = 0;
-        if (GemFireXDUtils.TraceExecute) {
+        if (GemFireXDUtils.TraceExecution) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
               "IDENTITY: GetRetrievedIdentityValues: cleared any cached "
                   + "retrieved value for table " + this.table);

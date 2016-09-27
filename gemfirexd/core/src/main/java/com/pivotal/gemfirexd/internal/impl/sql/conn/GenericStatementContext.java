@@ -69,15 +69,12 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.StatementContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.depend.Dependency;
 import com.pivotal.gemfirexd.internal.iapi.sql.depend.DependencyManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.NoPutResultSet;
-import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSet;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.sql.SQLException;
 
 /**
  * GenericStatementContext is pushed/popped around a statement prepare and execute
@@ -232,7 +229,7 @@ public final class GenericStatementContext
 		this.pvs = pvs;
 		rollbackParentContext = false;
         if (timeoutMillis > 0) {
-           if (GemFireXDUtils.TraceExecute) {
+           if (GemFireXDUtils.TraceExecution) {
                SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
                  "starting cancel task for query=" + this.stmtText +
                  " query timeout=" + (timeoutMillis / 1000) + " seconds");
