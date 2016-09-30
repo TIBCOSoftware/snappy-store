@@ -39,6 +39,7 @@ import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.DistributedMembers;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.management.NetworkServerConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.management.NetworkServerNestedConnectionStats;
@@ -128,6 +129,16 @@ public class GfxdMemberMBeanBridge implements Cleanable, Updatable<GfxdMemberMBe
   public boolean isLocator() {
     VMKind vmKind = getVmKind();
     return vmKind != null && vmKind.isLocator();
+  }
+
+  public boolean isLead() {
+    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
+    GfxdDistributionAdvisor.GfxdProfile profile = advisor.getProfile((InternalDistributedMember)member);
+    if(profile != null && profile.hasSparkURL()){
+      return true;
+    }else{
+      return false;
+    }
   }
 
   public NetworkServerConnectionStats listNetworkServerClientConnectionStats() {
