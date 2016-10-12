@@ -45,6 +45,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
+import org.apache.spark.unsafe.types.UTF8String;
 
 import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.OFFHEAP_COMPACT_EXEC_ROW_WITH_LOBS_SOURCE;
 
@@ -266,6 +267,24 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
       }
     }
     else {
+      return null;
+    }
+  }
+
+  @Override
+  public UTF8String getAsUTF8String(int index) throws StandardException {
+    final Object source = this.source;
+    if (source != null) {
+      final Class<?> cls = source.getClass();
+      if (cls == OffHeapRowWithLobs.class) {
+        return this.formatter.getAsUTF8String(index,
+            (OffHeapRowWithLobs)source);
+      } else if (cls == byte[][].class) {
+        return this.formatter.getAsUTF8String(index, (byte[][])source);
+      } else {
+        return this.formatter.getAsUTF8String(index, (OffHeapRow)source);
+      }
+    } else {
       return null;
     }
   }
@@ -519,6 +538,28 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
   }
 
   @Override
+  public long getAsDateMillis(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    final Object source = this.source;
+    if (source != null) {
+      final Class<?> cls = source.getClass();
+      if (cls == OffHeapRowWithLobs.class) {
+        return this.formatter.getAsDateMillis(index,
+            (OffHeapRowWithLobs)source, cal, wasNull);
+      } else if (cls == byte[][].class) {
+        return this.formatter.getAsDateMillis(index, (byte[][])source,
+            cal, wasNull);
+      } else {
+        return this.formatter.getAsDateMillis(index, (OffHeapRow)source,
+            cal, wasNull);
+      }
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0L;
+    }
+  }
+
+  @Override
   protected java.sql.Date getDate(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException {
     final Object source = this.source;
@@ -563,6 +604,28 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
     }
     else {
       return this.formatter.getAsTime(position, (byte[])null, cal, wasNull);
+    }
+  }
+
+  @Override
+  public long getAsTimestampMicros(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    final Object source = this.source;
+    if (source != null) {
+      final Class<?> cls = source.getClass();
+      if (cls == OffHeapRowWithLobs.class) {
+        return this.formatter.getAsTimestampMicros(index,
+            (OffHeapRowWithLobs)source, cal, wasNull);
+      } else if (cls == byte[][].class) {
+        return this.formatter.getAsTimestampMicros(index, (byte[][])source,
+            cal, wasNull);
+      } else {
+        return this.formatter.getAsTimestampMicros(index, (OffHeapRow)source,
+            cal, wasNull);
+      }
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0L;
     }
   }
 

@@ -1451,6 +1451,22 @@ public final class SQLTimestamp extends DataType
     return ResolverUtils.addIntToBucketHash(this.nanos, hash, typeId);
   }
 
+  static final long getAsTimeStampMicros(final byte[] bytes, int offset,
+      Calendar cal) {
+    final int encodedDate, encodedTime, nanos;
+    encodedDate = RowFormatter.readInt(bytes, offset);
+    if (encodedDate == 0) return 0L;
+    offset += 4;
+    encodedTime = RowFormatter.readInt(bytes, offset);
+    offset += 4;
+    nanos = RowFormatter.readInt(bytes, offset);
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    SQLTime.setTimeInCalendar(cal, encodedTime);
+    cal.set(Calendar.MILLISECOND, 0);
+    return cal.getTimeInMillis() * 1000L + (nanos / 1000L);
+  }
+
   static final Timestamp getAsTimeStamp(final byte[] bytes, int offset,
       Calendar cal) {
     final int encodedDate, encodedTime, nanos;
@@ -1467,6 +1483,22 @@ public final class SQLTimestamp extends DataType
     Timestamp t = new Timestamp(cal.getTimeInMillis());
     t.setNanos(nanos);
     return t;
+  }
+
+  static final long getAsTimeStampMicros(final UnsafeWrapper unsafe,
+      long memOffset, Calendar cal) {
+    final int encodedDate, encodedTime, nanos;
+    encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    if (encodedDate == 0) return 0L;
+    memOffset += 4;
+    encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    memOffset += 4;
+    nanos = RowFormatter.readInt(unsafe, memOffset);
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    SQLTime.setTimeInCalendar(cal, encodedTime);
+    cal.set(Calendar.MILLISECOND, 0);
+    return cal.getTimeInMillis() * 1000L + (nanos / 1000L);
   }
 
   static final Timestamp getAsTimeStamp(final UnsafeWrapper unsafe,
@@ -1566,6 +1598,15 @@ public final class SQLTimestamp extends DataType
     buffer.advance(TIMESTAMP_CHARS_MICROS);
   }
 
+  static final long getAsDateMillis(final byte[] inBytes, int offset,
+      final Calendar cal) {
+    int encodedDate = RowFormatter.readInt(inBytes, offset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis();
+  }
+
   static final java.sql.Date getAsDate(final byte[] inBytes, int offset,
       final Calendar cal) {
     int encodedDate = RowFormatter.readInt(inBytes, offset);
@@ -1573,6 +1614,15 @@ public final class SQLTimestamp extends DataType
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
     return new Date(cal.getTimeInMillis());
+  }
+
+  static final long getAsDateMillis(final UnsafeWrapper unsafe,
+      long memOffset, final Calendar cal) {
+    int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis();
   }
 
   static final java.sql.Date getAsDate(final UnsafeWrapper unsafe,

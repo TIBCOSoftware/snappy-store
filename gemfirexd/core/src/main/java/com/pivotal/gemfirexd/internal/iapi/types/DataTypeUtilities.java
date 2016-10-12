@@ -60,6 +60,8 @@ import com.pivotal.gemfirexd.internal.iapi.reference.JDBC40Translation;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
+import org.apache.spark.unsafe.Platform;
+import org.apache.spark.unsafe.types.UTF8String;
 
 /**
  * A set of static utility methods for data types.
@@ -266,6 +268,49 @@ public abstract class DataTypeUtilities {
   }
 
 // GemStone changes BEGIN
+
+  /**
+   * Extract the given column from raw bytes as a UTF8String.
+   */
+  public static final UTF8String getAsUTF8String(final byte[] inBytes,
+      final int offset, final int columnWidth, final ColumnDescriptor cd)
+      throws StandardException {
+
+    final DataTypeDescriptor dtd = cd.columnType;
+    final int formatID = dtd.getTypeId().getTypeFormatId();
+    switch (formatID) {
+      case StoredFormatIds.CHAR_TYPE_ID:
+      case StoredFormatIds.LONGVARCHAR_TYPE_ID:
+      case StoredFormatIds.VARCHAR_TYPE_ID:
+      case StoredFormatIds.CLOB_TYPE_ID:
+        return UTF8String.fromAddress(inBytes,
+            Platform.BYTE_ARRAY_OFFSET + offset, columnWidth);
+      default:
+        throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
+            "UTF8String", cd.getColumnName());
+    }
+  }
+
+  /**
+   * Extract the given column from raw bytes as a UTF8String.
+   */
+  public static final UTF8String getAsUTF8String(final long memOffset,
+      final int columnWidth, final ColumnDescriptor cd)
+      throws StandardException {
+
+    final DataTypeDescriptor dtd = cd.columnType;
+    final int formatID = dtd.getTypeId().getTypeFormatId();
+    switch (formatID) {
+      case StoredFormatIds.CHAR_TYPE_ID:
+      case StoredFormatIds.LONGVARCHAR_TYPE_ID:
+      case StoredFormatIds.VARCHAR_TYPE_ID:
+      case StoredFormatIds.CLOB_TYPE_ID:
+        return UTF8String.fromAddress(null, memOffset, columnWidth);
+      default:
+        throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
+            "UTF8String", cd.getColumnName());
+    }
+  }
 
   /**
    * Extract the given column from raw bytes as a string.
@@ -2225,6 +2270,49 @@ public abstract class DataTypeUtilities {
     }
   }
 
+  public static final long getAsDateMillis(final byte[] inBytes,
+      final int offset, final int columnWidth, final Calendar cal,
+      final DataTypeDescriptor dtd) throws StandardException {
+    final int formatID = dtd.getTypeId().getTypeFormatId();
+    switch (formatID) {
+      case StoredFormatIds.DATE_TYPE_ID:
+        return SQLDate.getAsDateMillis(inBytes, offset, cal);
+      case StoredFormatIds.TIMESTAMP_TYPE_ID:
+        return SQLTimestamp.getAsDateMillis(inBytes, offset, cal);
+      default: {
+        final DataValueDescriptor dvd = dtd.getNull();
+        dvd.readBytes(inBytes, offset, columnWidth);
+        if (!dvd.isNull()) {
+          return dvd.getDate(cal).getTime();
+        } else {
+          return 0L;
+        }
+      }
+    }
+  }
+
+  public static final long getAsDateMillis(final UnsafeWrapper unsafe,
+      final long memOffset, final int columnWidth, final OffHeapByteSource bs,
+      final Calendar cal, final DataTypeDescriptor dtd)
+      throws StandardException {
+    final int formatID = dtd.getTypeId().getTypeFormatId();
+    switch (formatID) {
+      case StoredFormatIds.DATE_TYPE_ID:
+        return SQLDate.getAsDateMillis(unsafe, memOffset, cal);
+      case StoredFormatIds.TIMESTAMP_TYPE_ID:
+        return SQLTimestamp.getAsDateMillis(unsafe, memOffset, cal);
+      default: {
+        final DataValueDescriptor dvd = dtd.getNull();
+        dvd.readBytes(unsafe, memOffset, columnWidth, bs);
+        if (!dvd.isNull()) {
+          return dvd.getDate(cal).getTime();
+        } else {
+          return 0L;
+        }
+      }
+    }
+  }
+
   public static final java.sql.Date getAsDate(final byte[] inBytes,
       final int offset, final int columnWidth, final Calendar cal,
       final DataTypeDescriptor dtd) throws StandardException {
@@ -2265,6 +2353,53 @@ public abstract class DataTypeUtilities {
         }
         else {
           return dvd.getDate(cal);
+        }
+      }
+    }
+  }
+
+  public static final long getTimestampMicros(final java.sql.Timestamp ts) {
+    return ts.getTime() * 1000L + (ts.getNanos() / 1000L);
+  }
+
+  public static final long getAsTimestampMicros(final byte[] inBytes,
+      final int offset, final int columnWidth, final Calendar cal,
+      final DataTypeDescriptor dtd) throws StandardException {
+    final int formatID = dtd.getTypeId().getTypeFormatId();
+    switch (formatID) {
+      case StoredFormatIds.TIMESTAMP_TYPE_ID:
+        return SQLTimestamp.getAsTimeStampMicros(inBytes, offset, cal);
+      case StoredFormatIds.DATE_TYPE_ID:
+        return SQLDate.getAsTimeStampMicros(inBytes, offset, cal);
+      default: {
+        final DataValueDescriptor dvd = dtd.getNull();
+        dvd.readBytes(inBytes, offset, columnWidth);
+        if (!dvd.isNull()) {
+          return getTimestampMicros(dvd.getTimestamp(cal));
+        } else {
+          return 0L;
+        }
+      }
+    }
+  }
+
+  public static final long getAsTimestampMicros(
+      final UnsafeWrapper unsafe, final long memOffset, final int columnWidth,
+      final OffHeapByteSource bs, final Calendar cal,
+      final DataTypeDescriptor dtd) throws StandardException {
+    final int formatID = dtd.getTypeId().getTypeFormatId();
+    switch (formatID) {
+      case StoredFormatIds.TIMESTAMP_TYPE_ID:
+        return SQLTimestamp.getAsTimeStampMicros(unsafe, memOffset, cal);
+      case StoredFormatIds.DATE_TYPE_ID:
+        return SQLDate.getAsTimeStampMicros(unsafe, memOffset, cal);
+      default: {
+        final DataValueDescriptor dvd = dtd.getNull();
+        dvd.readBytes(unsafe, memOffset, columnWidth, bs);
+        if (!dvd.isNull()) {
+          return getTimestampMicros(dvd.getTimestamp(cal));
+        } else {
+          return 0L;
         }
       }
     }

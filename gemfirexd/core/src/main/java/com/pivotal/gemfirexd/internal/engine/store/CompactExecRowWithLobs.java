@@ -38,6 +38,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
+import org.apache.spark.unsafe.types.UTF8String;
 
 /**
  * A compact implementation of Row that contains one or more LOBs (i.e. BLOBs or
@@ -174,6 +175,11 @@ public final class CompactExecRowWithLobs extends AbstractCompactExecRow {
   }
 
   @Override
+  public UTF8String getAsUTF8String(int index) throws StandardException {
+    return this.formatter.getAsUTF8String(index, this.source);
+  }
+
+  @Override
   protected String getString(int position, ResultWasNull wasNull)
       throws StandardException {
     return this.formatter.getAsString(position, this.source, wasNull);
@@ -240,6 +246,12 @@ public final class CompactExecRowWithLobs extends AbstractCompactExecRow {
   }
 
   @Override
+  public long getAsDateMillis(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    return this.formatter.getAsDateMillis(index, this.source, cal, wasNull);
+  }
+
+  @Override
   protected java.sql.Date getDate(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException {
     return this.formatter.getAsDate(position, this.source, cal, wasNull);
@@ -249,6 +261,12 @@ public final class CompactExecRowWithLobs extends AbstractCompactExecRow {
   protected java.sql.Time getTime(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException {
     return this.formatter.getAsTime(position, this.source, cal, wasNull);
+  }
+
+  @Override
+  public long getAsTimestampMicros(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    return this.formatter.getAsTimestampMicros(index, this.source, cal, wasNull);
   }
 
   @Override

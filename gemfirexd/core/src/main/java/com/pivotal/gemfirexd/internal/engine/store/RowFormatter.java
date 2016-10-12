@@ -61,6 +61,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.GenericColumnDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import org.apache.spark.unsafe.Platform;
+import org.apache.spark.unsafe.types.UTF8String;
 
 /**
  * A RowFormatter translates between byte[] (and byte[][]) storage
@@ -8294,6 +8296,116 @@ public final class RowFormatter implements Serializable {
 
   /////////////////// PACKAGE VISIBLE METHODS ///////////////////
 
+  final UTF8String getAsUTF8String(final int index,
+      final byte[] bytes) throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    final int offsetFromMap = this.positionMap[index];
+    final long offsetAndWidth = getOffsetAndWidth(index, bytes,
+        offsetFromMap, cd, false);
+    if (offsetAndWidth >= 0) {
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
+      return DataTypeUtilities.getAsUTF8String(bytes, offset, columnWidth, cd);
+    } else {
+      assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
+          || offsetAndWidth == OFFSET_AND_WIDTH_IS_DEFAULT : offsetAndWidth;
+      if (offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL) {
+        return null;
+      } else {
+        final byte[] defaultBytes = cd.columnDefaultBytes;
+        if (defaultBytes != null) {
+          return UTF8String.fromAddress(defaultBytes,
+              Platform.BYTE_ARRAY_OFFSET, defaultBytes.length);
+        } else {
+          return null;
+        }
+      }
+    }
+  }
+
+  final UTF8String getAsUTF8String(final int index,
+      final byte[][] byteArrays) throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    if (!cd.isLob) {
+      return getAsUTF8String(index, byteArrays[0]);
+    } else {
+      final int offsetFromMap = this.positionMap[index];
+      final byte[] bytes = offsetFromMap != 0 ? byteArrays[offsetFromMap]
+          : cd.columnDefaultBytes;
+      if (bytes != null) {
+        return DataTypeUtilities.getAsUTF8String(bytes, 0, bytes.length, cd);
+      } else {
+        return null;
+      }
+    }
+  }
+
+  private UTF8String getAsUTF8String(final int index,
+      final UnsafeWrapper unsafe, final long memAddr,
+      final int bytesLen) throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    final int offsetFromMap = this.positionMap[index];
+    final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
+        bytesLen, offsetFromMap, cd);
+    if (offsetAndWidth >= 0) {
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
+      return DataTypeUtilities.getAsUTF8String(memAddr + offset,
+          columnWidth, cd);
+    } else {
+      assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
+          || offsetAndWidth == OFFSET_AND_WIDTH_IS_DEFAULT : offsetAndWidth;
+      if (offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL) {
+        return null;
+      } else {
+        final byte[] defaultBytes = cd.columnDefaultBytes;
+        if (defaultBytes != null) {
+          return UTF8String.fromAddress(defaultBytes,
+              Platform.BYTE_ARRAY_OFFSET, defaultBytes.length);
+        } else {
+          return null;
+        }
+      }
+    }
+  }
+
+  final UTF8String getAsUTF8String(final int index,
+      @Unretained final OffHeapRow bytes) throws StandardException {
+    final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
+    final int bytesLen = bytes.getLength();
+    final long memAddr = bytes.getUnsafeAddress(0, bytesLen);
+    return getAsUTF8String(index, unsafe, memAddr, bytesLen);
+  }
+
+  final UTF8String getAsUTF8String(final int index,
+      @Unretained final OffHeapRowWithLobs byteArrays)
+      throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    if (!cd.isLob) {
+      final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
+      final int bytesLen = byteArrays.getLength();
+      final long memAddr = byteArrays.getUnsafeAddress(0, bytesLen);
+      return getAsUTF8String(index, unsafe, memAddr, bytesLen);
+    } else {
+      final int offsetFromMap = this.positionMap[index];
+      final Object lob = offsetFromMap != 0 ? byteArrays
+          .getGfxdByteSource(offsetFromMap) : cd.columnDefaultBytes;
+      if (lob != null) {
+        if (lob instanceof byte[]) {
+          final byte[] bytes = (byte[])lob;
+          return DataTypeUtilities.getAsUTF8String(bytes, 0, bytes.length, cd);
+        } else {
+          final OffHeapByteSource bs = (OffHeapByteSource)lob;
+          final int bytesLen = bs.getLength();
+          final long memAddr = bs.getUnsafeAddress(0, bytesLen);
+          return DataTypeUtilities.getAsUTF8String(memAddr, bytesLen, cd);
+        }
+      } else {
+        return null;
+      }
+    }
+  }
+
   final String getAsString(final int index, final ColumnDescriptor cd,
       final byte[] bytes, final ResultWasNull wasNull) throws StandardException {
     final int offsetFromMap = this.positionMap[index];
@@ -9562,6 +9674,106 @@ public final class RowFormatter implements Serializable {
     }
   }
 
+  final long getAsDateMillis(final int index, byte[] bytes, final Calendar cal,
+      final ResultWasNull wasNull) throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    final int offsetFromMap = this.positionMap[index];
+    final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
+        cd);
+    if (offsetAndWidth >= 0) {
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
+      return DataTypeUtilities.getAsDateMillis(bytes, offset,
+          columnWidth, cal, cd.columnType);
+    } else {
+      assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
+          || offsetAndWidth == OFFSET_AND_WIDTH_IS_DEFAULT : offsetAndWidth;
+      if (offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL) {
+        if (wasNull != null) wasNull.setWasNull();
+        return 0L;
+      } else {
+        final DataValueDescriptor dvd = cd.columnDefault;
+        if (dvd != null && !dvd.isNull()) {
+          return dvd.getDate(cal).getTime();
+        } else {
+          if (wasNull != null) wasNull.setWasNull();
+          return 0L;
+        }
+      }
+    }
+  }
+
+  final long getAsDateMillis(final int index, final byte[][] byteArrays,
+      final Calendar cal, final ResultWasNull wasNull)
+      throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    if (!cd.isLob) {
+      return getAsDateMillis(index, byteArrays[0], cal, wasNull);
+    } else {
+      throw StandardException.newException(
+          SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DATE", cd.getType()
+              .getFullSQLTypeName(), cd.getColumnName());
+    }
+  }
+
+  final long getAsDateMillis(final int index, final ColumnDescriptor cd,
+      final UnsafeWrapper unsafe, long memAddr, final int bytesLen,
+      @Unretained final OffHeapByteSource bs, final Calendar cal,
+      final ResultWasNull wasNull) throws StandardException {
+    final int offsetFromMap = this.positionMap[index];
+    final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
+        bytesLen, offsetFromMap, cd);
+    if (offsetAndWidth >= 0) {
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
+      return DataTypeUtilities.getAsDateMillis(unsafe, memAddr
+          + offset, columnWidth, bs, cal, cd.columnType);
+    } else {
+      assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
+          || offsetAndWidth == OFFSET_AND_WIDTH_IS_DEFAULT : offsetAndWidth;
+      if (offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL) {
+        if (wasNull != null) wasNull.setWasNull();
+        return 0L;
+      } else {
+        final DataValueDescriptor dvd = cd.columnDefault;
+        if (dvd != null && !dvd.isNull()) {
+          return dvd.getDate(cal).getTime();
+        } else {
+          if (wasNull != null) wasNull.setWasNull();
+          return 0L;
+        }
+      }
+    }
+  }
+
+  final long getAsDateMillis(final int index,
+      @Unretained final OffHeapRow bytes, final Calendar cal,
+      final ResultWasNull wasNull) throws StandardException {
+    final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
+    final int bytesLen = bytes.getLength();
+    final long memAddr = bytes.getUnsafeAddress(0, bytesLen);
+    return getAsDateMillis(index, this.columns[index], unsafe, memAddr,
+        bytesLen, bytes, cal, wasNull);
+  }
+
+  final long getAsDateMillis(final int logicalPosition,
+      @Unretained final OffHeapRowWithLobs byteArrays, final Calendar cal,
+      final ResultWasNull wasNull) throws StandardException {
+    final int index = logicalPosition - 1;
+    final ColumnDescriptor cd = this.columns[index];
+    if (!cd.isLob) {
+      final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
+      final int bytesLen = byteArrays.getLength();
+      final long memAddr = byteArrays.getUnsafeAddress(0, bytesLen);
+      return getAsDateMillis(index, cd, unsafe, memAddr, bytesLen, byteArrays,
+          cal, wasNull);
+    } else {
+      throw StandardException.newException(
+          SQLState.LANG_DATA_TYPE_GET_MISMATCH, "DATE", cd.getType()
+              .getFullSQLTypeName(), cd.getColumnName());
+    }
+  }
+
   final java.sql.Date getAsDate(final int index, final ColumnDescriptor cd,
       byte[] bytes, final Calendar cal, final ResultWasNull wasNull)
       throws StandardException {
@@ -9808,6 +10020,106 @@ public final class RowFormatter implements Serializable {
     else {
       throw StandardException.newException(
           SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TIME", cd.getType()
+              .getFullSQLTypeName(), cd.getColumnName());
+    }
+  }
+
+  final long getAsTimestampMicros(final int index, final byte[] bytes,
+      final Calendar cal, final ResultWasNull wasNull)
+      throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    final int offsetFromMap = this.positionMap[index];
+    final long offsetAndWidth = getOffsetAndWidth(index, bytes, offsetFromMap,
+        cd);
+    if (offsetAndWidth >= 0) {
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
+      return DataTypeUtilities.getAsTimestampMicros(bytes, offset, columnWidth,
+          cal, cd.columnType);
+    } else {
+      assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
+          || offsetAndWidth == OFFSET_AND_WIDTH_IS_DEFAULT : offsetAndWidth;
+      if (offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL) {
+        if (wasNull != null) wasNull.setWasNull();
+        return 0L;
+      } else {
+        final DataValueDescriptor dvd = cd.columnDefault;
+        if (dvd != null && !dvd.isNull()) {
+          return DataTypeUtilities.getTimestampMicros(dvd.getTimestamp(cal));
+        } else {
+          if (wasNull != null) wasNull.setWasNull();
+          return 0L;
+        }
+      }
+    }
+  }
+
+  final long getAsTimestampMicros(final int index, final byte[][] byteArrays,
+      final Calendar cal, final ResultWasNull wasNull)
+      throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    if (!cd.isLob) {
+      return getAsTimestampMicros(index, byteArrays[0], cal, wasNull);
+    } else {
+      throw StandardException.newException(
+          SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TIMESTAMP", cd.getType()
+              .getFullSQLTypeName(), cd.getColumnName());
+    }
+  }
+
+  final long getAsTimestampMicros(final int index,
+      final ColumnDescriptor cd, final UnsafeWrapper unsafe, long memAddr,
+      final int bytesLen, @Unretained final OffHeapByteSource bs,
+      final Calendar cal, final ResultWasNull wasNull) throws StandardException {
+    final int offsetFromMap = this.positionMap[index];
+    final long offsetAndWidth = getOffsetAndWidth(index, unsafe, memAddr,
+        bytesLen, offsetFromMap, cd);
+    if (offsetAndWidth >= 0) {
+      final int columnWidth = (int)offsetAndWidth;
+      final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
+      return DataTypeUtilities.getAsTimestampMicros(unsafe,
+          memAddr + offset, columnWidth, bs, cal, cd.columnType);
+    } else {
+      assert offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL
+          || offsetAndWidth == OFFSET_AND_WIDTH_IS_DEFAULT : offsetAndWidth;
+      if (offsetAndWidth == OFFSET_AND_WIDTH_IS_NULL) {
+        if (wasNull != null) wasNull.setWasNull();
+        return 0L;
+      } else {
+        final DataValueDescriptor dvd = cd.columnDefault;
+        if (dvd != null && !dvd.isNull()) {
+          return DataTypeUtilities.getTimestampMicros(dvd.getTimestamp(cal));
+        } else {
+          if (wasNull != null) wasNull.setWasNull();
+          return 0L;
+        }
+      }
+    }
+  }
+
+  final long getAsTimestampMicros(final int index,
+      @Unretained final OffHeapRow bytes, final Calendar cal,
+      final ResultWasNull wasNull) throws StandardException {
+    final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
+    final int bytesLen = bytes.getLength();
+    final long memAddr = bytes.getUnsafeAddress(0, bytesLen);
+    return getAsTimestampMicros(index, this.columns[index], unsafe, memAddr,
+        bytesLen, bytes, cal, wasNull);
+  }
+
+  final long getAsTimestampMicros(final int index,
+      @Unretained final OffHeapRowWithLobs byteArrays, final Calendar cal,
+      final ResultWasNull wasNull) throws StandardException {
+    final ColumnDescriptor cd = this.columns[index];
+    if (!cd.isLob) {
+      final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
+      final int bytesLen = byteArrays.getLength();
+      final long memAddr = byteArrays.getUnsafeAddress(0, bytesLen);
+      return getAsTimestampMicros(index, cd, unsafe, memAddr, bytesLen,
+          byteArrays, cal, wasNull);
+    } else {
+      throw StandardException.newException(
+          SQLState.LANG_DATA_TYPE_GET_MISMATCH, "TIMESTAMP", cd.getType()
               .getFullSQLTypeName(), cd.getColumnName());
     }
   }
