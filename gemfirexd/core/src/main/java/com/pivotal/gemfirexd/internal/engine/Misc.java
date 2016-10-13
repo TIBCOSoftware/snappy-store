@@ -313,6 +313,16 @@ public abstract class Misc {
     return childRegion;
   }
 
+  public static <K, V> void dropReservoirRegionForSampleTable(String schema, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    String childRegionName = schema + "_VB_INTERNAL_" + regionBase.getName();
+    Region<K, V> childRegion = cache.getRegion(childRegionName);
+    if (childRegion != null){
+      ((PartitionedRegion)childRegion).destroyRegion(null);
+    }
+  }
+
   /**
    * Given a table name of the form "SCHEMA_NAME.TABLE_NAME", return the GemFire
    * Region that hosts its data. If the name of the table does not have dot in
