@@ -59,13 +59,9 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LocalLogWriter;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
-import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
-import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
+import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
@@ -293,6 +289,28 @@ public abstract class Misc {
     if (isCancelling == null) {
       throw e;
     }
+  }
+
+  public static <K, V> Region<K, V> createReservoirRegionForSampleTable(String schema, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    String childRegionName = schema + "_VB_INTERNAL_" + regionBase.getName();
+    Region<K, V> childRegion = cache.getRegion(childRegionName);
+    if (childRegion == null){
+      RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
+      PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
+      AttributesFactory af = new AttributesFactory();
+      af.setDataPolicy(DataPolicy.PARTITION);
+      PartitionAttributesFactory paf = new PartitionAttributesFactory();
+      paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
+      paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
+      // TODO Write partition resolver
+
+      paf.setColocatedWith(regionBase.getFullPath());
+      af.setPartitionAttributes(paf.create());
+      cache.createRegion(childRegionName, af.create());
+    }
+    return childRegion;
   }
 
   /**
