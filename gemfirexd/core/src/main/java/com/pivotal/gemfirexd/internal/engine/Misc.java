@@ -291,12 +291,12 @@ public abstract class Misc {
     }
   }
 
-  public static <K, V> Region<K, V> createReservoirRegionForSampleTable(String schema, String resolvedBaseName) {
+  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String schema, String resolvedBaseName) {
     Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
     GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
     String childRegionName = schema + "_VB_INTERNAL_" + regionBase.getName();
     Region<K, V> childRegion = cache.getRegion(childRegionName);
-    if (childRegion == null){
+    if (childRegion == null) {
       RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
       PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
       AttributesFactory af = new AttributesFactory();
@@ -308,18 +308,25 @@ public abstract class Misc {
 
       paf.setColocatedWith(regionBase.getFullPath());
       af.setPartitionAttributes(paf.create());
-      cache.createRegion(childRegionName, af.create());
+      childRegion = cache.createRegion(childRegionName, af.create());
     }
-    return childRegion;
+    return (PartitionedRegion)childRegion;
   }
 
-  public static <K, V> void dropReservoirRegionForSampleTable(String schema, String resolvedBaseName) {
-    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
-    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-    String childRegionName = schema + "_VB_INTERNAL_" + regionBase.getName();
-    Region<K, V> childRegion = cache.getRegion(childRegionName);
-    if (childRegion != null){
-      ((PartitionedRegion)childRegion).destroyRegion(null);
+  public static <K, V> PartitionedRegion getReservoirRegionForSampleTable(String reservoirRegionName) {
+    if (reservoirRegionName != null) {
+      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+      if (childRegion != null) {
+        return (PartitionedRegion) childRegion;
+      }
+    }
+    return null;
+  }
+
+  public static <K, V> void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
+    if (reservoirRegion != null){
+      reservoirRegion.destroyRegion(null);
     }
   }
 
