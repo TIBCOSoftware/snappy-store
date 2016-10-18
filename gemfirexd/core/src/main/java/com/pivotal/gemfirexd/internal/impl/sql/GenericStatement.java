@@ -145,9 +145,14 @@ public class GenericStatement
         //private ProcedureProxy procProxy;
         private final GfxdHeapThresholdListener thresholdListener;
         private THashMap ncjMetaData = null;
-	      private static final String STREAMING_DDL_PREFIX = "STREAMING";
-	      private static final String INSERT_INTO_TABLE_SELECT_PATTERN = ".*INSERT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
-	      private static final String PUT_INTO_TABLE_SELECT_PATTERN = ".*PUT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*";
+        private static final Pattern STREAMING_DDL_PREFIX =
+            Pattern.compile("\\s*STREAMING\\s+.*", Pattern.CASE_INSENSITIVE);
+        private static final Pattern INSERT_INTO_TABLE_SELECT_PATTERN =
+            Pattern.compile(".*INSERT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*",
+                Pattern.CASE_INSENSITIVE);
+        private static final Pattern PUT_INTO_TABLE_SELECT_PATTERN =
+            Pattern.compile(".*PUT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*",
+                Pattern.CASE_INSENSITIVE);
 	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
 // GemStone changes END
 	/**
@@ -216,6 +221,8 @@ public class GenericStatement
       GenericPreparedStatement gps = preparedStmt;
       GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL);
       gps.setActivationClass(ac);
+      gps.incrementVersionCounter();
+      gps.makeValid();
       if (commitNestedTransaction) {
         lcc.commitNestedTransaction();
       }
@@ -567,11 +574,13 @@ public class GenericStatement
 				//GemStone changes BEGIN
 				//StatementNode qt = p.parseStatement(statementText, paramDefaults);
 				StatementNode qt;
+				final String source = getSource();
 				try {
 					//Route all "insert/put into tab select .. " queries to spark
 
-					if (routeQuery && (Pattern.matches(INSERT_INTO_TABLE_SELECT_PATTERN, getSource().toUpperCase()) ||
-							Pattern.matches(PUT_INTO_TABLE_SELECT_PATTERN, getSource().toUpperCase()))) {
+					if (routeQuery && (
+							INSERT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
+							PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches())) {
 						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc, cc.isMarkedAsDDLForSnappyUse(), checkCancellation);
@@ -583,8 +592,7 @@ public class GenericStatement
 				    //SanityManager.DEBUG_PRINT("DEBUG", "Parse: exception routeQuery=" + routeQuery + " ,sql=" + this.getSource() + " ,flag=" + cc.isDDL4routing());
 				    //System.out.println("Parse: exception routeQuery=" + routeQuery + " ,sql=" + this.getSource() + " ,ex=" + ex.getMessage() +  " ,stack=" + ExceptionUtils.getFullStackTrace(ex));
           if (routeQuery) {
-            if (getSource().length() >= STREAMING_DDL_PREFIX.length()
-		&& getSource().substring(0, STREAMING_DDL_PREFIX.length()).equalsIgnoreCase(STREAMING_DDL_PREFIX)) {
+            if (STREAMING_DDL_PREFIX.matcher(source).matches()) {
               cc.markAsDDLForSnappyUse(true);
             }
 

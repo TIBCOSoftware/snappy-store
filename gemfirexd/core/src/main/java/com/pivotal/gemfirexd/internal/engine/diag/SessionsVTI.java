@@ -165,7 +165,7 @@ public class SessionsVTI extends GfxdVTITemplate {
           CURRENT_STATEMENT_STATUS, Types.VARCHAR, true, 32),
           
       EmbedResultSetMetaData.getResultColumnDescriptor(
-          CURRENT_STATEMENT_ELAPSED_TIME, Types.BIGINT, true),
+          CURRENT_STATEMENT_ELAPSED_TIME, Types.DOUBLE, true),
           
       EmbedResultSetMetaData.getResultColumnDescriptor(
           CURRENT_STATEMENT_ACCESS_FREQUENCY, Types.BIGINT, true),
@@ -331,7 +331,7 @@ public class SessionsVTI extends GfxdVTITemplate {
 
       public String currentStatementStatus;
       
-      public long currentStatementElapsedTime;
+      public double currentStatementElapsedTime;
       
       public long currentStatementAccessFrequency;
       

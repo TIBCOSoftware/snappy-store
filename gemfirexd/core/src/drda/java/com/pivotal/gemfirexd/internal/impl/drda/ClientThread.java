@@ -104,6 +104,7 @@ final class ClientThread extends Thread {
                         else {
                           clientSocket.setKeepAlive(false);
                         }
+                        clientSocket.setTcpNoDelay(true);
                         /* (original code)
                         clientSocket.setKeepAlive(parent.getKeepAlive());
                         */

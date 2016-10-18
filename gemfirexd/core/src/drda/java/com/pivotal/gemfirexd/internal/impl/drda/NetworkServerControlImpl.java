@@ -4469,8 +4469,8 @@ public final class NetworkServerControlImpl {
           cs.currentStatement = st.toDebugString("");
           cs.currentStatementStatus = st.getStatus();
           if (st.getExecutionBeginTime() > 0) {
-            cs.currentStatementElapsedTime = (System.currentTimeMillis()
-                - st.getExecutionBeginTime()) / 1000;
+            cs.currentStatementElapsedTime = Math.max(System.nanoTime()
+                - st.getExecutionBeginTime(), 0L) / 1000000000.0;
           }
           cs.currentStatementAccessFrequency = st.getAccessFrequency();
           long estimatedUsage = st.getEstimatedMemoryUsage();
@@ -4515,8 +4515,8 @@ public final class NetworkServerControlImpl {
           cs.currentStatement = st.toDebugString("");
           cs.currentStatementStatus = st.getStatus();
           if (st.getExecutionBeginTime() > 0) {
-            cs.currentStatementElapsedTime = (System.currentTimeMillis()
-                - st.getExecutionBeginTime()) / 1000;
+            cs.currentStatementElapsedTime = Math.max(System.nanoTime()
+                - st.getExecutionBeginTime(), 0L) / 1000000000.0;
           }
           long estimatedUsage = st.getEstimatedMemoryUsage();
           if (estimatedUsage > 0) {
