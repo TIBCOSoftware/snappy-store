@@ -47,6 +47,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeUtilities;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLDecimal;
+import org.apache.spark.unsafe.types.UTF8String;
 
 /**
  * Common behavior for implementations of a compact Row used to minimize the
@@ -1251,6 +1252,9 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
             .getFullSQLTypeName(), cd.getColumnName());
   }
 
+  // TODO: SW: fix to store same full UTF8 format in GemXD like in UTF8String
+  public abstract UTF8String getAsUTF8String(int index)
+      throws StandardException;
   protected abstract String getString(int position, ResultWasNull wasNull)
       throws StandardException;
   protected abstract Object getObject(int position, ResultWasNull wasNull)
@@ -1273,9 +1277,15 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
       throws StandardException;
   protected abstract BigDecimal getBigDecimal(int position,
       ResultWasNull wasNull) throws StandardException;
+  // invoked by generated code of SnappyData
+  public abstract long getAsDateMillis(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException;
   protected abstract java.sql.Date getDate(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException;
   protected abstract java.sql.Time getTime(int position, Calendar cal,
+      ResultWasNull wasNull) throws StandardException;
+  // invoked by generated code of SnappyData
+  public abstract long getAsTimestampMicros(int index, Calendar cal,
       ResultWasNull wasNull) throws StandardException;
   protected abstract java.sql.Timestamp getTimestamp(int position,
       Calendar cal, ResultWasNull wasNull) throws StandardException;
@@ -1292,8 +1302,7 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         for (RegionAndKey rak : setOfKeys) {
           sz += ClassSize.refSize + rak.estimateMemoryUsage();
         }
-      } catch (ConcurrentModificationException ignore) {
-      } catch (NoSuchElementException ignore) {
+      } catch (ConcurrentModificationException | NoSuchElementException ignore) {
       }
     }
     return sz;

@@ -46,7 +46,7 @@ public final class JSONProcedures {
    */
   public static String json_evalPath(JSON column, String jsonPath)
       throws StandardException {
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT("info", "Json path to be evaluated : " + jsonPath);
     }
     PdxInstance pdxInstance = column.getPdxInstance();

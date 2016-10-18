@@ -214,7 +214,7 @@ public class GenericStatement
 			boolean commitNestedTransaction, StatementContext statementContext,
 			LanguageConnectionContext lcc, boolean isDDL, boolean checkCancellation) throws StandardException {
       GenericPreparedStatement gps = preparedStmt;
-      GeneratedClass ac = new SnappyActivationClass(!isDDL);
+      GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL);
       gps.setActivationClass(ac);
       if (commitNestedTransaction) {
         lcc.commitNestedTransaction();
@@ -261,7 +261,7 @@ public class GenericStatement
                 ProviderList prevAPL = null;
 
                 boolean foundStats = false;
-                if (GemFireXDUtils.TraceExecute) {
+                if (GemFireXDUtils.TraceExecution) {
                   String sql = GemFireXDUtils.maskCreateUserPasswordFromSQLString(
                       this.statementText);
                   SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -1008,7 +1008,7 @@ public class GenericStatement
                                             }
                                           }
 
-                                          ac = new GemFireActivationClass(qinfo);
+                                          ac = new GemFireActivationClass(lcc, qinfo);
                                         }
 //                                      GemStone changes END
 
@@ -1356,7 +1356,7 @@ public class GenericStatement
             }
 
 
-            ac = new GemFireActivationClass(qinfo);
+            ac = new GemFireActivationClass(lcc, qinfo);
 
           }
           else {

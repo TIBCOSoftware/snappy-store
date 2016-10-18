@@ -25,13 +25,19 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 
 public class SnappyActivationClass implements GeneratedClass {
-  boolean returnRows;
-  public SnappyActivationClass(boolean returnRows) {
+
+  private final boolean returnRows;
+  private final int classLoaderVersion;
+
+  public SnappyActivationClass(LanguageConnectionContext lcc,
+      boolean returnRows) {
     this.returnRows = returnRows;
+    this.classLoaderVersion = lcc.getLanguageConnectionFactory()
+        .getClassFactory().getClassLoaderVersion();
   }
 
   public int getClassLoaderVersion() {
-    return 0;
+    return this.classLoaderVersion;
   }
 
   public GeneratedMethod getMethod(String simpleName) throws StandardException {

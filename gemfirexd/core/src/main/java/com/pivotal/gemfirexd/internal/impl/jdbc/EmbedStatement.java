@@ -836,7 +836,7 @@ public class EmbedStatement extends ConnectionChild
                                   new Integer(seconds));
         }
         
-        if (GemFireXDUtils.TraceExecute) {
+        if (GemFireXDUtils.TraceExecution) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
               "EmbedStatement#setQueryTimeout timeout=" + seconds + " seconds");
         }
@@ -868,7 +868,7 @@ public class EmbedStatement extends ConnectionChild
 	 *  * @exception SQLException thrown on failure.
 	 */
 	public void cancel() throws SQLException {
-	  if (GemFireXDUtils.TraceExecute) {
+	  if (GemFireXDUtils.TraceExecution) {
 	    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
 	        "EmbedStatement#cancel statementId=" + this.statementID 
 	        + " activation=" + this.activation);
@@ -2100,7 +2100,7 @@ public class EmbedStatement extends ConnectionChild
         Set<DistributedMember> otherMembers = null;
         Set<DistributedMember> memberThatPersistOnHDFS = null;
         boolean hdfsPersistenceSuccess = false; 
-        if (GemFireXDUtils.TraceExecute) {
+        if (GemFireXDUtils.TraceExecution) {
           ParameterValueSet pvs;
           final String pvsStr;
           // mask passwords from being logged

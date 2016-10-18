@@ -270,7 +270,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     try {
       ConnectionHolder connHolder = this.connectionMap.getPrimitive(connId);
       if (connHolder != null) {
-        if (connHolder.equals(token)) {
+        if (connHolder.sameToken(token)) {
           connHolder.close(this);
           this.connectionMap.removePrimitive(connId);
           // also remove from client tracker map
@@ -387,7 +387,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       throws SnappyException {
     ConnectionHolder connHolder = this.connectionMap.getPrimitive(connId);
     if (connHolder != null) {
-      if (connHolder.equals(token)) {
+      if (connHolder.sameToken(token)) {
         return connHolder;
       }
       else {
@@ -410,7 +410,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       boolean isPrepared, String op) throws SnappyException {
     StatementHolder stmtHolder;
     if ((stmtHolder = this.statementMap.getPrimitive(stmtId)) != null) {
-      if (stmtHolder.getConnectionHolder().equals(token)) {
+      if (stmtHolder.getConnectionHolder().sameToken(token)) {
         if (!isPrepared
             || stmtHolder.getStatement() instanceof PreparedStatement) {
           return stmtHolder;
@@ -432,7 +432,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       int cursorId, String op) throws SnappyException {
     StatementHolder stmtHolder;
     if ((stmtHolder = this.resultSetMap.getPrimitive(cursorId)) != null) {
-      if (stmtHolder.getConnectionHolder().equals(token)) {
+      if (stmtHolder.getConnectionHolder().sameToken(token)) {
         return stmtHolder;
       }
       else {

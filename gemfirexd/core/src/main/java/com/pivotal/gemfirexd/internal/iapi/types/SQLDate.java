@@ -455,7 +455,7 @@ public final class SQLDate extends DataType
      * @param isJdbcEscape if true then only the JDBC date escape syntax is allowed
      * @param localeFinder
      *
-     * @exception Standard exception if the syntax is invalid or the value is out of range.
+     * @exception StandardException if the syntax is invalid or the value is out of range.
      */
     public SQLDate( String dateStr, boolean isJdbcEscape, LocaleFinder localeFinder)
         throws StandardException
@@ -476,7 +476,7 @@ public final class SQLDate extends DataType
      * @param isJdbcEscape if true then only the JDBC date escape syntax is allowed
      * @param localeFinder
      *
-     * @exception Standard exception if the syntax is invalid or the value is out of range.
+     * @exception StandardException if the syntax is invalid or the value is out of range.
      */
     public SQLDate( String dateStr, boolean isJdbcEscape, LocaleFinder localeFinder, Calendar cal)
         throws StandardException
@@ -1176,6 +1176,15 @@ public final class SQLDate extends DataType
         getTypeFormatId());
   }
 
+  static final long getAsDateMillis(final byte[] bytes,
+      final int offset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(bytes, offset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis();
+  }
+
   static final java.sql.Date getAsDate(final byte[] bytes,
       final int offset, final Calendar cal) {
     final int encodedDate = RowFormatter.readInt(bytes, offset);
@@ -1183,6 +1192,15 @@ public final class SQLDate extends DataType
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
     return new Date(cal.getTimeInMillis());
+  }
+
+  static final long getAsDateMillis(final UnsafeWrapper unsafe,
+      final long memOffset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis();
   }
 
   static final java.sql.Date getAsDate(final UnsafeWrapper unsafe,
@@ -1194,6 +1212,15 @@ public final class SQLDate extends DataType
     return new Date(cal.getTimeInMillis());
   }
 
+  static final long getAsTimeStampMicros(final byte[] bytes,
+      final int offset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(bytes, offset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis() * 1000L;
+  }
+
   static final java.sql.Timestamp getAsTimeStamp(final byte[] bytes,
       final int offset, final Calendar cal) {
     final int encodedDate = RowFormatter.readInt(bytes, offset);
@@ -1201,6 +1228,15 @@ public final class SQLDate extends DataType
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
     return new Timestamp(cal.getTimeInMillis());
+  }
+
+  static final long getAsTimeStampMicros(final UnsafeWrapper unsafe,
+      final long memOffset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis() * 1000L;
   }
 
   static final java.sql.Timestamp getAsTimeStamp(final UnsafeWrapper unsafe,

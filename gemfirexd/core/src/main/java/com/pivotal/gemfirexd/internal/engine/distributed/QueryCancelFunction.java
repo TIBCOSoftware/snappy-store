@@ -90,7 +90,7 @@ public final class QueryCancelFunction implements Function, Declarable {
       lcc = getLccFromContextService(args.connectionId);
     }
     
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           " QueryCancelFunction#execute wrapper=" + wrapper + " statement="
               + stmt + " lcc=" + lcc + " connectionId=" + args.connectionId

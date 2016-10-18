@@ -1512,7 +1512,8 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 			((desiredPrecision - desiredScale) <  SQLDecimal.getWholeDigits(getBigDecimal())))
 		{
 			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, 
-									("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+")"), (String)null);
+									("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+") - " +
+									    getBigDecimal()), (String)null);
 		}
 		value = value.setScale(desiredScale, BigDecimal.ROUND_DOWN);
 		rawData = null;

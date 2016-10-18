@@ -2034,7 +2034,7 @@ public final class GemFireXDUtils {
     StandardException se = StandardException.newException(
         SQLState.LANG_DUPLICATE_KEY_CONSTRAINT, eee, constraintType, indexName);
     // don't report constraint violations to logs by default
-    if (!GemFireXDUtils.TraceExecute) {
+    if (!GemFireXDUtils.TraceExecution) {
       se.setReport(StandardException.REPORT_NEVER);
     }
     return se;
@@ -2060,7 +2060,7 @@ public final class GemFireXDUtils {
     StandardException se = StandardException.newException(
         SQLState.NOT_IMPLEMENTED, eee, constraintType, indexName);
     // don't report constraint violations to logs by default
-    if (!GemFireXDUtils.TraceExecute) {
+    if (!GemFireXDUtils.TraceExecution) {
       se.setReport(StandardException.REPORT_NEVER);
     }
     return se;
@@ -3075,12 +3075,12 @@ public final class GemFireXDUtils {
   // statics for various derby debug flags used for GemFireXD trace logging
 
   /**
-   * Set to true of one of the different debug flags like
-   * {@link GfxdConstants#TRACE_QUERYDISTRIB} are set or fine level logging
-   * enabled. This is to do minimal tracing of the execution of different
-   * DDLs/DMLs/queries.
+   * Set to true if {@link GfxdConstants#TRACE_EXECUTION} or one of the debug
+   * flags like {@link GfxdConstants#TRACE_QUERYDISTRIB} are set or fine level
+   * logging enabled. This is to do minimal tracing of the execution of
+   * different DDLs/DMLs/queries.
    */
-  public static boolean TraceExecute;
+  public static boolean TraceExecution;
 
   /**
    * Set to true if {@link GfxdConstants#TRACE_QUERYDISTRIB} debug flag is set.
@@ -3315,17 +3315,17 @@ public final class GemFireXDUtils {
     // initialize GFE layer verbose logging as required
     initGFEFlags();
 
-    setTraceExecute(SanityManager.TRACE_ON(GfxdConstants.TRACE_EXECUTION));
+    setTraceExecution(SanityManager.TRACE_ON(GfxdConstants.TRACE_EXECUTION));
 
     TraceSysProcedures = SanityManager
         .TRACE_ON(GfxdConstants.TRACE_SYS_PROCEDURES) ||
-        (TraceExecute && !SanityManager.TRACE_OFF(
+        (TraceExecution && !SanityManager.TRACE_OFF(
             GfxdConstants.TRACE_SYS_PROCEDURES));
   }
 
-  private static void setTraceExecute(boolean force) {
+  private static void setTraceExecution(boolean force) {
 
-    TraceExecute = force || TraceQuery || SanityManager.isFineEnabled
+    TraceExecution = force || TraceQuery || SanityManager.isFineEnabled
         || TXStateProxy.TRACE_EXECUTE || DistributionManager.VERBOSE
         || TraceDBSynchronizer || TraceDBSynchronizerHA || TraceActivation
         || TraceLock || ExclusiveSharedSynchronizer.TRACE_LOCK_COMPACT

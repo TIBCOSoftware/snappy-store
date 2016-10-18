@@ -20,6 +20,8 @@ package com.gemstone.gemfire.internal.shared;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.GregorianCalendar;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public final class ClientSharedData {
 
@@ -64,11 +66,15 @@ public final class ClientSharedData {
 
   public static final byte CLIENT_TXID_NOT_WRITTEN = (byte)0;
 
+  public static final TimeZone DEFAULT_TIMEZONE = TimeZone.getDefault();
+  public static final Locale DEFAULT_LOCALE = Locale.getDefault(
+      Locale.Category.FORMAT);
+
   private static final ThreadLocal<GregorianCalendar> DEFAULT_CALENDAR =
       new ThreadLocal<GregorianCalendar>() {
     @Override
     public GregorianCalendar initialValue() {
-      return new GregorianCalendar();
+      return new GregorianCalendar(DEFAULT_TIMEZONE, DEFAULT_LOCALE);
     }
   };
 

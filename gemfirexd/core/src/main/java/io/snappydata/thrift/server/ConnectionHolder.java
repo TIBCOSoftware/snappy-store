@@ -487,7 +487,7 @@ final class ConnectionHolder {
     }
   }
 
-  final boolean equals(ByteBuffer otherId) {
+  final boolean sameToken(ByteBuffer otherId) {
     return ClientSharedUtils.equalBuffers(this.token, otherId);
   }
 

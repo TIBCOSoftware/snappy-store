@@ -641,7 +641,7 @@ public final class ResultHolder extends GfxdDataSerializable {
             "ResultHolder::prepareSend: got exception while sending", t);
       }
       else if (GemFireXDUtils.TraceFunctionException
-          | GemFireXDUtils.TraceExecute) {
+          | GemFireXDUtils.TraceExecution) {
         // log full stack for unexpected runtime exceptions
         boolean printStack = false;
         Throwable fail = t;

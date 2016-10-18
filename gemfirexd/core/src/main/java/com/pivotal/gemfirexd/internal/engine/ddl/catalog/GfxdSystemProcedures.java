@@ -2049,7 +2049,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
    * @throws StandardException
    */
   public static void REPAIR_CATALOG() throws SQLException, StandardException {
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "in procedure REPAIR_CATALOG()");
     }
@@ -2106,7 +2106,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     long statementId = Long.parseLong(s[1]);
     long executionID = Long.parseLong(s[2]);
     
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "CANCEL_STATEMENT connectionId=" + connectionId + " statementId="
               + statementId + " executionID=" + executionID);
@@ -2143,7 +2143,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     final Object[] params;
 
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "CHECK_TABLE_EX schema:" + schema + "table: " + table);
     }
@@ -2212,7 +2212,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
 
     ldapGroup = StringUtil.SQLToUpperCase(ldapGroup);
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "REFRESH_LDAP_GROUP ldapGroup=" + ldapGroup);
     }
@@ -2290,7 +2290,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       throw PublicAPI.wrapStandardException(StandardException.newException(
           SQLState.TABLE_NOT_FOUND, table));
     }
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "GET_COLUMN_TABLE_SCHEMA table=" + table + " schema=" + schemaString);
     }
