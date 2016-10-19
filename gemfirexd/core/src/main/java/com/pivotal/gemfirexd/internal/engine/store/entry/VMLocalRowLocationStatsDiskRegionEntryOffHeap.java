@@ -15,30 +15,23 @@
  * LICENSE file.
  */
 
+/**
+ * Do not modify this class. It was generated.
+ * Instead modify LeafRegionEntry.cpp and then run
+ * bin/generateRegionEntryClasses.sh from the directory
+ * that contains your build.xml.
+ */
 package com.pivotal.gemfirexd.internal.engine.store.entry;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-
-
-
-
-
 import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
-
-
 import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
-
-
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
 import java.io.DataOutput;
@@ -77,22 +70,6 @@ import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRegionEntryUti
 import com.gemstone.gemfire.internal.cache.DiskId;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.AbstractDiskRegionEntry;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
-/**
- * Do not modify this class. It was generated.
- * Instead modify LeafRegionEntry.cpp and then run
- * bin/generateRegionEntryClasses.sh from the directory
- * that contains your build.xml.
- */
 public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationStatsDiskRegionEntry
     implements OffHeapRegionEntry
 {
@@ -103,13 +80,10 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
     super(context,
           (value instanceof RecoveredEntry ? null : value)
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     initialize(context, value);
     this.tableInfo = RegionEntryUtils.entryGetTableInfo(context, key, value);
     this.key = RegionEntryUtils.entryGetRegionKey(key, value);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -122,9 +96,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -133,22 +104,14 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // disk code
   protected void initialize(RegionEntryContext context, Object value) {
     diskInitialize(context, value);
   }
@@ -156,21 +119,14 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   public int updateAsyncEntrySize(EnableLRU capacityController) {
     throw new IllegalStateException("should never be called");
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private void diskInitialize(RegionEntryContext context, Object value) {
     DiskRecoveryStore drs = (DiskRecoveryStore)context;
     DiskStoreImpl ds = drs.getDiskStore();
     long maxOplogSize = ds.getMaxOplogSize();
-    //get appropriate instance of DiskId implementation based on maxOplogSize
-    this.id = DiskId.createDiskId(maxOplogSize, true/* is persistence */, ds.needsLinkedList());
+    this.id = DiskId.createDiskId(maxOplogSize, true , ds.needsLinkedList());
     Helper.initialize(this, drs, value);
   }
-  /**
-   * DiskId
-   * 
-   * @since 5.1
-   */
-  protected DiskId id;//= new DiskId();
+  protected DiskId id;
   public DiskId getDiskId() {
     return this.id;
   }
@@ -178,8 +134,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   public void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // stats code
   @Override
   public final void updateStatsForGet(boolean hit, long time)
   {
@@ -230,7 +184,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
     hitCountUpdater.set(this,0);
     missCountUpdater.set(this,0);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public final void txDidDestroy(long currTime) {
     setLastModified(currTime);
@@ -242,8 +195,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   public boolean hasStats() {
     return true;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -253,21 +204,9 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   protected void _setRawKey(Object key) {
     this.key = key;
   }
-  /**
-   * All access done using ohAddrUpdater so it is used even though the compiler can not tell it is.
-   */
   @Retained @Released private volatile long ohAddress;
-  /**
-   * I needed to add this because I wanted clear to call setValue which normally can only be called while the re is synced.
-   * But if I sync in that code it causes a lock ordering deadlock with the disk regions because they also get a rw lock in clear.
-   * Some hardware platforms do not support CAS on a long. If gemfire is run on one of those the AtomicLongFieldUpdater does a sync
-   * on the re and we will once again be deadlocked.
-   * I don't know if we support any of the hardware platforms that do not have a 64bit CAS. If we do then we can expect deadlocks
-   * on disk regions.
-   */
   private final static AtomicLongFieldUpdater<VMLocalRowLocationStatsDiskRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMLocalRowLocationStatsDiskRegionEntryOffHeap.class, "ohAddress");
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
@@ -328,7 +267,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
     if (container != null && container.isByteArrayStore()) {
       tabInfo = container.getExtraTableInfo(val);
       this.tableInfo = tabInfo;
-      // cleanup the key if required
       if (tabInfo != null && tabInfo.regionKeyPartOfValue()) {
         return tabInfo;
       }
@@ -353,7 +291,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   }
   @Override
   public final int compare(DataValueDescriptor other) {
-    // just use some arbitrary criteria like hashCode for ordering
     if (this == other) {
       return 0;
     }
@@ -375,7 +312,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   public Object getObject() throws StandardException {
     return this;
   }
-  // Unimplemented methods not expected to be invoked
   @Override
   public DataValueDescriptor coalesce(DataValueDescriptor[] list,
       DataValueDescriptor returnValue) throws StandardException {
@@ -522,14 +458,7 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
       boolean isEntryUpdate, boolean valHasMetadataForGfxdOffHeapUpdate) {
     if (okToStoreOffHeap(val)
         && OffHeapRegionEntryUtils.isValidValueForGfxdOffHeapStorage(val)) {
-      // TODO:Asif:Check if this is a valid supposition
-      // final long address = this.getAddress();
       if (isEntryUpdate
-      /*
-       * (address == OffHeapRegionEntryHelper.REMOVED_PHASE1_ADDRESS || address
-       * == OffHeapRegionEntryHelper.NULL_ADDRESS) || r instanceof
-       * PlaceHolderDiskRegion
-       */
       ) {
         return OffHeapRegionEntryUtils.prepareValueForUpdate(this, r, val, valHasMetadataForGfxdOffHeapUpdate);
       } else {
@@ -582,8 +511,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   @Override
   protected StringBuilder appendFieldsToString(final StringBuilder sb) {
     sb.append("key=");
-    // OFFHEAP _getValue ok: the current toString on OffHeapCachedDeserializable
-    // is safe to use without incing refcount.
     final Object k = getKeyCopy();
     final Object val = OffHeapRegionEntryUtils.getHeapRowForInVMValue(this);
     RegionEntryUtils.entryKeyString(k, val, getTableInfo(null), sb);
@@ -593,7 +520,6 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
     sb.append("; lockState=0x").append(Integer.toHexString(getState()));
     return sb;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VMLocalRowLocationStatsDiskRegionEntryOffHeap(context, key, value);
@@ -612,5 +538,4 @@ public class VMLocalRowLocationStatsDiskRegionEntryOffHeap extends RowLocationSt
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }

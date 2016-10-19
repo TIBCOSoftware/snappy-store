@@ -282,16 +282,16 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
    * and places that don't want a destroyed Token can explicitly check
    * for a DESTROY token.
    */
-  public final boolean isRemoved() {
+  public boolean isRemoved() {
     Token o = getValueAsToken();
     return (o == Token.REMOVED_PHASE1) || (o == Token.REMOVED_PHASE2) || (o == Token.TOMBSTONE);
   }
 
-  public final boolean isDestroyedOrRemoved() {
+  public boolean isDestroyedOrRemoved() {
     return Token.isRemoved(getValueAsToken());
   }
   
-  public final boolean isDestroyedOrRemovedButNotTombstone() {
+  public boolean isDestroyedOrRemovedButNotTombstone() {
     Token o = getValueAsToken();
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
