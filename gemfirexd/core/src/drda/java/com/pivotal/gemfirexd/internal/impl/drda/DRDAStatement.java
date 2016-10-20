@@ -891,7 +891,7 @@ class DRDAStatement
 		    }
 		    setStatus("EXECUTING BATCH");
 		    this.statementAccessFrequency++;
-		    this.executionBeginTime = System.currentTimeMillis();
+		    this.executionBeginTime = System.nanoTime();
 		    this.batchResult = this.ps.executeBatch();
 		    hasResultSet = false;
 		  }
@@ -899,7 +899,7 @@ class DRDAStatement
 		    this.batchResult = null;
                     setStatus("EXECUTING PREPAREDSTATEMENT");
                     this.statementAccessFrequency++;
-                    this.executionBeginTime = System.currentTimeMillis();
+                    this.executionBeginTime = System.nanoTime();
 		    hasResultSet = this.ps.execute();
 		    if (!hasResultSet) {
                       setStatus("CHECKING BUCKET HOSTED");
@@ -911,7 +911,7 @@ class DRDAStatement
 		    this.batchResult = null;
 		    s = this.pstmt;
                     setStatus("EXECUTING STATEMENT");
-                    this.executionBeginTime = System.currentTimeMillis();
+                    this.executionBeginTime = System.nanoTime();
 		    hasResultSet = this.pstmt.execute(this.sqlText);
                     if (!hasResultSet) {
                       setStatus("DONE");
