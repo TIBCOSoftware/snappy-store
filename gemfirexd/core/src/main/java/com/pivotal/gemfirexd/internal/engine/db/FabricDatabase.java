@@ -532,7 +532,8 @@ public final class FabricDatabase implements ModuleControl,
         checkSnappyCatalogConsistency(embedConn);
       }
 
-      if (this.memStore.isSnappyStore()) {
+      if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
+          GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
         CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
       }
     } catch (Throwable t) {

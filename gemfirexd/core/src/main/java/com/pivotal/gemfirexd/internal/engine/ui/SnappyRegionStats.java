@@ -22,7 +22,7 @@ import java.io.Serializable;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 
-public class SnappyRegionStats implements Serializable  {
+public class SnappyRegionStats {
 
   private boolean isColumnTable = false;
   private String regionName;

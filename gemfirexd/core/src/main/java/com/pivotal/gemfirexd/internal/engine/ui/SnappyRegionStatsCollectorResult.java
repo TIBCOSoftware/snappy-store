@@ -19,23 +19,40 @@ package com.pivotal.gemfirexd.internal.engine.ui;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.gemstone.gemfire.DataSerializable;
+import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
+import com.gemstone.gemfire.internal.shared.Version;
+import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
+import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 
-public class SnappyRegionStatsCollectorResult implements DataSerializable {
+public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   private transient List<SnappyRegionStats> combinedStats = new ArrayList<>();
+
 
   public void addRegionStat(SnappyRegionStats stats) {
     combinedStats.add(stats);
   }
 
-  public SnappyRegionStatsCollectorResult(){}
+  public SnappyRegionStatsCollectorResult() {
+  }
 
   public List<SnappyRegionStats> getRegionStats() {
     return combinedStats;
+  }
+
+  @Override
+  public byte getGfxdID() {
+    return SNAPPY_REGION_STATS_RESULT;
+  }
+
+  @Override
+  public Version[] getSerializationVersions() {
+    return null;
   }
 
   @Override

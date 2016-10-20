@@ -95,6 +95,7 @@ import com.pivotal.gemfirexd.internal.engine.store.CompactExecRow;
 import com.pivotal.gemfirexd.internal.engine.store.CompactExecRowWithLobs;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.BulkKeyLookupResult;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.SerializableDelta;
+import com.pivotal.gemfirexd.internal.engine.ui.SnappyRegionStatsCollectorResult;
 import com.pivotal.gemfirexd.internal.impl.store.raw.data.GfxdJarMessage;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 import com.pivotal.gemfirexd.tools.planexporter.ExecutionPlanMessage;
@@ -212,6 +213,7 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
     registerSqlSerializable(LeadNodeExecutorMsg.class);
     registerSqlSerializable(SnappyResultHolder.class);
     registerSqlSerializable(SnappyRemoveCachedObjectsFunctionArgs.class);
+    registerSqlSerializable(SnappyRegionStatsCollectorResult.class);
     // ProjectionRow is registered without creating an instance since it
     // requires GemFireCacheImpl instance in RawValue statics
     DSFIDFactory.registerGemFireXDClass(PROJECTION_ROW, ProjectionRow.class);
