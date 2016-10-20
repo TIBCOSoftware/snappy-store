@@ -63,6 +63,11 @@ public abstract class CallbackFactoryProvider {
 
     }
 
+    @Override
+    public void publishColumnTableStats() {
+    }
+
+
   };
 
   public static ClusterCallbacks getClusterCallbacks() {

@@ -46,4 +46,7 @@ public interface ClusterCallbacks {
       ByteArrayDataInput in, int numEightColGroups, int numPartialCols);
 
   void clearSnappyContextForConnection(Long connectionId);
+
+
+  void publishColumnTableStats();
 }

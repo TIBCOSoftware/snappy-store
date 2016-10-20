@@ -531,6 +531,10 @@ public final class FabricDatabase implements ModuleControl,
       if (isLead && servers.size() > 0) {
         checkSnappyCatalogConsistency(embedConn);
       }
+
+      if (this.memStore.isSnappyStore()) {
+        CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
+      }
     } catch (Throwable t) {
       try {
         LogWriter logger = Misc.getCacheLogWriter();

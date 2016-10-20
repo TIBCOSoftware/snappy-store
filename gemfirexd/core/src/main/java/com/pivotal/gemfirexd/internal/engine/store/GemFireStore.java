@@ -107,7 +107,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCl
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
-import com.pivotal.gemfirexd.internal.engine.distributed.RegionSizeCalculatorFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
@@ -126,6 +125,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.DistributionObserver;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.IdentityValueManager;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.GFContainerLocking;
+import com.pivotal.gemfirexd.internal.engine.ui.SnappyRegionStatsCollectorFunction;
 import com.pivotal.gemfirexd.internal.hadoop.HadoopGfxdLonerConfig;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
@@ -1135,7 +1135,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           new GfxdPartitionResolver.HdfsGlobalIndexLookupFunction());
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
-      FunctionService.registerFunction(new RegionSizeCalculatorFunction());
+      FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
       FunctionService.registerFunction(new SnappyRemoveCachedObjectsFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
