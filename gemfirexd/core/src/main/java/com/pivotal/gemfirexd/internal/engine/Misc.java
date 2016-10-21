@@ -299,7 +299,7 @@ public abstract class Misc {
     if (childRegion == null) {
       RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
       PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
-      AttributesFactory af = new AttributesFactory();
+      RegionAttributesCreation af = new RegionAttributesCreation();
       af.setDataPolicy(DataPolicy.PARTITION);
       PartitionAttributesFactory paf = new PartitionAttributesFactory();
       paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
@@ -308,7 +308,7 @@ public abstract class Misc {
 
       paf.setColocatedWith(regionBase.getFullPath());
       af.setPartitionAttributes(paf.create());
-      childRegion = cache.createRegion(childRegionName, af.create());
+      childRegion = cache.createRegion(childRegionName, af);
     }
     return (PartitionedRegion)childRegion;
   }
