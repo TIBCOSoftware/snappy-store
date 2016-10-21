@@ -5935,7 +5935,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   public static void setColumnBatchSizes(int size, int minSize) {
     COLUMN_BATCH_SIZE = size;
-    COLUMN_MIN_BATCH_SIZE = minSize;
+    COLUMN_MIN_BATCH_SIZE = minSize < size ? minSize : size;
   }
 
   public static int getColumnBatchSize() {
