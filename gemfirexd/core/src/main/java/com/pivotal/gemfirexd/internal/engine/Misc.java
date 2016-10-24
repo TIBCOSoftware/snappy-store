@@ -24,13 +24,8 @@ import java.io.StringWriter;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.locks.Condition;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -294,7 +289,7 @@ public abstract class Misc {
   public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String schema, String resolvedBaseName) {
     Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
     GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-    String childRegionName = schema + "_VB_INTERNAL_" + regionBase.getName();
+    String childRegionName = schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
     Region<K, V> childRegion = cache.getRegion(childRegionName);
     if (childRegion == null) {
       RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
@@ -328,6 +323,25 @@ public abstract class Misc {
     if (reservoirRegion != null){
       reservoirRegion.destroyRegion(null);
     }
+  }
+
+  public static PartitionedRegion.PRLocalScanIterator
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, int segi, int segn) {
+    if (reservoirRegion != null) {
+      Set<Integer> localPrimaryBucketSet = reservoirRegion
+          .getDataStore().getAllLocalPrimaryBucketIds();
+      Set<Integer> bucketSet = new HashSet<Integer>();
+      for (Integer i : localPrimaryBucketSet) {
+        if (i % segn == segi) {
+          bucketSet.add(i);
+        }
+      }
+      if (bucketSet.size() > 0) {
+        // fetchFromRemote = false; if bucket is moved out, that should be included on remote node
+        reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, false);
+      }
+    }
+    return null;
   }
 
   /**
