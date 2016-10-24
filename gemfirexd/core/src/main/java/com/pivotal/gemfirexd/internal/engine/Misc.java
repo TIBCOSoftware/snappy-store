@@ -338,7 +338,7 @@ public abstract class Misc {
       }
       if (bucketSet.size() > 0) {
         // fetchFromRemote = false; if bucket is moved out, that should be included on remote node
-        reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, false);
+        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, false);
       }
     }
     return null;
