@@ -336,9 +336,17 @@ public abstract class Misc {
           bucketSet.add(i);
         }
       }
+      // fetchFromRemote = false; if bucket is moved out, that should be included on remote node
+      return getLocalBucketsIteratorForSampleTable(reservoirRegion, bucketSet, false);
+    }
+    return null;
+  }
+
+  public static PartitionedRegion.PRLocalScanIterator
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, Set<Integer> bucketSet, Boolean fetchFromRemote) {
+    if (reservoirRegion != null && bucketSet != null) {
       if (bucketSet.size() > 0) {
-        // fetchFromRemote = false; if bucket is moved out, that should be included on remote node
-        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, false);
+        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, fetchFromRemote);
       }
     }
     return null;
