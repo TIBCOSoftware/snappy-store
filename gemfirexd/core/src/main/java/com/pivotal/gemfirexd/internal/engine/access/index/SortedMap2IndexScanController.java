@@ -418,10 +418,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
   private boolean[] getBucketSet(Set<Integer> bucketSet) {
     if (bucketSet != null) {
-      int maxBucketId = 0;
-      for (int b : bucketSet) {
-        if (maxBucketId < b) maxBucketId = b;
-      }
+      int maxBucketId = ((PartitionedRegion)this.baseRegion).getTotalNumberOfBuckets();
       boolean[] buckets = new boolean[maxBucketId + 1];
       for (int b : bucketSet) {
         buckets[b] = true;
