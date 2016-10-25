@@ -336,6 +336,7 @@ public abstract class Misc {
       PartitionAttributesFactory paf = new PartitionAttributesFactory();
       paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
       paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
+      paf.setLocalMaxMemory(partitionAttributesBase.getLocalMaxMemory());
       paf.setPartitionResolver(partResolver);
       paf.setColocatedWith(regionBase.getFullPath());
       af.setPartitionAttributes(paf.create());
