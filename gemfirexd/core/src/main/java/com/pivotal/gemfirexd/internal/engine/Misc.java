@@ -324,7 +324,7 @@ public abstract class Misc {
     return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
   }
 
-  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName, PartitionResolver partResolver) {
+  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName) {
     Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
     GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
     Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
@@ -337,6 +337,7 @@ public abstract class Misc {
       paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
       paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
       paf.setLocalMaxMemory(partitionAttributesBase.getLocalMaxMemory());
+      PartitionResolver partResolver = createPartitionResolverForSampleTable(reservoirRegionName);
       paf.setPartitionResolver(partResolver);
       paf.setColocatedWith(regionBase.getFullPath());
       af.setPartitionAttributes(paf.create());
