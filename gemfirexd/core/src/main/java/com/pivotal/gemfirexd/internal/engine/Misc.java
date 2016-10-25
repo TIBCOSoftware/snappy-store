@@ -17,10 +17,8 @@
 
 package com.pivotal.gemfirexd.internal.engine;
 
-import java.io.CharArrayWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
+import java.io.*;
+import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -286,11 +284,50 @@ public abstract class Misc {
     }
   }
 
-  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String schema, String resolvedBaseName) {
+  public static <K, V> PartitionResolver createPartitionResolverForSampleTable(final String reservoirRegionName) {
+    // TODO: Should this be serializable?
+    // TODO: Should this have call back from bucket movement module?
+    return new PartitionResolver() {
+
+      List<Integer> localBuckets = new ArrayList<Integer>();
+
+      public String getName()
+      {
+        return "PartitionResolverForSampleTable";
+      }
+
+      public Serializable getRoutingObject(EntryOperation opDetails)
+      {
+        if (localBuckets.isEmpty()) {
+          PartitionedRegion pr = getReservoirRegionForSampleTable(reservoirRegionName);
+          assert (pr != null);
+          Set<Integer> localPrimaryBucketSet = pr.getDataStore().getAllLocalPrimaryBucketIds();
+          for (Integer i : localPrimaryBucketSet) {
+            localBuckets.add(i);
+          }
+          Collections.sort(localBuckets);
+        }
+        Object k = opDetails.getKey();
+        int hash = k.hashCode();
+        int i = Math.abs(hash) % localBuckets.size();
+        Integer v = localBuckets.get(i);
+        return (Serializable)v;
+      }
+
+      public void close() {}
+    };
+  }
+
+  public static <K, V> String getReservoirRegionNameForSampleTable(String schema, String resolvedBaseName) {
     Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
     GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-    String childRegionName = schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
-    Region<K, V> childRegion = cache.getRegion(childRegionName);
+    return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
+  }
+
+  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName, PartitionResolver partResolver) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
     if (childRegion == null) {
       RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
       PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
@@ -299,11 +336,10 @@ public abstract class Misc {
       PartitionAttributesFactory paf = new PartitionAttributesFactory();
       paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
       paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
-      // TODO Write partition resolver
-
+      paf.setPartitionResolver(partResolver);
       paf.setColocatedWith(regionBase.getFullPath());
       af.setPartitionAttributes(paf.create());
-      childRegion = cache.createRegion(childRegionName, af);
+      childRegion = cache.createRegion(reservoirRegionName, af);
     }
     return (PartitionedRegion)childRegion;
   }
