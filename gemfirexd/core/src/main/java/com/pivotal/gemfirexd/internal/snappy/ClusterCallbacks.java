@@ -17,12 +17,14 @@
 
 package com.pivotal.gemfirexd.internal.snappy;
 
+import java.util.HashSet;
+import java.util.Iterator;
+
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-
-import java.util.HashSet;
+import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
 
 /**
  * Callbacks that are required for cluster management of Snappy should go here.
@@ -40,13 +42,12 @@ public interface ClusterCallbacks {
   SparkSQLExecute getSQLExecute(String sql, String schema, LeadNodeExecutionContext ctx, Version v);
 
   /**
-   * Deserialize the SnappyResultHolder object per batch.
+   * Deserialize/decompress the SnappyResultHolder data and get an iterator.
    */
-  void readDVDArray(DataValueDescriptor[] dvds, int[] types,
-      ByteArrayDataInput in, int numEightColGroups, int numPartialCols);
+  Iterator<ValueRow> getRowIterator(DataValueDescriptor[] dvds, int[] types,
+      int[] precisions, int[] scales, ByteArrayDataInput in);
 
-  void clearSnappyContextForConnection(Long connectionId);
-
+  void clearSnappySessionForConnection(Long connectionId);
 
   void publishColumnTableStats();
 }

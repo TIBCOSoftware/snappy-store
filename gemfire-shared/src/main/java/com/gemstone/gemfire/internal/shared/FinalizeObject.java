@@ -132,6 +132,8 @@ public abstract class FinalizeObject extends WeakReference<Object> implements
 
   /**
    * The finalizer method for the object for post GC cleanup.
+   * Return false to abort finalization just yet and place in a pending queue
+   * to be retried later.
    */
   protected abstract boolean doFinalize() throws Exception;
 

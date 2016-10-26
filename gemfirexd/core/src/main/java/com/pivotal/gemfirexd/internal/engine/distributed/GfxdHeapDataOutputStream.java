@@ -70,7 +70,8 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
   public final void write(byte[] source, int offset, int len) {
     // if there is enough space in current byte buffer, then use that instead
     // of always wrapping to avoid one additional allocation
-    if (this.wrapBytes && this.buffer.remaining() < len) {
+    if (this.wrapBytes &&
+        this.buffer.position() > 0 && this.buffer.remaining() < len) {
       this.writeWithByteArrayWrappedConditionally(source, offset, len);
     }
     else {
@@ -78,8 +79,20 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
     }
   }
 
-  public final void writeNoWrap(byte[] source, int offset, int len) {
-    super.write(source, offset, len);
+  /**
+   * Write a byte buffer to this HeapDataOutputStream,
+   *
+   * The contents of the buffer between the position and the limit
+   * are copied to the output stream or the buffer kept as is (if wrapBytes
+   *   has been passed as true in constructor).
+   */
+  @Override
+  public final void write(ByteBuffer source) {
+    if (this.wrapBytes) {
+      this.writeWithByteBufferWrappedConditionally(source);
+    } else {
+      super.write(source);
+    }
   }
 
   public final void copyMemory(final Object src, long srcOffset, int length) {

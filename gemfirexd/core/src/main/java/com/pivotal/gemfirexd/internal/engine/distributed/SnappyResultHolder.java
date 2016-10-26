@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.sql.Types;
+import java.util.Iterator;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
@@ -52,7 +53,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   private transient volatile int[] precisions;
   private transient volatile int[] scales;
   private DataValueDescriptor[] templateDVDRow;
-  private ValueRow execRow;
+  private Iterator<ValueRow> execRows;
   private DataTypeDescriptor[] dtds;
 
   public SnappyResultHolder(SparkSQLExecute exec) {
@@ -96,8 +97,11 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
       final int numBytes, final Version v) throws IOException {
     final ByteArrayDataInput dis = new ByteArrayDataInput();
     dis.initialize(rawData, 0, numBytes, v);
-    byte metaInfo = dis.readByte();
+    // read without moving ahead since decompressor also expects the
+    // header byte for consistency
+    byte metaInfo = dis.peekByte();
     if (metaInfo == 0x01) {
+      dis.readByte(); // skip the metaInfo byte seen above
       tableNames = DataSerializer.readStringArray(dis);
       colNames = DataSerializer.readStringArray(dis);
       nullability = DataSerializer.readBooleanArray(dis);
@@ -136,13 +140,6 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
       dvds[i] = dvd;
     }
     this.templateDVDRow = dvds;
-    this.execRow = new ValueRow(templateDVDRow);
-    // determine eight col groups and partial col
-    int numCols = colTypes.length;
-    if (numEightColGrps < 0) {
-      numEightColGrps = numCols / 8;
-      numPartialCols = numCols % 8;
-    }
   }
 
   public String[] getColumnNames() {
@@ -159,17 +156,26 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.exec.packRows(msg, this);
   }
 
-  private int numEightColGrps = -1;
-  private int numPartialCols = 0;
-
   public ExecRow getNextRow() throws IOException, ClassNotFoundException, StandardException {
-    if (this.dis != null && this.dis.available() > 0) {
-      if (templateDVDRow == null) {
-        makeTemplateDVDArr();
+    final ByteArrayDataInput in = this.dis;
+    if (in != null) {
+      Iterator<ValueRow> execRows = this.execRows;
+      if (execRows == null) {
+        if (in.available() > 0) {
+          if (this.templateDVDRow == null) {
+            makeTemplateDVDArr();
+          }
+          execRows = CallbackFactoryProvider.getClusterCallbacks()
+              .getRowIterator(templateDVDRow, colTypes, precisions, scales, in);
+          this.execRows = execRows;
+        } else {
+          this.dis = null;
+          return null;
+        }
       }
-      CallbackFactoryProvider.getClusterCallbacks().readDVDArray(
-          templateDVDRow, colTypes, this.dis, numEightColGrps, numPartialCols);
-      return this.execRow;
+      if (execRows.hasNext()) {
+        return execRows.next();
+      }
     }
     this.dis = null;
     return null;
@@ -273,6 +279,8 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
 
       // indicator for complex type as clob
       case StoredFormatIds.REF_TYPE_ID:
+      // rest of the types which will also be displayed as clobs
+      case StoredFormatIds.SQL_USERTYPE_ID_V3:
         dvd = new SQLClob();
         jdbcTypeId = Types.CLOB;
         dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable);
