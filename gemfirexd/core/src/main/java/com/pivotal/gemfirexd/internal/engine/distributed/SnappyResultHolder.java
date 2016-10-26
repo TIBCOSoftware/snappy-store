@@ -55,6 +55,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   private DataValueDescriptor[] templateDVDRow;
   private Iterator<ValueRow> execRows;
   private DataTypeDescriptor[] dtds;
+  private boolean hasMetadata;
 
   public SnappyResultHolder(SparkSQLExecute exec) {
     this.exec = exec;
@@ -78,9 +79,13 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.scales = other.scales;
   }
 
+  public void setHasMetadata() {
+    this.hasMetadata = true;
+  }
+
   @Override
   public void toData(final DataOutput out) throws IOException {
-    this.exec.serializeRows(out);
+    this.exec.serializeRows(out, this.hasMetadata);
   }
 
   @Override
@@ -97,11 +102,8 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
       final int numBytes, final Version v) throws IOException {
     final ByteArrayDataInput dis = new ByteArrayDataInput();
     dis.initialize(rawData, 0, numBytes, v);
-    // read without moving ahead since decompressor also expects the
-    // header byte for consistency
-    byte metaInfo = dis.peekByte();
+    byte metaInfo = dis.readByte();
     if (metaInfo == 0x01) {
-      dis.readByte(); // skip the metaInfo byte seen above
       tableNames = DataSerializer.readStringArray(dis);
       colNames = DataSerializer.readStringArray(dis);
       nullability = DataSerializer.readBooleanArray(dis);

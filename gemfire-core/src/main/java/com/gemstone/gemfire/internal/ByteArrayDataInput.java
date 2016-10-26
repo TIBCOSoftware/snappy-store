@@ -231,15 +231,6 @@ public final class ByteArrayDataInput extends DataInputStreamBase implements
     }
   }
 
-  public final byte peekByte() throws IOException {
-    if (this.pos < this.nBytes) {
-      return this.bytes[this.pos];
-    }
-    else {
-      throw new EOFException();
-    }
-  }
-
   /**
    * {@inheritDoc}
    */
