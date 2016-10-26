@@ -77,6 +77,12 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void registerRelationDestroyForHiveStore() {
     }
+
+    @Override
+    public int getLastIndexOfRow(Object o) {
+      throw new UnsupportedOperationException("unexpected invocation for "
+          + toString());
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

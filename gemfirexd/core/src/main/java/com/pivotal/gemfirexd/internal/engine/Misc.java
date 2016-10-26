@@ -284,12 +284,14 @@ public abstract class Misc {
     }
   }
 
+  public static Set<Integer> getLocalBuckets(PartitionedRegion pr) {
+    return pr.getDataStore().getAllLocalPrimaryBucketIds();
+  }
+
   public static <K, V> PartitionResolver createPartitionResolverForSampleTable(final String reservoirRegionName) {
     // TODO: Should this be serializable?
     // TODO: Should this have call back from bucket movement module?
     return new PartitionResolver() {
-
-      List<Integer> localBuckets = new ArrayList<Integer>();
 
       public String getName()
       {
@@ -298,20 +300,14 @@ public abstract class Misc {
 
       public Serializable getRoutingObject(EntryOperation opDetails)
       {
-        if (localBuckets.isEmpty()) {
-          PartitionedRegion pr = getReservoirRegionForSampleTable(reservoirRegionName);
-          assert (pr != null);
-          Set<Integer> localPrimaryBucketSet = pr.getDataStore().getAllLocalPrimaryBucketIds();
-          for (Integer i : localPrimaryBucketSet) {
-            localBuckets.add(i);
-          }
-          Collections.sort(localBuckets);
-        }
         Object k = opDetails.getKey();
-        int hash = k.hashCode();
-        int i = Math.abs(hash) % localBuckets.size();
-        Integer v = localBuckets.get(i);
-        return (Serializable)v;
+        StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+        int v = callback.getLastIndexOfRow(k);
+        if (v != -1) {
+          return (Serializable)v;
+        } else {
+          return (Serializable)k;
+        }
       }
 
       public void close() {}
