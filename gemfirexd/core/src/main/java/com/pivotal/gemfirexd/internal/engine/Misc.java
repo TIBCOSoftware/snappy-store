@@ -284,8 +284,13 @@ public abstract class Misc {
     }
   }
 
-  public static Set<Integer> getLocalBuckets(PartitionedRegion pr) {
-    return pr.getDataStore().getAllLocalPrimaryBucketIds();
+  public static int getLocalBucketForHash(PartitionedRegion pr, int partIndex) {
+    int b = pr.getDataStore().getHashBasedPrimaryBucket(partIndex);
+    if (b == -1) {
+      Object arr[] = pr.getDataStore().getAllLocalPrimaryBucketIds().toArray();
+      return (Integer) arr[partIndex % arr.length];
+    }
+    return b;
   }
 
   public static <K, V> PartitionResolver createPartitionResolverForSampleTable(final String reservoirRegionName) {

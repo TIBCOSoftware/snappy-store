@@ -3163,6 +3163,31 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
     return size;
   }
 
+  /** Not for general use.Implemented here for fast access. **/
+  public int getHashBasedPrimaryBucket(int partIndex) {
+    int size = 0;
+    for (Map.Entry<Integer, BucketRegion> me : localBucket2RegionMap.entrySet()) {
+      if (me.getValue().getBucketAdvisor().isPrimary()) {
+        if (size == partIndex) {
+          // will work if partIndex is less than size
+          return me.getKey();
+        }
+        size += 1;
+      }
+    }
+    int index = partIndex % size;
+    int i = 0;
+    for (Map.Entry<Integer, BucketRegion> me : localBucket2RegionMap.entrySet()) {
+      if (i == index) {
+        if (me.getValue().getBucketAdvisor().isPrimary()) {
+          return me.getKey();
+        }
+      }
+    }
+    // May return -1 if localBucket2RegionMap changes in between
+    return -1;
+  }
+
   /** a fast estimate of total bucket size */
   public long getEstimatedLocalBucketSize(Set<Integer> bucketIds) {
     long size = 0;
