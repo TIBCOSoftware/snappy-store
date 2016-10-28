@@ -284,15 +284,6 @@ public abstract class Misc {
     }
   }
 
-  public static Set<Map.Entry<Integer, BucketRegion>> getAllLocalBuckets(PartitionedRegion pr) {
-    return pr.getDataStore().getAllLocalBuckets();
-  }
-
-  public static int getLocalBucketForHash(PartitionedRegion pr, int partIndex) {
-    Object arr[] = pr.getDataStore().getAllLocalPrimaryBucketIds().toArray();
-    return (Integer) arr[partIndex % arr.length];
-  }
-
   public static <K, V> PartitionResolver createPartitionResolverForSampleTable(final String reservoirRegionName) {
     // TODO: Should this be serializable?
     // TODO: Should this have call back from bucket movement module?
