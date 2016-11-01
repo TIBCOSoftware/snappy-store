@@ -83,6 +83,10 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.hasMetadata = true;
   }
 
+  public boolean hasMetadata() {
+    return this.hasMetadata;
+  }
+
   @Override
   public void toData(final DataOutput out) throws IOException {
     this.exec.serializeRows(out, this.hasMetadata);

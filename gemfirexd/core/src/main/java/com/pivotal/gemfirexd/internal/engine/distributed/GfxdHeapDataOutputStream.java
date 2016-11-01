@@ -129,10 +129,4 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
     Misc.checkMemoryRuntime(thresholdListener, query, amount);
     super.expand(amount);
   }
-
-  public final byte[] toByteArrayCopy() {
-    final byte[] bytes = new byte[size()];
-    sendTo(bytes, 0);
-    return bytes;
-  }
 }
