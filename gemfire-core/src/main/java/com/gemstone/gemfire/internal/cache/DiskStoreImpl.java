@@ -2234,7 +2234,9 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     // schedule index recovery atmost once
     if (markIndexRecoveryScheduled()) {
       IndexRecoveryTask task = new IndexRecoveryTask(allOplogs, recreateIndexes);
-      executeDiskStoreTask(task);
+      // other disk store threads wait for this task, so use a different
+      // thread pool for execution
+      executeDiskStoreTask(task, this.delayedWritePool);
     }
   }
 
