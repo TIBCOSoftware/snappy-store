@@ -15,37 +15,23 @@
  * LICENSE file.
  */
 
-package com.gemstone.gemfire.internal.cache;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-
-import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
-import com.gemstone.gemfire.internal.offheap.annotations.Released;
-import com.gemstone.gemfire.internal.offheap.annotations.Retained;
-import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
-import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
 /**
  * Do not modify this class. It was generated.
  * Instead modify LeafRegionEntry.cpp and then run
  * bin/generateRegionEntryClasses.sh from the directory
  * that contains your build.xml.
  */
+package com.gemstone.gemfire.internal.cache;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
+import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
+import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
+import com.gemstone.gemfire.internal.offheap.annotations.Released;
+import com.gemstone.gemfire.internal.offheap.annotations.Retained;
+import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
+import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
+import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
 @SuppressWarnings("serial")
 public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
     implements OffHeapRegionEntry
@@ -57,11 +43,8 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
     super(context,
           value
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     this.key = key;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -74,9 +57,6 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -85,22 +65,14 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // stats code
   @Override
   public final void updateStatsForGet(boolean hit, long time)
   {
@@ -151,7 +123,6 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
     hitCountUpdater.set(this,0);
     missCountUpdater.set(this,0);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public final void txDidDestroy(long currTime) {
     setLastModified(currTime);
@@ -163,8 +134,6 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
   public boolean hasStats() {
     return true;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -174,21 +143,9 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
   protected void _setRawKey(Object key) {
     this.key = key;
   }
-  /**
-   * All access done using ohAddrUpdater so it is used even though the compiler can not tell it is.
-   */
   @Retained @Released private volatile long ohAddress;
-  /**
-   * I needed to add this because I wanted clear to call setValue which normally can only be called while the re is synced.
-   * But if I sync in that code it causes a lock ordering deadlock with the disk regions because they also get a rw lock in clear.
-   * Some hardware platforms do not support CAS on a long. If gemfire is run on one of those the AtomicLongFieldUpdater does a sync
-   * on the re and we will once again be deadlocked.
-   * I don't know if we support any of the hardware platforms that do not have a 64bit CAS. If we do then we can expect deadlocks
-   * on disk regions.
-   */
   private final static AtomicLongFieldUpdater<VMStatsRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMStatsRegionEntryOffHeap.class, "ohAddress");
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
@@ -220,7 +177,6 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
   public void release() {
     OffHeapRegionEntryHelper.releaseEntry(this);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VMStatsRegionEntryOffHeap(context, key, value);
@@ -239,5 +195,4 @@ public class VMStatsRegionEntryOffHeap extends VMStatsRegionEntry
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }

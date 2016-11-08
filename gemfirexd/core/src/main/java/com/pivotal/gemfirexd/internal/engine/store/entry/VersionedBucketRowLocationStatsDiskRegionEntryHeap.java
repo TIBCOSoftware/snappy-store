@@ -490,7 +490,7 @@ public class VersionedBucketRowLocationStatsDiskRegionEntryHeap extends RowLocat
   }
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.getHeapValueInVMOrDiskWithoutFaultIn(owner);
+    return Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
   }
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {

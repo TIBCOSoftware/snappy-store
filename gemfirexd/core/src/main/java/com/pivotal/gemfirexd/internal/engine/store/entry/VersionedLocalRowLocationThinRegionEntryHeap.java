@@ -398,7 +398,7 @@ public class VersionedLocalRowLocationThinRegionEntryHeap extends RowLocationThi
   }
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.getHeapValueInVMOrDiskWithoutFaultIn(owner);
+    return this.value;
   }
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {

@@ -144,6 +144,7 @@ public final class ExtraTableInfo extends ExtraInfo implements Dependent {
     container.initCompactTemplateRow(this);
     // also update any information cached by the locking subsystem
     container.refreshLockingInfo();
+    container.schemaUpdated();
   }
 
   private final void refreshPrimaryKeyFormatter(

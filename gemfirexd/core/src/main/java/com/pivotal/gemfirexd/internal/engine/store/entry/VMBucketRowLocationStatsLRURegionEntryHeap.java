@@ -422,7 +422,7 @@ public class VMBucketRowLocationStatsLRURegionEntryHeap extends RowLocationStats
   }
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.getHeapValueInVMOrDiskWithoutFaultIn(owner);
+    return this.value;
   }
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {

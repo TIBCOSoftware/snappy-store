@@ -925,7 +925,7 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
 
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.getValueInVMOrDiskWithoutFaultIn(owner);
+    return this.value;
   }
   
   @Override

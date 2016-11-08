@@ -1649,10 +1649,9 @@ public final class GfxdTXEntryState extends TXEntryState implements
 
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner)   {
-    
-    return this.getValueInVMOrDiskWithoutFaultIn(owner);
+    return super.getRetainedValueInTXOrRegion();
   }
-  
+
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {
    
