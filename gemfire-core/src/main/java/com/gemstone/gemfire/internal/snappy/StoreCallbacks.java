@@ -46,4 +46,6 @@ public interface StoreCallbacks {
   void cleanUpCachedObjects(String table, Boolean sentFromExternalCluster);
 
   void registerRelationDestroyForHiveStore();
+
+  int getLastIndexOfRow(Object o);
 }

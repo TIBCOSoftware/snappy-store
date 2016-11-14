@@ -17,20 +17,13 @@
 
 package com.pivotal.gemfirexd.internal.engine;
 
-import java.io.CharArrayWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
+import java.io.*;
+import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.locks.Condition;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -59,13 +52,9 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LocalLogWriter;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
-import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
-import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
+import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
@@ -293,6 +282,104 @@ public abstract class Misc {
     if (isCancelling == null) {
       throw e;
     }
+  }
+
+  public static <K, V> PartitionResolver createPartitionResolverForSampleTable(final String reservoirRegionName) {
+    // TODO: Should this be serializable?
+    // TODO: Should this have call back from bucket movement module?
+    return new PartitionResolver() {
+
+      public String getName()
+      {
+        return "PartitionResolverForSampleTable";
+      }
+
+      public Serializable getRoutingObject(EntryOperation opDetails)
+      {
+        Object k = opDetails.getKey();
+        StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+        int v = callback.getLastIndexOfRow(k);
+        if (v != -1) {
+          return (Serializable)v;
+        } else {
+          return (Serializable)k;
+        }
+      }
+
+      public void close() {}
+    };
+  }
+
+  public static <K, V> String getReservoirRegionNameForSampleTable(String schema, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
+  }
+
+  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+    if (childRegion == null) {
+      RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
+      PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
+      RegionAttributesCreation af = new RegionAttributesCreation();
+      af.setDataPolicy(DataPolicy.PARTITION);
+      PartitionAttributesFactory paf = new PartitionAttributesFactory();
+      paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
+      paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
+      paf.setLocalMaxMemory(partitionAttributesBase.getLocalMaxMemory());
+      PartitionResolver partResolver = createPartitionResolverForSampleTable(reservoirRegionName);
+      paf.setPartitionResolver(partResolver);
+      paf.setColocatedWith(regionBase.getFullPath());
+      af.setPartitionAttributes(paf.create());
+      childRegion = cache.createRegion(reservoirRegionName, af);
+    }
+    return (PartitionedRegion)childRegion;
+  }
+
+  public static <K, V> PartitionedRegion getReservoirRegionForSampleTable(String reservoirRegionName) {
+    if (reservoirRegionName != null) {
+      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+      if (childRegion != null) {
+        return (PartitionedRegion) childRegion;
+      }
+    }
+    return null;
+  }
+
+  public static <K, V> void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
+    if (reservoirRegion != null){
+      reservoirRegion.destroyRegion(null);
+    }
+  }
+
+  public static PartitionedRegion.PRLocalScanIterator
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, int segi, int segn) {
+    if (reservoirRegion != null) {
+      Set<Integer> localPrimaryBucketSet = reservoirRegion
+          .getDataStore().getAllLocalPrimaryBucketIds();
+      Set<Integer> bucketSet = new HashSet<Integer>();
+      for (Integer i : localPrimaryBucketSet) {
+        if (i % segn == segi) {
+          bucketSet.add(i);
+        }
+      }
+      // fetchFromRemote = false; if bucket is moved out, that should be included on remote node
+      return getLocalBucketsIteratorForSampleTable(reservoirRegion, bucketSet, false);
+    }
+    return null;
+  }
+
+  public static PartitionedRegion.PRLocalScanIterator
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, Set<Integer> bucketSet, Boolean fetchFromRemote) {
+    if (reservoirRegion != null && bucketSet != null) {
+      if (bucketSet.size() > 0) {
+        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, fetchFromRemote);
+      }
+    }
+    return null;
   }
 
   /**

@@ -201,6 +201,7 @@ public final class CompilerContextImpl extends ContextImpl
                 convertCharConstToVarchar = false;
                 this.ddlForSnappyUse = false;
                 this.snappyForcedDDLRouting = false;
+                this.executionEngine = ExecutionEngine.NOT_DECIDED;
 	}
 
 	@Override
