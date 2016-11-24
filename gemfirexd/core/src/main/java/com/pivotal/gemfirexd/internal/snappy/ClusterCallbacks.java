@@ -41,11 +41,13 @@ public interface ClusterCallbacks {
 
   SparkSQLExecute getSQLExecute(String sql, String schema, LeadNodeExecutionContext ctx, Version v);
 
+  Object readDataType(ByteArrayDataInput in);
+
   /**
    * Deserialize/decompress the SnappyResultHolder data and get an iterator.
    */
   Iterator<ValueRow> getRowIterator(DataValueDescriptor[] dvds, int[] types,
-      int[] precisions, int[] scales, ByteArrayDataInput in);
+      int[] precisions, int[] scales, Object[] dataTypes, ByteArrayDataInput in);
 
   void clearSnappySessionForConnection(Long connectionId);
 

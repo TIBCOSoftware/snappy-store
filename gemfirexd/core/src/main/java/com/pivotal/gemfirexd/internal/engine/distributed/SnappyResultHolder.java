@@ -52,6 +52,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   private transient volatile int[] colTypes;
   private transient volatile int[] precisions;
   private transient volatile int[] scales;
+  private transient volatile Object[] dataTypes;
   private DataValueDescriptor[] templateDVDRow;
   private Iterator<ValueRow> execRows;
   private DataTypeDescriptor[] dtds;
@@ -77,6 +78,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.colTypes = other.colTypes;
     this.precisions = other.precisions;
     this.scales = other.scales;
+    this.dataTypes = other.dataTypes;
   }
 
   public void setHasMetadata() {
@@ -114,6 +116,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
       int totCols = colNames.length;
       this.precisions = new int[totCols];
       this.scales = new int[totCols];
+      this.dataTypes = new Object[totCols];
       dtds = new DataTypeDescriptor[totCols];
       this.colTypes = new int[totCols];
       for (int i = 0; i < totCols; i++) {
@@ -126,6 +129,11 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
         } else if (columnType == StoredFormatIds.SQL_VARCHAR_ID ||
             columnType == StoredFormatIds.SQL_CHAR_ID) {
           precisions[i] = (int)InternalDataSerializer.readSignedVL(dis);
+          scales[i] = -1;
+        } else if (columnType == StoredFormatIds.REF_TYPE_ID) {
+          dataTypes[i] = CallbackFactoryProvider.getClusterCallbacks()
+              .readDataType(dis);
+          precisions[i] = -1;
           scales[i] = -1;
         } else {
           precisions[i] = -1;
@@ -172,7 +180,8 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
             makeTemplateDVDArr();
           }
           execRows = CallbackFactoryProvider.getClusterCallbacks()
-              .getRowIterator(templateDVDRow, colTypes, precisions, scales, in);
+              .getRowIterator(templateDVDRow, colTypes, precisions, scales,
+                  dataTypes, in);
           this.execRows = execRows;
         } else {
           this.dis = null;
@@ -283,10 +292,8 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
             jdbcTypeId, nullable);
         break;
 
-      // indicator for complex type as clob
+      // indicator for values (complex or user-defined types) as JSON strings
       case StoredFormatIds.REF_TYPE_ID:
-      // rest of the types which will also be displayed as clobs
-      case StoredFormatIds.SQL_USERTYPE_ID_V3:
         dvd = new SQLClob();
         jdbcTypeId = Types.CLOB;
         dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable);

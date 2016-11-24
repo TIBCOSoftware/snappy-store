@@ -56,8 +56,14 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public Object readDataType(ByteArrayDataInput in) {
+      return null;
+    }
+
+    @Override
     public Iterator<ValueRow> getRowIterator(DataValueDescriptor[] dvds,
-        int[] types, int[] precisions, int[] scales, ByteArrayDataInput in) {
+        int[] types, int[] precisions, int[] scales, Object[] dataTypes,
+        ByteArrayDataInput in) {
       return null;
     }
 
