@@ -41,6 +41,7 @@ import com.gemstone.gemfire.management.internal.SystemManagementService;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.tools.sizer.GemFireXDInstrumentation;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 public class SnappyRegionStatsCollectorFunction implements Function, Declarable {
 
@@ -60,6 +61,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
   public void execute(FunctionContext context) {
     SnappyRegionStatsCollectorResult result = new SnappyRegionStatsCollectorResult();
     Map<String, SnappyRegionStats> cachBatchStats = new HashMap<>();
+    Map<String, SnappyRegionStats> reservoirStats = new HashMap<>();
     ArrayList<SnappyRegionStats> otherStats = new ArrayList<>();
 
     try {
@@ -75,10 +77,21 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
             RegionMXBean bean = managementService.getLocalRegionMBean(r.getFullPath());
             if (bean != null && !(r.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/"))) {
               SnappyRegionStats dataCollector = collectDataFromBean(r, bean);
+              String rgnName = dataCollector.getRegionName();
               if (dataCollector.isColumnTable()) {
-                cachBatchStats.put(dataCollector.getRegionName(), dataCollector);
+                cachBatchStats.put(rgnName, dataCollector);
               } else {
                 otherStats.add(dataCollector);
+              }
+              // TODO: Only do this in case of AQP
+              String reservoirRegionName =  Misc.getReservoirRegionNameForSampleTable("APP", rgnName);
+              PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
+              if (pr != null) {
+                RegionMXBean reservoirBean = managementService.getLocalRegionMBean(pr.getFullPath());
+                if (reservoirBean != null) {
+                  SnappyRegionStats tableStats = collectDataFromBeanImpl(pr, reservoirBean, true);
+                  reservoirStats.put(rgnName, tableStats);
+                }
               }
             }
           }
@@ -90,7 +103,12 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
         StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
         String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
         if (cachBatchStats.containsKey(catchBatchTableName)) {
-          result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName)));
+          if (reservoirStats.containsKey(catchBatchTableName)) {
+            SnappyRegionStats combinedStats = tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName));
+            result.addRegionStat(combinedStats.getCombinedStats(reservoirStats.get(catchBatchTableName)));
+          } else {
+            result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName)));
+          }
         } else {
           result.addRegionStat(tableStats);
         }
@@ -103,13 +121,21 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
   }
 
   private SnappyRegionStats collectDataFromBean(LocalRegion lr, RegionMXBean bean) {
+    return collectDataFromBeanImpl(lr, bean, false);
+  }
+
+  private SnappyRegionStats collectDataFromBeanImpl(LocalRegion lr, RegionMXBean bean, boolean isReservoir) {
     String regionName = (Misc.getFullTableNameFromRegionPath(bean.getFullPath()));
     SnappyRegionStats tableStats =
         new SnappyRegionStats(regionName);
     boolean isColumnTable = bean.isColumnTable();
     tableStats.setColumnTable(isColumnTable);
     tableStats.setReplicatedTable(isReplicatedTable(lr.getDataPolicy()));
-    tableStats.setRowCount(isColumnTable ? bean.getRowsInCachedBatches(): bean.getEntryCount());
+    if (isReservoir) {
+      tableStats.setRowCount(bean.getRowsInReservoir());
+    } else {
+      tableStats.setRowCount(isColumnTable ? bean.getRowsInCachedBatches() : bean.getEntryCount());
+    }
 
     if (isReplicatedTable(lr.getDataPolicy())) {
       java.util.Iterator<RegionEntry> ri = lr.getBestLocalIterator(true);

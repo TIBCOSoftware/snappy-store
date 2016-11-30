@@ -329,4 +329,9 @@ public class RegionMBean<K, V> extends NotificationBroadcasterSupport implements
   public long getRowsInCachedBatches() {
     return bridge.getRowsInCachedBatches();
   }
+
+  @Override
+  public long getRowsInReservoir() {
+    return bridge.getRowsInReservoir();
+  }
 }
