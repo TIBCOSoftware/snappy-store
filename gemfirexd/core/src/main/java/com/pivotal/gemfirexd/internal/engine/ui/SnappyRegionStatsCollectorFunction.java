@@ -86,10 +86,10 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
         }
       }
 
-      StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-      if (callback.isAQP()) {
+      if (Misc.reservoirRegionCreated) {
         for (SnappyRegionStats tableStats : otherStats) {
           String rgnName = tableStats.getRegionName();
+          StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
           String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
           if (cachBatchStats.containsKey(catchBatchTableName)) {
             String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable("APP", rgnName);
@@ -108,6 +108,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
 
       // Create one entry per Column Table by combining the results of row buffer and column table
       for (SnappyRegionStats tableStats : otherStats) {
+        StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
         String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
         if (cachBatchStats.containsKey(catchBatchTableName)) {
           result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName)));
