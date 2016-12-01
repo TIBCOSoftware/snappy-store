@@ -61,7 +61,6 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
   public void execute(FunctionContext context) {
     SnappyRegionStatsCollectorResult result = new SnappyRegionStatsCollectorResult();
     Map<String, SnappyRegionStats> cachBatchStats = new HashMap<>();
-    Map<String, SnappyRegionStats> reservoirStats = new HashMap<>();
     ArrayList<SnappyRegionStats> otherStats = new ArrayList<>();
 
     try {
@@ -77,21 +76,30 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
             RegionMXBean bean = managementService.getLocalRegionMBean(r.getFullPath());
             if (bean != null && !(r.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/"))) {
               SnappyRegionStats dataCollector = collectDataFromBean(r, bean);
-              String rgnName = dataCollector.getRegionName();
               if (dataCollector.isColumnTable()) {
-                cachBatchStats.put(rgnName, dataCollector);
+                cachBatchStats.put(dataCollector.getRegionName(), dataCollector);
               } else {
                 otherStats.add(dataCollector);
               }
-              // TODO: Only do this in case of AQP
-              String reservoirRegionName =  Misc.getReservoirRegionNameForSampleTable("APP", rgnName);
-              PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
-              if (pr != null) {
-                RegionMXBean reservoirBean = managementService.getLocalRegionMBean(pr.getFullPath());
-                if (reservoirBean != null) {
-                  SnappyRegionStats tableStats = collectDataFromBeanImpl(pr, reservoirBean, true);
-                  reservoirStats.put(rgnName, tableStats);
-                }
+            }
+          }
+        }
+      }
+
+      StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+      if (callback.isAQP()) {
+        for (SnappyRegionStats tableStats : otherStats) {
+          String rgnName = tableStats.getRegionName();
+          String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
+          if (cachBatchStats.containsKey(catchBatchTableName)) {
+            String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable("APP", rgnName);
+            PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
+            if (pr != null) {
+              RegionMXBean reservoirBean = managementService.getLocalRegionMBean(pr.getFullPath());
+              if (reservoirBean != null) {
+                SnappyRegionStats rStats = collectDataFromBeanImpl(pr, reservoirBean, true);
+                SnappyRegionStats cStats = cachBatchStats.get(catchBatchTableName);
+                cachBatchStats.put(catchBatchTableName, cStats.getCombinedStats(rStats));
               }
             }
           }
@@ -100,15 +108,9 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
 
       // Create one entry per Column Table by combining the results of row buffer and column table
       for (SnappyRegionStats tableStats : otherStats) {
-        StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
         String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
         if (cachBatchStats.containsKey(catchBatchTableName)) {
-          if (reservoirStats.containsKey(catchBatchTableName)) {
-            SnappyRegionStats combinedStats = tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName));
-            result.addRegionStat(combinedStats.getCombinedStats(reservoirStats.get(catchBatchTableName)));
-          } else {
-            result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName)));
-          }
+          result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName)));
         } else {
           result.addRegionStat(tableStats);
         }
@@ -132,7 +134,8 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
     tableStats.setColumnTable(isColumnTable);
     tableStats.setReplicatedTable(isReplicatedTable(lr.getDataPolicy()));
     if (isReservoir) {
-      tableStats.setRowCount(bean.getRowsInReservoir());
+      long numLocalEntries = bean.getRowsInReservoir();
+      tableStats.setRowCount(numLocalEntries);
     } else {
       tableStats.setRowCount(isColumnTable ? bean.getRowsInCachedBatches() : bean.getEntryCount());
     }

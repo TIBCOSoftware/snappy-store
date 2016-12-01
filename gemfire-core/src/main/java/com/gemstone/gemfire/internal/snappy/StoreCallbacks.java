@@ -48,4 +48,6 @@ public interface StoreCallbacks {
   void registerRelationDestroyForHiveStore();
 
   int getLastIndexOfRow(Object o);
+
+  boolean isAQP();
 }

@@ -83,6 +83,11 @@ public abstract class CallbackFactoryProvider {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
+
+    @Override
+    public boolean isAQP() {
+      return false;
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {
