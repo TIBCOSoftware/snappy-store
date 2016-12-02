@@ -41,7 +41,6 @@ import com.gemstone.gemfire.management.internal.SystemManagementService;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.tools.sizer.GemFireXDInstrumentation;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 
 public class SnappyRegionStatsCollectorFunction implements Function, Declarable {
 
