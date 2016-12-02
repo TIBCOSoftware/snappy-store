@@ -366,4 +366,9 @@ public interface RegionMXBean {
    * get number of rows which have been overflown to cached batches
    */
   public long getRowsInCachedBatches();
+
+  /**
+   * get number of rows in Reservoir
+   */
+  public long getRowsInReservoir();
 }
