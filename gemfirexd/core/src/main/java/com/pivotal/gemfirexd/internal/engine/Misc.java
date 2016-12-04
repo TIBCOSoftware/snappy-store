@@ -316,7 +316,7 @@ public abstract class Misc {
     return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
   }
 
-  public static boolean reservoirRegionCreated = false;
+  public volatile static boolean reservoirRegionCreated = false;
 
   public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName) {
     Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
