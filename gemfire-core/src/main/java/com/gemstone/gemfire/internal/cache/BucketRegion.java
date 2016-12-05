@@ -742,8 +742,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // CachedBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    final int batchSize = !forceFlush ? GemFireCacheImpl.getColumnBatchSize()
-        : GemFireCacheImpl.getColumnMinBatchSize();
+    final int columnBatchSize = GemFireCacheImpl.getColumnBatchSize();
+    final int batchSize = !forceFlush ? columnBatchSize
+        : Math.min(GemFireCacheImpl.getColumnMinBatchSize(),
+        Math.max(columnBatchSize, 1));
     // we may have to use region.size so that no state
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.
