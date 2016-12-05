@@ -187,7 +187,6 @@ public final class SnappySelectResultSet
   }
 
   public ExecRow getNextRow() throws StandardException {
-    // TO IMPLEMENT
     try {
       nextExecRow();
       this.setCurrentRow(this.currentRow);

@@ -45,7 +45,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
 
   private transient SparkSQLExecute exec;
 
-  private transient ByteArrayDataInput dis;
+  private transient volatile ByteArrayDataInput dis;
   private transient volatile String[] colNames;
   private transient volatile String[] tableNames;
   private transient volatile boolean[] nullability;
