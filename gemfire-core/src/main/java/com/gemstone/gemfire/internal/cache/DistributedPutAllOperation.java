@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.Operation;
@@ -335,7 +336,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     // parallel wan is enabled
     private long tailKey = 0L;
 
-    private UUID batchUUID = BucketRegion.zeroUUID;
+    private volatile UUID batchUUID = BucketRegion.zeroUUID;
 
     public VersionTag versionTag;
 
@@ -468,7 +469,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
      * {@link RemotePutAllMessage#toData(DataOutput)} <br>
      */
     public final void toData(final DataOutput out,
-        final boolean requiresRegionContext) throws IOException {
+        final boolean requiresRegionContext, UUID prevbatchUUID) throws IOException {
       Object key = this.key;
       final Object v = this.value;
       if (requiresRegionContext && v != null && !(v
@@ -527,7 +528,8 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         DataSerializer.writeObject(this.callbackArg, out);
       }
       InternalDataSerializer.writeSignedVL(this.tailKey, out);
-      InternalDataSerializer.writeUUID(this.batchUUID, out);
+      UUID buuid = this.batchUUID != null ? this.batchUUID : prevbatchUUID;
+      InternalDataSerializer.writeUUID(buuid, out);
     }
 
     /**
@@ -1388,14 +1390,18 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         // all key objects to be uniform
         final boolean requiresRegionContext =
           (this.putAllData[0].key instanceof KeyWithRegionContext);
+        UUID firstUUID = null;
         for (int i = 0; i < this.putAllDataSize; i++) {
           if (!hasTags && putAllData[i].versionTag != null) {
             hasTags = true;
           }
+          if (firstUUID == null && (this.putAllData[i].batchUUID != BucketRegion.zeroUUID)) {
+            firstUUID = this.putAllData[i].batchUUID;
+          }
           VersionTag<?> tag = putAllData[i].versionTag;
           versionTags.add(tag);
           putAllData[i].versionTag = null;
-          this.putAllData[i].toData(out, requiresRegionContext);
+          this.putAllData[i].toData(out, requiresRegionContext, firstUUID);
           this.putAllData[i].versionTag = tag;
         }
 

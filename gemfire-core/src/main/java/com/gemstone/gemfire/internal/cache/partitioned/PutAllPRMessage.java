@@ -283,7 +283,9 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
         VersionTag<?> tag = putAllPRData[i].versionTag;
         versionTags.add(tag);
         putAllPRData[i].versionTag = null;
-        putAllPRData[i].toData(out, requiresRegionContext);
+        // Part of hackish fix for SNAP-1188. null batchuuid is ok here because
+        // uuid is generated at the primary bucket location. Not valid here.
+        putAllPRData[i].toData(out, requiresRegionContext, null);
         putAllPRData[i].versionTag = tag;
         // PutAllEntryData's toData did not serialize eventID to save
         // performance for DR, but in PR,
@@ -461,6 +463,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     }
     if (!notificationOnly) {
       //bucketRegion.columnBatchFlushLock.readLock().lock();
+      boolean success = false;
       try {
         if (putAllPRData.length > 0) {
           if (this.posDup && bucketRegion.getConcurrencyChecksEnabled()) {
@@ -501,6 +504,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           } else {
             lockedForPrimary = false;
           }
+
 
         /* The real work to be synchronized, it will take long time. We don't
          * worry about another thread to send any msg which has the same key
@@ -640,6 +644,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           }
           throw new PutAllPartialResultException(partialKeys);
         }
+        success = true;
         } catch (RegionDestroyedException e) {
           ds.checkRegionDestroyedOnBucket(bucketRegion, true, e);
         } finally {
@@ -647,14 +652,14 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           if (tx == null) {
             bucketRegion.removeAndNotifyKeys(keys);
           }
-          //bucketRegion.columnBatchFlushLock.readLock().unlock();
-          // TODO: For tx it may change.
-          // TODO: For concurrent putALLs, this will club other putall as well
-          // the putAlls in worst case so cachedbatchsize may be large?
-          if (bucketRegion.getPartitionedRegion().needsBatching()
-              && bucketRegion.size() >= GemFireCacheImpl.getColumnBatchSize()) {
-            bucketRegion.createAndInsertCachedBatch(false);
-          }
+        //bucketRegion.columnBatchFlushLock.readLock().unlock();
+        // TODO: For tx it may change.
+        // TODO: For concurrent putALLs, this will club other putall as well
+        // the putAlls in worst case so cachedbatchsize may be large?
+        if (success && bucketRegion.getPartitionedRegion().needsBatching()
+            && bucketRegion.size() >= GemFireCacheImpl.getColumnBatchSize()) {
+          bucketRegion.createAndInsertCachedBatch(false);
+        }
           if (lockedForPrimary) {
             bucketRegion.doUnlockForPrimary();
           }

@@ -352,7 +352,10 @@ public final class RemotePutAllMessage extends
         VersionTag<?> tag = putAllData[i].versionTag;
         versionTags.add(tag);
         putAllData[i].versionTag = null;
-        this.putAllData[i].toData(out, requiresRegionContext);
+        // Part of hackish fix for SNAP-1188. Null is ok here because
+        // gemfire client server mechanism does not come in play in
+        // snappydata column tables.
+        this.putAllData[i].toData(out, requiresRegionContext, null);
         this.putAllData[i].versionTag = tag;
       }
 

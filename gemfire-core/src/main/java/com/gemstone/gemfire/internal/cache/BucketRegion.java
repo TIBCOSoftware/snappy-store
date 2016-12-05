@@ -678,6 +678,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       }
       setBatchUUID(event);
     }
+    boolean success = false;
     try {
       if (this.partitionedRegion.isLocalParallelWanEnabled()) {
         handleWANEvent(event);
@@ -691,6 +692,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //          getCache().getLoggerI18n().info(LocalizedStrings.DEBUG,
 //              "BR.virtualPut: oldEntry returned = " + oldEntry + " so basic put returned: " + (oldEntry != null));
 //        }
+        success = true;
         return oldEntry != null;
       }
       if (event.getDeltaBytes() != null && event.getRawNewValue() == null) {
@@ -710,12 +712,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
             "BR.virtualPut: this cache has already seen this event " + event);
       }
       distributeUpdateOperation(event, lastModified);
+      success = true;
       return true;
     } finally {
       if (locked) {
         endLocalWrite(event);
         //create and insert cached batch
-        if (getPartitionedRegion().needsBatching()
+        if (success && getPartitionedRegion().needsBatching()
             && this.size() >= GemFireCacheImpl.getColumnBatchSize()) {
           createAndInsertCachedBatch(false);
         }
