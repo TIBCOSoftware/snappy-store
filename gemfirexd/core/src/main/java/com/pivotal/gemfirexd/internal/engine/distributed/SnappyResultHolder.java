@@ -85,6 +85,10 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.hasMetadata = true;
   }
 
+  public void clearHasMetadata() {
+    this.hasMetadata = false;
+  }
+
   public boolean hasMetadata() {
     return this.hasMetadata;
   }
