@@ -110,7 +110,7 @@ public final class ServerGroupUtils {
   /** return true if this VM is member of one of the given groups */
   public static boolean isGroupMember(Set<String> groups) {
     if (groups == null || groups.size() == 0) {
-      return false;
+      return true;
     }
     return isGroupMember(Misc.getMemStoreBooting().getAdvisee()
         .getServerGroups(), groups);

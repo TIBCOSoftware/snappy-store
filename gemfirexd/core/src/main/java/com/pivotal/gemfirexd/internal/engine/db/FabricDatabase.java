@@ -507,8 +507,9 @@ public final class FabricDatabase implements ModuleControl,
       }
 
       // Initialize the catalog
-      final boolean isLead = this.memStore.isSnappyStore() && (ServerGroupUtils.isGroupMember(
-          CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup())
+      HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
+      final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
+          .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
           || Misc.getDistributedSystem().isLoner());
       Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
       if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
