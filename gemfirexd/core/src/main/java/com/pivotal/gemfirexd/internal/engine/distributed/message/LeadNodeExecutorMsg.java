@@ -257,7 +257,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   }
 
   public void appendFields(final StringBuilder sb) {
-    sb.append("sql: "+sql);
-    sb.append("schema: "+schema);
+    sb.append("sql: " + sql);
+    sb.append("schema: " + schema);
   }
 }
