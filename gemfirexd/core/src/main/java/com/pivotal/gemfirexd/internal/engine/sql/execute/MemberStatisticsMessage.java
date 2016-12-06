@@ -4,6 +4,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -22,6 +23,7 @@ import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.SolarisSystemStats;
 import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
+import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
@@ -44,9 +46,13 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   private static final long MBFactor = 1024 * 1024;
 
+  private GemFireCacheImpl gemFireCache;
+
   private Statistics vmStats;
   private Statistics vmHeapStats;
   private Statistics systemStat;
+  private java.util.UUID diskStoreUUID;
+  private String diskStoreName;
 
 
   /** Default constructor for deserialization. Not to be invoked directly. */
@@ -67,7 +73,8 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   protected void execute() throws Exception {
     //lastResult(GemFireCacheImpl.getExisting().getDistributedSystem().getMemberId());
 
-    InternalDistributedSystem ids = GemFireCacheImpl.getExisting().getDistributedSystem();
+    this.gemFireCache = GemFireCacheImpl.getExisting();
+    InternalDistributedSystem ids = gemFireCache.getDistributedSystem();
     String memberId = ids.getMemberId();
 
     updateStats(ids);
@@ -109,6 +116,8 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("usedMemory", getUsedMemory());
     memberStatsMap.put("cpuActive", getHostCpuUsage());
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
+    memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
+    memberStatsMap.put("diskStoreName", getDiskStoreName());
 
     lastResult(memberStatsMap);
   }
@@ -151,6 +160,16 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
       if (vmHeapStats != null) {
         //vmStatsMonitor.addStatisticsToMonitor(vmHeapStats);
         this.vmHeapStats = vmHeapStats;
+      }
+
+      // update disk store details
+      Collection<DiskStoreImpl> diskStores = this.gemFireCache.listDiskStores();
+
+      for(DiskStoreImpl dsi : diskStores){
+        if(dsi.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())){
+          this.diskStoreUUID = dsi.getDiskStoreUUID();
+          this.diskStoreName = dsi.getName();
+        }
       }
     }
   }
@@ -226,6 +245,14 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   public long getUsedMemory() {
     return vmHeapStats.get("usedMemory").longValue()/MBFactor;
+  }
+
+  public java.util.UUID getDiskStoreUUID() {
+    return this.diskStoreUUID;
+  }
+
+  public String getDiskStoreName() {
+    return this.diskStoreName;
   }
 
   /*public long getUsedMemory(InternalDistributedSystem system) {
