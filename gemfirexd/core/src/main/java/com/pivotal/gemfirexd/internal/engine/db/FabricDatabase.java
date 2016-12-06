@@ -507,6 +507,12 @@ public final class FabricDatabase implements ModuleControl,
       }
 
       // Initialize the catalog
+      // Lead is always started with ServerGroup hence for lead LeadGroup will never be null.
+      /**
+       * In LeadImpl server group is always  set to using following code:
+       * changeOrAppend(Constant * .STORE_PROPERTY_PREFIX +com.pivotal.gemfirexd.Attribute.
+       * SERVER_GROUPS, LeadImpl.LEADER_SERVERGROUP)
+       */
       HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
       final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
           .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
