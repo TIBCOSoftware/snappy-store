@@ -800,6 +800,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
         }
         else if (args[0].equalsIgnoreCase("stop")) {
           stop(args);
+          System.clearProperty(Property.SYSTEM_HOME_PROPERTY);
         }
         else if (args[0].equalsIgnoreCase("status")) {
           status(args);

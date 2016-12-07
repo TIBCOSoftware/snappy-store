@@ -678,6 +678,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       }
       setBatchUUID(event);
     }
+    boolean success = false;
     try {
       if (this.partitionedRegion.isLocalParallelWanEnabled()) {
         handleWANEvent(event);
@@ -691,6 +692,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //          getCache().getLoggerI18n().info(LocalizedStrings.DEBUG,
 //              "BR.virtualPut: oldEntry returned = " + oldEntry + " so basic put returned: " + (oldEntry != null));
 //        }
+        success = true;
         return oldEntry != null;
       }
       if (event.getDeltaBytes() != null && event.getRawNewValue() == null) {
@@ -710,12 +712,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
             "BR.virtualPut: this cache has already seen this event " + event);
       }
       distributeUpdateOperation(event, lastModified);
+      success = true;
       return true;
     } finally {
       if (locked) {
         endLocalWrite(event);
         //create and insert cached batch
-        if (getPartitionedRegion().needsBatching()
+        if (success && getPartitionedRegion().needsBatching()
             && this.size() >= GemFireCacheImpl.getColumnBatchSize()) {
           createAndInsertCachedBatch(false);
         }
@@ -742,8 +745,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // CachedBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    final int batchSize = !forceFlush ? GemFireCacheImpl.getColumnBatchSize()
-        : GemFireCacheImpl.getColumnMinBatchSize();
+    final int columnBatchSize = GemFireCacheImpl.getColumnBatchSize();
+    final int batchSize = !forceFlush ? columnBatchSize
+        : Math.min(GemFireCacheImpl.getColumnMinBatchSize(),
+        Math.max(columnBatchSize, 1));
     // we may have to use region.size so that no state
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.

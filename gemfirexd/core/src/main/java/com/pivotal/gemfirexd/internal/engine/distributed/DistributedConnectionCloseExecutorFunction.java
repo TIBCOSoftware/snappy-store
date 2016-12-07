@@ -77,7 +77,7 @@ public final class DistributedConnectionCloseExecutorFunction implements
     //TODO - Check only if the product is Snappy then call the remove connection ref messages
     if (Misc.getMemStore().isSnappyStore()) {
       CallbackFactoryProvider.getClusterCallbacks()
-          .clearSnappyContextForConnection(connId);
+          .clearSnappySessionForConnection(connId);
     }
   }
 

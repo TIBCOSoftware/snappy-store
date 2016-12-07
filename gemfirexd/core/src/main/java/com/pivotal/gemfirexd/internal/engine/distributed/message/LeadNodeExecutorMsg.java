@@ -255,4 +255,9 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     DataSerializer.writeString(this.schema , out);
     DataSerializer.writeObject(ctx, out);
   }
+
+  public void appendFields(final StringBuilder sb) {
+    sb.append("sql: " + sql);
+    sb.append("schema: " + schema);
+  }
 }

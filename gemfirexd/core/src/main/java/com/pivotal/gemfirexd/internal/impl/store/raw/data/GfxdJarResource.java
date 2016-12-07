@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -29,13 +30,18 @@ import java.util.Set;
 import com.gemstone.gemfire.cache.RegionExistsException;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.distributed.DistributedMember;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegion.RegionValue;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -123,6 +129,11 @@ public final class GfxdJarResource implements FileResource {
       this.ddlRegionQ.put(id, sjm);
       sjm.sendByteArray(false);
       Set<DistributedMember> members = GfxdMessage.getOtherServers();
+
+      if(Misc.getMemStore().isSnappyStore()){
+        members.addAll(getLeadMembers());
+      }
+      
       if (GemFireXDUtils.TraceApplicationJars) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_APP_JARS,
             "GfxdJarResource: sending GfxdJarMessage to add to " + members
@@ -144,6 +155,26 @@ public final class GfxdJarResource implements FileResource {
     this.sqlNameToIdMap.put(name, id);
     return id;
   }
+
+  public Set<DistributedMember> getLeadMembers() {
+    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
+    InternalDistributedSystem ids = Misc.getDistributedSystem();
+    if (ids.isLoner()) {
+      return Collections.<DistributedMember>singleton(
+          ids.getDistributedMember());
+    }
+    Set<DistributedMember> allMembers = ids.getAllOtherMembers();
+    for (DistributedMember m : allMembers) {
+      GfxdDistributionAdvisor.GfxdProfile profile = advisor
+          .getProfile((InternalDistributedMember)m);
+      if (profile != null && profile.hasSparkURL()) {
+        Set<DistributedMember> s = new HashSet<DistributedMember>();
+        s.add(m);
+        return Collections.unmodifiableSet(s);
+      }
+    }
+    return Collections.emptySet();
+   }
 
   @Override
   public void remove(String name, long currentGenerationId,

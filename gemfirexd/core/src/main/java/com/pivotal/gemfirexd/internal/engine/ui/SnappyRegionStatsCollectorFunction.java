@@ -85,6 +85,26 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
         }
       }
 
+      if (Misc.reservoirRegionCreated) {
+        for (SnappyRegionStats tableStats : otherStats) {
+          String rgnName = tableStats.getRegionName();
+          StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+          String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
+          if (cachBatchStats.containsKey(catchBatchTableName)) {
+            String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable("APP", rgnName);
+            PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
+            if (pr != null) {
+              RegionMXBean reservoirBean = managementService.getLocalRegionMBean(pr.getFullPath());
+              if (reservoirBean != null) {
+                SnappyRegionStats rStats = collectDataFromBeanImpl(pr, reservoirBean, true);
+                SnappyRegionStats cStats = cachBatchStats.get(catchBatchTableName);
+                cachBatchStats.put(catchBatchTableName, cStats.getCombinedStats(rStats));
+              }
+            }
+          }
+        }
+      }
+
       // Create one entry per Column Table by combining the results of row buffer and column table
       for (SnappyRegionStats tableStats : otherStats) {
         StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
@@ -103,13 +123,22 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
   }
 
   private SnappyRegionStats collectDataFromBean(LocalRegion lr, RegionMXBean bean) {
+    return collectDataFromBeanImpl(lr, bean, false);
+  }
+
+  private SnappyRegionStats collectDataFromBeanImpl(LocalRegion lr, RegionMXBean bean, boolean isReservoir) {
     String regionName = (Misc.getFullTableNameFromRegionPath(bean.getFullPath()));
     SnappyRegionStats tableStats =
         new SnappyRegionStats(regionName);
     boolean isColumnTable = bean.isColumnTable();
     tableStats.setColumnTable(isColumnTable);
     tableStats.setReplicatedTable(isReplicatedTable(lr.getDataPolicy()));
-    tableStats.setRowCount(isColumnTable ? bean.getRowsInCachedBatches(): bean.getEntryCount());
+    if (isReservoir) {
+      long numLocalEntries = bean.getRowsInReservoir();
+      tableStats.setRowCount(numLocalEntries);
+    } else {
+      tableStats.setRowCount(isColumnTable ? bean.getRowsInCachedBatches() : bean.getEntryCount());
+    }
 
     if (isReplicatedTable(lr.getDataPolicy())) {
       java.util.Iterator<RegionEntry> ri = lr.getBestLocalIterator(true);

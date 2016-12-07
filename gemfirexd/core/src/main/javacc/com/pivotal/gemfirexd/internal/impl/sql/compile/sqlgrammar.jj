@@ -2672,7 +2672,6 @@ TOKEN [IGNORE_CASE] :
 |	<GRANT: "grant">
 |	<GROUP: "group">
 |	<HAVING: "having">
-|	<HOUR: "hour">
 |	<IDENTITY: "identity">
 |	<IMMEDIATE: "immediate">
 |	<IN: "in">
@@ -2698,7 +2697,6 @@ TOKEN [IGNORE_CASE] :
 |	<MATCH: "match">
 |	<MAX: "max">
 |	<MIN: "min">
-|	<MINUTE: "minute">
 |	<MODULE: "module">
 |	<NATIONAL: "national">
 |	<NATURAL: "natural">
@@ -2739,7 +2737,6 @@ TOKEN [IGNORE_CASE] :
 |	<ROWS: "rows">
 |	<SCHEMA: "schema">
 |	<SCROLL: "scroll">
-|	<SECOND: "second">
 |	<SELECT: "select">
 |	<SESSION_USER: "session_user">
 |	<SET: "set">
@@ -2784,7 +2781,6 @@ TOKEN [IGNORE_CASE] :
 |	<WITH: "with">
 |	<WORK: "work">
 |	<WRITE: "write">
-|	<YEAR: "year">
 }
 
 /*
@@ -2820,6 +2816,8 @@ TOKEN [IGNORE_CASE] :
 |   <DYNAMIC: "dynamic">
 |	<FORTRAN: "fortran">
 |   <GENERATED: "generated">
+// mark HOUR as non-reserved (SNAP-1179)
+|	<HOUR: "hour">
 |	<IDENTITY_VAL_LOCAL: "identity_val_local">
 |	<INCREMENT: "increment">
 |	<INITIAL: "initial">
@@ -2833,6 +2831,8 @@ TOKEN [IGNORE_CASE] :
 |	<LOCKS: "locks">
 |	<LOCKSIZE: "locksize">
 |	<LOGGED: "logged">
+// mark MINUTE as non-reserved (SNAP-1179)
+|	<MINUTE: "minute">
 |       <MOD: "mod">
 |	<MODIFIES: "modifies">
 |	<MODIFY: "modify">
@@ -2856,6 +2856,8 @@ TOKEN [IGNORE_CASE] :
 |	<ROW: "row">
 |	<SAVEPOINT: "savepoint">
 |	<SCALE: "scale">
+// mark SECOND as non-reserved (SNAP-1179)
+|	<SECOND: "second">
 |	<SECURITY: "security">
 |	<SERIALIZABLE: "serializable">
 |	<SQL_TSI_FRAC_SECOND: "sql_tsi_frac_second">
@@ -2880,7 +2882,9 @@ TOKEN [IGNORE_CASE] :
 |	<UNCOMMITTED: "uncommitted">
 |	<USAGE: "usage">
 |	<WHEN: "when">
-// GemStone changes BEGIN 
+// GemStone changes BEGIN
+// mark YEAR as non-reserved (SNAP-1179)
+|	<YEAR: "year">
 |	<JSON: "json">
 |	<CLOB_STRING: "string">
 // GemStone changes END
@@ -17627,7 +17631,6 @@ reservedKeyword() :
 |	tok = <GRANT>
 |	tok = <GROUP>
 |	tok = <HAVING>
-|	tok = <HOUR>
 |	tok = <IDENTITY>
 |	tok = <IMMEDIATE>
 |	tok = <IN>
@@ -17655,7 +17658,6 @@ reservedKeyword() :
 |	tok = <MATCH>
 |	tok = <MAX>
 |	tok = <MIN>
-|	tok = <MINUTE>
 // SQL92 says it is reserved, but we want it to be non-reserved.
 |	tok = <NATIONAL>
 |	tok = <NATURAL>
@@ -17699,7 +17701,6 @@ reservedKeyword() :
 |	tok = <ROWS>
 |	tok = <SCHEMA>
 |	tok = <SCROLL>
-|	tok = <SECOND>
 |	tok = <SELECT>
 |	tok = <SESSION_USER>
 |	tok = <SET>
@@ -17739,7 +17740,6 @@ reservedKeyword() :
 |	tok = <WITH>
 |	tok = <WORK>
 |	tok = <WRITE>
-|	tok = <YEAR>
 	/* Additional JSQL reserved keywords -- non-SQL92 reserved Keywords */
 |	tok = <BOOLEAN>
 |	tok = <CALL>
@@ -17820,6 +17820,8 @@ nonReservedKeyword()  :
 	|	tok = <FN>
 	|	tok = <FORTRAN>
 	|	tok = <GENERATED>
+// mark HOUR as non-reserved (SNAP-1179)
+	|	tok = <HOUR>
 	|	tok = <IDENTITY_VAL_LOCAL>
 	|	tok = <INCREMENT>
 	|	tok = <INDEX>
@@ -17840,6 +17842,8 @@ nonReservedKeyword()  :
 	|	tok = <LONG>
 	|	tok = <MESSAGE_LOCALE>
 	|	tok = <METHOD>
+// mark MINUTE as non-reserved (SNAP-1179)
+	|	tok = <MINUTE>
 	|	tok = <MOD>
 	|	tok = <MODE>
 	|	tok = <MODIFIES>
@@ -17893,6 +17897,8 @@ nonReservedKeyword()  :
 	|   tok = <RS>
 	|	tok = <SCALE>
 	|	tok = <SAVEPOINT>
+// mark SECOND as non-reserved (SNAP-1179)
+	|	tok = <SECOND>
 	|	tok = <SECURITY>
 	|	tok = <SEQUENCE>
 	|	tok = <SEQUENTIAL>
@@ -17938,6 +17944,8 @@ nonReservedKeyword()  :
 	|	tok = <WHEN>
 	|	tok = <WHITESPACE>
 // GemStone changes BEGIN
+// mark YEAR as non-reserved (SNAP-1179)
+	|	tok = <YEAR>
 	|   tok = <ALIAS>
 	|   tok = <ARRAY>
 	|   tok = <ASYNCHRONOUS>

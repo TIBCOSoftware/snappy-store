@@ -1187,7 +1187,6 @@ TOKEN [IGNORE_CASE] :
 |	<GRANT: "grant">
 |	<GROUP: "group">
 |	<HAVING: "having">
-|	<HOUR: "hour">
 |	<IDENTITY: "identity">
 |	<IMMEDIATE: "immediate">
 |	<IN: "in">
@@ -1213,7 +1212,6 @@ TOKEN [IGNORE_CASE] :
 |	<MATCH: "match">
 |	<MAX: "max">
 |	<MIN: "min">
-|	<MINUTE: "minute">
 |	<MODULE: "module">
 |	<NATIONAL: "national">
 |	<NATURAL: "natural">
@@ -1254,7 +1252,6 @@ TOKEN [IGNORE_CASE] :
 |	<ROWS: "rows">
 |	<SCHEMA: "schema">
 |	<SCROLL: "scroll">
-|	<SECOND: "second">
 |	<SELECT: "select">
 |	<SESSION_USER: "session_user">
 |	<SET: "set">
@@ -1299,7 +1296,6 @@ TOKEN [IGNORE_CASE] :
 |	<WITH: "with">
 |	<WORK: "work">
 |	<WRITE: "write">
-|	<YEAR: "year">
 }
 
 /*
@@ -1336,6 +1332,8 @@ TOKEN [IGNORE_CASE] :
 |   <DYNAMIC: "dynamic">
 |	<FORTRAN: "fortran">
 |   <GENERATED: "generated">
+// mark HOUR as non-reserved (SNAP-1179)
+|	<HOUR: "hour">
 |	<IDENTITY_VAL_LOCAL: "identity_val_local">
 |	<INCREMENT: "increment">
 |	<INITIAL: "initial">
@@ -1349,6 +1347,8 @@ TOKEN [IGNORE_CASE] :
 |	<LOCKS: "locks">
 |	<LOCKSIZE: "locksize">
 |	<LOGGED: "logged">
+// mark MINUTE as non-reserved (SNAP-1179)
+|	<MINUTE: "minute">
 |       <MOD: "mod">
 |	<MODIFIES: "modifies">
 |	<MODIFY: "modify">
@@ -1372,6 +1372,8 @@ TOKEN [IGNORE_CASE] :
 |	<ROW: "row">
 |	<SAVEPOINT: "savepoint">
 |	<SCALE: "scale">
+// mark SECOND as non-reserved (SNAP-1179)
+|	<SECOND: "second">
 |	<SECURITY: "security">
 |	<SERIALIZABLE: "serializable">
 |	<SQL_TSI_FRAC_SECOND: "sql_tsi_frac_second">
@@ -1396,6 +1398,8 @@ TOKEN [IGNORE_CASE] :
 |	<UNCOMMITTED: "uncommitted">
 |	<USAGE: "usage">
 |	<WHEN: "when">
+// mark YEAR as non-reserved (SNAP-1179)
+|	<YEAR: "year">
 }
 
 /*

@@ -315,12 +315,20 @@ public class HeapDataOutputStream extends OutputStream implements
       int offset, int len) {
     if (this.ignoreWrites) return;
     checkIfWritable();
-    this.expand(MIN_CHUNK_SIZE);
 
     // Asif:
     // let us expand first so that current byte buffer goes into the list
     // and a new current byte buffer is created. We than place the wrapped
     // ByteBuffer into the list
+    if (this.buffer.position() == 0) {
+      // nothing in current buffer so just push the new one
+      if (this.chunks == null) {
+        this.chunks = new LinkedList<>();
+      }
+    } else {
+      this.expand(MIN_CHUNK_SIZE);
+    }
+
     ByteBuffer temp = ByteBuffer.wrap(source, offset, len);
     // Slicing is needed so that other functions like consolidateChunk etc work
     // correctly
@@ -331,6 +339,36 @@ public class HeapDataOutputStream extends OutputStream implements
     // capacity is > limit
     // i.e len does not cover the end of the source.
     this.chunks.add(temp);
+    // mark this chunk as non-reusable
+    if (this.nonReusableChunks != null) {
+      this.nonReusableChunks.set(this.chunks.size() - 1);
+    }
+    this.size += len;
+  }
+
+  public final void writeWithByteBufferWrappedConditionally(ByteBuffer source) {
+    if (this.ignoreWrites) return;
+    checkIfWritable();
+
+    final int len = source.remaining();
+    // Asif:
+    // let us expand first so that current byte buffer goes into the list
+    // and a new current byte buffer is created. We than place the wrapped
+    // ByteBuffer into the list
+    if (this.buffer.position() == 0) {
+      // nothing in current buffer so just push the new one
+      if (this.chunks == null) {
+        this.chunks = new LinkedList<>();
+      }
+    } else {
+      this.expand(MIN_CHUNK_SIZE);
+    }
+
+    // Hide this buffer in the linked list so that it is not used for any
+    // further writes as we want it to be immutable & it is possible that
+    // capacity is > limit
+    // i.e len does not cover the end of the source.
+    this.chunks.add(source);
     // mark this chunk as non-reusable
     if (this.nonReusableChunks != null) {
       this.nonReusableChunks.set(this.chunks.size() - 1);
