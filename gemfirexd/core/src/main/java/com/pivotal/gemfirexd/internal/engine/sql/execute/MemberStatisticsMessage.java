@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -30,6 +31,7 @@ import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.gemstone.gemfire.management.internal.ManagementStrings;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
 import com.gemstone.gemfire.management.internal.beans.stats.VMStatsMonitor;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdFunctionMessage;
@@ -37,7 +39,9 @@ import com.pivotal.gemfirexd.internal.engine.distributed.message.MemberExecutorM
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.management.NetworkServerConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
+import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
 /**
  * Created by skapse on 24/11/16.
@@ -71,7 +75,6 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   @Override
   protected void execute() throws Exception {
-    //lastResult(GemFireCacheImpl.getExisting().getDistributedSystem().getMemberId());
 
     this.gemFireCache = GemFireCacheImpl.getExisting();
     InternalDistributedSystem ids = gemFireCache.getDistributedSystem();
@@ -79,37 +82,17 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
     updateStats(ids);
 
-    /*Statistics systemStat = null;
-
-    if (PureJavaMode.osStatsAreAvailable()) {
-      Statistics[] systemStats = null;
-
-      if (HostStatHelper.isSolaris()) {
-        systemStats = ids.findStatisticsByType(SolarisSystemStats.getType());
-      } else if (HostStatHelper.isLinux()) {
-        systemStats = ids.findStatisticsByType(LinuxSystemStats.getType());
-      } else if (HostStatHelper.isOSX()) {
-        systemStats = null;//@TODO once OSX stats are implemented
-      } else if (HostStatHelper.isWindows()) {
-        systemStats = ids.findStatisticsByType(WindowsSystemStats.getType());
-      }
-
-      if (systemStats != null) {
-        systemStat = systemStats[0];
-      }
-    }*/
-
     // Members clients stats
     NetworkServerConnectionStats clientConnectionStats = getMemberClientConnectionStats(ids);
 
     Map memberStatsMap = new HashMap();
     memberStatsMap.put("id", memberId);
     memberStatsMap.put("name", ids.getName());
-    //memberStatsMap.put("stats", ids.getStatistics());
     memberStatsMap.put("host", getHost());
     memberStatsMap.put("locator", isLocator());
     memberStatsMap.put("cacheServer", isServer());
-    memberStatsMap.put("lead", isLead(ids.getDistributedMember()));
+    memberStatsMap.put("activeLead", isActiveLead(ids.getDistributedMember()));
+    memberStatsMap.put("lead", isLead());
     memberStatsMap.put("maxMemory", getMaxMemory());
     memberStatsMap.put("freeMemory", getFreeMemory());
     memberStatsMap.put("totalMemory", getTotalMemory());
@@ -123,8 +106,6 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   }
 
   private void updateStats(InternalDistributedSystem system){
-
-    //Statistics systemStat = null;
 
     if (PureJavaMode.osStatsAreAvailable()) {
       Statistics[] systemStats = null;
@@ -140,25 +121,21 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
       }
 
       if (systemStats != null) {
-        //systemStat = systemStats[0];
         this.systemStat = systemStats[0];
       }
     }
 
     VMStatsContract vmStatsContract = system.getStatSampler().getVMStats();
-    //VMStatsMonitor vmStatsMonitor = new VMStatsMonitor(ManagementStrings.VM_STATS_MONITOR.toLocalizedString());
 
     if (vmStatsContract != null && vmStatsContract instanceof VMStats50){
       VMStats50 vmStats50 = (VMStats50) vmStatsContract;
       Statistics vmStats = vmStats50.getVMStats();
       if (vmStats != null) {
-        //vmStatsMonitor.addStatisticsToMonitor(vmStats);
         this.vmStats = vmStats;
       }
 
       Statistics vmHeapStats = vmStats50.getVMHeapStats();
       if (vmHeapStats != null) {
-        //vmStatsMonitor.addStatisticsToMonitor(vmHeapStats);
         this.vmHeapStats = vmHeapStats;
       }
 
@@ -202,9 +179,9 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   /**
    *
-   * @return true if member has a lead
+   * @return true if member is a active lead node
    */
-  private boolean isLead(InternalDistributedMember member) {
+  private boolean isActiveLead(InternalDistributedMember member) {
     GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
     GfxdDistributionAdvisor.GfxdProfile profile = advisor.getProfile(member);
     if(profile != null && profile.hasSparkURL()){
@@ -212,6 +189,16 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     }else{
       return false;
     }
+  }
+
+  /**
+   *
+   * @return true if member is a member of leader group
+   */
+  private boolean isLead() {
+    HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
+    final boolean isLead = (leadGroup != null && leadGroup.size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup));
+    return isLead;
   }
 
   private int getHostCpuUsage() {
@@ -254,27 +241,6 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   public String getDiskStoreName() {
     return this.diskStoreName;
   }
-
-  /*public long getUsedMemory(InternalDistributedSystem system) {
-    VMStatsContract vmStatsContract = system.getStatSampler().getVMStats();
-    VMStatsMonitor vmStatsMonitor = new VMStatsMonitor(ManagementStrings.VM_STATS_MONITOR
-        .toLocalizedString());
-
-    if (vmStatsContract != null && vmStatsContract instanceof VMStats50){
-      VMStats50 vmStats50 = (VMStats50) vmStatsContract;
-      Statistics vmStats = vmStats50.getVMStats();
-      if (vmStats != null) {
-        vmStatsMonitor.addStatisticsToMonitor(vmStats);
-      }
-
-      Statistics vmHeapStats = vmStats50.getVMHeapStats();
-      if (vmHeapStats != null) {
-        vmStatsMonitor.addStatisticsToMonitor(vmHeapStats);
-      }
-    }
-
-    return vmStatsMonitor.getStatistic(StatsKey.VM_USED_MEMORY).longValue() / MBFactor;
-  }*/
 
   private NetworkServerConnectionStats getMemberClientConnectionStats(InternalDistributedSystem system){
     NetworkServerConnectionStats clientConnectionStats =
