@@ -213,25 +213,25 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     /*Runtime rt = Runtime.getRuntime();
     return rt.maxMemory() / MBFactor;*/
 
-    return vmStats.get("maxMemory").longValue()/MBFactor;
+    return vmStats.get("maxMemory").longValue();
   }
 
   private long getFreeMemory() {
     /*Runtime rt = Runtime.getRuntime();
     return rt.freeMemory() / MBFactor;*/
 
-    return vmStats.get("freeMemory").longValue()/MBFactor;
+    return vmStats.get("freeMemory").longValue();
   }
 
   private long getTotalMemory() {
     /*Runtime rt = Runtime.getRuntime();
     return rt.totalMemory() / MBFactor;*/
 
-    return vmStats.get("totalMemory").longValue()/MBFactor;
+    return vmStats.get("totalMemory").longValue();
   }
 
   public long getUsedMemory() {
-    return vmHeapStats.get("usedMemory").longValue()/MBFactor;
+    return vmHeapStats.get("usedMemory").longValue();
   }
 
   public java.util.UUID getDiskStoreUUID() {
