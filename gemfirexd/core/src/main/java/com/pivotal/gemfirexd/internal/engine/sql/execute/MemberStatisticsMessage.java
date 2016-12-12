@@ -2,8 +2,6 @@ package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,19 +26,14 @@ import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
-import com.gemstone.gemfire.management.internal.ManagementStrings;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
-import com.gemstone.gemfire.management.internal.beans.stats.VMStatsMonitor;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdFunctionMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.MemberExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.management.NetworkServerConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
-import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
 /**
@@ -210,23 +203,14 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   }
 
   private long getMaxMemory() {
-    /*Runtime rt = Runtime.getRuntime();
-    return rt.maxMemory() / MBFactor;*/
-
     return vmStats.get("maxMemory").longValue();
   }
 
   private long getFreeMemory() {
-    /*Runtime rt = Runtime.getRuntime();
-    return rt.freeMemory() / MBFactor;*/
-
     return vmStats.get("freeMemory").longValue();
   }
 
   private long getTotalMemory() {
-    /*Runtime rt = Runtime.getRuntime();
-    return rt.totalMemory() / MBFactor;*/
-
     return vmStats.get("totalMemory").longValue();
   }
 
