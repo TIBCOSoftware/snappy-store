@@ -13405,6 +13405,7 @@ indexDefinition() throws StandardException :
 	TableName	indexName;
 	TableName	tableName;
 	Vector	indexColumnList = new Vector();
+	CompilerContext cc = getCompilerContext();
 }
 {
 	/*
@@ -13424,6 +13425,7 @@ indexDefinition() throws StandardException :
 	*/
 // GemStone changes END
 	{
+   cc.setForcedDDLrouting(true);
 		/* User allowed to specify schema name on table and index.
 		 * If no schema name specified for index, then it "inherits" 
 		 * its schema name from the table.
@@ -16807,6 +16809,7 @@ dropIndexStatement() throws StandardException :
 	TableName indexName;
 // GemStone changes BEGIN
 	Boolean onlyIfExists = Boolean.FALSE;
+	CompilerContext cc = getCompilerContext();
 // GemStone changes END
 }
 {
@@ -16819,6 +16822,8 @@ dropIndexStatement() throws StandardException :
 	<INDEX> indexName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH)
 	*/
 	{
+    cc.markAsDDLForSnappyUse(true);
+    cc.setForcedDDLrouting(true);
 		return (StatementNode) nodeFactory.getNode(
 								C_NodeTypes.DROP_INDEX_NODE,
 								indexName,

@@ -335,9 +335,11 @@ public class GenericStatement
 		boolean foundInCache = false;
 		if (preparedStmt == null)
 		{
-			if (cacheMe)
-				preparedStmt = (GenericPreparedStatement)((GenericLanguageConnectionContext)lcc).lookupStatement(this);
-
+                        boolean isRemoteDDLAndSnappyStore = lcc.isConnectionForRemoteDDL() && !routeQuery;
+                        if (cacheMe && !isRemoteDDLAndSnappyStore) {
+                                preparedStmt = (GenericPreparedStatement)((GenericLanguageConnectionContext)lcc).lookupStatement(this);
+                        }
+      
 			if (preparedStmt == null)
 			{
 				preparedStmt = new GenericPreparedStatement(this);

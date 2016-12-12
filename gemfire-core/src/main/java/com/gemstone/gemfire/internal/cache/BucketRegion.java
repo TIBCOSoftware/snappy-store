@@ -807,7 +807,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private synchronized void generateAndSetBatchIDIfNULL() {
     final UUID buid = this.batchUUID;
     if (buid == null || buid.equals(zeroUUID)) {
-      this.batchUUID = UUID.randomUUID();
+      this.batchUUID = partitionedRegion.newJavaUUID();
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
             .getLoggerI18n()

@@ -912,7 +912,8 @@ public final class InternalDistributedMember
     DataSerializer.writeString(this.name, out);
     DataSerializer.writeString(this.uniqueTag, out);
     DataSerializer.writeString(this.durableClientAttributes==null ? "" : this.durableClientAttributes.getId(), out);
-    DataSerializer.writeInteger(Integer.valueOf(this.durableClientAttributes==null ? 300 : this.durableClientAttributes.getTimeout()), out);
+    out.writeInt(this.durableClientAttributes == null ? 300
+        : this.durableClientAttributes.getTimeout());
     Version.writeOrdinal(out, this.version, true);
   }
 
@@ -946,7 +947,7 @@ public final class InternalDistributedMember
      this.name = DataSerializer.readString(in);
      this.uniqueTag = DataSerializer.readString(in);
      String durableId = DataSerializer.readString(in);
-     int durableTimeout = DataSerializer.readInteger(in).intValue();
+     int durableTimeout = in.readInt();
      this.durableClientAttributes = new DurableClientAttributes(durableId, durableTimeout);
 
      readVersion(flags, in);
