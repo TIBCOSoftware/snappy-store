@@ -36,9 +36,6 @@ import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
-/**
- * Created by skapse on 24/11/16.
- */
 public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   private static final long MBFactor = 1024 * 1024;
