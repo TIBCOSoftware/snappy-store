@@ -80,7 +80,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
     memberStatsMap.put("locator", isLocator());
-    memberStatsMap.put("cacheServer", isServer());
+    memberStatsMap.put("dataServer", isDataServer());
     memberStatsMap.put("activeLead", isActiveLead(ids.getDistributedMember()));
     memberStatsMap.put("lead", isLead());
     memberStatsMap.put("maxMemory", getMaxMemory());
@@ -162,8 +162,8 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
    *
    * @return true if member has a server
    */
-  private boolean isServer() {
-    return GemFireCacheImpl.getExisting().isServer();
+  private boolean isDataServer() {
+    return ServerGroupUtils.isDataStore();
   }
 
 
