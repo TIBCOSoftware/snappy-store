@@ -316,6 +316,8 @@ public abstract class Misc {
     return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
   }
 
+  public volatile static boolean reservoirRegionCreated = false;
+
   public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName) {
     Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
     GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
@@ -335,6 +337,7 @@ public abstract class Misc {
       af.setPartitionAttributes(paf.create());
       childRegion = cache.createRegion(reservoirRegionName, af);
     }
+    reservoirRegionCreated = true;
     return (PartitionedRegion)childRegion;
   }
 

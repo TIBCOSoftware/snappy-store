@@ -804,6 +804,10 @@ public interface GfxdConstants {
   final String GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK =
       GFXD_PREFIX + "enable-routing-arbiter";
 
+//  public static final String GFXD_COST_OPTIMIZED_ROUTING_THRESHOLD =
+//      GFXD_PREFIX +"cost-optimized-routing-threshold";
+
+
   // --------------------- Defaults for GFXD connection/transaction props
 
   /** Default for autocommit in GFXD is false. */

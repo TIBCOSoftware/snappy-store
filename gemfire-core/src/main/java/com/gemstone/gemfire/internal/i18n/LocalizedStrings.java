@@ -584,9 +584,9 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId CacheServerLauncher_ERROR_0 = new StringIdImpl(3965, "Error: {0}");
   public static final StringId CacheServerLauncher_STARTING_0_WITH_PID_1 = new StringIdImpl(3966, "Starting {0} with pid: {1,number,#}");
   public static final StringId ExecuteFunction_RESULTS_ALREADY_COLLECTED = new StringIdImpl(3967, "Function results already collected");
-  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE = new StringIdImpl(3968, "The specified working directory ({0}) contains no status file");
-  public static final StringId CacheServerLauncher_0_STOPPED = new StringIdImpl(3969, "The {0} has stopped.");
-  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 = new StringIdImpl(3970, "Timeout waiting for {0} to shutdown, status is: {1}");
+  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE = new StringIdImpl(3968, "The specified working directory ({0}) on {1} contains no status file");
+  public static final StringId CacheServerLauncher_0_STOPPED = new StringIdImpl(3969, "The {0} on {1} has stopped.");
+  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 = new StringIdImpl(3970, "Timeout waiting for {0} to shutdown on {1}, status is: {2}");
   public static final StringId CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS = new StringIdImpl(3971, "See log file for details.");
   public static final StringId DistributionManager__0_MESSAGE_DISTRIBUTION_HAS_TERMINATED = new StringIdImpl(3972, "{0}: Message distribution has terminated");
   public static final StringId SystemFailure_DISTRIBUTION_HALTED_DUE_TO_JVM_CORRUPTION = new StringIdImpl(3973, "Distribution halted due to JVM corruption");

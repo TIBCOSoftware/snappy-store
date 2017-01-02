@@ -21,15 +21,32 @@ import java.util.LinkedList;
 
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
+import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
+import com.pivotal.gemfirexd.internal.iapi.sql.compile.CostEstimate;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.DMLStatementNode;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.ResultSetNode;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
 import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
+import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import org.apache.commons.lang.exception.ExceptionUtils;
 
 public class ExecutionEngineArbiter {
+
   LinkedList<ExecutionEngineRule> executionEngineRules = new LinkedList<>();
 
   private static Boolean  enableRoutingArbitor = Boolean.parseBoolean(
       PropertyUtil.getSystemProperty(
   GfxdConstants.GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK , "true"));
+
+  //public static final int DEFAULT_COST_BASED_OPTIMIZED_ROUTING_THRESHOLD = 1000000;
+
+  //public static int testHookCostThresHold = DEFAULT_COST_BASED_OPTIMIZED_ROUTING_THRESHOLD;
+
+  //private static int costBasedOptimizationThreshold = PropertyUtil.
+  //    getSystemInt(GfxdConstants.GFXD_COST_OPTIMIZED_ROUTING_THRESHOLD,
+  //        DEFAULT_COST_BASED_OPTIMIZED_ROUTING_THRESHOLD);
 
   public ExecutionEngineArbiter() {
     //Rules That needs to be applied regardless of the GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK flag
@@ -56,4 +73,26 @@ public class ExecutionEngineArbiter {
     return  ExecutionEngine.STORE;
   }
 
+/*  public ExecutionEngine getExecutionEngine(StatementNode qt, GenericStatement gs, boolean routeQuery)
+      throws StandardException {
+    if (enableRoutingArbitor) {
+      if (qt instanceof DMLStatementNode) {
+        ResultSetNode resultSetNode = ((DMLStatementNode)qt).getResultSetNode();
+        if (resultSetNode != null) {
+          CostEstimate fcs = resultSetNode.getFinalCostEstimate();
+          if (fcs != null) {
+            if (fcs.getEstimatedCost() > costBasedOptimizationThreshold
+                || fcs.getEstimatedCost() > testHookCostThresHold) {
+              return ExecutionEngine.SPARK;
+            }
+          }
+        }
+      }
+    }
+    return ExecutionEngine.STORE;
+  }*/
+
+  //public static void setTestHookCostThreshold(int threshold){
+  //  testHookCostThresHold = threshold;
+  //}
 }

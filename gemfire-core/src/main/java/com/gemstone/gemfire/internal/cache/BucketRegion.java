@@ -678,6 +678,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       }
       setBatchUUID(event);
     }
+    boolean success = false;
     try {
       if (this.partitionedRegion.isLocalParallelWanEnabled()) {
         handleWANEvent(event);
@@ -691,6 +692,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //          getCache().getLoggerI18n().info(LocalizedStrings.DEBUG,
 //              "BR.virtualPut: oldEntry returned = " + oldEntry + " so basic put returned: " + (oldEntry != null));
 //        }
+        success = true;
         return oldEntry != null;
       }
       if (event.getDeltaBytes() != null && event.getRawNewValue() == null) {
@@ -710,12 +712,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
             "BR.virtualPut: this cache has already seen this event " + event);
       }
       distributeUpdateOperation(event, lastModified);
+      success = true;
       return true;
     } finally {
       if (locked) {
         endLocalWrite(event);
         //create and insert cached batch
-        if (getPartitionedRegion().needsBatching()
+        if (success && getPartitionedRegion().needsBatching()
             && this.size() >= GemFireCacheImpl.getColumnBatchSize()) {
           createAndInsertCachedBatch(false);
         }
@@ -742,8 +745,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // CachedBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    final int batchSize = !forceFlush ? GemFireCacheImpl.getColumnBatchSize()
-        : GemFireCacheImpl.getColumnMinBatchSize();
+    final int columnBatchSize = GemFireCacheImpl.getColumnBatchSize();
+    final int batchSize = !forceFlush ? columnBatchSize
+        : Math.min(GemFireCacheImpl.getColumnMinBatchSize(),
+        Math.max(columnBatchSize, 1));
     // we may have to use region.size so that no state
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.
@@ -759,7 +764,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       Set keysToDestroy = createCachedBatchAndPutInColumnTable();
       destroyAllEntries(keysToDestroy);
       // create new batchUUID
-      this.batchUUID = null;
+      generateAndSetBatchIDIfNULL(true);
       return true;
     } else {
       return false;
@@ -772,11 +777,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // has to be maintained
     //TODO: Suranjan Will using region.size in synchronized be slower? or should maintain atomic variable per bucket?
     // PUTALL
+    boolean resetBatchId = false;
     if (getBucketAdvisor().isPrimary()) {
+      UUID batchUUIDToUse = null;
       if (event.getPutAllOperation() != null) { //isPutAll op
-        generateAndSetBatchIDIfNULL();
+        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
       } else if (this.size() >= GemFireCacheImpl.getColumnBatchSize()) {// loose check on size..not very strict
-        generateAndSetBatchIDIfNULL();
+        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache()
               .getLoggerI18n()
@@ -784,9 +791,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                   + "(NON PUTALL operation) as " + this.batchUUID);
         }
       } else {
-        generateAndSetBatchIDIfNULL();
+        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
       }
-      event.setBatchUUID(this.batchUUID);
+      event.setBatchUUID(batchUUIDToUse);
     } else {
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
@@ -799,10 +806,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  private synchronized void generateAndSetBatchIDIfNULL() {
+  private synchronized UUID generateAndSetBatchIDIfNULL(boolean resetBatchId) {
+    if (resetBatchId) {
+      this.batchUUID = null;
+      return this.batchUUID;
+    }
     final UUID buid = this.batchUUID;
     if (buid == null || buid.equals(zeroUUID)) {
-      this.batchUUID = UUID.randomUUID();
+      this.batchUUID = partitionedRegion.newJavaUUID();
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
             .getLoggerI18n()
@@ -818,6 +829,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
       }
     }
+    return this.batchUUID;
   }
 
   private Set createCachedBatchAndPutInColumnTable() {
@@ -2777,7 +2789,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     closeCacheCallback(getCacheWriter());
     closeCacheCallback(getEvictionController());
   }
-  
+
+  public long getSizeInMemory() {
+    return Math.max(this.bytesInMemory.get(), 0L);
+  }
+
   public long getTotalBytes() {
     long result = this.bytesInMemory.get();
     if(result == BUCKET_DESTROYED) {

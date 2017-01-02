@@ -699,6 +699,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
         vmArgs.add("-XX:+UseConcMarkSweepGC");
         vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
         vmArgs.add("-XX:+CMSClassUnloadingEnabled");
+        vmArgs.add("-XX:NewRatio=3");
       }
     }
 
@@ -800,6 +801,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
         }
         else if (args[0].equalsIgnoreCase("stop")) {
           stop(args);
+          System.clearProperty(Property.SYSTEM_HOME_PROPERTY);
         }
         else if (args[0].equalsIgnoreCase("status")) {
           status(args);

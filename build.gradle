@@ -48,7 +48,7 @@ allprojects {
     pxfVersion = '2.5.1.0'
     osgiVersion = '6.0.0'
     jettyVersion = '9.2.16.v20160414'
-    hadoopVersion = '2.7.2'
+    hadoopVersion = '2.7.3'
     protobufVersion = '2.6.1'
     sunJerseyVersion = '1.19.1'
     hadoopJettyVersion = '6.1.26'

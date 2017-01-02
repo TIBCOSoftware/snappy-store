@@ -248,6 +248,8 @@ public interface GfxdSerializable extends GfxdDSFID {
   
   /** classId for {@link ContainsUniqueKeyBulkExecutorMessage}s */
   public final static byte CONTAINS_UNIQUEKEY_BULK_EXECUTOR_MSG = 54;
+
+  public final static byte MEMBER_STATISTICS_MESSAGE = 55;
     
   /**
    * Marker to indicate that tests can use an ID >= this. Note whenever adding a

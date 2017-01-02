@@ -330,8 +330,8 @@ public final class GfxdReentrantReadWriteLock extends AtomicInteger implements
     // messages in case lock acquire has not succeeded so far; also check for
     // CancelCriterion
 
-    InternalDistributedSystem dsys = null;
-    LogWriterI18n logger = null;
+    InternalDistributedSystem dsys = Misc.getDistributedSystem();
+    LogWriterI18n logger = dsys.getLogWriterI18n();
     long timeoutMillis;
     if (this.waitThreshold > 0) {
       timeoutMillis = TimeUnit.SECONDS.toMillis(this.waitThreshold);
@@ -357,10 +357,6 @@ public final class GfxdReentrantReadWriteLock extends AtomicInteger implements
           TimeUnit.MILLISECONDS.toNanos(timeoutMillis), null, null)) {
         res = true;
         break;
-      }
-      if (dsys == null) {
-        dsys = Misc.getDistributedSystem();
-        logger = dsys.getLogWriterI18n();
       }
       dsys.getCancelCriterion().checkCancelInProgress(null);
       msecs -= timeoutMillis;
@@ -432,8 +428,8 @@ public final class GfxdReentrantReadWriteLock extends AtomicInteger implements
     // messages in case lock acquire has not succeeded so far; also check for
     // CancelCriterion
 
-    InternalDistributedSystem dsys = null;
-    LogWriterI18n logger = null;
+    InternalDistributedSystem dsys = Misc.getDistributedSystem();
+    LogWriterI18n logger = dsys.getLogWriterI18n();
     long timeoutMillis;
     if (this.waitThreshold > 0) {
       timeoutMillis = TimeUnit.SECONDS.toMillis(this.waitThreshold);
@@ -454,10 +450,6 @@ public final class GfxdReentrantReadWriteLock extends AtomicInteger implements
           TimeUnit.MILLISECONDS.toNanos(timeoutMillis), null, null)) {
         res = true;
         break;
-      }
-      if (dsys == null) {
-        dsys = Misc.getDistributedSystem();
-        logger = dsys.getLogWriterI18n();
       }
       dsys.getCancelCriterion().checkCancelInProgress(null);
       msecs -= timeoutMillis;

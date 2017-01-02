@@ -85,6 +85,8 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.engine.locks.DefaultGfxdLockable;
+import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.DistributionObserver;
@@ -236,6 +238,9 @@ public final class FabricDatabase implements ModuleControl,
   private boolean runtimeStatisticsOn;
 
   private DirFile tempDir;
+
+  private final DefaultGfxdLockable hiveClientObject = new DefaultGfxdLockable(
+      "HiveMetaStoreClient", GfxdConstants.TRACE_DDLOCK);
 
   /**
    * flag for tests to avoid precompiling SPS descriptors to reduce unit test
@@ -507,8 +512,15 @@ public final class FabricDatabase implements ModuleControl,
       }
 
       // Initialize the catalog
-      final boolean isLead = this.memStore.isSnappyStore() && (ServerGroupUtils.isGroupMember(
-          CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup())
+      // Lead is always started with ServerGroup hence for lead LeadGroup will never be null.
+      /**
+       * In LeadImpl server group is always  set to using following code:
+       * changeOrAppend(Constant * .STORE_PROPERTY_PREFIX +com.pivotal.gemfirexd.Attribute.
+       * SERVER_GROUPS, LeadImpl.LEADER_SERVERGROUP)
+       */
+      HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
+      final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
+          .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
           || Misc.getDistributedSystem().isLoner());
       Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
       if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
@@ -518,12 +530,16 @@ public final class FabricDatabase implements ModuleControl,
         // SERIALIZABLE to REPEATABLE READ
         boolean writeLockTaken = false;
         try {
-          writeLockTaken = this.dd.lockForWriting(tc, false);
+          //writeLockTaken = this.dd.lockForWriting(tc, false);
+          // Changed from ddlLockObject
+          writeLockTaken = GemFireXDUtils.lockObject(hiveClientObject, null, true, false, tc,
+              GfxdLockSet.MAX_LOCKWAIT_VAL);
           this.memStore.initExternalCatalog();
         }
         finally {
           if (writeLockTaken) {
-            this.dd.unlockAfterWriting(tc, false);
+            //this.dd.unlockAfterWriting(tc, false);
+            GemFireXDUtils.unlockObject(hiveClientObject, null, true, false, tc);
           }
         }
       }

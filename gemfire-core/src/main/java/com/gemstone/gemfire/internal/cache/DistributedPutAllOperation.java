@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.Operation;
@@ -335,7 +336,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     // parallel wan is enabled
     private long tailKey = 0L;
 
-    private UUID batchUUID = BucketRegion.zeroUUID;
+    volatile UUID batchUUID = BucketRegion.zeroUUID;
 
     public VersionTag versionTag;
 

@@ -35,6 +35,12 @@ class AnyOneOfExecutionEngineRule extends ExecutionEngineRule {
       return ExecutionEngine.SPARK;
     }
 
+    if ((qInfo.hasUnionNode() || qInfo.hasIntersectOrExceptNode())) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "AnyOneOfExecutionEngineRule:UNION_OR_INTERSECT_QUERY_RULE:SPARK");
+      return ExecutionEngine.SPARK;
+    }
+
     //check for the "group by" queries
     if (qInfo.isQuery(QueryInfo.HAS_GROUPBY)) {
       // it is a group by query . need to check if it has indexes in the where clause.
@@ -45,13 +51,17 @@ class AnyOneOfExecutionEngineRule extends ExecutionEngineRule {
       }
     }
 
-
-    if ((qInfo.hasUnionNode() || qInfo.hasIntersectOrExceptNode())) {
+    if (qInfo.isQuery(QueryInfo.MARK_NOT_GET_CONVERTIBLE)) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "AnyOneOfExecutionEngineRule:UNION_OR_INTERSECT_QUERY_RULE:SPARK");
+          "AnyOneOfExecutionEngineRule:NOT_GET_CONVERTIBLE_RULE:SPARK");
       return ExecutionEngine.SPARK;
     }
 
+    if (!qInfo.isQuery(QueryInfo.IS_GETALL_ON_LOCAL_INDEX)) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "AnyOneOfExecutionEngineRule:GETALL_ON_LOCAL_INDEX_RULE:SPARK");
+      return ExecutionEngine.SPARK;
+    }
 
     return ExecutionEngine.NOT_DECIDED;
   }

@@ -25,20 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -652,6 +639,9 @@ public class LocalRegion extends AbstractRegion
    * primary key.
    */
   final UUIDAdvisor uuidAdvisor;
+
+  public static final Random rand = new Random(Long.getLong(
+      "gemfire.PartitionedRegionRandomSeed", System.nanoTime()));
 
   // below atomic vars are used by newUUID() and newShortUUID() in case
   // the region is local
@@ -2390,6 +2380,16 @@ public class LocalRegion extends AbstractRegion
       throw new InternalGemFireError("unexpected call to newUUID for "
           + toString());
     }
+  }
+
+  /**
+   * Get a new unique java UUID that is guaranteed to be unique in the
+   * distributed system for this region.
+   */
+  public final UUID newJavaUUID() throws IllegalStateException {
+    long msb = newUUID(true);
+    long lsb = rand.nextLong();
+    return new UUID(msb, lsb);
   }
 
   /**

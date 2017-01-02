@@ -25,6 +25,7 @@ import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.NullDataOutputStream;
+import com.gemstone.gemfire.internal.SharedLibrary;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.pdx.PdxInstance;
@@ -235,6 +236,12 @@ public class CachedDeserializableFactory {
     } else if (o instanceof byte[][]) {
       result = getArrayOfBytesSize((byte[][])o, true);
       addOverhead = false;
+    } else if (o instanceof Long) {
+      result = Sizeable.PER_OBJECT_OVERHEAD + 8;
+      addOverhead = false;
+    } else if (o instanceof Integer) {
+      result = Sizeable.PER_OBJECT_OVERHEAD + 4;
+      addOverhead = false;
     } else if (o instanceof CachedDeserializable) {
       // overhead never added
       result = ((CachedDeserializable)o).getSizeInBytes();
@@ -263,6 +270,16 @@ public class CachedDeserializableFactory {
       result += overhead();
     }
 //     GemFireCache.getInstance().getLogger().info("DEBUG calcMemSize: o=<" + o + "> o.class=" + (o != null ? o.getClass() : "<null>") + " os=" + os + " result=" + result, new RuntimeException("STACK"));
+    // alignment of 8 for 64-bit JVM and 4 for 32-bit
+    if (SharedLibrary.is64Bit()) {
+      if ((result & 0x7) != 0) {
+        result = (result & 0xfffffff8) + 8;
+      }
+    } else {
+      if ((result & 0x3) != 0) {
+        result = (result & 0xfffffffc) + 4;
+      }
+    }
     return result;
   }
   /**

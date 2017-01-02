@@ -266,7 +266,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   @Override
   protected final GfxdProfile instantiateProfile(
       InternalDistributedMember memberId, int version) {
-    return new GfxdProfile(memberId, version, CallbackFactoryProvider.getClusterCallbacks().getDriverURL());
+    return new GfxdProfile(memberId, version,
+        CallbackFactoryProvider.getClusterCallbacks().getDriverURL());
   }
 
   /**
@@ -678,6 +679,26 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       return (GfxdProfile)profile;
     }
     return null;
+  }
+
+  /**
+   * Get the {@link Profile} for the given member's toString().
+   */
+  public GfxdProfile getProfile(String memberStr) {
+    final Profile[] allProfiles = this.profiles; // volatile read
+    final int numProfiles = allProfiles.length;
+    for (int i = 0; i < numProfiles; i++) {
+      final Profile profile = allProfiles[i];
+      if (profile.getDistributedMember().toString().equals(memberStr)) {
+        return (GfxdProfile)profile;
+      }
+    }
+    GfxdProfile profile = getMyProfile();
+    if (profile.getDistributedMember().toString().equals(memberStr)) {
+      return profile;
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -1305,6 +1326,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     private static final byte F_HASLOCALE = 0x2;
 
     private static final byte F_HAS_SPARK_DRIVERURL = 0x4;
+
+    private static final byte F_HAS_PROCESSOR_COUNT = 0x8;
     // end bitmasks
 
     /** OR of various bitmasks above */
@@ -1322,6 +1345,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     private String dbLocaleStr;
 
     /**
+     * The total number of processors on this node.
+     */
+    private int numProcessors;
+
+    /**
      * Driver port for spark. Is set only if this node is the primary lead node.
      */
     private String sparkDriverUrl;
@@ -1335,6 +1363,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     public GfxdProfile(InternalDistributedMember memberId, int version, String sparkUrl) {
       super(memberId, version);
       this.initialized = true;
+      this.numProcessors = Runtime.getRuntime().availableProcessors();
       this.sparkDriverUrl = sparkUrl;
       boolean hasURL = sparkDriverUrl != null && !sparkDriverUrl.equals("");
       setHasSparkURL(hasURL);
@@ -1343,6 +1372,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
 
     private void initFlags() {
       this.flags |= F_HASLOCALE;
+      this.flags |= F_HAS_PROCESSOR_COUNT;
     }
 
     public final VMKind getVMKind() {
@@ -1360,11 +1390,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     public final void setServerGroups(SortedSet<String> groups) {
       this.serverGroups = groups;
     }
-    
+
     public final void setLocale(String l) {
       this.dbLocaleStr = l;
     }
-    
+
     public final void setPersistentDD(boolean isPersistDD) {
       if (isPersistDD) {
         this.flags |= F_PERSISTDD;
@@ -1401,6 +1431,10 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     
     public final String getLocale() {
       return this.dbLocaleStr;
+    }
+
+    public final int getNumProcessors() {
+      return this.numProcessors;
     }
 
     @Override
@@ -1465,16 +1499,24 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       }
       Version version = InternalDataSerializer.getVersionForDataStream(out);
       boolean isPre12Version = Version.SQLF_11.compareTo(version) >= 0;
+      boolean isPre20Version = Version.GFXD_20.compareTo(version) > 0;
       byte flgs = this.flags;
       // no locale in GFXD <= 1.1
       if (isPre12Version) {
         flgs &= ~F_HASLOCALE;
+      }
+      if (isPre20Version) {
+        // no processor count
+        flgs &= ~F_HAS_PROCESSOR_COUNT;
       }
       out.writeByte(flgs);
       out.writeBoolean(this.initialized);
       // write the locale
       if (!isPre12Version) {
         DataSerializer.writeString(dbLocaleStr, out);
+      }
+      if (!isPre20Version) {
+        out.writeInt(this.numProcessors);
       }
       if (hasSparkURL()) {
         DataSerializer.writeString(sparkDriverUrl, out);
@@ -1502,6 +1544,9 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if ((this.flags & F_HASLOCALE) != 0) {
         this.dbLocaleStr = DataSerializer.readString(in);
       }
+      if ((this.flags & F_HAS_PROCESSOR_COUNT) != 0) {
+        this.numProcessors = in.readInt();
+      }
       // initialize the flags for possible further serializations
       initFlags();
       if (hasSparkURL()) {
@@ -1523,6 +1568,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       sb.append("; flags=0x").append(Integer.toHexString(this.flags));
       sb.append("; initialized=").append(this.initialized);
       sb.append("; dbLocaleStr=").append(this.dbLocaleStr);
+      sb.append("; numProcessors=").append(this.numProcessors);
     }
   }
 

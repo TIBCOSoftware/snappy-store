@@ -29,6 +29,7 @@ import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.net.URL;
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -99,6 +100,7 @@ public class CacheServerLauncher  {
   protected final String startLogFileName;
   protected final String pidFileName;
   protected final String statusName;
+  protected final String hostName;
   protected Status status = null;
   protected File workingDir = null;
   protected PrintStream oldOut = System.out;
@@ -129,6 +131,22 @@ public class CacheServerLauncher  {
     this.defaultLogFileName = baseNameLowerCase + ".log";
     this.pidFileName = baseNameLowerCase + ".pid";
     this.statusName = "." + baseNameLowerCase + ".ser";
+
+    InetAddress host;
+    try {
+      host = SocketCreator.getLocalHost();
+    } catch (Exception ex) {
+      try {
+        host = InetAddress.getLocalHost();
+      } catch (Exception e) {
+        host = null;
+      }
+    }
+    if (host != null) {
+      this.hostName = host.getCanonicalHostName();
+    } else {
+      this.hostName = "localhost";
+    }
   }
 
   protected String getBaseName(final String name) {
@@ -217,7 +235,7 @@ public class CacheServerLauncher  {
     }
     else {
       System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED
-          .toLocalizedString(this.baseName));
+          .toLocalizedString(this.baseName, this.hostName));
     }
     System.exit(0);
   }
@@ -1190,18 +1208,19 @@ public class CacheServerLauncher  {
 
       // after polling, determine the status of the Cache Server one last time and determine how to exit...
       if (this.status.state == SHUTDOWN) {
-        System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED.toLocalizedString(this.baseName));
+        System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED
+            .toLocalizedString(this.baseName, this.hostName));
         deleteStatus();
         exitStatus = 0;
       }
       else {
         System.out.println(LocalizedStrings.CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1
-          .toLocalizedString(this.baseName, this.status));
+          .toLocalizedString(this.baseName, this.hostName, this.status));
       }
     }
     else {
       System.out.println(LocalizedStrings.CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE
-        .toLocalizedString(this.workingDir));
+        .toLocalizedString(this.workingDir, this.hostName));
     }
 
     if (DONT_EXIT_AFTER_LAUNCH) {

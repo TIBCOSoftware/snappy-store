@@ -17,11 +17,6 @@
 
 package com.pivotal.gemfirexd.internal.engine.ui;
 
-import java.io.Serializable;
-
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
-
 public class SnappyRegionStats {
 
   private boolean isColumnTable = false;
@@ -100,16 +95,14 @@ public class SnappyRegionStats {
 
     if (this.isReplicatedTable()) {
       combinedStats.setRowCount(stats.rowCount);
-      combinedStats.setTotalSize(stats.totalSize);
     } else {
       combinedStats.setRowCount(stats.rowCount + this.rowCount);
-      combinedStats.setTotalSize(stats.totalSize + this.totalSize);
     }
 
     combinedStats.setSizeInMemory(stats.sizeInMemory + this.sizeInMemory);
-    combinedStats.setColumnTable(this.isColumnTable ? this.isColumnTable : stats.isColumnTable);
+    combinedStats.setTotalSize(stats.totalSize + this.totalSize);
+    combinedStats.setColumnTable(this.isColumnTable || stats.isColumnTable);
     combinedStats.setReplicatedTable(this.isReplicatedTable());
     return combinedStats;
   }
-
 }

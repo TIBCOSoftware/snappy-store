@@ -274,9 +274,8 @@ import com.gemstone.org.jgroups.util.StringId;
 public class PartitionedRegion extends LocalRegion implements 
   CacheDistributionAdvisee, QueryExecutor {
 
-  public static final Random rand = new Random(Long.getLong(
-      "gemfire.PartitionedRegionRandomSeed", System.nanoTime()).longValue());
-  
+  public static final Random rand = LocalRegion.rand;
+
   private static final AtomicInteger SERIAL_NUMBER_GENERATOR = new AtomicInteger();
   
   private final DiskRegionStats diskRegionStats;

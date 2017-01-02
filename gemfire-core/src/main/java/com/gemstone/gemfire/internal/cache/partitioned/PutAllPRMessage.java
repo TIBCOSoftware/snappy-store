@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.LogWriter;
@@ -461,6 +462,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     }
     if (!notificationOnly) {
       //bucketRegion.columnBatchFlushLock.readLock().lock();
+      boolean success = false;
       try {
         if (putAllPRData.length > 0) {
           if (this.posDup && bucketRegion.getConcurrencyChecksEnabled()) {
@@ -502,6 +504,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
             lockedForPrimary = false;
           }
 
+
         /* The real work to be synchronized, it will take long time. We don't
          * worry about another thread to send any msg which has the same key
          * in this request, because these request will be blocked by foundKey
@@ -528,8 +531,8 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
               // ev will be added into dpao in putLocally()
               // oldValue and real operation will be modified into ev in putLocally()
               // then in basicPutPart3(), the ev is added into dpao
-              putAllPRData[i].setTailKey(ev.getTailKey());
-              putAllPRData[i].setBatchUUID(ev.getBatchUUID());
+
+
               boolean didPut = false;
               try {
                 if (tx != null) {
@@ -543,6 +546,8 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
                 } else {
                   didPut = view.putEntryOnRemote(ev, false, false, null,
                       false, cacheWrite, lastModified, true);
+                  putAllPRData[i].setTailKey(ev.getTailKey());
+                  putAllPRData[i].setBatchUUID(ev.getBatchUUID());
                 }
                 if (didPut && logger.fineEnabled()) {
                   logger.fine("PutAllPRMessage.doLocalPutAll:putLocally success for " + ev);
@@ -640,6 +645,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           }
           throw new PutAllPartialResultException(partialKeys);
         }
+        success = true;
         } catch (RegionDestroyedException e) {
           ds.checkRegionDestroyedOnBucket(bucketRegion, true, e);
         } finally {
@@ -647,14 +653,14 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           if (tx == null) {
             bucketRegion.removeAndNotifyKeys(keys);
           }
-          //bucketRegion.columnBatchFlushLock.readLock().unlock();
-          // TODO: For tx it may change.
-          // TODO: For concurrent putALLs, this will club other putall as well
-          // the putAlls in worst case so cachedbatchsize may be large?
-          if (bucketRegion.getPartitionedRegion().needsBatching()
-              && bucketRegion.size() >= GemFireCacheImpl.getColumnBatchSize()) {
-            bucketRegion.createAndInsertCachedBatch(false);
-          }
+        //bucketRegion.columnBatchFlushLock.readLock().unlock();
+        // TODO: For tx it may change.
+        // TODO: For concurrent putALLs, this will club other putall as well
+        // the putAlls in worst case so cachedbatchsize may be large?
+        if (success && bucketRegion.getPartitionedRegion().needsBatching()
+            && bucketRegion.size() >= GemFireCacheImpl.getColumnBatchSize()) {
+          bucketRegion.createAndInsertCachedBatch(false);
+        }
           if (lockedForPrimary) {
             bucketRegion.doUnlockForPrimary();
           }

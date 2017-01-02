@@ -480,9 +480,7 @@ public abstract class SharedUtils {
         throw (IOException)e.getException();
       }
       else {
-        final IOException ioe = new IOException();
-        ioe.initCause(e.getException());
-        throw ioe;
+        throw new IOException(e.getException());
       }
     }
   }
