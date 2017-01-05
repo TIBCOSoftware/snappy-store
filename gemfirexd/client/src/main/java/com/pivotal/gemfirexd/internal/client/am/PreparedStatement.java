@@ -751,8 +751,7 @@ public class PreparedStatement extends Statement
                 
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.TINYINT;
 // GemStone changes BEGIN
-                // changed to use Short.valueOf() if possible
-                setInput(parameterIndex, x);
+                setInput(parameterIndex, (short)x);
                 /* (original code)
                 setInput(parameterIndex, new Short(x));
                 */
@@ -798,7 +797,6 @@ public class PreparedStatement extends Statement
     void setShortX(int parameterIndex, short x) throws SqlException {
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.SMALLINT;
 // GemStone changes BEGIN
-        // changed to use Short.valueOf() if possible
         setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Short(x));
@@ -838,7 +836,6 @@ public class PreparedStatement extends Statement
     void setIntX(int parameterIndex, int x) throws SqlException {
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.INTEGER;
 // GemStone changes BEGIN
-        // changed to use Integer.valueOf() if possible
         setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Integer(x));
@@ -879,7 +876,6 @@ public class PreparedStatement extends Statement
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] 
                 = java.sql.Types.BIGINT;
 // GemStone changes BEGIN
-        // changed to use valueOf() if possible
         setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Long(x));

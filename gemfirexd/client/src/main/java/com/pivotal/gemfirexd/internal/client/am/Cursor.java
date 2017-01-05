@@ -1618,7 +1618,7 @@ public abstract class Cursor {
         switch (jdbcTypes_[column - 1]) {
         case java.sql.Types.SMALLINT:
 // GemStone changes BEGIN
-            return get_SMALLINT(column); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
+            return (int)get_SMALLINT(column); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
         case java.sql.Types.INTEGER:
             return get_INTEGER(column);
         case java.sql.Types.BIGINT:
