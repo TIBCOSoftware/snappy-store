@@ -60,7 +60,7 @@ jar {
   baseName = 'snappydata-store-client'
   manifest {
     attributes = getManifest('gemfirexdclient', '*',
-        'com.pivotal.gemfirexd.jdbc', [])
+        'io.snappydata.jdbc', [])
   }
 
   doFirst {

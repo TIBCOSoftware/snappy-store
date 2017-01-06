@@ -43,13 +43,14 @@ package com.pivotal.gemfirexd.internal.osgi;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import io.snappydata.jdbc.EmbeddedDriver;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
 public final class EmbeddedActivator implements BundleActivator {
 
 	public void start(BundleContext context) {
-		new com.pivotal.gemfirexd.jdbc.EmbeddedDriver();
+		new EmbeddedDriver();
 	}
 
 	public void stop(BundleContext context) {

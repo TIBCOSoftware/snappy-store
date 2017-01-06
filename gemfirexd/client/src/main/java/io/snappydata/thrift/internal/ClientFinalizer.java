@@ -57,16 +57,16 @@ public final class ClientFinalizer extends FinalizeObject implements
   private final byte entityType;
   private TLinkedList batchedFinalizers;
 
-  static final int DEFAULT_FINALIZER_LOCK_TIMEOUT_MS = 5000;
+  private static final int DEFAULT_FINALIZER_LOCK_TIMEOUT_MS = 5000;
 
-  public ClientFinalizer(Object referent, ClientService service,
+  ClientFinalizer(Object referent, ClientService service,
       byte entityType) {
     super(referent, false);
     this.service = service;
     this.entityType = entityType;
   }
 
-  public void updateReferentData(int id, HostConnection source) {
+  void updateReferentData(int id, HostConnection source) {
     this.id = id;
     this.source = source;
   }
@@ -100,8 +100,7 @@ public final class ClientFinalizer extends FinalizeObject implements
       }
       id = source.connId;
       closeServices.add(service);
-    }
-    else {
+    } else {
       id = finalizer.id;
       source = finalizer.source;
     }
@@ -153,13 +152,12 @@ public final class ClientFinalizer extends FinalizeObject implements
     int numServices = services.size();
     // try for a successful send on any one of the services
     while (true) {
-      for (int i = 0; i < numServices; i++) {
+      for (int i = numServices - 1; i >= 0; i--) {
         boolean success;
         ClientService service = services.get(i);
         if (!service.isOpen) {
           removeFromBulkCloseArgs(i, entities, sources, services);
           numServices--;
-          i--;
           continue;
         }
         try {
@@ -171,21 +169,19 @@ public final class ClientFinalizer extends FinalizeObject implements
           success = false;
           removeFromBulkCloseArgs(i, entities, sources, services);
           numServices--;
-          i--;
         }
         if (success) {
           if (batchedFinalizers != null) {
             batchedFinalizers.clear();
           }
           return true;
-        }
-        else if ((System.currentTimeMillis() - start) >
+        } else if ((System.currentTimeMillis() - start) >
             DEFAULT_FINALIZER_LOCK_TIMEOUT_MS) {
           return false;
         }
       }
       // if all failed then assume the server itself has gone away
-      if (numServices == 0) {
+      if (numServices <= 0) {
         // force close sockets etc for connections to be closed in any case
         if (closeServices != null) {
           for (ClientService service : closeServices) {

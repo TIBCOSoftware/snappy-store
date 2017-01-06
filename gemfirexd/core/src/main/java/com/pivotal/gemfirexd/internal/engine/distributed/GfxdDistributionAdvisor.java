@@ -68,6 +68,7 @@ import com.gemstone.gemfire.internal.cache.ControllerAdvisor.ControllerProfile;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GridAdvisor;
 import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gnu.trove.THashMap;
@@ -1032,21 +1033,24 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
-   * Get the mapping of InternalDistributedMember to corresponding DRDA servers
+   * Get the mapping of InternalDistributedMember to corresponding DRDA/Thrift servers
    * they have in the entire system. The format of the network server string is:
    * <p>
    * host1[port1]{kind1},host2[port2]{kind2},...
    * <p>
    * i.e. comma-separated list of each DRDA server followed by the
-   * <code>VMKind</code> of the VM in curly braces. The DRDA servers on
+   * <code>VMKind</code> of the VM in curly braces. The DRDA/Thrift servers on
    * stand-alone locators are given preference and appear at the front. Note
    * that we do not use ':' to separate host and port since host can be an ipv6
    * address in some rare cases when host name itself cannot be looked up.
+   * <p>
+   * The choice of DRDA servers vs Thrift servers is determined by
    */
-  public final Map<InternalDistributedMember, String> getAllDRDAServersAndCorrespondingMemberMapping() {
+  public final Map<InternalDistributedMember, String> getAllNetServersWithMembers() {
     HashMap<InternalDistributedMember, String> mbrToNetworkServerMap =
       new HashMap<InternalDistributedMember, String>();
     StringBuilder serverSB = new StringBuilder();
+    final boolean useThrift = ClientSharedUtils.USE_THRIFT_AS_DEFAULT;
     this.mapLock.readLock().lock();
     try {
       VMKind kind = this.myProfile.getVMKind();
@@ -1055,9 +1059,9 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
           .currentFabricServiceInstance();
       if (service != null) {
         for (NetworkInterface ni : service.getAllNetworkServers()) {
-          if (!ni.getServerType().isDRDA()) {
-            continue;
-          }
+          if (useThrift) {
+            if (!ni.getServerType().isThrift()) continue;
+          } else if (!ni.getServerType().isDRDA()) continue;
           if (serverSB.length() > 0) {
             serverSB.append(',');
           }
@@ -1070,23 +1074,29 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       // then for all the other members of the DS
       final Map<InternalDistributedMember, VMKind> gfxdMembers =
         this.serverGroupMap.get(DEFAULT_GROUP);
-      Set<String> servers;
-      for (Map.Entry<InternalDistributedMember, Set<String>> entry :
-          this.drdaServerMap.entrySet()) {
-        servers = entry.getValue();
+      Set<?> servers;
+      Map<?, ?> serverMap = useThrift ? thriftServers : drdaServerMap;
+      for (Map.Entry<?, ?> entry : serverMap.entrySet()) {
+        InternalDistributedMember m = (InternalDistributedMember)entry.getKey();
+        servers = (Set<?>)entry.getValue();
         if (servers != null && servers.size() > 0
-            && (kind = gfxdMembers.get(entry.getKey())) != null
+            && (kind = gfxdMembers.get(m)) != null
             && kind != VMKind.LOCATOR) {
           serverSB = new StringBuilder();
-          for (String s : servers) {
+          for (Object s : servers) {
             if (serverSB.length() > 0) {
               serverSB.append(',');
             }
-            serverSB.append(s).append(MEMBER_KIND_BEGIN)
-                .append(kind.toString()).append(MEMBER_KIND_END);
+            if (s instanceof HostAddress) {
+              serverSB.append(((HostAddress)s).getHostString());
+            } else {
+              serverSB.append(s);
+            }
+            serverSB.append(MEMBER_KIND_BEGIN).append(kind.toString())
+                .append(MEMBER_KIND_END);
           }
         }
-        mbrToNetworkServerMap.put(entry.getKey(), serverSB.toString());
+        mbrToNetworkServerMap.put(m, serverSB.toString());
       }
     } finally {
       this.mapLock.readLock().unlock();

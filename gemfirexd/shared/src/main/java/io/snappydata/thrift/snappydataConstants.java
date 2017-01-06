@@ -60,7 +60,7 @@ public class snappydataConstants {
 
   public static final int DEFAULT_RESULTSET_BATCHSIZE = 1024;
 
-  public static final int DEFAULT_LOB_CHUNKSIZE = 1048576;
+  public static final int DEFAULT_LOB_CHUNKSIZE = 2097152;
 
   public static final byte TRANSACTION_NONE = (byte)0;
 

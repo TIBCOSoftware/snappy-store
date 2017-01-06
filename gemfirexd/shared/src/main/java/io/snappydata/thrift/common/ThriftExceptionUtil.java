@@ -127,9 +127,8 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
         if (next.getNextExceptions() != null) {
           se.getNextExceptions().addAll(next.getNextExceptions());
         }
-      } else {
-        se.initCause(t);
       }
+      se.initCause(t);
     }
     return se;
   }

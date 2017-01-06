@@ -2326,7 +2326,7 @@ public class ClientDBMetaData implements DatabaseMetaData {
           new ServiceMetaDataArgs()
               .setDriverType(ClientConfiguration.DRIVER_TYPE)
               .setSchema(schemaPattern).setTable(tableNamePattern)
-              .setTableTypes(Arrays.asList(types)));
+              .setTableTypes(types != null ? Arrays.asList(types) : null));
       return new ClientResultSet(this.conn, this.metaAttrs, rs);
     } catch (SnappyException se) {
       throw ThriftExceptionUtil.newSQLException(se);

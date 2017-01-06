@@ -417,6 +417,12 @@ public interface Attribute {
   String PREFER_NETSERVER_IP_ADDRESS = "prefer-netserver-ipaddress";
 
   /**
+   * System property to force using a different hostName/IP sent
+   * to clients that will be exposed for external JDBC clients.
+   */
+  String HOSTNAME_FOR_CLIENTS = "hostname-for-clients";
+
+  /**
    * The attribute that is used for the database name, from the JDBC notion of
    * jdbc:&lt;subprotocol&gt;:&lt;subname&gt;
    */

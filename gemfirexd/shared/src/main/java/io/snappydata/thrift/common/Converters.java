@@ -208,7 +208,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "boolean");
+        throw newTypeSetConversionException(
+            c.getName(), "boolean", columnIndex);
       }
     }
   };
@@ -372,7 +373,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "byte");
+        throw newTypeSetConversionException(
+            c.getName(), "byte", columnIndex);
       }
     }
   };
@@ -537,7 +539,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "short");
+        throw newTypeSetConversionException(
+            c.getName(), "short", columnIndex);
       }
     }
   };
@@ -703,7 +706,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "int");
+        throw newTypeSetConversionException(
+            c.getName(), "int", columnIndex);
       }
     }
   };
@@ -870,7 +874,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "long");
+        throw newTypeSetConversionException(
+            c.getName(), "long", columnIndex);
       }
     }
   };
@@ -1043,7 +1048,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "float");
+        throw newTypeSetConversionException(
+            c.getName(), "float", columnIndex);
       }
     }
   };
@@ -1212,7 +1218,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "double");
+        throw newTypeSetConversionException(
+            c.getName(), "double", columnIndex);
       }
     }
   };
@@ -1384,7 +1391,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), "BigDecimal");
+        throw newTypeSetConversionException(
+            c.getName(), "BigDecimal", columnIndex);
       }
     }
   };
@@ -1484,7 +1492,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(o.getClass().getName(), "Date");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Date", columnIndex);
       }
     }
   };
@@ -1584,7 +1593,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(o.getClass().getName(), "Time");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Time", columnIndex);
       }
     }
   };
@@ -1687,7 +1697,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(o.getClass().getName(), "Timestamp");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Timestamp", columnIndex);
       }
     }
   };
@@ -1957,7 +1968,8 @@ public abstract class Converters {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
       }
       else {
-        throw newTypeConversionException(c.getName(), getType().toString());
+        throw newTypeSetConversionException(
+            c.getName(), getType().toString(), columnIndex);
       }
     }
   }
@@ -2027,7 +2039,8 @@ public abstract class Converters {
         byte[] bytes = ClientSharedUtils.fromHexString(x, 0, x.length());
         setBytes(row, columnIndex, bytes);
       } catch (IllegalArgumentException iae) {
-        throw newTypeConversionException("String", getType().toString(), iae);
+        throw newTypeSetConversionException(
+            "String", getType().toString(), Integer.toString(columnIndex), iae);
       }
     }
     @Override
@@ -2040,7 +2053,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(o.getClass().getName(), "byte[]");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "byte[]", columnIndex);
       }
     }
   };
@@ -2092,7 +2106,8 @@ public abstract class Converters {
         byte[] bytes = ClientSharedUtils.fromHexString(x, 0, x.length());
         setBytes(row, columnIndex, bytes);
       } catch (IllegalArgumentException iae) {
-        throw newTypeConversionException("String", getType().toString(), iae);
+        throw newTypeSetConversionException(
+            "String", getType().toString(), Integer.toString(columnIndex), iae);
       }
     }
     @Override
@@ -2105,7 +2120,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(o.getClass().getName(), "Blob");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Blob", columnIndex);
       }
     }
   };
@@ -2128,7 +2144,8 @@ public abstract class Converters {
         return (Byte)o != 0;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "boolean");
+        throw newTypeConversionException(
+            getType().toString(), "boolean", columnIndex);
       }
     }
     @Override
@@ -2139,7 +2156,8 @@ public abstract class Converters {
         return ((Number)o).byteValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "byte");
+        throw newTypeConversionException(
+            getType().toString(), "byte", columnIndex);
       }
     }
     @Override
@@ -2150,7 +2168,8 @@ public abstract class Converters {
         return ((Number)o).shortValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "short");
+        throw newTypeConversionException(
+            getType().toString(), "short", columnIndex);
       }
     }
     @Override
@@ -2161,7 +2180,8 @@ public abstract class Converters {
         return ((Number)o).intValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "int");
+        throw newTypeConversionException(
+            getType().toString(), "int", columnIndex);
       }
     }
     @Override
@@ -2172,7 +2192,8 @@ public abstract class Converters {
         return ((Number)o).longValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "long");
+        throw newTypeConversionException(
+            getType().toString(), "long", columnIndex);
       }
     }
     @Override
@@ -2183,7 +2204,8 @@ public abstract class Converters {
         return ((Number)o).floatValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "float");
+        throw newTypeConversionException(
+            getType().toString(), "float", columnIndex);
       }
     }
     @Override
@@ -2194,7 +2216,8 @@ public abstract class Converters {
         return ((Number)o).doubleValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "double");
+        throw newTypeConversionException(
+            getType().toString(), "double", columnIndex);
       }
     }
     @Override
@@ -2205,7 +2228,8 @@ public abstract class Converters {
         return (BigDecimal)o;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "BigDecimal");
+        throw newTypeConversionException(
+            getType().toString(), "BigDecimal", columnIndex);
       }
     }
     @Override
@@ -2227,7 +2251,8 @@ public abstract class Converters {
         return (java.sql.Date)o;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "Date");
+        throw newTypeConversionException(
+            getType().toString(), "Date", columnIndex);
       }
     }
     @Override
@@ -2238,7 +2263,8 @@ public abstract class Converters {
         return (java.sql.Timestamp)o;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "Timestamp");
+        throw newTypeConversionException(
+            getType().toString(), "Timestamp", columnIndex);
       }
     }
     @Override
@@ -2249,7 +2275,8 @@ public abstract class Converters {
         return (java.sql.Time)o;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "Time");
+        throw newTypeConversionException(
+            getType().toString(), "Time", columnIndex);
       }
     }
     @Override
@@ -2260,7 +2287,8 @@ public abstract class Converters {
         return (byte[])o;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "byte[]");
+        throw newTypeConversionException(
+            getType().toString(), "byte[]", columnIndex);
       }
     }
     @Override
@@ -2374,7 +2402,8 @@ public abstract class Converters {
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
       } else {
-        throw newTypeConversionException(o.getClass().getName(), "ARRAY");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "ARRAY", columnIndex);
       }
     }
   };
@@ -2418,7 +2447,8 @@ public abstract class Converters {
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
       } else {
-        throw newTypeConversionException(o.getClass().getName(), "MAP");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "MAP", columnIndex);
       }
     }
   };
@@ -2462,7 +2492,8 @@ public abstract class Converters {
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
       } else {
-        throw newTypeConversionException(o.getClass().getName(), "STRUCT");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "STRUCT", columnIndex);
       }
     }
   };
@@ -2505,7 +2536,8 @@ public abstract class Converters {
         setString(row, columnIndex, (String)o);
       }
       else {
-        throw newTypeConversionException(o.getClass().getName(), "JSON");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "JSON", columnIndex);
       }
     }
   };
@@ -2685,15 +2717,29 @@ public abstract class Converters {
   }
 
   public static SQLException newTypeConversionException(
-      String sourceType, String targetType, Throwable cause) {
+      String sourceType, String targetType, String column, Throwable cause) {
     return ThriftExceptionUtil.newSQLException(
-        SQLState.LANG_DATA_TYPE_GET_MISMATCH, cause, sourceType,
-        targetType, null);
+        SQLState.LANG_DATA_TYPE_GET_MISMATCH, cause, targetType,
+        sourceType, column);
   }
 
   public static SQLException newTypeConversionException(
-      String sourceType, String targetType) {
-    return newTypeConversionException(sourceType, targetType, null);
+      String sourceType, String targetType, int columnIndex) {
+    return newTypeConversionException(sourceType, targetType,
+        Integer.toString(columnIndex), null);
+  }
+
+  public static SQLException newTypeSetConversionException(
+      String sourceType, String targetType, String column, Throwable cause) {
+    return ThriftExceptionUtil.newSQLException(
+        SQLState.LANG_DATA_TYPE_SET_MISMATCH, cause, targetType,
+        sourceType, column);
+  }
+
+  public static SQLException newTypeSetConversionException(
+      String sourceType, String targetType, int columnIndex) {
+    return newTypeSetConversionException(sourceType, targetType,
+        Integer.toString(columnIndex), null);
   }
 
   public static SQLException newOutOfRangeException(
@@ -2714,13 +2760,16 @@ public abstract class Converters {
   }
 
   public static ColumnValueConverter getConverter(SnappyType type,
-      String targetType) throws SQLException {
+      String targetType, boolean forSet, int columnIndex) throws SQLException {
     ColumnValueConverter converter = typeConverters[type.ordinal()];
     if (converter != null) {
       return converter;
-    }
-    else {
-      throw newTypeConversionException(type.toString(), targetType);
+    } else if (forSet) {
+      throw newTypeSetConversionException(
+          type.toString(), targetType, Integer.toString(columnIndex), null);
+    } else {
+      throw newTypeConversionException(
+          type.toString(), targetType, Integer.toString(columnIndex), null);
     }
   }
 

@@ -8052,7 +8052,7 @@ Shutting down instance {0}</text>
 
             <msg>
                 <name>I015</name>
-                <text>com.pivotal.gemfirexd.jdbc.EmbeddedDriver is not registered with the JDBC driver manager</text>
+                <text>io.snappydata.jdbc.EmbeddedDriver is not registered with the JDBC driver manager</text>
             </msg>
 
             <msg>

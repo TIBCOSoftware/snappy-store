@@ -73,12 +73,10 @@ abstract class ClientFetchColumnValue implements LobService {
     final HostConnection source;
     if (finalizer != null && (source = finalizer.source) != null) {
       return source;
-    }
-    else if (throwOnFailure) {
+    } else if (throwOnFailure) {
       throw (SQLException)service.newExceptionForNodeFailure(null, op,
           service.isolationLevel, null, false);
-    }
-    else {
+    } else {
       return null;
     }
   }
@@ -99,8 +97,7 @@ abstract class ClientFetchColumnValue implements LobService {
             entityId);
       }
       finalizer.updateReferentData(newId, newSource);
-    }
-    else if (finalizer != null) {
+    } else if (finalizer != null) {
       // clear the finalizer
       finalizer.clearAll();
       this.finalizer = null;
@@ -167,7 +164,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final String getString(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "String");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "String", false, columnIndex);
     String str = cvc.toString(row, columnIndex, this);
     this.wasNull = (str == null);
     return str;
@@ -175,7 +173,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final boolean getBoolean(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "boolean");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "boolean", false, columnIndex);
     boolean v = cvc.toBoolean(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
@@ -183,7 +182,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final byte getByte(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "byte");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "byte", false, columnIndex);
     byte v = cvc.toByte(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
@@ -191,7 +191,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final short getShort(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "short");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "short", false, columnIndex);
     short v = cvc.toShort(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
@@ -199,7 +200,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final int getInt(final int columnIndex, final SnappyType snappyType,
       final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "int");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "int", false, columnIndex);
     int v = cvc.toInteger(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
@@ -207,7 +209,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final long getLong(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "long");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "long", false, columnIndex);
     long v = cvc.toLong(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
@@ -215,7 +218,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final float getFloat(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "float");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "float", false, columnIndex);
     float v = cvc.toFloat(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
@@ -223,7 +227,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final double getDouble(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "doube");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "doube", false, columnIndex);
     double v = cvc.toDouble(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
@@ -231,7 +236,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final BigDecimal getBigDecimal(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "BigDecimal");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "BigDecimal", false, columnIndex);
     BigDecimal v = cvc.toBigDecimal(row, columnIndex);
     this.wasNull = (v == null);
     return v;
@@ -240,23 +246,23 @@ abstract class ClientFetchColumnValue implements LobService {
   protected final BigDecimal getBigDecimal(final int columnIndex,
       final int scale, final SnappyType snappyType, final Row row)
       throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType,
-        "BigDecimal");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "BigDecimal", false, columnIndex);
     BigDecimal v = cvc.toBigDecimal(row, columnIndex);
     if (v != null) {
       // rounding as per server side EmbedResultSet20
       v.setScale(scale, BigDecimal.ROUND_HALF_DOWN);
       this.wasNull = false;
       return v;
-    }
-    else {
+    } else {
       return null;
     }
   }
 
   protected final byte[] getBytes(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "byte[]");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "byte[]", false, columnIndex);
     byte[] v = cvc.toBytes(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
@@ -264,7 +270,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final Date getDate(final int columnIndex, final Calendar cal,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "Date");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "Date", false, columnIndex);
     Date v = cvc.toDate(row, columnIndex, cal);
     this.wasNull = (v == null);
     return v;
@@ -272,7 +279,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final Time getTime(final int columnIndex, final Calendar cal,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "Time");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "Time", false, columnIndex);
     Time v = cvc.toTime(row, columnIndex, cal);
     this.wasNull = (v == null);
     return v;
@@ -281,7 +289,8 @@ abstract class ClientFetchColumnValue implements LobService {
   protected final Timestamp getTimestamp(final int columnIndex,
       final Calendar cal, final SnappyType snappyType, final Row row)
       throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "Timestamp");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "Timestamp", false, columnIndex);
     Timestamp v = cvc.toTimestamp(row, columnIndex, cal);
     this.wasNull = (v == null);
     return v;
@@ -289,7 +298,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final Object getObject(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "Object");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "Object", false, columnIndex);
     Object v = cvc.toObject(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
@@ -297,7 +307,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final Blob getBlob(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "Blob");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "Blob", false, columnIndex);
     Blob v = cvc.toBlob(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
@@ -305,8 +316,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final InputStream getBinaryStream(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters
-        .getConverter(snappyType, "BinaryStream");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "BinaryStream", false, columnIndex);
     InputStream v = cvc.toBinaryStream(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
@@ -314,7 +325,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final Clob getClob(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType, "Clob");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "Clob", false, columnIndex);
     Clob v = cvc.toClob(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
@@ -322,8 +334,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final Reader getCharacterStream(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType,
-        "CharacterStream");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "CharacterStream", false, columnIndex);
     Reader v = cvc.toCharacterStream(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
@@ -331,8 +343,8 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final InputStream getAsciiStream(final int columnIndex,
       final SnappyType snappyType, final Row row) throws SQLException {
-    ColumnValueConverter cvc = Converters.getConverter(snappyType,
-        "AsciiStream");
+    ColumnValueConverter cvc = Converters.getConverter(
+        snappyType, "AsciiStream", false, columnIndex);
     InputStream v = cvc.toAsciiStream(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
@@ -348,8 +360,7 @@ abstract class ClientFetchColumnValue implements LobService {
     if (map.isEmpty()) {
       // Map is empty call the normal getObject method.
       return getObject(columnIndex, snappyType, row);
-    }
-    else {
+    } else {
       throw ThriftExceptionUtil
           .notImplemented("FetchColumnValue.getObject(int,Map)");
     }

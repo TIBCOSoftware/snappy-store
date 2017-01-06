@@ -59,44 +59,50 @@ public abstract class ColumnValueConverter {
 
   public boolean toBoolean(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters
-        .newTypeConversionException(getType().toString(), "boolean");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "boolean", columnIndex);
   }
 
   public byte toByte(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "byte", columnIndex);
   }
 
   public short toShort(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "short");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "short", columnIndex);
   }
 
   public int toInteger(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "int");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "int", columnIndex);
   }
 
   public long toLong(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "long");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "long", columnIndex);
   }
 
   public float toFloat(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "float");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "float", columnIndex);
   }
 
   public double toDouble(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "double");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "double", columnIndex);
   }
 
   public BigDecimal toBigDecimal(OptimizedElementArray row, int columnIndex)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "BigDecimal");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "BigDecimal", columnIndex);
   }
 
   public abstract String toString(OptimizedElementArray row, int columnIndex,
@@ -104,51 +110,56 @@ public abstract class ColumnValueConverter {
 
   public Date toDate(OptimizedElementArray row, int columnIndex, Calendar cal)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Date");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Date", columnIndex);
   }
 
   public Time toTime(OptimizedElementArray row, int columnIndex, Calendar cal)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Time");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Time", columnIndex);
   }
 
   public Timestamp toTimestamp(OptimizedElementArray row, int columnIndex,
       Calendar cal) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "Timestamp");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Timestamp", columnIndex);
   }
 
   public byte[] toBytes(OptimizedElementArray row, int columnIndex,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte[]");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "byte[]", columnIndex);
   }
 
   public Blob toBlob(OptimizedElementArray row, int columnIndex,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Blob");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Blob", columnIndex);
   }
 
   public InputStream toBinaryStream(OptimizedElementArray row, int columnIndex,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "InputStream");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "InputStream", columnIndex);
   }
 
   public Clob toClob(OptimizedElementArray row, int columnIndex,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Clob");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Clob", columnIndex);
   }
 
   public Reader toCharacterStream(OptimizedElementArray row, int columnIndex,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "CharacterStream");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "CharacterStream", columnIndex);
   }
 
   public InputStream toAsciiStream(OptimizedElementArray row, int columnIndex,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "AsciiStream");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "AsciiStream", columnIndex);
   }
 
   public abstract Object toObject(OptimizedElementArray row, int columnIndex,
@@ -156,44 +167,50 @@ public abstract class ColumnValueConverter {
 
   public void setBoolean(OptimizedElementArray row, int columnIndex, boolean x)
       throws SQLException {
-    throw Converters
-        .newTypeConversionException(getType().toString(), "boolean");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "boolean", columnIndex);
   }
 
   public void setByte(OptimizedElementArray row, int columnIndex, byte x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "byte", columnIndex);
   }
 
   public void setShort(OptimizedElementArray row, int columnIndex, short x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "short");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "short", columnIndex);
   }
 
   public void setInteger(OptimizedElementArray row, int columnIndex, int x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "int");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "int", columnIndex);
   }
 
   public void setLong(OptimizedElementArray row, int columnIndex, long x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "long");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "long", columnIndex);
   }
 
   public void setFloat(OptimizedElementArray row, int columnIndex, float x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "float");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "float", columnIndex);
   }
 
   public void setDouble(OptimizedElementArray row, int columnIndex, double x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "double");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "double", columnIndex);
   }
 
   public void setBigDecimal(OptimizedElementArray row, int columnIndex,
       BigDecimal x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "BigDecimal");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "BigDecimal", columnIndex);
   }
 
   public abstract void setString(OptimizedElementArray row, int columnIndex,
@@ -201,23 +218,26 @@ public abstract class ColumnValueConverter {
 
   public void setDate(OptimizedElementArray row, int columnIndex, Date x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Date");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "Date", columnIndex);
   }
 
   public void setTime(OptimizedElementArray row, int columnIndex, Time x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Time");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "Time", columnIndex);
   }
 
   public void setTimestamp(OptimizedElementArray row, int columnIndex,
       Timestamp x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "Timestamp");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "Timestamp", columnIndex);
   }
 
   public void setBytes(OptimizedElementArray row, int columnIndex, byte[] x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte[]");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "byte[]", columnIndex);
   }
 
   public void setBlob(OptimizedElementArray row, int columnIndex, Blob x)
@@ -233,8 +253,8 @@ public abstract class ColumnValueConverter {
 
   public void setBinaryStream(OptimizedElementArray row, int columnIndex,
       InputStream x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "InputStream");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "InputStream", columnIndex);
   }
 
   public void setClob(OptimizedElementArray row, int columnIndex, Clob x)
@@ -250,14 +270,14 @@ public abstract class ColumnValueConverter {
 
   public void setCharacterStream(OptimizedElementArray row, int columnIndex,
       Reader x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "CharacterStream");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "CharacterStream", columnIndex);
   }
 
   public void setAsciiStream(OptimizedElementArray row, int columnIndex,
       InputStream x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "AsciiStream");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "AsciiStream", columnIndex);
   }
 
   public abstract void setObject(OptimizedElementArray row, int columnIndex,

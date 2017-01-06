@@ -182,7 +182,7 @@ public final class NetworkServerControlImpl {
 
 	private final static String DRDA_PROP_MESSAGES = "com.pivotal.gemfirexd.internal.loc.drda.messages";
 	private final static String DRDA_PROP_DEBUG = "gemfirexd.drda.debug";
-	private final static String CLOUDSCAPE_DRIVER = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+	private final static String CLOUDSCAPE_DRIVER = "io.snappydata.jdbc.EmbeddedDriver";
 
 	public final static String UNEXPECTED_ERR = "Unexpected exception";
 

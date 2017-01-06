@@ -48,6 +48,7 @@ import java.util.TreeMap;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.gemstone.gnu.trove.TIntIntHashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
+import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.ColumnValue;
 import io.snappydata.thrift.OutputParameter;
@@ -177,12 +178,15 @@ public final class ClientCallableStatement extends ClientPreparedStatement
       if (index > 0) {
         return index;
       }
-      else {
+      index = this.parameterNameToIndex.get(
+          SharedUtils.SQLToUpperCase(parameterName));
+      if (index > 0) {
+        return index;
+      } else {
         throw ThriftExceptionUtil.newSQLException(SQLState.COLUMN_NOT_FOUND,
             null, parameterName);
       }
-    }
-    else {
+    } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.NULL_COLUMN_NAME);
     }
   }

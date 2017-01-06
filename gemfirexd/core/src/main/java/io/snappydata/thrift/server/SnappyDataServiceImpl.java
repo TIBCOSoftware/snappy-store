@@ -50,6 +50,7 @@ import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTLongObjectHashMap;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -398,7 +399,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     else {
       // TODO: SW: i18 string here
       SnappyExceptionData exData = new SnappyExceptionData();
-      exData.setReason("No connection with ID=0x"
+      exData.setReason("No connection with ID="
           + ConnectionHolder.getTokenAsString(token));
       exData.setSqlState(SQLState.NO_CURRENT_CONNECTION);
       exData.setSeverity(ExceptionSeverity.STATEMENT_SEVERITY);
@@ -446,10 +447,12 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
   SnappyException tokenMismatchException(ByteBuffer token, final String op) {
     SnappyExceptionData exData = new SnappyExceptionData();
+    String message = token != null && token.hasRemaining()
+        ? "connection token " + ConnectionHolder.getTokenAsString(token) +
+        " mismatch for operation " + op
+        : "No connection token passed for operation " + op;
     exData.setReason(MessageService.getTextMessage(
-        SQLState.NET_CONNECT_AUTH_FAILED, "connection token "
-            + ConnectionHolder.getTokenAsString(token)
-            + " mismatch for operation " + op));
+        SQLState.NET_CONNECT_AUTH_FAILED, message));
     exData.setSqlState(SQLState.NET_CONNECT_AUTH_FAILED.substring(0, 5));
     exData.setSeverity(ExceptionSeverity.SESSION_SEVERITY);
     return new SnappyException(exData, getServerInfo());
@@ -614,7 +617,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
    * keeping serialization compatible with thrift Row.
    * </p>
    */
-  private void setColumnValue(EmbedResultSet rs, SnappyType colType,
+  private long setColumnValue(ResultSet rs, SnappyType colType,
       int columnIndex, ConnectionHolder connHolder, StatementAttrs attrs,
       Row result) throws SQLException {
     final int index = columnIndex - 1;
@@ -623,66 +626,66 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         boolean boolValue = rs.getBoolean(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setBoolean(index, boolValue);
+          return 1;
         }
-        break;
       case TINYINT:
         byte byteValue = rs.getByte(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setByte(index, byteValue);
+          return 1;
         }
-        break;
       case SMALLINT:
         short shortValue = rs.getShort(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setShort(index, shortValue);
+          return 2;
         }
-        break;
       case INTEGER:
         int intValue = rs.getInt(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setInt(index, intValue);
+          return 4;
         }
-        break;
       case BIGINT:
         long longValue = rs.getLong(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setLong(index, longValue);
+          return 8;
         }
-        break;
       case REAL:
         float fltValue = rs.getFloat(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setFloat(index, fltValue);
+          return 4;
         }
-        break;
       case DOUBLE:
       case FLOAT:
         double dblValue = rs.getDouble(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setDouble(index, dblValue);
+          return 8;
         }
-        break;
       case CHAR:
       case VARCHAR:
       case LONGVARCHAR:
@@ -690,320 +693,121 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         String strValue = rs.getString(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setObject(index, strValue, colType);
+          return ((long)(ReflectionSingleObjectSizer.OBJECT_SIZE +
+              strValue.length())) << 1L;
         }
-        break;
       case BLOB:
         Blob blob = rs.getBlob(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
+          return 1;
+        } else {
+          BlobChunk chunk = handleBlob(blob, connHolder, attrs);
+          result.setObject(index, chunk, SnappyType.BLOB);
+          return ReflectionSingleObjectSizer.OBJECT_SIZE * 3 +
+              chunk.chunk.limit() + 12 /* for remaining fields */;
         }
-        else {
-          result.setObject(index, handleBlob(blob, connHolder, attrs),
-              SnappyType.BLOB);
-        }
-        break;
       case CLOB:
         Clob clob = rs.getClob(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
+          return 1;
+        } else {
+          ClobChunk chunk = handleClob(clob, connHolder, attrs);
+          result.setObject(index, chunk, SnappyType.CLOB);
+          return ReflectionSingleObjectSizer.OBJECT_SIZE * 3 +
+              chunk.chunk.length() + 12 /* for remaining fields */;
         }
-        else {
-          result.setObject(index, handleClob(clob, connHolder, attrs),
-              SnappyType.CLOB);
-        }
-        break;
       case DECIMAL:
         BigDecimal bd = rs.getBigDecimal(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           if (connHolder.useStringForDecimal()) {
-            result.setObject(index, bd.toPlainString(), SnappyType.VARCHAR);
-          }
-          else {
+            String s = bd.toPlainString();
+            result.setObject(index, s, SnappyType.VARCHAR);
+            return ((long)(ReflectionSingleObjectSizer.OBJECT_SIZE +
+                s.length())) << 1L;
+          } else {
             result.setObject(index, bd, SnappyType.DECIMAL);
+            return ReflectionSingleObjectSizer.OBJECT_SIZE * 3 +
+                (bd.precision() << 2);
           }
         }
-        break;
       case DATE:
         Date dtVal = rs.getDate(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setObject(index, dtVal, SnappyType.DATE);
+          return ReflectionSingleObjectSizer.OBJECT_SIZE + 8;
         }
-        break;
       case TIME:
         Time timeVal = rs.getTime(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setObject(index, timeVal, SnappyType.TIME);
+          return ReflectionSingleObjectSizer.OBJECT_SIZE + 8;
         }
-        break;
       case TIMESTAMP:
         java.sql.Timestamp tsVal = rs.getTimestamp(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setObject(index, tsVal, SnappyType.TIMESTAMP);
+          return ReflectionSingleObjectSizer.OBJECT_SIZE + 16;
         }
-        break;
       case BINARY:
       case VARBINARY:
       case LONGVARBINARY:
         byte[] byteArray = rs.getBytes(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setObject(index, byteArray, colType);
+          return ReflectionSingleObjectSizer.OBJECT_SIZE + byteArray.length;
         }
-        break;
       case NULLTYPE:
         result.setNull(index);
-        break;
+        return 1;
       case JAVA_OBJECT:
         Object o = rs.getObject(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else if (o instanceof JSONObject) {
+          return 1;
+        } else if (o instanceof JSONObject) {
           result.setObject(index, o, SnappyType.JSON);
-        }
-        else {
+        } else {
           result.setObject(index, o, SnappyType.JAVA_OBJECT);
         }
-        break;
+        // hard-code some fixed size
+        return 128;
       case JSON:
         o = rs.getObject(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
-        }
-        else {
+          return 1;
+        } else {
           result.setObject(index, o, SnappyType.JSON);
+          // hard-code some fixed size
+          return 128;
         }
-        break;
       case ARRAY:
       case MAP:
       case STRUCT:
         // TODO: proper implementation of above three
-      case OTHER:
+      default:
         throw Util.generateCsSQLException(SQLState.DATA_TYPE_NOT_SUPPORTED,
             Util.typeName(Converters.getJdbcType(colType)));
-    }
-  }
-
-  /**
-   * Set a column value in a Row.
-   * <p>
-   * The java version of Row overrides the thrift one to make use of
-   * {@link OptimizedElementArray} to reduce overhead/objects while still
-   * keeping serialization compatible with thrift Row.
-   * </p>
-   */
-  private void setColumnValue(ResultSet rs, ResultSetMetaData rsmd,
-      int columnIndex, ConnectionHolder connHolder, StatementAttrs attrs,
-      Row result) throws SQLException {
-    int colType = rsmd.getColumnType(columnIndex);
-    final int index = columnIndex - 1;
-    switch (colType) {
-      case Types.BOOLEAN:
-      case Types.BIT:
-        boolean boolValue = rs.getBoolean(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setBoolean(index, boolValue);
-        }
-        break;
-      case Types.TINYINT:
-        byte byteValue = rs.getByte(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setByte(index, byteValue);
-        }
-        break;
-      case Types.SMALLINT:
-        short shortValue = rs.getShort(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setShort(index, shortValue);
-        }
-        break;
-      case Types.INTEGER:
-        int intValue = rs.getInt(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setInt(index, intValue);
-        }
-        break;
-      case Types.BIGINT:
-        long longValue = rs.getLong(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setLong(index, longValue);
-        }
-        break;
-      case Types.REAL:
-        float fltValue = rs.getFloat(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setFloat(index, fltValue);
-        }
-        break;
-      case Types.FLOAT:
-      case Types.DOUBLE:
-        double dblValue = rs.getDouble(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setDouble(index, dblValue);
-        }
-        break;
-      case Types.CHAR:
-      case Types.VARCHAR:
-      case Types.LONGVARCHAR:
-      case Types.NCHAR:
-      case Types.NVARCHAR:
-      case Types.LONGNVARCHAR:
-      case Types.SQLXML:
-        String strValue = rs.getString(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, strValue,
-              Converters.getThriftSQLType(colType));
-        }
-        break;
-      case Types.BLOB:
-        Blob blob = rs.getBlob(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, handleBlob(blob, connHolder, attrs),
-              SnappyType.BLOB);
-        }
-        break;
-      case Types.CLOB:
-      case Types.NCLOB:
-        Clob clob = rs.getClob(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, handleClob(clob, connHolder, attrs),
-              SnappyType.CLOB);
-        }
-        break;
-      case Types.NUMERIC:
-      case Types.DECIMAL:
-        BigDecimal bd = rs.getBigDecimal(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          if (connHolder.useStringForDecimal()) {
-            result.setObject(index, bd.toPlainString(), SnappyType.VARCHAR);
-          }
-          else {
-            result.setObject(index, bd, SnappyType.DECIMAL);
-          }
-        }
-        break;
-      case Types.DATE:
-        Date dtVal = rs.getDate(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, dtVal, SnappyType.DATE);
-        }
-        break;
-      case Types.TIME:
-        Time timeVal = rs.getTime(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, timeVal, SnappyType.TIME);
-        }
-        break;
-      case Types.TIMESTAMP:
-        java.sql.Timestamp tsVal = rs.getTimestamp(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, tsVal, SnappyType.TIMESTAMP);
-        }
-        break;
-      case Types.BINARY:
-      case Types.VARBINARY:
-      case Types.LONGVARBINARY:
-        byte[] byteArray = rs.getBytes(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, byteArray,
-              Converters.getThriftSQLType(colType));
-        }
-        break;
-      case Types.NULL:
-        result.setNull(index);
-        break;
-      case Types.JAVA_OBJECT:
-        Object o = rs.getObject(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else if (o instanceof JSONObject) {
-          result.setObject(index, o, SnappyType.JSON);
-        }
-        else {
-          result.setObject(index, o, SnappyType.JAVA_OBJECT);
-        }
-        break;
-      case JDBC40Translation.JSON:
-        o = rs.getObject(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-        }
-        else {
-          result.setObject(index, o, SnappyType.JSON);
-        }
-        break;
-      case Types.DISTINCT:
-      case Types.STRUCT:
-      case Types.ARRAY:
-      case Types.REF:
-      case Types.DATALINK:
-      case Types.ROWID:
-      case Types.OTHER:
-        throw Util.generateCsSQLException(SQLState.DATA_TYPE_NOT_SUPPORTED,
-            Util.typeName(colType));
     }
   }
 
@@ -1453,12 +1257,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       final List<Row> rows = result.getRows();
       Row templateRow = null;
       EmbedStatement estmt = null;
+      long estimatedSize = 0L;
       int nrows = 0;
       if (rs instanceof EmbedResultSet) {
         final EmbedResultSet ers = (EmbedResultSet)rs;
         estmt = (EmbedStatement)stmt;
-        final ColumnDescriptor[] descs = descriptors
-            .toArray(new ColumnDescriptor[columnCount]);
         synchronized (conn.getConnectionSynchronization()) {
           ers.setupContextStack(false);
           ers.pushStatementContext(conn.getLanguageConnection(), true);
@@ -1479,8 +1282,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                 eachRow = new Row(templateRow, false);
               }
               for (int colIndex = 1; colIndex <= columnCount; colIndex++) {
-                setColumnValue(ers, descs[colIndex - 1].type, colIndex,
-                    connHolder, attrs, eachRow);
+                estimatedSize += setColumnValue(ers, descriptors.get(
+                    colIndex - 1).type, colIndex, connHolder, attrs, eachRow);
               }
               rows.add(eachRow);
               if (((++nrows) % GemFireXDUtils.DML_SAMPLE_INTERVAL) == 0) {
@@ -1502,7 +1305,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                   startTime = currentTime;
                 }
               }
-              if (nrows >= batchSize) {
+              if (nrows >= batchSize ||
+                  estimatedSize > GemFireXDUtils.DML_MAX_CHUNK_SIZE) {
                 isLastBatch = false;
                 break;
               }
@@ -1529,7 +1333,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             eachRow = new Row(templateRow, false);
           }
           for (int colIndex = 1; colIndex <= columnCount; colIndex++) {
-            setColumnValue(rs, rsmd, colIndex, connHolder, attrs, eachRow);
+            estimatedSize += setColumnValue(rs, descriptors.get(
+                colIndex - 1).type, colIndex, connHolder, attrs, eachRow);
           }
           rows.add(eachRow);
           if (((++nrows) % GemFireXDUtils.DML_SAMPLE_INTERVAL) == 0) {
@@ -1551,7 +1356,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               startTime = currentTime;
             }
           }
-          if (nrows >= batchSize) {
+          if (nrows >= batchSize ||
+              estimatedSize > GemFireXDUtils.DML_MAX_CHUNK_SIZE) {
             isLastBatch = false;
             break;
           }

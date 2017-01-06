@@ -7,6 +7,69 @@
 # ADD THE JIRA TICKET ID, IF APPLICABLE.                                                           #
 ####################################################################################################
 
+
+Release 1.5.3
+
+Bug Fixes
+
+  [SNAP-1253] Code changes to identify whether member is a Data Server.
+
+  [SNAP-1112] Query hints for executionEngine doesn't work correctly.
+
+  [AQP-263] Updating reservoir size calculation for stats.
+
+  [SNAP-1238] LockTimeoutException while restarting the abruptly killed server node.
+
+  [SNAP-1240] Snappy monitoring dashboard.
+
+  Improving entry size estimation.
+
+  [SNAP-1237] Set batchID to NULL in a synchronized block which was responsible for generating new
+    batchUUID.
+
+  Fixing multiple issues with sizing in SnappyRegionStatsCollectorFunction.
+
+  Fixing routing for queries with subqueries in GROUP BY that fail with AssertFailure currently.
+
+  [SNAP-1228] Drop table command hangs when executed multiple times on JDBC connection.
+
+  Route CREATE INDEX and DROP INDEX statements to Lead node of SnappyData cluster.
+
+  Use a more efficient UUID generation than UUID.randomUUID()
+
+  [SNAP-1199] ServerGroupUtils.isGroupMember should return false if groups is null.
+
+  [SNAP-1191] Store side changes for plan caching.
+
+  Allow for flush with batchSize smaller than the hard-coded minBatchSize (currently 200).
+
+  [AQP-219] Display row count for sample tables in SnappyData Dashboard.
+
+  Avoid lazy initialization of dsys/logger in GfxdReentrantReadWriteLock.
+
+  [SNAP-999] Added code to send the install jar message to lead nodes as well.
+
+  [SNAP-1179] Mark YEAR, HOUR, MINUTE, SECOND as non-reserved (#124)
+
+  [AQP-79] Put reservoir in regions than in-memory data structure. The proposed changed are only for
+    sampling done on a given fraction %. But can be extended to all other scenario. Also implement 
+    changes for partitioned sample table.
+
+  Clear executionEngine in CompilerContextImpl.resetContext(). Fixes executionEngine flag being
+    "sticky" issue in the same session.
+
+  [SNAP-1075] A function implementation that reads the regionBean stats to show it on UI. For column
+    table initial row counts is calculated at server start.
+
+  [SNAP-1140] Performance issues seen in query re-routing.
+
+  [SNAP-1084] Fix GemFire/Snappy activation classes to return proper classLoaderVersion.
+
+  [SNAP-1096] Add Lead attribute in Member MBean.
+
+
+Release 1.5.0
+
 New Features
 
 * A new tool to collect the debug artifacts like logs, stats file and stack dumps, automatically 

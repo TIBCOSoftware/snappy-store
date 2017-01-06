@@ -59,7 +59,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.TableScanResultSet;
  */
 public class RowRecordReader extends RecordReader<Key, Row> {
   private static final String PROTOCOL = "jdbc:gemfirexd:";
-  private static final String DRIVER_FOR_STAND_ALONE_GEMFIREXD = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  private static final String DRIVER_FOR_STAND_ALONE_GEMFIREXD = "io.snappydata.jdbc.EmbeddedDriver";
 
   protected HDFSSplitIterator splitIterator;
   protected EmbedStatement es;

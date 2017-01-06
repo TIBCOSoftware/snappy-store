@@ -62,6 +62,7 @@ import java.util.Map;
 
 import com.gemstone.gemfire.internal.shared.ReverseListIterator;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
+import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.ColumnValueConverter;
@@ -208,7 +209,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   final Row checkValidColumn(int columnIndex) throws SQLException {
     final Row currentRow = this.currentRow;
     if (currentRow != null) {
-      if ((columnIndex >= 1) & (columnIndex <= this.numColumns)) {
+      if ((columnIndex >= 1) && (columnIndex <= this.numColumns)) {
         return currentRow;
       }
       else {
@@ -253,12 +254,15 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       if (index > 0) {
         return index;
       }
-      else {
+      index = this.columnNameToIndex.get(
+          SharedUtils.SQLToUpperCase(columnName));
+      if (index > 0) {
+        return index;
+      } else {
         throw ThriftExceptionUtil.newSQLException(SQLState.COLUMN_NOT_FOUND,
             null, columnName);
       }
-    }
-    else {
+    } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.NULL_COLUMN_NAME);
     }
   }
@@ -267,13 +271,14 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       final List<ColumnDescriptor> metadata) {
     final int size = metadata.size();
     final TObjectIntHashMap columnNameToIndex = new TObjectIntHashMap(size);
-    ListIterator<ColumnDescriptor> itr = metadata.listIterator(size);
-    int index = 1, dotIndex;
+    // index is required to be 1-based (start from end for the reverse iterator)
+    int index = size, dotIndex;
     // doing reverse iteration to prefer column names at front in case of
     // column name clashes
     ColumnDescriptor desc;
     String name, tableName;
-    while (itr.hasPrevious()) {
+    for (ListIterator<ColumnDescriptor> itr = metadata.listIterator(size);
+         itr.hasPrevious(); index--) {
       desc = itr.previous();
       name = desc.getName();
       if (name == null || name.isEmpty()) {
@@ -290,7 +295,6 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
               + name, index);
         }
       }
-      index++;
     }
     return columnNameToIndex;
   }
@@ -1393,7 +1397,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateBoolean");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "boolean");
+        getSQLType(columnIndex), "boolean", true, columnIndex);
     cvc.setBoolean(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1407,7 +1411,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateByte");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "byte");
+        getSQLType(columnIndex), "byte", true, columnIndex);
     cvc.setByte(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1421,7 +1425,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateShort");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "short");
+        getSQLType(columnIndex), "short", true, columnIndex);
     cvc.setShort(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1435,7 +1439,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateInt");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "int");
+        getSQLType(columnIndex), "int", true, columnIndex);
     cvc.setInteger(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1449,7 +1453,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateLong");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "long");
+        getSQLType(columnIndex), "long", true, columnIndex);
     cvc.setLong(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1463,7 +1467,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateFloat");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "float");
+        getSQLType(columnIndex), "float", true, columnIndex);
     cvc.setFloat(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1478,7 +1482,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateDouble");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "double");
+        getSQLType(columnIndex), "double", true, columnIndex);
     cvc.setDouble(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1494,7 +1498,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateBigDecimal");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "BigDecimal");
+          getSQLType(columnIndex), "BigDecimal", true, columnIndex);
       cvc.setBigDecimal(currentRow, columnIndex, x);
     }
     else {
@@ -1514,7 +1518,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateString");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "String");
+          getSQLType(columnIndex), "String", true, columnIndex);
       cvc.setString(currentRow, columnIndex, x);
     }
     else {
@@ -1534,7 +1538,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateBytes");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "byte[]");
+          getSQLType(columnIndex), "byte[]", true, columnIndex);
       cvc.setBytes(currentRow, columnIndex, x);
     }
     else {
@@ -1553,7 +1557,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateDate");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Date");
+          getSQLType(columnIndex), "Date", true, columnIndex);
       cvc.setDate(currentRow, columnIndex, x);
     }
     else {
@@ -1572,7 +1576,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateTime");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Time");
+          getSQLType(columnIndex), "Time", true, columnIndex);
       cvc.setTime(currentRow, columnIndex, x);
     }
     else {
@@ -1592,7 +1596,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateTimestamp");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Timestamp");
+          getSQLType(columnIndex), "Timestamp", true, columnIndex);
       cvc.setTimestamp(currentRow, columnIndex, x);
     }
     else {
@@ -1628,7 +1632,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       }
       else {
         ColumnValueConverter cvc = Converters.getConverter(
-            getSQLType(columnIndex), "Object");
+            getSQLType(columnIndex), "Object", true, columnIndex);
         cvc.setObject(currentRow, columnIndex, x);
       }
     }
@@ -1649,7 +1653,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateObject");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Object");
+          getSQLType(columnIndex), "Object", true, columnIndex);
       cvc.setObject(currentRow, columnIndex, x);
     }
     else {

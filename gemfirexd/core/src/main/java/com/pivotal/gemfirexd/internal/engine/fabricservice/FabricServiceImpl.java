@@ -76,10 +76,10 @@ import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.services.monitor.FileMonitor;
-import com.pivotal.gemfirexd.internal.jdbc.AutoloadedDriver;
 import com.pivotal.gemfirexd.internal.shared.common.reference.MessageId;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import io.snappydata.jdbc.AutoloadedDriver;
 import io.snappydata.thrift.ServerType;
 import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.SocketParameters;
@@ -99,8 +99,7 @@ import org.apache.thrift.transport.TTransportException;
  */
 public abstract class FabricServiceImpl implements FabricService {
 
-  private static final String driver =
-      "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  private static final String driver = "io.snappydata.jdbc.EmbeddedDriver";
 
   protected static final String fabapi = "FabricServiceAPI";
 
@@ -1123,6 +1122,14 @@ public abstract class FabricServiceImpl implements FabricService {
     }
 
     protected final String setHostNameForClients(Properties networkProps) {
+      // check for explicit address setting first
+      String host = PropertyUtil.findAndGetProperty(networkProps,
+          Attribute.HOSTNAME_FOR_CLIENTS, GfxdConstants.GFXD_PREFIX +
+              Attribute.HOSTNAME_FOR_CLIENTS, monitorlite);
+      if (host != null) {
+        this.hostName = host;
+        return host;
+      }
       this.preferIPAddressForClients = PropertyUtil.getBooleanProperty(
           Attribute.PREFER_NETSERVER_IP_ADDRESS,
           GfxdConstants.GFXD_PREFER_NETSERVER_IP_ADDRESS, networkProps, false,
@@ -1836,8 +1843,6 @@ public abstract class FabricServiceImpl implements FabricService {
   }
 
   static void registerDrivers() {
-    // new com.pivotal.gemfirexd.jdbc.EmbeddedDriver();
-
     try {
       Class.forName(driver).newInstance();
     } catch (ClassNotFoundException cnfe) {

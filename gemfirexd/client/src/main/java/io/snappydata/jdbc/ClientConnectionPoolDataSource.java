@@ -56,23 +56,68 @@
  * LICENSE file.
  */
 
-package com.pivotal.gemfirexd.internal.jdbc;
+package io.snappydata.jdbc;
+
+import java.sql.SQLException;
+
+import com.pivotal.gemfirexd.internal.client.am.ClientMessageId;
+import com.pivotal.gemfirexd.internal.client.am.SqlException;
+import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 
 /**
- * ClientConnectionPoolDataSource40 is a factory for PooledConnection objects.
+ * ClientConnectionPoolDataSource is a factory for PooledConnection objects.
  * An object that implements this interface
  * will typically be registered with a naming service that is based on the
  * Java Naming and Directory Interface (JNDI). Use this factory
  * if your application runs under JDBC4.0.
- * Use
- * ClientConnectionPoolDataSource, instead, if your application runs under
- * JDBC3.0 or JDBC2.0, that is, on the following Java Virtual Machines:
- * <p/>
- * <UL>
- * <LI> JDBC 3.0 - Java 2 - JDK 1.4, J2SE 5.0
- * <LI> JDBC 2.0 - Java 2 - JDK 1.2,1.3
- * </UL>
  */
-public class ClientConnectionPoolDataSource40
-    extends io.snappydata.jdbc.ClientConnectionPoolDataSource {
+public class ClientConnectionPoolDataSource
+    extends com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource {
+  /**
+   * Returns false unless <code>interfaces</code> is implemented
+   *
+   * @param interfaces a Class defining an interface.
+   * @return true                   if this implements the interface or
+   * directly or indirectly wraps an object
+   * that does.
+   * @throws java.sql.SQLException if an error occurs while determining
+   *                               whether this is a wrapper for an object
+   *                               with the given interface.
+   */
+// GemStone changes BEGIN
+  // made non-generic so can override the method in base class so that can
+  // be compiled with both JDK 1.6 and 1.4
+  public boolean isWrapperFor(Class interfaces) throws SQLException {
+    /* (original code)
+    public boolean isWrapperFor(Class<?> interfaces) throws SQLException {
+    */
+// GemStone changes END
+    return interfaces.isInstance(this);
+  }
+
+  /**
+   * Returns <code>this</code> if this class implements the interface
+   *
+   * @param interfaces a Class defining an interface
+   * @return an object that implements the interface
+   * @throws java.sql.SQLException if no object if found that implements the
+   *                               interface
+   */
+// GemStone changes BEGIN
+  // made non-generic so can override the method in base class so that can
+  // be compiled with both JDK 1.6 and 1.4
+  public Object unwrap(java.lang.Class interfaces) throws SQLException {
+    /* (original code)
+    public <T> T unwrap(java.lang.Class<T> interfaces)
+                                   throws SQLException {
+    */
+// GemStone changes END
+    try {
+      return interfaces.cast(this);
+    } catch (ClassCastException cce) {
+      throw new SqlException(null, new ClientMessageId(
+          SQLState.UNABLE_TO_UNWRAP), interfaces).getSQLException(
+          null /* GemStoneAddition */);
+    }
+  }
 }

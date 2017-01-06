@@ -134,9 +134,9 @@ import org.xml.sax.SAXParseException;
 public class TestUtil extends TestCase {
 
   // the default framework is embedded
-  private static final String driver = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  private static final String driver = "io.snappydata.jdbc.EmbeddedDriver";
 
-  private static final String netDriver = "com.pivotal.gemfirexd.jdbc.ClientDriver";
+  private static final String netDriver = "io.snappydata.jdbc.ClientDriver";
 
   private static final String protocol = "jdbc:gemfirexd:";
 

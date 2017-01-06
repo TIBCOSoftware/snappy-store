@@ -732,7 +732,7 @@ public abstract class GfxdPartitionResolver implements
     boolean allSupportedTypes = checkIfAllTypesSupported(typeFormatId);
     if (allSupportedTypes) {
       Map<InternalDistributedMember, String> mbrToServerMap = GemFireXDUtils
-          .getGfxdAdvisor().getAllDRDAServersAndCorrespondingMemberMapping();
+          .getGfxdAdvisor().getAllNetServersWithMembers();
       // now get the bucket information and set in the single hop info object
       PartitionedRegion region = (PartitionedRegion)this.gfContainer
           .getRegion();

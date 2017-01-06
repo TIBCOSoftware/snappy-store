@@ -519,7 +519,7 @@ public final class util implements java.security.PrivilegedAction {
 	    // JDBC driver
 	    String driver = util.getSystemProperty("driver");
 	    if (driver == null) {
-		driver = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+		driver = "io.snappydata.jdbc.EmbeddedDriver";
 	    }
 	    
 	    loadDriver(driver);
@@ -838,6 +838,8 @@ AppUI.out.println("SIZE="+l);
 // GemStone changes BEGIN
 		  { "jdbc:gemfirexd://", "com.pivotal.gemfirexd.jdbc.ClientDriver" },
 		  { "jdbc:gemfirexd:", "com.pivotal.gemfirexd.jdbc.EmbeddedDriver" },
+      { "jdbc:snappydata://", "io.snappydata.jdbc.ClientDriver" },
+      { "jdbc:snappydata:", "io.snappydata.jdbc.EmbeddedDriver" }
 		  /* (original derby code)
 		  { "jdbc:derby://",            "com.pivotal.gemfirexd.jdbc.ClientDriver"},
 

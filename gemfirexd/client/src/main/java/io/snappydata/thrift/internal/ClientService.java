@@ -43,7 +43,7 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.jdbc.ClientAttribute;
-import com.pivotal.gemfirexd.jdbc.ClientDriver;
+import io.snappydata.jdbc.ClientDriver;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.*;
 import org.apache.thrift.TException;
@@ -512,7 +512,8 @@ public final class ClientService extends ReentrantLock {
 
   final void checkUnexpectedNodeFailure(final HostConnection expectedSource,
       final String op) throws SnappyException {
-    if (expectedSource != null && currentHostConnection == expectedSource) {
+    if (expectedSource != null &&
+        expectedSource.equals(currentHostConnection)) {
       return;
     }
     // In a rare case a server may have come back in the meantime (e.g. between
@@ -1901,8 +1902,10 @@ public final class ClientService extends ReentrantLock {
       List<EntityId> entities, List<ClientService> closeServices,
       long lockTimeoutMillis) throws SnappyException {
     final HostConnection hostConn = this.currentHostConnection;
-    if (thisSource == null || hostConn == null || thisSource != hostConn) {
-      return false;
+    if (thisSource == null || hostConn == null || !thisSource.equals(hostConn)) {
+      throw new SnappyException(new SnappyExceptionData("Incorrect host = " +
+          thisSource + ", current = " + hostConn,
+          SQLState.LANG_UNEXPECTED_USER_EXCEPTION, 0), null);
     }
 
     if (SanityManager.TraceClientStatement | SanityManager.TraceClientConn) {
