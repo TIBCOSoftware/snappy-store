@@ -1238,6 +1238,10 @@ type, name /* fixes bug 42343 */);
     this.stats.incLong(prNumRowsInCachedBatches, inc);
   }
 
+  public void setPRNumRowsInCachedBatches(int value){
+    this.stats.setLong(prNumRowsInCachedBatches, value);
+  }
+
   public long getPRNumRowsInCachedBatches() {
     return this.stats.getLong(prNumRowsInCachedBatches);
   }
