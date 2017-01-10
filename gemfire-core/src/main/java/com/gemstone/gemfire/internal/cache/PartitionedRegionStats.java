@@ -1233,12 +1233,7 @@ type, name /* fixes bug 42343 */);
     return this.stats.getLong(prMetaDataSentCountId);
   }
 
-
-  public void incPRNumRowsInCachedBatches(int inc){
-    this.stats.incLong(prNumRowsInCachedBatches, inc);
-  }
-
-  public void setPRNumRowsInCachedBatches(int value){
+  public void setPRNumRowsInCachedBatches(long value) {
     this.stats.setLong(prNumRowsInCachedBatches, value);
   }
 
