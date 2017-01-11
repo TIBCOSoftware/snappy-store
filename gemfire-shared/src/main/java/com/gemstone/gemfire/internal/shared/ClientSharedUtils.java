@@ -1376,6 +1376,160 @@ public abstract class ClientSharedUtils {
     }
   }
 
+  /**
+   * State constants used by the FSM inside getStatementToken.
+   *
+   * @see #getStatementToken
+   */
+  private static final int TOKEN_OUTSIDE = 0;
+  private static final int TOKEN_INSIDE_SIMPLECOMMENT = 1;
+  private static final int TOKEN_INSIDE_BRACKETED_COMMENT = 2;
+
+  /**
+   * Minion of getStatementToken. If the input string starts with an
+   * identifier consisting of letters only (like "select", "update"..),return
+   * it, else return supplied string.
+   *
+   * @param sql input string
+   * @return identifier or unmodified string
+   * @see #getStatementToken
+   */
+  private static String isolateAnyInitialIdentifier(String sql) {
+    int idx;
+    for (idx = 0; idx < sql.length(); idx++) {
+      char ch = sql.charAt(idx);
+      if (!Character.isLetter(ch)
+          && ch != '<' /* for <local>/<global> tags */) {
+        // first non-token char found
+        break;
+      }
+    }
+    // return initial token if one is found, or the entire string otherwise
+    return (idx > 0) ? sql.substring(0, idx) : sql;
+  }
+
+  /**
+   * Moved from Derby's <code>Statement.getStatementToken</code> to shared between
+   * client and server code.
+   * <p>
+   * Step past any initial non-significant characters to find first
+   * significant SQL token so we can classify statement.
+   *
+   * @return first significant SQL token
+   */
+  public static String getStatementToken(String sql, int idx) {
+    int bracketNesting = 0;
+    int state = TOKEN_OUTSIDE;
+    String tokenFound = null;
+    char next;
+
+    final int sqlLen = sql.length();
+    while (idx < sqlLen && tokenFound == null) {
+      next = sql.charAt(idx);
+
+      switch (state) {
+        case TOKEN_OUTSIDE:
+          switch (next) {
+            case '\n':
+            case '\t':
+            case '\r':
+            case '\f':
+            case ' ':
+            case '(':
+            case '{': // JDBC escape characters
+            case '=': //
+            case '?': //
+              idx++;
+              break;
+            case '/':
+              if (idx == sql.length() - 1) {
+                // no more characters, so this is the token
+                tokenFound = "/";
+              } else if (sql.charAt(idx + 1) == '*') {
+                state = TOKEN_INSIDE_BRACKETED_COMMENT;
+                bracketNesting++;
+                idx++; // step two chars
+              }
+
+              idx++;
+              break;
+            case '-':
+              if (idx == sql.length() - 1) {
+                // no more characters, so this is the token
+                tokenFound = "/";
+              } else if (sql.charAt(idx + 1) == '-') {
+                state = TOKEN_INSIDE_SIMPLECOMMENT;
+                idx++;
+              }
+
+              idx++;
+              break;
+            default:
+              // a token found
+              tokenFound = isolateAnyInitialIdentifier(
+                  sql.substring(idx));
+
+              break;
+          }
+
+          break;
+        case TOKEN_INSIDE_SIMPLECOMMENT:
+          switch (next) {
+            case '\n':
+            case '\r':
+            case '\f':
+
+              state = TOKEN_OUTSIDE;
+              idx++;
+
+              break;
+            default:
+              // anything else inside a simple comment is ignored
+              idx++;
+              break;
+          }
+
+          break;
+        case TOKEN_INSIDE_BRACKETED_COMMENT:
+          switch (next) {
+            case '/':
+              if (idx != sql.length() - 1 &&
+                  sql.charAt(idx + 1) == '*') {
+
+                bracketNesting++;
+                idx++; // step two chars
+              }
+              idx++;
+
+              break;
+            case '*':
+              if (idx != sql.length() - 1 &&
+                  sql.charAt(idx + 1) == '/') {
+
+                bracketNesting--;
+
+                if (bracketNesting == 0) {
+                  state = TOKEN_OUTSIDE;
+                  idx++; // step two chars
+                }
+              }
+
+              idx++;
+              break;
+            default:
+              idx++;
+              break;
+          }
+
+          break;
+        default:
+          break;
+      }
+    }
+
+    return tokenFound;
+  }
+
   public static boolean equalBuffers(final ByteBuffer connToken,
       final ByteBuffer otherId) {
     if (connToken == otherId) {

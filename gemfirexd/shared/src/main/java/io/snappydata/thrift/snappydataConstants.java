@@ -94,11 +94,9 @@ public class snappydataConstants {
 
   public static final byte ROWSET_HAS_MORE_ROWSETS = (byte)2;
 
-  public static final byte ROWSET_DONE_FOR_LOBS = (byte)4;
+  public static final byte ROWSET_BEFORE_FIRST = (byte)4;
 
-  public static final byte ROWSET_BEFORE_FIRST = (byte)8;
-
-  public static final byte ROWSET_AFTER_LAST = (byte)16;
+  public static final byte ROWSET_AFTER_LAST = (byte)8;
 
   public static final byte STATEMENT_TYPE_SELECT = (byte)0;
 
@@ -107,6 +105,10 @@ public class snappydataConstants {
   public static final byte STATEMENT_TYPE_UPDATE = (byte)2;
 
   public static final byte STATEMENT_TYPE_DELETE = (byte)3;
+
+  public static final byte STATEMENT_TYPE_CALL = (byte)4;
+
+  public static final byte STATEMENT_TYPE_DDL = (byte)5;
 
   public static final byte BULK_CLOSE_RESULTSET = (byte)1;
 

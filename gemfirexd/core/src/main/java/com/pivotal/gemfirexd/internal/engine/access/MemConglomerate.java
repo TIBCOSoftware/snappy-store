@@ -116,7 +116,7 @@ public interface MemConglomerate extends Conglomerate, StaticCompiledOpenConglom
   /**
    * Open a scan controller with local function context
    * {@linkplain FunctionContext} provided by GemFire function service
-   * {@linkplain Function Service}.
+   * {@linkplain com.gemstone.gemfire.cache.execute.FunctionService}.
    * 
    * @throws StandardException
    */

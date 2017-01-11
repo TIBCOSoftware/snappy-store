@@ -281,6 +281,7 @@ public class ClientParameterMetaData implements ParameterMetaData {
       case BLOB:
         return "java.sql.Blob";
       case CLOB:
+      case JSON:
         return "java.sql.Clob";
       case SQLXML:
         return "java.sql.SQLXML";
@@ -290,8 +291,6 @@ public class ClientParameterMetaData implements ParameterMetaData {
         return "java.sql.Struct";
       case MAP:
         return "java.util.Map";
-      case JSON:
-        return "io.snappydata.thrift.JSONObject";
       default:
         return "java.lang.Object";
     }

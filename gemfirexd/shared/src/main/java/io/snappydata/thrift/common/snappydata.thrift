@@ -66,22 +66,6 @@ struct Timestamp {
   2: optional i32                                          nanos
 }
 
-union JSONValue {
-  1: string                                                string_val
-  2: bool                                                  bool_val
-  3: i32                                                   i32_val
-  4: i64                                                   i64_val
-  5: double                                                double_val
-  6: map<string, JSONValue>                                object_val
-  7: list<JSONValue>                                       array_val
-  8: bool                                                  null_val
-}
-
-union JSONObject {
-  1: map<string, JSONValue>                                pairs
-  2: list<JSONValue>                                       array
-}
-
 struct BlobChunk {
   1: required binary                                       chunk
   2: required bool                                         last
@@ -531,8 +515,7 @@ union ColumnValue {
  17: map<ColumnValue, ColumnValue>                         map_val       // MAP
  18: list<ColumnValue>                                     struct_val    // STRUCT
  19: bool                                                  null_val      // NULLTYPE
- 20: JSONObject                                            json_val      // JSON
- 21: binary                                                java_val      // JAVA_OBJECT (serialized)
+ 20: binary                                                java_val      // JAVA_OBJECT (serialized)
 }
 
 // constants for unknown precision/scale
@@ -595,15 +578,12 @@ const byte NEXTRS_CLOSE_CURRENT_RESULT                     = 2;
 const byte ROWSET_LAST_BATCH                               = 1;
 // for multiple result sets with CALL PROCEDUREs
 const byte ROWSET_HAS_MORE_ROWSETS                         = 2;
-// if all data for BLOB and CLOB columns has been already fetched
-// and does not need to be obtained using LOB calls separately
-const byte ROWSET_DONE_FOR_LOBS                            = 4;
 // set if offset from scrollCursor operation resulted in cursor being placed
 // before first row (RowSet can contain rows after that as per fetch direction)
-const byte ROWSET_BEFORE_FIRST                             = 8;
+const byte ROWSET_BEFORE_FIRST                             = 4;
 // set if offset from scrollCursor operation resulted in cursor being placed
 // after last row (RowSet can contain rows before that as per fetch direction)
-const byte ROWSET_AFTER_LAST                               = 16;
+const byte ROWSET_AFTER_LAST                               = 8;
 
 struct RowSet {
   1: required list<Row>                                    rows
@@ -639,6 +619,8 @@ const byte STATEMENT_TYPE_SELECT                           = 0;
 const byte STATEMENT_TYPE_INSERT                           = 1;
 const byte STATEMENT_TYPE_UPDATE                           = 2;
 const byte STATEMENT_TYPE_DELETE                           = 3;
+const byte STATEMENT_TYPE_CALL                             = 4;
+const byte STATEMENT_TYPE_DDL                              = 5;
 
 struct PrepareResult {
   1: required i32                                          statementId

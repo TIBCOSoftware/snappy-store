@@ -2623,6 +2623,7 @@ public abstract class EmbedResultSet extends ConnectionChild
 	public final int getFetchDirection() throws SQLException {
 		checkIfClosed("getFetchDirection");
 		if (fetchDirection == 0) {
+			if (stmt == null) return java.sql.ResultSet.FETCH_FORWARD;
 			// value is not set at the result set level
 			// get it from the statement level
 			return stmt.getFetchDirection();
@@ -2688,6 +2689,7 @@ public abstract class EmbedResultSet extends ConnectionChild
 	 */
 	public final int getType() throws SQLException {
 		checkIfClosed("getType");
+		if (stmt == null) return java.sql.ResultSet.TYPE_FORWARD_ONLY;
 		return stmt.getResultSetType();
 	}
 

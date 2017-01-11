@@ -40,16 +40,21 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
-import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Map;
 
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.*;
+import io.snappydata.thrift.BlobChunk;
+import io.snappydata.thrift.ClobChunk;
+import io.snappydata.thrift.Row;
+import io.snappydata.thrift.RowSet;
+import io.snappydata.thrift.SnappyException;
+import io.snappydata.thrift.SnappyType;
 import io.snappydata.thrift.common.ColumnValueConverter;
 import io.snappydata.thrift.common.Converters;
 import io.snappydata.thrift.common.LobService;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
+import io.snappydata.thrift.snappydataConstants;
 
 /**
  * Common base class to fetch various types of column values from a Row like

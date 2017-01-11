@@ -34,12 +34,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.CacheListener;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
 import com.gemstone.gemfire.cache.wan.GatewayReceiver;
@@ -52,6 +47,7 @@ import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.PartitionAttributesImpl;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentHashSet;
 import com.pivotal.gemfirexd.NetworkInterface.ConnectionListener;
 import com.pivotal.gemfirexd.ddl.IndexPersistenceDUnit;
@@ -2567,8 +2563,20 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     return vms;
   }
 
-  private String regionAttributesToXML(final RegionAttributes<?, ?> attrs,
-      VM vmForDiskDir) {
+  public static int getDefaultLocalMaxMemory() {
+    return PartitionAttributesFactory.LOCAL_MAX_MEMORY_DEFAULT;
+  }
+
+  private String regionAttributesToXML(RegionAttributes<?, ?> attrs, VM vm) {
+    // adjust default local-max-memory as per target VM size
+    PartitionAttributesImpl pa;
+    if (vm != null && attrs != null && (pa = (PartitionAttributesImpl)attrs
+        .getPartitionAttributes()) != null && !pa.getEnableOffHeapMemory() &&
+        !pa.hasLocalMaxMemory()) {
+      int localMaxMemory = (Integer)vm.invoke(getClass(),
+          "getDefaultLocalMaxMemory");
+      pa.setLocalMaxMemory(localMaxMemory);
+    }
     return TestUtil.regionAttributesToXML(attrs);
   }
 

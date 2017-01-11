@@ -49,6 +49,7 @@ import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTLongObjectHashMap;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gnu.trove.TObjectProcedure;
@@ -62,6 +63,7 @@ import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineLOB;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.StatementType;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.store.access.XATransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
@@ -711,13 +713,14 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               chunk.chunk.limit() + 12 /* for remaining fields */;
         }
       case CLOB:
+      case JSON:
         Clob clob = rs.getClob(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
         } else {
           ClobChunk chunk = handleClob(clob, connHolder, attrs);
-          result.setObject(index, chunk, SnappyType.CLOB);
+          result.setObject(index, chunk, colType);
           return ReflectionSingleObjectSizer.OBJECT_SIZE * 3 +
               chunk.chunk.length() + 12 /* for remaining fields */;
         }
@@ -784,23 +787,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
-        } else if (o instanceof JSONObject) {
-          result.setObject(index, o, SnappyType.JSON);
         } else {
           result.setObject(index, o, SnappyType.JAVA_OBJECT);
         }
         // hard-code some fixed size
         return 128;
-      case JSON:
-        o = rs.getObject(columnIndex);
-        if (rs.wasNull()) {
-          result.setNull(index);
-          return 1;
-        } else {
-          result.setObject(index, o, SnappyType.JSON);
-          // hard-code some fixed size
-          return 128;
-        }
       case ARRAY:
       case MAP:
       case STRUCT:
@@ -812,7 +803,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   }
 
   /**
-   * Get an output column value from CallableStatementin a Row.
+   * Get an output column value from CallableStatement in a Row.
    * <p>
    * The java version of Row overrides the thrift one to make use of
    * {@link OptimizedElementArray} to reduce overhead/objects while still
@@ -914,6 +905,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.CLOB:
+      case JDBC40Translation.JSON:
         Clob clob = cstmt.getClob(paramIndex);
         if (clob != null) {
           cv.setClob_val(handleClob(clob, connHolder, attrs));
@@ -982,8 +974,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         Object o = cstmt.getObject(paramIndex);
         if (o == null) {
           cv.setNull_val(true);
-        } else if (o instanceof JSONObject) {
-          cv.setJson_val((JSONObject)o);
         } else {
           try {
             cv.setJava_val(Converters.getJavaObjectAsBytes(o));
@@ -994,15 +984,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           }
         }
         break;
-      case JDBC40Translation.JSON:
-        o = cstmt.getObject(paramIndex);
-        if (o != null) {
-          cv.setJson_val((JSONObject)o);
-          break;
-        } else {
-          cv.setNull_val(true);
-          break;
-        }
       case Types.ARRAY:
       case Types.STRUCT:
       case JDBC40Translation.MAP:
@@ -1374,15 +1355,14 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       */
 
       if (isLastBatch) flags |= snappydataConstants.ROWSET_LAST_BATCH;
-      // TODO: implement multiple RowSets for Callable statements
-      // TODO: proper LOB support
-      flags |= snappydataConstants.ROWSET_DONE_FOR_LOBS;
+      final boolean dynamicResults = estmt == null ||
+          estmt.hasDynamicResults();
+      if (dynamicResults) flags |= snappydataConstants.ROWSET_HAS_MORE_ROWSETS;
       result.setFlags(flags);
-      // TODO: implement updatable ResultSets
       fillWarnings(result, rs);
       // send cursorId for scrollable, partial resultsets or open LOBs
       if (isLastBatch && isForwardOnly && conn.getlobHMObj().isEmpty() &&
-          estmt != null && !estmt.hasDynamicResults()) {
+          !dynamicResults) {
          if (stmtHolder == null || cursorId == INVALID_ID) {
           rs.close();
         }
@@ -1860,9 +1840,48 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       stmtHolder = connHolder.registerStatement(pstmt, attrs, pstmtId, sql);
       this.statementMap.putPrimitive(pstmtId, stmtHolder);
 
-      PrepareResult result = new PrepareResult(pstmtId,
-          // TODO: SW: determine correct type
-          snappydataConstants.STATEMENT_TYPE_SELECT, pmDescs);
+      byte statementType;
+      if (pstmt instanceof EmbedPreparedStatement) {
+        switch (((EmbedPreparedStatement)pstmt).getStatementType()) {
+          case StatementType.UNKNOWN:
+            statementType = snappydataConstants.STATEMENT_TYPE_SELECT;
+            break;
+          case StatementType.UPDATE:
+            statementType = snappydataConstants.STATEMENT_TYPE_UPDATE;
+            break;
+          case StatementType.INSERT:
+          case StatementType.BULK_INSERT_REPLACE:
+            statementType = snappydataConstants.STATEMENT_TYPE_INSERT;
+            break;
+          case StatementType.DELETE:
+            statementType = snappydataConstants.STATEMENT_TYPE_DELETE;
+            break;
+          case StatementType.CALL_STATEMENT:
+          case StatementType.DISTRIBUTED_PROCEDURE_CALL:
+            statementType = snappydataConstants.STATEMENT_TYPE_CALL;
+            break;
+          default:
+            statementType = snappydataConstants.STATEMENT_TYPE_DDL;
+            break;
+
+        }
+      } else {
+        String firstToken = ClientSharedUtils.getStatementToken(sql, 0);
+        if (firstToken == null || firstToken.equalsIgnoreCase("select")) {
+          statementType = snappydataConstants.STATEMENT_TYPE_SELECT;
+        } else if (firstToken.equalsIgnoreCase("update")) {
+          statementType = snappydataConstants.STATEMENT_TYPE_UPDATE;
+        } else if (firstToken.equalsIgnoreCase("insert")) {
+          statementType = snappydataConstants.STATEMENT_TYPE_INSERT;
+        } else if (firstToken.equalsIgnoreCase("delete")) {
+          statementType = snappydataConstants.STATEMENT_TYPE_DELETE;
+        } else if (firstToken.equalsIgnoreCase("call")) {
+          statementType = snappydataConstants.STATEMENT_TYPE_CALL;
+        } else {
+          statementType = snappydataConstants.STATEMENT_TYPE_DDL;
+        }
+      }
+      PrepareResult result = new PrepareResult(pstmtId, statementType, pmDescs);
       if (sqlw != null) {
         result.setWarnings(sqlw);
       }
@@ -2045,8 +2064,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             }
             break;
           case CLOB:
+          case JSON:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.CLOB);
+              pstmt.setNull(paramIndex, paramType == SnappyType.CLOB
+                  ? Types.CLOB : JDBC40Translation.JSON);
             } else if ((paramVal = params.getObject(index)) instanceof String) {
               pstmt.setString(paramIndex, (String)paramVal);
             } else {
@@ -2120,7 +2141,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             pstmt.setNull(paramIndex, Types.NULL);
             break;
           case JAVA_OBJECT:
-          case JSON:
             if (params.isNull(index)) {
               pstmt.setNull(paramIndex, Converters.getJdbcType(paramType));
             } else {

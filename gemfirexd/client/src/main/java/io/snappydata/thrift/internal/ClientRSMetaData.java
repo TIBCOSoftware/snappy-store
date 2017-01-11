@@ -462,11 +462,10 @@ public final class ClientRSMetaData implements ResultSetMetaData {
       case BLOB:
         return "java.sql.Blob";
       case CLOB:
+      case JSON:
         return "java.sql.Clob";
       case SQLXML:
         return "java.sql.SQLXML";
-      case JSON:
-        return "io.snappydata.thrift.JSONObject";
       case ARRAY:
         return "java.sql.Array";
       case MAP:

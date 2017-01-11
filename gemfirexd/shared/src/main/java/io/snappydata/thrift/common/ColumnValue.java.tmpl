@@ -52,8 +52,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   private static final org.apache.thrift.protocol.TField MAP_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("map_val", org.apache.thrift.protocol.TType.MAP, (short)17);
   private static final org.apache.thrift.protocol.TField STRUCT_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("struct_val", org.apache.thrift.protocol.TType.LIST, (short)18);
   private static final org.apache.thrift.protocol.TField NULL_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("null_val", org.apache.thrift.protocol.TType.BOOL, (short)19);
-  private static final org.apache.thrift.protocol.TField JSON_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("json_val", org.apache.thrift.protocol.TType.STRUCT, (short)20);
-  private static final org.apache.thrift.protocol.TField JAVA_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("java_val", org.apache.thrift.protocol.TType.STRING, (short)21);
+  private static final org.apache.thrift.protocol.TField JAVA_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("java_val", org.apache.thrift.protocol.TType.STRING, (short)20);
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -76,8 +75,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     MAP_VAL((short)17, "map_val"),
     STRUCT_VAL((short)18, "struct_val"),
     NULL_VAL((short)19, "null_val"),
-    JSON_VAL((short)20, "json_val"),
-    JAVA_VAL((short)21, "java_val");
+    JAVA_VAL((short)20, "java_val");
 
     private static final Map<String, _Fields> byName = new HashMap<>();
 
@@ -130,9 +128,7 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
           return STRUCT_VAL;
         case 19: // NULL_VAL
           return NULL_VAL;
-        case 20: // JSON_VAL
-          return JSON_VAL;
-        case 21: // JAVA_VAL
+        case 20: // JAVA_VAL
           return JAVA_VAL;
         default:
           return null;
@@ -218,8 +214,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
             new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRUCT            , "ColumnValue"))));
     tmpMap.put(_Fields.NULL_VAL, new org.apache.thrift.meta_data.FieldMetaData("null_val", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
-    tmpMap.put(_Fields.JSON_VAL, new org.apache.thrift.meta_data.FieldMetaData("json_val", org.apache.thrift.TFieldRequirementType.DEFAULT, 
-        new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, JSONObject.class)));
     tmpMap.put(_Fields.JAVA_VAL, new org.apache.thrift.meta_data.FieldMetaData("java_val", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING        , true)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
@@ -361,12 +355,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     return x;
   }
 
-  public static ColumnValue json_val(JSONObject value) {
-    ColumnValue x = new ColumnValue();
-    x.setJson_val(value);
-    return x;
-  }
-
   public static ColumnValue java_val(ByteBuffer value) {
     ColumnValue x = new ColumnValue();
     x.setJava_val(value);
@@ -478,11 +466,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
           break;
         }
         throw new ClassCastException("Was expecting value of type Boolean for field 'null_val', but got " + value.getClass().getSimpleName());
-      case JSON_VAL:
-        if (value instanceof JSONObject) {
-          break;
-        }
-        throw new ClassCastException("Was expecting value of type JSONObject for field 'json_val', but got " + value.getClass().getSimpleName());
       case JAVA_VAL:
         if (value instanceof ByteBuffer) {
           break;
@@ -711,16 +694,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
             return null;
           }
-        case JSON_VAL:
-          if (field.type == JSON_VAL_FIELD_DESC.type) {
-            JSONObject json_val;
-            json_val = new JSONObject();
-            json_val.read(iprot);
-            return json_val;
-          } else {
-            org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
-            return null;
-          }
         case JAVA_VAL:
           if (field.type == JAVA_VAL_FIELD_DESC.type) {
             ByteBuffer java_val;
@@ -844,10 +817,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
       case NULL_VAL:
         boolean null_val = this.primitiveValue != 0L;
         oprot.writeBool(null_val);
-        return;
-      case JSON_VAL:
-        JSONObject json_val = (JSONObject)value_;
-        json_val.write(oprot);
         return;
       case JAVA_VAL:
         ByteBuffer java_val = (ByteBuffer)value_;
@@ -981,11 +950,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
           this.primitiveValue = iprot.readBool() ? 1L : 0L;
           setField_ = _Fields.NULL_VAL;
           return null;
-        case JSON_VAL:
-          JSONObject json_val;
-          json_val = new JSONObject();
-          json_val.read(iprot);
-          return json_val;
         case JAVA_VAL:
           ByteBuffer java_val;
           java_val = iprot.readBinary();
@@ -1045,8 +1009,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
         return STRUCT_VAL_FIELD_DESC;
       case NULL_VAL:
         return NULL_VAL_FIELD_DESC;
-      case JSON_VAL:
-        return JSON_VAL_FIELD_DESC;
       case JAVA_VAL:
         return JAVA_VAL_FIELD_DESC;
       default:
@@ -1356,21 +1318,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     value_ = Boolean.TRUE; // dummy value
   }
 
-  public JSONObject getJson_val() {
-    if (getSetField() == _Fields.JSON_VAL) {
-      return (JSONObject)getFieldValue();
-    } else {
-      throw new RuntimeException("Cannot get field 'json_val' because union is currently set to " + getFieldDesc(getSetField()).name);
-    }
-  }
-
-  public void setJson_val(JSONObject value) {
-    if (value == null) throw new NullPointerException();
-    setField_ = _Fields.JSON_VAL;
-    value_ = value;
-    primitiveValue = 0L; // dummy value
-  }
-
   public byte[] getJava_val() {
     setJava_val(org.apache.thrift.TBaseHelper.rightSize(bufferForJava_val()));
     ByteBuffer b = bufferForJava_val();
@@ -1488,11 +1435,6 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
 
   public boolean isSetNull_val() {
     return setField_ == _Fields.NULL_VAL;
-  }
-
-
-  public boolean isSetJson_val() {
-    return setField_ == _Fields.JSON_VAL;
   }
 
 

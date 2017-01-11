@@ -157,7 +157,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   }
 
   protected void setCurrentRowSet(RowSet rs) {
-    if (rs != null) {
+    if (rs != null && rs.metadata != null && !rs.metadata.isEmpty()) {
       this.currentRowSet = rs;
       this.statementId = rs.statementId;
       setCurrentSource(snappydataConstants.BULK_CLOSE_STATEMENT,
@@ -572,7 +572,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
             getLobSource(true, "getMoreResults"), rs.cursorId, rsFlag);
         reset();
         setCurrentRowSet(rs);
-        return true;
+        return this.currentRowSet != null;
       } catch (SnappyException se) {
         throw ThriftExceptionUtil.newSQLException(se);
       }

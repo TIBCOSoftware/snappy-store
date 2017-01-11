@@ -179,8 +179,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Boolean.class) {
+      Class<?> c;
+      if (o == null || (c = o.getClass()) == Boolean.class) {
         setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
       }
       else if (c == Byte.class) {
@@ -344,8 +344,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Byte.class) {
+      Class<?> c;
+      if (o == null || (c = o.getClass()) == Byte.class) {
         setByte(row, columnIndex, ((Byte)o).byteValue());
       }
       else if (c == Integer.class) {
@@ -510,8 +510,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Short.class) {
+      Class<?> c;
+      if (o == null || (c = o.getClass()) == Short.class) {
         setShort(row, columnIndex, ((Short)o).shortValue());
       }
       else if (c == Integer.class) {
@@ -677,8 +677,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Integer.class) {
+      Class<?> c;
+      if (o == null || (c = o.getClass()) == Integer.class) {
         setInteger(row, columnIndex, ((Integer)o).intValue());
       }
       else if (c == Byte.class) {
@@ -845,8 +845,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Long.class) {
+      Class<?> c;
+      if (o == null || (c = o.getClass()) == Long.class) {
         setLong(row, columnIndex, ((Long)o).longValue());
       }
       else if (c == Integer.class) {
@@ -1019,8 +1019,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Float.class) {
+      Class<?> c;
+      if (o == null || (c = o.getClass()) == Float.class) {
         setFloat(row, columnIndex, ((Float)o).floatValue());
       }
       else if (c == Double.class) {
@@ -1189,8 +1189,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Double.class) {
+      Class<?> c;
+      if (o == null || (c = o.getClass()) == Double.class) {
         setDouble(row, columnIndex, ((Double)o).doubleValue());
       }
       else if (c == Float.class) {
@@ -1363,7 +1363,7 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o instanceof BigDecimal) {
+      if (o == null || o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
       }
       else if ((c = o.getClass()) == Double.class) {
@@ -1479,7 +1479,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof java.sql.Date) {
+      if (o == null || o instanceof java.sql.Date) {
         setDate(row, columnIndex, (java.sql.Date)o);
       }
       else if (o instanceof java.sql.Time) {
@@ -1580,7 +1580,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof java.sql.Time) {
+      if (o == null || o instanceof java.sql.Time) {
         setTime(row, columnIndex, (java.sql.Time)o);
       }
       else if (o instanceof java.sql.Date) {
@@ -1684,7 +1684,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof java.sql.Timestamp) {
+      if (o == null || o instanceof java.sql.Timestamp) {
         setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
       }
       else if (o instanceof java.sql.Date) {
@@ -1939,8 +1939,8 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      final Class<?> c = o.getClass();
-      if (c == String.class) {
+      final Class<?> c;
+      if (o == null || (c = o.getClass()) == String.class) {
         setString(row, columnIndex, (String)o);
       }
       else if (c == Double.class) {
@@ -2046,7 +2046,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof byte[]) {
+      if (o == null || o instanceof byte[]) {
         setBytes(row, columnIndex, (byte[])o);
       }
       else if (o instanceof String) {
@@ -2113,7 +2113,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof byte[]) {
+      if (o == null || o instanceof byte[]) {
         setBytes(row, columnIndex, (byte[])o);
       }
       else if (o instanceof String) {
@@ -2397,7 +2397,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof List<?>) {
+      if (o == null || o instanceof List<?>) {
         row.setObject(columnIndex - 1, o, SnappyType.ARRAY);
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
@@ -2442,7 +2442,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof Map<?, ?>) {
+      if (o == null || o instanceof Map<?, ?>) {
         row.setObject(columnIndex - 1, o, SnappyType.MAP);
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
@@ -2487,7 +2487,7 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o instanceof List<?>) {
+      if (o == null || o instanceof List<?>) {
         row.setObject(columnIndex - 1, o, SnappyType.STRUCT);
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
@@ -2498,8 +2498,7 @@ public abstract class Converters {
     }
   };
 
-  public static final ColumnValueConverter JSON_TYPE =
-      new ColumnValueConverter() {
+  public static final ColumnValueConverter JSON_TYPE = new StringConverter() {
 
     @Override
     public SnappyType getType() {
@@ -2508,37 +2507,18 @@ public abstract class Converters {
     @Override
     public String toString(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
-      if (o != null) {
-        return o.toString();
-      }
-      else {
-        return null;
-      }
+      return getClobAsString(row.getClobChunk(columnIndex - 1, true),
+          lobService);
+    }
+    @Override
+    public final Clob toClob(OptimizedElementArray row, int columnIndex,
+        LobService lobService) throws SQLException {
+      return lobService.createClob(row.getClobChunk(columnIndex - 1, true));
     }
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
-    }
-    @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
-    }
-    @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
-        throws SQLException {
-      if (o instanceof JSONObject) {
-        row.setObject(columnIndex - 1, o, SnappyType.JSON);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeSetConversionException(
-            o.getClass().getName(), "JSON", columnIndex);
-      }
+      return toClob(row, columnIndex, lobService);
     }
   };
 

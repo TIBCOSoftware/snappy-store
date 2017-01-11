@@ -35,9 +35,7 @@
 
 package io.snappydata.thrift.common;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.SQLException;
@@ -550,16 +548,8 @@ public class OptimizedElementArray {
             cv.setNull_val(true);
           }
           break;
-        case JSON:
-          JSONObject jsonObject = (JSONObject)getObject(index);
-          if (jsonObject != null) {
-            cv.setJson_val(jsonObject);
-          }
-          else {
-            cv.setNull_val(true);
-          }
-          break;
         case CLOB:
+        case JSON:
           ClobChunk clob = (ClobChunk)getObject(index);
           if (clob != null) {
             cv.setClob_val(clob);
@@ -774,16 +764,6 @@ public class OptimizedElementArray {
             this.nonPrimitives[this.nonPrimSize++] = struct;
             this.positionMap[this.size] = -this.nonPrimSize;
             setType(this.size, SnappyType.STRUCT);
-            this.size++;
-          }
-          break;
-        case JSON_VAL:
-          ensureNonPrimCapacity();
-          JSONObject jsonObj = (JSONObject)cv.getFieldValue();
-          if (jsonObj != null) {
-            this.nonPrimitives[this.nonPrimSize++] = jsonObj;
-            this.positionMap[this.size] = -this.nonPrimSize;
-            setType(this.size, SnappyType.JSON);
             this.size++;
           }
           break;
