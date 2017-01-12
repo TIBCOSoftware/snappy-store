@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.InternalGemFireError;
@@ -66,6 +67,7 @@ import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
+import com.pivotal.gemfirexd.internal.catalog.ExternalTableMetaData;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -305,6 +307,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       .getServerInstance().getBoolean("cacheGlobalIndexINMap", false);
 
   private CacheMap globalIndexMap;
+
+  private AtomicReference<ExternalTableMetaData> externalTableMetaData =
+      new AtomicReference<ExternalTableMetaData>(null);
+
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -425,6 +431,16 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.hasSingleSchema = true;
     this.oldTableInfos = new ArrayList<ExtraTableInfo>();
     initTableFlags();
+  }
+
+  public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
+    if (refresh || externalTableMetaData.get() == null) {
+      // containers are created during initialization, ignore them
+      externalTableMetaData.compareAndSet(null,
+          Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
+              this.schemaName, this.tableName, true));
+    }
+    return externalTableMetaData.get();
   }
 
   public boolean cachesGlobalIndex() {

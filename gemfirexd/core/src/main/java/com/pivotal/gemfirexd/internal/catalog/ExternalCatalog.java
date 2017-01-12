@@ -66,5 +66,12 @@ public interface ExternalCatalog {
    */
   public String catalogSchemaName();
 
+  /**
+   * Returns the meta data of the Hive Table
+   *
+   */
+  public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
+      boolean skipLocks);
+
   void stop();
 }
