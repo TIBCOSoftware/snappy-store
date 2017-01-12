@@ -55,6 +55,9 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
 
   @Override
   public void execute(FunctionContext context) {
+
+    com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider.getClusterCallbacks().
+        publishColumnTableStats();
     SnappyRegionStatsCollectorResult result = new SnappyRegionStatsCollectorResult();
     Map<String, SnappyRegionStats> cachBatchStats = new HashMap<>();
     ArrayList<SnappyRegionStats> otherStats = new ArrayList<>();
