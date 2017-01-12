@@ -39,20 +39,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
-import java.sql.Date;
-import java.sql.NClob;
-import java.sql.Ref;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.RowId;
-import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.SQLXML;
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Calendar;
@@ -175,18 +162,16 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     if (this.service.isOpen) {
       if (this.rowSet != null) {
         return;
+      } else {
+        throw ThriftExceptionUtil.newSQLException(
+            SQLState.CLIENT_RESULT_SET_NOT_OPEN);
       }
-      else {
-        throw ThriftExceptionUtil
-            .newSQLException(SQLState.CLIENT_RESULT_SET_NOT_OPEN);
-      }
-    }
-    else {
+    } else {
       this.rowSet = null;
       this.rowsIter = null;
       this.currentRow = null;
-      throw ThriftExceptionUtil
-          .newSQLException(SQLState.NO_CURRENT_CONNECTION);
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.NO_CURRENT_CONNECTION);
     }
   }
 
@@ -1148,14 +1133,12 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
           return true;
         }
       }
-    }
-    else if (rows == 0) {
+    } else if (rows == 0) {
       if (this.rowSet.offset == 0) {
         this.rowsIter = this.rowSet.rows.listIterator();
         return true;
       }
-    }
-    else if ((this.rowSet.flags & snappydataConstants.ROWSET_LAST_BATCH) != 0) {
+    } else if ((this.rowSet.flags & snappydataConstants.ROWSET_LAST_BATCH) != 0) {
       if ((-rows) <= this.rowSet.rows.size()) {
         this.rowsIter = this.rowSet.rows.listIterator(this.rowSet.rows.size()
             + rows);
@@ -1166,13 +1149,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     }
     // for absolute position we will rely on fetchDirection to determine
     // whether to fetch in reverse or forward direction
-    if (fetchRowSet(true, rows,
-        (rows > 1 && this.fetchDirection == FETCH_REVERSE) || (rows == -1))) {
-      return moveNext();
-    }
-    else {
-      return false;
-    }
+    return fetchRowSet(true, rows, (rows > 1 &&
+        this.fetchDirection == FETCH_REVERSE) || (rows == -1)) && moveNext();
   }
 
   /**
@@ -1201,31 +1179,24 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
             this.rowsIter = this.rowSet.rows.listIterator(nextIndex + rows
                 - 1);
             return moveNext();
-          }
-          else {
+          } else {
             // adjust by the number available in current batch
             rows -= available;
           }
-        }
-        else { // rows < 0
+        } else { // rows < 0
           if ((rows + nextIndex) >= 0) {
             this.rowsIter = this.rowSet.rows.listIterator(nextIndex + rows
                 + 1);
             return movePrevious();
-          }
-          else {
+          } else {
             // adjust by the number available in current batch
             rows += nextIndex;
           }
         }
         // for relative position just rely on the sign of the position for
         // fetchReverse flag
-        if (fetchRowSet(false, rows, !moveForward)) {
-          return moveForward ? moveNext() : movePrevious();
-        }
-        else {
-          return false;
-        }
+        return fetchRowSet(false, rows, !moveForward) &&
+            (moveForward ? moveNext() : movePrevious());
     }
   }
 
@@ -2064,7 +2035,17 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public void updateBinaryStream(int columnIndex, InputStream x, long length)
       throws SQLException {
-    // TODO Auto-generated method stub
+    final Row currentRow = checkValidColumn(columnIndex);
+
+    initRowUpdate("updateBinaryStream");
+    if (x != null) {
+      ColumnValueConverter cvc = Converters.getConverter(
+          getSQLType(columnIndex), "BinaryStream", true, columnIndex);
+      cvc.setBinaryStream(currentRow, columnIndex, x, length, this);
+    } else {
+      currentRow.setNull(columnIndex - 1);
+    }
+    this.changedColumns.set(columnIndex - 1);
   }
 
   /**
@@ -2118,7 +2099,17 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public void updateCharacterStream(int columnIndex, Reader x, long length)
       throws SQLException {
-    // TODO Auto-generated method stub
+    final Row currentRow = checkValidColumn(columnIndex);
+
+    initRowUpdate("updateCharacterStream");
+    if (x != null) {
+      ColumnValueConverter cvc = Converters.getConverter(
+          getSQLType(columnIndex), "CharacterStream", true, columnIndex);
+      cvc.setCharacterStream(currentRow, columnIndex, x, length);
+    } else {
+      currentRow.setNull(columnIndex - 1);
+    }
+    this.changedColumns.set(columnIndex - 1);
   }
 
   /**
@@ -2172,7 +2163,17 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public void updateAsciiStream(int columnIndex, InputStream x, long length)
       throws SQLException {
-    // TODO Auto-generated method stub
+    final Row currentRow = checkValidColumn(columnIndex);
+
+    initRowUpdate("updateAsciiStream");
+    if (x != null) {
+      ColumnValueConverter cvc = Converters.getConverter(
+          getSQLType(columnIndex), "AsciiStream", true, columnIndex);
+      cvc.setAsciiStream(currentRow, columnIndex, x, length);
+    } else {
+      currentRow.setNull(columnIndex - 1);
+    }
+    this.changedColumns.set(columnIndex - 1);
   }
 
   /**
@@ -2226,8 +2227,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public void updateBlob(int columnIndex, InputStream inputStream, long length)
       throws SQLException {
-    // TODO Auto-generated method stub
-
+    updateBinaryStream(columnIndex, inputStream, length);
   }
 
   /**
@@ -2244,8 +2244,17 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    */
   @Override
   public final void updateBlob(int columnIndex, Blob x) throws SQLException {
-    // TODO Auto-generated method stub
+    final Row currentRow = checkValidColumn(columnIndex);
 
+    initRowUpdate("updateBlob");
+    if (x != null) {
+      ColumnValueConverter cvc = Converters.getConverter(
+          getSQLType(columnIndex), "blob", true, columnIndex);
+      cvc.setBlob(currentRow, columnIndex, x);
+    } else {
+      currentRow.setNull(columnIndex - 1);
+    }
+    this.changedColumns.set(columnIndex - 1);
   }
 
   /**
@@ -2281,8 +2290,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public void updateClob(int columnIndex, Reader reader, long length)
       throws SQLException {
-    // TODO Auto-generated method stub
-
+    updateCharacterStream(columnIndex, reader, length);
   }
 
   /**
@@ -2299,8 +2307,17 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    */
   @Override
   public final void updateClob(int columnIndex, Clob x) throws SQLException {
-    // TODO Auto-generated method stub
+    final Row currentRow = checkValidColumn(columnIndex);
 
+    initRowUpdate("updateClob");
+    if (x != null) {
+      ColumnValueConverter cvc = Converters.getConverter(
+          getSQLType(columnIndex), "clob", true, columnIndex);
+      cvc.setClob(currentRow, columnIndex, x);
+    } else {
+      currentRow.setNull(columnIndex - 1);
+    }
+    this.changedColumns.set(columnIndex - 1);
   }
 
   /**

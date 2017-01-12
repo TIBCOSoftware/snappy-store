@@ -38,8 +38,10 @@ package io.snappydata.thrift.common;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -1969,7 +1971,20 @@ public abstract class Converters {
     @Override
     public final Clob toClob(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      return lobService.createClob(row.getClobChunk(columnIndex - 1, true));
+      return lobService.createClob(row.getClobChunk(columnIndex - 1, true),
+          false);
+    }
+    @Override
+    public Reader toCharacterStream(OptimizedElementArray row, int columnIndex,
+        LobService lobService) throws SQLException {
+      return lobService.createClob(row.getClobChunk(columnIndex - 1, true),
+          true).getCharacterStream();
+    }
+    @Override
+    public InputStream toAsciiStream(OptimizedElementArray row, int columnIndex,
+        LobService lobService) throws SQLException {
+      return lobService.createClob(row.getClobChunk(columnIndex - 1, true),
+          true).getAsciiStream();
     }
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
@@ -2065,9 +2080,15 @@ public abstract class Converters {
     @Override
     public final Blob toBlob(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      return lobService.createBlob(row.getBlobChunk(columnIndex - 1, true));
+      return lobService.createBlob(row.getBlobChunk(columnIndex - 1, true),
+          false);
     }
-    // TODO: SW: implement toBinaryStream, toCharacterStream, toAsciiStream for appropriate types
+    @Override
+    public InputStream toBinaryStream(OptimizedElementArray row,
+        int columnIndex, LobService lobService) throws SQLException {
+      return lobService.createBlob(row.getBlobChunk(columnIndex - 1, true),
+          true).getBinaryStream();
+    }
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
@@ -2495,7 +2516,20 @@ public abstract class Converters {
     @Override
     public final Clob toClob(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      return lobService.createClob(row.getClobChunk(columnIndex - 1, true));
+      return lobService.createClob(row.getClobChunk(columnIndex - 1, true),
+          false);
+    }
+    @Override
+    public Reader toCharacterStream(OptimizedElementArray row, int columnIndex,
+        LobService lobService) throws SQLException {
+      return lobService.createClob(row.getClobChunk(columnIndex - 1, true),
+          true).getCharacterStream();
+    }
+    @Override
+    public InputStream toAsciiStream(OptimizedElementArray row, int columnIndex,
+        LobService lobService) throws SQLException {
+      return lobService.createClob(row.getClobChunk(columnIndex - 1, true),
+          true).getAsciiStream();
     }
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
@@ -2737,10 +2771,10 @@ public abstract class Converters {
 
   /**
    * Get the {@link BigDecimal} for given non-null {@link Decimal} value.
-   * 
+   *
    * @param decimal
    *          the {@link Decimal} to convert to {@link BigDecimal}
-   * 
+   *
    * @throws NullPointerException
    *           if decimal argument is null
    */
@@ -2751,10 +2785,10 @@ public abstract class Converters {
 
   /**
    * Get the {@link Decimal} for given non-null {@link BigDecimal} value.
-   * 
+   *
    * @param decimal
    *          the {@link BigDecimal} to convert to {@link Decimal}
-   * 
+   *
    * @throws NullPointerException
    *           if decimal argument is null
    */

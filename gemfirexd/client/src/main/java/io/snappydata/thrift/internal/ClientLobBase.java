@@ -156,7 +156,7 @@ abstract class ClientLobBase {
     this.length = len;
   }
 
-  public final void free() throws SQLException {
+  public final void free() {
     final ClientFinalizer finalizer = this.finalizer;
     if (finalizer != null) {
       finalizer.clear();

@@ -57,6 +57,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   private BlobChunk currentChunk;
   private InputStream dataStream;
   private int baseChunkSize;
+  private final boolean freeForStream;
 
   static final byte[] ZERO_ARRAY = new byte[0];
 
@@ -64,19 +65,22 @@ public final class ClientBlob extends ClientLobBase implements Blob {
     super(service);
     this.dataStream = new MemInputStream(ZERO_ARRAY);
     this.length = 0;
+    this.freeForStream = false;
   }
 
   ClientBlob(InputStream dataStream, ClientService service) {
     super(service);
     this.dataStream = dataStream;
+    this.freeForStream = false;
   }
 
   ClientBlob(BlobChunk firstChunk, ClientService service,
-      HostConnection source) throws SQLException {
+      HostConnection source, boolean freeForStream) throws SQLException {
     super(service, firstChunk.last ? snappydataConstants.INVALID_ID
         : firstChunk.lobId, source);
     this.baseChunkSize = firstChunk.chunk.remaining();
     this.currentChunk = firstChunk;
+    this.freeForStream = freeForStream;
     if (firstChunk.isSetTotalLength()) {
       this.length = firstChunk.getTotalLength();
     } else if (firstChunk.last) {
@@ -392,7 +396,8 @@ public final class ClientBlob extends ClientLobBase implements Blob {
      * {@inheritDoc}
      */
     @Override
-    public int read(byte[] b, int offset, int len) throws IOException {
+    public int read(@SuppressWarnings("NullableProblems") byte[] b,
+        int offset, int len) throws IOException {
       if (b == null) {
         throw new NullPointerException();
       } else if (offset < 0 || len < 0 || len > (b.length - offset)) {
@@ -452,6 +457,13 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         return 0;
       } else {
         return 0;
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      if (freeForStream) {
+        free();
       }
     }
   }

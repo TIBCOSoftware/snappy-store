@@ -742,8 +742,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       long length) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "BinaryStream",
+        true, parameterIndex).setBinaryStream(this.paramsList,
+        parameterIndex, x, length);
   }
 
   /**
@@ -772,8 +773,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       long length) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "CharacterStream",
+        true, parameterIndex).setCharacterStream(this.paramsList,
+        parameterIndex, reader, length);
   }
 
   /**
@@ -802,8 +804,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       long length) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "AsciiStream",
+        true, parameterIndex).setAsciiStream(this.paramsList,
+        parameterIndex, x, length);
   }
 
   /**
@@ -840,10 +843,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   @Override
   public final void setBlob(int parameterIndex, InputStream inputStream,
       long length) throws SQLException {
-    checkValidParameterIndex(parameterIndex);
-
-    // TODO Auto-generated method stub
-
+    setBinaryStream(parameterIndex, inputStream, length);
   }
 
   /**
@@ -853,8 +853,8 @@ public class ClientPreparedStatement extends ClientStatement implements
   public final void setBlob(int parameterIndex, Blob x) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "blob",
+        true, parameterIndex).setBlob(this.paramsList, parameterIndex, x);
   }
 
   /**
@@ -872,10 +872,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   @Override
   public final void setClob(int parameterIndex, Reader reader, long length)
       throws SQLException {
-    checkValidParameterIndex(parameterIndex);
-
-    // TODO Auto-generated method stub
-
+    setCharacterStream(parameterIndex, reader, length);
   }
 
   /**
@@ -885,8 +882,8 @@ public class ClientPreparedStatement extends ClientStatement implements
   public final void setClob(int parameterIndex, Clob x) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "clob",
+        true, parameterIndex).setClob(this.paramsList, parameterIndex, x);
   }
 
   /**
