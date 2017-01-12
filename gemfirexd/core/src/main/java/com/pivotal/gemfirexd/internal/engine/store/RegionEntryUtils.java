@@ -1520,6 +1520,12 @@ public final class RegionEntryUtils {
     }
 
     @Override
+    public boolean isAccessor() {
+      GemFireStore.VMKind myVMKind = GemFireXDUtils.getMyVMKind();
+      return myVMKind != null && myVMKind.isAccessor();
+    }
+
+    @Override
     public boolean isOperationNode() {
       GemFireStore.VMKind myVMKind = GemFireXDUtils.getMyVMKind();
       return myVMKind != null && myVMKind.isAccessorOrStore();
