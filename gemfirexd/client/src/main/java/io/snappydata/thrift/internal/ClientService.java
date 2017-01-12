@@ -81,7 +81,7 @@ public final class ClientService extends ReentrantLock {
 
   /**
    * Stores tri-state for TransactionAttributes:
-   * 
+   * <p>
    * 0 for unset, -1 for false, 1 for true
    */
   private final byte[] txFlags = new byte[NUM_TXFLAGS];
@@ -95,13 +95,13 @@ public final class ClientService extends ReentrantLock {
 
   private static final SharedUtils.CSVVisitor<Collection<HostAddress>, int[]> addHostAddresses =
       new SharedUtils.CSVVisitor<Collection<HostAddress>, int[]>() {
-    @Override
-    public void visit(String str, Collection<HostAddress> collectAddresses,
-        int[] port) {
-      final String serverName = SharedUtils.getHostPort(str, port);
-      collectAddresses.add(ThriftUtils.getHostAddress(serverName, port[0]));
-    }
-  };
+        @Override
+        public void visit(String str, Collection<HostAddress> collectAddresses,
+            int[] port) {
+          final String serverName = SharedUtils.getHostPort(str, port);
+          collectAddresses.add(ThriftUtils.getHostAddress(serverName, port[0]));
+        }
+      };
 
   static {
     ThriftExceptionUtil.init();
@@ -168,8 +168,7 @@ public final class ClientService extends ReentrantLock {
       final int[] portHolder = new int[1];
       SharedUtils.splitCSV(propValue, addHostAddresses, this.connHosts,
           portHolder);
-    }
-    else {
+    } else {
       this.connHosts = Collections.singletonList(hostAddr);
     }
 
@@ -181,8 +180,7 @@ public final class ClientService extends ReentrantLock {
       SharedUtils.splitCSV(propValue, SharedUtils.stringAggregator,
           groupsSet, Boolean.TRUE);
       this.serverGroups = Collections.unmodifiableSet(groupsSet);
-    }
-    else {
+    } else {
       this.serverGroups = null;
     }
 
@@ -252,8 +250,7 @@ public final class ClientService extends ReentrantLock {
           currentSocket = (SocketTimeout)this.clientService
               .getOutputProtocol().getTransport();
           readTimeout = currentSocket.getRawTimeout();
-        }
-        else {
+        } else {
           currentSocket = null;
           readTimeout = socketParams.getReadTimeout(0);
         }
@@ -264,8 +261,7 @@ public final class ClientService extends ReentrantLock {
           inTransport = outTransport = new SnappyTSSLSocket(
               hostAddr.resolveHost(), hostAddr.getPort(), socketParams,
               sysProps, readTimeout);
-        }
-        else {
+        } else {
           inTransport = outTransport = new SnappyTSocket(
               hostAddr.resolveHost(), hostAddr.getPort(), true,
               ThriftUtils.isThriftSelectorServer(), socketParams, sysProps,
@@ -274,8 +270,7 @@ public final class ClientService extends ReentrantLock {
         if (getServerType().isThriftBinaryProtocol()) {
           inProtocol = new TBinaryProtocol(inTransport);
           outProtocol = new TBinaryProtocol(outTransport);
-        }
-        else {
+        } else {
           inProtocol = new TCompactProtocol(inTransport);
           outProtocol = new TCompactProtocol(outTransport);
         }
@@ -297,9 +292,8 @@ public final class ClientService extends ReentrantLock {
             SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
                 "Opened connection @" + hashCode() + " ID=" + connProps.connId
                     + (connProps.token == null ? "" : (" @"
-                        + ClientSharedUtils.toHexString(connProps.token))));
-          }
-          else {
+                    + ClientSharedUtils.toHexString(connProps.token))));
+          } else {
             final long ns = System.nanoTime();
             SanityManager.DEBUG_PRINT_COMPACT("openConnection_E", null,
                 connProps.connId, connProps.token, ns, false, null);
@@ -313,8 +307,7 @@ public final class ClientService extends ReentrantLock {
         if (isolationLevel !=
             snappydataConstants.DEFAULT_TRANSACTION_ISOLATION) {
           beginTransaction(isolationLevel, txFlags);
-        }
-        else if (txFlags != null) {
+        } else if (txFlags != null) {
           setTransactionAttributes(txFlags);
         }
 
@@ -401,8 +394,7 @@ public final class ClientService extends ReentrantLock {
     if (!this.isOpen && createNewConnection) {
       if (t instanceof SnappyException) {
         throw (SnappyException)t;
-      }
-      else {
+      } else {
         throw ThriftExceptionUtil.newSnappyException(
             SQLState.NO_CURRENT_CONNECTION, t,
             sourceAddr != null ? sourceAddr.toString() : null);
@@ -428,26 +420,21 @@ public final class ClientService extends ReentrantLock {
           throw newSnappyExceptionForNodeFailure(source, op, isolationLevel,
               failedServers, createNewConnection,
               ThriftExceptionUtil.newSQLException(se));
-        }
-        else {
+        } else {
           throw se;
         }
-      }
-      else if (!tryFailover) {
+      } else if (!tryFailover) {
         throw newSnappyExceptionForNodeFailure(source, op, isolationLevel,
             failedServers, createNewConnection, se);
-      }
-      else if (status == NetConnection.FailoverStatus.RETRY) {
+      } else if (status == NetConnection.FailoverStatus.RETRY) {
         return failedServers;
       }
-    }
-    else if (t instanceof TException) {
+    } else if (t instanceof TException) {
       if (!tryFailover) {
         throw newSnappyExceptionForNodeFailure(source, op, isolationLevel,
             failedServers, createNewConnection, t);
       }
-    }
-    else {
+    } else {
       throw ThriftExceptionUtil.newSnappyException(SQLState.JAVA_EXCEPTION, t,
           sourceAddr != null ? sourceAddr.toString() : null, t.getClass(),
           t.getMessage());
@@ -468,23 +455,22 @@ public final class ClientService extends ReentrantLock {
       // throw X0Z01 for this case
       String err = expectedSource
           + (cause instanceof TException ? " {caused by: "
-              + ThriftExceptionUtil.getExceptionString(cause) + '}' : "");
+          + ThriftExceptionUtil.getExceptionString(cause) + '}' : "");
       return snappyException ? ThriftExceptionUtil.newSnappyException(
           SQLState.GFXD_NODE_SHUTDOWN, cause,
           source != null ? source.hostAddr.toString() : null, err, op)
           : ThriftExceptionUtil.newSQLException(SQLState.GFXD_NODE_SHUTDOWN,
-              cause, err, opNode);
-    }
-    else {
+          cause, err, opNode);
+    } else {
       // throw 40XD0 for this case
       String err = " operation=" + opNode
           + (cause instanceof TException ? " caused by: "
-              + ThriftExceptionUtil.getExceptionString(cause) : "");
+          + ThriftExceptionUtil.getExceptionString(cause) : "");
       return snappyException ? ThriftExceptionUtil.newSnappyException(
           SQLState.DATA_CONTAINER_CLOSED, cause, source != null
               ? source.hostAddr.toString() : null, expectedSource, err)
           : ThriftExceptionUtil.newSQLException(SQLState.DATA_CONTAINER_CLOSED,
-              cause, expectedSource, err);
+          cause, expectedSource, err);
     }
   }
 
@@ -589,8 +575,7 @@ public final class ClientService extends ReentrantLock {
     if (lockTimeoutMillis <= 0) {
       super.lock();
       return true;
-    }
-    else {
+    } else {
       try {
         return super.tryLock(lockTimeoutMillis, TimeUnit.MILLISECONDS);
       } catch (InterruptedException ie) {
@@ -741,7 +726,7 @@ public final class ClientService extends ReentrantLock {
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("prepareStatement_E", sql
-              + ":ID=" + pr.statementId, source.connId, source.token, ns,
+                  + ":ID=" + pr.statementId, source.connId, source.token, ns,
               false, null);
         }
         return pr;
@@ -759,10 +744,10 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public StatementResult executePrepared(HostConnection source, int stmtId,
+  public StatementResult executePrepared(HostConnection source, long stmtId,
       Row params, Map<Integer, OutputParameter> outputParams,
       PrepareResultHolder prh) throws SnappyException {
-    Integer logStmtId = null;
+    long logStmtId = -1;
     StatementAttrs attrs = prh.getAttributes();
     Set<HostAddress> failedServers = null;
     super.lock();
@@ -837,7 +822,7 @@ public final class ClientService extends ReentrantLock {
   }
 
   public UpdateResult executePreparedUpdate(HostConnection source,
-      int stmtId, Row params, PrepareResultHolder prh) throws SnappyException {
+      long stmtId, Row params, PrepareResultHolder prh) throws SnappyException {
     Set<HostAddress> failedServers = null;
     super.lock();
     try {
@@ -907,7 +892,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public RowSet executePreparedQuery(HostConnection source, int stmtId,
+  public RowSet executePreparedQuery(HostConnection source, long stmtId,
       Row params, PrepareResultHolder prh) throws SnappyException {
     StatementAttrs attrs = prh.getAttributes();
     Set<HostAddress> failedServers = null;
@@ -982,7 +967,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public UpdateResult executePreparedBatch(HostConnection source, int stmtId,
+  public UpdateResult executePreparedBatch(HostConnection source, long stmtId,
       List<Row> paramsBatch, PrepareResultHolder prh) throws SnappyException {
     Set<HostAddress> failedServers = null;
     super.lock();
@@ -1249,7 +1234,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public RowSet getNextResultSet(final HostConnection source, int cursorId,
+  public RowSet getNextResultSet(final HostConnection source, long cursorId,
       byte otherResultSetBehaviour) throws SnappyException {
     if (SanityManager.TraceClientStatement) {
       final long ns = System.nanoTime();
@@ -1279,7 +1264,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public BlobChunk getBlobChunk(final HostConnection source, int lobId,
+  public BlobChunk getBlobChunk(final HostConnection source, long lobId,
       long offset, int chunkSize, boolean freeLobAtEnd) throws SnappyException {
     if (SanityManager.TraceClientStatement) {
       final long ns = System.nanoTime();
@@ -1309,7 +1294,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public ClobChunk getClobChunk(final HostConnection source, int lobId,
+  public ClobChunk getClobChunk(final HostConnection source, long lobId,
       long offset, int chunkSize, boolean freeLobAtEnd) throws SnappyException {
     if (SanityManager.TraceClientStatement) {
       final long ns = System.nanoTime();
@@ -1341,7 +1326,7 @@ public final class ClientService extends ReentrantLock {
 
   // TODO: currently higher layers send lobs in single first chunk
 
-  public int sendBlobChunk(final HostConnection source, BlobChunk chunk)
+  public long sendBlobChunk(final HostConnection source, BlobChunk chunk)
       throws SnappyException {
     if (SanityManager.TraceClientStatement) {
       final long ns = System.nanoTime();
@@ -1353,7 +1338,7 @@ public final class ClientService extends ReentrantLock {
       // check if node has failed sometime before
       checkUnexpectedNodeFailure(source, "sendBlobChunk");
 
-      int lobId = this.clientService.sendBlobChunk(chunk, source.connId,
+      long lobId = this.clientService.sendBlobChunk(chunk, source.connId,
           source.token);
       if (SanityManager.TraceClientStatement) {
         final long ns = System.nanoTime();
@@ -1371,7 +1356,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public int sendClobChunk(final HostConnection source, ClobChunk chunk)
+  public long sendClobChunk(final HostConnection source, ClobChunk chunk)
       throws SnappyException {
     if (SanityManager.TraceClientStatement) {
       final long ns = System.nanoTime();
@@ -1383,7 +1368,7 @@ public final class ClientService extends ReentrantLock {
       // check if node has failed sometime before
       checkUnexpectedNodeFailure(source, "sendClobChunk");
 
-      int lobId = this.clientService.sendClobChunk(chunk, source.connId,
+      long lobId = this.clientService.sendClobChunk(chunk, source.connId,
           source.token);
       if (SanityManager.TraceClientStatement) {
         final long ns = System.nanoTime();
@@ -1401,7 +1386,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public boolean freeLob(final HostConnection source, int lobId,
+  public boolean freeLob(final HostConnection source, long lobId,
       long lockTimeoutMillis) throws SnappyException {
     if (source == null || lobId == snappydataConstants.INVALID_ID) {
       return true;
@@ -1436,7 +1421,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public RowSet scrollCursor(final HostConnection source, int cursorId,
+  public RowSet scrollCursor(final HostConnection source, long cursorId,
       int offset, boolean offsetIsAbsolute, boolean fetchReverseForAbsolute,
       int fetchSize) throws SnappyException {
     if (SanityManager.TraceClientStatement) {
@@ -1468,7 +1453,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public void executeCursorUpdate(final HostConnection source, int cursorId,
+  public void executeCursorUpdate(final HostConnection source, long cursorId,
       List<CursorUpdateOperation> operations, List<Row> changedRows,
       List<List<Integer>> changedColumnsList, List<Integer> changedRowIndexes)
       throws SnappyException {
@@ -1499,7 +1484,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public void executeCursorUpdate(final HostConnection source, int cursorId,
+  public void executeCursorUpdate(final HostConnection source, long cursorId,
       CursorUpdateOperation operation, Row changedRow,
       List<Integer> changedColumns, int changedRowIndex)
       throws SnappyException {
@@ -1695,7 +1680,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public Map<Integer, String> fetchActiveStatements() throws SnappyException {
+  public Map<Long, String> fetchActiveStatements() throws SnappyException {
     HostConnection source = this.currentHostConnection;
     if (SanityManager.TraceClientStatement) {
       final long ns = System.nanoTime();
@@ -1706,7 +1691,7 @@ public final class ClientService extends ReentrantLock {
       super.lock();
       try {
         source = this.currentHostConnection;
-        Map<Integer, String> stmts = this.clientService
+        Map<Long, String> stmts = this.clientService
             .fetchActiveStatements(source.connId, source.token);
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
@@ -1723,7 +1708,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public void cancelStatement(final HostConnection source, int stmtId)
+  public void cancelStatement(final HostConnection source, long stmtId)
       throws SnappyException {
     if (source == null || stmtId == snappydataConstants.INVALID_ID) {
       return;
@@ -1753,7 +1738,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public boolean closeResultSet(final HostConnection source, int cursorId,
+  public boolean closeResultSet(final HostConnection source, long cursorId,
       long lockTimeoutMillis) throws SnappyException {
     if (source == null || cursorId == snappydataConstants.INVALID_ID) {
       return true;
@@ -1788,7 +1773,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public boolean closeStatement(final HostConnection source, int stmtId,
+  public boolean closeStatement(final HostConnection source, long stmtId,
       long lockTimeoutMillis) throws SnappyException {
     if (source == null || stmtId == snappydataConstants.INVALID_ID) {
       return true;
@@ -1856,8 +1841,7 @@ public final class ClientService extends ReentrantLock {
           }
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
               sb.toString());
-        }
-        else {
+        } else {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("closeConnection_E", null,
               source.connId, source.token, ns, false, null);
@@ -1985,8 +1969,7 @@ public final class ClientService extends ReentrantLock {
   final void checkClosedConnection() throws SQLException {
     if (this.isOpen) {
       return;
-    }
-    else {
+    } else {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.NO_CURRENT_CONNECTION, null);
     }

@@ -51,9 +51,9 @@ public interface LobService {
 
   Clob createClob(ClobChunk firstChunk) throws SQLException;
 
-  BlobChunk getBlobChunk(int lobId, long offset, int chunkSize,
+  BlobChunk getBlobChunk(long lobId, long offset, int chunkSize,
       boolean freeLobAtEnd) throws SQLException;
 
-  ClobChunk getClobChunk(int lobId, long offset, int chunkSize,
+  ClobChunk getClobChunk(long lobId, long offset, int chunkSize,
       boolean freeLobAtEnd) throws SQLException;
 }

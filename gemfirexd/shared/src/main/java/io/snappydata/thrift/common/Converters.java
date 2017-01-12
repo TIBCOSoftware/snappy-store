@@ -1407,18 +1407,13 @@ public abstract class Converters {
     @Override
     public String toString(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
-      if (date != null) {
-        return date.toString();
-      }
-      else {
-        return null;
-      }
+      java.sql.Date date = row.getDate(columnIndex - 1);
+      return date.toString();
     }
     @Override
     public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
+      java.sql.Date date = row.getDate(columnIndex - 1);
       if (cal == null) {
         return date;
       }
@@ -1430,46 +1425,46 @@ public abstract class Converters {
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
         int columnIndex, Calendar cal) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
+      long date = row.getLong(columnIndex - 1);
       if (cal == null) {
-        return new java.sql.Timestamp(date.getTime());
+        return new java.sql.Timestamp(date * 1000L);
       }
       else {
-        cal.setTime(date);
+        cal.setTimeInMillis(date * 1000L);
         return new java.sql.Timestamp(cal.getTimeInMillis());
       }
     }
     @Override
     public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
+      long date = row.getLong(columnIndex - 1);
       if (cal == null) {
-        return new java.sql.Time(date.getTime());
+        return Converters.getTime(date);
       }
       else {
-        cal.setTime(date);
+        cal.setTimeInMillis(date * 1000L);
         return new java.sql.Time(cal.getTimeInMillis());
       }
     }
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getDate(columnIndex - 1);
     }
     @Override
     public void setDate(OptimizedElementArray row, int columnIndex,
         java.sql.Date x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.DATE);
+      row.setDate(columnIndex - 1, x);
     }
     @Override
     public void setTimestamp(OptimizedElementArray row, int columnIndex,
         java.sql.Timestamp x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIMESTAMP);
+      row.setTimestamp(columnIndex - 1, x);
     }
     @Override
     public void setTime(OptimizedElementArray row, int columnIndex,
         java.sql.Time x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIME);
+      row.setTime(columnIndex - 1, x);
     }
     @Override
     public void setString(OptimizedElementArray row, int columnIndex, String x)
@@ -1508,42 +1503,37 @@ public abstract class Converters {
     @Override
     public String toString(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
-      if (time != null) {
-        return time.toString();
-      }
-      else {
-        return null;
-      }
+      java.sql.Time time = row.getTime(columnIndex - 1);
+      return time.toString();
     }
     @Override
     public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
+      long time = row.getLong(columnIndex - 1);
       if (cal == null) {
-        return new java.sql.Date(time.getTime());
+        return Converters.getDate(time);
       }
       else {
-        cal.setTime(time);
+        cal.setTimeInMillis(time * 1000L);
         return new java.sql.Date(cal.getTimeInMillis());
       }
     }
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
         int columnIndex, Calendar cal) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
+      long time = row.getLong(columnIndex - 1);
       if (cal == null) {
-        return new java.sql.Timestamp(time.getTime());
+        return new java.sql.Timestamp(time * 1000L);
       }
       else {
-        cal.setTime(time);
+        cal.setTimeInMillis(time * 1000L);
         return new java.sql.Timestamp(cal.getTimeInMillis());
       }
     }
     @Override
     public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
+      java.sql.Time time = row.getTime(columnIndex - 1);
       if (cal == null) {
         return time;
       }
@@ -1555,22 +1545,22 @@ public abstract class Converters {
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getTime(columnIndex - 1);
     }
     @Override
     public void setDate(OptimizedElementArray row, int columnIndex,
         java.sql.Date x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.DATE);
+      row.setDate(columnIndex - 1, x);
     }
     @Override
     public void setTimestamp(OptimizedElementArray row, int columnIndex,
         java.sql.Timestamp x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIMESTAMP);
+      row.setTimestamp(columnIndex - 1, x);
     }
     @Override
     public void setTime(OptimizedElementArray row, int columnIndex,
         java.sql.Time x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIME);
+      row.setTime(columnIndex - 1, x);
     }
     @Override
     public void setString(OptimizedElementArray row, int columnIndex, String x)
@@ -1609,32 +1599,25 @@ public abstract class Converters {
     @Override
     public String toString(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row
-          .getObject(columnIndex - 1);
-      if (ts != null) {
-        return ts.toString();
-      }
-      else {
-        return null;
-      }
+      java.sql.Timestamp ts = row.getTimestamp(columnIndex - 1);
+      return ts.toString();
     }
     @Override
     public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row
-          .getObject(columnIndex - 1);
+      long ts = row.getLong(columnIndex - 1);
       if (cal == null) {
-        return new java.sql.Date(ts.getTime());
+        return new java.sql.Date(ts / 1000000L);
       }
       else {
-        cal.setTime(ts);
+        cal.setTimeInMillis(ts / 1000000L);
         return new java.sql.Date(cal.getTimeInMillis());
       }
     }
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
         int columnIndex, Calendar cal) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row.getObject(columnIndex - 1);
+      java.sql.Timestamp ts = row.getTimestamp(columnIndex - 1);
       if (cal == null) {
         return ts;
       }
@@ -1646,35 +1629,34 @@ public abstract class Converters {
     @Override
     public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row
-          .getObject(columnIndex - 1);
+      long ts = row.getLong(columnIndex - 1);
       if (cal == null) {
-        return new java.sql.Time(ts.getTime());
+        return new java.sql.Time(ts / 1000000L);
       }
       else {
-        cal.setTime(ts);
+        cal.setTimeInMillis(ts / 1000000L);
         return new java.sql.Time(cal.getTimeInMillis());
       }
     }
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getTimestamp(columnIndex - 1);
     }
     @Override
     public void setDate(OptimizedElementArray row, int columnIndex,
         java.sql.Date x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.DATE);
+      row.setDate(columnIndex - 1, x);
     }
     @Override
     public void setTimestamp(OptimizedElementArray row, int columnIndex,
         java.sql.Timestamp x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIMESTAMP);
+      row.setTimestamp(columnIndex - 1, x);
     }
     @Override
     public void setTime(OptimizedElementArray row, int columnIndex,
         java.sql.Time x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIME);
+      row.setTime(columnIndex - 1, x);
     }
     @Override
     public void setString(OptimizedElementArray row, int columnIndex, String x)
@@ -1942,32 +1924,29 @@ public abstract class Converters {
       final Class<?> c;
       if (o == null || (c = o.getClass()) == String.class) {
         setString(row, columnIndex, (String)o);
-      }
-      else if (c == Double.class) {
+      } else if (c == Double.class) {
         setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Float.class) {
+      } else if (c == Float.class) {
         setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Integer.class) {
+      } else if (c == Integer.class) {
         setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
+      } else if (c == Byte.class) {
         setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
+      } else if (c == Short.class) {
         setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
+      } else if (c == Long.class) {
         setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
+      } else if (c == Boolean.class) {
         setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof BigDecimal) {
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else {
+      } else if (o instanceof java.sql.Date) {
+        setDate(row, columnIndex, (java.sql.Date)o);
+      } else if (o instanceof java.sql.Time) {
+        setTime(row, columnIndex, (java.sql.Time)o);
+      } else if (o instanceof java.sql.Timestamp) {
+        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
+      } else {
         throw newTypeSetConversionException(
             c.getName(), getType().toString(), columnIndex);
       }
@@ -2249,8 +2228,9 @@ public abstract class Converters {
       Object o = row.getObject(columnIndex - 1);
       if (o instanceof java.sql.Date) {
         return (java.sql.Date)o;
-      }
-      else {
+      } else if (o instanceof Number) {
+        return Converters.getDate(((Number)o).longValue());
+      } else {
         throw newTypeConversionException(
             getType().toString(), "Date", columnIndex);
       }
@@ -2261,8 +2241,9 @@ public abstract class Converters {
       Object o = row.getObject(columnIndex - 1);
       if (o instanceof java.sql.Timestamp) {
         return (java.sql.Timestamp)o;
-      }
-      else {
+      } else if (o instanceof Number) {
+        return Converters.getTimestamp(((Number)o).longValue());
+      } else {
         throw newTypeConversionException(
             getType().toString(), "Timestamp", columnIndex);
       }
@@ -2273,8 +2254,9 @@ public abstract class Converters {
       Object o = row.getObject(columnIndex - 1);
       if (o instanceof java.sql.Time) {
         return (java.sql.Time)o;
-      }
-      else {
+      } else if (o instanceof Number) {
+        return Converters.getTime(((Number)o).longValue());
+      } else {
         throw newTypeConversionException(
             getType().toString(), "Time", columnIndex);
       }
@@ -2783,8 +2765,16 @@ public abstract class Converters {
         .abs().toByteArray()));
   }
 
-  public static DateTime getDateTime(java.util.Date date) {
-    return new DateTime(date.getTime() / 1000L);
+  public static java.sql.Date getDate(long date) {
+    return new java.sql.Date(date * 1000L);
+  }
+
+  public static java.sql.Time getTime(long time) {
+    return new java.sql.Time(time * 1000L);
+  }
+
+  public static long getDateTime(java.util.Date date) {
+    return date.getTime() / 1000L;
   }
 
   public static BigDecimal adjustScale(final BigDecimal decimal) {
@@ -2855,21 +2845,15 @@ public abstract class Converters {
     }
   }
 
-  public static java.sql.Timestamp getTimestamp(Timestamp ts) {
-    java.sql.Timestamp jts = new java.sql.Timestamp(ts.secsSinceEpoch * 1000L);
-    if (ts.isSetNanos()) {
-      jts.setNanos(ts.nanos);
-    }
+  public static java.sql.Timestamp getTimestamp(long ts) {
+    // pass only the seconds for epoch time
+    java.sql.Timestamp jts = new java.sql.Timestamp((ts / 1000000000L) * 1000L);
+    jts.setNanos((int)(ts % 1000000000L));
     return jts;
   }
 
-  public static Timestamp getTimestamp(java.sql.Timestamp jts) {
-    Timestamp ts = new Timestamp(jts.getTime() / 1000L);
-    int nanos = jts.getNanos();
-    if (nanos != 0) {
-      ts.setNanos(nanos);
-    }
-    return ts;
+  public static long getTimestamp(java.sql.Timestamp jts) {
+    return jts.getTime() * 1000000L + jts.getNanos();
   }
 
   public static String getClobAsString(ClobChunk clob, LobService lobService)
@@ -2893,7 +2877,7 @@ public abstract class Converters {
           SQLState.LOB_LOCATOR_INVALID, new RuntimeException("missing LOB id"));
     }
 
-    final int lobId = clob.lobId;
+    final long lobId = clob.lobId;
     final StringBuilder sb = new StringBuilder((int)totalLength);
     String chunk = clob.chunk;
     sb.append(chunk);
@@ -2929,7 +2913,7 @@ public abstract class Converters {
           SQLState.LOB_LOCATOR_INVALID, new RuntimeException("missing LOB id"));
     }
 
-    final int lobId = blob.lobId;
+    final long lobId = blob.lobId;
     final byte[] fullBytes = new byte[(int)totalLength];
     byte[] chunk = blob.getChunk();
     int chunkSize = chunk.length;

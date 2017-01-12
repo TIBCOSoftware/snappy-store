@@ -51,7 +51,7 @@ import io.snappydata.thrift.snappydataConstants;
 public final class ClientFinalizer extends FinalizeObject implements
     FinalizeObject.BatchFinalize {
 
-  private volatile int id;
+  private volatile long id;
   private ClientService service;
   HostConnection source;
   private final byte entityType;
@@ -66,7 +66,7 @@ public final class ClientFinalizer extends FinalizeObject implements
     this.entityType = entityType;
   }
 
-  void updateReferentData(int id, HostConnection source) {
+  void updateReferentData(long id, HostConnection source) {
     this.id = id;
     this.source = source;
   }
@@ -91,7 +91,7 @@ public final class ClientFinalizer extends FinalizeObject implements
 
     final byte type = finalizer.entityType;
     final ClientService service = finalizer.service;
-    final int id;
+    final long id;
     final HostConnection source;
     if (type == snappydataConstants.BULK_CLOSE_CONNECTION) {
       if (service == null

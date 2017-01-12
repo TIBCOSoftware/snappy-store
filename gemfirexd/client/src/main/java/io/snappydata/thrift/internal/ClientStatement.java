@@ -60,7 +60,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   protected final ClientConnection conn;
   protected final StatementAttrs attrs;
   // volatile for cancel which can happen from another thread
-  protected volatile int statementId;
+  protected volatile long statementId;
   protected RowSet currentRowSet;
   protected int currentUpdateCount;
   protected RowSet currentGeneratedKeys;

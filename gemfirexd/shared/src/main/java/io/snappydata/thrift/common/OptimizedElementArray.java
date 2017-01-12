@@ -40,6 +40,7 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
@@ -50,7 +51,13 @@ import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
-import io.snappydata.thrift.*;
+import io.snappydata.thrift.BlobChunk;
+import io.snappydata.thrift.ClobChunk;
+import io.snappydata.thrift.ColumnDescriptor;
+import io.snappydata.thrift.ColumnValue;
+import io.snappydata.thrift.Decimal;
+import io.snappydata.thrift.SnappyType;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * A compact way to represent a set of primitive and non-primitive values. The
@@ -134,7 +141,7 @@ public class OptimizedElementArray {
 
   /**
    * Initialize the array for given {@link SnappyType}s.
-   * 
+   *
    * @param types
    *          the array of element types ordered by their position
    */
@@ -191,7 +198,7 @@ public class OptimizedElementArray {
 
   /**
    * Initialize the array for given {@link ColumnDescriptor}s.
-   * 
+   *
    * @param metadata
    *          the list of {@link ColumnDescriptor}s ordered by their position
    * @param useTypes if true then also store the {@link SnappyType}s
@@ -235,32 +242,36 @@ public class OptimizedElementArray {
   }
 
   public final short getShort(int index) {
-    final byte[] prims = this.primitives;
     int primIndex = this.positionMap[index];
-    int result = prims[primIndex++] & 0xff;
-    return (short)((result << 8) | (prims[primIndex] & 0xff));
+    if (ClientSharedUtils.isLittleEndian) {
+      return Platform.getShort(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex);
+    } else {
+      return Short.reverseBytes(Platform.getShort(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex));
+    }
   }
 
   public final int getInt(int index) {
-    final byte[] prims = this.primitives;
     int primIndex = this.positionMap[index];
-    int result = prims[primIndex++] & 0xff;
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    return ((result << 8) | (prims[primIndex] & 0xff));
+    if (ClientSharedUtils.isLittleEndian) {
+      return Platform.getInt(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex);
+    } else {
+      return Integer.reverseBytes(Platform.getInt(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex));
+    }
   }
 
   public final long getLong(int index) {
-    final byte[] prims = this.primitives;
     int primIndex = this.positionMap[index];
-    long result = prims[primIndex++] & 0xff;
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    result = (result << 8) | (prims[primIndex++] & 0xff);
-    return ((result << 8) | (prims[primIndex] & 0xff));
+    if (ClientSharedUtils.isLittleEndian) {
+      return Platform.getLong(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex);
+    } else {
+      return Long.reverseBytes(Platform.getLong(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex));
+    }
   }
 
   public final float getFloat(int index) {
@@ -269,6 +280,18 @@ public class OptimizedElementArray {
 
   public final double getDouble(int index) {
     return Double.longBitsToDouble(getLong(index));
+  }
+
+  public final Date getDate(int index) {
+    return Converters.getDate(getLong(index));
+  }
+
+  public final Time getTime(int index) {
+    return Converters.getTime(getLong(index));
+  }
+
+  public final Timestamp getTimestamp(int index) {
+    return Converters.getTimestamp(getLong(index));
   }
 
   public final Object getObject(int index) {
@@ -398,9 +421,13 @@ public class OptimizedElementArray {
   }
 
   protected final void setPrimShort(int primIndex, short value) {
-    final byte[] prims = this.primitives;
-    prims[primIndex++] = (byte)((value >>> 8) & 0xff);
-    prims[primIndex] = (byte)(value & 0xff);
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putShort(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex, value);
+    } else {
+      Platform.putShort(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex, Short.reverseBytes(value));
+    }
   }
 
   public final void setInt(int index, int value) {
@@ -408,11 +435,13 @@ public class OptimizedElementArray {
   }
 
   protected final void setPrimInt(int primIndex, int value) {
-    final byte[] prims = this.primitives;
-    prims[primIndex++] = (byte)((value >>> 24) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 16) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 8) & 0xff);
-    prims[primIndex] = (byte)(value & 0xff);
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putInt(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex, value);
+    } else {
+      Platform.putInt(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex, Integer.reverseBytes(value));
+    }
   }
 
   public final void setLong(int index, long value) {
@@ -420,15 +449,13 @@ public class OptimizedElementArray {
   }
 
   protected final void setPrimLong(int primIndex, long value) {
-    final byte[] prims = this.primitives;
-    prims[primIndex++] = (byte)((value >>> 56) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 48) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 40) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 32) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 24) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 16) & 0xff);
-    prims[primIndex++] = (byte)((value >>> 8) & 0xff);
-    prims[primIndex] = (byte)(value & 0xff);
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putLong(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex, value);
+    } else {
+      Platform.putLong(this.primitives,
+          Platform.BYTE_ARRAY_OFFSET + primIndex, Long.reverseBytes(value));
+    }
   }
 
   public final void setFloat(int index, float value) {
@@ -437,6 +464,27 @@ public class OptimizedElementArray {
 
   public final void setDouble(int index, double value) {
     setPrimLong(this.positionMap[index], Double.doubleToLongBits(value));
+  }
+
+  public final void setDate(int index, Date date) {
+    setPrimLong(this.positionMap[index], Converters.getDateTime(date));
+    if (this.types != null) {
+      this.types[index] = (byte)SnappyType.DATE.getValue();
+    }
+  }
+
+  public final void setTime(int index, Time time) {
+    setPrimLong(this.positionMap[index], Converters.getDateTime(time));
+    if (this.types != null) {
+      this.types[index] = (byte)SnappyType.TIME.getValue();
+    }
+  }
+
+  public final void setTimestamp(int index, Timestamp ts) {
+    setPrimLong(this.positionMap[index], Converters.getTimestamp(ts));
+    if (this.types != null) {
+      this.types[index] = (byte)SnappyType.TIMESTAMP.getValue();
+    }
   }
 
   public final void setObject(int index, Object value, SnappyType type) {
@@ -495,31 +543,13 @@ public class OptimizedElementArray {
           cv.setBool_val(getBoolean(index));
           break;
         case DATE:
-          Date date = (Date)getObject(index);
-          if (date != null) {
-            cv.setDate_val(Converters.getDateTime(date));
-          }
-          else {
-            cv.setNull_val(true);
-          }
+          cv.setDate_val(getLong(index));
           break;
         case TIMESTAMP:
-          java.sql.Timestamp ts = (java.sql.Timestamp)getObject(index);
-          if (ts != null) {
-            cv.setTimestamp_val(Converters.getTimestamp(ts));
-          }
-          else {
-            cv.setNull_val(true);
-          }
+          cv.setTimestamp_val(getLong(index));
           break;
         case TIME:
-          Time time = (Time)getObject(index);
-          if (time != null) {
-            cv.setTime_val(Converters.getDateTime(time));
-          }
-          else {
-            cv.setNull_val(true);
-          }
+          cv.setTime_val(getLong(index));
           break;
         case REAL:
           cv.setFloat_val(getInt(index));
@@ -629,25 +659,20 @@ public class OptimizedElementArray {
           }
           break;
         case TIMESTAMP_VAL:
-          ensureNonPrimCapacity();
-          Timestamp ts = (Timestamp)cv.getFieldValue();
-          if (ts != null) {
-            this.nonPrimitives[this.nonPrimSize++] = Converters.getTimestamp(ts);
-            this.positionMap[this.size] = -this.nonPrimSize;
-            setType(this.size, SnappyType.TIMESTAMP);
-            this.size++;
-          }
+          ensurePrimCapacity(8);
+          this.positionMap[this.size] = this.primSize;
+          setPrimLong(this.primSize, cv.getTimestamp_val());
+          setType(this.size, SnappyType.TIMESTAMP);
+          this.size++;
+          this.primSize += 8;
           break;
         case DATE_VAL:
-          ensureNonPrimCapacity();
-          DateTime date = (DateTime)cv.getFieldValue();
-          if (date != null) {
-            this.nonPrimitives[this.nonPrimSize++] = new java.sql.Date(
-                date.secsSinceEpoch * 1000L);
-            this.positionMap[this.size] = -this.nonPrimSize;
-            setType(this.size, SnappyType.DATE);
-            this.size++;
-          }
+          ensurePrimCapacity(8);
+          this.positionMap[this.size] = this.primSize;
+          setPrimLong(this.primSize, cv.getDate_val());
+          setType(this.size, SnappyType.DATE);
+          this.size++;
+          this.primSize += 8;
           break;
         case BOOL_VAL:
           ensurePrimCapacity(1);
@@ -682,15 +707,12 @@ public class OptimizedElementArray {
           this.primSize += 2;
           break;
         case TIME_VAL:
-          ensureNonPrimCapacity();
-          DateTime time = (DateTime)cv.getFieldValue();
-          if (time != null) {
-            this.nonPrimitives[this.nonPrimSize++] = new java.sql.Time(
-                time.secsSinceEpoch * 1000L);
-            this.positionMap[this.size] = -this.nonPrimSize;
-            setType(this.size, SnappyType.TIME);
-            this.size++;
-          }
+          ensurePrimCapacity(8);
+          this.positionMap[this.size] = this.primSize;
+          setPrimLong(this.primSize, cv.getTime_val());
+          setType(this.size, SnappyType.TIME);
+          this.size++;
+          this.primSize += 8;
           break;
         case BINARY_VAL:
           ensureNonPrimCapacity();

@@ -59,7 +59,7 @@ import io.snappydata.thrift.snappydataConstants;
  */
 final class ConnectionHolder {
   private final EmbedConnection conn;
-  private final int connId;
+  private final long connId;
   private final ByteBuffer token;
   private final String clientHostName;
   private final String clientID;
@@ -71,7 +71,7 @@ final class ConnectionHolder {
   private final NonReentrantLock sync;
 
   ConnectionHolder(final EmbedConnection conn, final OpenConnectionArgs args,
-      final int connId, final SecureRandom rnd) throws SQLException {
+      final long connId, final SecureRandom rnd) throws SQLException {
     this.conn = conn;
     this.connId = connId;
 
@@ -118,10 +118,10 @@ final class ConnectionHolder {
 
   static class ResultSetHolder {
     protected ResultSet resultSet;
-    protected int rsCursorId;
+    protected long rsCursorId;
     protected int rsOffset;
 
-    ResultSetHolder(ResultSet rs, int cursorId, int offset) {
+    ResultSetHolder(ResultSet rs, long cursorId, int offset) {
       this.resultSet = rs;
       this.rsCursorId = cursorId;
       this.rsOffset = offset;
@@ -131,11 +131,11 @@ final class ConnectionHolder {
   final class StatementHolder extends ResultSetHolder {
     private final Statement stmt;
     private final StatementAttrs stmtAttrs;
-    private final int stmtId;
+    private final long stmtId;
     private final String sql;
     private ArrayList<ResultSetHolder> moreResultSets;
 
-    private StatementHolder(Statement stmt, StatementAttrs attrs, int stmtId,
+    private StatementHolder(Statement stmt, StatementAttrs attrs, long stmtId,
         String sql) {
       super(null, snappydataConstants.INVALID_ID, 0);
       this.stmt = stmt;
@@ -152,7 +152,7 @@ final class ConnectionHolder {
       return this.stmt;
     }
 
-    final int getStatementId() {
+    final long getStatementId() {
       return this.stmtId;
     }
 
@@ -164,7 +164,7 @@ final class ConnectionHolder {
       return this.stmtAttrs;
     }
 
-    ResultSetHolder addResultSet(ResultSet rs, int cursorId) {
+    ResultSetHolder addResultSet(ResultSet rs, long cursorId) {
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
       try {
@@ -174,7 +174,7 @@ final class ConnectionHolder {
       }
     }
 
-    private ResultSetHolder addResultSetNoLock(ResultSet rs, int cursorId) {
+    private ResultSetHolder addResultSetNoLock(ResultSet rs, long cursorId) {
       if (this.resultSet == null) {
         this.resultSet = rs;
         this.rsCursorId = cursorId;
@@ -191,7 +191,7 @@ final class ConnectionHolder {
       }
     }
 
-    ResultSetHolder findResultSet(int cursorId) {
+    ResultSetHolder findResultSet(long cursorId) {
       final ArrayList<ResultSetHolder> moreResults;
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
@@ -211,7 +211,7 @@ final class ConnectionHolder {
       return null;
     }
 
-    ResultSet removeResultSet(int cursorId) {
+    ResultSet removeResultSet(long cursorId) {
       final ArrayList<ResultSetHolder> moreResults;
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
@@ -249,7 +249,7 @@ final class ConnectionHolder {
       return null;
     }
 
-    void closeResultSet(int cursorId, final SnappyDataServiceImpl service) {
+    void closeResultSet(long cursorId, final SnappyDataServiceImpl service) {
       final ResultSet rs = removeResultSet(cursorId);
       if (rs != null) {
         service.resultSetMap.removePrimitive(cursorId);
@@ -321,7 +321,7 @@ final class ConnectionHolder {
     return this.conn;
   }
 
-  final int getConnectionId() {
+  final long getConnectionId() {
     return this.connId;
   }
 
@@ -382,7 +382,7 @@ final class ConnectionHolder {
   }
 
   StatementHolder registerStatement(Statement stmt, StatementAttrs attrs,
-      int stmtId, String preparedSQL) {
+      long stmtId, String preparedSQL) {
     StatementHolder stmtHolder;
     this.sync.lock();
     try {
@@ -395,7 +395,7 @@ final class ConnectionHolder {
   }
 
   StatementHolder registerResultSet(Statement stmt, StatementAttrs attrs,
-      int stmtId, ResultSet rs, int cursorId, String sql) {
+      long stmtId, ResultSet rs, long cursorId, String sql) {
     StatementHolder stmtHolder;
     this.sync.lock();
     try {
@@ -410,7 +410,7 @@ final class ConnectionHolder {
 
   void closeStatement(final StatementHolder stmtHolder,
       final SnappyDataServiceImpl service) {
-    final int stmtId = stmtHolder.getStatementId();
+    final long stmtId = stmtHolder.getStatementId();
     this.sync.lock();
     try {
       final Statement stmt;
@@ -493,6 +493,6 @@ final class ConnectionHolder {
 
   @Override
   public final int hashCode() {
-    return this.connId;
+    return (int)(connId ^ (connId >>> 32));
   }
 }

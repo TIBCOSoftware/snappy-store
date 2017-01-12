@@ -77,7 +77,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
   private final ClientStatement statement;
   private final StatementAttrs attrs;
-  private int cursorId;
+  private long cursorId;
   private RowSet rowSet;
   private int numColumns;
   private ListIterator<Row> rowsIter;

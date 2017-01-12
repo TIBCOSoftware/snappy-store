@@ -49,7 +49,7 @@ import io.snappydata.thrift.snappydataConstants;
 abstract class ClientLobBase {
 
   protected final ClientService service;
-  protected final int lobId;
+  protected final long lobId;
   protected ClientFinalizer finalizer;
   protected boolean streamedInput;
   protected long streamOffset;
@@ -63,7 +63,7 @@ abstract class ClientLobBase {
     this.length = -1;
   }
 
-  protected ClientLobBase(ClientService service, int lobId,
+  protected ClientLobBase(ClientService service, long lobId,
       HostConnection source) throws SQLException {
     this.service = service;
     this.lobId = lobId;

@@ -38,8 +38,8 @@ package io.snappydata.thrift.server;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.SystemTimer;
 import com.gemstone.gnu.trove.THashSet;
-import com.gemstone.gnu.trove.TIntHashSet;
-import com.gemstone.gnu.trove.TIntProcedure;
+import com.gemstone.gnu.trove.TLongHashSet;
+import com.gemstone.gnu.trove.TLongProcedure;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import org.apache.thrift.transport.TTransport;
 
@@ -49,13 +49,13 @@ import org.apache.thrift.transport.TTransport;
 public class ClientTracker extends SystemTimer.SystemTimerTask {
   private final SnappyDataServiceImpl service;
   private final String clientHostId;
-  private final TIntHashSet connectionIds;
+  private final TLongHashSet connectionIds;
   private final THashSet clientSockets;
 
   public ClientTracker(SnappyDataServiceImpl service, String clientHostId) {
     this.service = service;
     this.clientHostId = clientHostId;
-    this.connectionIds = new TIntHashSet(8);
+    this.connectionIds = new TLongHashSet(8);
     this.clientSockets = new THashSet(8);
   }
 
@@ -93,7 +93,7 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
   /**
    * Add entry for a new connection from this client.
    */
-  public synchronized void addClientConnection(int connId) {
+  public synchronized void addClientConnection(long connId) {
     this.connectionIds.add(connId);
   }
 
@@ -110,7 +110,7 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
    * Remove a client connection and return true if all client connections
    * have been closed.
    */
-  public synchronized boolean removeClientConnection(int connId) {
+  public synchronized boolean removeClientConnection(long connId) {
     this.connectionIds.remove(connId);
     return this.connectionIds.isEmpty();
   }
@@ -155,9 +155,9 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
     if (this.clientSockets.isEmpty()) {
       this.service.clientTrackerMap.remove(this.clientHostId);
       if (this.connectionIds.size() > 0) {
-        this.connectionIds.forEach(new TIntProcedure() {
+        this.connectionIds.forEach(new TLongProcedure() {
           @Override
-          public boolean execute(int connId) {
+          public boolean execute(long connId) {
             service.forceCloseConnection(connId);
             return true;
           }

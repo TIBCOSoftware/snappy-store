@@ -86,7 +86,7 @@ abstract class ClientFetchColumnValue implements LobService {
     }
   }
 
-  protected final void setCurrentSource(byte entityId, int newId, RowSet rs) {
+  protected final void setCurrentSource(byte entityId, long newId, RowSet rs) {
     ClientFinalizer finalizer = this.finalizer;
     if (newId != snappydataConstants.INVALID_ID) {
       final HostConnection currentSource = service.getCurrentHostConnection();
@@ -139,7 +139,7 @@ abstract class ClientFetchColumnValue implements LobService {
    * {@inheritDoc}
    */
   @Override
-  public final BlobChunk getBlobChunk(int lobId, long offset, int chunkSize,
+  public final BlobChunk getBlobChunk(long lobId, long offset, int chunkSize,
       boolean freeLobAtEnd) throws SQLException {
     try {
       return service.getBlobChunk(getLobSource(true, "getBlobChunk"), lobId,
@@ -153,7 +153,7 @@ abstract class ClientFetchColumnValue implements LobService {
    * {@inheritDoc}
    */
   @Override
-  public final ClobChunk getClobChunk(int lobId, long offset, int chunkSize,
+  public final ClobChunk getClobChunk(long lobId, long offset, int chunkSize,
       boolean freeLobAtEnd) throws SQLException {
     try {
       return service.getClobChunk(getLobSource(true, "getClobChunk"), lobId,
@@ -256,7 +256,7 @@ abstract class ClientFetchColumnValue implements LobService {
     BigDecimal v = cvc.toBigDecimal(row, columnIndex);
     if (v != null) {
       // rounding as per server side EmbedResultSet20
-      v.setScale(scale, BigDecimal.ROUND_HALF_DOWN);
+      v = v.setScale(scale, BigDecimal.ROUND_HALF_DOWN);
       this.wasNull = false;
       return v;
     } else {
@@ -360,7 +360,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final Row row) throws SQLException {
     if (map == null) {
       throw ThriftExceptionUtil.newSQLException(SQLState.INVALID_API_PARAMETER,
-          null, map, "map", "FetchColumnValue.getObject(int,Map)");
+          null, null, "map", "FetchColumnValue.getObject(int,Map)");
     }
     if (map.isEmpty()) {
       // Map is empty call the normal getObject method.

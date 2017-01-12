@@ -158,7 +158,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   @Override
   protected final void setCurrentRowSet(RowSet rs) {
     if (rs != null && rs.metadata != null && !rs.metadata.isEmpty()) {
-      final int stmtId = rs.getStatementId();
+      final long stmtId = rs.getStatementId();
       if (stmtId != snappydataConstants.INVALID_ID) {
         this.statementId = stmtId;
       }
@@ -962,7 +962,7 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public int getStatementId() {
+  public long getStatementId() {
     return this.statementId;
   }
 

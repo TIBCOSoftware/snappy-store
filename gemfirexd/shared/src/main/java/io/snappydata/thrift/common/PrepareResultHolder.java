@@ -52,7 +52,7 @@ public interface PrepareResultHolder {
   /**
    * the statement ID assigned by the current server
    */
-  int getStatementId();
+  long getStatementId();
 
   /**
    * update the {@link PrepareResult} e.g. after a failover

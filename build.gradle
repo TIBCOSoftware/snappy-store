@@ -50,6 +50,7 @@ allprojects {
     jettyVersion = '9.2.16.v20160414'
     hadoopVersion = '2.7.3'
     protobufVersion = '2.6.1'
+    kryoVersion = '4.0.0'
     sunJerseyVersion = '1.19.1'
     hadoopJettyVersion = '6.1.26'
     jsr305Version = '3.0.1'

@@ -106,6 +106,9 @@ public abstract class ClientSharedUtils {
 
   private static final Object[] staticZeroLenObjectArray = new Object[0];
 
+  public static final boolean isLittleEndian =
+      ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
+
   /**
    * all classes should use this variable to determine whether to use IPv4 or
    * IPv6 addresses

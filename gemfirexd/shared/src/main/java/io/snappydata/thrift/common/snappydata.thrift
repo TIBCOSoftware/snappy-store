@@ -61,17 +61,12 @@ struct Decimal {
   3: required binary                                       magnitude
 }
 
-struct Timestamp {
-  1: required i64                                          secsSinceEpoch
-  2: optional i32                                          nanos
-}
-
 struct BlobChunk {
   1: required binary                                       chunk
   2: required bool                                         last
   // optional when sending from client to server for update,
   // but required when returning from server to client or for gets
-  3: optional i32                                          lobId
+  3: optional i64                                          lobId
   4: optional i64                                          offset
   // total length of LOB; will be set for first chunk but optional for rest
   5: optional i64                                          totalLength
@@ -82,7 +77,7 @@ struct ClobChunk {
   2: required bool                                         last
   // optional when sending from client to server for update,
   // but required when returning from server to client or for gets
-  3: optional i32                                          lobId
+  3: optional i64                                          lobId
   4: optional i64                                          offset
   // total length of LOB; will be set for first chunk but optional for rest
   5: optional i64                                          totalLength
@@ -350,7 +345,7 @@ const byte DRIVER_JDBC                                     = 1;
 const byte DRIVER_ODBC                                     = 2;
 
 struct ServiceMetaDataArgs {
-  1: required i32                                          connId
+  1: required i64                                          connId
   2: required byte                                         driverType
   3: optional binary                                       token
   4: optional string                                       schema
@@ -392,7 +387,7 @@ struct OpenConnectionArgs {
 }
 
 struct ConnectionProperties {
-  1: required i32                                          connId
+  1: required i64                                          connId
   2: required string                                       clientHostName
   3: required string                                       clientID
   4: optional string                                       userName
@@ -487,10 +482,6 @@ struct StatementAttrs {
  17: optional map<TransactionAttribute, bool>              pendingTransactionAttrs
 }
 
-struct DateTime {
-  1: required i64                                          secsSinceEpoch
-}
-
 union ColumnValue {
   1: bool                                                  bool_val      // BOOLEAN
   2: byte                                                  byte_val      // TINYINT
@@ -505,9 +496,9 @@ union ColumnValue {
   7: double                                                double_val    // DOUBLE/FLOAT
   8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR, SQLXML
   9: Decimal                                               decimal_val   // DECIMAL
- 10: DateTime                                              date_val      // DATE (only the date portion is used)
- 11: DateTime                                              time_val      // TIME (only the time portion is used)
- 12: Timestamp                                             timestamp_val // TIMESTAMP
+ 10: i64                                                   date_val      // DATE (seconds since epoch)
+ 11: i64                                                   time_val      // TIME (seconds since epoch)
+ 12: i64                                                   timestamp_val // TIMESTAMP (nanos since epoch)
  13: binary                                                binary_val    // BINARY, VARBINARY, LONGVARBINARY
  14: BlobChunk                                             blob_val      // BLOB
  15: ClobChunk                                             clob_val      // CLOB
@@ -590,13 +581,13 @@ struct RowSet {
   // bitmask flags as a combination of constants defined above
   2: required byte                                         flags
   // ID associated with this RowSet
-  3: required i32                                          cursorId
+  3: required i64                                          cursorId
   // ID of the associated statement
-  4: required i32                                          statementId
+  4: required i64                                          statementId
   // three arguments below are used to fix the origin of this result
   // so client can detect failure cases easily when iterating over results
   // (token and address are optional and will not be set by server)
-  5: required i32                                          connId
+  5: required i64                                          connId
   6: optional binary                                       token
   7: optional HostAddress                                  source
   // the starting row number (0-based) in case of batched results
@@ -623,7 +614,7 @@ const byte STATEMENT_TYPE_CALL                             = 4;
 const byte STATEMENT_TYPE_DDL                              = 5;
 
 struct PrepareResult {
-  1: required i32                                          statementId
+  1: required i64                                          statementId
   2: required byte                                         statementType
   3: required list<ColumnDescriptor>                       parameterMetaData
   4: optional list<ColumnDescriptor>                       resultSetMetaData
@@ -660,9 +651,9 @@ const byte BULK_CLOSE_STATEMENT                            = 3;
 const byte BULK_CLOSE_CONNECTION                           = 4;
 
 struct EntityId {
-  1: required i32                                          id
+  1: required i64                                          id
   2: required byte                                         type
-  3: required i32                                          connId
+  3: required i64                                          connId
   4: optional binary                                       token
 }
 
@@ -713,7 +704,7 @@ service SnappyDataService {
   ConnectionProperties openConnection(1: OpenConnectionArgs arguments)
       throws (1: SnappyException error)
 
-  StatementResult execute(1: i32 connId,
+  StatementResult execute(1: i64 connId,
       2: string sql,
       // optional
       3: map<i32, OutputParameter> outputParams,
@@ -722,21 +713,21 @@ service SnappyDataService {
       // optional
       5: binary token) throws (1: SnappyException error)
 
-  UpdateResult executeUpdate(1: i32 connId,
+  UpdateResult executeUpdate(1: i64 connId,
       2: list<string> sqls,
       // optional
       3: StatementAttrs attrs,
       // optional
       4: binary token) throws (1: SnappyException error)
 
-  RowSet executeQuery(1: i32 connId,
+  RowSet executeQuery(1: i64 connId,
       2: string sql,
       // optional
       3: StatementAttrs attrs,
       // optional
       4: binary token) throws (1: SnappyException error)
 
-  PrepareResult prepareStatement(1: i32 connId,
+  PrepareResult prepareStatement(1: i64 connId,
       2: string sql,
       // optional
       3: map<i32, OutputParameter> outputParams,
@@ -745,29 +736,29 @@ service SnappyDataService {
       // optional
       5: binary token) throws (1: SnappyException error)
 
-  StatementResult executePrepared(1: i32 stmtId,
+  StatementResult executePrepared(1: i64 stmtId,
       2: Row params,
       // optional
       3: map<i32, OutputParameter> outputParams,
       // optional
       4: binary token) throws (1: SnappyException error)
 
-  UpdateResult executePreparedUpdate(1: i32 stmtId,
+  UpdateResult executePreparedUpdate(1: i64 stmtId,
       2: Row params,
       // optional
       3: binary token) throws (1: SnappyException error)
 
-  RowSet executePreparedQuery(1: i32 stmtId,
+  RowSet executePreparedQuery(1: i64 stmtId,
       2: Row params,
       // optional
       3: binary token) throws (1: SnappyException error)
 
-  UpdateResult executePreparedBatch(1: i32 stmtId,
+  UpdateResult executePreparedBatch(1: i64 stmtId,
       2: list<Row> paramsBatch,
       // optional
       3: binary token) throws (1: SnappyException error)
 
-  StatementResult prepareAndExecute(1: i32 connId,
+  StatementResult prepareAndExecute(1: i64 connId,
       2: string sql,
       3: list<Row> paramsBatch,
       // optional
@@ -777,30 +768,30 @@ service SnappyDataService {
       // optional
       6: binary token) throws (1: SnappyException error)
 
-  void beginTransaction(1: i32 connId,
+  void beginTransaction(1: i64 connId,
       2: byte isolationLevel,
       // optional
       3: map<TransactionAttribute, bool> flags,
       // optional
       4: binary token) throws (1: SnappyException error)
 
-  void setTransactionAttributes(1: i32 connId,
+  void setTransactionAttributes(1: i64 connId,
       2: map<TransactionAttribute, bool> flags,
       // optional
       3: binary token) throws (1: SnappyException error)
 
-  map<TransactionAttribute, bool> getTransactionAttributes(1: i32 connId,
+  map<TransactionAttribute, bool> getTransactionAttributes(1: i64 connId,
       // optional
       2: binary token) throws (1: SnappyException error)
 
-  void commitTransaction(1: i32 connId,
+  void commitTransaction(1: i64 connId,
       2: bool startNewTransaction,
       // optional
       3: map<TransactionAttribute, bool> flags,
       // optional
       4: binary token) throws (1: SnappyException error)
 
-  void rollbackTransaction(1: i32 connId,
+  void rollbackTransaction(1: i64 connId,
       2: bool startNewTransaction,
       // optional
       3: map<TransactionAttribute, bool> flags,
@@ -809,27 +800,27 @@ service SnappyDataService {
 
   // returns true if second phase commitTransaction() is required else
   // false where commit was single-phase (e.g. for READ_ONLY transaction)
-  bool prepareCommitTransaction(1: i32 connId,
+  bool prepareCommitTransaction(1: i64 connId,
       // optional
       2: map<TransactionAttribute, bool> flags,
       // optional
       3: binary token) throws (1: SnappyException error)
 
-  RowSet getNextResultSet(1: i32 cursorId,
+  RowSet getNextResultSet(1: i64 cursorId,
       2: byte otherResultSetBehaviour,
       // optional
       3: binary token) throws (1: SnappyException error)
 
-  BlobChunk getBlobChunk(1: i32 connId,
-      2: i32 lobId,
+  BlobChunk getBlobChunk(1: i64 connId,
+      2: i64 lobId,
       3: i64 offset,
       4: i32 size,
       // if true then free the server-side handle to blob when last==true
       5: bool freeLobAtEnd,
       // optional
       6: binary token) throws (1: SnappyException error)
-  ClobChunk getClobChunk(1: i32 connId,
-      2: i32 lobId,
+  ClobChunk getClobChunk(1: i64 connId,
+      2: i64 lobId,
       3: i64 offset,
       4: i32 size,
       // if true then free the server-side handle to blob when last==true
@@ -837,23 +828,23 @@ service SnappyDataService {
       // optional
       6: binary token) throws (1: SnappyException error)
 
-  i32 sendBlobChunk(1: BlobChunk chunk,
-      2: i32 connId,
+  i64 sendBlobChunk(1: BlobChunk chunk,
+      2: i64 connId,
       // optional
       3: binary token) throws (1: SnappyException error)
-  i32 sendClobChunk(1: ClobChunk chunk,
-      2: i32 connId,
+  i64 sendClobChunk(1: ClobChunk chunk,
+      2: i64 connId,
       // optional
       3: binary token) throws (1: SnappyException error)
 
-  void freeLob(1: i32 connId,
-      2: i32 lobId,
+  void freeLob(1: i64 connId,
+      2: i64 lobId,
       // optional
       3: binary token) throws (1: SnappyException error)
 
   // cursor operations
 
-  RowSet scrollCursor(1: i32 cursorId,
+  RowSet scrollCursor(1: i64 cursorId,
       2: i32 offset,
       3: bool offsetIsAbsolute,
       4: bool fetchReverse,
@@ -861,7 +852,7 @@ service SnappyDataService {
       // optional
       6: binary token) throws (1: SnappyException error)
 
-  void executeCursorUpdate(1: i32 cursorId,
+  void executeCursorUpdate(1: i64 cursorId,
       2: list<CursorUpdateOperation> operations,
       3: list<Row> changedRows,
       4: list<list<i32>> changedColumnsList,
@@ -872,7 +863,7 @@ service SnappyDataService {
 
   // meta-data API
 
-  ServiceMetaData getServiceMetaData(1: i32 connId,
+  ServiceMetaData getServiceMetaData(1: i64 connId,
       // optional
       2: binary token) throws (1: SnappyException error)
 
@@ -892,24 +883,24 @@ service SnappyDataService {
 
   // end meta-data API
 
-  list<ConnectionProperties> fetchActiveConnections(1: i32 connId,
+  list<ConnectionProperties> fetchActiveConnections(1: i64 connId,
       // optional
       2: binary token) throws (1: SnappyException error)
-  map<i32, string> fetchActiveStatements(1: i32 connId,
-      // optional
-      2: binary token) throws (1: SnappyException error)
-
-  void cancelStatement(1: i32 stmtId,
+  map<i64, string> fetchActiveStatements(1: i64 connId,
       // optional
       2: binary token) throws (1: SnappyException error)
 
-  void closeResultSet  (1: i32 cursorId,
+  void cancelStatement(1: i64 stmtId,
       // optional
       2: binary token) throws (1: SnappyException error)
-  void closeStatement  (1: i32 stmtId,
+
+  void closeResultSet  (1: i64 cursorId,
       // optional
       2: binary token) throws (1: SnappyException error)
-  oneway void closeConnection (1: i32 connId,
+  void closeStatement  (1: i64 stmtId,
+      // optional
+      2: binary token) throws (1: SnappyException error)
+  oneway void closeConnection (1: i64 connId,
       // optional
       2: binary token)
 

@@ -3867,6 +3867,10 @@ public abstract class EmbedConnection implements EngineConnection
 		/* (original code)
 		getlobHMObj().remove(new Integer(key));
 		*/
+	}
+
+	public void removeLOBMapping(long key) {
+	  getlobHMObj().removePrimitive(key);
 // GemStone changes END
 	}
 
@@ -3882,6 +3886,10 @@ public abstract class EmbedConnection implements EngineConnection
 		/* (original code)
 		return getlobHMObj().get(new Integer(key));
 		 */
+	}
+
+	public Object getLOBMapping(long key) {
+	  return getlobHMObj().getPrimitive(key);
 // GemStone changes END
 	}
 
