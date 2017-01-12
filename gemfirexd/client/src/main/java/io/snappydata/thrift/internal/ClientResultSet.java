@@ -2041,7 +2041,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
           getSQLType(columnIndex), "BinaryStream", true, columnIndex);
-      cvc.setBinaryStream(currentRow, columnIndex, x, length, this);
+      cvc.setBinaryStream(currentRow, columnIndex, x, length);
     } else {
       currentRow.setNull(columnIndex - 1);
     }
