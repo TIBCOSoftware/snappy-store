@@ -77,6 +77,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TLongHashSet;
 import com.pivotal.gemfirexd.Attribute;
@@ -1451,8 +1452,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       // when DD is not being persisted then we no longer allow regions with
       // persistence to be created; however, if "sys-disk-dir" is explicitly
       // set then that can be used for overflow/gateway
-      
-      if (this.persistingDD || this.persistenceDir != null) {
+
+      StoreCallbacks callback = com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks();
+
+      if (this.persistingDD || this.persistenceDir != null || (this.myKind.isAccessor() && callback != null)) {
         try {
           DiskStoreFactory dsf = this.gemFireCache.createDiskStoreFactory();
           File file = new File(generatePersistentDirName(null))
