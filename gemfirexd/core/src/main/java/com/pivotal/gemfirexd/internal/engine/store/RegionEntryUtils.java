@@ -37,26 +37,8 @@ import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.cache.AbstractDiskRegion;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.EventErrorHandler;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
-import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntry;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntryWithStats;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.PlaceHolderDiskRegion;
-import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionEntryContext;
-import com.gemstone.gemfire.internal.cache.SortedIndexContainer;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
@@ -570,11 +552,10 @@ public final class RegionEntryUtils {
           if (key != null) {
             final byte[] newRow;
             if (key.getClass() == byte[].class) {
-              newRow = rf.copyColumns(keyColumns, false, (byte[])key, kf);
+              newRow = rf.copyColumns(keyColumns, (byte[])key, kf);
             }
             else {
-              newRow = rf.copyColumns(keyColumns, false,
-                  (OffHeapByteSource)key, kf);
+              newRow = rf.copyColumns(keyColumns, (OffHeapByteSource)key, kf);
             }
             row.setRowArray(newRow, rf);
           }
@@ -1707,14 +1688,14 @@ public final class RegionEntryUtils {
                   varOffsets[index] = pkrf.getNullIndicator(varOffset);
                 } else {
                   assert offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT;
-                  varOffsets[index] = pkrf.offsetIsDefault;
+                  varOffsets[index] = pkrf.getOffsetDefaultToken();
                 }
               } else {
-                varOffsets[index] = pkrf.offsetIsDefault;
+                varOffsets[index] = pkrf.getOffsetDefaultToken();
               }
             }
             // lastly add the offset values including those for null and default
-            final int offsetBytes = pkrf.offsetBytes;
+            final int offsetBytes = pkrf.getNumOffsetBytes();
             for (int index = 0; index < numVarWidths; ++index) {
               hash = computeIntHash(varOffsets[index], offsetBytes, hash);
             }
@@ -1820,14 +1801,14 @@ public final class RegionEntryUtils {
             varOffsets[index] = rf.getNullIndicator(varOffset);
           } else {
             assert offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT;
-            varOffsets[index] = pkrf.offsetIsDefault;
+            varOffsets[index] = pkrf.getOffsetDefaultToken();
           }
         } else {
-          varOffsets[index] = pkrf.offsetIsDefault;
+          varOffsets[index] = pkrf.getOffsetDefaultToken();
         }
       }
       // lastly add the offset values including those for null and default
-      final int offsetBytes = pkrf.offsetBytes;
+      final int offsetBytes = pkrf.getNumOffsetBytes();
       for (int index = 0; index < numVarWidths; ++index) {
         hash = computeIntHash(varOffsets[index], offsetBytes, hash);
       }
@@ -1916,14 +1897,14 @@ public final class RegionEntryUtils {
             varOffsets[index] = rf.getNullIndicator(varOffset);
           } else {
             assert offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT;
-            varOffsets[index] = pkrf.offsetIsDefault;
+            varOffsets[index] = pkrf.getOffsetDefaultToken();
           }
         } else {
-          varOffsets[index] = pkrf.offsetIsDefault;
+          varOffsets[index] = pkrf.getOffsetDefaultToken();
         }
       }
       // lastly add the offset values including those for null and default
-      final int offsetBytes = pkrf.offsetBytes;
+      final int offsetBytes = pkrf.getNumOffsetBytes();
       for (int index = 0; index < numVarWidths; ++index) {
         hash = computeIntHash(varOffsets[index], offsetBytes, hash);
       }
@@ -2082,7 +2063,7 @@ public final class RegionEntryUtils {
             final int bytesLen = bs.getLength();
             final long memAddr = bs.getUnsafeAddress(0, bytesLen);
 
-            final RowFormatter rf = tableInfo.getRowFormatter(unsafe, memAddr,
+            final RowFormatter rf = tableInfo.getRowFormatter(memAddr,
                 bs);
             rf.setDVDColumn(dvd, keyPositions[index] - 1, unsafe, memAddr,
                 bytesLen, bs);
@@ -2093,7 +2074,7 @@ public final class RegionEntryUtils {
             final int bytesLen = bs.getLength();
             final long memAddr = bs.getUnsafeAddress(0, bytesLen);
 
-            final RowFormatter rf = tableInfo.getRowFormatter(unsafe, memAddr,
+            final RowFormatter rf = tableInfo.getRowFormatter(memAddr,
                 bs);
             rf.setDVDColumn(dvd, keyPositions[index] - 1, unsafe, memAddr,
                 bytesLen, bs);
@@ -2884,14 +2865,6 @@ public final class RegionEntryUtils {
       }
       return -1;
     }
-
-    @Override
-    public final int handleLob(byte[] row, byte[] output, int outputPosition,
-        RowFormatter formatter, ColumnDescriptor cd, int colIndex,
-        RowFormatter targetFormat, int targetIndex, int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
-    }
   };
 
   public static final ColumnProcessorOffHeap<byte[]> checkColumnEqualityWithRowOffHeap =
@@ -3031,15 +3004,6 @@ public final class RegionEntryUtils {
         }
       }
       return -1;
-    }
-
-    @Override
-    public final int handleLob(long memAddr,
-        byte[] output, int outputPosition, RowFormatter formatter,
-        ColumnDescriptor cd, int colIndex, RowFormatter targetFormat,
-        int targetIndex, int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
     }
   };
 
@@ -3193,15 +3157,6 @@ public final class RegionEntryUtils {
       }
       return -1;
     }
-
-    @Override
-    public final int handleLob(byte[] row, OffHeapByteSource output,
-        int outputPosition, RowFormatter formatter, ColumnDescriptor cd,
-        int colIndex, RowFormatter targetFormat, int targetIndex,
-        int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
-    }
   };
 
   public static final ColumnProcessorOffHeap<OffHeapByteSource>
@@ -3351,15 +3306,6 @@ public final class RegionEntryUtils {
         }
       }
       return -1;
-    }
-
-    @Override
-    public final int handleLob(long memAddr,
-        OffHeapByteSource output, int outputPosition, RowFormatter formatter,
-        ColumnDescriptor cd, int colIndex, RowFormatter targetFormat,
-        int targetIndex, int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
     }
   };
 

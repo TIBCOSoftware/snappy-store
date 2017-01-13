@@ -18,7 +18,6 @@
 package com.pivotal.gemfirexd.internal.engine.sql.catalog;
 
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
@@ -75,10 +74,10 @@ public final class ExtraIndexInfo extends ExtraInfo {
   }
 
   @Override
-  public final RowFormatter getRowFormatter(final UnsafeWrapper unsafe,
-      final long memAddr, @Unretained final OffHeapByteSource vbytes) {
+  public final RowFormatter getRowFormatter(final long memAddr,
+      @Unretained final OffHeapByteSource vbytes) {
     // obtain the formatter from base container
-    return this.baseContainer.getRowFormatter(unsafe, memAddr, vbytes);
+    return this.baseContainer.getRowFormatter(memAddr, vbytes);
   }
 
   public final ExtraIndexInfo getIndexInfoForInsert() {

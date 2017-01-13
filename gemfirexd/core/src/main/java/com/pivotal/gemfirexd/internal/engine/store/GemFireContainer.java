@@ -947,11 +947,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   /**
    * Return the table info for this container given the first row byte array.
    */
-  private final ExtraTableInfo getExtraTableInfoForMultiSchema(
+  private ExtraTableInfo getExtraTableInfoForMultiSchema(
       final OffHeapByteSource rawRow) {
-    final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
     final long memAddr = rawRow.getUnsafeAddress();
-    final int schemaVersion = RowFormatter.readVersion(unsafe, memAddr);
+    final int schemaVersion = RowFormatter.readVersion(memAddr);
     // schemaVersion == TOKEN_RECOVERY_VERSION indicates recovery from old
     // product files
     if (isCurrentVersion(schemaVersion)) {
@@ -1028,12 +1027,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
-  private final int readVersion(final OffHeapByteSource rowBytes) {
+  private int readVersion(final OffHeapByteSource rowBytes) {
     if (rowBytes != null && isByteArrayStore()) {
-      return RowFormatter.readVersion(UnsafeMemoryChunk.getUnsafeWrapper(),
-          rowBytes.getUnsafeAddress());
-    }
-    else {
+      return RowFormatter.readVersion(rowBytes.getUnsafeAddress());
+    } else {
       return this.schemaVersion;
     }
   }
@@ -1423,10 +1420,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
-  private final RowFormatter getRowFormatterForMultiSchema(
-      final UnsafeWrapper unsafe, final long memAddr,
+  private RowFormatter getRowFormatterForMultiSchema(final long memAddr,
       @Unretained final OffHeapByteSource rawRow) {
-    final int schemaVersion = RowFormatter.readVersion(unsafe, memAddr);
+    final int schemaVersion = RowFormatter.readVersion(memAddr);
     // schemaVersion == TOKEN_RECOVERY_VERSION indicates recovery from old
     // product files
     if (isCurrentVersion(schemaVersion)) {
@@ -1458,14 +1454,12 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     } else if (rawRow == null) {
       return this.tableInfo.getRowFormatter();
     } else {
-      return getRowFormatterForMultiSchema(
-          UnsafeMemoryChunk.getUnsafeWrapper(), rawRow.getUnsafeAddress(),
-          rawRow);
+      return getRowFormatterForMultiSchema(rawRow.getUnsafeAddress(), rawRow);
     }
   }
 
-  public final RowFormatter getRowFormatter(final UnsafeWrapper unsafe,
-      final long memAddr, @Unretained final OffHeapByteSource rawRow) {
+  public final RowFormatter getRowFormatter(final long memAddr,
+      @Unretained final OffHeapByteSource rawRow) {
     // if there are no old schemas then simply return current formatter
     if (this.hasSingleSchema) {
       int rowVersion;
@@ -1477,7 +1471,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     } else if (!isByteArrayStore()) {
       return null;
     } else {
-      return getRowFormatterForMultiSchema(unsafe, memAddr, rawRow);
+      return getRowFormatterForMultiSchema(memAddr, rawRow);
     }
   }
 
@@ -1510,8 +1504,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
     else if (OffHeapByteSource.isOffHeapBytesClass(cls)) {
       final OffHeapByteSource bs = (OffHeapByteSource)rawRow;
-      return getRowFormatterForMultiSchema(
-          UnsafeMemoryChunk.getUnsafeWrapper(), bs.getUnsafeAddress(), bs);
+      return getRowFormatterForMultiSchema(bs.getUnsafeAddress(), bs);
     }
     else {
       return this.tableInfo.getRowFormatter();

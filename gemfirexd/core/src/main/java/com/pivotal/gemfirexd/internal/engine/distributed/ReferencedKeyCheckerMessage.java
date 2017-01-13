@@ -1054,22 +1054,22 @@ public final class ReferencedKeyCheckerMessage extends
               final byte[] rowBytes = (byte[])rowValue;
               rf = tableInfo.getRowFormatter(rowBytes);
               rf.serializeColumns(rowBytes, out, fixedPositions, varPositions,
-                  refKeyFormatter.offsetBytes, refKeyFormatter.offsetIsDefault,
-                  refKeyFormatter);
+                  refKeyFormatter.getNumOffsetBytes(),
+                  refKeyFormatter.getOffsetDefaultToken(), refKeyFormatter);
             }
             else if (cls == byte[][].class) {
               final byte[] rowBytes = ((byte[][])rowValue)[0];
               rf = tableInfo.getRowFormatter(rowBytes);
               rf.serializeColumns(rowBytes, out, fixedPositions, varPositions,
-                  refKeyFormatter.offsetBytes, refKeyFormatter.offsetIsDefault,
-                  refKeyFormatter);
+                  refKeyFormatter.getNumOffsetBytes(),
+                  refKeyFormatter.getOffsetDefaultToken(), refKeyFormatter);
             }
             else {
               rowBS = (OffHeapByteSource)rowValue;
               rf = tableInfo.getRowFormatter(rowBS);
               rf.serializeColumns(rowBS, out, fixedPositions, varPositions,
-                  refKeyFormatter.offsetBytes, refKeyFormatter.offsetIsDefault,
-                  refKeyFormatter);
+                  refKeyFormatter.getNumOffsetBytes(),
+                  refKeyFormatter.getOffsetDefaultToken(), refKeyFormatter);
             }
           }
           else {
