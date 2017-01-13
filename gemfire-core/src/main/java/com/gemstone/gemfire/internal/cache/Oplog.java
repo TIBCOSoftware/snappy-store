@@ -1170,6 +1170,13 @@ public final class Oplog implements CompactableOplog {
   }
   
   private void preblow(OplogFile olf, long maxSize) throws IOException {
+
+    GemFireCacheImpl.StaticSystemCallbacks ssc = GemFireCacheImpl.getInternalProductCallbacks();
+    if(ssc != null && ssc.isSnappyStore() && ssc.isAccessor()){
+      logger.warning(LocalizedStrings.SHOULDNT_INVOKE, "Pre blow is invoked on Accessor Node.");
+      return;
+    }
+
 //     logger.info(LocalizedStrings.DEBUG, "DEBUG preblow(" + maxSize + ")  dirAvailSpace=" + this.dirHolder.getAvailableSpace());
     long availableSpace = this.dirHolder.getAvailableSpace();
     if (availableSpace >= maxSize) {
