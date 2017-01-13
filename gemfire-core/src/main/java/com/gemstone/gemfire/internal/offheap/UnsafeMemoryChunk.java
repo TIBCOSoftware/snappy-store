@@ -19,6 +19,7 @@ package com.gemstone.gemfire.internal.offheap;
 import com.gemstone.gemfire.internal.SharedLibrary;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
+import org.apache.spark.unsafe.Platform;
 
 public final class UnsafeMemoryChunk implements MemoryChunk {
   private static final boolean USE_SAFE_COPY_MEMORY = Boolean.getBoolean("gemfire.OFF_HEAP_USE_SAFE_COPY_MEMORY");
@@ -95,12 +96,12 @@ public final class UnsafeMemoryChunk implements MemoryChunk {
    * Reads from "addr" to "bytes". Number of bytes read/written is provided as
    * argument.
    */
-  public static void readUnsafeBytes(final UnsafeWrapper unsafe,
-      final long addr, final byte[] bytes, final int length) {
+  public static void readUnsafeBytes(final long addr, final byte[] bytes,
+      final int length) {
     assert SimpleMemoryAllocatorImpl.validateAddressAndSizeWithinSlab(addr,
         length);
 
-    unsafe.copyMemory(null, addr, bytes, UnsafeHolder.arrayBaseOffset, length);
+    Platform.copyMemory(null, addr, bytes, Platform.BYTE_ARRAY_OFFSET, length);
   }
 
   /**
@@ -109,13 +110,13 @@ public final class UnsafeMemoryChunk implements MemoryChunk {
    * separately instead of added in addr itself to workaround JDK bug in #51350
    * (see https://reviewboard.gemstone.com/r/3246 for more details).
    */
-  public static void readUnsafeBytes(final UnsafeWrapper unsafe, long addr,
-      int offset, final byte[] bytes, int bytesOffset, int length) {
+  public static void readUnsafeBytes(long addr, int offset, final byte[] bytes,
+      int bytesOffset, int length) {
     assert SimpleMemoryAllocatorImpl.validateAddressAndSizeWithinSlab(addr,
         length + offset);
 
-    unsafe.copyMemory(null, addr + offset, bytes, UnsafeHolder.arrayBaseOffset 
-        + bytesOffset, length);
+    Platform.copyMemory(null, addr + offset, bytes,
+        Platform.BYTE_ARRAY_OFFSET + bytesOffset, length);
   }
 
   public static byte readAbsoluteByte(long addr) {

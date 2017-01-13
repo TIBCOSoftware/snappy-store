@@ -1430,14 +1430,14 @@ public final class SQLTimestamp extends DataType
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset,
+			final int columnWidth, ByteSource bs) {
     this.valueString = null;
-    this.encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    this.encodedDate = RowFormatter.readInt(memOffset);
     memOffset += 4;
-    this.encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    this.encodedTime = RowFormatter.readInt(memOffset);
     memOffset += 4;
-    this.nanos = RowFormatter.readInt(unsafe, memOffset);
+    this.nanos = RowFormatter.readInt(memOffset);
     assert columnWidth == 12;
     return 12;
   }
@@ -1488,12 +1488,12 @@ public final class SQLTimestamp extends DataType
   static final long getAsTimeStampMicros(final UnsafeWrapper unsafe,
       long memOffset, Calendar cal) {
     final int encodedDate, encodedTime, nanos;
-    encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return 0L;
     memOffset += 4;
-    encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    encodedTime = RowFormatter.readInt(memOffset);
     memOffset += 4;
-    nanos = RowFormatter.readInt(unsafe, memOffset);
+    nanos = RowFormatter.readInt(memOffset);
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
     SQLTime.setTimeInCalendar(cal, encodedTime);
@@ -1504,12 +1504,12 @@ public final class SQLTimestamp extends DataType
   static final Timestamp getAsTimeStamp(final UnsafeWrapper unsafe,
       long memOffset, Calendar cal) {
     final int encodedDate, encodedTime, nanos;
-    encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     memOffset += 4;
-    encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    encodedTime = RowFormatter.readInt(memOffset);
     memOffset += 4;
-    nanos = RowFormatter.readInt(unsafe, memOffset);
+    nanos = RowFormatter.readInt(memOffset);
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
     SQLTime.setTimeInCalendar(cal, encodedTime);
@@ -1543,12 +1543,12 @@ public final class SQLTimestamp extends DataType
 
   static String getAsString(final UnsafeWrapper unsafe, long memOffset) {
     final int encodedDate, encodedTime, nanos;
-    encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     memOffset += (Integer.SIZE >>> 3);
-    encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    encodedTime = RowFormatter.readInt(memOffset);
     memOffset += (Integer.SIZE >>> 3);
-    nanos = RowFormatter.readInt(unsafe, memOffset);
+    nanos = RowFormatter.readInt(memOffset);
     char[] str = new char[TIMESTAMP_CHARS_NANOS];
     final int strlen = SharedUtils.dateTimeToString(str, 0,
         SQLDate.getYear(encodedDate), SQLDate.getMonth(encodedDate),
@@ -1582,12 +1582,12 @@ public final class SQLTimestamp extends DataType
   static void writeAsString(final UnsafeWrapper unsafe, long memOffset,
       final ByteArrayDataOutput buffer) {
     final int encodedDate, encodedTime, nanos;
-    encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return;
     memOffset += (Integer.SIZE >>> 3);
-    encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    encodedTime = RowFormatter.readInt(memOffset);
     memOffset += (Integer.SIZE >>> 3);
-    nanos = RowFormatter.readInt(unsafe, memOffset);
+    nanos = RowFormatter.readInt(memOffset);
     final int bufferPos = buffer.ensureCapacity(TIMESTAMP_CHARS_MICROS,
         buffer.position());
     SharedUtils.dateTimeToChars(buffer.getData(), bufferPos,
@@ -1618,7 +1618,7 @@ public final class SQLTimestamp extends DataType
 
   static final long getAsDateMillis(final UnsafeWrapper unsafe,
       long memOffset, final Calendar cal) {
-    int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return 0L;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
@@ -1627,7 +1627,7 @@ public final class SQLTimestamp extends DataType
 
   static final java.sql.Date getAsDate(final UnsafeWrapper unsafe,
       long memOffset, final Calendar cal) {
-    int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
@@ -1649,12 +1649,12 @@ public final class SQLTimestamp extends DataType
   static final java.sql.Time getAsTime(final UnsafeWrapper unsafe,
       long memOffset, final Calendar cal) {
     final int encodedDate, encodedTime, nanos;
-    encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     memOffset += 4;
-    encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    encodedTime = RowFormatter.readInt(memOffset);
     memOffset += 4;
-    nanos = RowFormatter.readInt(unsafe, memOffset);
+    nanos = RowFormatter.readInt(memOffset);
     return SQLTime.getTime(cal, encodedTime, nanos);
   }
 

@@ -32,6 +32,8 @@ import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.TIntArrayList;
@@ -231,15 +233,6 @@ public final class RowFormatter implements Serializable {
 
   /** Fixed delimiter character used internally for PXF formatting */
   public static final int DELIMITER_FOR_PXF = ',';
-
-  private static final sun.misc.Unsafe _unsafe;
-  private static final boolean littleEndian;
-  private static final int BYTE_ARRAY_OFFSET;
-  static {
-    _unsafe = UnsafeWrapper.getUnsafe();
-    littleEndian = OffHeapRegionEntryHelper.NATIVE_BYTE_ORDER_IS_LITTLE_ENDIAN;
-    BYTE_ARRAY_OFFSET = _unsafe.arrayBaseOffset(byte[].class);
-  }
 
   /**
    * This interface allows specification of action to be taken for each column
@@ -472,9 +465,6 @@ public final class RowFormatter implements Serializable {
     /**
      * Handle a column with fixed width value.
      * 
-     * @param unsafe
-     *          handle to {@link UnsafeWrapper} to be used for reading off-heap
-     *          bytes
      * @param memAddress
      *          the memory address of the start of off-heap row
      * @param columnOffset
@@ -496,10 +486,10 @@ public final class RowFormatter implements Serializable {
      *          the 0-based index of column for the target formatter
      * @param targetOffsetFromMap
      *          the offset read from targetFormat's position map
-     * 
+     *
      * @return the new position in the output object
      */
-    int handleFixed(UnsafeWrapper unsafe, long memAddress, int columnOffset,
+    int handleFixed(long memAddress, int columnOffset,
         int columnWidth, O output, int outputPosition, RowFormatter formatter,
         int colIndex, RowFormatter targetFormat, int targetIndex,
         int targetOffsetFromMap);
@@ -507,9 +497,6 @@ public final class RowFormatter implements Serializable {
     /**
      * Handle a column with variable width value.
      * 
-     * @param unsafe
-     *          handle to {@link UnsafeWrapper} to be used for reading off-heap
-     *          bytes
      * @param memAddress
      *          the memory address of the start of off-heap row
      * @param columnOffset
@@ -533,10 +520,10 @@ public final class RowFormatter implements Serializable {
      *          the 0-based index of column for the target formatter
      * @param targetOffsetFromMap
      *          the offset read from targetFormat's position map
-     * 
+     *
      * @return the new position in the output object
      */
-    int handleVariable(UnsafeWrapper unsafe, long memAddress, int columnOffset,
+    int handleVariable(long memAddress, int columnOffset,
         int columnWidth, O output, int outputPosition, RowFormatter formatter,
         ColumnDescriptor cd, int colIndex, RowFormatter targetFormat,
         int targetIndex, int targetOffsetFromMap);
@@ -544,9 +531,6 @@ public final class RowFormatter implements Serializable {
     /**
      * Handle a column with LOB value.
      * 
-     * @param unsafe
-     *          handle to {@link UnsafeWrapper} to be used for reading off-heap
-     *          bytes
      * @param memAddress
      *          the memory address of the start of off-heap row
      * @param output
@@ -566,10 +550,10 @@ public final class RowFormatter implements Serializable {
      *          the 0-based index of column for the target formatter
      * @param targetOffsetFromMap
      *          the offset read from targetFormat's position map
-     * 
+     *
      * @return the new position in the output object
      */
-    int handleLob(UnsafeWrapper unsafe, long memAddress, O output,
+    int handleLob(long memAddress, O output,
         int outputPosition, RowFormatter formatter, ColumnDescriptor cd,
         int colIndex, RowFormatter targetFormat, int targetIndex,
         int targetOffsetFromMap);
@@ -684,25 +668,23 @@ public final class RowFormatter implements Serializable {
     }
 
     @Override
-    public final int handleFixed(final UnsafeWrapper unsafe,
-        final long memAddress, final int columnOffset, final int columnWidth,
+    public final int handleFixed(final long memAddress, final int columnOffset, final int columnWidth,
         final byte[] outputBuffer, final int varDataOffset,
         RowFormatter formatter, int colIndex, final RowFormatter targetFormat,
         int targetIndex, final int targetOffsetFromMap) {
       final int targetWidth = targetFormat.columns[targetIndex].fixedWidth;
       if (targetWidth >= columnWidth) {
-        UnsafeMemoryChunk.readUnsafeBytes(unsafe, memAddress, columnOffset,
+        UnsafeMemoryChunk.readUnsafeBytes(memAddress, columnOffset,
             outputBuffer, targetOffsetFromMap, columnWidth);
         return varDataOffset;
       }
-      UnsafeMemoryChunk.readUnsafeBytes(unsafe, memAddress, columnOffset,
+      UnsafeMemoryChunk.readUnsafeBytes(memAddress, columnOffset,
           outputBuffer, targetOffsetFromMap, targetWidth);
       return varDataOffset;
     }
 
     @Override
-    public final int handleVariable(final UnsafeWrapper unsafe,
-        final long memAddress, final int columnOffset, int columnWidth,
+    public final int handleVariable(final long memAddress, final int columnOffset, int columnWidth,
         final byte[] outputBuffer, final int varDataOffset,
         RowFormatter formatter, ColumnDescriptor cd, int colIndex,
         final RowFormatter targetFormat, int targetIndex,
@@ -716,16 +698,15 @@ public final class RowFormatter implements Serializable {
           offsetOffset, targetFormat.offsetBytes);
       if (targetFormat.isPrimaryKeyFormatter
           && shouldTrimTrailingSpaces(cd)) {
-        columnWidth = trimTrailingSpaces(unsafe, memAddress, columnOffset,
-            columnWidth);
+        columnWidth = trimTrailingSpaces(memAddress, columnOffset, columnWidth);
       }
-      UnsafeMemoryChunk.readUnsafeBytes(unsafe, memAddress, columnOffset,
+      UnsafeMemoryChunk.readUnsafeBytes(memAddress, columnOffset,
           outputBuffer, varDataOffset, columnWidth);
       return varDataOffset + columnWidth;
     }
 
     @Override
-    public final int handleLob(UnsafeWrapper unsafe, long memAddress,
+    public final int handleLob(long memAddress,
         byte[] output, int outputPosition, RowFormatter formatter,
         ColumnDescriptor cd, int colIndex, RowFormatter targetFormat,
         int targetIndex, int targetOffsetFromMap) {
@@ -754,10 +735,10 @@ public final class RowFormatter implements Serializable {
    * 
    * @return new columnWidth after trimming trailing spaces.
    */
-  private static final int trimTrailingSpaces(final UnsafeWrapper unsafe,
+  private static final int trimTrailingSpaces(
       final long memAddress, final int columnOffset, int columnWidth) {
     long memOffset = memAddress + columnOffset + columnWidth - 1;
-    while (columnWidth > 0 && unsafe.getByte(memOffset) == 0x20) {
+    while (columnWidth > 0 && Platform.getByte(null, memOffset) == 0x20) {
       memOffset--;
       columnWidth--;
     }
@@ -776,12 +757,12 @@ public final class RowFormatter implements Serializable {
 
     // serialize in big-endian format to be compatible with DataOutput.writeInt
     // and also SQLInteger.computeHashCode
-    if (littleEndian) {
-      _unsafe.putInt(bytes, offset + BYTE_ARRAY_OFFSET,
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putInt(bytes, offset + Platform.BYTE_ARRAY_OFFSET,
           Integer.reverseBytes(intValue));
       return 4; // bytes in int (= Integer.SIZE / 8);
     } else {
-      _unsafe.putInt(bytes, offset + BYTE_ARRAY_OFFSET, intValue);
+      Platform.putInt(bytes, offset + Platform.BYTE_ARRAY_OFFSET, intValue);
       return 4; // bytes in int (= Integer.SIZE / 8);
     }
   }
@@ -939,26 +920,50 @@ public final class RowFormatter implements Serializable {
   }
 
   /**
+   * Read an short from off-heap memory.
+   *
+   * @return the short value read.
+   */
+  public static short readShort(final long memOffset) {
+    if (ClientSharedUtils.isLittleEndian) {
+      return Short.reverseBytes(Platform.getShort(null, memOffset));
+    } else {
+      return Platform.getShort(null, memOffset);
+    }
+  }
+
+  public static short readShort(final byte[] bytes, int offset) {
+    assert bytes != null;
+
+    if (ClientSharedUtils.isLittleEndian) {
+      return Short.reverseBytes(Platform.getShort(bytes,
+          offset + Platform.BYTE_ARRAY_OFFSET));
+    } else {
+      return Platform.getShort(bytes, offset + Platform.BYTE_ARRAY_OFFSET);
+    }
+  }
+
+  /**
    * Read an int from a off-heap memory.
    * 
    * @return the int value read.
    */
-  public static int readInt(final UnsafeWrapper unsafe, final long memOffset) {
-    if (littleEndian) {
-      return Integer.reverseBytes(_unsafe.getInt(memOffset));
+  public static int readInt(final long memOffset) {
+    if (ClientSharedUtils.isLittleEndian) {
+      return Integer.reverseBytes(Platform.getInt(null, memOffset));
     } else {
-      return _unsafe.getInt(memOffset);
+      return Platform.getInt(null, memOffset);
     }
   }
 
   public static int readInt(final byte[] bytes, int offset) {
     assert bytes != null;
 
-    if (littleEndian) {
-      return Integer.reverseBytes(_unsafe.getInt(bytes,
-          offset + BYTE_ARRAY_OFFSET));
+    if (ClientSharedUtils.isLittleEndian) {
+      return Integer.reverseBytes(Platform.getInt(bytes,
+          offset + Platform.BYTE_ARRAY_OFFSET));
     } else {
-      return _unsafe.getInt(bytes, offset + BYTE_ARRAY_OFFSET);
+      return Platform.getInt(bytes, offset + Platform.BYTE_ARRAY_OFFSET);
     }
   }
 
@@ -1009,12 +1014,12 @@ public final class RowFormatter implements Serializable {
 
     // serialize in big-endian format to be compatible with DataOutput.writeInt
     // and also SQLInteger.computeHashCode
-    if (littleEndian) {
-      _unsafe.putLong(bytes, offset + BYTE_ARRAY_OFFSET,
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putLong(bytes, offset + Platform.BYTE_ARRAY_OFFSET,
           Long.reverseBytes(longValue));
       return 8; // bytes in long (= Long.SIZE / 8);
     } else {
-      _unsafe.putLong(bytes, offset + BYTE_ARRAY_OFFSET, longValue);
+      Platform.putLong(bytes, offset + Platform.BYTE_ARRAY_OFFSET, longValue);
       return 8; // bytes in long (= Long.SIZE / 8);
     }
   }
@@ -1024,23 +1029,22 @@ public final class RowFormatter implements Serializable {
    * 
    * @return the long value read.
    */
-  public static long readLong(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    if (littleEndian) {
-      return Long.reverseBytes(_unsafe.getLong(memOffset));
+  public static long readLong(final long memOffset) {
+    if (ClientSharedUtils.isLittleEndian) {
+      return Long.reverseBytes(Platform.getLong(null, memOffset));
     } else {
-      return _unsafe.getLong(memOffset);
+      return Platform.getLong(null, memOffset);
     }
   }
 
   public static long readLong(final byte[] bytes, int offset) {
     assert bytes != null;
 
-    if (littleEndian) {
-      return Long.reverseBytes(_unsafe.getLong(bytes,
-          offset + BYTE_ARRAY_OFFSET));
+    if (ClientSharedUtils.isLittleEndian) {
+      return Long.reverseBytes(Platform.getLong(bytes,
+          offset + Platform.BYTE_ARRAY_OFFSET));
     } else {
-      return _unsafe.getLong(bytes, offset + BYTE_ARRAY_OFFSET);
+      return Platform.getLong(bytes, offset + Platform.BYTE_ARRAY_OFFSET);
     }
   }
 
@@ -5471,7 +5475,7 @@ public final class RowFormatter implements Serializable {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       dvd = cd.columnType.getNull();
-      final int bytesRead = dvd.readBytes(unsafe, memAddr + offset,
+      final int bytesRead = dvd.readBytes(memAddr + offset,
           columnWidth, row);
       assert bytesRead == columnWidth : "bytesRead=" + bytesRead
           + ", columnWidth=" + columnWidth + " for " + dvd;
@@ -5540,7 +5544,7 @@ public final class RowFormatter implements Serializable {
           final int columnWidth = (int)offsetAndWidth;
           final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
           dvd = cd.columnType.getNull();
-          final int bytesRead = dvd.readBytes(unsafe, memAddr0th + offset,
+          final int bytesRead = dvd.readBytes(memAddr0th + offset,
               columnWidth, byteArrays);
           assert bytesRead == columnWidth : "bytesRead=" + bytesRead
               + ", columnWidth=" + columnWidth + " for " + dvd;
@@ -5569,7 +5573,7 @@ public final class RowFormatter implements Serializable {
             else {
               final OffHeapByteSource bs = (OffHeapByteSource)lobRow;
               final int len = bs.getLength();
-              final int bytesRead = dvd.readBytes(unsafe,
+              final int bytesRead = dvd.readBytes(
                   bs.getUnsafeAddress(0, len), len, bs);
               assert bytesRead == len: "bytesRead=" + bytesRead + ", bytesLen="
                   + len + " for " + dvd;
@@ -5883,7 +5887,7 @@ public final class RowFormatter implements Serializable {
       final DataTypeDescriptor dtd = cd.columnType;
       if (result.getTypeFormatId() == dtd.getDVDTypeFormatId()) {
         // if target and source types match, then directly read into the DVD
-        final int bytesRead = result.readBytes(unsafe, memAddr + offset,
+        final int bytesRead = result.readBytes(memAddr + offset,
             columnWidth, bs);
         assert bytesRead == columnWidth: "bytesRead=" + bytesRead
             + ", columnWidth=" + columnWidth + " for " + result;
@@ -5990,7 +5994,7 @@ public final class RowFormatter implements Serializable {
             final long memOffset = bs.getUnsafeAddress(0, len);
             if (result.getTypeFormatId() == dtd.getDVDTypeFormatId()) {
               final int bytesRead = result
-                  .readBytes(unsafe, memOffset, len, bs);
+                  .readBytes(memOffset, len, bs);
               assert bytesRead == len: "bytesRead=" + bytesRead + ", bytesLen="
                   + len + " for " + result;
             }
@@ -7060,7 +7064,7 @@ public final class RowFormatter implements Serializable {
         assert columnWidth > 0 : "unexpected fixed width " + columnWidth
             + " for column: " + cd;
 
-        UnsafeMemoryChunk.readUnsafeBytes(unsafe, memAddr, srcOffsetFromMap,
+        UnsafeMemoryChunk.readUnsafeBytes(memAddr, srcOffsetFromMap,
             outBytes, offsetFromMap, columnWidth);
         return 0; // contract requires returning 0 for fixed width
       }
@@ -7077,7 +7081,7 @@ public final class RowFormatter implements Serializable {
           final int srcOffset = srcFormat.readVarDataOffset(unsafe, memAddr,
               srcOffsetOffset);
           if (srcOffset >= srcFormat.nVersionBytes) {
-            UnsafeMemoryChunk.readUnsafeBytes(unsafe, memAddr, srcOffset,
+            UnsafeMemoryChunk.readUnsafeBytes(memAddr, srcOffset,
                 outBytes, offsetFromMap, columnWidth);
             return 0; // contract requires returning 0 for fixed width
           }
@@ -7124,7 +7128,7 @@ public final class RowFormatter implements Serializable {
         writeInt(outBytes, getVarDataOffset(varDataOffset), outOffsetOffset,
             this.offsetBytes);
         // write data
-        UnsafeMemoryChunk.readUnsafeBytes(unsafe, memAddr, srcOffset, outBytes,
+        UnsafeMemoryChunk.readUnsafeBytes(memAddr, srcOffset, outBytes,
             varDataOffset, columnWidth);
         return columnWidth;
       } else if (srcOffset == srcFormat.offsetIsDefault) { // default value
@@ -7594,9 +7598,8 @@ public final class RowFormatter implements Serializable {
       final int offset = readVarDataOffset(unsafe, memAddr, offsetOffset);
       if (offset >= this.nVersionBytes) {
         if (truncateSpaces && shouldTrimTrailingSpaces(cd)) {
-          return trimTrailingSpaces(unsafe, memAddr, offset,
-              getVarColumnWidth(unsafe, memAddr, bytesLen, offsetOffset,
-                  offset));
+          return trimTrailingSpaces(memAddr, offset, getVarColumnWidth(unsafe,
+              memAddr, bytesLen, offsetOffset, offset));
         } else {
           return getVarColumnWidth(unsafe, memAddr, bytesLen, offsetOffset,
               offset);
@@ -8085,12 +8088,12 @@ public final class RowFormatter implements Serializable {
       // check if targetFormat is variable width then need to write the column
       // width too
       if (targetOffsetFromMap >= targetFormat.nVersionBytes) {
-        return processColumn.handleFixed(unsafe, memAddress, offsetFromMap,
+        return processColumn.handleFixed(memAddress, offsetFromMap,
             columnWidth, out, writePosition, this, index, targetFormat,
             targetIndex, targetOffsetFromMap);
       }
       else if (targetOffsetFromMap < 0) {
-        return processColumn.handleVariable(unsafe, memAddress, offsetFromMap,
+        return processColumn.handleVariable(memAddress, offsetFromMap,
             columnWidth, out, writePosition, this, cd, index, targetFormat,
             targetIndex, targetOffsetFromMap);
       }
@@ -8109,12 +8112,12 @@ public final class RowFormatter implements Serializable {
         // check if targetFormat is variable width then need to skip the column
         // width write
         if (targetOffsetFromMap < 0) {
-          return processColumn.handleVariable(unsafe, memAddress, offset,
+          return processColumn.handleVariable(memAddress, offset,
               columnWidth, out, writePosition, this, cd, index, targetFormat,
               targetIndex, targetOffsetFromMap);
         }
         else if (targetOffsetFromMap >= targetFormat.nVersionBytes) {
-          return processColumn.handleFixed(unsafe, memAddress, offset,
+          return processColumn.handleFixed(memAddress, offset,
               columnWidth, out, writePosition, this, index, targetFormat,
               targetIndex, targetOffsetFromMap);
         }
@@ -8843,7 +8846,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsByte(unsafe, memAddr + offset,
+      return DataTypeUtilities.getAsByte(memAddr + offset,
           columnWidth, bs, cd);
     }
     else {
@@ -8949,7 +8952,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsShort(unsafe, memAddr + offset,
+      return DataTypeUtilities.getAsShort(memAddr + offset,
           columnWidth, bs, cd);
     }
     else {
@@ -9055,7 +9058,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsInt(unsafe, memAddr + offset,
+      return DataTypeUtilities.getAsInt(memAddr + offset,
           columnWidth, bs, cd);
     }
     else {
@@ -9161,7 +9164,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsLong(unsafe, memAddr + offset,
+      return DataTypeUtilities.getAsLong(memAddr + offset,
           columnWidth, bs, cd);
     }
     else {
@@ -9267,7 +9270,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsFloat(unsafe, memAddr + offset,
+      return DataTypeUtilities.getAsFloat(memAddr + offset,
           columnWidth, bs, cd);
     }
     else {
@@ -9373,7 +9376,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsDouble(unsafe, memAddr + offset,
+      return DataTypeUtilities.getAsDouble(memAddr + offset,
           columnWidth, bs, cd);
     }
     else {
@@ -9484,7 +9487,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsBigDecimal(unsafe, memAddr + offset,
+      return DataTypeUtilities.getAsBigDecimal(memAddr + offset,
           columnWidth, bs, cd);
     }
     else {
@@ -9603,7 +9606,7 @@ public final class RowFormatter implements Serializable {
     if (offsetAndWidth >= 0) {
       final int columnWidth = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
-      return DataTypeUtilities.getAsBytes(unsafe, memAddr, offset, columnWidth,
+      return DataTypeUtilities.getAsBytes(memAddr, offset, columnWidth,
           bs, cd.columnType);
     }
     else {
@@ -9664,7 +9667,7 @@ public final class RowFormatter implements Serializable {
           final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
           final int bytesLen = bs.getLength();
           final long memAddr = bs.getUnsafeAddress(0, bytesLen);
-          return DataTypeUtilities.getAsBytes(unsafe, memAddr, 0, bytesLen, bs,
+          return DataTypeUtilities.getAsBytes(memAddr, 0, bytesLen, bs,
               cd.columnType);
         }
       } else {
@@ -10350,8 +10353,7 @@ public final class RowFormatter implements Serializable {
           final OffHeapByteSource bs = (OffHeapByteSource)lob;
           final int bytesLen = bs.getLength();
           chars = new char[bytesLen];
-          strlen = SQLChar.readIntoCharsFromByteSource(
-              UnsafeMemoryChunk.getUnsafeWrapper(),
+          strlen = SQLChar.readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
               bs.getUnsafeAddress(0, bytesLen), bytesLen, bs, chars);
         }
         return new HarmonySerialClob(chars, strlen);
@@ -10449,7 +10451,7 @@ public final class RowFormatter implements Serializable {
     if (bs != null) {
       final int[] ints = new int[numInts];
       for (int idx = 0; idx < numInts; ++idx) {
-        ints[idx] = bytes != null ? readInt(bytes, offset) : readInt(unsafe,
+        ints[idx] = bytes != null ? readInt(bytes, offset) : readInt(
             memAddr + offset);
         offset += Integer.SIZE / 8;
       }
@@ -10706,8 +10708,7 @@ public final class RowFormatter implements Serializable {
               offsetOffset, offset);
           // check for removal of trailing spaces
           if (truncateSpaces && shouldTrimTrailingSpaces(cd)) {
-            columnWidth = trimTrailingSpaces(unsafe, memAddr, offset,
-                columnWidth);
+            columnWidth = trimTrailingSpaces(memAddr, offset, columnWidth);
           }
           return (((long) offset) << Integer.SIZE) | columnWidth;
         } else if (!isVarDataOffsetDefaultToken(offset)) {

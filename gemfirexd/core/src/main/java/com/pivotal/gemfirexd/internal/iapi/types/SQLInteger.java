@@ -47,7 +47,6 @@ import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -56,12 +55,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLBoolean;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -808,10 +801,10 @@ public final class SQLInteger
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset,
+			final int columnWidth, ByteSource bs) {
     assert columnWidth == (Integer.SIZE >>> 3): columnWidth;
-    this.setValue(RowFormatter.readInt(unsafe, memOffset));
+    this.setValue(RowFormatter.readInt(memOffset));
     return Integer.SIZE >>> 3;
   }
 
@@ -820,15 +813,6 @@ public final class SQLInteger
     assert !isNull();
     return ResolverUtils
         .addIntToBucketHash(this.value, hash, getTypeFormatId());
-  }
-
-  static final int getAsInteger(final byte[] inBytes, final int offset) {
-    return RowFormatter.readInt(inBytes, offset);
-  }
-
-  static final int getAsInteger(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    return RowFormatter.readInt(unsafe, memOffset);
   }
 
   @Override

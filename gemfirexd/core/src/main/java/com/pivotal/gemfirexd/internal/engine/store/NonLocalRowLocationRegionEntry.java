@@ -41,7 +41,6 @@ import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
@@ -741,7 +740,7 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
+  public int readBytes(long memOffset, int columnWidth,
       ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + getClass());

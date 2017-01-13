@@ -572,8 +572,7 @@ public final class BinarySQLHybridType extends DataType {
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
-      ByteSource bs) {
+  public int readBytes(long memOffset, int columnWidth, ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + getClass());
   }

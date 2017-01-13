@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.ObjToByteArraySerializer;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 
@@ -93,35 +92,6 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
     } else {
       super.write(source);
     }
-  }
-
-  public final void copyMemory(final Object src, long srcOffset, int length) {
-    final sun.misc.Unsafe unsafe = UnsafeHolder.getUnsafe();
-
-    // require that buffer is a heap byte[] one
-    ByteBuffer buffer = this.buffer;
-    byte[] dst = buffer.array();
-    int offset = buffer.arrayOffset();
-    int pos = buffer.position();
-    // copy into as available space first
-    final int remainingSpace = buffer.capacity() - pos;
-    if (remainingSpace < length) {
-      UnsafeHolder.copyMemory(src, srcOffset, dst,
-          UnsafeHolder.arrayBaseOffset + offset + pos, remainingSpace, unsafe);
-      buffer.position(pos + remainingSpace);
-      srcOffset += remainingSpace;
-      length -= remainingSpace;
-      ensureCapacity(length);
-      // refresh buffer variables
-      buffer = this.buffer;
-      dst = buffer.array();
-      offset = buffer.arrayOffset();
-      pos = buffer.position();
-    }
-    // copy remaining bytes
-    UnsafeHolder.copyMemory(src, srcOffset, dst,
-        UnsafeHolder.arrayBaseOffset + offset + pos, length, unsafe);
-    buffer.position(pos + length);
   }
 
   @Override

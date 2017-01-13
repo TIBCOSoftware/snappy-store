@@ -59,13 +59,10 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
    */
   @Override
   public final void write(int b) throws IOException {
-    if (this.buffer.hasRemaining()) {
-      this.buffer.put((byte)(b & 0xff));
-    }
-    else {
+    if (!this.buffer.hasRemaining()) {
       flushBufferBlocking(this.buffer);
-      this.buffer.put((byte)(b & 0xff));
     }
+    this.buffer.put((byte)(b & 0xff));
   }
 
   /**
@@ -74,13 +71,7 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
   @Override
   public final void write(byte[] b, int off, int len) throws IOException {
     if (len == 1) {
-      if (this.buffer.hasRemaining()) {
-        this.buffer.put(b[off]);
-      }
-      else {
-        flushBufferBlocking(this.buffer);
-        this.buffer.put(b[off]);
-      }
+      write(b[off]);
       return;
     }
 

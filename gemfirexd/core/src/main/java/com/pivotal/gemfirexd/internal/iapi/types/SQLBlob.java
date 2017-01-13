@@ -41,7 +41,6 @@
 package com.pivotal.gemfirexd.internal.iapi.types;
 
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Limits;
@@ -330,7 +329,7 @@ public class SQLBlob extends SQLBinary
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
+  public int readBytes(long memOffset,
       final int columnWidth, final ByteSource bs) {
     final OffHeapByteSource obs = (OffHeapByteSource)bs;
     assert columnWidth == obs.getLength(): "columnWidth=" + columnWidth
