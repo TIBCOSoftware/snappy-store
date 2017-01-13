@@ -2428,7 +2428,10 @@ public class DiskInitFile implements DiskInitFileInterpreter {
       } catch (IOException ignore) {
       }
       if (this.liveRegions == 0 && !parent.isValidating()) {
-        basicDestroy();
+        GemFireCacheImpl.StaticSystemCallbacks ssc = this.parent.getCache().getInternalProductCallbacks();
+        if (ssc != null && !ssc.isAccessor()) {
+          basicDestroy();
+        }
       }
     } finally {
       lock.unlock();
