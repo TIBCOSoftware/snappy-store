@@ -67,7 +67,6 @@ import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
-import com.pivotal.gemfirexd.internal.catalog.ExternalTableMetaData;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -439,6 +438,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       externalTableMetaData.compareAndSet(null,
           Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
               this.schemaName, this.tableName, true));
+      if (isPartitioned()) {
+        ((PartitionedRegion)this.region).setColumnBatchSizes(externalTableMetaData.get().cachedBatchSize, 200);
+      }
     }
     return externalTableMetaData.get();
   }

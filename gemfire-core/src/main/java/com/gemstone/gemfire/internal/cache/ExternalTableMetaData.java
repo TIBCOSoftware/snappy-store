@@ -14,7 +14,7 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package com.pivotal.gemfirexd.internal.catalog;
+package com.gemstone.gemfire.internal.cache;
 
 
 public class ExternalTableMetaData {
@@ -22,7 +22,7 @@ public class ExternalTableMetaData {
   public ExternalTableMetaData(String entityName,
       Object schema,
       Object externalStore,
-      long cachedBatchSize,
+      int cachedBatchSize,
       Boolean useCompression,
       String baseTable,
       String dml,
@@ -41,7 +41,7 @@ public class ExternalTableMetaData {
   public Object schema;
   // No type specified as the class is in snappy core
   public Object externalStore;
-  public long cachedBatchSize;
+  public int cachedBatchSize;
   public boolean useCompression;
   public String baseTable;
   public String dml;
