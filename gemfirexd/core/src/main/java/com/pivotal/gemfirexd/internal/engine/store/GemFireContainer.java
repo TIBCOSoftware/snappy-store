@@ -432,6 +432,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     initTableFlags();
   }
 
+  public void invalidateHiveMetaData() {
+    externalTableMetaData.set(null);
+  }
+
   public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
     if (refresh || externalTableMetaData.get() == null) {
       // containers are created during initialization, ignore them
@@ -439,7 +443,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
               this.schemaName, this.tableName, true));
       if (isPartitioned()) {
-        ((PartitionedRegion)this.region).setColumnBatchSizes(externalTableMetaData.get().cachedBatchSize, 200);
+        ((PartitionedRegion)this.region).
+            setColumnBatchSizes(externalTableMetaData.get().cachedBatchSize, 200);
       }
     }
     return externalTableMetaData.get();
