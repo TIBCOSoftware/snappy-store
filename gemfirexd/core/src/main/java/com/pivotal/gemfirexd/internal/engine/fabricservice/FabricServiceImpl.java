@@ -134,11 +134,11 @@ public abstract class FabricServiceImpl implements FabricService {
    */
   private static volatile FabricService theInstance;
 
-  public static final FabricService getInstance() {
+  public static FabricService getInstance() {
     return theInstance;
   }
 
-  public static final void setInstance(final FabricService instance) {
+  public static void setInstance(final FabricService instance) {
     theInstance = instance;
   }
 
@@ -547,7 +547,6 @@ public abstract class FabricServiceImpl implements FabricService {
    * the system properties that was promoted by this api.
    *
    * Under success condition, stop will clear these properties.
-   * @throws SQLException
    */
   protected void handleThrowable(Throwable t) throws SQLException {
 
@@ -570,7 +569,6 @@ public abstract class FabricServiceImpl implements FabricService {
       throw GemFireXDRuntimeException.newRuntimeException(
           "GemFireXD:FabricServer#start exception ... ", t);
     }
-
   }
 
   /**
@@ -1121,6 +1119,21 @@ public abstract class FabricServiceImpl implements FabricService {
       return setHostNameForClients(this.networkProps);
     }
 
+    private String getHostFromInetAddress(InetAddress address) {
+      if (this.preferIPAddressForClients) {
+        return address.getHostAddress();
+      } else {
+        // if the host name as specified in client-bind-address is already
+        // qualified name then use it for clients else resolve
+        String host = address.getHostName();
+        if (host != null && host.indexOf('.') > 0) {
+          return host;
+        } else {
+          return address.getCanonicalHostName();
+        }
+      }
+    }
+
     protected final String setHostNameForClients(Properties networkProps) {
       // check for explicit address setting first
       String host = PropertyUtil.findAndGetProperty(networkProps,
@@ -1139,25 +1152,13 @@ public abstract class FabricServiceImpl implements FabricService {
         try {
           final InetAddress localHost = SocketCreator.getLocalHost();
           if (localHost != null && !localHost.isLoopbackAddress()) {
-            if (this.preferIPAddressForClients) {
-              this.hostName = localHost.getHostAddress();
-            }
-            else {
-              this.hostName = localHost.getCanonicalHostName();
-            }
-            return this.hostName;
+            return (this.hostName = getHostFromInetAddress(localHost));
           }
         } catch (UnknownHostException uhe) {
           // ignored
         }
       }
-      if (this.preferIPAddressForClients) {
-        this.hostName = this.inetAddress.getHostAddress();
-      }
-      else {
-        this.hostName = this.inetAddress.getCanonicalHostName();
-      }
-      return this.hostName;
+      return (this.hostName = getHostFromInetAddress(this.inetAddress));
     }
 
     @Override
@@ -1424,15 +1425,14 @@ public abstract class FabricServiceImpl implements FabricService {
 
     public SessionsVTI.SessionInfo getSessionInfo() {
       final SessionsVTI.SessionInfo info = new SessionsVTI.SessionInfo();
-      StringBuilder sb = new StringBuilder();
-      sb.append("InitialLoad=").append(this.initialLoad)
-          .append(SanityManager.lineSeparator);
-      sb.append("CurrentLoad=").append(this.probe.getLoad(this))
-          .append(SanityManager.lineSeparator);
+      String infoString = "InitialLoad=" + this.initialLoad +
+          SanityManager.lineSeparator +
+          "CurrentLoad=" + this.probe.getLoad(this) +
+          SanityManager.lineSeparator;
       info.memberid = getSystem().getMemberId();
       info.hostname = getHostName();
       info.serverListeningPort = getPort();
-      info.networkInterfaceInfo = sb.toString();
+      info.networkInterfaceInfo = infoString;
 
       fillServerSessionInfo(info);
 
@@ -1898,6 +1898,7 @@ public abstract class FabricServiceImpl implements FabricService {
         FabricServiceImpl impl = ((FabricServiceImpl)getInstance());
         if (impl != null) {
           try {
+            // noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized(impl) {
               sys.getLogWriter().fine("FabricService stopping due to forced-disconnect");
               impl.stopNoSync(this.bootProperties, sys, true);
@@ -1932,6 +1933,7 @@ public abstract class FabricServiceImpl implements FabricService {
     public void reconnecting(InternalDistributedSystem oldsys) {
       FabricServiceImpl impl = ((FabricServiceImpl)getInstance());
       if (impl != null) {
+        // noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized(impl) {
           impl.reconnecting();
         }
@@ -1943,6 +1945,7 @@ public abstract class FabricServiceImpl implements FabricService {
       FabricServiceImpl impl = ((FabricServiceImpl)getInstance());
       if (impl != null) {
         try {
+          // noinspection SynchronizationOnLocalVariableOrMethodParameter
           synchronized(impl) {
             newSystem.getLogWriter().info("rebooting GemFireXD "+
                 (isLocator?"locator":"server") + " instance");
