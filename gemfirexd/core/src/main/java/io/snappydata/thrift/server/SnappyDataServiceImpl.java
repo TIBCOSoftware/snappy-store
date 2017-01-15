@@ -691,7 +691,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case CHAR:
       case VARCHAR:
       case LONGVARCHAR:
-      case SQLXML:
         String strValue = rs.getString(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
@@ -714,6 +713,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
       case CLOB:
       case JSON:
+      case SQLXML:
         Clob clob = rs.getClob(columnIndex);
         if (rs.wasNull()) {
           result.setNull(index);
@@ -814,7 +814,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       int paramIndex, int paramType, ConnectionHolder connHolder,
       StatementAttrs attrs) throws SQLException {
     ColumnValue cv = new ColumnValue();
-    final int index = paramIndex - 1;
     switch (paramType) {
       case Types.BOOLEAN:
         boolean boolValue = cstmt.getBoolean(paramIndex);
@@ -886,7 +885,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case Types.NCHAR:
       case Types.NVARCHAR:
       case Types.LONGNVARCHAR:
-      case Types.SQLXML:
         String strValue = cstmt.getString(paramIndex);
         if (strValue != null) {
           cv.setString_val(strValue);
@@ -906,6 +904,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
       case Types.CLOB:
       case JDBC40Translation.JSON:
+      case Types.SQLXML:
         Clob clob = cstmt.getClob(paramIndex);
         if (clob != null) {
           cv.setClob_val(handleClob(clob, connHolder, attrs));

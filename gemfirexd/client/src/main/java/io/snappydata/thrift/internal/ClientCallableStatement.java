@@ -137,17 +137,15 @@ public final class ClientCallableStatement extends ClientPreparedStatement
         // copy as a Row to outParamValues which also tracks ClientFinalizer
         // and makes the getters for all params in parent class uniform
         this.outParamValues = new Row();
+        this.outParamValues.initialize(outParams.size());
         for (Integer parameterIndex : outParams.keySet()) {
           ColumnValue outValue = outValues.get(parameterIndex);
-          if (outValue != null) {
-            this.outParamValues.addColumnValue(outValue);
-            this.outParamsPositionInRow.put(parameterIndex, outIndex);
-            outIndex++;
-          }
+          this.outParamValues.setColumnValue(outIndex - 1, outValue);
+          this.outParamsPositionInRow.put(parameterIndex, outIndex);
+          outIndex++;
         }
         // initialize finalizers for LOBs in the row, if any
-        final TIntArrayList lobIndices =
-            this.outParamValues.requiresLobFinalizers();
+        final TIntArrayList lobIndices = this.outParamValues.getRemoteLobIndices();
         if (lobIndices != null) {
           this.outParamValues.initializeLobFinalizers(lobIndices,
               this.service.new ClientCreateLobFinalizer(

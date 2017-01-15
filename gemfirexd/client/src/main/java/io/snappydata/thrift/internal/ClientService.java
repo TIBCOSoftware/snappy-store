@@ -549,7 +549,7 @@ public final class ClientService extends ReentrantLock {
     // initialize finalizers for LOBs in the rows, if any
     final List<Row> rows = rs.rows;
     if (rows != null && rows.size() > 0) {
-      final TIntArrayList lobIndices = rows.get(0).requiresLobFinalizers();
+      final TIntArrayList lobIndices = rows.get(0).getRemoteLobIndices();
       if (lobIndices != null) {
         final ClientCreateLobFinalizer createLobFinalizer =
             new ClientCreateLobFinalizer(source);

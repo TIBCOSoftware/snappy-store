@@ -494,14 +494,14 @@ union ColumnValue {
   // union having two fields namely float & int for conversion between the two
   6: i32                                                   float_val     // REAL
   7: double                                                double_val    // DOUBLE/FLOAT
-  8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR, SQLXML
+  8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR
   9: Decimal                                               decimal_val   // DECIMAL
  10: i64                                                   date_val      // DATE (seconds since epoch)
  11: i64                                                   time_val      // TIME (seconds since epoch)
  12: i64                                                   timestamp_val // TIMESTAMP (nanos since epoch)
  13: binary                                                binary_val    // BINARY, VARBINARY, LONGVARBINARY
  14: BlobChunk                                             blob_val      // BLOB
- 15: ClobChunk                                             clob_val      // CLOB
+ 15: ClobChunk                                             clob_val      // CLOB, JSON, SQLXML
  16: list<ColumnValue>                                     array_val     // ARRAY
  17: map<ColumnValue, ColumnValue>                         map_val       // MAP
  18: list<ColumnValue>                                     struct_val    // STRUCT
