@@ -51,6 +51,7 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
   private final String clientHostId;
   private final TLongHashSet connectionIds;
   private final THashSet clientSockets;
+  private boolean cleanupScheduled;
 
   public ClientTracker(SnappyDataServiceImpl service, String clientHostId) {
     this.service = service;
@@ -131,17 +132,39 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
    * Remove a client socket registered for this client.
    */
   public synchronized void removeClientSocket(TTransport transport) {
+    if (this.clientSockets.isEmpty()) {
+      return; // already removed
+    }
     this.clientSockets.remove(transport);
     if (this.clientSockets.isEmpty()) {
       if (this.connectionIds.isEmpty()) {
         // everything empty, clear map
         this.service.clientTrackerMap.remove(this.clientHostId);
-      } else {
+      } else if (!cleanupScheduled) {
         // schedule cleanup of all remaining client connections after
         // some period of inactivity (to ensure client is really gone);
         // not using ConnectionSignaller since this is a potentially
         // blocking operation
-        Misc.getGemFireCache().getCCPTimer().schedule(this, 3000L);
+        try {
+          Misc.getGemFireCache().getCCPTimer().schedule(this, 3000L);
+          cleanupScheduled = true;
+        } catch (IllegalStateException e) {
+          // wait for sometime before trying again
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ie) {
+            Misc.checkIfCacheClosing(ie);
+          }
+          try {
+            Misc.getGemFireCache().getCCPTimer().schedule(this, 3000L);
+            cleanupScheduled = true;
+          } catch (IllegalStateException ie) {
+            // give up but do remove from global map so new ClientTracker
+            // will be created if same client connects back
+            this.service.clientTrackerMap.remove(this.clientHostId);
+            cleanupScheduled = false;
+          }
+        }
       }
     }
   }
@@ -163,6 +186,8 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
           }
         });
       }
+    } else {
+      cleanupScheduled = false;
     }
   }
 

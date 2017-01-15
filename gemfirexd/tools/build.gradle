@@ -89,6 +89,7 @@ dependencies {
   }
 
   testRuntime project(subprojectBase + 'gemfirexd-core')
+  testRuntime "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 }
 
 // move javacc output directory to a place where IDEA can easily register
