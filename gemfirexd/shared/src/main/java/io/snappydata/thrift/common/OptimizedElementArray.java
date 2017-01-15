@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -145,22 +146,15 @@ public class OptimizedElementArray {
    * @param metadata the list of {@link ColumnDescriptor}s ordered by their position
    */
   public OptimizedElementArray(final List<ColumnDescriptor> metadata) {
-    this(getTypes(metadata));
-  }
-
-  /**
-   * Initialize the array for given {@link SnappyType}s.
-   *
-   * @param types the array of element types ordered by their position
-   */
-  public OptimizedElementArray(SnappyType[] types) {
     int nonPrimitiveIndex = 0;
-    final int numFields = types.length;
+    final int numFields = metadata.size();
     // a byte for type of each field at the start
     final int headerSize = (numFields + 7) >>> 3;
     this.primitives = new long[headerSize + numFields];
+    Iterator<ColumnDescriptor> iter = metadata.iterator();
     for (int index = 0; index < numFields; index++) {
-      final SnappyType type = types[index];
+      final ColumnDescriptor cd = iter.next();
+      final SnappyType type = cd.type;
       setType(index, type.getValue());
       switch (type) {
         case INTEGER:
@@ -192,15 +186,6 @@ public class OptimizedElementArray {
       this.nonPrimSize = nonPrimitiveIndex;
     }
     this.headerSize = headerSize;
-  }
-
-  public static SnappyType[] getTypes(List<ColumnDescriptor> metadata) {
-    final SnappyType[] types = new SnappyType[metadata.size()];
-    int index = 0;
-    for (ColumnDescriptor cd : metadata) {
-      types[index++] = cd.type;
-    }
-    return types;
   }
 
   protected final void setType(int index, int sqlType) {
@@ -275,7 +260,7 @@ public class OptimizedElementArray {
     TIntArrayList lobIndices = null;
     final long[] primitives = this.primitives;
     final int headerSize = this.headerSize;
-    final int size = primitives.length;
+    final int size = primitives.length - headerSize;
     for (int index = 0; index < size; index++) {
       final int type = getType(index);
       if (type == SnappyType.BLOB.getValue()) {
@@ -640,6 +625,11 @@ public class OptimizedElementArray {
           }
           oprot.writeListEnd();
           break;
+        case 25: // NULLTYPE
+          oprot.writeFieldBegin(ColumnValue.NULL_VAL_FIELD_DESC);
+          // not-null case since for null type will be -ve
+          oprot.writeBool(false);
+          break;
         case 27: // JAVA_OBJECT
           oprot.writeFieldBegin(ColumnValue.JAVA_VAL_FIELD_DESC);
           byte[] objBytes = Converters.getJavaObjectAsBytes(
@@ -651,12 +641,10 @@ public class OptimizedElementArray {
           if (rawType < 0) {
             oprot.writeFieldBegin(ColumnValue.NULL_VAL_FIELD_DESC);
             oprot.writeBool(true);
-          } else if (rawType == 25) { // NULLTYPE
-            oprot.writeFieldBegin(ColumnValue.NULL_VAL_FIELD_DESC);
-            // if field is null then type will be -ve
-            oprot.writeBool(false);
           } else {
-            throw new TProtocolException("write: unhandled typeId=" + rawType);
+            throw new TProtocolException("write: unhandled typeId=" + rawType +
+                " at index=" + index + " with size=" + size + "(changedCols=" +
+                changedColumns + ")");
           }
       }
 
@@ -987,7 +975,7 @@ public class OptimizedElementArray {
   }
 
   public final int size() {
-    return this.primitives.length;
+    return primitives.length - headerSize;
   }
 
   public void clear() {

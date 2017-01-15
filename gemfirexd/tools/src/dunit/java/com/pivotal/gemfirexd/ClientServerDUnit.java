@@ -1850,9 +1850,6 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertNumConnections(-4, -4, 2);
   }
 
-  public String reduceLogging() {
-    return "fine";
-  }
   /**
    * Test if multiple connections from network clients failover successfully.
    */
