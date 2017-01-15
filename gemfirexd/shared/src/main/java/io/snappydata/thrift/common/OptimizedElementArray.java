@@ -123,17 +123,24 @@ public class OptimizedElementArray {
 
   protected OptimizedElementArray(OptimizedElementArray other,
       boolean copyValues) {
-    long[] prims = other.primitives;
-    Object[] nonPrims = other.nonPrimitives;
+    final long[] prims = other.primitives;
+    final Object[] nonPrims = other.nonPrimitives;
+    final int header = other.headerSize;
     if (prims != null) {
-      this.primitives = copyValues ? prims.clone() : new long[prims.length];
+      if (copyValues) {
+        this.primitives = prims.clone();
+      } else {
+        // only copy the types
+        this.primitives = new long[prims.length];
+        System.arraycopy(prims, 0, this.primitives, 0, header);
+      }
     }
     if (nonPrims != null) {
       this.nonPrimitives = copyValues ? nonPrims.clone()
           : new Object[nonPrims.length];
     }
     this.nonPrimSize = other.nonPrimSize;
-    this.headerSize = other.headerSize;
+    this.headerSize = header;
     if (copyValues) {
       this.hash = other.hash;
     }
@@ -310,10 +317,10 @@ public class OptimizedElementArray {
     final BlobChunk chunk = (BlobChunk)this.nonPrimitives[lobIndex];
     if (clearFinalizer && chunk != null && chunk.isSetLobId()) {
       final FinalizeObject finalizer =
-          (FinalizeObject)this.nonPrimitives[lobIndex + 1];
+          (FinalizeObject)this.nonPrimitives[lobIndex - 1];
       if (finalizer != null) {
         finalizer.clearAll();
-        this.nonPrimitives[lobIndex + 1] = null;
+        this.nonPrimitives[lobIndex - 1] = null;
       }
     }
     return chunk;
@@ -324,10 +331,10 @@ public class OptimizedElementArray {
     final ClobChunk chunk = (ClobChunk)this.nonPrimitives[lobIndex];
     if (clearFinalizer && chunk != null && chunk.isSetLobId()) {
       final FinalizeObject finalizer =
-          (FinalizeObject)this.nonPrimitives[lobIndex + 1];
+          (FinalizeObject)this.nonPrimitives[lobIndex - 1];
       if (finalizer != null) {
         finalizer.clearAll();
-        this.nonPrimitives[lobIndex + 1] = null;
+        this.nonPrimitives[lobIndex - 1] = null;
       }
     }
     return chunk;
