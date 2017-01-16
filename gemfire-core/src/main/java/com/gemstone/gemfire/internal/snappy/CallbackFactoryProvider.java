@@ -54,10 +54,6 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public void invalidateReplicatedTableCache(LocalRegion region) {
-    }
-
-    @Override
     public String cachedBatchTableName(String tableName) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
