@@ -66,23 +66,17 @@ public abstract class UnsafeHolder {
   }
 
   private static final boolean hasUnsafe;
-  // Cached array base offset
-  public static final long arrayBaseOffset;
 
   static {
     boolean v;
-    long arrayOffset = -1;
     try {
       Wrapper.init();
-      // try to access arrayBaseOffset via unsafe
-      arrayOffset = (long)Wrapper.unsafe.arrayBaseOffset(byte[].class);
       v = true;
     } catch (LinkageError le) {
       le.printStackTrace();
       v = false;
     }
     hasUnsafe = v;
-    arrayBaseOffset = arrayOffset;
   }
 
   private UnsafeHolder() {

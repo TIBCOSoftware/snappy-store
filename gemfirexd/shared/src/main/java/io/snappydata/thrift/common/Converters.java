@@ -182,34 +182,27 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || (c = o.getClass()) == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnIndex, (Integer)o);
+      } else if (c == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "boolean", columnIndex);
       }
@@ -347,34 +340,27 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || (c = o.getClass()) == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnIndex, (Integer)o);
+      } else if (c == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "byte", columnIndex);
       }
@@ -513,34 +499,27 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || (c = o.getClass()) == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnIndex, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "short", columnIndex);
       }
@@ -680,34 +659,27 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || (c = o.getClass()) == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == Integer.class) {
+        setInteger(row, columnIndex, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "int", columnIndex);
       }
@@ -848,34 +820,27 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || (c = o.getClass()) == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnIndex, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "long", columnIndex);
       }
@@ -1022,34 +987,27 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || (c = o.getClass()) == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnIndex, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "float", columnIndex);
       }
@@ -1192,34 +1150,27 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || (c = o.getClass()) == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Integer.class) {
+        setInteger(row, (Integer)o, columnIndex);
+      } else if (c == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "double", columnIndex);
       }
@@ -1359,40 +1310,34 @@ public abstract class Converters {
     @Override
     public void setString(OptimizedElementArray row, int columnIndex, String x)
         throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+      row.setObject(columnIndex - 1, getBigDecimal(x, columnIndex),
+          SnappyType.DECIMAL);
     }
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       Class<?> c;
-      if (o == null || o instanceof BigDecimal) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if ((c = o.getClass()) == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof String) {
+      } else if ((c = o.getClass()) == Double.class) {
+        setDouble(row, columnIndex, (Double)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnIndex, (Float)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnIndex, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnIndex, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnIndex, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnIndex, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnIndex, (Boolean)o);
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             c.getName(), "BigDecimal", columnIndex);
       }
@@ -1456,17 +1401,17 @@ public abstract class Converters {
     @Override
     public void setDate(OptimizedElementArray row, int columnIndex,
         java.sql.Date x) throws SQLException {
-      row.setDate(columnIndex - 1, x);
+      row.setDateTime(columnIndex - 1, x);
     }
     @Override
     public void setTimestamp(OptimizedElementArray row, int columnIndex,
         java.sql.Timestamp x) throws SQLException {
-      row.setTimestamp(columnIndex - 1, x);
+      row.setDateTime(columnIndex - 1, x);
     }
     @Override
     public void setTime(OptimizedElementArray row, int columnIndex,
         java.sql.Time x) throws SQLException {
-      row.setTime(columnIndex - 1, x);
+      row.setDateTime(columnIndex - 1, x);
     }
     @Override
     public void setString(OptimizedElementArray row, int columnIndex, String x)
@@ -1476,19 +1421,13 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof java.sql.Date) {
-        setDate(row, columnIndex, (java.sql.Date)o);
-      }
-      else if (o instanceof java.sql.Time) {
-        setTime(row, columnIndex, (java.sql.Time)o);
-      }
-      else if (o instanceof java.sql.Timestamp) {
-        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
-      }
-      else if (o instanceof String) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof java.util.Date) {
+        row.setDateTime(columnIndex - 1, (java.util.Date)o);
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             o.getClass().getName(), "Date", columnIndex);
       }
@@ -1552,17 +1491,17 @@ public abstract class Converters {
     @Override
     public void setDate(OptimizedElementArray row, int columnIndex,
         java.sql.Date x) throws SQLException {
-      row.setDate(columnIndex - 1, x);
+      row.setDateTime(columnIndex - 1, x);
     }
     @Override
     public void setTimestamp(OptimizedElementArray row, int columnIndex,
         java.sql.Timestamp x) throws SQLException {
-      row.setTimestamp(columnIndex - 1, x);
+      row.setDateTime(columnIndex - 1, x);
     }
     @Override
     public void setTime(OptimizedElementArray row, int columnIndex,
         java.sql.Time x) throws SQLException {
-      row.setTime(columnIndex - 1, x);
+      row.setDateTime(columnIndex - 1, x);
     }
     @Override
     public void setString(OptimizedElementArray row, int columnIndex, String x)
@@ -1572,19 +1511,13 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof java.sql.Time) {
-        setTime(row, columnIndex, (java.sql.Time)o);
-      }
-      else if (o instanceof java.sql.Date) {
-        setDate(row, columnIndex, (java.sql.Date)o);
-      }
-      else if (o instanceof java.sql.Timestamp) {
-        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
-      }
-      else if (o instanceof String) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof java.util.Date) {
+        row.setDateTime(columnIndex - 1, (java.util.Date)o);
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             o.getClass().getName(), "Time", columnIndex);
       }
@@ -1648,7 +1581,7 @@ public abstract class Converters {
     @Override
     public void setDate(OptimizedElementArray row, int columnIndex,
         java.sql.Date x) throws SQLException {
-      row.setDate(columnIndex - 1, x);
+      row.setTimestamp(columnIndex - 1, x);
     }
     @Override
     public void setTimestamp(OptimizedElementArray row, int columnIndex,
@@ -1658,7 +1591,7 @@ public abstract class Converters {
     @Override
     public void setTime(OptimizedElementArray row, int columnIndex,
         java.sql.Time x) throws SQLException {
-      row.setTime(columnIndex - 1, x);
+      row.setTimestamp(columnIndex - 1, x);
     }
     @Override
     public void setString(OptimizedElementArray row, int columnIndex, String x)
@@ -1668,19 +1601,15 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof java.sql.Timestamp) {
-        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
-      }
-      else if (o instanceof java.sql.Date) {
-        setDate(row, columnIndex, (java.sql.Date)o);
-      }
-      else if (o instanceof java.sql.Time) {
-        setTime(row, columnIndex, (java.sql.Time)o);
-      }
-      else if (o instanceof String) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof java.sql.Timestamp) {
+        row.setTimestamp(columnIndex - 1, (java.sql.Timestamp)o);
+      } else if (o instanceof java.util.Date) {
+        row.setTimestamp(columnIndex - 1, (java.util.Date)o);
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             o.getClass().getName(), "Timestamp", columnIndex);
       }
@@ -1924,30 +1853,28 @@ public abstract class Converters {
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
       final Class<?> c;
-      if (o == null || (c = o.getClass()) == String.class) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if ((c = o.getClass()) == String.class) {
         setString(row, columnIndex, (String)o);
       } else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
+        setDouble(row, columnIndex, (Double)o);
       } else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
+        setFloat(row, columnIndex, (Float)o);
       } else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
+        setInteger(row, columnIndex, (Integer)o);
       } else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
+        setByte(row, columnIndex, (Byte)o);
       } else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
+        setShort(row, columnIndex, (Short)o);
       } else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
+        setLong(row, columnIndex, (Long)o);
       } else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
+        setBoolean(row, columnIndex, (Boolean)o);
       } else if (o instanceof BigDecimal) {
         setBigDecimal(row, columnIndex, (BigDecimal)o);
-      } else if (o instanceof java.sql.Date) {
-        setDate(row, columnIndex, (java.sql.Date)o);
-      } else if (o instanceof java.sql.Time) {
-        setTime(row, columnIndex, (java.sql.Time)o);
-      } else if (o instanceof java.sql.Timestamp) {
-        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
+      } else if (o instanceof java.util.Date) {
+        setString(row, columnIndex, o.toString());
       } else {
         throw newTypeSetConversionException(
             c.getName(), getType().toString(), columnIndex);
@@ -1990,6 +1917,22 @@ public abstract class Converters {
     public Object toObject(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
       return toClob(row, columnIndex, lobService);
+    }
+    @Override
+    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+        throws SQLException {
+      if (o instanceof Clob) {
+        // not chunking in sends yet
+        Clob clob = (Clob)o;
+        long clobLen = clob.length();
+        if (clobLen > Integer.MAX_VALUE) {
+          throw ThriftExceptionUtil.newSQLException(
+              SQLState.BLOB_LENGTH_TOO_LONG, null, clobLen);
+        }
+        setString(row, columnIndex, clob.getSubString(1, (int)clobLen));
+      } else {
+        super.setObject(row, columnIndex, o);
+      }
     }
   };
 
@@ -2040,13 +1983,13 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof byte[]) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof byte[]) {
         setBytes(row, columnIndex, (byte[])o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             o.getClass().getName(), "byte[]", columnIndex);
       }
@@ -2113,13 +2056,22 @@ public abstract class Converters {
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof byte[]) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof byte[]) {
         setBytes(row, columnIndex, (byte[])o);
-      }
-      else if (o instanceof String) {
+      } else if (o instanceof Blob) {
+        // not chunking in sends yet
+        Blob blob = (Blob)o;
+        long blobLen = blob.length();
+        if (blobLen > Integer.MAX_VALUE) {
+          throw ThriftExceptionUtil.newSQLException(
+              SQLState.BLOB_LENGTH_TOO_LONG, null, blobLen);
+        }
+        setBytes(row, columnIndex, blob.getBytes(1, (int)blobLen));
+      } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
-      }
-      else {
+      } else {
         throw newTypeSetConversionException(
             o.getClass().getName(), "Blob", columnIndex);
       }
@@ -2302,37 +2254,37 @@ public abstract class Converters {
     @Override
     public void setBoolean(OptimizedElementArray row, int columnIndex,
         boolean x) throws SQLException {
-      setObject(row, columnIndex, Boolean.valueOf(x));
+      setObject(row, columnIndex, x);
     }
     @Override
     public void setByte(OptimizedElementArray row, int columnIndex, byte x)
         throws SQLException {
-      setObject(row, columnIndex, Byte.valueOf(x));
+      setObject(row, columnIndex, x);
     }
     @Override
     public void setShort(OptimizedElementArray row, int columnIndex, short x)
         throws SQLException {
-      setObject(row, columnIndex, Short.valueOf(x));
+      setObject(row, columnIndex, x);
     }
     @Override
     public void setInteger(OptimizedElementArray row, int columnIndex, int x)
         throws SQLException {
-      setObject(row, columnIndex, Integer.valueOf(x));
+      setObject(row, columnIndex, x);
     }
     @Override
     public void setLong(OptimizedElementArray row, int columnIndex, long x)
         throws SQLException {
-      setObject(row, columnIndex, Long.valueOf(x));
+      setObject(row, columnIndex, x);
     }
     @Override
     public void setFloat(OptimizedElementArray row, int columnIndex, float x)
         throws SQLException {
-      setObject(row, columnIndex, Float.valueOf(x));
+      setObject(row, columnIndex, x);
     }
     @Override
     public void setDouble(OptimizedElementArray row, int columnIndex, double x)
         throws SQLException {
-      setObject(row, columnIndex, Double.valueOf(x));
+      setObject(row, columnIndex, x);
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
@@ -2392,15 +2344,17 @@ public abstract class Converters {
     }
 
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
+    public void setString(OptimizedElementArray row, int columnIndex,
+        String x) throws SQLException {
       row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
     }
 
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof List<?>) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof List<?>) {
         row.setObject(columnIndex - 1, o, SnappyType.ARRAY);
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
@@ -2437,15 +2391,17 @@ public abstract class Converters {
     }
 
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
+    public void setString(OptimizedElementArray row, int columnIndex,
+        String x) throws SQLException {
       row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
     }
 
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof Map<?, ?>) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof Map<?, ?>) {
         row.setObject(columnIndex - 1, o, SnappyType.MAP);
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
@@ -2482,15 +2438,17 @@ public abstract class Converters {
     }
 
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
+    public void setString(OptimizedElementArray row, int columnIndex,
+        String x) throws SQLException {
       row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
     }
 
     @Override
     public void setObject(OptimizedElementArray row, int columnIndex, Object o)
         throws SQLException {
-      if (o == null || o instanceof List<?>) {
+      if (o == null) {
+        row.setNull(columnIndex - 1);
+      } else if (o instanceof List<?>) {
         row.setObject(columnIndex - 1, o, SnappyType.STRUCT);
       } else if (o instanceof String) {
         setString(row, columnIndex, (String)o);
@@ -2783,6 +2741,19 @@ public abstract class Converters {
         new BigInteger(decimal.signum, decimal.getMagnitude()), decimal.scale);
   }
 
+  public static BigDecimal getBigDecimal(String str, int columnIndex)
+      throws SQLException {
+    if (str != null) {
+      try {
+        return new BigDecimal(str);
+      } catch (NumberFormatException nfe) {
+        throw newFormatException("decimal", columnIndex, nfe);
+      }
+    } else {
+      return null;
+    }
+  }
+
   /**
    * Get the {@link Decimal} for given non-null {@link BigDecimal} value.
    *
@@ -2888,6 +2859,10 @@ public abstract class Converters {
 
   public static long getTimestamp(java.sql.Timestamp jts) {
     return jts.getTime() * 1000000L + jts.getNanos();
+  }
+
+  public static long getTimestamp(java.util.Date date) {
+    return date.getTime() * 1000000L;
   }
 
   public static String getClobAsString(ClobChunk clob, LobService lobService)

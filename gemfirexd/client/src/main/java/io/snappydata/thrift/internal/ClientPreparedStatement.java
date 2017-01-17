@@ -135,7 +135,7 @@ public class ClientPreparedStatement extends ClientStatement implements
     final List<ColumnDescriptor> pmd = pr.getParameterMetaData();
     int numParams;
     if (pmd != null && (numParams = pmd.size()) > 0) {
-      this.paramsList = new Row(pmd);
+      this.paramsList = new Row(pmd, true);
       this.parameterMetaData = pmd;
     } else {
       this.paramsList = EMPTY_ROW;
@@ -567,7 +567,9 @@ public class ClientPreparedStatement extends ClientStatement implements
         this.paramsBatch = new ArrayList<>();
       }
       this.paramsBatch.add(this.paramsList);
-      this.paramsList = new Row(this.parameterMetaData);
+      // even though batch cannot have output parameters, still the below check
+      // has been added if there is a user code bug and for possible future use
+      this.paramsList = new Row(this.parameterMetaData, true);
     }
   }
 

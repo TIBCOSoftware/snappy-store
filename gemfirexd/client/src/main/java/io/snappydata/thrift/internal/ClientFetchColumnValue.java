@@ -66,17 +66,21 @@ abstract class ClientFetchColumnValue implements LobService {
   protected ClientFinalizer finalizer;
   protected boolean wasNull;
 
-  protected ClientFetchColumnValue(ClientService service, byte entityId) {
+  protected ClientFetchColumnValue(ClientService service, byte entityType) {
     this.service = service;
-    this.finalizer = entityId != snappydataConstants.INVALID_ID
-        ? new ClientFinalizer(this, service, entityId) : null;
+    this.finalizer = entityType != snappydataConstants.INVALID_ID
+        ? new ClientFinalizer(this, service, entityType) : null;
   }
 
   protected final HostConnection getLobSource(boolean throwOnFailure,
       String op) throws SQLException {
-    final ClientFinalizer finalizer = this.finalizer;
-    final HostConnection source;
-    if (finalizer != null && (source = finalizer.source) != null) {
+    // get the current source from service; if the original source has failed
+    // and this is new source after failover, then use it in any case and
+    // actual call will fail due to token mismatch on server but send
+    // it nevertheless to simplify client-side code as well as possible future
+    // support for LOB retrieval after failover
+    final HostConnection source = service.getCurrentHostConnection();
+    if (source != null) {
       return source;
     } else if (throwOnFailure) {
       throw (SQLException)service.newExceptionForNodeFailure(null, op,
@@ -86,7 +90,7 @@ abstract class ClientFetchColumnValue implements LobService {
     }
   }
 
-  protected final void setCurrentSource(byte entityId, long newId, RowSet rs) {
+  protected final void setCurrentSource(byte entityType, long newId, RowSet rs) {
     ClientFinalizer finalizer = this.finalizer;
     if (newId != snappydataConstants.INVALID_ID) {
       final HostConnection currentSource = service.getCurrentHostConnection();
@@ -99,7 +103,7 @@ abstract class ClientFetchColumnValue implements LobService {
       if (finalizer == null) {
         // create a new finalizer
         this.finalizer = finalizer = new ClientFinalizer(this, this.service,
-            entityId);
+            entityType);
       }
       finalizer.updateReferentData(newId, newSource);
     } else if (finalizer != null) {

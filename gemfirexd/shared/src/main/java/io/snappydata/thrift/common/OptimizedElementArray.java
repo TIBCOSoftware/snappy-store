@@ -42,13 +42,7 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
@@ -114,7 +108,10 @@ public class OptimizedElementArray {
   protected transient int hash;
   protected boolean hasLobs;
 
+  protected static final long[] EMPTY = new long[0];
+
   protected OptimizedElementArray() {
+    this.primitives = EMPTY;
   }
 
   protected OptimizedElementArray(OptimizedElementArray other) {
@@ -126,14 +123,13 @@ public class OptimizedElementArray {
     final long[] prims = other.primitives;
     final Object[] nonPrims = other.nonPrimitives;
     final int header = other.headerSize;
-    if (prims != null) {
-      if (copyValues) {
-        this.primitives = prims.clone();
-      } else {
-        // only copy the types
-        this.primitives = new long[prims.length];
-        System.arraycopy(prims, 0, this.primitives, 0, header);
-      }
+    if (prims.length > 0) {
+      // copy primitives array regardless of "copyValues" since need to copy the
+      // header having types and non-primitive indexes in any case, so array
+      // copy will be efficient since having other primitive values won't hurt
+      this.primitives = prims.clone();
+    } else {
+      this.primitives = EMPTY;
     }
     if (nonPrims != null) {
       this.nonPrimitives = copyValues ? nonPrims.clone()
@@ -152,27 +148,39 @@ public class OptimizedElementArray {
    *
    * @param metadata the list of {@link ColumnDescriptor}s ordered by their position
    */
-  public OptimizedElementArray(final List<ColumnDescriptor> metadata) {
+  public OptimizedElementArray(final List<ColumnDescriptor> metadata,
+      boolean checkOutputParameters) {
     int nonPrimitiveIndex = 0;
-    final int numFields = metadata.size();
+    int numFields = metadata.size();
+    // remove any output parameters at the end
+    if (checkOutputParameters) {
+      for (int rIndex = numFields - 1; rIndex >= 0; rIndex--) {
+        if (!metadata.get(rIndex).isParameterOut()) {
+          numFields = rIndex + 1;
+          break;
+        }
+      }
+    }
     // a byte for type of each field at the start
     final int headerSize = (numFields + 7) >>> 3;
     this.primitives = new long[headerSize + numFields];
-    Iterator<ColumnDescriptor> iter = metadata.iterator();
     for (int index = 0; index < numFields; index++) {
-      final ColumnDescriptor cd = iter.next();
+      final ColumnDescriptor cd = metadata.get(index);
       final SnappyType type = cd.type;
       setType(index, type.getValue());
       switch (type) {
         case INTEGER:
-        case REAL:
         case BIGINT:
         case DOUBLE:
         case FLOAT:
+        case DATE:
+        case TIMESTAMP:
+        case REAL:
+        case TIME:
+        case SMALLINT:
         case BOOLEAN:
         case TINYINT:
         case NULLTYPE:
-        case SMALLINT:
           // skip primitives that will be stored directly in "primitives"
           break;
         case BLOB:
@@ -379,15 +387,15 @@ public class OptimizedElementArray {
     setPrimLong(headerSize + index, Double.doubleToLongBits(value));
   }
 
-  public final void setDate(int index, Date date) {
+  public final void setDateTime(int index, java.util.Date date) {
     setPrimLong(headerSize + index, Converters.getDateTime(date));
   }
 
-  public final void setTime(int index, Time time) {
-    setPrimLong(headerSize + index, Converters.getDateTime(time));
+  public final void setTimestamp(int index, Timestamp ts) {
+    setPrimLong(headerSize + index, Converters.getTimestamp(ts));
   }
 
-  public final void setTimestamp(int index, Timestamp ts) {
+  public final void setTimestamp(int index, java.util.Date ts) {
     setPrimLong(headerSize + index, Converters.getTimestamp(ts));
   }
 

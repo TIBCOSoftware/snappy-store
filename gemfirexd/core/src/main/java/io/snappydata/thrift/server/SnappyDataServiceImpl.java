@@ -747,8 +747,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           result.setNull(index);
           return 1;
         } else {
-          result.setObject(index, dtVal, SnappyType.DATE);
-          return ReflectionSingleObjectSizer.OBJECT_SIZE + 8;
+          result.setDateTime(index, dtVal);
+          return 8;
         }
       case TIME:
         Time timeVal = rs.getTime(columnIndex);
@@ -756,8 +756,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           result.setNull(index);
           return 1;
         } else {
-          result.setObject(index, timeVal, SnappyType.TIME);
-          return ReflectionSingleObjectSizer.OBJECT_SIZE + 8;
+          result.setDateTime(index, timeVal);
+          return 8;
         }
       case TIMESTAMP:
         java.sql.Timestamp tsVal = rs.getTimestamp(columnIndex);
@@ -765,8 +765,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           result.setNull(index);
           return 1;
         } else {
-          result.setObject(index, tsVal, SnappyType.TIMESTAMP);
-          return ReflectionSingleObjectSizer.OBJECT_SIZE + 16;
+          result.setTimestamp(index, tsVal);
+          return 8;
         }
       case BINARY:
       case VARBINARY:
@@ -2109,22 +2109,21 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             if (params.isNull(index)) {
               pstmt.setNull(paramIndex, Types.DATE);
             } else {
-              pstmt.setDate(paramIndex, (Date)params.getObject(index));
+              pstmt.setDate(paramIndex, params.getDate(index));
             }
             break;
           case TIME:
             if (params.isNull(index)) {
               pstmt.setNull(paramIndex, Types.TIME);
             } else {
-              pstmt.setTime(paramIndex, (Time)params.getObject(index));
+              pstmt.setTime(paramIndex, params.getTime(index));
             }
             break;
           case TIMESTAMP:
             if (params.isNull(index)) {
               pstmt.setNull(paramIndex, Types.TIMESTAMP);
             } else {
-              pstmt.setTimestamp(paramIndex,
-                  (java.sql.Timestamp)params.getObject(index));
+              pstmt.setTimestamp(paramIndex, params.getTimestamp(index));
             }
             break;
           case BINARY:

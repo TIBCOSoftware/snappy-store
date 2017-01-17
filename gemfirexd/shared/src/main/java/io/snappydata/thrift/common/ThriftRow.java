@@ -96,8 +96,9 @@ public class ThriftRow extends OptimizedElementArray implements
     super();
   }
 
-  public ThriftRow(List<ColumnDescriptor> metadata) {
-    super(metadata);
+  public ThriftRow(List<ColumnDescriptor> metadata,
+      boolean checkOutputParameters) {
+    super(metadata, checkOutputParameters);
   }
 
   /**
@@ -200,7 +201,7 @@ public class ThriftRow extends OptimizedElementArray implements
     // check for required fields
     if (primitives == null) {
       throw new org.apache.thrift.protocol.TProtocolException("Required "
-          + "field 'primitives' was not present! Struct: " + toString());
+          + "field 'primitives' was not present!");
     }
   }
 
