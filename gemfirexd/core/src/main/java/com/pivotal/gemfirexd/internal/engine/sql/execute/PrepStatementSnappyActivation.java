@@ -89,9 +89,7 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
 
   @Override
   public ResultDescription getResultDescription() {
-    if (this.resultDescription == null) {
-      this.resultDescription = SnappyActivation.makeResultDescription(this.resultSet);
-    }
+    this.resultDescription = SnappyActivation.makeResultDescription(this.resultSet);
     return this.resultDescription;
   }
 
