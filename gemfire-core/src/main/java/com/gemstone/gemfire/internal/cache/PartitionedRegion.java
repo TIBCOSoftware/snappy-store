@@ -408,7 +408,6 @@ public class PartitionedRegion extends LocalRegion implements
 
   private volatile int shutDownAllStatus = RUNNING_MODE;
 
-  final public static int COLUMN_BATCH_SIZE_DEFAULT = 10000;
   /** Default size for CachedBatches. */
   private int columnBatchSize = -1;
 
