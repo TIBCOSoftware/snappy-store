@@ -65,7 +65,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
       flavour = out.toString().replaceAll('[\r\n\f]', '').toLowerCase()
     }
     if (flavour.startsWith('ubuntu14') || flavour.startsWith('ubuntu16') ||
-        flavour.startsWith('linuxmint17')) {
+        flavour.startsWith('linuxmint17') || flavour.startsWith('linuxmint18')) {
       dependencies += [ "thrift-${thriftVersion}-ubuntu14.04.tar.bz2",
                         "boost-${boostVersion}-ubuntu14.04.tar.bz2",
                         "unixODBC-${unixodbcVersion}-ubuntu14.04.tar.bz2",
@@ -269,7 +269,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
 
   assemble.dependsOn extractDependencies
 
-  jar.enabled = false
+  // jar.enabled = false
   task product(dependsOn: assemble) {
     String productDir = "${buildDir}/snappyclient"
 

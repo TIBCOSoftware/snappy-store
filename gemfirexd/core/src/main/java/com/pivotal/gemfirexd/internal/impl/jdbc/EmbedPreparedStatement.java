@@ -70,6 +70,8 @@ import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.PrepStatementSnappyActivation;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.BrokeredConnectionControl;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineParameterMetaData;
@@ -88,6 +90,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RawToBinaryFormatStream;
 import com.pivotal.gemfirexd.internal.iapi.types.ReaderToUTF8Stream;
 import com.pivotal.gemfirexd.internal.iapi.types.VariableSizeDataValue;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericActivationHolder;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.shared.common.SingleHopInformation;
@@ -1327,22 +1330,33 @@ public abstract class EmbedPreparedStatement
 				}
 				if (rMetaData == null)
 				{
-					ResultDescription resd = preparedStatement.getResultDescription();
-					if (resd != null)
-					{
-						// Internally, the result description has information
-						// which is used for insert, update and delete statements
-						// Externally, we decided that statements which don't
-						// produce result sets such as insert, update and delete
-						// should not return ResultSetMetaData.  This is enforced
-						// here
-						String statementType = resd.getStatementType();
-						if (statementType.equals("INSERT") ||
-								statementType.equals("UPDATE") ||
-								statementType.equals("DELETE"))
-							rMetaData = null;
-						else
-				    		rMetaData = newEmbedResultSetMetaData(resd);
+					Activation act = null;
+					if (this.getActivation() != null) {
+						if (this.getActivation() instanceof GenericActivationHolder) {
+							act = ((GenericActivationHolder)this.getActivation()).getActivation();
+						} else if (this.getActivation() instanceof Activation) {
+							act = this.getActivation();
+						}
+					}
+					if (act instanceof PrepStatementSnappyActivation || act instanceof  SnappyActivation) {
+						rMetaData = null;
+					} else {
+						ResultDescription resd = preparedStatement.getResultDescription();
+						if (resd != null) {
+							// Internally, the result description has information
+							// which is used for insert, update and delete statements
+							// Externally, we decided that statements which don't
+							// produce result sets such as insert, update and delete
+							// should not return ResultSetMetaData.  This is enforced
+							// here
+							String statementType = resd.getStatementType();
+							if (statementType.equals("INSERT") ||
+									statementType.equals("UPDATE") ||
+									statementType.equals("DELETE"))
+								rMetaData = null;
+							else
+								rMetaData = newEmbedResultSetMetaData(resd);
+						}
 					}
 				}
 			} catch (Throwable t) {

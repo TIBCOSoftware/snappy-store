@@ -87,6 +87,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappySelectResultSet;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ApplicationObjectInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.loader.ClassFactory;
@@ -1062,16 +1063,23 @@ class DRDAConnThread extends Thread {
 // GemStone changes END
 							  long currentVersion =
 							       ((EnginePreparedStatement)stmt.ps).
-							         getVersionCounter();
-							
-							  if (stmt.sqldaType ==
+							          getVersionCounter();
+
+							  final ResultSet rs = stmt.ps.getResultSet();
+							  final boolean sendMetadata = (rs != null) && rs instanceof EmbedResultSet
+							  && ((EmbedResultSet)rs).getSourceResultSet() instanceof SnappySelectResultSet;
+							  if (sendMetadata || (stmt.sqldaType ==
 							      CodePoint.TYPSQLDA_LIGHT_OUTPUT &&
-							      currentVersion != sentVersion) {
+							      currentVersion != sentVersion)) {
 							  // DERBY-5459. The prepared statement has a
 							  // result set and has changed on the server
 							  // since we last informed the client about its
 							  // shape, so re-send metadata.
-							  //
+
+							  // also send metadata after the execution of query for
+							  // PreparedStatement that is routed to lead node
+							  // as we did not have metadata for at prepare time
+
 							  // NOTE: This is an extension of the standard
 							  // DRDA protocol since we send the SQLDARD
 							  // even if it isn't requested in this case.
@@ -1087,7 +1095,6 @@ class DRDAConnThread extends Thread {
 // GemStone changes BEGIN
 							}
 // GemStone changes END
-
 							writeQRYDSC(stmt, false);
 
 							stmt.rsSuspend();
