@@ -2590,81 +2590,124 @@ public abstract class Converters {
   };
 
   static final ColumnValueConverter[] typeConverters;
+  static final int[] jdbcTypes;
 
   static {
     final SnappyType[] universe = SnappyType.values();
     typeConverters = new ColumnValueConverter[universe.length + 2];
+    jdbcTypes = new int[universe.length + 2];
     for (SnappyType type : universe) {
+      final int ordinal = type.ordinal();
       switch (type) {
         case CHAR:
+          jdbcTypes[ordinal] = Types.CHAR;
+          typeConverters[ordinal] = STRING_TYPE;
+          break;
         case VARCHAR:
+          jdbcTypes[ordinal] = Types.VARCHAR;
+          typeConverters[ordinal] = STRING_TYPE;
+          break;
         case LONGVARCHAR:
-          typeConverters[type.ordinal()] = STRING_TYPE;
+          jdbcTypes[ordinal] = Types.LONGVARCHAR;
+          typeConverters[ordinal] = STRING_TYPE;
           break;
         case INTEGER:
-          typeConverters[type.ordinal()] = INT_TYPE;
+          jdbcTypes[ordinal] = Types.INTEGER;
+          typeConverters[ordinal] = INT_TYPE;
           break;
         case BOOLEAN:
-          typeConverters[type.ordinal()] = BOOLEAN_TYPE;
+          jdbcTypes[ordinal] = Types.BOOLEAN;
+          typeConverters[ordinal] = BOOLEAN_TYPE;
           break;
         case TINYINT:
-          typeConverters[type.ordinal()] = BYTE_TYPE;
+          jdbcTypes[ordinal] = Types.TINYINT;
+          typeConverters[ordinal] = BYTE_TYPE;
           break;
         case SMALLINT:
-          typeConverters[type.ordinal()] = SHORT_TYPE;
+          jdbcTypes[ordinal] = Types.SMALLINT;
+          typeConverters[ordinal] = SHORT_TYPE;
           break;
         case BIGINT:
-          typeConverters[type.ordinal()] = LONG_TYPE;
+          jdbcTypes[ordinal] = Types.BIGINT;
+          typeConverters[ordinal] = LONG_TYPE;
           break;
         case REAL:
-          typeConverters[type.ordinal()] = REAL_TYPE;
+          jdbcTypes[ordinal] = Types.REAL;
+          typeConverters[ordinal] = REAL_TYPE;
           break;
         case DOUBLE:
+          jdbcTypes[ordinal] = Types.DOUBLE;
+          typeConverters[ordinal] = DOUBLE_TYPE;
+          break;
         case FLOAT:
-          typeConverters[type.ordinal()] = DOUBLE_TYPE;
+          jdbcTypes[ordinal] = Types.FLOAT;
+          typeConverters[ordinal] = DOUBLE_TYPE;
           break;
         case DECIMAL:
-          typeConverters[type.ordinal()] = DECIMAL_TYPE;
+          jdbcTypes[ordinal] = Types.DECIMAL;
+          typeConverters[ordinal] = DECIMAL_TYPE;
           break;
         case DATE:
-          typeConverters[type.ordinal()] = DATE_TYPE;
+          jdbcTypes[ordinal] = Types.DATE;
+          typeConverters[ordinal] = DATE_TYPE;
           break;
         case TIME:
-          typeConverters[type.ordinal()] = TIME_TYPE;
+          jdbcTypes[ordinal] = Types.TIME;
+          typeConverters[ordinal] = TIME_TYPE;
           break;
         case TIMESTAMP:
-          typeConverters[type.ordinal()] = TIMESTAMP_TYPE;
+          jdbcTypes[ordinal] = Types.TIMESTAMP;
+          typeConverters[ordinal] = TIMESTAMP_TYPE;
           break;
         case BINARY:
+          jdbcTypes[ordinal] = Types.BINARY;
+          typeConverters[ordinal] = BINARY_TYPE;
+          break;
         case VARBINARY:
+          jdbcTypes[ordinal] = Types.VARBINARY;
+          typeConverters[ordinal] = BINARY_TYPE;
+          break;
         case LONGVARBINARY:
-          typeConverters[type.ordinal()] = BINARY_TYPE;
+          jdbcTypes[ordinal] = Types.LONGVARBINARY;
+          typeConverters[ordinal] = BINARY_TYPE;
           break;
         case CLOB:
-          typeConverters[type.ordinal()] = CLOB_TYPE;
+          jdbcTypes[ordinal] = Types.CLOB;
+          typeConverters[ordinal] = CLOB_TYPE;
           break;
         case BLOB:
-          typeConverters[type.ordinal()] = BLOB_TYPE;
+          jdbcTypes[ordinal] = Types.BLOB;
+          typeConverters[ordinal] = BLOB_TYPE;
           break;
         case ARRAY:
-          typeConverters[type.ordinal()] = ARRAY_TYPE;
+          jdbcTypes[ordinal] = Types.ARRAY;
+          typeConverters[ordinal] = ARRAY_TYPE;
           break;
         case MAP:
-          typeConverters[type.ordinal()] = MAP_TYPE;
+          jdbcTypes[ordinal] = JDBC40Translation.MAP;
+          typeConverters[ordinal] = MAP_TYPE;
         case STRUCT:
-          typeConverters[type.ordinal()] = STRUCT_TYPE;
+          jdbcTypes[ordinal] = Types.STRUCT;
+          typeConverters[ordinal] = STRUCT_TYPE;
         case JSON:
-          typeConverters[type.ordinal()] = JSON_TYPE;
+          jdbcTypes[ordinal] = JDBC40Translation.JSON;
+          typeConverters[ordinal] = JSON_TYPE;
           break;
         case NULLTYPE:
-          typeConverters[type.ordinal()] = NULL_TYPE;
+          jdbcTypes[ordinal] = Types.NULL;
+          typeConverters[ordinal] = NULL_TYPE;
           break;
         case JAVA_OBJECT:
+          jdbcTypes[ordinal] = Types.JAVA_OBJECT;
+          typeConverters[ordinal] = OBJECT_TYPE;
+          break;
         case OTHER:
-          typeConverters[type.ordinal()] = OBJECT_TYPE;
+          jdbcTypes[ordinal] = Types.OTHER;
+          typeConverters[ordinal] = OBJECT_TYPE;
           break;
         default:
-          // no support for other types yet
+          jdbcTypes[ordinal] = Types.OTHER;
+          // no conversion support for other types
           break;
       }
     }
@@ -2963,134 +3006,81 @@ public abstract class Converters {
    * Get JDBC {@link Types} type for given {@link SnappyType}.
    */
   public static int getJdbcType(SnappyType type) {
-    switch (type) {
-      case ARRAY:
-        return Types.ARRAY;
-      case BIGINT:
-        return Types.BIGINT;
-      case BINARY:
-        return Types.BINARY;
-      case BLOB:
-        return Types.BLOB;
-      case BOOLEAN:
-        return Types.BOOLEAN;
-      case CHAR:
-        return Types.CHAR;
-      case CLOB:
-        return Types.CLOB;
-      case DATE:
-        return Types.DATE;
-      case DECIMAL:
-        return Types.DECIMAL;
-      case DOUBLE:
-        return Types.DOUBLE;
-      case FLOAT:
-        return Types.FLOAT;
-      case INTEGER:
-        return Types.INTEGER;
-      case JAVA_OBJECT:
-        return Types.JAVA_OBJECT;
-      case JSON:
-        return JDBC40Translation.JSON;
-      case LONGVARBINARY:
-        return Types.LONGVARBINARY;
-      case LONGVARCHAR:
-        return Types.LONGVARCHAR;
-      case MAP:
-        return JDBC40Translation.MAP;
-      case NULLTYPE:
-        return Types.NULL;
-      case OTHER:
-        return Types.OTHER;
-      case REAL:
-        return Types.REAL;
-      case SMALLINT:
-        return Types.SMALLINT;
-      case SQLXML:
-        return Types.SQLXML;
-      case STRUCT:
-        return Types.STRUCT;
-      case TIME:
-        return Types.TIME;
-      case TIMESTAMP:
-        return Types.TIMESTAMP;
-      case TINYINT:
-        return Types.TINYINT;
-      case VARBINARY:
-        return Types.VARBINARY;
-      case VARCHAR:
-        return Types.VARCHAR;
-      default:
-        return Types.OTHER;
-    }
+    return jdbcTypes[type.ordinal()];
   }
 
   /**
    * Get {@link SnappyType} for given JDBC {@link Types}.
    */
   public static SnappyType getThriftSQLType(int jdbcType) {
+    return getThriftSQLType(jdbcType, false);
+  }
+
+  /**
+   * Get {@link SnappyType} for given JDBC {@link Types}.
+   */
+  public static SnappyType getThriftSQLType(int jdbcType,
+      boolean useStringForDecimal) {
     switch (jdbcType) {
-      case Types.ARRAY:
-        return SnappyType.ARRAY;
+      case Types.VARCHAR:
+        return SnappyType.VARCHAR;
+      case Types.INTEGER:
+        return SnappyType.INTEGER;
       case Types.BIGINT:
         return SnappyType.BIGINT;
-      case Types.BINARY:
-        return SnappyType.BINARY;
-      case Types.BIT:
-        return SnappyType.BOOLEAN;
-      case Types.BLOB:
-        return SnappyType.BLOB;
-      case Types.BOOLEAN:
-        return SnappyType.BOOLEAN;
-      case Types.CHAR:
-        return SnappyType.CHAR;
-      case Types.CLOB:
-        return SnappyType.CLOB;
-      case Types.DATE:
-        return SnappyType.DATE;
-      case Types.DECIMAL:
-        return SnappyType.DECIMAL;
       case Types.DOUBLE:
         return SnappyType.DOUBLE;
+      case Types.DECIMAL:
+      case Types.NUMERIC:
+        return useStringForDecimal ? SnappyType.VARCHAR : SnappyType.DECIMAL;
+      case Types.CHAR:
+        return SnappyType.CHAR;
+      case Types.DATE:
+        return SnappyType.DATE;
+      case Types.TIMESTAMP:
+        return SnappyType.TIMESTAMP;
+      case Types.SMALLINT:
+        return SnappyType.SMALLINT;
+      case Types.BOOLEAN:
+      case Types.BIT:
+        return SnappyType.BOOLEAN;
+      case Types.REAL:
+        return SnappyType.REAL;
+      case Types.LONGVARCHAR:
+        return SnappyType.LONGVARCHAR;
+      case Types.BLOB:
+        return SnappyType.BLOB;
+      case Types.CLOB:
+        return SnappyType.CLOB;
       case Types.FLOAT:
         // Derby FLOAT can be DOUBLE or REAL depending on precision
         return SnappyType.FLOAT;
-      case Types.INTEGER:
-        return SnappyType.INTEGER;
+      case Types.ARRAY:
+        return SnappyType.ARRAY;
+      case Types.BINARY:
+        return SnappyType.BINARY;
       case Types.JAVA_OBJECT:
         return SnappyType.JAVA_OBJECT;
       case JDBC40Translation.JSON:
         return SnappyType.JSON;
       case Types.LONGVARBINARY:
         return SnappyType.LONGVARBINARY;
-      case Types.LONGVARCHAR:
-        return SnappyType.LONGVARCHAR;
       case JDBC40Translation.MAP:
         return SnappyType.MAP;
       case Types.NULL:
         return SnappyType.NULLTYPE;
-      case Types.NUMERIC:
-        return SnappyType.DECIMAL;
       case Types.OTHER:
         return SnappyType.OTHER;
-      case Types.REAL:
-        return SnappyType.REAL;
-      case Types.SMALLINT:
-        return SnappyType.SMALLINT;
       case Types.SQLXML:
         return SnappyType.SQLXML;
       case Types.STRUCT:
         return SnappyType.STRUCT;
       case Types.TIME:
         return SnappyType.TIME;
-      case Types.TIMESTAMP:
-        return SnappyType.TIMESTAMP;
       case Types.TINYINT:
         return SnappyType.TINYINT;
       case Types.VARBINARY:
         return SnappyType.VARBINARY;
-      case Types.VARCHAR:
-        return SnappyType.VARCHAR;
       default:
         return SnappyType.OTHER;
     }

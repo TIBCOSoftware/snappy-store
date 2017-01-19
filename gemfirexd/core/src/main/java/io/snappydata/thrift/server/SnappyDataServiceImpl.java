@@ -995,7 +995,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   }
 
   private ArrayList<ColumnDescriptor> getRowSetMetaData(
-      final ResultSetMetaData rsmd, final int columnCount) throws SQLException {
+      final ResultSetMetaData rsmd, final int columnCount,
+      final boolean useStringForDecimal) throws SQLException {
     final ArrayList<ColumnDescriptor> descriptors =
         new ArrayList<>(columnCount);
 
@@ -1014,7 +1015,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         DataTypeDescriptor dtd = rcd.getType();
         TypeId typeId = dtd.getTypeId();
         jdbcType = typeId.getJDBCTypeId();
-        type = Converters.getThriftSQLType(jdbcType);
+        type = Converters.getThriftSQLType(jdbcType, useStringForDecimal);
         ColumnDescriptor columnDesc = new ColumnDescriptor();
         columnName = rcd.getName();
         if (columnName != null) {
@@ -1121,7 +1122,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           columnDesc.setAutoIncrement(true);
         }
         jdbcType = rsmd.getColumnType(colIndex);
-        columnDesc.setType(Converters.getThriftSQLType(jdbcType));
+        columnDesc.setType(Converters.getThriftSQLType(jdbcType,
+            useStringForDecimal));
         columnDesc.setPrecision((short)rsmd.getPrecision(colIndex));
         scale = rsmd.getScale(colIndex);
         if (scale != 0) {
@@ -1161,7 +1163,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       final ResultSetMetaData rsmd = rs.getMetaData();
       final int columnCount = rsmd.getColumnCount();
       final ArrayList<ColumnDescriptor> descriptors = getRowSetMetaData(rsmd,
-          columnCount);
+          columnCount, connHolder.useStringForDecimal());
       if (holder == null) { // skip sending descriptors for scrollCursor
         result.setMetadata(descriptors);
       }
@@ -1888,7 +1890,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ResultSetMetaData rsmd = pstmt.getMetaData();
       if (rsmd != null) {
         result.setResultSetMetaData(getRowSetMetaData(rsmd,
-            rsmd.getColumnCount()));
+            rsmd.getColumnCount(), connHolder.useStringForDecimal()));
       }
 
       if (posDup) {
