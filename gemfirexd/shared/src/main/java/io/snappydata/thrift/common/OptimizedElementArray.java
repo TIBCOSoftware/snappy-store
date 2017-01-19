@@ -42,7 +42,12 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
@@ -208,20 +213,22 @@ public class OptimizedElementArray {
         (byte)sqlType);
   }
 
-  protected final int getRawType(int index) {
+  /**
+   * Returns the {@link SnappyType#getValue()} type for the column at given
+   * index. The returned type will be negative if the column value is null.
+   *
+   * @param index 0-based index of the column
+   */
+  public final int getType(int index) {
     return Platform.getByte(primitives, Platform.LONG_ARRAY_OFFSET + index);
   }
 
-  protected final int getType(int index) {
-    return Math.abs(getRawType(index));
-  }
-
   public final SnappyType getSQLType(int index) {
-    return SnappyType.findByValue(getType(index));
+    return SnappyType.findByValue(Math.abs(getType(index)));
   }
 
   public final boolean isNull(int index) {
-    return getRawType(index) < 0;
+    return getType(index) < 0;
   }
 
   public final boolean getBoolean(int index) {
@@ -349,7 +356,7 @@ public class OptimizedElementArray {
   }
 
   public final void setNull(int index) {
-    int rawType = getRawType(index);
+    int rawType = getType(index);
     if (rawType > 0) {
       setType(index, -rawType);
     }
@@ -528,7 +535,7 @@ public class OptimizedElementArray {
       oprot.writeStructBegin(ColumnValue.STRUCT_DESC);
 
       // nulls will always have -ve types so no need for further null checks
-      final int rawType = getRawType(index);
+      final int rawType = getType(index);
       // check more common types first
       switch (rawType) {
         case 10: // CHAR
@@ -690,89 +697,150 @@ public class OptimizedElementArray {
       TField field = iprot.readFieldBegin();
       final ColumnValue._Fields setField =
           ColumnValue._Fields.findByThriftId(field.id);
+      SnappyType nullType = null;
       if (setField != null) {
         // check more common types first
         switch (setField) {
           case STRING_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            String str = iprot.readString();
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = str;
-            setType(index, SnappyType.VARCHAR.getValue());
+            if (field.type == ColumnValue.STRING_VAL_FIELD_DESC.type) {
+              ensureNonPrimCapacity(nonPrimSize);
+              String str = iprot.readString();
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = str;
+              setType(index, SnappyType.VARCHAR.getValue());
+            } else {
+              nullType = SnappyType.VARCHAR;
+            }
             break;
           case I32_VAL:
-            setPrimLong(offset, iprot.readI32());
-            setType(index, SnappyType.INTEGER.getValue());
+            if (field.type == ColumnValue.I32_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readI32());
+              setType(index, SnappyType.INTEGER.getValue());
+            } else {
+              nullType = SnappyType.INTEGER;
+            }
             break;
           case I64_VAL:
-            setPrimLong(offset, iprot.readI64());
-            setType(index, SnappyType.BIGINT.getValue());
+            if (field.type == ColumnValue.I64_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readI64());
+              setType(index, SnappyType.BIGINT.getValue());
+            } else {
+              nullType = SnappyType.BIGINT;
+            }
             break;
           case DATE_VAL:
-            setPrimLong(offset, iprot.readI64());
-            setType(index, SnappyType.DATE.getValue());
+            if (field.type == ColumnValue.DATE_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readI64());
+              setType(index, SnappyType.DATE.getValue());
+            } else {
+              nullType = SnappyType.DATE;
+            }
             break;
           case TIMESTAMP_VAL:
-            setPrimLong(offset, iprot.readI64());
-            setType(index, SnappyType.TIMESTAMP.getValue());
+            if (field.type == ColumnValue.TIMESTAMP_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readI64());
+              setType(index, SnappyType.TIMESTAMP.getValue());
+            } else {
+              nullType = SnappyType.TIMESTAMP;
+            }
             break;
           case DOUBLE_VAL:
-            setPrimLong(offset, Double.doubleToLongBits(iprot.readDouble()));
-            setType(index, SnappyType.DOUBLE.getValue());
+            if (field.type == ColumnValue.DOUBLE_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, Double.doubleToLongBits(iprot.readDouble()));
+              setType(index, SnappyType.DOUBLE.getValue());
+            } else {
+              nullType = SnappyType.DOUBLE;
+            }
             break;
           case DECIMAL_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            Decimal decimal = new Decimal();
-            decimal.read(iprot);
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = Converters
-                .getBigDecimal(decimal);
-            setType(index, SnappyType.DECIMAL.getValue());
+            if (field.type == ColumnValue.DECIMAL_VAL_FIELD_DESC.type) {
+              ensureNonPrimCapacity(nonPrimSize);
+              Decimal decimal = new Decimal();
+              decimal.read(iprot);
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = Converters
+                  .getBigDecimal(decimal);
+              setType(index, SnappyType.DECIMAL.getValue());
+            } else {
+              nullType = SnappyType.DECIMAL;
+            }
             break;
           case FLOAT_VAL:
-            setPrimLong(offset, iprot.readI32());
-            setType(index, SnappyType.FLOAT.getValue());
+            if (field.type == ColumnValue.FLOAT_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readI32());
+              setType(index, SnappyType.FLOAT.getValue());
+            } else {
+              nullType = SnappyType.FLOAT;
+            }
             break;
           case I16_VAL:
-            setPrimLong(offset, iprot.readI16());
-            setType(index, SnappyType.SMALLINT.getValue());
+            if (field.type == ColumnValue.I16_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readI16());
+              setType(index, SnappyType.SMALLINT.getValue());
+            } else {
+              nullType = SnappyType.SMALLINT;
+            }
             break;
           case BOOL_VAL:
-            setPrimLong(offset, iprot.readBool() ? 1L : 0L);
-            setType(index, SnappyType.BOOLEAN.getValue());
+            if (field.type == ColumnValue.BOOL_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readBool() ? 1L : 0L);
+              setType(index, SnappyType.BOOLEAN.getValue());
+            } else {
+              nullType = SnappyType.BOOLEAN;
+            }
             break;
           case BYTE_VAL:
-            setPrimLong(offset, iprot.readByte());
-            setType(index, SnappyType.TINYINT.getValue());
+            if (field.type == ColumnValue.BYTE_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readByte());
+              setType(index, SnappyType.TINYINT.getValue());
+            } else {
+              nullType = SnappyType.TINYINT;
+            }
             break;
           case TIME_VAL:
-            setPrimLong(offset, iprot.readI64());
-            setType(index, SnappyType.TIME.getValue());
+            if (field.type == ColumnValue.TIME_VAL_FIELD_DESC.type) {
+              setPrimLong(offset, iprot.readI64());
+              setType(index, SnappyType.TIME.getValue());
+            } else {
+              nullType = SnappyType.TIME;
+            }
             break;
           case CLOB_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            ClobChunk clob = new ClobChunk();
-            clob.read(iprot);
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = clob;
-            setType(index, SnappyType.CLOB.getValue());
-            hasLobs = true;
+            if (field.type == ColumnValue.CLOB_VAL_FIELD_DESC.type) {
+              ensureNonPrimCapacity(nonPrimSize);
+              ClobChunk clob = new ClobChunk();
+              clob.read(iprot);
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = clob;
+              setType(index, SnappyType.CLOB.getValue());
+              hasLobs = true;
+            } else {
+              nullType = SnappyType.CLOB;
+            }
             break;
           case BLOB_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            BlobChunk blob = new BlobChunk();
-            blob.read(iprot);
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = blob;
-            setType(index, SnappyType.BLOB.getValue());
-            hasLobs = true;
+            if (field.type == ColumnValue.BLOB_VAL_FIELD_DESC.type) {
+              ensureNonPrimCapacity(nonPrimSize);
+              BlobChunk blob = new BlobChunk();
+              blob.read(iprot);
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = blob;
+              setType(index, SnappyType.BLOB.getValue());
+              hasLobs = true;
+            } else {
+              nullType = SnappyType.BLOB;
+            }
             break;
           case BINARY_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            byte[] bytes = TBaseHelper.byteBufferToByteArray(iprot.readBinary());
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = bytes;
-            setType(index, SnappyType.VARBINARY.getValue());
+            if (field.type == ColumnValue.BINARY_VAL_FIELD_DESC.type) {
+              ensureNonPrimCapacity(nonPrimSize);
+              byte[] bytes = TBaseHelper.byteBufferToByteArray(iprot.readBinary());
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = bytes;
+              setType(index, SnappyType.VARBINARY.getValue());
+            } else {
+              nullType = SnappyType.VARBINARY;
+            }
             break;
           case NULL_VAL:
             setType(index, iprot.readBool() ? -SnappyType.NULLTYPE.getValue()
@@ -780,50 +848,75 @@ public class OptimizedElementArray {
             break;
           case ARRAY_VAL:
           case STRUCT_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            org.apache.thrift.protocol.TList alist = iprot.readListBegin();
-            final int listSize = alist.size;
-            final ArrayList<ColumnValue> array = new ArrayList<>(listSize);
-            for (int i = 0; i < listSize; i++) {
-              ColumnValue cv = new ColumnValue();
-              cv.read(iprot);
-              array.add(cv);
+            SnappyType fieldSQLType;
+            byte fieldType;
+            if (setField == ColumnValue._Fields.ARRAY_VAL) {
+              fieldSQLType = SnappyType.ARRAY;
+              fieldType = ColumnValue.ARRAY_VAL_FIELD_DESC.type;
+            } else {
+              fieldSQLType = SnappyType.STRUCT;
+              fieldType = ColumnValue.STRUCT_VAL_FIELD_DESC.type;
             }
-            iprot.readListEnd();
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = array;
-            setType(index, setField == ColumnValue._Fields.ARRAY_VAL
-                ? SnappyType.ARRAY.getValue() : SnappyType.STRUCT.getValue());
+            if (field.type == fieldType) {
+              ensureNonPrimCapacity(nonPrimSize);
+              org.apache.thrift.protocol.TList alist = iprot.readListBegin();
+              final int listSize = alist.size;
+              final ArrayList<ColumnValue> values = new ArrayList<>(listSize);
+              for (int i = 0; i < listSize; i++) {
+                ColumnValue cv = new ColumnValue();
+                cv.read(iprot);
+                values.add(cv);
+              }
+              iprot.readListEnd();
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = values;
+              setType(index, fieldSQLType.getValue());
+            } else {
+              nullType = fieldSQLType;
+            }
             break;
           case MAP_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            org.apache.thrift.protocol.TMap m = iprot.readMapBegin();
-            final int mapSize = m.size;
-            Map<ColumnValue, ColumnValue> map = new HashMap<>(mapSize << 1);
-            for (int i = 0; i < mapSize; i++) {
-              ColumnValue k = new ColumnValue();
-              ColumnValue v = new ColumnValue();
-              k.read(iprot);
-              v.read(iprot);
-              map.put(k, v);
+            if (field.type == ColumnValue.MAP_VAL_FIELD_DESC.type) {
+              ensureNonPrimCapacity(nonPrimSize);
+              org.apache.thrift.protocol.TMap m = iprot.readMapBegin();
+              final int mapSize = m.size;
+              Map<ColumnValue, ColumnValue> map = new HashMap<>(mapSize << 1);
+              for (int i = 0; i < mapSize; i++) {
+                ColumnValue k = new ColumnValue();
+                ColumnValue v = new ColumnValue();
+                k.read(iprot);
+                v.read(iprot);
+                map.put(k, v);
+              }
+              iprot.readMapEnd();
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = map;
+              setType(index, SnappyType.MAP.getValue());
+            } else {
+              nullType = SnappyType.MAP;
             }
-            iprot.readMapEnd();
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = map;
-            setType(index, SnappyType.MAP.getValue());
             break;
           case JAVA_VAL:
-            ensureNonPrimCapacity(nonPrimSize);
-            byte[] serializedBytes = TBaseHelper.byteBufferToByteArray(
-                iprot.readBinary());
-            primitives[offset] = nonPrimSize;
-            nonPrimitives[nonPrimSize++] = Converters.getJavaObject(
-                serializedBytes, index + 1);
-            setType(index, SnappyType.JAVA_OBJECT.getValue());
+            if (field.type == ColumnValue.JAVA_VAL_FIELD_DESC.type) {
+              ensureNonPrimCapacity(nonPrimSize);
+              byte[] serializedBytes = TBaseHelper.byteBufferToByteArray(
+                  iprot.readBinary());
+              primitives[offset] = nonPrimSize;
+              nonPrimitives[nonPrimSize++] = Converters.getJavaObject(
+                  serializedBytes, index + 1);
+              setType(index, SnappyType.JAVA_OBJECT.getValue());
+            } else {
+              nullType = SnappyType.JAVA_OBJECT;
+            }
             break;
           default:
             throw ClientSharedUtils.newRuntimeException(
                 "unknown column type = " + setField, null);
+        }
+        if (nullType != null) {
+          // treat like null value
+          org.apache.thrift.protocol.TProtocolUtil.skip(iprot, field.type);
+          setType(index, -nullType.getValue());
         }
       } else {
         // treat like null value
@@ -1046,7 +1139,7 @@ public class OptimizedElementArray {
     for (int index = 0; index < size; index++, offset++) {
       if (index != 0) sb.append(',');
       // nulls will always have -ve types so no need for further null checks
-      final int rawType = getRawType(index);
+      final int rawType = getType(index);
       // check more common types first
       switch (rawType) {
         case 1: // BOOLEAN

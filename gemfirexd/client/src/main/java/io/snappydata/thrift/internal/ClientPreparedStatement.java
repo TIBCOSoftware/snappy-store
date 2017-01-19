@@ -220,9 +220,8 @@ public class ClientPreparedStatement extends ClientStatement implements
     try {
       // don't throw exception in getLobSource rather return null and
       // service will failover to new node and do re-prepare as required
-      RowSet rs = this.service.executePreparedQuery(
-          getLobSource(false, "executeQuery"), statementId, this.paramsList,
-          this);
+      RowSet rs = this.service.executePreparedQuery(getLobSource(
+          false, "executeQuery"), statementId, this.paramsList, this);
       setCurrentRowSet(rs);
       this.warnings = rs.getWarnings();
       return new ClientResultSet(this.conn, this, rs);
@@ -241,9 +240,8 @@ public class ClientPreparedStatement extends ClientStatement implements
     try {
       // don't throw exception in getLobSource rather return null and
       // service will failover to new node and do re-prepare as required
-      UpdateResult ur = this.service.executePreparedUpdate(
-          getLobSource(false, "executeUpdate"), statementId, this.paramsList,
-          this);
+      UpdateResult ur = this.service.executePreparedUpdate(getLobSource(
+          false, "executeUpdate"), statementId, this.paramsList, this);
       if (this.attrs.isRequireAutoIncCols()) {
         this.currentGeneratedKeys = ur.getGeneratedKeys();
       }
@@ -266,8 +264,8 @@ public class ClientPreparedStatement extends ClientStatement implements
       try {
         // don't throw exception in getLobSource rather return null and
         // service will failover to new node and do re-prepare as required
-        UpdateResult ur = this.service.executePreparedBatch(
-            getLobSource(false, "executeBatch"), statementId, batch, this);
+        UpdateResult ur = this.service.executePreparedBatch(getLobSource(
+            false, "executeBatch"), statementId, batch, this);
         this.warnings = ur.getWarnings();
         if (this.attrs.isRequireAutoIncCols()) {
           this.currentGeneratedKeys = ur.getGeneratedKeys();
@@ -287,8 +285,8 @@ public class ClientPreparedStatement extends ClientStatement implements
     return new int[0];
   }
 
-  protected final SnappyType getType(int parameterIndex) {
-    return this.parameterMetaData.get(parameterIndex - 1).type;
+  protected final int getType(int parameterIndex) {
+    return this.paramsList.getType(parameterIndex - 1);
   }
 
   // throw exceptions for unprepared operations
@@ -539,7 +537,7 @@ public class ClientPreparedStatement extends ClientStatement implements
       throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    Converters.getConverter(Converters.getThriftSQLType(targetSqlType),
+    Converters.getConverter(getType(parameterIndex),
         "Object", true, parameterIndex).setObject(
         this.paramsList, parameterIndex, x);
   }
@@ -730,9 +728,8 @@ public class ClientPreparedStatement extends ClientStatement implements
     } else if (x instanceof Reader) {
       setCharacterStream(parameterIndex, (Reader)x, scaleOrLength);
     } else {
-      Converters.getConverter(Converters.getThriftSQLType(targetSqlType),
-          "Object", true, parameterIndex).setObject(
-          this.paramsList, parameterIndex, x);
+      Converters.getConverter(getType(parameterIndex), "Object", true,
+          parameterIndex).setObject(this.paramsList, parameterIndex, x);
     }
   }
 

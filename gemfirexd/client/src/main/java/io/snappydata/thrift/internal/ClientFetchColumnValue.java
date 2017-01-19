@@ -49,7 +49,6 @@ import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.Row;
 import io.snappydata.thrift.RowSet;
 import io.snappydata.thrift.SnappyException;
-import io.snappydata.thrift.SnappyType;
 import io.snappydata.thrift.common.ColumnValueConverter;
 import io.snappydata.thrift.common.Converters;
 import io.snappydata.thrift.common.LobService;
@@ -200,91 +199,91 @@ abstract class ClientFetchColumnValue implements LobService {
   }
 
   protected final String getString(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "String", false, columnIndex);
+        snappyTypeValue, "String", false, columnIndex);
     String str = cvc.toString(row, columnIndex, this);
     this.wasNull = (str == null);
     return str;
   }
 
   protected final boolean getBoolean(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "boolean", false, columnIndex);
+        snappyTypeValue, "boolean", false, columnIndex);
     boolean v = cvc.toBoolean(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
   }
 
   protected final byte getByte(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "byte", false, columnIndex);
+        snappyTypeValue, "byte", false, columnIndex);
     byte v = cvc.toByte(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
   }
 
   protected final short getShort(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "short", false, columnIndex);
+        snappyTypeValue, "short", false, columnIndex);
     short v = cvc.toShort(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
   }
 
-  protected final int getInt(final int columnIndex, final SnappyType snappyType,
-      final Row row) throws SQLException {
+  protected final int getInt(final int columnIndex,
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "int", false, columnIndex);
+        snappyTypeValue, "int", false, columnIndex);
     int v = cvc.toInteger(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
   }
 
   protected final long getLong(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "long", false, columnIndex);
+        snappyTypeValue, "long", false, columnIndex);
     long v = cvc.toLong(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
   }
 
   protected final float getFloat(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "float", false, columnIndex);
+        snappyTypeValue, "float", false, columnIndex);
     float v = cvc.toFloat(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
   }
 
   protected final double getDouble(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "doube", false, columnIndex);
+        snappyTypeValue, "doube", false, columnIndex);
     double v = cvc.toDouble(row, columnIndex);
     this.wasNull = cvc.isNull();
     return v;
   }
 
   protected final BigDecimal getBigDecimal(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "BigDecimal", false, columnIndex);
+        snappyTypeValue, "BigDecimal", false, columnIndex);
     BigDecimal v = cvc.toBigDecimal(row, columnIndex);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final BigDecimal getBigDecimal(final int columnIndex,
-      final int scale, final SnappyType snappyType, final Row row)
+      final int scale, final int snappyTypeValue, final Row row)
       throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "BigDecimal", false, columnIndex);
+        snappyTypeValue, "BigDecimal", false, columnIndex);
     BigDecimal v = cvc.toBigDecimal(row, columnIndex);
     if (v != null) {
       // rounding as per server side EmbedResultSet20
@@ -297,98 +296,98 @@ abstract class ClientFetchColumnValue implements LobService {
   }
 
   protected final byte[] getBytes(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "byte[]", false, columnIndex);
+        snappyTypeValue, "byte[]", false, columnIndex);
     byte[] v = cvc.toBytes(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final Date getDate(final int columnIndex, final Calendar cal,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "Date", false, columnIndex);
+        snappyTypeValue, "Date", false, columnIndex);
     Date v = cvc.toDate(row, columnIndex, cal);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final Time getTime(final int columnIndex, final Calendar cal,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "Time", false, columnIndex);
+        snappyTypeValue, "Time", false, columnIndex);
     Time v = cvc.toTime(row, columnIndex, cal);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final Timestamp getTimestamp(final int columnIndex,
-      final Calendar cal, final SnappyType snappyType, final Row row)
+      final Calendar cal, final int snappyTypeValue, final Row row)
       throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "Timestamp", false, columnIndex);
+        snappyTypeValue, "Timestamp", false, columnIndex);
     Timestamp v = cvc.toTimestamp(row, columnIndex, cal);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final Object getObject(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "Object", false, columnIndex);
+        snappyTypeValue, "Object", false, columnIndex);
     Object v = cvc.toObject(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final Blob getBlob(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "Blob", false, columnIndex);
+        snappyTypeValue, "Blob", false, columnIndex);
     Blob v = cvc.toBlob(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final InputStream getBinaryStream(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "BinaryStream", false, columnIndex);
+        snappyTypeValue, "BinaryStream", false, columnIndex);
     InputStream v = cvc.toBinaryStream(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final Clob getClob(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "Clob", false, columnIndex);
+        snappyTypeValue, "Clob", false, columnIndex);
     Clob v = cvc.toClob(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final Reader getCharacterStream(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "CharacterStream", false, columnIndex);
+        snappyTypeValue, "CharacterStream", false, columnIndex);
     Reader v = cvc.toCharacterStream(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
   }
 
   protected final InputStream getAsciiStream(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
-        snappyType, "AsciiStream", false, columnIndex);
+        snappyTypeValue, "AsciiStream", false, columnIndex);
     InputStream v = cvc.toAsciiStream(row, columnIndex, this);
     this.wasNull = (v == null);
     return v;
   }
 
   protected Object getObject(final int columnIndex,
-      final Map<String, Class<?>> map, final SnappyType snappyType,
+      final Map<String, Class<?>> map, final int snappyTypeValue,
       final Row row) throws SQLException {
     if (map == null) {
       throw ThriftExceptionUtil.newSQLException(SQLState.INVALID_API_PARAMETER,
@@ -396,56 +395,56 @@ abstract class ClientFetchColumnValue implements LobService {
     }
     if (map.isEmpty()) {
       // Map is empty call the normal getObject method.
-      return getObject(columnIndex, snappyType, row);
+      return getObject(columnIndex, snappyTypeValue, row);
     } else {
       throw ThriftExceptionUtil
           .notImplemented("FetchColumnValue.getObject(int,Map)");
     }
   }
 
-  protected Ref getRef(final int columnIndex, final SnappyType snappyType,
-      final Row row) throws SQLException {
+  protected Ref getRef(final int columnIndex,
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil.notImplemented("FetchColumnValue.getRef");
   }
 
-  protected Array getArray(final int columnIndex, final SnappyType snappyType,
-      final Row row) throws SQLException {
+  protected Array getArray(final int columnIndex,
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil.notImplemented("FetchColumnValue.getArray");
   }
 
-  protected URL getURL(final int columnIndex, final SnappyType snappyType,
-      final Row row) throws SQLException {
+  protected URL getURL(final int columnIndex,
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil.notImplemented("FetchColumnValue.getURL");
   }
 
-  protected RowId getRowId(final int columnIndex, final SnappyType snappyType,
-      final Row row) throws SQLException {
+  protected RowId getRowId(final int columnIndex,
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil.notImplemented("FetchColumnValue.getRowId");
   }
 
-  protected NClob getNClob(final int columnIndex, final SnappyType snappyType,
-      final Row row) throws SQLException {
+  protected NClob getNClob(final int columnIndex,
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil.notImplemented("FetchColumnValue.getNClob");
   }
 
   protected SQLXML getSQLXML(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil.notImplemented("FetchColumnValue.getSQLXML");
   }
 
-  protected String getNString(final int columnIndex, final SnappyType snappyType,
-      final Row row) throws SQLException {
+  protected String getNString(final int columnIndex,
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil.notImplemented("FetchColumnValue.getNString");
   }
 
   protected Reader getNCharacterStream(final int columnIndex,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil
         .notImplemented("FetchColumnValue.getNCharacterStream");
   }
 
   protected <T> T getObject(final int columnIndex, final Class<T> type,
-      final SnappyType snappyType, final Row row) throws SQLException {
+      final int snappyTypeValue, final Row row) throws SQLException {
     throw ThriftExceptionUtil
         .notImplemented("FetchColumnValue.getObject(int,Class<T>)");
   }

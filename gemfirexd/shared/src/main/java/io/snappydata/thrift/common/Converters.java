@@ -58,7 +58,11 @@ import java.util.Map;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.JDBC40Translation;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.*;
+import io.snappydata.thrift.BlobChunk;
+import io.snappydata.thrift.ClobChunk;
+import io.snappydata.thrift.Decimal;
+import io.snappydata.thrift.SnappyType;
+import io.snappydata.thrift.snappydataConstants;
 
 /**
  * Conversion utilities from thrift API values/enums to JDBC/SnappyData equivalent
@@ -2597,116 +2601,116 @@ public abstract class Converters {
     typeConverters = new ColumnValueConverter[universe.length + 2];
     jdbcTypes = new int[universe.length + 2];
     for (SnappyType type : universe) {
-      final int ordinal = type.ordinal();
+      final int typeValue = type.getValue();
       switch (type) {
         case CHAR:
-          jdbcTypes[ordinal] = Types.CHAR;
-          typeConverters[ordinal] = STRING_TYPE;
+          jdbcTypes[typeValue] = Types.CHAR;
+          typeConverters[typeValue] = STRING_TYPE;
           break;
         case VARCHAR:
-          jdbcTypes[ordinal] = Types.VARCHAR;
-          typeConverters[ordinal] = STRING_TYPE;
+          jdbcTypes[typeValue] = Types.VARCHAR;
+          typeConverters[typeValue] = STRING_TYPE;
           break;
         case LONGVARCHAR:
-          jdbcTypes[ordinal] = Types.LONGVARCHAR;
-          typeConverters[ordinal] = STRING_TYPE;
+          jdbcTypes[typeValue] = Types.LONGVARCHAR;
+          typeConverters[typeValue] = STRING_TYPE;
           break;
         case INTEGER:
-          jdbcTypes[ordinal] = Types.INTEGER;
-          typeConverters[ordinal] = INT_TYPE;
+          jdbcTypes[typeValue] = Types.INTEGER;
+          typeConverters[typeValue] = INT_TYPE;
           break;
         case BOOLEAN:
-          jdbcTypes[ordinal] = Types.BOOLEAN;
-          typeConverters[ordinal] = BOOLEAN_TYPE;
+          jdbcTypes[typeValue] = Types.BOOLEAN;
+          typeConverters[typeValue] = BOOLEAN_TYPE;
           break;
         case TINYINT:
-          jdbcTypes[ordinal] = Types.TINYINT;
-          typeConverters[ordinal] = BYTE_TYPE;
+          jdbcTypes[typeValue] = Types.TINYINT;
+          typeConverters[typeValue] = BYTE_TYPE;
           break;
         case SMALLINT:
-          jdbcTypes[ordinal] = Types.SMALLINT;
-          typeConverters[ordinal] = SHORT_TYPE;
+          jdbcTypes[typeValue] = Types.SMALLINT;
+          typeConverters[typeValue] = SHORT_TYPE;
           break;
         case BIGINT:
-          jdbcTypes[ordinal] = Types.BIGINT;
-          typeConverters[ordinal] = LONG_TYPE;
+          jdbcTypes[typeValue] = Types.BIGINT;
+          typeConverters[typeValue] = LONG_TYPE;
           break;
         case REAL:
-          jdbcTypes[ordinal] = Types.REAL;
-          typeConverters[ordinal] = REAL_TYPE;
+          jdbcTypes[typeValue] = Types.REAL;
+          typeConverters[typeValue] = REAL_TYPE;
           break;
         case DOUBLE:
-          jdbcTypes[ordinal] = Types.DOUBLE;
-          typeConverters[ordinal] = DOUBLE_TYPE;
+          jdbcTypes[typeValue] = Types.DOUBLE;
+          typeConverters[typeValue] = DOUBLE_TYPE;
           break;
         case FLOAT:
-          jdbcTypes[ordinal] = Types.FLOAT;
-          typeConverters[ordinal] = DOUBLE_TYPE;
+          jdbcTypes[typeValue] = Types.FLOAT;
+          typeConverters[typeValue] = DOUBLE_TYPE;
           break;
         case DECIMAL:
-          jdbcTypes[ordinal] = Types.DECIMAL;
-          typeConverters[ordinal] = DECIMAL_TYPE;
+          jdbcTypes[typeValue] = Types.DECIMAL;
+          typeConverters[typeValue] = DECIMAL_TYPE;
           break;
         case DATE:
-          jdbcTypes[ordinal] = Types.DATE;
-          typeConverters[ordinal] = DATE_TYPE;
+          jdbcTypes[typeValue] = Types.DATE;
+          typeConverters[typeValue] = DATE_TYPE;
           break;
         case TIME:
-          jdbcTypes[ordinal] = Types.TIME;
-          typeConverters[ordinal] = TIME_TYPE;
+          jdbcTypes[typeValue] = Types.TIME;
+          typeConverters[typeValue] = TIME_TYPE;
           break;
         case TIMESTAMP:
-          jdbcTypes[ordinal] = Types.TIMESTAMP;
-          typeConverters[ordinal] = TIMESTAMP_TYPE;
+          jdbcTypes[typeValue] = Types.TIMESTAMP;
+          typeConverters[typeValue] = TIMESTAMP_TYPE;
           break;
         case BINARY:
-          jdbcTypes[ordinal] = Types.BINARY;
-          typeConverters[ordinal] = BINARY_TYPE;
+          jdbcTypes[typeValue] = Types.BINARY;
+          typeConverters[typeValue] = BINARY_TYPE;
           break;
         case VARBINARY:
-          jdbcTypes[ordinal] = Types.VARBINARY;
-          typeConverters[ordinal] = BINARY_TYPE;
+          jdbcTypes[typeValue] = Types.VARBINARY;
+          typeConverters[typeValue] = BINARY_TYPE;
           break;
         case LONGVARBINARY:
-          jdbcTypes[ordinal] = Types.LONGVARBINARY;
-          typeConverters[ordinal] = BINARY_TYPE;
+          jdbcTypes[typeValue] = Types.LONGVARBINARY;
+          typeConverters[typeValue] = BINARY_TYPE;
           break;
         case CLOB:
-          jdbcTypes[ordinal] = Types.CLOB;
-          typeConverters[ordinal] = CLOB_TYPE;
+          jdbcTypes[typeValue] = Types.CLOB;
+          typeConverters[typeValue] = CLOB_TYPE;
           break;
         case BLOB:
-          jdbcTypes[ordinal] = Types.BLOB;
-          typeConverters[ordinal] = BLOB_TYPE;
+          jdbcTypes[typeValue] = Types.BLOB;
+          typeConverters[typeValue] = BLOB_TYPE;
           break;
         case ARRAY:
-          jdbcTypes[ordinal] = Types.ARRAY;
-          typeConverters[ordinal] = ARRAY_TYPE;
+          jdbcTypes[typeValue] = Types.ARRAY;
+          typeConverters[typeValue] = ARRAY_TYPE;
           break;
         case MAP:
-          jdbcTypes[ordinal] = JDBC40Translation.MAP;
-          typeConverters[ordinal] = MAP_TYPE;
+          jdbcTypes[typeValue] = JDBC40Translation.MAP;
+          typeConverters[typeValue] = MAP_TYPE;
         case STRUCT:
-          jdbcTypes[ordinal] = Types.STRUCT;
-          typeConverters[ordinal] = STRUCT_TYPE;
+          jdbcTypes[typeValue] = Types.STRUCT;
+          typeConverters[typeValue] = STRUCT_TYPE;
         case JSON:
-          jdbcTypes[ordinal] = JDBC40Translation.JSON;
-          typeConverters[ordinal] = JSON_TYPE;
+          jdbcTypes[typeValue] = JDBC40Translation.JSON;
+          typeConverters[typeValue] = JSON_TYPE;
           break;
         case NULLTYPE:
-          jdbcTypes[ordinal] = Types.NULL;
-          typeConverters[ordinal] = NULL_TYPE;
+          jdbcTypes[typeValue] = Types.NULL;
+          typeConverters[typeValue] = NULL_TYPE;
           break;
         case JAVA_OBJECT:
-          jdbcTypes[ordinal] = Types.JAVA_OBJECT;
-          typeConverters[ordinal] = OBJECT_TYPE;
+          jdbcTypes[typeValue] = Types.JAVA_OBJECT;
+          typeConverters[typeValue] = OBJECT_TYPE;
           break;
         case OTHER:
-          jdbcTypes[ordinal] = Types.OTHER;
-          typeConverters[ordinal] = OBJECT_TYPE;
+          jdbcTypes[typeValue] = Types.OTHER;
+          typeConverters[typeValue] = OBJECT_TYPE;
           break;
         default:
-          jdbcTypes[ordinal] = Types.OTHER;
+          jdbcTypes[typeValue] = Types.OTHER;
           // no conversion support for other types
           break;
       }
@@ -2756,17 +2760,23 @@ public abstract class Converters {
         cause, type, column);
   }
 
-  public static ColumnValueConverter getConverter(SnappyType type,
+  public static ColumnValueConverter getConverter(int snappyTypeValue,
       String targetType, boolean forSet, int columnIndex) throws SQLException {
-    ColumnValueConverter converter = typeConverters[type.ordinal()];
+    ColumnValueConverter converter = snappyTypeValue > 0
+        ? typeConverters[snappyTypeValue] : NULL_TYPE;
     if (converter != null) {
       return converter;
-    } else if (forSet) {
-      throw newTypeSetConversionException(
-          type.toString(), targetType, Integer.toString(columnIndex), null);
     } else {
-      throw newTypeConversionException(
-          type.toString(), targetType, Integer.toString(columnIndex), null);
+      SnappyType type = SnappyType.findByValue(snappyTypeValue);
+      String typeString = type != null ? type.toString()
+          : Integer.toString(snappyTypeValue);
+      if (forSet) {
+        throw newTypeSetConversionException(
+            typeString, targetType, Integer.toString(columnIndex), null);
+      } else {
+        throw newTypeConversionException(
+            typeString, targetType, Integer.toString(columnIndex), null);
+      }
     }
   }
 
@@ -3006,7 +3016,7 @@ public abstract class Converters {
    * Get JDBC {@link Types} type for given {@link SnappyType}.
    */
   public static int getJdbcType(SnappyType type) {
-    return jdbcTypes[type.ordinal()];
+    return jdbcTypes[type.getValue()];
   }
 
   /**

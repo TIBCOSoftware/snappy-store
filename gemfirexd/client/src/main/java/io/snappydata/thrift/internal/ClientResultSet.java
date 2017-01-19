@@ -225,8 +225,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     }
   }
 
-  final SnappyType getSQLType(int columnIndex) {
-    return this.rowSet.metadata.get(columnIndex - 1).type;
+  final int getSnappyType(int columnIndex, Row currentRow) {
+    return currentRow.getType(columnIndex - 1);
   }
 
   final int getColumnIndex(final String columnName) throws SQLException {
@@ -366,7 +366,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final String getString(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getString(columnIndex, getSQLType(columnIndex), currentRow);
+    return getString(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -375,7 +376,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final boolean getBoolean(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getBoolean(columnIndex, getSQLType(columnIndex), currentRow);
+    return getBoolean(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -384,7 +386,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final byte getByte(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getByte(columnIndex, getSQLType(columnIndex), currentRow);
+    return getByte(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -393,7 +396,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final short getShort(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getShort(columnIndex, getSQLType(columnIndex), currentRow);
+    return getShort(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -402,7 +406,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final int getInt(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getInt(columnIndex, getSQLType(columnIndex), currentRow);
+    return getInt(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -411,7 +416,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final long getLong(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getLong(columnIndex, getSQLType(columnIndex), currentRow);
+    return getLong(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -420,7 +426,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final float getFloat(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getFloat(columnIndex, getSQLType(columnIndex), currentRow);
+    return getFloat(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -429,7 +436,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final double getDouble(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getDouble(columnIndex, getSQLType(columnIndex), currentRow);
+    return getDouble(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -438,7 +446,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final BigDecimal getBigDecimal(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getBigDecimal(columnIndex, getSQLType(columnIndex), currentRow);
+    return getBigDecimal(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -448,8 +457,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final BigDecimal getBigDecimal(int columnIndex, int scale)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getBigDecimal(columnIndex, scale, getSQLType(columnIndex),
-        currentRow);
+    return getBigDecimal(columnIndex, scale, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -458,7 +467,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final byte[] getBytes(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getBytes(columnIndex, getSQLType(columnIndex), currentRow);
+    return getBytes(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -492,7 +502,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final Date getDate(int columnIndex, Calendar cal)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getDate(columnIndex, cal, getSQLType(columnIndex), currentRow);
+    return getDate(columnIndex, cal, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -502,7 +513,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final Time getTime(int columnIndex, Calendar cal)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getTime(columnIndex, cal, getSQLType(columnIndex), currentRow);
+    return getTime(columnIndex, cal, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -512,7 +524,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final Timestamp getTimestamp(int columnIndex, Calendar cal)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getTimestamp(columnIndex, cal, getSQLType(columnIndex), currentRow);
+    return getTimestamp(columnIndex, cal, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -521,7 +534,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final Object getObject(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getObject(columnIndex, getSQLType(columnIndex), currentRow);
+    return getObject(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -531,7 +545,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public Object getObject(int columnIndex, Map<String, Class<?>> map)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getObject(columnIndex, map, getSQLType(columnIndex), currentRow);
+    return getObject(columnIndex, map, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -541,7 +556,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final InputStream getAsciiStream(int columnIndex)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getAsciiStream(columnIndex, getSQLType(columnIndex), currentRow);
+    return getAsciiStream(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -560,7 +576,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final InputStream getBinaryStream(int columnIndex)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getBinaryStream(columnIndex, getSQLType(columnIndex), currentRow);
+    return getBinaryStream(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -569,8 +586,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final Reader getCharacterStream(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getCharacterStream(columnIndex, getSQLType(columnIndex),
-        currentRow);
+    return getCharacterStream(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -579,7 +596,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final Blob getBlob(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getBlob(columnIndex, getSQLType(columnIndex), currentRow);
+    return getBlob(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -588,7 +606,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final Clob getClob(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getClob(columnIndex, getSQLType(columnIndex), currentRow);
+    return getClob(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -597,7 +616,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public Ref getRef(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getRef(columnIndex, getSQLType(columnIndex), currentRow);
+    return getRef(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -606,7 +626,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public Array getArray(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getArray(columnIndex, getSQLType(columnIndex), currentRow);
+    return getArray(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -615,7 +636,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public URL getURL(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getURL(columnIndex, getSQLType(columnIndex), currentRow);
+    return getURL(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -624,7 +646,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public RowId getRowId(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getRowId(columnIndex, getSQLType(columnIndex), currentRow);
+    return getRowId(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -633,7 +656,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public NClob getNClob(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getNClob(columnIndex, getSQLType(columnIndex), currentRow);
+    return getNClob(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -642,7 +666,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public SQLXML getSQLXML(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getSQLXML(columnIndex, getSQLType(columnIndex), currentRow);
+    return getSQLXML(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -651,7 +676,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public String getNString(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getNString(columnIndex, getSQLType(columnIndex), currentRow);
+    return getNString(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -660,8 +686,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public Reader getNCharacterStream(int columnIndex) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getNCharacterStream(columnIndex, getSQLType(columnIndex),
-        currentRow);
+    return getNCharacterStream(columnIndex, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   /**
@@ -1368,7 +1394,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateBoolean");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "boolean", true, columnIndex);
+        getSnappyType(columnIndex, currentRow), "boolean", true, columnIndex);
     cvc.setBoolean(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1382,7 +1408,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateByte");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "byte", true, columnIndex);
+        getSnappyType(columnIndex, currentRow), "byte", true, columnIndex);
     cvc.setByte(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1396,7 +1422,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateShort");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "short", true, columnIndex);
+        getSnappyType(columnIndex, currentRow), "short", true, columnIndex);
     cvc.setShort(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1410,7 +1436,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateInt");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "int", true, columnIndex);
+        getSnappyType(columnIndex, currentRow), "int", true, columnIndex);
     cvc.setInteger(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1424,7 +1450,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateLong");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "long", true, columnIndex);
+        getSnappyType(columnIndex, currentRow), "long", true, columnIndex);
     cvc.setLong(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1438,7 +1464,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateFloat");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "float", true, columnIndex);
+        getSnappyType(columnIndex, currentRow), "float", true, columnIndex);
     cvc.setFloat(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1453,7 +1479,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     initRowUpdate("updateDouble");
     ColumnValueConverter cvc = Converters.getConverter(
-        getSQLType(columnIndex), "double", true, columnIndex);
+        getSnappyType(columnIndex, currentRow), "double", true, columnIndex);
     cvc.setDouble(currentRow, columnIndex, x);
     this.changedColumns.set(columnIndex - 1);
   }
@@ -1469,7 +1495,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateBigDecimal");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "BigDecimal", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "BigDecimal", true, columnIndex);
       cvc.setBigDecimal(currentRow, columnIndex, x);
     }
     else {
@@ -1489,7 +1515,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateString");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "String", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "String", true, columnIndex);
       cvc.setString(currentRow, columnIndex, x);
     }
     else {
@@ -1509,7 +1535,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateBytes");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "byte[]", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "byte[]", true, columnIndex);
       cvc.setBytes(currentRow, columnIndex, x);
     }
     else {
@@ -1528,7 +1554,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateDate");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Date", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "Date", true, columnIndex);
       cvc.setDate(currentRow, columnIndex, x);
     }
     else {
@@ -1547,7 +1573,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateTime");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Time", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "Time", true, columnIndex);
       cvc.setTime(currentRow, columnIndex, x);
     }
     else {
@@ -1567,7 +1593,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateTimestamp");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Timestamp", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "Timestamp", true, columnIndex);
       cvc.setTimestamp(currentRow, columnIndex, x);
     }
     else {
@@ -1603,7 +1629,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       }
       else {
         ColumnValueConverter cvc = Converters.getConverter(
-            getSQLType(columnIndex), "Object", true, columnIndex);
+            getSnappyType(columnIndex, currentRow), "Object", true, columnIndex);
         cvc.setObject(currentRow, columnIndex, x);
       }
     }
@@ -1624,7 +1650,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateObject");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "Object", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "Object", true, columnIndex);
       cvc.setObject(currentRow, columnIndex, x);
     }
     else {
@@ -2040,7 +2066,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateBinaryStream");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "BinaryStream", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "BinaryStream",
+          true, columnIndex);
       cvc.setBinaryStream(currentRow, columnIndex, x, length, this);
     } else {
       currentRow.setNull(columnIndex - 1);
@@ -2104,7 +2131,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateCharacterStream");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "CharacterStream", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "CharacterStream",
+          true, columnIndex);
       cvc.setCharacterStream(currentRow, columnIndex, x, length, this);
     } else {
       currentRow.setNull(columnIndex - 1);
@@ -2168,7 +2196,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateAsciiStream");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "AsciiStream", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "AsciiStream",
+          true, columnIndex);
       cvc.setAsciiStream(currentRow, columnIndex, x, length, this);
     } else {
       currentRow.setNull(columnIndex - 1);
@@ -2249,7 +2278,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateBlob");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "blob", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "blob", true, columnIndex);
       cvc.setBlob(currentRow, columnIndex, x);
     } else {
       currentRow.setNull(columnIndex - 1);
@@ -2312,7 +2341,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     initRowUpdate("updateClob");
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
-          getSQLType(columnIndex), "clob", true, columnIndex);
+          getSnappyType(columnIndex, currentRow), "clob", true, columnIndex);
       cvc.setClob(currentRow, columnIndex, x);
     } else {
       currentRow.setNull(columnIndex - 1);
@@ -2482,7 +2511,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
-    return getObject(columnIndex, type, getSQLType(columnIndex), currentRow);
+    return getObject(columnIndex, type, getSnappyType(columnIndex,
+        currentRow), currentRow);
   }
 
   @Override

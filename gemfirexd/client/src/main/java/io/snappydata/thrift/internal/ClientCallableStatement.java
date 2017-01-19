@@ -84,23 +84,12 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     super(conn, sql, rsType, rsConcurrency, rsHoldability);
   }
 
-  ClientCallableStatement(ClientConnection conn, String sql,
-      int[] autoIncColumns) throws SQLException {
-    super(conn, sql, autoIncColumns);
-  }
-
-  ClientCallableStatement(ClientConnection conn, String sql,
-      String[] autoIncColumnNames) throws SQLException {
-    super(conn, sql, autoIncColumnNames);
-  }
-
   private TreeMap<Integer, OutputParameter> getOutputParamsSet() {
     final TreeMap<Integer, OutputParameter> outParams = this.outParams;
     if (outParams != null) {
       return outParams;
-    }
-    else {
-      return (this.outParams = new TreeMap<Integer, OutputParameter>());
+    } else {
+      return (this.outParams = new TreeMap<>());
     }
   }
 
@@ -115,8 +104,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     final TreeMap<Integer, OutputParameter> outParams = this.outParams;
     if (outParams == null || outParams.isEmpty()) {
       return Collections.emptyMap();
-    }
-    else {
+    } else {
       return outParams;
     }
   }
@@ -270,8 +258,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -291,8 +278,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -312,8 +298,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -333,8 +318,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -354,8 +338,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -375,8 +358,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -396,8 +378,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -417,8 +398,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -439,8 +419,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -461,8 +440,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -482,8 +460,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -528,8 +505,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -550,8 +526,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -572,8 +547,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -593,8 +567,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -615,8 +588,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -636,8 +608,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -657,8 +628,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -678,8 +648,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -699,8 +668,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -720,8 +688,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -741,8 +708,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -762,8 +728,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -783,8 +748,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -805,8 +769,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -827,8 +790,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -848,8 +810,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
@@ -867,8 +828,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     if (outParamIndex > 0) {
       row = this.outParamValues;
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
       columnIndex = parameterIndex;
     }
