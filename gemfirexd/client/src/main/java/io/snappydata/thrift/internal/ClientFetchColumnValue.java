@@ -135,10 +135,36 @@ abstract class ClientFetchColumnValue implements LobService {
    * {@inheritDoc}
    */
   @Override
+  public final Blob createBlob(InputStream stream,
+      long length) throws SQLException {
+    return new ClientBlob(stream, length, service);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public final Clob createClob(ClobChunk firstChunk,
       boolean forStream) throws SQLException {
     return new ClientClob(firstChunk, service, getLobSource(true,
-        "createClob"));
+        "createClob"), forStream);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final Clob createClob(Reader reader, long length) throws SQLException {
+    return new ClientClob(reader, length, service);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final Clob createClob(InputStream asciiStream,
+      long length) throws SQLException {
+    return new ClientClob(asciiStream, length, service);
   }
 
   /**

@@ -46,7 +46,6 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.Arrays;
 import java.util.Calendar;
 
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
@@ -255,25 +254,10 @@ public abstract class ColumnValueConverter {
   }
 
   public void setBinaryStream(OptimizedElementArray row, int columnIndex,
-      InputStream stream, long length) throws SQLException {
+      InputStream stream, long length,
+      LobService lobService) throws SQLException {
     if (length <= Integer.MAX_VALUE) {
-      final int len = (int)length;
-      int offset = 0;
-      int readLen;
-      byte[] bytes = new byte[len];
-      try {
-        while ((readLen = stream.read(bytes, offset, len - offset)) > 0) {
-          offset += readLen;
-          if (offset >= len) break;
-        }
-      } catch (IOException ioe) {
-        throw ThriftExceptionUtil.newSQLException(SQLState
-            .LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, ioe.getMessage());
-      }
-      if (offset < len) {
-        bytes = Arrays.copyOf(bytes, offset);
-      }
-      setBytes(row, columnIndex, bytes);
+      setBlob(row, columnIndex, lobService.createBlob(stream, length));
     } else {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, length, Integer.MAX_VALUE);
@@ -292,22 +276,9 @@ public abstract class ColumnValueConverter {
   }
 
   public void setCharacterStream(OptimizedElementArray row, int columnIndex,
-      Reader reader, long length) throws SQLException {
+      Reader reader, long length, LobService lobService) throws SQLException {
     if (length <= Integer.MAX_VALUE) {
-      final int len = (int)length;
-      int offset = 0;
-      int readLen;
-      char[] chars = new char[len];
-      try {
-        while ((readLen = reader.read(chars, offset, len - offset)) > 0) {
-          offset += readLen;
-          if (offset >= len) break;
-        }
-      } catch (IOException ioe) {
-        throw ThriftExceptionUtil.newSQLException(SQLState
-            .LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, ioe.getMessage());
-      }
-      setString(row, columnIndex, new String(chars, 0, offset));
+      setClob(row, columnIndex, lobService.createClob(reader, length));
     } else {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, length, Integer.MAX_VALUE);
@@ -315,23 +286,10 @@ public abstract class ColumnValueConverter {
   }
 
   public void setAsciiStream(OptimizedElementArray row, int columnIndex,
-      InputStream stream, long length) throws SQLException {
+      InputStream stream, long length,
+      LobService lobService) throws SQLException {
     if (length <= Integer.MAX_VALUE) {
-      final int len = (int)length;
-      int offset = 0;
-      int readLen;
-      byte[] bytes = new byte[len];
-      try {
-        while ((readLen = stream.read(bytes, offset, len - offset)) > 0) {
-          offset += readLen;
-          if (offset >= len) break;
-        }
-      } catch (IOException ioe) {
-        throw ThriftExceptionUtil.newSQLException(SQLState
-            .LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, ioe.getMessage());
-      }
-      setString(row, columnIndex, new String(bytes, 0, offset,
-          StandardCharsets.US_ASCII));
+      setClob(row, columnIndex, lobService.createClob(stream, length));
     } else {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, length, Integer.MAX_VALUE);

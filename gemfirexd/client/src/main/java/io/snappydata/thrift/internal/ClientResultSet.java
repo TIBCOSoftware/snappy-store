@@ -2041,7 +2041,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
           getSQLType(columnIndex), "BinaryStream", true, columnIndex);
-      cvc.setBinaryStream(currentRow, columnIndex, x, length);
+      cvc.setBinaryStream(currentRow, columnIndex, x, length, this);
     } else {
       currentRow.setNull(columnIndex - 1);
     }
@@ -2105,7 +2105,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
           getSQLType(columnIndex), "CharacterStream", true, columnIndex);
-      cvc.setCharacterStream(currentRow, columnIndex, x, length);
+      cvc.setCharacterStream(currentRow, columnIndex, x, length, this);
     } else {
       currentRow.setNull(columnIndex - 1);
     }
@@ -2169,7 +2169,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     if (x != null) {
       ColumnValueConverter cvc = Converters.getConverter(
           getSQLType(columnIndex), "AsciiStream", true, columnIndex);
-      cvc.setAsciiStream(currentRow, columnIndex, x, length);
+      cvc.setAsciiStream(currentRow, columnIndex, x, length, this);
     } else {
       currentRow.setNull(columnIndex - 1);
     }

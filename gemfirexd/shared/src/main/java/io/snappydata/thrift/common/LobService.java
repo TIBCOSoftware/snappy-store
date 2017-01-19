@@ -51,7 +51,13 @@ public interface LobService {
 
   Blob createBlob(BlobChunk firstChunk, boolean forStream) throws SQLException;
 
+  Blob createBlob(InputStream stream, long length) throws SQLException;
+
   Clob createClob(ClobChunk firstChunk, boolean forStream) throws SQLException;
+
+  Clob createClob(Reader reader, long length) throws SQLException;
+
+  Clob createClob(InputStream asciiStream, long length) throws SQLException;
 
   BlobChunk getBlobChunk(long lobId, long offset, int chunkSize,
       boolean freeLobAtEnd) throws SQLException;

@@ -746,7 +746,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
     Converters.getConverter(getType(parameterIndex), "BinaryStream",
         true, parameterIndex).setBinaryStream(this.paramsList,
-        parameterIndex, x, length);
+        parameterIndex, x, length, this);
   }
 
   /**
@@ -777,7 +777,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
     Converters.getConverter(getType(parameterIndex), "CharacterStream",
         true, parameterIndex).setCharacterStream(this.paramsList,
-        parameterIndex, reader, length);
+        parameterIndex, reader, length, this);
   }
 
   /**
@@ -808,7 +808,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
     Converters.getConverter(getType(parameterIndex), "AsciiStream",
         true, parameterIndex).setAsciiStream(this.paramsList,
-        parameterIndex, x, length);
+        parameterIndex, x, length, this);
   }
 
   /**
