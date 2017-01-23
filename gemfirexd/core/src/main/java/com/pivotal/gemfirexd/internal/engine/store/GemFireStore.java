@@ -1482,7 +1482,11 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
               dsf.setMaxOplogSize(DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE);
             }
             else {
-              dsf.setMaxOplogSize(10);
+              if (this.myKind.isAccessor()) {
+                dsf.setMaxOplogSize(1);
+              } else {
+                dsf.setMaxOplogSize(10);
+              }
             }
           }
           dsf.setDiskDirs(new File[] { file });
