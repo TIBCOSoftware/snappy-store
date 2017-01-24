@@ -40,6 +40,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
@@ -1674,5 +1676,41 @@ public abstract class ClientSharedUtils {
     buffer.flip();
     newBuffer.put(buffer);
     return newBuffer;
+  }
+
+  public static final ThreadLocal ALLOW_THREADCONTEXT_CLASSLOADER =
+      new ThreadLocal();
+
+  /**
+   * allow using Thread context ClassLoader to load classes
+   */
+  public static final class ThreadContextObjectInputStream extends
+      ObjectInputStream {
+
+    protected ThreadContextObjectInputStream() throws IOException,
+        SecurityException {
+      super();
+    }
+
+    public ThreadContextObjectInputStream(final InputStream in)
+        throws IOException {
+      super(in);
+    }
+
+    protected Class resolveClass(final ObjectStreamClass desc)
+        throws IOException, ClassNotFoundException {
+      try {
+        return super.resolveClass(desc);
+      } catch (ClassNotFoundException cnfe) {
+        // try to load using Thread context ClassLoader, if required
+        final Object allowTCCL = ALLOW_THREADCONTEXT_CLASSLOADER.get();
+        if (allowTCCL == null || !Boolean.TRUE.equals(allowTCCL)) {
+          throw cnfe;
+        } else {
+          return Thread.currentThread().getContextClassLoader()
+              .loadClass(desc.getName());
+        }
+      }
+    }
   }
 }

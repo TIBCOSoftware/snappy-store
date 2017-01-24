@@ -35,6 +35,9 @@
 
 package io.snappydata.thrift.server;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
@@ -62,6 +65,7 @@ import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineLOB;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
+import com.pivotal.gemfirexd.internal.iapi.services.io.ApplicationObjectInputStream;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.StatementType;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
@@ -122,6 +126,15 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   static final ThreadLocal<Boolean> closeClientSocket = new ThreadLocal<>();
 
   private static final int INVALID_ID = snappydataConstants.INVALID_ID;
+
+  static final Converters.ObjectInputStreamCreator javaObjectCreator =
+      new Converters.ObjectInputStreamCreator() {
+        @Override
+        public ObjectInputStream create(InputStream stream) throws IOException {
+          return new ApplicationObjectInputStream(
+              stream, Misc.getMemStore().getDatabase().getClassFactory());
+        }
+      };
 
   public SnappyDataServiceImpl(String address, int port) {
     super(address, port);
@@ -2155,7 +2168,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               pstmt.setNull(paramPosition, Converters.getJdbcType(paramType));
             } else {
               pstmt.setObject(paramPosition, ((Converters.JavaObjectWrapper)
-                  params.getObject(index)).getDeserialized(paramPosition));
+                  params.getObject(index)).getDeserialized(paramPosition,
+                  javaObjectCreator));
             }
             break;
           default:

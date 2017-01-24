@@ -2082,6 +2082,14 @@ public abstract class Converters {
     }
   };
 
+  static final ObjectInputStreamCreator javaObjectCreator =
+      new ObjectInputStreamCreator() {
+        @Override
+        public ObjectInputStream create(InputStream stream) throws IOException {
+          return new ClientSharedUtils.ThreadContextObjectInputStream(stream);
+        }
+      };
+
   public static final ColumnValueConverter OBJECT_TYPE =
       new ColumnValueConverter() {
 
@@ -2259,7 +2267,7 @@ public abstract class Converters {
         throws SQLException {
       JavaObjectWrapper jw = (JavaObjectWrapper)row.getObject(columnPosition - 1);
       if (jw != null) {
-        return jw.getDeserialized(columnPosition);
+        return jw.getDeserialized(columnPosition, javaObjectCreator);
       } else {
         return null;
       }
@@ -3219,11 +3227,11 @@ public abstract class Converters {
     return fullBytes;
   }
 
-  public static Object getJavaObject(byte[] bytes, int columnPosition)
-      throws SQLException {
+  public static Object getJavaObject(byte[] bytes, int columnPosition,
+      ObjectInputStreamCreator creator) throws SQLException {
     ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-    try {
-      return new ObjectInputStream(in).readObject();
+    try (ObjectInputStream ois = creator.create(in)) {
+      return ois.readObject();
     } catch (IOException | ClassNotFoundException e) {
       LOGGER.warn("Exception in deserialization of java object", e);
       throw ThriftExceptionUtil.newSQLException(
@@ -3418,18 +3426,27 @@ public abstract class Converters {
       this.serialized = serialized;
     }
 
-    public Object getDeserialized(int columnPosition) throws SQLException {
+    public Object getDeserialized(int columnPosition,
+        ObjectInputStreamCreator creator) throws SQLException {
       final Object deserialized = this.deserialized;
       if (deserialized != null) {
         return deserialized;
       } else {
         return (this.deserialized = Converters.getJavaObject(
-            this.serialized, columnPosition));
+            this.serialized, columnPosition, creator));
       }
     }
 
     public byte[] getSerialized() {
       return this.serialized;
     }
+  }
+
+  /**
+   * Callback to enable creation of an ObjectInputStream given an InputStream
+   * (primarily for custom class loading).
+   */
+  public interface ObjectInputStreamCreator {
+    ObjectInputStream create(InputStream stream) throws IOException;
   }
 }
