@@ -51,7 +51,11 @@ public final class Row extends io.snappydata.thrift.common.ThriftRow {
   }
 
   public Row(List<ColumnDescriptor> metadata) {
-    super(metadata);
+    this(metadata, false);
+  }
+
+  public Row(List<ColumnDescriptor> metadata, boolean checkOutputParameters) {
+    super(metadata, checkOutputParameters);
   }
 
   /**

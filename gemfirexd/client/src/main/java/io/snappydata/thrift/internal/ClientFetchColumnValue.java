@@ -291,6 +291,7 @@ abstract class ClientFetchColumnValue implements LobService {
       this.wasNull = false;
       return v;
     } else {
+      this.wasNull = true;
       return null;
     }
   }

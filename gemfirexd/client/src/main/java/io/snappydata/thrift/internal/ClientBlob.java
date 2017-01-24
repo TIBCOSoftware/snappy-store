@@ -72,7 +72,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   ClientBlob(InputStream dataStream, long length,
       ClientService service) throws SQLException {
     super(service);
-    checkLength(length);
+    checkLength(length > 0 ? length : 0);
     this.dataStream = dataStream;
     if (dataStream instanceof FileInputStream) {
       try {
@@ -120,7 +120,9 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         final int bufSize = 32768;
         final byte[] buffer = new byte[bufSize];
         int readLen = readStream(dataStream, buffer, 0, bufSize);
-        if (readLen < bufSize) {
+        if (readLen < 0) {
+          return -1;
+        } else if (readLen < bufSize) {
           // fits into single buffer
           this.dataStream = new MemInputStream(buffer, readLen);
           return readLen;
@@ -191,9 +193,13 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         }
         // keep reading stream till end
         int readLen = readStream(this.dataStream, b, boffset, length);
-        checkOffset(offset + readLen);
-        this.streamOffset = (int)(offset + readLen);
-        return readLen;
+        if (readLen >= 0) {
+          checkOffset(offset + readLen);
+          this.streamOffset = (int)(offset + readLen);
+          return readLen;
+        } else {
+          return -1; // end of data
+        }
       } catch (IOException ioe) {
         throw ThriftExceptionUtil.newSQLException(
             SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, "java.sql.Blob");
@@ -218,9 +224,13 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         buffer.position((int)(offset - chunk.offset));
       }
       length = Math.min(length, buffer.remaining());
-      buffer.get(b, boffset, length);
-      buffer.position(bpos);
-      return length;
+      if (length > 0) {
+        buffer.get(b, boffset, length);
+        buffer.position(bpos);
+        return length;
+      } else {
+        return -1; // end of data
+      }
     } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.LOB_OBJECT_INVALID);
     }
@@ -388,11 +398,14 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         }
       }
       try {
-        int nbytes = readBytes(this.blobOffset, b, offset, len);
-        if (nbytes > 0) {
+        int nbytes;
+        if (len > 0 && (nbytes = readBytes(this.blobOffset,
+            b, offset, len)) >= 0) {
           this.blobOffset += nbytes;
+          return nbytes;
+        } else {
+          return -1; // end of data
         }
-        return nbytes;
       } catch (SQLException sqle) {
         if (sqle.getCause() instanceof IOException) {
           throw (IOException)sqle.getCause();

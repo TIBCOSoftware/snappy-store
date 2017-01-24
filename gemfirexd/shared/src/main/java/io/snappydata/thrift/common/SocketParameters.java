@@ -57,14 +57,12 @@ public class SocketParameters extends
     return paramsMap.values();
   }
 
-  public static Param findSSLParameterByPropertyName(String propertyName,
-      boolean throwIfNotFound) {
+  public static Param findSSLParameterByPropertyName(String propertyName) {
     Param p = sslParamsMap.get(propertyName
         .toLowerCase(java.util.Locale.ENGLISH));
-    if (p != null || !throwIfNotFound) {
+    if (p != null) {
       return p;
-    }
-    else {
+    } else {
       throw new IllegalArgumentException("Unknown SSL property '"
           + propertyName + "'; expected one of: " + sslParamsMap.keySet());
     }
@@ -294,8 +292,8 @@ public class SocketParameters extends
     }
   }
 
-  void setHasSSLParams(boolean hasSSLParams) {
-    this.hasSSLParams = hasSSLParams;
+  void setHasSSLParams() {
+    this.hasSSLParams = true;
   }
 
   public final boolean hasSSLParams() {

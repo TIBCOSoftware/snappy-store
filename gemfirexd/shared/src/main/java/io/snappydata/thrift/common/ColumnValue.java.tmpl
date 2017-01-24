@@ -28,31 +28,33 @@ package io.snappydata.thrift;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolException;
 
 @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked", "unused"})
 public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, ColumnValue._Fields> {
-  private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ColumnValue");
-  private static final org.apache.thrift.protocol.TField BOOL_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("bool_val", org.apache.thrift.protocol.TType.BOOL, (short)1);
-  private static final org.apache.thrift.protocol.TField BYTE_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("byte_val", org.apache.thrift.protocol.TType.BYTE, (short)2);
-  private static final org.apache.thrift.protocol.TField I16_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("i16_val", org.apache.thrift.protocol.TType.I16, (short)3);
-  private static final org.apache.thrift.protocol.TField I32_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("i32_val", org.apache.thrift.protocol.TType.I32, (short)4);
-  private static final org.apache.thrift.protocol.TField I64_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("i64_val", org.apache.thrift.protocol.TType.I64, (short)5);
-  private static final org.apache.thrift.protocol.TField FLOAT_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("float_val", org.apache.thrift.protocol.TType.I32, (short)6);
-  private static final org.apache.thrift.protocol.TField DOUBLE_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("double_val", org.apache.thrift.protocol.TType.DOUBLE, (short)7);
-  private static final org.apache.thrift.protocol.TField STRING_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("string_val", org.apache.thrift.protocol.TType.STRING, (short)8);
-  private static final org.apache.thrift.protocol.TField DECIMAL_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("decimal_val", org.apache.thrift.protocol.TType.STRUCT, (short)9);
-  private static final org.apache.thrift.protocol.TField DATE_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("date_val", org.apache.thrift.protocol.TType.I64, (short)10);
-  private static final org.apache.thrift.protocol.TField TIME_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("time_val", org.apache.thrift.protocol.TType.I64, (short)11);
-  private static final org.apache.thrift.protocol.TField TIMESTAMP_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("timestamp_val", org.apache.thrift.protocol.TType.I64, (short)12);
-  private static final org.apache.thrift.protocol.TField BINARY_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("binary_val", org.apache.thrift.protocol.TType.STRING, (short)13);
-  private static final org.apache.thrift.protocol.TField BLOB_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("blob_val", org.apache.thrift.protocol.TType.STRUCT, (short)14);
-  private static final org.apache.thrift.protocol.TField CLOB_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("clob_val", org.apache.thrift.protocol.TType.STRUCT, (short)15);
-  private static final org.apache.thrift.protocol.TField ARRAY_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("array_val", org.apache.thrift.protocol.TType.LIST, (short)16);
-  private static final org.apache.thrift.protocol.TField MAP_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("map_val", org.apache.thrift.protocol.TType.MAP, (short)17);
-  private static final org.apache.thrift.protocol.TField STRUCT_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("struct_val", org.apache.thrift.protocol.TType.LIST, (short)18);
-  private static final org.apache.thrift.protocol.TField NULL_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("null_val", org.apache.thrift.protocol.TType.BOOL, (short)19);
-  private static final org.apache.thrift.protocol.TField JAVA_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("java_val", org.apache.thrift.protocol.TType.STRING, (short)20);
+  public static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("ColumnValue");
+  public static final org.apache.thrift.protocol.TField BOOL_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("bool_val", org.apache.thrift.protocol.TType.BOOL, (short)1);
+  public static final org.apache.thrift.protocol.TField BYTE_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("byte_val", org.apache.thrift.protocol.TType.BYTE, (short)2);
+  public static final org.apache.thrift.protocol.TField I16_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("i16_val", org.apache.thrift.protocol.TType.I16, (short)3);
+  public static final org.apache.thrift.protocol.TField I32_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("i32_val", org.apache.thrift.protocol.TType.I32, (short)4);
+  public static final org.apache.thrift.protocol.TField I64_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("i64_val", org.apache.thrift.protocol.TType.I64, (short)5);
+  public static final org.apache.thrift.protocol.TField FLOAT_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("float_val", org.apache.thrift.protocol.TType.I32, (short)6);
+  public static final org.apache.thrift.protocol.TField DOUBLE_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("double_val", org.apache.thrift.protocol.TType.DOUBLE, (short)7);
+  public static final org.apache.thrift.protocol.TField STRING_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("string_val", org.apache.thrift.protocol.TType.STRING, (short)8);
+  public static final org.apache.thrift.protocol.TField DECIMAL_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("decimal_val", org.apache.thrift.protocol.TType.STRUCT, (short)9);
+  public static final org.apache.thrift.protocol.TField DATE_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("date_val", org.apache.thrift.protocol.TType.I64, (short)10);
+  public static final org.apache.thrift.protocol.TField TIME_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("time_val", org.apache.thrift.protocol.TType.I64, (short)11);
+  public static final org.apache.thrift.protocol.TField TIMESTAMP_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("timestamp_val", org.apache.thrift.protocol.TType.I64, (short)12);
+  public static final org.apache.thrift.protocol.TField BINARY_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("binary_val", org.apache.thrift.protocol.TType.STRING, (short)13);
+  public static final org.apache.thrift.protocol.TField BLOB_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("blob_val", org.apache.thrift.protocol.TType.STRUCT, (short)14);
+  public static final org.apache.thrift.protocol.TField CLOB_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("clob_val", org.apache.thrift.protocol.TType.STRUCT, (short)15);
+  public static final org.apache.thrift.protocol.TField ARRAY_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("array_val", org.apache.thrift.protocol.TType.LIST, (short)16);
+  public static final org.apache.thrift.protocol.TField MAP_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("map_val", org.apache.thrift.protocol.TType.MAP, (short)17);
+  public static final org.apache.thrift.protocol.TField STRUCT_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("struct_val", org.apache.thrift.protocol.TType.LIST, (short)18);
+  public static final org.apache.thrift.protocol.TField NULL_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("null_val", org.apache.thrift.protocol.TType.BOOL, (short)19);
+  public static final org.apache.thrift.protocol.TField JAVA_VAL_FIELD_DESC = new org.apache.thrift.protocol.TField("java_val", org.apache.thrift.protocol.TType.STRING, (short)20);
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -710,6 +712,19 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   }
 
   @Override
+  public void write(TProtocol oprot) throws TException {
+    if (getSetField() == null || getFieldValue() == null) {
+      throw new TProtocolException("Cannot write a TUnion with no set value!");
+    }
+    oprot.writeStructBegin(getStructDesc());
+    oprot.writeFieldBegin(getFieldDesc(setField_));
+    standardSchemeWriteValue(oprot);
+    oprot.writeFieldEnd();
+    oprot.writeFieldStop();
+    oprot.writeStructEnd();
+  }
+
+  @Override
   protected void standardSchemeWriteValue(org.apache.thrift.protocol.TProtocol oprot)
       throws org.apache.thrift.TException {
     switch (setField_) {
@@ -825,141 +840,15 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   }
 
   @Override
-  protected Object tupleSchemeReadValue(org.apache.thrift.protocol.TProtocol iprot, short fieldID) throws org.apache.thrift.TException {
-    _Fields setField = _Fields.findByThriftId(fieldID);
-    if (setField != null) {
-      switch (setField) {
-        case BOOL_VAL:
-          this.primitiveValue = iprot.readBool() ? 1L : 0L;
-          setField_ = _Fields.BOOL_VAL;
-          return null;
-        case BYTE_VAL:
-          this.primitiveValue = iprot.readByte();
-          setField_ = _Fields.BYTE_VAL;
-          return null;
-        case I16_VAL:
-          this.primitiveValue = iprot.readI16();
-          setField_ = _Fields.I16_VAL;
-          return null;
-        case I32_VAL:
-          this.primitiveValue = iprot.readI32();
-          setField_ = _Fields.I32_VAL;
-          return null;
-        case I64_VAL:
-          this.primitiveValue = iprot.readI64();
-          setField_ = _Fields.I64_VAL;
-          return null;
-        case FLOAT_VAL:
-          this.primitiveValue = iprot.readI32();
-          setField_ = _Fields.FLOAT_VAL;
-          return null;
-        case DOUBLE_VAL:
-          this.primitiveValue = Double.doubleToLongBits(iprot.readDouble());
-          setField_ = _Fields.DOUBLE_VAL;
-          return null;
-        case STRING_VAL:
-          String string_val;
-          string_val = iprot.readString();
-          return string_val;
-        case DECIMAL_VAL:
-          Decimal decimal_val;
-          decimal_val = new Decimal();
-          decimal_val.read(iprot);
-          return decimal_val;
-        case DATE_VAL:
-          this.primitiveValue = iprot.readI64();
-          setField_ = _Fields.DATE_VAL;
-          return null;
-        case TIME_VAL:
-          this.primitiveValue = iprot.readI64();
-          setField_ = _Fields.TIME_VAL;
-          return null;
-        case TIMESTAMP_VAL:
-          this.primitiveValue = iprot.readI64();
-          setField_ = _Fields.TIMESTAMP_VAL;
-          return null;
-        case BINARY_VAL:
-          ByteBuffer binary_val;
-          binary_val = iprot.readBinary();
-          return binary_val;
-        case BLOB_VAL:
-          BlobChunk blob_val;
-          blob_val = new BlobChunk();
-          blob_val.read(iprot);
-          return blob_val;
-        case CLOB_VAL:
-          ClobChunk clob_val;
-          clob_val = new ClobChunk();
-          clob_val.read(iprot);
-          return clob_val;
-        case ARRAY_VAL:
-          List<ColumnValue> array_val;
-          {
-            org.apache.thrift.protocol.TList _list159 = iprot.readListBegin();
-            array_val = new ArrayList<>(_list159.size);
-            ColumnValue _elem160;
-            for (int _i161 = 0; _i161 < _list159.size; ++_i161)
-            {
-              _elem160 = new ColumnValue();
-              _elem160.read(iprot);
-              array_val.add(_elem160);
-            }
-            iprot.readListEnd();
-          }
-          return array_val;
-        case MAP_VAL:
-          Map<ColumnValue,ColumnValue> map_val;
-          {
-            org.apache.thrift.protocol.TMap _map162 = iprot.readMapBegin();
-            map_val = new HashMap<>(2 * _map162.size);
-            ColumnValue _key163;
-            ColumnValue _val164;
-            for (int _i165 = 0; _i165 < _map162.size; ++_i165)
-            {
-              _key163 = new ColumnValue();
-              _key163.read(iprot);
-              _val164 = new ColumnValue();
-              _val164.read(iprot);
-              map_val.put(_key163, _val164);
-            }
-            iprot.readMapEnd();
-          }
-          return map_val;
-        case STRUCT_VAL:
-          List<ColumnValue> struct_val;
-          {
-            org.apache.thrift.protocol.TList _list166 = iprot.readListBegin();
-            struct_val = new ArrayList<>(_list166.size);
-            ColumnValue _elem167;
-            for (int _i168 = 0; _i168 < _list166.size; ++_i168)
-            {
-              _elem167 = new ColumnValue();
-              _elem167.read(iprot);
-              struct_val.add(_elem167);
-            }
-            iprot.readListEnd();
-          }
-          return struct_val;
-        case NULL_VAL:
-          this.primitiveValue = iprot.readBool() ? 1L : 0L;
-          setField_ = _Fields.NULL_VAL;
-          return null;
-        case JAVA_VAL:
-          ByteBuffer java_val;
-          java_val = iprot.readBinary();
-          return java_val;
-        default:
-          throw new IllegalStateException("setField wasn't null, but didn't match any of the case statements!");
-      }
-    } else {
-      throw new TProtocolException("Couldn't find a field with field id " + fieldID);
-    }
+  protected Object tupleSchemeReadValue(org.apache.thrift.protocol.TProtocol iprot,
+      short fieldID) throws org.apache.thrift.TException {
+    throw new TProtocolException("Tuple scheme not supported");
   }
 
   @Override
   protected void tupleSchemeWriteValue(org.apache.thrift.protocol.TProtocol oprot)
       throws org.apache.thrift.TException {
-    standardSchemeWriteValue(oprot);
+    throw new TProtocolException("Tuple scheme not supported");
   }
 
   @Override
@@ -1024,6 +913,10 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
     return _Fields.findByThriftId(fieldId);
   }
 
+
+  public final long getPrimitiveLong() {
+    return primitiveValue;
+  }
 
   public boolean getBool_val() {
     if (getSetField() == _Fields.BOOL_VAL) {

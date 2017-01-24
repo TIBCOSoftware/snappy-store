@@ -188,6 +188,7 @@ public class splitmessages {
         clientMessageIds.add(SQLState.LANG_SYNTAX_ERROR);
         clientMessageIds.add(SQLState.JAVA_EXCEPTION);
         clientMessageIds.add(SQLState.LANG_UNEXPECTED_USER_EXCEPTION);
+        clientMessageIds.add(SQLState.DATA_UNEXPECTED_EXCEPTION);
 
         clientMessageIds.add(SQLState.COLUMN_NOT_FOUND);
         clientMessageIds.add(SQLState.NULL_COLUMN_NAME);

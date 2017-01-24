@@ -122,25 +122,25 @@ abstract class ClientLobBase {
   static int readStream(final InputStream is, byte[] buf, int offset, int len)
       throws IOException {
     int readLen = 0;
-    int readBytes;
+    int readBytes = 0;
     while (len > 0 && (readBytes = is.read(buf, offset, len)) > 0) {
       readLen += readBytes;
       offset += readLen;
       len -= readLen;
     }
-    return readLen;
+    return readLen > 0 ? readLen : (readBytes < 0 ? -1 : 0);
   }
 
   static int readStream(final Reader reader, char[] buf, int offset, int len)
       throws IOException {
     int readLen = 0;
-    int readBytes;
+    int readBytes = 0;
     while (len > 0 && (readBytes = reader.read(buf, offset, len)) > 0) {
       readLen += readBytes;
       offset += readLen;
       len -= readLen;
     }
-    return readLen;
+    return readLen > 0 ? readLen : (readBytes < 0 ? -1 : 0);
   }
 
   protected void checkOffset(long offset) throws SQLException {

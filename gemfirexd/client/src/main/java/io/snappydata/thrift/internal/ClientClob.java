@@ -73,7 +73,7 @@ public class ClientClob extends ClientLobBase implements Clob {
   ClientClob(InputStream asciiStream, long length,
       ClientService service) throws SQLException {
     super(service);
-    checkLength(length);
+    checkLength(length > 0 ? length : 0);
     this.reader = new MemStreamReader(asciiStream, StandardCharsets.US_ASCII);
     this.length = (int)length;
     this.freeForStream = true;
@@ -82,7 +82,7 @@ public class ClientClob extends ClientLobBase implements Clob {
   ClientClob(Reader reader, long length,
       ClientService service) throws SQLException {
     super(service);
-    checkLength(length);
+    checkLength(length > 0 ? length : 0);
     this.reader = reader;
     this.length = (int)length;
     this.freeForStream = true;
@@ -116,7 +116,9 @@ public class ClientClob extends ClientLobBase implements Clob {
         final int bufSize = 32768;
         final char[] buffer = new char[bufSize];
         int readLen = readStream(reader, buffer, 0, bufSize);
-        if (readLen < bufSize) {
+        if (readLen < 0) {
+          return -1;
+        } else if (readLen < bufSize) {
           // fits into single buffer
           this.reader = new MemStringReader(ClientSharedUtils.newWrappedString(
               buffer, 0, readLen));
@@ -173,33 +175,44 @@ public class ClientClob extends ClientLobBase implements Clob {
         }
         // keep reading stream till end
         int readLen = readStream(this.reader, buffer, 0, length);
-        checkOffset(offset + readLen);
-        this.streamOffset = (int)(offset + readLen);
-        return ClientSharedUtils.newWrappedString(buffer, 0, readLen);
+        if (readLen >= 0) {
+          checkOffset(offset + readLen);
+          this.streamOffset = (int)(offset + readLen);
+          return ClientSharedUtils.newWrappedString(buffer, 0, readLen);
+        } else {
+          return null; // indicates end of data
+        }
       } catch (IOException ioe) {
         throw ThriftExceptionUtil.newSQLException(
             SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, "java.sql.Clob");
       }
     } else if ((chunk = this.currentChunk) != null) {
       String buffer = chunk.chunk;
+      int bufferLen = buffer.length();
       // check if it lies outside the current chunk
       if (offset < chunk.offset
-          || (offset + length) > (chunk.offset + buffer.length())) {
+          || (offset + length) > (chunk.offset + bufferLen)) {
         // fetch new chunk
         try {
           this.currentChunk = chunk = service.getClobChunk(
               getLobSource(true, "Clob.readBytes"), chunk.lobId, offset,
               Math.max(baseChunkSize, length), false);
           buffer = chunk.chunk;
+          bufferLen = buffer.length();
         } catch (SnappyException se) {
           throw ThriftExceptionUtil.newSQLException(se);
         }
       }
-      if (offset > chunk.offset) {
-        int startIndex = (int)(offset - chunk.offset);
-        return buffer.substring(startIndex, startIndex + length);
+      if (bufferLen > 0) {
+        if (offset > chunk.offset) {
+          int startIndex = (int)(offset - chunk.offset);
+          return buffer.substring(startIndex,
+              Math.min(startIndex + length, bufferLen));
+        } else {
+          return buffer.substring(0, Math.min(length, bufferLen));
+        }
       } else {
-        return buffer.substring(0, length);
+        return null; // indicates end of data
       }
     } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.LOB_OBJECT_INVALID);
@@ -221,7 +234,13 @@ public class ClientClob extends ClientLobBase implements Clob {
     length = checkOffset(offset, length);
 
     if (length > 0) {
-      return readString(offset, length);
+      String str = readString(offset, length);
+      if (str != null) {
+        return str;
+      } else {
+        // eof of data
+        throw ThriftExceptionUtil.newSQLException(SQLState.STREAM_EOF);
+      }
     } else {
       return "";
     }
@@ -374,13 +393,17 @@ public class ClientClob extends ClientLobBase implements Clob {
         }
       }
       try {
-        String str = readString(this.clobOffset, len);
-        int nbytes = str.length();
-        if (nbytes > 0) {
-          this.clobOffset += nbytes;
-          str.getChars(0, nbytes, buf, offset);
+        String str;
+        if (len > 0 && (str = readString(this.clobOffset, len)) != null) {
+          int nbytes = str.length();
+          if (nbytes > 0) {
+            this.clobOffset += nbytes;
+            str.getChars(0, nbytes, buf, offset);
+          }
+          return nbytes;
+        } else {
+          return -1; // end of data
         }
-        return nbytes;
       } catch (SQLException sqle) {
         if (sqle.getCause() instanceof IOException) {
           throw (IOException)sqle.getCause();

@@ -37,6 +37,7 @@ public abstract class InputStreamChannel extends InputStream implements
 
   protected final ReadableByteChannel channel;
   protected volatile Thread parkedThread;
+  protected volatile long bytesRead;
 
   /**
    * nanos to park reader thread to wait for reading data in non-blocking mode
@@ -164,7 +165,8 @@ public abstract class InputStreamChannel extends InputStream implements
   protected int refillBuffer(final ByteBuffer channelBuffer,
       final int tryReadBytes, final String eofMessage) throws IOException {
     resetAndCopyLeftOverBytes(channelBuffer);
-    int totalReadBytes = channelBuffer.position();
+    int initPosition = channelBuffer.position();
+    int totalReadBytes = initPosition;
     final int channelBytes = readIntoBuffer(channelBuffer);
     if (channelBytes >= 0) {
       totalReadBytes += channelBytes;
@@ -195,6 +197,9 @@ public abstract class InputStreamChannel extends InputStream implements
     assert (totalReadBytes == channelBuffer.limit()) || (totalReadBytes == -1
         && channelBuffer.limit() == 0): "readBytes=" + totalReadBytes
             + " != limit=" + channelBuffer.limit();
+    if (totalReadBytes > initPosition) {
+      this.bytesRead += (totalReadBytes - initPosition);
+    }
     return totalReadBytes;
   }
 
@@ -241,10 +246,18 @@ public abstract class InputStreamChannel extends InputStream implements
    */
   protected int readIntoBufferNonBlocking(ByteBuffer buffer)
       throws IOException {
-    return this.channel.read(buffer);
+    final int numBytes = this.channel.read(buffer);
+    if (numBytes > 0) {
+      this.bytesRead += numBytes;
+    }
+    return numBytes;
   }
 
   public final Thread getParkedThread() {
     return this.parkedThread;
+  }
+
+  public final long getBytesRead() {
+    return this.bytesRead;
   }
 }

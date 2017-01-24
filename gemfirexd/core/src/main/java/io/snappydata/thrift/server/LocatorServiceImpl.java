@@ -150,8 +150,7 @@ public class LocatorServiceImpl implements LocatorService.Iface {
       if (ntypes == 1) {
         intersectGroups = Collections.singleton(serverTypes.iterator().next()
             .getServerGroupName());
-      }
-      else {
+      } else {
         @SuppressWarnings("unchecked")
         Set<String> igroups = new THashSet(ntypes);
         intersectGroups = igroups;
@@ -159,8 +158,7 @@ public class LocatorServiceImpl implements LocatorService.Iface {
           intersectGroups.add(serverType.getServerGroupName());
         }
       }
-    }
-    else {
+    } else {
       intersectGroups = null;
     }
     if (SanityManager.TraceClientHA) {
@@ -177,12 +175,11 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     } catch (Throwable t) {
       throw SnappyException(t);
     }
-    if (prefServer != null) {
+    if (prefServer != null && prefServer.getPort() > 0) {
       prefHost = ThriftUtils.getHostAddress(prefServer.getHostName(),
           prefServer.getPort());
-    }
-    else {
-      // for consistency though null here is okay in Thrift protocol
+    } else {
+      // for consistency since some calls expect non-null result
       prefHost = HostAddress.NULL_ADDRESS;
     }
     return prefHost;
@@ -214,10 +211,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     HostAddress prefServer = getPreferredServer(serverTypes, serverGroups,
         failedServers);
     ArrayList<HostAddress> prefAndAllServers = new ArrayList<>();
-    // null result in a list causes Thrift protocol exception
-    if (prefServer == null) {
-      prefServer = HostAddress.NULL_ADDRESS;
-    }
 
     final Set<ServerType> allTypes;
     if (serverTypes == null || serverTypes.isEmpty()) {

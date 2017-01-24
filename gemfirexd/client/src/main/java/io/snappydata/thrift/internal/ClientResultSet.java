@@ -160,9 +160,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
   final void checkClosed() throws SQLException {
     if (this.service.isOpen) {
-      if (this.rowSet != null) {
-        return;
-      } else {
+      if (this.rowSet == null) {
         throw ThriftExceptionUtil.newSQLException(
             SQLState.CLIENT_RESULT_SET_NOT_OPEN);
       }
@@ -226,7 +224,17 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   }
 
   final int getSnappyType(int columnIndex, Row currentRow) {
-    return currentRow.getType(columnIndex - 1);
+    final int index = columnIndex - 1;
+    int type = currentRow.getType(index);
+    if (type > 0) {
+      return type;
+    }
+    // update the row with the actual type from meta-data if required
+    int expectedType = -this.rowSet.metadata.get(index).type.getValue();
+    if (type != expectedType) {
+      currentRow.setType(index, expectedType);
+    }
+    return expectedType;
   }
 
   final int getColumnIndex(final String columnName) throws SQLException {
@@ -338,7 +346,11 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     // get the source before clearing the finalizer
     final HostConnection source = getLobSource(false, "closeResultSet");
     clearFinalizer();
-    checkClosed();
+
+    // closing an already closed ResultSet is a no-op as per JDBC spec
+    if (isClosed()) {
+      return;
+    }
 
     this.rowSet = null;
     this.rowsIter = null;
@@ -2033,7 +2045,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public boolean isClosed() throws SQLException {
+  public final boolean isClosed() throws SQLException {
     return this.rowSet == null || !this.service.isOpen;
   }
 

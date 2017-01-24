@@ -36,6 +36,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
   protected final WritableByteChannel channel;
   protected volatile Thread parkedThread;
+  protected volatile long bytesWritten;
 
   /**
    * nanos to park reader thread to wait for writing data in non-blocking mode
@@ -128,8 +129,8 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
   protected int writeBuffer(final ByteBuffer buffer) throws IOException {
     long parkNanos = 0;
-    int writtenBytes;
-    while ((writtenBytes = this.channel.write(buffer)) == 0) {
+    int numWritten;
+    while ((numWritten = this.channel.write(buffer)) == 0) {
       if (!buffer.hasRemaining()) {
         break;
       }
@@ -143,14 +144,25 @@ public abstract class OutputStreamChannel extends OutputStream implements
         throw new SocketTimeoutException("Connection write timed out.");
       }
     }
-    return writtenBytes;
+    if (numWritten > 0) {
+      this.bytesWritten += numWritten;
+    }
+    return numWritten;
   }
 
   protected int writeBufferNonBlocking(ByteBuffer buffer) throws IOException {
-    return this.channel.write(buffer);
+    int numWritten = this.channel.write(buffer);
+    if (numWritten > 0) {
+      this.bytesWritten += numWritten;
+    }
+    return numWritten;
   }
 
   public final Thread getParkedThread() {
     return this.parkedThread;
+  }
+
+  public final long getBytesWritten() {
+    return this.bytesWritten;
   }
 }

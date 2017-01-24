@@ -46,6 +46,7 @@ import com.pivotal.gemfirexd.jdbc.ClientAttribute;
 import io.snappydata.jdbc.ClientDriver;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.*;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -257,16 +258,10 @@ public final class ClientService extends ReentrantLock {
 
         TTransport inTransport, outTransport;
         TProtocol inProtocol, outProtocol;
-        if (getServerType().isThriftSSL()) {
-          inTransport = outTransport = new SnappyTSSLSocket(
-              hostAddr.resolveHost(), hostAddr.getPort(), socketParams,
-              sysProps, readTimeout);
-        } else {
-          inTransport = outTransport = new SnappyTSocket(
-              hostAddr.resolveHost(), hostAddr.getPort(), true,
-              ThriftUtils.isThriftSelectorServer(), socketParams, sysProps,
-              readTimeout);
-        }
+        inTransport = outTransport = new SnappyTSocket(
+            hostAddr.resolveHost(), hostAddr.getPort(), connArgs.clientID,
+            getServerType().isThriftSSL(), true, ThriftUtils
+            .isThriftSelectorServer(), socketParams, sysProps, readTimeout);
         if (getServerType().isThriftBinaryProtocol()) {
           inProtocol = new TBinaryProtocol(inTransport);
           outProtocol = new TBinaryProtocol(outTransport);
@@ -430,7 +425,12 @@ public final class ClientService extends ReentrantLock {
         return failedServers;
       }
     } else if (t instanceof TException) {
-      if (!tryFailover) {
+      if (t instanceof TApplicationException) {
+        // no failover for application level exceptions
+        throw ThriftExceptionUtil.newSnappyException(
+            SQLState.DATA_UNEXPECTED_EXCEPTION, t,
+            source != null ? source.hostAddr.toString() : null);
+      } else if (!tryFailover) {
         throw newSnappyExceptionForNodeFailure(source, op, isolationLevel,
             failedServers, createNewConnection, t);
       }
@@ -749,7 +749,7 @@ public final class ClientService extends ReentrantLock {
       PrepareResultHolder prh) throws SnappyException {
     long logStmtId = -1;
     StatementAttrs attrs = prh.getAttributes();
-    Set<HostAddress> failedServers = null;
+    Set<HostAddress> failedServers;
     super.lock();
     try {
       // check if node has failed sometime before; keeping inside try-catch
@@ -823,7 +823,7 @@ public final class ClientService extends ReentrantLock {
 
   public UpdateResult executePreparedUpdate(HostConnection source,
       long stmtId, Row params, PrepareResultHolder prh) throws SnappyException {
-    Set<HostAddress> failedServers = null;
+    Set<HostAddress> failedServers;
     super.lock();
     try {
       // check if node has failed sometime before; keeping inside try-catch
@@ -895,7 +895,7 @@ public final class ClientService extends ReentrantLock {
   public RowSet executePreparedQuery(HostConnection source, long stmtId,
       Row params, PrepareResultHolder prh) throws SnappyException {
     StatementAttrs attrs = prh.getAttributes();
-    Set<HostAddress> failedServers = null;
+    Set<HostAddress> failedServers;
     super.lock();
     try {
       // check if node has failed sometime before; keeping inside try-catch
@@ -969,7 +969,7 @@ public final class ClientService extends ReentrantLock {
 
   public UpdateResult executePreparedBatch(HostConnection source, long stmtId,
       List<Row> paramsBatch, PrepareResultHolder prh) throws SnappyException {
-    Set<HostAddress> failedServers = null;
+    Set<HostAddress> failedServers;
     super.lock();
     try {
       // check if node has failed sometime before; keeping inside try-catch
@@ -1738,10 +1738,10 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public boolean closeResultSet(final HostConnection source, long cursorId,
+  public void closeResultSet(final HostConnection source, long cursorId,
       long lockTimeoutMillis) throws SnappyException {
     if (source == null || cursorId == snappydataConstants.INVALID_ID) {
-      return true;
+      return;
     }
 
     if (SanityManager.TraceClientStatement) {
@@ -1750,7 +1750,8 @@ public final class ClientService extends ReentrantLock {
           source.connId, source.token, ns, true, null);
     }
     if (!acquireLock(lockTimeoutMillis)) {
-      return false;
+      throw ThriftExceptionUtil.newSnappyException(
+          SQLState.LOCK_TIMEOUT, null, source.toString());
     }
     try {
       // check if node has failed sometime before
@@ -1762,7 +1763,6 @@ public final class ClientService extends ReentrantLock {
         SanityManager.DEBUG_PRINT_COMPACT("closeResultSet_E", null,
             source.connId, source.token, ns, false, null);
       }
-      return true;
     } catch (Throwable t) {
       // no failover should be attempted
       handleException(t, null, false, true, "closeResultSet");
@@ -1773,10 +1773,10 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public boolean closeStatement(final HostConnection source, long stmtId,
+  public void closeStatement(final HostConnection source, long stmtId,
       long lockTimeoutMillis) throws SnappyException {
     if (source == null || stmtId == snappydataConstants.INVALID_ID) {
-      return true;
+      return;
     }
 
     if (SanityManager.TraceClientStatement) {
@@ -1785,7 +1785,8 @@ public final class ClientService extends ReentrantLock {
           source.connId, source.token, ns, true, null);
     }
     if (!acquireLock(lockTimeoutMillis)) {
-      return false;
+      throw ThriftExceptionUtil.newSnappyException(
+          SQLState.LOCK_TIMEOUT, null, source.toString());
     }
     try {
       // check if node has failed sometime before
@@ -1797,7 +1798,6 @@ public final class ClientService extends ReentrantLock {
         SanityManager.DEBUG_PRINT_COMPACT("closeStatement_E", null,
             source.connId, source.token, ns, false, null);
       }
-      return true;
     } catch (Throwable t) {
       // no failover should be attempted
       handleException(t, null, false, true, "closeStatement");
@@ -1808,10 +1808,11 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public boolean closeConnection(long lockTimeoutMillis) throws SnappyException {
+  public void closeConnection(long lockTimeoutMillis) throws SnappyException {
     HostConnection source = this.currentHostConnection;
     if (source == null || source.connId == snappydataConstants.INVALID_ID) {
-      return true;
+      closeService();
+      return;
     }
 
     if (SanityManager.TraceClientStatement | SanityManager.TraceClientConn) {
@@ -1821,14 +1822,16 @@ public final class ClientService extends ReentrantLock {
           SanityManager.TraceClientConn ? new Throwable() : null);
     }
     if (!acquireLock(lockTimeoutMillis)) {
-      return false;
+      throw ThriftExceptionUtil.newSnappyException(
+          SQLState.LOCK_TIMEOUT, null, source.toString());
     }
     try {
       source = this.currentHostConnection;
       if (source == null || source.connId == snappydataConstants.INVALID_ID) {
-        return true;
+        return;
       }
-      this.clientService.closeConnection(source.connId, source.token);
+      // closeSocket=true for now but will change with clientService pooling
+      this.clientService.closeConnection(source.connId, true, source.token);
       if (SanityManager.TraceClientStatementHA
           | SanityManager.TraceClientConn) {
         if (SanityManager.TraceClientHA) {
@@ -1847,15 +1850,12 @@ public final class ClientService extends ReentrantLock {
               source.connId, source.token, ns, false, null);
         }
       }
-      return true;
     } catch (TException te) {
       // ignore socket exception during connection close
-      return true;
     } catch (Throwable t) {
       // no failover should be attempted
       handleException(t, null, false, false, "closeConnection");
       // succeed if above returns
-      return true;
     } finally {
       closeService();
       super.unlock();
@@ -1967,9 +1967,7 @@ public final class ClientService extends ReentrantLock {
   }
 
   final void checkClosedConnection() throws SQLException {
-    if (this.isOpen) {
-      return;
-    } else {
+    if (!this.isOpen) {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.NO_CURRENT_CONNECTION, null);
     }

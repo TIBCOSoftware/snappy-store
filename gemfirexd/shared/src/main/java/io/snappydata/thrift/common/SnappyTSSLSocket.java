@@ -51,13 +51,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A custom SSL TSocket allowing to increase input/output buffer sizes.
- * 
- * Currently this uses blocking Sockets and not NIO. Using SSLEngine is tricky
- * to get correct so will be implemented later. When it shall implement it, then
- * this will extend {@link SnappyTSocket} so higher layer should use the
- * "instanceof {@link SnappyTSocket}" check to determine whether to use selector
- * based server or old threaded one.
+ * A custom SSL TSocket allowing to increase input/output buffer sizes
+ * and also providing for non-blocking operations like in NIO.
  */
 public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
 
@@ -86,10 +81,10 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
 
   /**
    * Constructor that takes an already created socket.
-   * 
+   *
    * @param socket
    *          Already created socket object
-   * 
+   *
    * @throws TTransportException
    *           if there is an error setting up the streams
    */
@@ -114,7 +109,7 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
   /**
    * Creates a new SSL socket that will connect to the given host on the given
    * port.
-   * 
+   *
    * @param host
    *          Remote HostAddress including port
    * @param params
@@ -132,7 +127,7 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
   /**
    * Creates a new unconnected SSL socket that will connect to the given host on
    * the given port.
-   * 
+   *
    * @param hostAddress
    *          Resolved remote host address
    * @param port
@@ -164,13 +159,13 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
    */
   private static Socket initSSLSocket(InetAddress hostAddress, int port,
       SocketParameters sockParams, int timeout) throws TTransportException {
-    return SnappyTSSLSocketFactory.getClientSocket(hostAddress,
+    return SSLFactory.getClientSocket(hostAddress,
         port, timeout, sockParams);
   }
 
   /**
    * Sets the socket read timeout.
-   * 
+   *
    * @param timeout
    *          read timeout (SO_TIMEOUT) in milliseconds
    */
@@ -202,7 +197,7 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
 
   /**
    * Sets the socket read timeout.
-   * 
+   *
    * @param timeout
    *          read timeout (SO_TIMEOUT) in milliseconds
    */
@@ -223,7 +218,7 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
 
   /**
    * Sets the socket properties like timeout, keepalive, buffer sizes.
-   * 
+   *
    * @param timeout
    *          Milliseconds timeout
    * @param params

@@ -45,12 +45,7 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.sql.Blob;
-import java.sql.Clob;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.*;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +58,10 @@ import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.Decimal;
 import io.snappydata.thrift.SnappyType;
 import io.snappydata.thrift.snappydataConstants;
+import org.apache.thrift.TApplicationException;
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Conversion utilities from thrift API values/enums to JDBC/SnappyData equivalent
@@ -73,6 +72,9 @@ public abstract class Converters {
   private Converters() {
     // no instance allowed
   }
+
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(Converters.class.getName());
 
   static final BigDecimal MAXLONG_PLUS_ONE = BigDecimal.valueOf(Long.MAX_VALUE)
       .add(BigDecimal.ONE);
@@ -2500,96 +2502,314 @@ public abstract class Converters {
     }
   };
 
-  public static final ColumnValueConverter NULL_TYPE =
-      new ColumnValueConverter() {
+  public static class NullConverter extends ColumnValueConverter {
 
     @Override
     public SnappyType getType() {
       return SnappyType.NULLTYPE;
     }
+
     @Override
     public boolean toBoolean(OptimizedElementArray row, int columnIndex)
         throws SQLException {
       return false;
     }
+
     @Override
     public byte toByte(OptimizedElementArray row, int columnIndex)
         throws SQLException {
       return 0;
     }
+
     @Override
     public short toShort(OptimizedElementArray row, int columnIndex)
         throws SQLException {
       return 0;
     }
+
     @Override
     public int toInteger(OptimizedElementArray row, int columnIndex)
         throws SQLException {
       return 0;
     }
+
     @Override
     public long toLong(OptimizedElementArray row, int columnIndex)
         throws SQLException {
       return 0;
     }
+
     @Override
     public float toFloat(OptimizedElementArray row, int columnIndex)
         throws SQLException {
       return 0.0f;
     }
+
     @Override
     public double toDouble(OptimizedElementArray row, int columnIndex)
         throws SQLException {
       return 0.0;
     }
+
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
         int columnIndex) throws SQLException {
       return BigDecimal.ZERO;
     }
+
     @Override
     public String toString(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
       return null;
     }
+
     @Override
     public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
       return null;
     }
+
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
         int columnIndex, Calendar cal) throws SQLException {
       return null;
     }
+
     @Override
     public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
         Calendar cal) throws SQLException {
       return null;
     }
+
     @Override
     public byte[] toBytes(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
       return null;
     }
+
     @Override
     public Object toObject(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
       return null;
     }
+
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
-      throw new AssertionError("unexpected invocation");
+    public void setString(OptimizedElementArray row, int columnIndex,
+        String x) throws SQLException {
+      throw Converters.newTypeSetConversionException(
+          getType().toString(), "String", columnIndex);
     }
+
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object x)
-        throws SQLException {
-      throw new AssertionError("unexpected invocation");
+    public void setObject(OptimizedElementArray row, int columnIndex,
+        Object x) throws SQLException {
+      throw Converters.newTypeSetConversionException(
+          getType().toString(), "Object", columnIndex);
     }
+
     @Override
     public boolean isNull() {
       return true;
+    }
+  }
+
+  /**
+   * This is used to delegate set* calls that must fail if the underlying
+   * column type itself is NULLTYPE. Else if the value is null but underlying
+   * type is a proper one, then {@link #NULL_TYPE} is used.
+   */
+  static final ColumnValueConverter NULL_ONLY_TYPE = new NullConverter();
+
+  public static final ColumnValueConverter NULL_TYPE = new NullConverter() {
+
+    private ColumnValueConverter getConverterForSet(int snappyTypeValue,
+        String targetType, int columnIndex) throws SQLException {
+      ColumnValueConverter conv = getConverter(snappyTypeValue, targetType,
+          true, columnIndex);
+      // for the rare case when underlying type itself is a NULLTYPE don't fall
+      // into infinite recursion but use NULL_ONLY_TYPE to fail for set* calls
+      return (conv != NULL_TYPE) ? conv : NULL_ONLY_TYPE;
+    }
+
+    @Override
+    public void setBoolean(OptimizedElementArray row, int columnIndex, boolean x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnIndex - 1), "boolean",
+          columnIndex).setBoolean(row, columnIndex, x);
+    }
+
+    @Override
+    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnIndex - 1), "byte",
+          columnIndex).setByte(row, columnIndex, x);
+    }
+
+    @Override
+    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnIndex - 1), "short",
+          columnIndex).setShort(row, columnIndex, x);
+    }
+
+    @Override
+    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnIndex - 1), "int",
+          columnIndex).setInteger(row, columnIndex, x);
+    }
+
+    @Override
+    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnIndex - 1), "long",
+          columnIndex).setLong(row, columnIndex, x);
+    }
+
+    @Override
+    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnIndex - 1), "float",
+          columnIndex).setFloat(row, columnIndex, x);
+    }
+
+    @Override
+    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnIndex - 1), "double",
+          columnIndex).setDouble(row, columnIndex, x);
+    }
+
+    @Override
+    public void setBigDecimal(OptimizedElementArray row, int columnIndex,
+        BigDecimal x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "BigDecimal",
+            columnIndex).setBigDecimal(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setString(OptimizedElementArray row, int columnIndex,
+        String x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "string",
+            columnIndex).setString(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setDate(OptimizedElementArray row, int columnIndex, Date x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "date",
+            columnIndex).setDate(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setTime(OptimizedElementArray row, int columnIndex, Time x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "time",
+            columnIndex).setTime(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setTimestamp(OptimizedElementArray row, int columnIndex,
+        Timestamp x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "timestamp",
+            columnIndex).setTimestamp(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setBytes(OptimizedElementArray row, int columnIndex, byte[] x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "byte[]",
+            columnIndex).setBytes(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setBlob(OptimizedElementArray row, int columnIndex, Blob x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "blob",
+            columnIndex).setBlob(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setBinaryStream(OptimizedElementArray row, int columnIndex,
+        InputStream stream, long length,
+        LobService lobService) throws SQLException {
+      if (stream != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "BinaryStream",
+            columnIndex).setBinaryStream(row, columnIndex, stream,
+            length, lobService);
+      }
+    }
+
+    @Override
+    public void setClob(OptimizedElementArray row, int columnIndex, Clob x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "clob",
+            columnIndex).setClob(row, columnIndex, x);
+      }
+    }
+
+    @Override
+    public void setCharacterStream(OptimizedElementArray row, int columnIndex,
+        Reader reader, long length, LobService lobService) throws SQLException {
+      if (reader != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "CharacterStream",
+            columnIndex).setCharacterStream(row, columnIndex, reader,
+            length, lobService);
+      }
+    }
+
+    @Override
+    public void setAsciiStream(OptimizedElementArray row, int columnIndex,
+        InputStream stream, long length,
+        LobService lobService) throws SQLException {
+      if (stream != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "AsciiStream",
+            columnIndex).setAsciiStream(row, columnIndex, stream,
+            length, lobService);
+      }
+    }
+
+    @Override
+    public void setObject(OptimizedElementArray row, int columnIndex,
+        Object x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnIndex - 1), "object",
+            columnIndex).setObject(row, columnIndex, x);
+      }
     }
   };
 
@@ -2991,25 +3211,33 @@ public abstract class Converters {
     return fullBytes;
   }
 
-  public static Object getJavaObject(byte[] bytes, int columnIndex)
-      throws SQLException {
+  public static Object getJavaObject(byte[] bytes) throws TException {
     ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-    Object obj;
     try {
-      obj = new ObjectInputStream(in).readObject();
-    } catch (Exception e) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, e, columnIndex);
+      return new ObjectInputStream(in).readObject();
+    } catch (IOException | ClassNotFoundException e) {
+      LOGGER.warn("Unexpected exception in deserialization of java object", e);
+      final TApplicationException te = new TApplicationException(
+          TApplicationException.INVALID_TRANSFORM, e.toString());
+      te.initCause(e);
+      throw te;
     }
-    return obj;
   }
 
-  public static byte[] getJavaObjectAsBytes(Object o) throws IOException {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream os = new ObjectOutputStream(bos);
-    os.writeObject(o);
-    os.flush();
-    return bos.toByteArray();
+  public static byte[] getJavaObjectAsBytes(Object o) throws TException {
+    try {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      ObjectOutputStream os = new ObjectOutputStream(bos);
+      os.writeObject(o);
+      os.flush();
+      return bos.toByteArray();
+    } catch (IOException ioe) {
+      LOGGER.warn("Unexpected exception in serialization of java object", ioe);
+      final TApplicationException te = new TApplicationException(
+          TApplicationException.INVALID_TRANSFORM, ioe.toString());
+      te.initCause(ioe);
+      throw te;
+    }
   }
 
   /**

@@ -51,7 +51,6 @@ import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.LocatorService;
 import io.snappydata.thrift.ServerType;
 import io.snappydata.thrift.SnappyException;
-import io.snappydata.thrift.common.SnappyTSSLSocket;
 import io.snappydata.thrift.common.SnappyTSocket;
 import io.snappydata.thrift.common.SocketParameters;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
@@ -254,17 +253,15 @@ final class ControlConnection {
                       + "server since no preferred server received)"));
         }
         if (preferredServer.getPort() <= 0) {
-          // for this case we don't have a locator so choose some server
-          // randomly as the "preferredServer"
+          // For this case we don't have a locator or locator unable to
+          // determine a preferred server, so choose some server randomly
+          // as the "preferredServer". In case all servers have failed
+          // then the search below will also fail.
           SearchRandomServer search = new SearchRandomServer(getServerType(),
               this.controlHostSet.size(), failedServers);
           this.controlHostSet.forEach(search);
           if ((preferredServer = search.getRandomServer()) == null) {
-            // try with no failedServers list before failing
-            preferredServer = getLocatorPreferredServer(null, serverGroups);
-            if (preferredServer.getPort() <= 0) {
-              throw failoverExhausted(failedServers, null);
-            }
+            throw failoverExhausted(failedServers, null);
           }
         }
         if (SanityManager.TraceClientHA) {
@@ -343,15 +340,9 @@ final class ControlConnection {
                 SanityManager.TraceClientConn ? new Throwable() : null);
           }
 
-          if (getServerType().isThriftSSL()) {
-            inTransport = outTransport = new SnappyTSSLSocket(controlAddr,
-                this.socketParams, sysProps);
-          }
-          else {
-            inTransport = outTransport = new SnappyTSocket(controlAddr, true,
-                ThriftUtils.isThriftSelectorServer(), this.socketParams,
-                sysProps);
-          }
+          inTransport = outTransport = new SnappyTSocket(controlAddr, null,
+              getServerType().isThriftSSL(), true, ThriftUtils
+              .isThriftSelectorServer(), this.socketParams, sysProps);
           if (getServerType().isThriftBinaryProtocol()) {
             inProtocol = new TBinaryProtocol(inTransport);
             outProtocol = new TBinaryProtocol(outTransport);

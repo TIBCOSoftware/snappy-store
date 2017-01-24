@@ -35,7 +35,6 @@
 
 package io.snappydata.thrift.common;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Date;
@@ -53,6 +52,7 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
+import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.ColumnDescriptor;
@@ -127,21 +127,24 @@ public class OptimizedElementArray {
       boolean copyValues) {
     final long[] prims = other.primitives;
     final Object[] nonPrims = other.nonPrimitives;
-    final int header = other.headerSize;
+    this.headerSize = other.headerSize;
     if (prims.length > 0) {
-      // copy primitives array regardless of "copyValues" since need to copy the
-      // header having types and non-primitive indexes in any case, so array
-      // copy will be efficient since having other primitive values won't hurt
+      // make a copy of primitives array in any case regardless of
+      // "copyValues" since the types and non-primitive indexes are required
       this.primitives = prims.clone();
     } else {
       this.primitives = EMPTY;
     }
     if (nonPrims != null) {
-      this.nonPrimitives = copyValues ? nonPrims.clone()
-          : new Object[nonPrims.length];
+      if (copyValues) {
+        this.nonPrimitives = nonPrims.clone();
+      } else {
+        this.nonPrimitives = new Object[nonPrims.length];
+        // mark all non-primitives as null in meta-data
+        setNonPrimitivesNull();
+      }
     }
     this.nonPrimSize = other.nonPrimSize;
-    this.headerSize = header;
     if (copyValues) {
       this.hash = other.hash;
     }
@@ -208,9 +211,35 @@ public class OptimizedElementArray {
     this.headerSize = headerSize;
   }
 
-  protected final void setType(int index, int sqlType) {
+  private void setNonPrimitivesNull() {
+    final long[] primitives = this.primitives;
+    final int end = Platform.LONG_ARRAY_OFFSET + size();
+    for (int offset = Platform.LONG_ARRAY_OFFSET; offset < end; offset++) {
+      byte snappyType = Platform.getByte(primitives, offset);
+      if (snappyType > 0) {
+        // skip primitives
+        switch (snappyType) {
+          case 4: // INTEGER
+          case 5: // BIGINT
+          case 7: // DOUBLE
+          case 8: // FLOAT
+          case 6: // REAL
+          case 3: // SMALLINT
+          case 1: // BOOLEAN
+          case 2: // TINYINT
+          case 25: // NULLTYPE
+            break;
+          default:
+            Platform.putByte(primitives, offset, (byte)-snappyType);
+            break;
+        }
+      }
+    }
+  }
+
+  public final void setType(int index, int snappyType) {
     Platform.putByte(this.primitives, Platform.LONG_ARRAY_OFFSET + index,
-        (byte)sqlType);
+        (byte)snappyType);
   }
 
   /**
@@ -287,22 +316,26 @@ public class OptimizedElementArray {
       final int type = getType(index);
       if (type == SnappyType.BLOB.getValue()) {
         final int lobIndex = (int)primitives[headerSize + index];
-        BlobChunk chunk = (BlobChunk)nonPrimitives[lobIndex];
-        if (chunk != null && chunk.isSetLobId()) {
-          if (lobIndices == null) {
-            lobIndices = new TIntArrayList(4);
+        if (nonPrimitives[lobIndex] instanceof BlobChunk) {
+          BlobChunk chunk = (BlobChunk)nonPrimitives[lobIndex];
+          if (chunk != null && chunk.isSetLobId()) {
+            if (lobIndices == null) {
+              lobIndices = new TIntArrayList(4);
+            }
+            lobIndices.add(lobIndex);
           }
-          lobIndices.add(lobIndex);
         }
       } else if (type == SnappyType.CLOB.getValue()) {
         final int lobIndex = (int)primitives[headerSize + index];
-        ClobChunk chunk = (ClobChunk)nonPrimitives[lobIndex];
-        if (chunk != null && chunk.isSetLobId()) {
-          if (lobIndices == null) {
-            lobIndices = new TIntArrayList(4);
+        if (nonPrimitives[lobIndex] instanceof ClobChunk) {
+          ClobChunk chunk = (ClobChunk)nonPrimitives[lobIndex];
+          if (chunk != null && chunk.isSetLobId()) {
+            if (lobIndices == null) {
+              lobIndices = new TIntArrayList(4);
+            }
+            // -ve index to indicate a CLOB
+            lobIndices.add(-lobIndex);
           }
-          // -ve index to indicate a CLOB
-          lobIndices.add(-lobIndex);
         }
       }
     }
@@ -356,10 +389,23 @@ public class OptimizedElementArray {
   }
 
   public final void setNull(int index) {
-    int rawType = getType(index);
-    if (rawType > 0) {
-      setType(index, -rawType);
+    int snappyType = getType(index);
+    if (snappyType > 0) {
+      setType(index, -snappyType);
     }
+  }
+
+  public final void setNull(int index, int snappyType) {
+    setType(index, -snappyType);
+  }
+
+  public final int setNotNull(int index) {
+    int snappyType = getType(index);
+    if (snappyType < 0) {
+      snappyType = -snappyType;
+      setType(index, snappyType);
+    }
+    return snappyType;
   }
 
   protected final void setPrimLong(int primIndex, long value) {
@@ -415,7 +461,7 @@ public class OptimizedElementArray {
         setType(index, type.getValue());
       }
     } else {
-      setNull(index);
+      setNull(index, type.getValue());
     }
   }
 
@@ -515,7 +561,7 @@ public class OptimizedElementArray {
    * this should exactly match ColumnValue.standardSchemeWriteValue
    */
   public final void writeStandardScheme(final BitSet changedColumns,
-      TProtocol oprot) throws TException, IOException {
+      TProtocol oprot) throws TException {
     final long[] primitives = this.primitives;
     final Object[] nonPrimitives = this.nonPrimitives;
     int offset = this.headerSize;
@@ -535,9 +581,9 @@ public class OptimizedElementArray {
       oprot.writeStructBegin(ColumnValue.STRUCT_DESC);
 
       // nulls will always have -ve types so no need for further null checks
-      final int rawType = getType(index);
+      final int snappyType = getType(index);
       // check more common types first
-      switch (rawType) {
+      switch (snappyType) {
         case 10: // CHAR
         case 11: // VARCHAR
         case 12: // LONGVARCHAR
@@ -660,11 +706,11 @@ public class OptimizedElementArray {
           break;
         default:
           // check for null
-          if (rawType < 0) {
+          if (snappyType < 0) {
             oprot.writeFieldBegin(ColumnValue.NULL_VAL_FIELD_DESC);
             oprot.writeBool(true);
           } else {
-            throw new TProtocolException("write: unhandled typeId=" + rawType +
+            throw new TProtocolException("write: unhandled typeId=" + snappyType +
                 " at index=" + index + " with size=" + size + "(changedCols=" +
                 changedColumns + ")");
           }
@@ -687,7 +733,7 @@ public class OptimizedElementArray {
   }
 
   public final void readStandardScheme(final int numFields, TProtocol iprot)
-      throws TException, SQLException {
+      throws TException {
     initialize(numFields);
     final long[] primitives = this.primitives;
     int nonPrimSize = 0;
@@ -903,7 +949,7 @@ public class OptimizedElementArray {
                   iprot.readBinary());
               primitives[offset] = nonPrimSize;
               nonPrimitives[nonPrimSize++] = Converters.getJavaObject(
-                  serializedBytes, index + 1);
+                  serializedBytes);
               setType(index, SnappyType.JAVA_OBJECT.getValue());
             } else {
               nullType = SnappyType.JAVA_OBJECT;
@@ -1042,8 +1088,14 @@ public class OptimizedElementArray {
           break;
         case JAVA_VAL:
           byte[] serializedBytes = cv.getJava_val();
-          fieldVal = serializedBytes != null ? Converters.getJavaObject(
-              serializedBytes, index + 1) : null;
+          try {
+            fieldVal = serializedBytes != null ? Converters.getJavaObject(
+                serializedBytes) : null;
+          } catch (TException te) {
+            throw ThriftExceptionUtil.newSQLException(
+                SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, te,
+                "Java object at column=" + (index + 1));
+          }
           sqlTypeId = SnappyType.JAVA_OBJECT.getValue();
           break;
         default:
@@ -1087,12 +1139,13 @@ public class OptimizedElementArray {
   }
 
   public void clear() {
-    Arrays.fill(this.primitives, 0);
+    // mark all non-primitives as null
+    setNonPrimitivesNull();
+    // free the non-primitives to help GC if possible
     Arrays.fill(this.nonPrimitives, null);
-    this.nonPrimSize = 0;
-    this.headerSize = 0;
+    // skip primitive values since it doesn't hurt
+    // and we need the non-primitive indexes
     this.hash = 0;
-    this.hasLobs = false;
   }
 
   @Override
@@ -1139,9 +1192,11 @@ public class OptimizedElementArray {
     for (int index = 0; index < size; index++, offset++) {
       if (index != 0) sb.append(',');
       // nulls will always have -ve types so no need for further null checks
-      final int rawType = getType(index);
+      final int snappyType = getType(index);
+      sb.append("TYPE=").append(SnappyType.findByValue(Math.abs(snappyType)))
+          .append(" VALUE=");
       // check more common types first
-      switch (rawType) {
+      switch (snappyType) {
         case 1: // BOOLEAN
           sb.append(primitives[offset] != 0);
           break;
@@ -1170,6 +1225,10 @@ public class OptimizedElementArray {
         case 24: // STRUCT
         case 26: // JSON
         case 27: // JAVA_OBJECT
+          Object o = nonPrimitives[(int)primitives[offset]];
+          if (o != null) {
+            sb.append("(type=").append(o.getClass().getName()).append(')');
+          }
           sb.append(nonPrimitives[(int)primitives[offset]]);
           break;
         case 13: // DATE
@@ -1192,10 +1251,10 @@ public class OptimizedElementArray {
           break;
         default:
           // check for null
-          if (rawType < 0) {
+          if (snappyType < 0) {
             sb.append("NULL");
           } else {
-            sb.append("UNKNOWN typeId=").append(rawType);
+            sb.append("UNKNOWN");
           }
           break;
       }

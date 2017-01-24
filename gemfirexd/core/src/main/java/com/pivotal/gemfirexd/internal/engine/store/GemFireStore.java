@@ -2660,10 +2660,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           .currentFabricServiceInstance();
       if (service != null) {
         assert service instanceof FabricServiceImpl;
-        Iterator<NetworkInterface> nwIter = ((FabricServiceImpl)service)
-            .getAllNetworkServers().iterator();
-        while (nwIter.hasNext()) {
-          NetworkInterfaceImpl nwImpl = (NetworkInterfaceImpl)nwIter.next();
+        for (NetworkInterface nw : service.getAllNetworkServers()) {
+          NetworkInterfaceImpl nwImpl = (NetworkInterfaceImpl)nw;
           nwImpl.collectStatisticsSample();
         }
       }

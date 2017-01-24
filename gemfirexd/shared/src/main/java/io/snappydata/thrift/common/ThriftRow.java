@@ -39,13 +39,10 @@
  */
 package io.snappydata.thrift.common;
 
-import java.io.IOException;
 import java.util.BitSet;
 import java.util.List;
 
 import io.snappydata.thrift.ColumnDescriptor;
-import io.snappydata.thrift.SnappyException;
-import io.snappydata.thrift.SnappyExceptionData;
 
 /**
  * Compact storage for a row in SQL. This extends {@link OptimizedElementArray}
@@ -143,7 +140,7 @@ public class ThriftRow extends OptimizedElementArray implements
 
   @Override
   public Object getFieldValue(_Fields field) {
-    throw new IllegalStateException();
+    throw new IllegalStateException("unexpected call");
   }
 
   /**
@@ -153,10 +150,10 @@ public class ThriftRow extends OptimizedElementArray implements
   @Override
   public boolean isSet(_Fields field) {
     if (field == null) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException("null _Fields argument");
     }
 
-    throw new IllegalStateException();
+    throw new IllegalStateException("unexpected call");
   }
 
   public final void setChangedColumns(BitSet changedColumns) {
@@ -239,13 +236,7 @@ public class ThriftRow extends OptimizedElementArray implements
         case 1: // VALUES
           if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
             org.apache.thrift.protocol.TList list = iprot.readListBegin();
-            try {
-              readStandardScheme(list.size, iprot);
-            } catch (java.sql.SQLException sqle) {
-              throw new SnappyException(new SnappyExceptionData(
-                  sqle.getMessage(), sqle.getSQLState(),
-                  sqle.getErrorCode()), null);
-            }
+            readStandardScheme(list.size, iprot);
             iprot.readListEnd();
           } else {
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot,
@@ -277,11 +268,7 @@ public class ThriftRow extends OptimizedElementArray implements
       oprot.writeFieldBegin(VALUES_FIELD_DESC);
       oprot.writeListBegin(new org.apache.thrift.protocol.TList(
           org.apache.thrift.protocol.TType.STRUCT, size));
-      try {
-        writeStandardScheme(cols, oprot);
-      } catch (IOException ioe) {
-        throw new org.apache.thrift.transport.TTransportException(ioe);
-      }
+      writeStandardScheme(cols, oprot);
       oprot.writeListEnd();
       oprot.writeFieldEnd();
     }

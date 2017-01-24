@@ -347,7 +347,7 @@ const byte DRIVER_ODBC                                     = 2;
 struct ServiceMetaDataArgs {
   1: required i64                                          connId
   2: required byte                                         driverType
-  3: optional binary                                       token
+  3: required binary                                       token
   4: optional string                                       schema
   5: optional string                                       table
   6: optional list<string>                                 tableTypes
@@ -391,6 +391,8 @@ struct ConnectionProperties {
   2: required string                                       clientHostName
   3: required string                                       clientID
   4: optional string                                       userName
+  // token is always set in openConnection result but not in
+  // fetchActiveConnections (or other future APIs returning ConnectionProperties)
   5: optional binary                                       token
 }
 
@@ -584,9 +586,10 @@ struct RowSet {
   3: required i64                                          cursorId
   // ID of the associated statement
   4: required i64                                          statementId
-  // three arguments below are used to fix the origin of this result
-  // so client can detect failure cases easily when iterating over results
-  // (token and address are optional and will not be set by server)
+  // Three arguments below are used to determine the origin of this result
+  // so client can detect failure cases easily when iterating over results.
+  // Server will fill in only the connId while token and source need to be
+  // filled on the client itself, if required.
   5: required i64                                          connId
   6: optional binary                                       token
   7: optional HostAddress                                  source
@@ -654,7 +657,7 @@ struct EntityId {
   1: required i64                                          id
   2: required byte                                         type
   3: required i64                                          connId
-  4: optional binary                                       token
+  4: required binary                                       token
 }
 
 
@@ -710,21 +713,18 @@ service SnappyDataService {
       3: map<i32, OutputParameter> outputParams,
       // optional
       4: StatementAttrs attrs,
-      // optional
       5: binary token) throws (1: SnappyException error)
 
   UpdateResult executeUpdate(1: i64 connId,
       2: list<string> sqls,
       // optional
       3: StatementAttrs attrs,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
   RowSet executeQuery(1: i64 connId,
       2: string sql,
       // optional
       3: StatementAttrs attrs,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
   PrepareResult prepareStatement(1: i64 connId,
@@ -733,29 +733,24 @@ service SnappyDataService {
       3: map<i32, OutputParameter> outputParams,
       // optional
       4: StatementAttrs attrs,
-      // optional
       5: binary token) throws (1: SnappyException error)
 
   StatementResult executePrepared(1: i64 stmtId,
       2: Row params,
       // optional
       3: map<i32, OutputParameter> outputParams,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
   UpdateResult executePreparedUpdate(1: i64 stmtId,
       2: Row params,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   RowSet executePreparedQuery(1: i64 stmtId,
       2: Row params,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   UpdateResult executePreparedBatch(1: i64 stmtId,
       2: list<Row> paramsBatch,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   StatementResult prepareAndExecute(1: i64 connId,
@@ -765,37 +760,31 @@ service SnappyDataService {
       4: map<i32, OutputParameter> outputParams,
       // optional
       5: StatementAttrs attrs,
-      // optional
       6: binary token) throws (1: SnappyException error)
 
   void beginTransaction(1: i64 connId,
       2: byte isolationLevel,
       // optional
       3: map<TransactionAttribute, bool> flags,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
   void setTransactionAttributes(1: i64 connId,
       2: map<TransactionAttribute, bool> flags,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   map<TransactionAttribute, bool> getTransactionAttributes(1: i64 connId,
-      // optional
       2: binary token) throws (1: SnappyException error)
 
   void commitTransaction(1: i64 connId,
       2: bool startNewTransaction,
       // optional
       3: map<TransactionAttribute, bool> flags,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
   void rollbackTransaction(1: i64 connId,
       2: bool startNewTransaction,
       // optional
       3: map<TransactionAttribute, bool> flags,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
   // returns true if second phase commitTransaction() is required else
@@ -803,12 +792,10 @@ service SnappyDataService {
   bool prepareCommitTransaction(1: i64 connId,
       // optional
       2: map<TransactionAttribute, bool> flags,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   RowSet getNextResultSet(1: i64 cursorId,
       2: byte otherResultSetBehaviour,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   BlobChunk getBlobChunk(1: i64 connId,
@@ -817,7 +804,6 @@ service SnappyDataService {
       4: i32 size,
       // if true then free the server-side handle to blob when last==true
       5: bool freeLobAtEnd,
-      // optional
       6: binary token) throws (1: SnappyException error)
   ClobChunk getClobChunk(1: i64 connId,
       2: i64 lobId,
@@ -825,21 +811,17 @@ service SnappyDataService {
       4: i32 size,
       // if true then free the server-side handle to blob when last==true
       5: bool freeLobAtEnd,
-      // optional
       6: binary token) throws (1: SnappyException error)
 
   i64 sendBlobChunk(1: BlobChunk chunk,
       2: i64 connId,
-      // optional
       3: binary token) throws (1: SnappyException error)
   i64 sendClobChunk(1: ClobChunk chunk,
       2: i64 connId,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   void freeLob(1: i64 connId,
       2: i64 lobId,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
   // cursor operations
@@ -849,7 +831,6 @@ service SnappyDataService {
       3: bool offsetIsAbsolute,
       4: bool fetchReverse,
       5: i32 fetchSize,
-      // optional
       6: binary token) throws (1: SnappyException error)
 
   void executeCursorUpdate(1: i64 cursorId,
@@ -858,13 +839,11 @@ service SnappyDataService {
       4: list<list<i32>> changedColumnsList,
       // optional
       5: list<i32> changedRowIndexes,
-      // optional
       6: binary token) throws (1: SnappyException error)
 
   // meta-data API
 
   ServiceMetaData getServiceMetaData(1: i64 connId,
-      // optional
       2: binary token) throws (1: SnappyException error)
 
   RowSet getSchemaMetaData(1: ServiceMetaDataCall schemaCall,
@@ -884,25 +863,20 @@ service SnappyDataService {
   // end meta-data API
 
   list<ConnectionProperties> fetchActiveConnections(1: i64 connId,
-      // optional
       2: binary token) throws (1: SnappyException error)
   map<i64, string> fetchActiveStatements(1: i64 connId,
-      // optional
       2: binary token) throws (1: SnappyException error)
 
   void cancelStatement(1: i64 stmtId,
-      // optional
       2: binary token) throws (1: SnappyException error)
 
   void closeResultSet  (1: i64 cursorId,
-      // optional
       2: binary token) throws (1: SnappyException error)
   void closeStatement  (1: i64 stmtId,
-      // optional
       2: binary token) throws (1: SnappyException error)
   oneway void closeConnection (1: i64 connId,
-      // optional
-      2: binary token)
+      2: bool closeSocket,
+      3: binary token)
 
   oneway void bulkClose(
       // IDs of entities to be closed (ResultSet, LOB, Statement or Connection)

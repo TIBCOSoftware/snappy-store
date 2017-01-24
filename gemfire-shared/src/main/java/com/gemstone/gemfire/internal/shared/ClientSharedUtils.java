@@ -102,7 +102,7 @@ public abstract class ClientSharedUtils {
    * DRDA (default).
    */
   public static final boolean USE_THRIFT_AS_DEFAULT = SystemProperties
-      .getClientInstance().getBoolean(USE_THRIFT_AS_DEFAULT_PROP, false);
+      .getClientInstance().getBoolean(USE_THRIFT_AS_DEFAULT_PROP, true);
 
   private static final Object[] staticZeroLenObjectArray = new Object[0];
 
@@ -1659,5 +1659,20 @@ public abstract class ClientSharedUtils {
       index++;
     }
     return true;
+  }
+
+  /**
+   * Allocate new ByteBuffer if capacity of given ByteBuffer has exceeded.
+   */
+  public static ByteBuffer ensureCapacity(ByteBuffer buffer,
+      int newLength, boolean useDirectBuffer) {
+    if (newLength <= buffer.capacity()) {
+      return buffer;
+    }
+    ByteBuffer newBuffer = useDirectBuffer
+        ? ByteBuffer.allocateDirect(newLength) : ByteBuffer.allocate(newLength);
+    buffer.flip();
+    newBuffer.put(buffer);
+    return newBuffer;
   }
 }

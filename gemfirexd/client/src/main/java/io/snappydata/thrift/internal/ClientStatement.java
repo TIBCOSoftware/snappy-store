@@ -101,7 +101,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   }
 
   protected final void checkClosed() throws SQLException {
-    if (this.conn.isOpen) {
+    if (this.service.isOpen) {
       if (this.isOpen) {
         return;
       } else {
@@ -155,7 +155,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   }
 
   protected void setCurrentRowSet(RowSet rs) {
-    if (rs != null && rs.metadata != null && !rs.metadata.isEmpty()) {
+    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() == 0)) {
       this.currentRowSet = rs;
       this.statementId = rs.statementId;
       setCurrentSource(snappydataConstants.BULK_CLOSE_STATEMENT,
@@ -285,7 +285,12 @@ public class ClientStatement extends ClientFetchColumnValue implements
     // get the source before clearing the finalizer
     final HostConnection source = getLobSource(false, "closeStatement");
     clearFinalizer();
-    this.conn.checkClosedConnection();
+
+    // closing an already closed Statement is a no-op as per JDBC spec
+    if (isClosed()) {
+      return;
+    }
+
     try {
       this.service.closeStatement(source, this.statementId, 0);
     } catch (SnappyException se) {
@@ -481,8 +486,12 @@ public class ClientStatement extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public void clearBatch() throws SQLException {
+  public final void clearBatch() throws SQLException {
     checkClosed();
+    clearBatchData();
+  }
+
+  protected void clearBatchData() {
     this.batchSQLs = null;
     reset();
   }
@@ -502,6 +511,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
         this.warnings = ur.getWarnings();
         this.currentGeneratedKeys = ur.getGeneratedKeys();
         List<Integer> updateCounts = ur.getBatchUpdateCounts();
+        clearBatchData();
         if (updateCounts != null) {
           int[] result = new int[updateCounts.size()];
           for (int i = 0; i < result.length; i++) {
@@ -737,8 +747,8 @@ public class ClientStatement extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public boolean isClosed() throws SQLException {
-    return !this.isOpen;
+  public final boolean isClosed() throws SQLException {
+    return !this.isOpen || !this.service.isOpen;
   }
 
   /**

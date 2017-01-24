@@ -109,8 +109,7 @@ public final class ClientFinalizer extends FinalizeObject implements
       return;
     }
 
-    entities
-        .add(new EntityId(id, type, source.connId).setToken(source.token));
+    entities.add(new EntityId(id, type, source.connId, source.token));
     sources.add(source);
     services.add(service);
   }

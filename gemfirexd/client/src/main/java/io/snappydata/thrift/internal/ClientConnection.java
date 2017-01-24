@@ -65,7 +65,6 @@ import org.apache.thrift.transport.TTransport;
 public final class ClientConnection extends ReentrantLock implements Connection {
 
   final ClientService clientService;
-  volatile boolean isOpen;
 
   // records last transaction host
   // all operations fail in transactional mode, so no need to check for the host
@@ -97,7 +96,6 @@ public final class ClientConnection extends ReentrantLock implements Connection 
   ClientConnection(String host, int port, String userName, String password,
       Map<String, String> props) throws SQLException {
     try {
-      this.isOpen = false;
       // TODO: current hardcoded security mechanism to PLAIN
       // implement Diffie-Hellman and additional like SASL (see Hive driver)
       OpenConnectionArgs connArgs = new OpenConnectionArgs()
@@ -110,7 +108,6 @@ public final class ClientConnection extends ReentrantLock implements Connection 
       // don't need to call updateReferentData on finalizer for connection
       // since ClientFinalizer will extract the same from current host
       // information in ClientService for the special case of connection
-      this.isOpen = true;
     } catch (SnappyException se) {
       throw ThriftExceptionUtil.newSQLException(se);
     }
@@ -142,7 +139,7 @@ public final class ClientConnection extends ReentrantLock implements Connection 
   }
 
   final void checkClosedConnection() throws SQLException {
-    if (this.isOpen) {
+    if (this.clientService.isOpen) {
       return;
     }
     else {
@@ -315,8 +312,11 @@ public final class ClientConnection extends ReentrantLock implements Connection 
         finalizer.clearAll();
         this.finalizer = null;
       }
+      // closing an already closed Connection is a no-op as per JDBC spec
+      if (isClosed()) {
+        return;
+      }
       this.clientService.closeConnection(0);
-      this.isOpen = false;
     } catch (SnappyException se) {
       throw ThriftExceptionUtil.newSQLException(se);
     } finally {
@@ -329,7 +329,7 @@ public final class ClientConnection extends ReentrantLock implements Connection 
    */
   @Override
   public final boolean isClosed() throws SQLException {
-    return !this.isOpen;
+    return !this.clientService.isOpen;
   }
 
   /**
@@ -1020,7 +1020,6 @@ public final class ClientConnection extends ReentrantLock implements Connection 
         clientService.getInputProtocol().getTransport().close();
       }
     });
-    this.isOpen = false;
   }
 
   @Override

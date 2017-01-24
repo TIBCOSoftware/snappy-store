@@ -1550,7 +1550,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
     @Override
     public void collectStatisticsSample() {
-      // TODO: SW:
+      this.thriftService.collectStatisticsSample();
     }
 
     @Override
@@ -1615,8 +1615,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
     @Override
     protected void fillServerSessionInfo(SessionsVTI.SessionInfo info) {
-      // TODO: SW:
-      //this.netserver.getSessionInfo(info);
+      this.thriftService.getSessionInfo(info);
     }
   }
 

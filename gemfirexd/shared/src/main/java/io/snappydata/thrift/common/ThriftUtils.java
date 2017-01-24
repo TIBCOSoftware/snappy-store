@@ -86,8 +86,8 @@ public abstract class ThriftUtils {
       if (eqIndex > 0) {
         String key = str.substring(0, eqIndex).trim();
         String value = str.substring(eqIndex + 1).trim();
-        SocketParameters.findSSLParameterByPropertyName(key, true)
-            .setParameter(sslParams, value);
+        SocketParameters.findSSLParameterByPropertyName(key).setParameter(
+            sslParams, value);
       } else {
         throw new IllegalArgumentException("Missing equality: expected "
             + "comma-separated <property>=<value> pairs");
@@ -102,7 +102,7 @@ public abstract class ThriftUtils {
   public static void getSSLParameters(SocketParameters socketParams,
       String sslProperties) throws SnappyException {
     if (sslProperties != null && sslProperties.length() > 0) {
-      socketParams.setHasSSLParams(true);
+      socketParams.setHasSSLParams();
       SharedUtils.splitCSV(sslProperties, parseSSLParams, socketParams, null);
     }
   }

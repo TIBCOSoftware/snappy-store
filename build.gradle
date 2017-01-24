@@ -530,6 +530,7 @@ subprojects {
     if (single == null || single.length() == 0) {
       include '**/*DUnitTest.class'
       include '**/*DUnit.class'
+      exclude '**/NCJ*DUnit.class'
       exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
     } else {
       include single

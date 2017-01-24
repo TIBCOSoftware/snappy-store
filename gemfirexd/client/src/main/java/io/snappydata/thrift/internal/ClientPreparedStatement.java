@@ -40,7 +40,6 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -157,7 +156,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
   @Override
   protected final void setCurrentRowSet(RowSet rs) {
-    if (rs != null && rs.metadata != null && !rs.metadata.isEmpty()) {
+    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() == 0)) {
       final long stmtId = rs.getStatementId();
       if (stmtId != snappydataConstants.INVALID_ID) {
         this.statementId = stmtId;
@@ -271,6 +270,7 @@ public class ClientPreparedStatement extends ClientStatement implements
           this.currentGeneratedKeys = ur.getGeneratedKeys();
         }
         List<Integer> updateCounts = ur.getBatchUpdateCounts();
+        clearBatchData();
         if (updateCounts != null) {
           int[] result = new int[updateCounts.size()];
           for (int i = 0; i < result.length; i++) {
@@ -529,6 +529,14 @@ public class ClientPreparedStatement extends ClientStatement implements
     }
   }
 
+  protected final void clearBatchData() {
+    final ArrayList<Row> batch = this.paramsBatch;
+    if (batch != null && !batch.isEmpty()) {
+      batch.clear();
+    }
+    super.clearBatchData();
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -565,9 +573,7 @@ public class ClientPreparedStatement extends ClientStatement implements
         this.paramsBatch = new ArrayList<>();
       }
       this.paramsBatch.add(this.paramsList);
-      // even though batch cannot have output parameters, still the below check
-      // has been added if there is a user code bug and for possible future use
-      this.paramsList = new Row(this.parameterMetaData, true);
+      this.paramsList = new Row(this.paramsList, false);
     }
   }
 
@@ -668,8 +674,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // ignore sqlType and typeName
-    this.paramsList.setNull(parameterIndex - 1);
+    // ignore typeName
+    this.paramsList.setNull(parameterIndex - 1,
+        Converters.getThriftSQLType(sqlType).getValue());
   }
 
   /**
