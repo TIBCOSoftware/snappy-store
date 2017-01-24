@@ -1328,7 +1328,16 @@ public abstract class EmbedPreparedStatement
 					// Gemstone changes END
 					gcDuringGetMetaData = execp.getActivationClass().getName();
 				}
-				if (rMetaData == null)
+				Activation a = null;
+				if (this.getActivation() != null) {
+					if (this.getActivation() instanceof GenericActivationHolder) {
+						a = ((GenericActivationHolder)this.getActivation()).getActivation();
+					} else if (this.getActivation() instanceof Activation) {
+						a = this.getActivation();
+					}
+				}
+
+				if (rMetaData == null && !(a instanceof SnappyActivation || a instanceof PrepStatementSnappyActivation))
 				{
 					Activation act = null;
 					if (this.getActivation() != null) {
