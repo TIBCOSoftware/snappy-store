@@ -138,7 +138,7 @@ final class ControlConnection {
   }
 
   static ControlConnection getOrCreateControlConnection(HostAddress hostAddr,
-      ClientService service) throws SnappyException {
+      ClientService service, Throwable failure) throws SnappyException {
     // loop through all ControlConnections since size of this global list is
     // expected to be in single digit (total number of distributed systems)
     synchronized (allControlConnections) {
@@ -165,7 +165,7 @@ final class ControlConnection {
       }
       // if we reached here, then need to create a new ControlConnection
       ControlConnection controlService = new ControlConnection(service);
-      controlService.getPreferredServer(null, null, true);
+      controlService.getPreferredServer(null, null, true, failure);
       allControlConnections.add(controlService);
       return controlService;
     }
@@ -196,10 +196,11 @@ final class ControlConnection {
   }
 
   synchronized HostAddress getPreferredServer(Set<HostAddress> failedServers,
-      Set<String> serverGroups, boolean forFailover) throws SnappyException {
+      Set<String> serverGroups, boolean forFailover, Throwable failure)
+      throws SnappyException {
 
     if (controlLocator == null) {
-      failedServers = failoverToAvailableHost(failedServers, null);
+      failedServers = failoverToAvailableHost(failedServers, failure);
       forFailover = true;
     }
 
@@ -239,8 +240,7 @@ final class ControlConnection {
                 "getAllServersWithPreferredServer_E", null, 0, ns, false,
                 null);
           }
-        }
-        else {
+        } else {
           preferredServer = getLocatorPreferredServer(failedServers,
               serverGroups);
         }
@@ -250,7 +250,7 @@ final class ControlConnection {
               "Got preferred server " + preferredServer
                   + " using control connection to " + this.controlHost
                   + (preferredServer.getPort() <= 0 ? "" : " (trying random "
-                      + "server since no preferred server received)"));
+                  + "server since no preferred server received)"));
         }
         if (preferredServer.getPort() <= 0) {
           // For this case we don't have a locator or locator unable to
@@ -261,7 +261,7 @@ final class ControlConnection {
               this.controlHostSet.size(), failedServers);
           this.controlHostSet.forEach(search);
           if ((preferredServer = search.getRandomServer()) == null) {
-            throw failoverExhausted(failedServers, null);
+            throw failoverExhausted(failedServers, failure);
           }
         }
         if (SanityManager.TraceClientHA) {
@@ -283,8 +283,7 @@ final class ControlConnection {
               .getExceptionData().getSqlState(), se.getExceptionData()
               .getSeverity(), se)).isNone()) {
             throw se;
-          }
-          else if (status == NetConnection.FailoverStatus.RETRY) {
+          } else if (status == NetConnection.FailoverStatus.RETRY) {
             forFailover = true;
             continue;
           }
@@ -298,6 +297,9 @@ final class ControlConnection {
         failedServers.add(controlHost);
         controlLocator.getOutputProtocol().getTransport().close();
         failedServers = failoverToAvailableHost(failedServers, te);
+        if (failure == null) {
+          failure = te;
+        }
       } catch (Throwable t) {
         throw unexpectedError(t, controlHost);
       }
@@ -306,7 +308,7 @@ final class ControlConnection {
   }
 
   private synchronized Set<HostAddress> failoverToAvailableHost(
-      Set<HostAddress> failedServers, Exception failure) throws SnappyException {
+      Set<HostAddress> failedServers, Throwable failure) throws SnappyException {
 
     final SystemProperties sysProps = SystemProperties.getClientInstance();
     NEXT_SERVER: for (HostAddress controlAddr : this.controlHosts) {

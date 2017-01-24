@@ -220,11 +220,11 @@ public final class ClientService extends ReentrantLock {
 
     connArgs.setProperties(props);
 
-    openConnection(hostAddr, null);
+    openConnection(hostAddr, null, null);
   }
 
-  void openConnection(HostAddress hostAddr, Set<HostAddress> failedServers)
-      throws SnappyException {
+  void openConnection(HostAddress hostAddr, Set<HostAddress> failedServers,
+      Throwable failure) throws SnappyException {
     // open the connection
     if (SanityManager.TraceClientStatement | SanityManager.TraceClientConn) {
       final long ns = System.nanoTime();
@@ -238,10 +238,10 @@ public final class ClientService extends ReentrantLock {
         this.currentHostAddress = hostAddr;
         if (this.loadBalance) {
           ControlConnection controlService = ControlConnection
-              .getOrCreateControlConnection(this.connHosts.get(0), this);
+              .getOrCreateControlConnection(connHosts.get(0), this, failure);
           // at this point query the control service for preferred server
-          this.currentHostAddress = hostAddr = controlService
-              .getPreferredServer(failedServers, this.serverGroups, false);
+          this.currentHostAddress = hostAddr = controlService.getPreferredServer(
+              failedServers, this.serverGroups, false, failure);
         }
 
         final SystemProperties sysProps = SystemProperties.getClientInstance();
@@ -381,7 +381,7 @@ public final class ClientService extends ReentrantLock {
     return failedServers;
   }
 
-  protected Set<HostAddress> handleException(Throwable t,
+  protected Set<HostAddress> handleException(final Throwable t,
       Set<HostAddress> failedServers, boolean tryFailover,
       boolean createNewConnection, String op) throws SnappyException {
     final HostConnection source = this.currentHostConnection;
@@ -442,7 +442,7 @@ public final class ClientService extends ReentrantLock {
     // need to do failover to new server, so get the next one
     failedServers = updateFailedServersForCurrent(failedServers);
     if (createNewConnection) {
-      openConnection(source.hostAddr, failedServers);
+      openConnection(source.hostAddr, failedServers, t);
     }
     return failedServers;
   }
@@ -487,7 +487,7 @@ public final class ClientService extends ReentrantLock {
     if (createNewConnection && this.loadBalance) {
       try {
         failedServers = updateFailedServersForCurrent(failedServers);
-        openConnection(source.hostAddr, failedServers);
+        openConnection(source.hostAddr, failedServers, cause);
       } catch (RuntimeException | SnappyException ignored) {
         // deliberately ignored at this point
       }

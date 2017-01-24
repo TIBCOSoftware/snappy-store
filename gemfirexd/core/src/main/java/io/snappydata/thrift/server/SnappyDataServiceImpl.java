@@ -619,12 +619,12 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
    * </p>
    */
   private long setColumnValue(ResultSet rs, SnappyType colType,
-      int columnIndex, ConnectionHolder connHolder, StatementAttrs attrs,
+      int columnPosition, ConnectionHolder connHolder, StatementAttrs attrs,
       Row result) throws SQLException {
-    final int index = columnIndex - 1;
+    final int index = columnPosition - 1;
     switch (colType) {
       case BOOLEAN:
-        boolean boolValue = rs.getBoolean(columnIndex);
+        boolean boolValue = rs.getBoolean(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -633,7 +633,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           return 1;
         }
       case TINYINT:
-        byte byteValue = rs.getByte(columnIndex);
+        byte byteValue = rs.getByte(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -642,7 +642,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           return 1;
         }
       case SMALLINT:
-        short shortValue = rs.getShort(columnIndex);
+        short shortValue = rs.getShort(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -651,7 +651,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           return 2;
         }
       case INTEGER:
-        int intValue = rs.getInt(columnIndex);
+        int intValue = rs.getInt(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -660,7 +660,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           return 4;
         }
       case BIGINT:
-        long longValue = rs.getLong(columnIndex);
+        long longValue = rs.getLong(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -669,7 +669,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           return 8;
         }
       case REAL:
-        float fltValue = rs.getFloat(columnIndex);
+        float fltValue = rs.getFloat(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -679,7 +679,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
       case DOUBLE:
       case FLOAT:
-        double dblValue = rs.getDouble(columnIndex);
+        double dblValue = rs.getDouble(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -690,7 +690,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case CHAR:
       case VARCHAR:
       case LONGVARCHAR:
-        String strValue = rs.getString(columnIndex);
+        String strValue = rs.getString(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -700,7 +700,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               strValue.length())) << 1L;
         }
       case BLOB:
-        Blob blob = rs.getBlob(columnIndex);
+        Blob blob = rs.getBlob(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -713,7 +713,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case CLOB:
       case JSON:
       case SQLXML:
-        Clob clob = rs.getClob(columnIndex);
+        Clob clob = rs.getClob(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -724,7 +724,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               chunk.chunk.length() + 12 /* for remaining fields */;
         }
       case DECIMAL:
-        BigDecimal bd = rs.getBigDecimal(columnIndex);
+        BigDecimal bd = rs.getBigDecimal(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -741,7 +741,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           }
         }
       case DATE:
-        Date dtVal = rs.getDate(columnIndex);
+        Date dtVal = rs.getDate(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -750,7 +750,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           return 8;
         }
       case TIME:
-        Time timeVal = rs.getTime(columnIndex);
+        Time timeVal = rs.getTime(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -759,7 +759,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           return 8;
         }
       case TIMESTAMP:
-        java.sql.Timestamp tsVal = rs.getTimestamp(columnIndex);
+        java.sql.Timestamp tsVal = rs.getTimestamp(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -770,7 +770,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case BINARY:
       case VARBINARY:
       case LONGVARBINARY:
-        byte[] byteArray = rs.getBytes(columnIndex);
+        byte[] byteArray = rs.getBytes(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
@@ -782,12 +782,13 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         result.setNull(index);
         return 1;
       case JAVA_OBJECT:
-        Object o = rs.getObject(columnIndex);
+        Object o = rs.getObject(columnPosition);
         if (rs.wasNull()) {
           result.setNull(index);
           return 1;
         } else {
-          result.setObject(index, o, SnappyType.JAVA_OBJECT);
+          result.setObject(index, new Converters.JavaObjectWrapper(
+              o, columnPosition), SnappyType.JAVA_OBJECT);
         }
         // hard-code some fixed size
         return 128;
@@ -810,12 +811,12 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
    * </p>
    */
   private ColumnValue getColumnValue(CallableStatement cstmt,
-      int paramIndex, int paramType, ConnectionHolder connHolder,
+      int paramPosition, int paramType, ConnectionHolder connHolder,
       StatementAttrs attrs) throws SQLException {
     ColumnValue cv = new ColumnValue();
     switch (paramType) {
       case Types.BOOLEAN:
-        boolean boolValue = cstmt.getBoolean(paramIndex);
+        boolean boolValue = cstmt.getBoolean(paramPosition);
         if (boolValue || !cstmt.wasNull()) {
           cv.setBool_val(boolValue);
           break;
@@ -824,7 +825,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.TINYINT:
-        byte byteValue = cstmt.getByte(paramIndex);
+        byte byteValue = cstmt.getByte(paramPosition);
         if (byteValue != 0 || !cstmt.wasNull()) {
           cv.setByte_val(byteValue);
           break;
@@ -833,7 +834,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.SMALLINT:
-        short shortValue = cstmt.getShort(paramIndex);
+        short shortValue = cstmt.getShort(paramPosition);
         if (shortValue != 0 || !cstmt.wasNull()) {
           cv.setI16_val(shortValue);
           break;
@@ -842,7 +843,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.INTEGER:
-        int intValue = cstmt.getInt(paramIndex);
+        int intValue = cstmt.getInt(paramPosition);
         if (intValue != 0 || !cstmt.wasNull()) {
           cv.setI32_val(intValue);
           break;
@@ -851,7 +852,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.BIGINT:
-        long longValue = cstmt.getLong(paramIndex);
+        long longValue = cstmt.getLong(paramPosition);
         if (longValue != 0 || !cstmt.wasNull()) {
           cv.setI64_val(longValue);
           break;
@@ -860,7 +861,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.REAL:
-        float fltValue = cstmt.getFloat(paramIndex);
+        float fltValue = cstmt.getFloat(paramPosition);
         if (fltValue != 0.0f || !cstmt.wasNull()) {
           cv.setFloat_val(Float.floatToIntBits(fltValue));
           break;
@@ -870,7 +871,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
       case Types.DOUBLE:
       case Types.FLOAT:
-        double dblValue = cstmt.getDouble(paramIndex);
+        double dblValue = cstmt.getDouble(paramPosition);
         if (dblValue != 0.0 || !cstmt.wasNull()) {
           cv.setDouble_val(dblValue);
           break;
@@ -884,7 +885,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case Types.NCHAR:
       case Types.NVARCHAR:
       case Types.LONGNVARCHAR:
-        String strValue = cstmt.getString(paramIndex);
+        String strValue = cstmt.getString(paramPosition);
         if (strValue != null) {
           cv.setString_val(strValue);
           break;
@@ -893,7 +894,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.BLOB:
-        Blob blob = cstmt.getBlob(paramIndex);
+        Blob blob = cstmt.getBlob(paramPosition);
         if (blob != null) {
           cv.setBlob_val(handleBlob(blob, connHolder, attrs));
           break;
@@ -904,7 +905,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case Types.CLOB:
       case JDBC40Translation.JSON:
       case Types.SQLXML:
-        Clob clob = cstmt.getClob(paramIndex);
+        Clob clob = cstmt.getClob(paramPosition);
         if (clob != null) {
           cv.setClob_val(handleClob(clob, connHolder, attrs));
           break;
@@ -914,7 +915,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
       case Types.DECIMAL:
       case Types.NUMERIC:
-        BigDecimal bd = cstmt.getBigDecimal(paramIndex);
+        BigDecimal bd = cstmt.getBigDecimal(paramPosition);
         if (bd != null) {
           if (connHolder.useStringForDecimal()) {
             cv.setString_val(bd.toPlainString());
@@ -927,7 +928,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.DATE:
-        Date dtVal = cstmt.getDate(paramIndex);
+        Date dtVal = cstmt.getDate(paramPosition);
         if (dtVal != null) {
           cv.setDate_val(Converters.getDateTime(dtVal));
           break;
@@ -936,7 +937,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.TIME:
-        Time timeVal = cstmt.getTime(paramIndex);
+        Time timeVal = cstmt.getTime(paramPosition);
         if (timeVal != null) {
           cv.setTime_val(Converters.getDateTime(timeVal));
           break;
@@ -945,7 +946,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.TIMESTAMP:
-        java.sql.Timestamp tsVal = cstmt.getTimestamp(paramIndex);
+        java.sql.Timestamp tsVal = cstmt.getTimestamp(paramPosition);
         if (tsVal != null) {
           cv.setTimestamp_val(Converters.getTimestamp(tsVal));
           break;
@@ -956,7 +957,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       case Types.BINARY:
       case Types.VARBINARY:
       case Types.LONGVARBINARY:
-        byte[] byteArray = cstmt.getBytes(paramIndex);
+        byte[] byteArray = cstmt.getBytes(paramPosition);
         if (byteArray != null) {
           cv.setBinary_val(byteArray);
           break;
@@ -965,21 +966,15 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           break;
         }
       case Types.NULL:
-        cstmt.getObject(paramIndex);
+        cstmt.getObject(paramPosition);
         cv.setNull_val(cstmt.wasNull());
         break;
       case Types.JAVA_OBJECT:
-        Object o = cstmt.getObject(paramIndex);
+        Object o = cstmt.getObject(paramPosition);
         if (o == null) {
           cv.setNull_val(true);
         } else {
-          try {
-            cv.setJava_val(Converters.getJavaObjectAsBytes(o));
-          } catch (TException te) {
-            throw Util.generateCsSQLException(
-                SQLState.LANG_TYPE_NOT_SERIALIZABLE, paramType,
-                "OutputParameter#" + paramType);
-          }
+          cv.setJava_val(Converters.getJavaObjectAsBytes(o, paramPosition));
         }
         break;
       case Types.ARRAY:
@@ -1800,11 +1795,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       int pmType, mode, nullable, scale;
       SnappyType type;
       String typeName, className;
-      for (int paramIndex = 1; paramIndex <= numParams; paramIndex++) {
-        pmType = pmd.getParameterType(paramIndex);
+      for (int paramPosition = 1; paramPosition <= numParams; paramPosition++) {
+        pmType = pmd.getParameterType(paramPosition);
         ColumnDescriptor pmDesc = new ColumnDescriptor();
         type = Converters.getThriftSQLType(pmType);
-        mode = pmd.getParameterMode(paramIndex);
+        mode = pmd.getParameterMode(paramPosition);
         switch (mode) {
           case ParameterMetaData.parameterModeIn:
             pmDesc.setParameterIn(true);
@@ -1820,21 +1815,21 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             pmDesc.setParameterIn(true);
             break;
         }
-        nullable = pmd.isNullable(paramIndex);
+        nullable = pmd.isNullable(paramPosition);
         if (nullable == ParameterMetaData.parameterNullable) {
           pmDesc.setNullable(true);
         } else if (nullable == ParameterMetaData.parameterNoNulls) {
           pmDesc.setNullable(false);
         }
         pmDesc.setType(type);
-        pmDesc.setPrecision((short)pmd.getPrecision(paramIndex));
-        scale = pmd.getScale(paramIndex);
+        pmDesc.setPrecision((short)pmd.getPrecision(paramPosition));
+        scale = pmd.getScale(paramPosition);
         if (scale != 0) {
           pmDesc.setScale((short)scale);
         }
         if (pmType == Types.JAVA_OBJECT) {
-          typeName = pmd.getParameterTypeName(paramIndex);
-          className = pmd.getParameterClassName(paramIndex);
+          typeName = pmd.getParameterTypeName(paramPosition);
+          className = pmd.getParameterClassName(paramPosition);
           if (className != null) {
             pmDesc.setUdtTypeAndClassName(typeName + ':' + className);
           } else {
@@ -1942,13 +1937,13 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           .entrySet()) {
         outParam = param.getValue();
         jdbcType = Converters.getJdbcType(outParam.type);
-        int paramIndex = param.getKey();
+        int paramPosition = param.getKey();
         if (outParam.isSetScale()) {
-          cstmt.registerOutParameter(paramIndex, jdbcType, outParam.scale);
+          cstmt.registerOutParameter(paramPosition, jdbcType, outParam.scale);
         } else if (outParam.isSetTypeName()) {
-          cstmt.registerOutParameter(paramIndex, jdbcType, outParam.typeName);
+          cstmt.registerOutParameter(paramPosition, jdbcType, outParam.typeName);
         } else {
-          cstmt.registerOutParameter(paramIndex, jdbcType);
+          cstmt.registerOutParameter(paramPosition, jdbcType);
         }
       }
     }
@@ -1962,12 +1957,12 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     final HashMap<Integer, ColumnValue> outParams =
         new HashMap<>(outputParams.size());
     int paramMode;
-    for (int paramIndex = 1; paramIndex <= numParams; paramIndex++) {
-      paramMode = pmd.getParameterMode(paramIndex);
+    for (int paramPosition = 1; paramPosition <= numParams; paramPosition++) {
+      paramMode = pmd.getParameterMode(paramPosition);
       if (paramMode == ParameterMetaData.parameterModeInOut ||
           paramMode == ParameterMetaData.parameterModeOut) {
-        outParams.put(paramIndex, getColumnValue(cstmt, paramIndex,
-            pmd.getParameterType(paramIndex), connHolder, attrs));
+        outParams.put(paramPosition, getColumnValue(cstmt, paramPosition,
+            pmd.getParameterType(paramPosition), connHolder, attrs));
       }
     }
     stmtResult.setProcedureOutParams(outParams);
@@ -1977,11 +1972,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ParameterMetaData pmd, EmbedConnection conn) throws SQLException {
     if (params != null) {
       final int numParams = params.size();
-      for (int paramIndex = 1; paramIndex <= numParams; paramIndex++) {
-        final int index = paramIndex - 1;
+      for (int paramPosition = 1; paramPosition <= numParams; paramPosition++) {
+        final int index = paramPosition - 1;
         // skip output-only parameters
         if (pmd != null && pmd.getParameterMode(
-            paramIndex) == ParameterMetaData.parameterModeOut) {
+            paramPosition) == ParameterMetaData.parameterModeOut) {
           continue;
         }
         SnappyType paramType = params.getSQLType(index);
@@ -1989,68 +1984,68 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         switch (paramType) {
           case BOOLEAN:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.BOOLEAN);
+              pstmt.setNull(paramPosition, Types.BOOLEAN);
             } else {
-              pstmt.setBoolean(paramIndex, params.getBoolean(index));
+              pstmt.setBoolean(paramPosition, params.getBoolean(index));
             }
             break;
           case TINYINT:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.TINYINT);
+              pstmt.setNull(paramPosition, Types.TINYINT);
             } else {
-              pstmt.setByte(paramIndex, params.getByte(index));
+              pstmt.setByte(paramPosition, params.getByte(index));
             }
             break;
           case SMALLINT:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.SMALLINT);
+              pstmt.setNull(paramPosition, Types.SMALLINT);
             } else {
-              pstmt.setShort(paramIndex, params.getShort(index));
+              pstmt.setShort(paramPosition, params.getShort(index));
             }
             break;
           case INTEGER:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.INTEGER);
+              pstmt.setNull(paramPosition, Types.INTEGER);
             } else {
-              pstmt.setInt(paramIndex, params.getInt(index));
+              pstmt.setInt(paramPosition, params.getInt(index));
             }
             break;
           case BIGINT:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.BIGINT);
+              pstmt.setNull(paramPosition, Types.BIGINT);
             } else {
-              pstmt.setLong(paramIndex, params.getLong(index));
+              pstmt.setLong(paramPosition, params.getLong(index));
             }
             break;
           case REAL:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.REAL);
+              pstmt.setNull(paramPosition, Types.REAL);
             } else {
-              pstmt.setFloat(paramIndex, params.getFloat(index));
+              pstmt.setFloat(paramPosition, params.getFloat(index));
             }
             break;
           case DOUBLE:
           case FLOAT:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.DOUBLE);
+              pstmt.setNull(paramPosition, Types.DOUBLE);
             } else {
-              pstmt.setDouble(paramIndex, params.getDouble(index));
+              pstmt.setDouble(paramPosition, params.getDouble(index));
             }
             break;
           case CHAR:
           case VARCHAR:
           case LONGVARCHAR:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Converters.getJdbcType(paramType));
+              pstmt.setNull(paramPosition, Converters.getJdbcType(paramType));
             } else {
-              pstmt.setString(paramIndex, (String)params.getObject(index));
+              pstmt.setString(paramPosition, (String)params.getObject(index));
             }
             break;
           case BLOB:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.BLOB);
+              pstmt.setNull(paramPosition, Types.BLOB);
             } else if ((paramVal = params.getObject(index)) instanceof byte[]) {
-              pstmt.setBytes(paramIndex, (byte[])paramVal);
+              pstmt.setBytes(paramPosition, (byte[])paramVal);
             } else {
               BlobChunk chunk = (BlobChunk)paramVal;
               Blob blob;
@@ -2066,7 +2061,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                 }
               } else if (chunk.last) {
                 // set as a normal byte[]
-                pstmt.setBytes(paramIndex, chunk.getChunk());
+                pstmt.setBytes(paramPosition, chunk.getChunk());
                 break;
               } else {
                 blob = conn.createBlob();
@@ -2076,16 +2071,16 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                 offset += chunk.offset;
               }
               blob.setBytes(offset, chunk.getChunk());
-              pstmt.setBlob(paramIndex, blob);
+              pstmt.setBlob(paramPosition, blob);
             }
             break;
           case CLOB:
           case JSON:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, paramType == SnappyType.CLOB
+              pstmt.setNull(paramPosition, paramType == SnappyType.CLOB
                   ? Types.CLOB : JDBC40Translation.JSON);
             } else if ((paramVal = params.getObject(index)) instanceof String) {
-              pstmt.setString(paramIndex, (String)paramVal);
+              pstmt.setString(paramPosition, (String)paramVal);
             } else {
               Clob clob;
               ClobChunk chunk = (ClobChunk)paramVal;
@@ -2101,7 +2096,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                 }
               } else if (chunk.last) {
                 // set as a normal String
-                pstmt.setString(paramIndex, chunk.getChunk());
+                pstmt.setString(paramPosition, chunk.getChunk());
                 break;
               } else {
                 clob = conn.createClob();
@@ -2111,55 +2106,56 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                 offset += chunk.offset;
               }
               clob.setString(offset, chunk.getChunk());
-              pstmt.setClob(paramIndex, clob);
+              pstmt.setClob(paramPosition, clob);
             }
             break;
           case DECIMAL:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.DECIMAL);
+              pstmt.setNull(paramPosition, Types.DECIMAL);
             } else {
-              pstmt.setBigDecimal(paramIndex,
+              pstmt.setBigDecimal(paramPosition,
                   (BigDecimal)params.getObject(index));
             }
             break;
           case DATE:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.DATE);
+              pstmt.setNull(paramPosition, Types.DATE);
             } else {
-              pstmt.setDate(paramIndex, params.getDate(index));
+              pstmt.setDate(paramPosition, params.getDate(index));
             }
             break;
           case TIME:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.TIME);
+              pstmt.setNull(paramPosition, Types.TIME);
             } else {
-              pstmt.setTime(paramIndex, params.getTime(index));
+              pstmt.setTime(paramPosition, params.getTime(index));
             }
             break;
           case TIMESTAMP:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Types.TIMESTAMP);
+              pstmt.setNull(paramPosition, Types.TIMESTAMP);
             } else {
-              pstmt.setTimestamp(paramIndex, params.getTimestamp(index));
+              pstmt.setTimestamp(paramPosition, params.getTimestamp(index));
             }
             break;
           case BINARY:
           case VARBINARY:
           case LONGVARBINARY:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Converters.getJdbcType(paramType));
+              pstmt.setNull(paramPosition, Converters.getJdbcType(paramType));
             } else {
-              pstmt.setBytes(paramIndex, (byte[])params.getObject(index));
+              pstmt.setBytes(paramPosition, (byte[])params.getObject(index));
             }
             break;
           case NULLTYPE:
-            pstmt.setNull(paramIndex, Types.NULL);
+            pstmt.setNull(paramPosition, Types.NULL);
             break;
           case JAVA_OBJECT:
             if (params.isNull(index)) {
-              pstmt.setNull(paramIndex, Converters.getJdbcType(paramType));
+              pstmt.setNull(paramPosition, Converters.getJdbcType(paramType));
             } else {
-              pstmt.setObject(paramIndex, params.getObject(index));
+              pstmt.setObject(paramPosition, ((Converters.JavaObjectWrapper)
+                  params.getObject(index)).getDeserialized(paramPosition));
             }
             break;
           default:

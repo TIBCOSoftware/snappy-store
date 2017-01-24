@@ -52,7 +52,6 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
-import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.ColumnDescriptor;
@@ -700,8 +699,8 @@ public class OptimizedElementArray {
           break;
         case 27: // JAVA_OBJECT
           oprot.writeFieldBegin(ColumnValue.JAVA_VAL_FIELD_DESC);
-          byte[] objBytes = Converters.getJavaObjectAsBytes(
-              nonPrimitives[(int)primitives[offset]]);
+          byte[] objBytes = ((Converters.JavaObjectWrapper)nonPrimitives[
+              (int)primitives[offset]]).getSerialized();
           oprot.writeBinary(ByteBuffer.wrap(objBytes));
           break;
         default:
@@ -948,7 +947,7 @@ public class OptimizedElementArray {
               byte[] serializedBytes = TBaseHelper.byteBufferToByteArray(
                   iprot.readBinary());
               primitives[offset] = nonPrimSize;
-              nonPrimitives[nonPrimSize++] = Converters.getJavaObject(
+              nonPrimitives[nonPrimSize++] = new Converters.JavaObjectWrapper(
                   serializedBytes);
               setType(index, SnappyType.JAVA_OBJECT.getValue());
             } else {
@@ -1088,14 +1087,8 @@ public class OptimizedElementArray {
           break;
         case JAVA_VAL:
           byte[] serializedBytes = cv.getJava_val();
-          try {
-            fieldVal = serializedBytes != null ? Converters.getJavaObject(
-                serializedBytes) : null;
-          } catch (TException te) {
-            throw ThriftExceptionUtil.newSQLException(
-                SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, te,
-                "Java object at column=" + (index + 1));
-          }
+          fieldVal = serializedBytes != null ? new Converters.JavaObjectWrapper(
+              serializedBytes) : null;
           sqlTypeId = SnappyType.JAVA_OBJECT.getValue();
           break;
         default:

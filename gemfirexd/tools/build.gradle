@@ -89,7 +89,6 @@ dependencies {
   }
 
   testRuntime project(subprojectBase + 'gemfirexd-core')
-  testRuntime project(subprojectBase + 'gemfirexd-tests')
   testRuntime "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 }
 
