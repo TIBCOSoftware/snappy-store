@@ -427,8 +427,21 @@ public final class RegionEntryUtils {
   public static ExecRow getRowWithoutFaultIn(
       final GemFireContainer baseContainer, final LocalRegion region,
       final RegionEntry entry, final ExtraTableInfo tableInfo) {
-    final Object value = getValueWithoutFaultInOrOffHeapEntry(
-        getDataRegion(region, entry), (RowLocation)entry);
+    final Object value;
+    LocalRegion lr = getDataRegion(region, entry);
+    if (baseContainer != null && !baseContainer.storesCachedBatches()) {
+      value = getValueWithoutFaultInOrOffHeapEntry(
+          lr, (RowLocation)entry);
+    }
+    else {
+      Object tmp = ((RowLocation)entry).getValueOrOffHeapEntry(lr);
+      if (!isValueToken(tmp)) {
+        value = tmp;
+      }
+      else {
+        value = null;
+      }
+    }
     if (value != null) {
       return baseContainer.newExecRow(value, tableInfo, false);
     }

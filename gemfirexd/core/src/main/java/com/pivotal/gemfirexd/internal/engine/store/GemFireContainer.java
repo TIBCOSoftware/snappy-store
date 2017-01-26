@@ -305,6 +305,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       .getServerInstance().getBoolean("cacheGlobalIndexINMap", false);
 
   private CacheMap globalIndexMap;
+  private final boolean isUsedForCachedBatch;
+
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -360,6 +362,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     setTraceLock();
     this.locking = getContainerLockingPolicy(properties, this.schemaName,
         this.tableName, this.qualifiedName, this.baseId, this);
+
+    if (this.schemaName != null) {
+      this.isUsedForCachedBatch = this.schemaName.contains("SNAPPYSYS_INTERNAL");
+    }
+    else {
+      this.isUsedForCachedBatch = false;
+    }
 
     String propVal = properties.getProperty(MemIndex.PROPERTY_DDINDEX);
     if (propVal != null) {
@@ -2251,6 +2260,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         true, false, false, r);
     
   }
+
+  public boolean storesCachedBatches() {
+    return isUsedForCachedBatch;
+  }
+
   /**
    * Returns a full scan on the table that will fetch entries from all nodes
    * used by global index scan for index consistency checks. The difference from
