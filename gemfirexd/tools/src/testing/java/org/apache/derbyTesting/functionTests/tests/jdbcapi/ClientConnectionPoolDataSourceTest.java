@@ -29,9 +29,9 @@ import java.sql.Statement;
 
 import javax.sql.PooledConnection;
 
+import io.snappydata.jdbc.ClientConnectionPoolDataSource;
 import junit.framework.Test;
 
-import com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource;
 import org.apache.derbyTesting.junit.BaseJDBCTestCase;
 import org.apache.derbyTesting.junit.J2EEDataSource;
 import org.apache.derbyTesting.junit.JDBC;

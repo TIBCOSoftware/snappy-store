@@ -539,7 +539,7 @@ class xaHelper implements xaAbstractHelper
                                 }
                             }
                             return (XADataSource) (Class.forName(
-                                    "com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource"
+                                    "io.snappydata.jdbc.ClientXADataSource"
                                     ).newInstance());
                         }
 			else {
@@ -548,7 +548,7 @@ class xaHelper implements xaAbstractHelper
                                 // try instantiating EmbeddedXADataSource40
                                 try {
                                     return (XADataSource)(Class.forName(
-                                        "io.snappydata.jdbc.EmbeddedXADataSource").newInstance());
+                                        "com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource").newInstance());
                                 }
                                 catch (ClassNotFoundException e) {
                                     //probably it was not compiled with jdbc4.0

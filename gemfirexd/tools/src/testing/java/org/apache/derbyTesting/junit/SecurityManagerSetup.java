@@ -311,7 +311,7 @@ public final class SecurityManagerSetup extends TestSetup {
 		// JSR169, attempts will be made to load classes not supported in
 		// that environment, such as javax.naming.Referenceable. See DERBY-2269.
 		if (!JDBC.vmSupportsJSR169()) {
-		    URL client = getURL("com.pivotal.gemfirexd.internal.jdbc.ClientDataSource");
+		    URL client = getURL("io.snappydata.jdbc.ClientDataSource");
 		    if(client != null)
 		        classPathSet.setProperty("derbyTesting.clientjar", stripJar(client));
 		}

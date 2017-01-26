@@ -365,6 +365,7 @@ public abstract class EmbedPreparedStatement
 	  return results;
 	}
 
+        @Override
         public int getStatementType() {
           return ((GenericPreparedStatement)this.preparedStatement).getStatementType();
         }

@@ -68,9 +68,9 @@ public class SerializeDataSources {
 
     /** List of known data sources in the client driver. */
     private static final String[] KNOWN_CLIENT_DATA_SOURCES ={
-            "com.pivotal.gemfirexd.internal.jdbc.ClientDataSource",
-            "com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource",
-            "com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource"
+            "io.snappydata.jdbc.ClientDataSource",
+            "io.snappydata.jdbc.ClientConnectionPoolDataSource",
+            "io.snappydata.jdbc.ClientXADataSource"
         };
     
     /**

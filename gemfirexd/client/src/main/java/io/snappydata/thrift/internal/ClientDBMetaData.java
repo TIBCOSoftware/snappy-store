@@ -61,7 +61,7 @@ public class ClientDBMetaData implements DatabaseMetaData {
 
   ClientDBMetaData(ClientConnection conn) {
     this.conn = conn;
-    this.service = conn.clientService;
+    this.service = conn.getClientService();
     this.metaAttrs = new StatementAttrs();
   }
 

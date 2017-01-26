@@ -47,8 +47,9 @@ import java.util.Properties;
 
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
-import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineStatement;
+import com.pivotal.gemfirexd.internal.jdbc.EmbedXAConnection;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.OpenConnectionArgs;
 import io.snappydata.thrift.SecurityMechanism;
@@ -60,7 +61,8 @@ import io.snappydata.thrift.snappydataConstants;
  * Holder for a connection on the server side for each open client connection.
  */
 final class ConnectionHolder {
-  private final EmbedConnection conn;
+  private final EngineConnection conn;
+  private final EmbedXAConnection xaConn;
   private final long connId;
   private final Properties props;
   private final ByteBuffer token;
@@ -69,16 +71,17 @@ final class ConnectionHolder {
   private final String clientHostId;
   private final String userName;
   private final boolean useStringForDecimal;
-  private EmbedStatement reusableStatement;
+  private EngineStatement reusableStatement;
   private volatile StatementHolder activeStatement;
   private final ArrayList<StatementHolder> registeredStatements;
   private final NonReentrantLock sync;
   private final long startTime;
 
-  ConnectionHolder(final EmbedConnection conn, final OpenConnectionArgs args,
-      final long connId, final Properties props,
+  ConnectionHolder(final EngineConnection conn, final EmbedXAConnection xaConn,
+      final OpenConnectionArgs args, final long connId, final Properties props,
       final SecureRandom rnd) throws SQLException {
     this.conn = conn;
+    this.xaConn = xaConn;
     this.connId = connId;
     this.props = props;
 
@@ -116,7 +119,7 @@ final class ConnectionHolder {
     this.userName = args.getUserName();
     this.useStringForDecimal = args.isSetUseStringForDecimal()
         && args.useStringForDecimal;
-    this.reusableStatement = (EmbedStatement)conn.createStatement();
+    this.reusableStatement = (EngineStatement)conn.createStatement();
     this.registeredStatements = new ArrayList<>(4);
     this.sync = new NonReentrantLock(true);
     this.startTime = System.currentTimeMillis();
@@ -328,7 +331,7 @@ final class ConnectionHolder {
     }
   }
 
-  EmbedStatement createNewStatement(StatementAttrs attrs) throws SQLException {
+  EngineStatement createNewStatement(StatementAttrs attrs) throws SQLException {
     // Get the result type
     int resultSetType = SnappyDataServiceImpl.getResultType(attrs);
     // Get the resultSetConcurrency
@@ -337,7 +340,7 @@ final class ConnectionHolder {
     int resultSetHoldability = SnappyDataServiceImpl.getResultSetHoldability(attrs);
     this.sync.lock();
     try {
-      final EmbedStatement stmt = this.reusableStatement;
+      final EngineStatement stmt = this.reusableStatement;
       if (stmt != null) {
         stmt.reset(resultSetType, resultSetConcurrency, resultSetHoldability);
         this.reusableStatement = null;
@@ -346,12 +349,16 @@ final class ConnectionHolder {
     } finally {
       this.sync.unlock();
     }
-    return (EmbedStatement)this.conn.createStatement(resultSetType,
+    return (EngineStatement)this.conn.createStatement(resultSetType,
         resultSetConcurrency, resultSetHoldability);
   }
 
-  final EmbedConnection getConnection() {
+  final EngineConnection getConnection() {
     return this.conn;
+  }
+
+  final EmbedXAConnection getXAConnection() {
+    return this.xaConn;
   }
 
   final long getConnectionId() {
@@ -401,7 +408,7 @@ final class ConnectionHolder {
     return this.startTime;
   }
 
-  void setStatementForReuse(EmbedStatement stmt) throws SQLException {
+  void setStatementForReuse(EngineStatement stmt) throws SQLException {
     this.sync.lock();
     try {
       setStatementForReuseNoLock(stmt);
@@ -410,7 +417,7 @@ final class ConnectionHolder {
     }
   }
 
-  private void setStatementForReuseNoLock(final EmbedStatement stmt)
+  private void setStatementForReuseNoLock(final EngineStatement stmt)
       throws SQLException {
     if (this.reusableStatement == null) {
       stmt.resetForReuse();
@@ -488,14 +495,14 @@ final class ConnectionHolder {
     this.sync.lock();
     try {
       final Statement stmt;
-      final EmbedStatement estmt;
+      final EngineStatement estmt;
 
       removeActiveStatementNoLock(stmtHolder);
       stmtHolder.closeAllResultSets(service);
       stmt = stmtHolder.getStatement();
       // set statement for reuse now that it is being closed on client
-      if (stmt instanceof EmbedStatement
-          && !(estmt = (EmbedStatement)stmt).isPrepared()) {
+      if (stmt instanceof EngineStatement
+          && !(estmt = (EngineStatement)stmt).isPrepared()) {
         setStatementForReuseNoLock(estmt);
       } else if (stmt != null) {
         stmt.close();

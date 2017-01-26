@@ -671,13 +671,8 @@ public class EmbedStatement extends ConnectionChild
 	  return this.active;
 	}
 
-	
-	public final boolean hasBatch() {
-	  return this.batchStatements != null
-	      && this.batchStatements.size() > 0;
-	}
-
-	public final void clearBatchIfPossible() {
+	@Override
+	public final void forceClearBatch() {
 	  synchronized (getConnectionSynchronization()) {
 	    this.batchStatements = null;
 	  }
@@ -2808,6 +2803,7 @@ public class EmbedStatement extends ConnectionChild
 	  clearResultSets(false);
 	}
 
+	@Override
 	public void resetForReuse() throws SQLException {
 	  // will get closed either via EmbedResultSet or
 	  // right after collecting updateCount.
@@ -2824,6 +2820,7 @@ public class EmbedStatement extends ConnectionChild
 	  clearParameters();
 	}
 
+	@Override
 	public boolean hasDynamicResults() {
 	  return this.dynamicResults != null;
 	}
@@ -3192,6 +3189,7 @@ public class EmbedStatement extends ConnectionChild
 
 
 // GemStone changes BEGIN
+  @Override
   public boolean isPrepared() {
     return false;
   }
@@ -3220,6 +3218,7 @@ public class EmbedStatement extends ConnectionChild
     }
   }
 
+  @Override
   public void reset(int newType, int newConcurrency, int newHoldability)
       throws SQLException {
     checkAttributes(newType, newConcurrency, newHoldability);

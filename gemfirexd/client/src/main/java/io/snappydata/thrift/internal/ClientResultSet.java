@@ -87,7 +87,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
   private ClientResultSet(ClientConnection conn, ClientStatement statement,
       StatementAttrs attrs, RowSet rs) {
-    super(conn.clientService, rs.cursorId != snappydataConstants.INVALID_ID
+    super(conn.getClientService(), rs.cursorId != snappydataConstants.INVALID_ID
         ? snappydataConstants.BULK_CLOSE_RESULTSET : snappydataConstants.INVALID_ID);
     this.statement = statement;
     this.attrs = attrs;
@@ -159,17 +159,17 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   }
 
   final void checkClosed() throws SQLException {
-    if (this.service.isOpen) {
-      if (this.rowSet == null) {
-        throw ThriftExceptionUtil.newSQLException(
-            SQLState.CLIENT_RESULT_SET_NOT_OPEN);
-      }
-    } else {
+    if (this.service.isClosed()) {
       this.rowSet = null;
       this.rowsIter = null;
       this.currentRow = null;
       throw ThriftExceptionUtil.newSQLException(
           SQLState.NO_CURRENT_CONNECTION);
+    } else {
+      if (this.rowSet == null) {
+        throw ThriftExceptionUtil.newSQLException(
+            SQLState.CLIENT_RESULT_SET_NOT_OPEN);
+      }
     }
   }
 
@@ -2046,7 +2046,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    */
   @Override
   public final boolean isClosed() throws SQLException {
-    return this.rowSet == null || !this.service.isOpen;
+    return this.rowSet == null || this.service.isClosed();
   }
 
   /**

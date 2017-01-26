@@ -46,6 +46,9 @@ import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.transaction.xa.XAException;
+import javax.transaction.xa.XAResource;
+import javax.transaction.xa.Xid;
 
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.SystemFailure;
@@ -62,19 +65,27 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineLOB;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.EnginePreparedStatement;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineStatement;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ApplicationObjectInputStream;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.StatementType;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
-import com.pivotal.gemfirexd.internal.iapi.store.access.XATransactionController;
+import com.pivotal.gemfirexd.internal.iapi.store.access.xa.XAXactId;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeUtilities;
 import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
-import com.pivotal.gemfirexd.internal.impl.jdbc.*;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedDatabaseMetaData;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSet;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
+import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import com.pivotal.gemfirexd.internal.jdbc.EmbedXAConnection;
+import com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource40;
 import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
@@ -234,6 +245,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       Properties props = new Properties();
       String clientHost = null, clientId = null;
 
+      boolean forXA = false;
       if (arguments != null) {
         if (arguments.isSetUserName()) {
           props.put(Attribute.USERNAME_ATTR, arguments.getUserName());
@@ -246,6 +258,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         clientHost = arguments.getClientHostName();
         clientId = arguments.getClientID();
+        forXA = arguments.isForXA();
       }
 
       final String protocol;
@@ -258,13 +271,54 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       } else {
         protocol = Attribute.PROTOCOL;
       }
-      EmbedConnection conn = (EmbedConnection)InternalDriver.activeDriver()
-          .connect(protocol, props, Converters.getJdbcIsolation(
-              snappydataConstants.DEFAULT_TRANSACTION_ISOLATION));
-      conn.setAutoCommit(snappydataConstants.DEFAULT_AUTOCOMMIT);
+      EngineConnection conn;
+      EmbedXAConnection xaConn;
+      // initialize an XAConnection if required
+      if (forXA) {
+        EmbeddedXADataSource40 ds = new EmbeddedXADataSource40();
+        ds.setDatabaseName(Attribute.SNAPPY_DBNAME);
+        String user = null, password = null;
+        if (!props.isEmpty()) {
+          StringBuilder sb = new StringBuilder();
+          for (String key : props.stringPropertyNames()) {
+            if (key.equalsIgnoreCase(Attribute.USERNAME_ATTR) ||
+                key.equalsIgnoreCase(Attribute.USERNAME_ALT_ATTR)) {
+              user = props.getProperty(key);
+              continue;
+            } else if (key.equalsIgnoreCase(Attribute.PASSWORD_ATTR)) {
+              password = props.getProperty(key);
+              continue;
+            }
+            if (sb.length() > 0) {
+              sb.append(';');
+            }
+            sb.append(key).append('=').append(props.getProperty(key));
+          }
+          if (sb.length() > 0) {
+            ds.setConnectionAttributes(sb.toString());
+          }
+        }
+        if (user != null) {
+          xaConn = (EmbedXAConnection)ds.getXAConnection(user, password);
+        } else {
+          xaConn = (EmbedXAConnection)ds.getXAConnection();
+        }
+        conn = (EngineConnection)xaConn.getConnection();
+        // autocommit has to be false for XA connections
+        xaConn.checkAutoCommit(false);
+        conn.setAutoCommit(false);
+        // set RC isolation level by default
+        conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+      } else {
+        conn = (EngineConnection)InternalDriver.activeDriver()
+            .connect(protocol, props, Converters.getJdbcIsolation(
+                snappydataConstants.DEFAULT_TRANSACTION_ISOLATION));
+        conn.setAutoCommit(snappydataConstants.DEFAULT_AUTOCOMMIT);
+        xaConn = null;
+      }
       while (true) {
         final long connId = getNextId(this.currentConnectionId);
-        connHolder = new ConnectionHolder(conn, arguments, connId,
+        connHolder = new ConnectionHolder(conn, xaConn, arguments, connId,
             props, this.rand);
         if (this.connectionMap.putIfAbsent(connId, connHolder) == null) {
           ConnectionProperties connProps = new ConnectionProperties(connId,
@@ -428,8 +482,18 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       exData.setReason("No connection with ID="
           + ConnectionHolder.getTokenAsString(token));
       exData.setSqlState(SQLState.NO_CURRENT_CONNECTION);
-      exData.setSeverity(ExceptionSeverity.STATEMENT_SEVERITY);
+      exData.setErrorCode(ExceptionSeverity.STATEMENT_SEVERITY);
       throw new SnappyException(exData, getServerInfo());
+    }
+  }
+
+  private XAResource getXAResource(ConnectionHolder connHolder)
+      throws SQLException, XAException {
+    EmbedXAConnection xaConn;
+    if ((xaConn = connHolder.getXAConnection()) != null) {
+      return xaConn.getXAResource();
+    } else {
+      throw new XAException(XAException.XAER_PROTO);
     }
   }
 
@@ -475,7 +539,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     exData.setReason(MessageService.getTextMessage(
         SQLState.NET_CONNECT_AUTH_FAILED, message));
     exData.setSqlState(SQLState.NET_CONNECT_AUTH_FAILED.substring(0, 5));
-    exData.setSeverity(ExceptionSeverity.SESSION_SEVERITY);
+    exData.setErrorCode(ExceptionSeverity.SESSION_SEVERITY);
     return new SnappyException(exData, getServerInfo());
   }
 
@@ -485,7 +549,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     exData.setReason("No result set open with ID=" + cursorId
         + " for operation " + op);
     exData.setSqlState(SQLState.LANG_RESULT_SET_NOT_OPEN.substring(0, 5));
-    exData.setSeverity(ExceptionSeverity.STATEMENT_SEVERITY);
+    exData.setErrorCode(ExceptionSeverity.STATEMENT_SEVERITY);
     return new SnappyException(exData, getServerInfo());
   }
 
@@ -496,7 +560,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     exData.setReason("No " + (isPrepared ? "prepared " : "")
         + "statement with ID=" + stmtId + " for operation " + op);
     exData.setSqlState(SQLState.LANG_DEAD_STATEMENT);
-    exData.setSeverity(ExceptionSeverity.STATEMENT_SEVERITY);
+    exData.setErrorCode(ExceptionSeverity.STATEMENT_SEVERITY);
     return new SnappyException(exData, getServerInfo());
   }
 
@@ -1235,18 +1299,18 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         result.setOffset(Math.max(0, rs.getRow() - 1));
       }
 
-      final EmbedConnection conn = connHolder.getConnection();
+      final EngineConnection conn = connHolder.getConnection();
       final List<Row> rows = result.getRows();
       Row templateRow = null;
-      EmbedStatement estmt = null;
+      EngineStatement estmt = null;
       long estimatedSize = 0L;
       int nrows = 0;
       if (rs instanceof EmbedResultSet) {
         final EmbedResultSet ers = (EmbedResultSet)rs;
-        estmt = (EmbedStatement)stmt;
+        estmt = (EngineStatement)stmt;
         synchronized (conn.getConnectionSynchronization()) {
           ers.setupContextStack(false);
-          ers.pushStatementContext(conn.getLanguageConnection(), true);
+          ers.pushStatementContext(conn.getLanguageConnectionContext(), true);
           try {
             // skip the first move in case cursor was already positioned by an
             // explicit call to absolute or relative
@@ -1357,7 +1421,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       result.setFlags(flags);
       fillWarnings(result, rs);
       // send cursorId for scrollable, partial resultsets or open LOBs
-      if (isLastBatch && isForwardOnly && conn.getlobHMObj().isEmpty() &&
+      if (isLastBatch && isForwardOnly && !conn.hasLOBs() &&
           !dynamicResults) {
         if (stmtHolder == null || cursorId == INVALID_ID) {
           rs.close();
@@ -1465,7 +1529,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   }
 
   private boolean processPendingTransactionAttributes(StatementAttrs attrs,
-      EmbedConnection conn) throws SnappyException {
+      EngineConnection conn) throws SnappyException {
     if (attrs == null) {
       return false;
     }
@@ -1493,7 +1557,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     }
   }
 
-  private void cleanupStatement(EmbedStatement stmt) {
+  private void cleanupStatement(EngineStatement stmt) {
     if (stmt != null) {
       try {
         stmt.close();
@@ -1535,8 +1599,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
 
     ConnectionHolder connHolder = null;
-    EmbedConnection conn = null;
-    EmbedStatement stmt = null;
+    EngineConnection conn = null;
+    EngineStatement stmt = null;
     ResultSet rs = null;
     boolean posDup = false;
     try {
@@ -1549,7 +1613,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       // Check if user has provided output parameters i.e. CallableStatement
       if (outputParams != null && !outputParams.isEmpty()) {
         // TODO: implement this case by adding support for output parameters
-        // to EmbedStatement itself (actually outputParams is not required
+        // to EngineStatement itself (actually outputParams is not required
         // at all by the execution engine itself)
         // Also take care of open LOBs so avoid closing statement
         // for autocommit==true
@@ -1587,7 +1651,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       }
       connHolder.clearActiveStatement(stmt);
       // don't attempt stmt cleanup after this point since we are reusing it
-      final EmbedStatement st = stmt;
+      final EngineStatement st = stmt;
       stmt = null;
 
       fillWarnings(sr, st);
@@ -1618,8 +1682,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       StatementAttrs attrs, ByteBuffer token) throws SnappyException {
 
     ConnectionHolder connHolder = null;
-    EmbedConnection conn = null;
-    EmbedStatement stmt = null;
+    EngineConnection conn = null;
+    EngineStatement stmt = null;
     ResultSet rs = null;
     UpdateResult result;
     boolean posDup = false;
@@ -1665,7 +1729,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       }
       connHolder.clearActiveStatement(stmt);
       // don't attempt stmt cleanup after this point since we are reusing it
-      final EmbedStatement st = stmt;
+      final EngineStatement st = stmt;
       stmt = null;
 
       fillWarnings(result, st);
@@ -1687,7 +1751,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       throw SnappyException(t);
     } finally {
       if (stmt != null && sqls != null && sqls.size() > 1) {
-        stmt.clearBatchIfPossible();
+        stmt.forceClearBatch();
       }
     }
   }
@@ -1700,8 +1764,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       StatementAttrs attrs, ByteBuffer token) throws SnappyException {
 
     ConnectionHolder connHolder = null;
-    EmbedConnection conn = null;
-    EmbedStatement stmt = null;
+    EngineConnection conn = null;
+    EngineStatement stmt = null;
     ResultSet rs = null;
     boolean posDup = false;
     try {
@@ -1751,7 +1815,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
 
     ConnectionHolder connHolder = null;
-    EmbedConnection conn = null;
+    EngineConnection conn = null;
     PreparedStatement pstmt = null;
     StatementHolder stmtHolder = null;
     boolean posDup = false;
@@ -1863,8 +1927,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       stmtHolder.setStatus("FILLING PREPARE RESULT");
       byte statementType;
-      if (pstmt instanceof EmbedPreparedStatement) {
-        switch (((EmbedPreparedStatement)pstmt).getStatementType()) {
+      if (pstmt instanceof EnginePreparedStatement) {
+        switch (((EnginePreparedStatement)pstmt).getStatementType()) {
           case StatementType.UNKNOWN:
             statementType = snappydataConstants.STATEMENT_TYPE_SELECT;
             break;
@@ -1982,7 +2046,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   }
 
   private void updateParameters(Row params, PreparedStatement pstmt,
-      ParameterMetaData pmd, EmbedConnection conn) throws SQLException {
+      ParameterMetaData pmd, EngineConnection conn) throws SQLException {
     if (params != null) {
       final int numParams = params.size();
       for (int paramPosition = 1; paramPosition <= numParams; paramPosition++) {
@@ -2384,7 +2448,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       stmtHolder.setStatus("EXECUTING PREPARED BATCH");
       stmtHolder.incrementAccessFrequency();
       connHolder.setActiveStatement(stmtHolder);
-      EmbedConnection conn = connHolder.getConnection();
+      EngineConnection conn = connHolder.getConnection();
       // clear any existing parameters first
       pstmt.clearParameters();
       pstmt.clearBatch();
@@ -2507,11 +2571,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   public Map<TransactionAttribute, Boolean> getTransactionAttributes(
       long connId, ByteBuffer token) throws SnappyException {
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
 
       final EnumMap<TransactionAttribute, Boolean> txAttrs = ThriftUtils
           .newTransactionFlags();
-      EnumSet<TransactionFlag> txFlags = conn.getTR().getTXFlags();
+      EnumSet<TransactionFlag> txFlags = conn.getTransactionFlags();
       txAttrs.put(TransactionAttribute.AUTOCOMMIT, conn.getAutoCommit());
       txAttrs.put(TransactionAttribute.READ_ONLY_CONNECTION,
           conn.isReadOnly());
@@ -2534,7 +2598,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     }
   }
 
-  private void beginOrAlterTransaction(EmbedConnection conn,
+  private void beginOrAlterTransaction(EngineConnection conn,
       byte isolationLevel, Map<TransactionAttribute, Boolean> flags,
       boolean commitExisting) throws SnappyException {
 
@@ -2610,7 +2674,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       throws SnappyException {
 
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
       if (flags != null && !flags.isEmpty()) {
         beginOrAlterTransaction(conn, snappydataConstants.TRANSACTION_NO_CHANGE,
             flags, false);
@@ -2637,7 +2701,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       throws SnappyException {
 
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
       if (flags != null && !flags.isEmpty()) {
         beginOrAlterTransaction(conn, snappydataConstants.TRANSACTION_NO_CHANGE,
             flags, false);
@@ -2648,27 +2712,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (!startNewTransaction) {
         conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
       }
-    } catch (Throwable t) {
-      checkSystemFailure(t);
-      throw SnappyException(t);
-    }
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public boolean prepareCommitTransaction(long connId,
-      Map<TransactionAttribute, Boolean> flags, ByteBuffer token)
-      throws SnappyException {
-
-    try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
-      if (flags != null && !flags.isEmpty()) {
-        beginOrAlterTransaction(conn, snappydataConstants.TRANSACTION_NO_CHANGE,
-            flags, false);
-      }
-      return conn.xa_prepare() == XATransactionController.XA_OK;
     } catch (Throwable t) {
       checkSystemFailure(t);
       throw SnappyException(t);
@@ -2727,6 +2770,125 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
    * {@inheritDoc}
    */
   @Override
+  public void startXATransaction(long connId, TransactionXid xid,
+      int timeoutInSeconds, int flags, ByteBuffer token)
+      throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      xaResource.setTransactionTimeout(timeoutInSeconds);
+      XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
+          xid.getBranchQualifier());
+      xaResource.start(xaXid, flags);
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  @Override
+  public int prepareXATransaction(long connId, TransactionXid xid,
+      ByteBuffer token) throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
+          xid.getBranchQualifier());
+      return xaResource.prepare(xaXid);
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  @Override
+  public void commitXATransaction(long connId, TransactionXid xid,
+      boolean onePhase, ByteBuffer token) throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
+          xid.getBranchQualifier());
+      xaResource.commit(xaXid, onePhase);
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  @Override
+  public void rollbackXATransaction(long connId, TransactionXid xid,
+      ByteBuffer token) throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
+          xid.getBranchQualifier());
+      xaResource.rollback(xaXid);
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  @Override
+  public void forgetXATransaction(long connId, TransactionXid xid,
+      ByteBuffer token) throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
+          xid.getBranchQualifier());
+      xaResource.forget(xaXid);
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  @Override
+  public void endXATransaction(long connId, TransactionXid xid,
+      int flags, ByteBuffer token) throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
+          xid.getBranchQualifier());
+      xaResource.end(xaXid, flags);
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  @Override
+  public List<TransactionXid> recoverXATransaction(long connId, int flag,
+      ByteBuffer token) throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      Xid[] result = xaResource.recover(flag);
+      if (result != null && result.length > 0) {
+        final ArrayList<TransactionXid> xids = new ArrayList<>(result.length);
+        for (Xid xid : result) {
+          xids.add(new TransactionXid().setFormatId(xid.getFormatId())
+              .setGlobalId(xid.getGlobalTransactionId())
+              .setBranchQualifier(xid.getBranchQualifier()));
+        }
+        return xids;
+      } else {
+        return new ArrayList<>(0);
+      }
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public RowSet getNextResultSet(long cursorId, byte otherResultSetBehaviour,
       ByteBuffer token) throws SnappyException {
     ConnectionHolder connHolder = null;
@@ -2756,13 +2918,13 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         final int current;
         switch (otherResultSetBehaviour) {
           case snappydataConstants.NEXTRS_CLOSE_CURRENT_RESULT:
-            current = EmbedStatement.CLOSE_CURRENT_RESULT;
+            current = EngineStatement.CLOSE_CURRENT_RESULT;
             break;
           case snappydataConstants.NEXTRS_KEEP_CURRENT_RESULT:
-            current = EmbedStatement.KEEP_CURRENT_RESULT;
+            current = EngineStatement.KEEP_CURRENT_RESULT;
             break;
           default:
-            current = EmbedStatement.CLOSE_ALL_RESULTS;
+            current = EngineStatement.CLOSE_ALL_RESULTS;
             break;
         }
         moreResults = stmt.getMoreResults(current);
@@ -2797,7 +2959,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       int chunkSize, boolean freeLobAtEnd, ByteBuffer token)
       throws SnappyException {
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
       Object lob = conn.getLOBMapping(lobId);
       if (lob instanceof Blob) {
         Blob blob = (Blob)lob;
@@ -2834,7 +2996,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       int chunkSize, boolean freeLobAtEnd, ByteBuffer token)
       throws SnappyException {
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
       Object lob = conn.getLOBMapping(lobId);
       if (lob instanceof Clob) {
         Clob clob = (Clob)lob;
@@ -3008,14 +3170,15 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   private SnappyExceptionData snappyWarning(SQLWarning warnings)
       throws SQLException {
     SnappyExceptionData warningData = new SnappyExceptionData(
-        warnings.getMessage(), warnings.getSQLState(), warnings.getErrorCode());
+        warnings.getMessage(), warnings.getErrorCode())
+        .setSqlState(warnings.getSQLState());
     ArrayList<SnappyExceptionData> nextWarnings = null;
     SQLWarning next = warnings.getNextWarning();
     if (next != null) {
       nextWarnings = new ArrayList<>();
       do {
-        nextWarnings.add(new SnappyExceptionData(next.getMessage(), next
-            .getSQLState(), next.getErrorCode()));
+        nextWarnings.add(new SnappyExceptionData(next.getMessage(),
+            next.getErrorCode()).setSqlState(next.getSQLState()));
       } while ((next = next.getNextWarning()) != null);
     }
     //SnappyExceptionData sqlw = new SnappyExceptionData(warningData);
@@ -3054,7 +3217,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     SnappyExceptionData exData = new SnappyExceptionData();
     exData.setReason(message);
     exData.setSqlState(SQLState.JAVA_EXCEPTION);
-    exData.setSeverity(ExceptionSeverity.NO_APPLICABLE_SEVERITY);
+    exData.setErrorCode(ExceptionSeverity.NO_APPLICABLE_SEVERITY);
     return new SnappyException(exData, getServerInfo());
   }
 
@@ -3062,7 +3225,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     SnappyExceptionData exData = new SnappyExceptionData();
     exData.setReason("ASSERT: " + method + "() not implemented");
     exData.setSqlState(SQLState.JDBC_METHOD_NOT_SUPPORTED_BY_SERVER);
-    exData.setSeverity(ExceptionSeverity.STATEMENT_SEVERITY);
+    exData.setErrorCode(ExceptionSeverity.STATEMENT_SEVERITY);
     return new SnappyException(exData, getServerInfo());
   }
 
@@ -3073,7 +3236,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   public long sendBlobChunk(BlobChunk chunk, long connId, ByteBuffer token)
       throws SnappyException {
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
       long lobId;
       Blob blob;
       if (chunk.isSetLobId()) {
@@ -3085,9 +3248,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           throw Util.generateCsSQLException(SQLState.LOB_LOCATOR_INVALID);
         }
       } else {
-        EmbedBlob eblob = conn.createBlob();
-        lobId = eblob.getLocator();
-        blob = eblob;
+        blob = conn.createBlob();
+        lobId = ((EngineLOB)blob).getLocator();
       }
       long offset = 1;
       if (chunk.isSetOffset()) {
@@ -3108,7 +3270,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   public long sendClobChunk(ClobChunk chunk, long connId, ByteBuffer token)
       throws SnappyException {
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
       long lobId;
       Clob clob;
       if (chunk.isSetLobId()) {
@@ -3120,9 +3282,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           throw Util.generateCsSQLException(SQLState.LOB_LOCATOR_INVALID);
         }
       } else {
-        EmbedClob eclob = conn.createClob();
-        lobId = eclob.getLocator();
-        clob = eclob;
+        clob = conn.createClob();
+        lobId = ((EngineLOB)clob).getLocator();
       }
       long offset = 1;
       if (chunk.isSetOffset()) {
@@ -3143,7 +3304,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   public void freeLob(long connId, long lobId, ByteBuffer token)
       throws SnappyException {
     try {
-      EmbedConnection conn = getValidConnection(connId, token).getConnection();
+      EngineConnection conn = getValidConnection(connId, token).getConnection();
       Object lob = conn.getLOBMapping(lobId);
       if (lob instanceof EngineLOB) {
         ((EngineLOB)lob).free();

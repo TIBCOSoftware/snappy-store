@@ -281,7 +281,7 @@ final class ControlConnection {
           NetConnection.FailoverStatus status;
           if ((status = NetConnection.getFailoverStatus(se
               .getExceptionData().getSqlState(), se.getExceptionData()
-              .getSeverity(), se)).isNone()) {
+              .getErrorCode(), se)).isNone()) {
             throw se;
           } else if (status == NetConnection.FailoverStatus.RETRY) {
             forFailover = true;

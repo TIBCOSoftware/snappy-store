@@ -22,13 +22,7 @@ import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -36,8 +30,10 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntArrayList;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
@@ -67,7 +63,7 @@ import org.slf4j.LoggerFactory;
 public final class ClientService extends ReentrantLock {
 
   private SnappyDataService.Client clientService;
-  volatile boolean isOpen;
+  private volatile boolean isClosed;
   private HostConnection currentHostConnection;
   private HostAddress currentHostAddress;
   final OpenConnectionArgs connArgs;
@@ -141,14 +137,44 @@ public final class ClientService extends ReentrantLock {
     logger = log;
   }
 
+  static ClientService create(String host, int port, boolean forXA,
+      Properties connProperties) throws SQLException {
+    final THashMap connProps = new THashMap();
+    @SuppressWarnings("unchecked")
+    Map<String, String> props = connProps;
+    String userName = null;
+    String password = null;
+    for (String propName : connProperties.stringPropertyNames()) {
+      if (Attribute.USERNAME_ATTR.equals(propName)
+          || Attribute.USERNAME_ALT_ATTR.equals(propName)) {
+        userName = connProperties.getProperty(propName);
+      } else if (Attribute.PASSWORD_ATTR.equals(propName)) {
+        password = connProperties.getProperty(propName);
+      } else {
+        connProps.put(propName, connProperties.getProperty(propName));
+      }
+    }
+    if (connProps.size() == 0) {
+      props = null;
+    }
+    Thread currentThread = Thread.currentThread();
+    String clientId = hostId + '|' + currentThread.getName() + "<0x"
+        + Long.toHexString(currentThread.getId()) + '>';
+    // TODO: currently hardcoded security mechanism to PLAIN
+    // implement Diffie-Hellman and additional like SASL (see Hive driver)
+    OpenConnectionArgs connArgs = new OpenConnectionArgs(hostName, clientId,
+        SecurityMechanism.PLAIN, forXA).setUserName(userName)
+        .setPassword(password).setProperties(props);
+    try {
+      return new ClientService(host, port, connArgs);
+    } catch (SnappyException se) {
+      throw ThriftExceptionUtil.newSQLException(se);
+    }
+  }
+
   public ClientService(String host, int port, OpenConnectionArgs connArgs)
       throws SnappyException {
-    this.isOpen = false;
-
-    Thread currentThread = Thread.currentThread();
-    connArgs.setClientHostName(hostName).setClientID(
-        hostId + '|' + currentThread.getName() + "<0x"
-            + Long.toHexString(currentThread.getId()) + '>');
+    this.isClosed = true;
 
     HostAddress hostAddr = ThriftUtils.getHostAddress(host, port);
     this.currentHostConnection = null;
@@ -186,11 +212,18 @@ public final class ClientService extends ReentrantLock {
     }
 
     this.socketParams = new SocketParameters();
-    // initialize read-timeout with DriverManager login timeout first
-    int loginTimeout = DriverManager.getLoginTimeout();
-    if (loginTimeout != 0) {
+    // initialize read-timeout from properties first
+    if (props != null &&
+        (propValue = props.remove(ClientAttribute.READ_TIMEOUT)) != null) {
       SocketParameters.Param.READ_TIMEOUT.setParameter(this.socketParams,
-          Integer.toString(loginTimeout));
+          propValue);
+    } else {
+      // else try with DriverManager login timeout
+      int loginTimeout = DriverManager.getLoginTimeout();
+      if (loginTimeout != 0) {
+        SocketParameters.Param.READ_TIMEOUT.setParameter(this.socketParams,
+            Integer.toString(loginTimeout));
+      }
     }
     // now check for the protocol details like SSL etc and thus get the required
     // SnappyData ServerType
@@ -199,6 +232,7 @@ public final class ClientService extends ReentrantLock {
     if (props != null) {
       binaryProtocol = Boolean.parseBoolean(props
           .remove(ClientAttribute.THRIFT_USE_BINARY_PROTOCOL));
+      String ssl = props.remove(ClientAttribute.SSL);
       useSSL = Boolean.parseBoolean(props.remove(ClientAttribute.SSL));
       // set SSL properties (csv format) into SSL params in SocketParameters
       propValue = props.remove(ClientAttribute.THRIFT_SSL_PROPERTIES);
@@ -306,7 +340,7 @@ public final class ClientService extends ReentrantLock {
           setTransactionAttributes(txFlags);
         }
 
-        this.isOpen = true;
+        this.isClosed = false;
         return;
       } catch (Throwable t) {
         failedServers = handleException(t, failedServers, true, false,
@@ -325,7 +359,7 @@ public final class ClientService extends ReentrantLock {
     return this.clientService.getInputProtocol();
   }
 
-  final HostConnection getCurrentHostConnection() {
+  public final HostConnection getCurrentHostConnection() {
     return this.currentHostConnection;
   }
 
@@ -386,7 +420,7 @@ public final class ClientService extends ReentrantLock {
       boolean createNewConnection, String op) throws SnappyException {
     final HostConnection source = this.currentHostConnection;
     final HostAddress sourceAddr = this.currentHostAddress;
-    if (!this.isOpen && createNewConnection) {
+    if (this.isClosed && createNewConnection) {
       if (t instanceof SnappyException) {
         throw (SnappyException)t;
       } else {
@@ -408,7 +442,7 @@ public final class ClientService extends ReentrantLock {
       String sqlState = seData.getSqlState();
       NetConnection.FailoverStatus status;
       if ((status = NetConnection.getFailoverStatus(sqlState,
-          seData.getSeverity(), se)).isNone()) {
+          seData.getErrorCode(), se)).isNone()) {
         // convert DATA_CONTAINTER_CLOSED to "X0Z01" for non-transactional case
         if (isolationLevel == Connection.TRANSACTION_NONE
             && SQLState.DATA_CONTAINER_CLOSED.equals(sqlState)) {
@@ -478,7 +512,7 @@ public final class ClientService extends ReentrantLock {
       String op, int isolationLevel, Set<HostAddress> failedServers,
       boolean createNewConnection, Throwable cause) {
     final HostConnection source = this.currentHostConnection;
-    if (!this.isOpen) {
+    if (this.isClosed) {
       return ThriftExceptionUtil.newSnappyException(
           SQLState.NO_CURRENT_CONNECTION, cause,
           source != null ? source.hostAddr.toString() : null);
@@ -583,6 +617,10 @@ public final class ClientService extends ReentrantLock {
         return false;
       }
     }
+  }
+
+  public final boolean isClosed() {
+    return this.isClosed;
   }
 
   public StatementResult execute(String sql,
@@ -1203,37 +1241,6 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  public boolean prepareCommitTransaction(final HostConnection source,
-      Map<TransactionAttribute, Boolean> flags) throws SnappyException {
-    if (SanityManager.TraceClientStatement) {
-      final long ns = System.nanoTime();
-      SanityManager.DEBUG_PRINT_COMPACT("prepareCommitTransaction_S", null,
-          source.connId, source.token, ns, true, null);
-    }
-    super.lock();
-    try {
-      // check if node has failed sometime before
-      if (this.isolationLevel != Connection.TRANSACTION_NONE) {
-        checkUnexpectedNodeFailure(source, "prepareCommitTransaction");
-      }
-      boolean result = this.clientService.prepareCommitTransaction(
-          source.connId, flags, source.token);
-      if (SanityManager.TraceClientStatement) {
-        final long ns = System.nanoTime();
-        SanityManager.DEBUG_PRINT_COMPACT("prepareCommitTransaction_E", null,
-            source.connId, source.token, ns, false, null);
-      }
-      return result;
-    } catch (Throwable t) {
-      // no failover for transactions yet
-      handleException(t, null, false, true, "prepareCommitTransaction");
-      // never reached
-      throw new AssertionError("unexpectedly reached end");
-    } finally {
-      super.unlock();
-    }
-  }
-
   public RowSet getNextResultSet(final HostConnection source, long cursorId,
       byte otherResultSetBehaviour) throws SnappyException {
     if (SanityManager.TraceClientStatement) {
@@ -1493,6 +1500,190 @@ public final class ClientService extends ReentrantLock {
         Collections.singletonList(changedRow),
         Collections.singletonList(changedColumns),
         Collections.singletonList(changedRowIndex));
+  }
+
+  public void startXATransaction(TransactionXid xid,
+      int timeoutInSeconds, int flags) throws SnappyException {
+    final HostConnection source = this.currentHostConnection;
+    if (SanityManager.TraceClientStatement) {
+      final long ns = System.nanoTime();
+      SanityManager.DEBUG_PRINT_COMPACT("startXATransaction_S", null,
+          source.connId, source.token, ns, true, null);
+    }
+    super.lock();
+    try {
+      this.clientService.startXATransaction(source.connId, xid,
+          timeoutInSeconds, flags, source.token);
+      if (SanityManager.TraceClientStatement) {
+        final long ns = System.nanoTime();
+        SanityManager.DEBUG_PRINT_COMPACT("startXATransaction_E", null,
+            source.connId, source.token, ns, false, null);
+      }
+    } catch (Throwable t) {
+      // no failover for transactions yet
+      handleException(t, null, false, true, "startXATransaction");
+      // never reached
+      throw new AssertionError("unexpectedly reached end");
+    } finally {
+      super.unlock();
+    }
+  }
+
+  public int prepareXATransaction(final HostConnection source,
+      TransactionXid xid) throws SnappyException {
+    if (SanityManager.TraceClientStatement) {
+      final long ns = System.nanoTime();
+      SanityManager.DEBUG_PRINT_COMPACT("prepareXATransaction_S", null,
+          source.connId, source.token, ns, true, null);
+    }
+    super.lock();
+    try {
+      final int result = this.clientService.prepareXATransaction(source.connId,
+          xid, source.token);
+      if (SanityManager.TraceClientStatement) {
+        final long ns = System.nanoTime();
+        SanityManager.DEBUG_PRINT_COMPACT("prepareXATransaction_E", null,
+            source.connId, source.token, ns, false, null);
+      }
+      return result;
+    } catch (Throwable t) {
+      // no failover for transactions yet
+      handleException(t, null, false, true, "prepareXATransaction");
+      // never reached
+      throw new AssertionError("unexpectedly reached end");
+    } finally {
+      super.unlock();
+    }
+  }
+
+  public void commitXATransaction(final HostConnection source,
+      TransactionXid xid, boolean onePhase) throws SnappyException {
+    if (SanityManager.TraceClientStatement) {
+      final long ns = System.nanoTime();
+      SanityManager.DEBUG_PRINT_COMPACT("commitXATransaction_S", null,
+          source.connId, source.token, ns, true, null);
+    }
+    super.lock();
+    try {
+      this.clientService.commitXATransaction(source.connId, xid,
+          onePhase, source.token);
+      if (SanityManager.TraceClientStatement) {
+        final long ns = System.nanoTime();
+        SanityManager.DEBUG_PRINT_COMPACT("commitXATransaction_E", null,
+            source.connId, source.token, ns, false, null);
+      }
+    } catch (Throwable t) {
+      // no failover for transactions yet
+      handleException(t, null, false, true, "commitXATransaction");
+      // never reached
+      throw new AssertionError("unexpectedly reached end");
+    } finally {
+      super.unlock();
+    }
+  }
+
+  public void rollbackXATransaction(final HostConnection source,
+      TransactionXid xid) throws SnappyException {
+    if (SanityManager.TraceClientStatement) {
+      final long ns = System.nanoTime();
+      SanityManager.DEBUG_PRINT_COMPACT("rollbackXATransaction_S", null,
+          source.connId, source.token, ns, true, null);
+    }
+    super.lock();
+    try {
+      this.clientService.rollbackXATransaction(source.connId, xid,
+          source.token);
+      if (SanityManager.TraceClientStatement) {
+        final long ns = System.nanoTime();
+        SanityManager.DEBUG_PRINT_COMPACT("rollbackXATransaction_E", null,
+            source.connId, source.token, ns, false, null);
+      }
+    } catch (Throwable t) {
+      // no failover for transactions yet
+      handleException(t, null, false, true, "rollbackXATransaction");
+      // never reached
+      throw new AssertionError("unexpectedly reached end");
+    } finally {
+      super.unlock();
+    }
+  }
+
+  public void forgetXATransaction(final HostConnection source,
+      TransactionXid xid) throws SnappyException {
+    if (SanityManager.TraceClientStatement) {
+      final long ns = System.nanoTime();
+      SanityManager.DEBUG_PRINT_COMPACT("forgetXATransaction_S", null,
+          source.connId, source.token, ns, true, null);
+    }
+    super.lock();
+    try {
+      this.clientService.forgetXATransaction(source.connId, xid, source.token);
+      if (SanityManager.TraceClientStatement) {
+        final long ns = System.nanoTime();
+        SanityManager.DEBUG_PRINT_COMPACT("forgetXATransaction_E", null,
+            source.connId, source.token, ns, false, null);
+      }
+    } catch (Throwable t) {
+      // no failover for transactions yet
+      handleException(t, null, false, true, "forgetXATransaction");
+      // never reached
+      throw new AssertionError("unexpectedly reached end");
+    } finally {
+      super.unlock();
+    }
+  }
+
+  public void endXATransaction(final HostConnection source,
+      TransactionXid xid, int flags) throws SnappyException {
+    if (SanityManager.TraceClientStatement) {
+      final long ns = System.nanoTime();
+      SanityManager.DEBUG_PRINT_COMPACT("endXATransaction_S", null,
+          source.connId, source.token, ns, true, null);
+    }
+    super.lock();
+    try {
+      this.clientService.endXATransaction(source.connId, xid, flags,
+          source.token);
+      if (SanityManager.TraceClientStatement) {
+        final long ns = System.nanoTime();
+        SanityManager.DEBUG_PRINT_COMPACT("endXATransaction_E", null,
+            source.connId, source.token, ns, false, null);
+      }
+    } catch (Throwable t) {
+      // no failover for transactions yet
+      handleException(t, null, false, true, "endXATransaction");
+      // never reached
+      throw new AssertionError("unexpectedly reached end");
+    } finally {
+      super.unlock();
+    }
+  }
+
+  public List<TransactionXid> recoverXATransaction(final HostConnection source,
+      int flag) throws SnappyException {
+    if (SanityManager.TraceClientStatement) {
+      final long ns = System.nanoTime();
+      SanityManager.DEBUG_PRINT_COMPACT("reoverXATransaction_S", null,
+          source.connId, source.token, ns, true, null);
+    }
+    super.lock();
+    try {
+      List<TransactionXid> recoveredIds = this.clientService
+          .recoverXATransaction(source.connId, flag, source.token);
+      if (SanityManager.TraceClientStatement) {
+        final long ns = System.nanoTime();
+        SanityManager.DEBUG_PRINT_COMPACT("reoverXATransaction_E", null,
+            source.connId, source.token, ns, false, null);
+      }
+      return recoveredIds;
+    } catch (Throwable t) {
+      // no failover for transactions yet
+      handleException(t, null, false, true, "reoverXATransaction");
+      // never reached
+      throw new AssertionError("unexpectedly reached end");
+    } finally {
+      super.unlock();
+    }
   }
 
   public ServiceMetaData getServiceMetaData() throws SnappyException {
@@ -1879,7 +2070,7 @@ public final class ClientService extends ReentrantLock {
         // ignore at this point
       }
     }
-    this.isOpen = false;
+    this.isClosed = true;
   }
 
   public boolean bulkClose(HostConnection thisSource,
@@ -1888,8 +2079,8 @@ public final class ClientService extends ReentrantLock {
     final HostConnection hostConn = this.currentHostConnection;
     if (thisSource == null || hostConn == null || !thisSource.equals(hostConn)) {
       throw new SnappyException(new SnappyExceptionData("Incorrect host = " +
-          thisSource + ", current = " + hostConn,
-          SQLState.LANG_UNEXPECTED_USER_EXCEPTION, 0), null);
+          thisSource + ", current = " + hostConn, 0).setSqlState(
+              SQLState.LANG_UNEXPECTED_USER_EXCEPTION), null);
     }
 
     if (SanityManager.TraceClientStatement | SanityManager.TraceClientConn) {
@@ -1966,8 +2157,8 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  final void checkClosedConnection() throws SQLException {
-    if (!this.isOpen) {
+  public final void checkClosedConnection() throws SQLException {
+    if (this.isClosed) {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.NO_CURRENT_CONNECTION, null);
     }

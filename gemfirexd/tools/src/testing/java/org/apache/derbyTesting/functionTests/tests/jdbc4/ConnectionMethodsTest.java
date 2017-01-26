@@ -45,7 +45,6 @@ import java.security.AccessController;
 import java.security.*;
 import org.apache.derbyTesting.junit.NetworkServerTestSetup;
 import com.pivotal.gemfirexd.internal.drda.NetworkServerControl;
-import com.pivotal.gemfirexd.internal.jdbc.ClientDataSource;
 import org.apache.derbyTesting.junit.TestConfiguration;
 
 import org.apache.derbyTesting.junit.BaseJDBCTestCase;

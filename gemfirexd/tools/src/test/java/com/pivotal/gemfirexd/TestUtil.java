@@ -2146,8 +2146,8 @@ public class TestUtil extends TestCase {
   public static final String EmbeddedeXADsClassName = 
       "com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource";
 
-  public static final String NetClientXADsClassName = 
-      "com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource";
+  public static final String NetClientXADsClassName =
+      "io.snappydata.jdbc.ClientXADataSource";
 
   public static Object getXADataSource(String xaDsClassName) {
     ClassLoader contextLoader = (ClassLoader)AccessController

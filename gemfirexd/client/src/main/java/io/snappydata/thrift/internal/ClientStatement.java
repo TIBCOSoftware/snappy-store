@@ -65,14 +65,15 @@ public class ClientStatement extends ClientFetchColumnValue implements
   protected int currentUpdateCount;
   protected RowSet currentGeneratedKeys;
   protected volatile SnappyExceptionData warnings;
-  protected volatile boolean isOpen;
+  protected volatile boolean isClosed;
   protected ArrayList<String> batchSQLs;
 
   private ClientStatement(ClientConnection conn, int holdability) {
-    super(conn.clientService, (byte)snappydataConstants.INVALID_ID);
+    super(conn.getClientService(), (byte)snappydataConstants.INVALID_ID);
     this.conn = conn;
-    this.attrs = new StatementAttrs().setPendingTransactionAttrs(conn
-        .getPendingTXFlags());
+    this.attrs = new StatementAttrs()
+        .setResultSetType(snappydataConstants.DEFAULT_RESULTSET_TYPE)
+        .setPendingTransactionAttrs(conn.getPendingTXFlags());
     if (holdability == ResultSet.HOLD_CURSORS_OVER_COMMIT) {
       this.attrs.setHoldCursorsOverCommit(true);
     }
@@ -81,7 +82,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
 
   ClientStatement(ClientConnection conn) {
     this(conn, conn.getHoldability());
-    this.isOpen = true;
+    this.isClosed = false;
   }
 
   ClientStatement(ClientConnection conn, int rsType, int rsConcurrency,
@@ -97,20 +98,18 @@ public class ClientStatement extends ClientFetchColumnValue implements
     } else if (rsHoldability == ResultSet.CLOSE_CURSORS_AT_COMMIT) {
       this.attrs.setHoldCursorsOverCommit(false);
     }
-    this.isOpen = true;
+    this.isClosed = false;
   }
 
   protected final void checkClosed() throws SQLException {
-    if (this.service.isOpen) {
-      if (this.isOpen) {
-        return;
-      } else {
+    if (this.service.isClosed()) {
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.NO_CURRENT_CONNECTION, null);
+    } else {
+      if (this.isClosed) {
         throw ThriftExceptionUtil.newSQLException(SQLState.ALREADY_CLOSED,
             null, "Statement");
       }
-    } else {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.NO_CURRENT_CONNECTION, null);
     }
   }
 
@@ -296,7 +295,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
     } catch (SnappyException se) {
       throw ThriftExceptionUtil.newSQLException(se);
     } finally {
-      this.isOpen = false;
+      this.isClosed = true;
       reset();
     }
   }
@@ -747,8 +746,8 @@ public class ClientStatement extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final boolean isClosed() throws SQLException {
-    return !this.isOpen || !this.service.isOpen;
+  public final boolean isClosed() {
+    return this.isClosed || this.service.isClosed();
   }
 
   /**

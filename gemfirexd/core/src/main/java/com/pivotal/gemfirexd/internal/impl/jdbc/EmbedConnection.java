@@ -1740,6 +1740,7 @@ public abstract class EmbedConnection implements EngineConnection
 			false, null, 0, 0);
 	}
 
+	@Override
 	public final PreparedStatement prepareStatement(
 	    String sql, int resultSetType,
 	    int resultSetConcurrency, int resultSetHoldability,
@@ -1756,6 +1757,7 @@ public abstract class EmbedConnection implements EngineConnection
 	      false, null, 0, 0);
 	}
 
+	@Override
 	public final PreparedStatement prepareStatement(
 	    String sql, int resultSetType,
 	    int resultSetConcurrency, int resultSetHoldability,
@@ -1774,6 +1776,7 @@ public abstract class EmbedConnection implements EngineConnection
 	      false, null, 0, 0);
 	}
 
+	@Override
 	public final PreparedStatement prepareStatement(
 	    String sql, int resultSetType,
 	    int resultSetConcurrency, int resultSetHoldability,
@@ -2674,6 +2677,12 @@ public abstract class EmbedConnection implements EngineConnection
       setTransactionIsolation(level, null);
     }
 
+    @Override
+    public EnumSet<TransactionFlag> getTransactionFlags() {
+      return getTR().getTXFlags();
+    }
+
+    @Override
     public void setTransactionIsolation(int level,
         EnumSet<TransactionFlag> txFlags) throws SQLException {
       //SanityManager.showTrace(new Throwable(GfxdConstants.TRACE_TRAN));
@@ -3136,7 +3145,7 @@ public abstract class EmbedConnection implements EngineConnection
 
 
 // GemStone changes BEGIN
-	// increased visibility to public
+	@Override
 	final public Object getConnectionSynchronization()
 	/* (original code) final protected Object getConnectionSynchronization() */
 // GemStone changes END
@@ -3860,17 +3869,14 @@ public abstract class EmbedConnection implements EngineConnection
 	* @param key an integer that represents the locator that needs to be
 	*            removed from the table.
 	*/
-	public void removeLOBMapping(int key) {
 // GemStone changes BEGIN
+	@Override
+	public void removeLOBMapping(long key) {
 		// changed to Integer.valueOf()
 		getlobHMObj().removePrimitive(key);
 		/* (original code)
 		getlobHMObj().remove(new Integer(key));
 		*/
-	}
-
-	public void removeLOBMapping(long key) {
-	  getlobHMObj().removePrimitive(key);
 // GemStone changes END
 	}
 
@@ -3879,8 +3885,8 @@ public abstract class EmbedConnection implements EngineConnection
 	* @param key the integer that represents the LOB locator value.
 	* @return the LOB Object corresponding to this locator.
 	*/
-	public Object getLOBMapping(int key) {
 // GemStone changes BEGIN
+	public Object getLOBMapping(long key) {
 		return getlobHMObj().getPrimitive(key);
 		// changed to use Integer.valueOf()
 		/* (original code)
@@ -3888,10 +3894,12 @@ public abstract class EmbedConnection implements EngineConnection
 		 */
 	}
 
-	public Object getLOBMapping(long key) {
-	  return getlobHMObj().getPrimitive(key);
-// GemStone changes END
+	@Override
+	public boolean hasLOBs() {
+	  final ConcurrentTLongObjectHashMap<Object> m = rootConnection.lobHashMap;
+	  return m != null && m.size() > 0;
 	}
+// GemStone changes END
 
 	/**
 	* Clear the HashMap of all entries.

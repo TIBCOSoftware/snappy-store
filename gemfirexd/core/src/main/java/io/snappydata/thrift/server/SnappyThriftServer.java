@@ -213,7 +213,7 @@ public final class SnappyThriftServer {
   }
 
   public void collectStatisticsSample() {
-    // TODO: create statistics for thrift (especially the
+    // TODO: SW: create statistics for thrift (especially the
     //   selector mode since many below are not relevant for it)
     /*
     final ConnectionStats stats = InternalDriver.activeDriver()

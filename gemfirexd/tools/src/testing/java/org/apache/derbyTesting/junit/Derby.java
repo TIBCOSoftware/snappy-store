@@ -86,7 +86,7 @@ public class Derby {
         // that environment, such as javax.naming.Referenceable. See DERBY-2269.
         if (!JDBC.vmSupportsJSR169()) {
             return hasCorrectJar("/gemfirexd-client.jar",
-                "com.pivotal.gemfirexd.internal.jdbc.ClientDataSource");
+                "io.snappydata.jdbc.ClientDataSource");
         }
         else
             return false;

@@ -76,6 +76,28 @@ public class snappydataConstants {
 
   public static final byte DEFAULT_TRANSACTION_ISOLATION = (byte)0;
 
+  public static final int XA_OK = 0;
+
+  public static final int XA_RDONLY = 3;
+
+  public static final int XA_TMNOFLAGS = 0;
+
+  public static final int XA_TMJOIN = 2097152;
+
+  public static final int XA_TMENDRSCAN = 8388608;
+
+  public static final int XA_TMSTARTRSCAN = 16777216;
+
+  public static final int TMSUSPEND = 33554432;
+
+  public static final int XA_TMSUCCESS = 67108864;
+
+  public static final int XA_TMRESUME = 134217728;
+
+  public static final int XA_TMFAIL = 536870912;
+
+  public static final int XA_TMONEPHASE = 1073741824;
+
   public static final short COLUMN_PRECISION_UNKNOWN = (short)0;
 
   public static final short COLUMN_SCALE_UNKNOWN = (short)0;

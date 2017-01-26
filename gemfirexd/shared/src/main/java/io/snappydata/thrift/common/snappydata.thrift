@@ -135,6 +135,13 @@ enum TransactionAttribute {
   SYNC_COMMITS                                             = 5
 }
 
+// the Xid for XA transactions
+struct TransactionXid {
+  1: required i32                                          formatId
+  2: required binary                                       globalId
+  3: required binary                                       branchQualifier
+}
+
 enum RowIdLifetime {
   // Indicates that this data source does not support the ROWID type.
   ROWID_UNSUPPORTED                                        = 1
@@ -304,12 +311,12 @@ struct ServiceMetaData {
  39: required i32                                          maxUserNameLength
  40: required i32                                          defaultTransactionIsolation
  41: required byte                                         defaultResultSetType
- 42: required bool defaultResultSetHoldabilityHoldCursorsOverCommit
+ 42: required bool                                         defaultResultSetHoldabilityHoldCursorsOverCommit
  // if true then the SQLSTATEs returned by SnappyException are
  // X/Open (now known as Open Group) SQL CLI else they are SQL99
  43: required bool                                         sqlStateIsXOpen
  44: required bool                                         catalogAtStart
- 45: required map<TransactionAttribute, bool> transactionDefaults
+ 45: required map<TransactionAttribute, bool>              transactionDefaults
  46: required RowIdLifetime                                rowIdLifeTime
  47: required set<ServiceFeature>                          supportedFeatures
  48: required map<ServiceFeatureParameterized, list<i32>>  featuresWithParams
@@ -374,16 +381,19 @@ struct OpenConnectionArgs {
   1: required string                                       clientHostName
   2: required string                                       clientID
   3: required SecurityMechanism                            security
-  4: optional string                                       userName
-  5: optional string                                       password
+  // should be true for connections to be used for XA transactions;
+  // XA operations will fail unless this is set to true for the connection
+  4: required bool                                         forXA
+  5: optional string                                       userName
+  6: optional string                                       password
   // number of bytes to use for connection ID token
   // default is DEFAULT_SESSION_TOKEN_SIZE;
   // in future will be used for encryption of token etc. with
   // policy like in GFE client-server to defeat MIM attacks;
   // addition of the token argument allows for that expansion in future
-  6: optional i32                                          tokenSize
-  7: optional bool                                         useStringForDecimal
-  8: optional map<string, string>                          properties
+  7: optional i32                                          tokenSize
+  8: optional bool                                         useStringForDecimal
+  9: optional map<string, string>                          properties
 }
 
 struct ConnectionProperties {
@@ -434,8 +444,8 @@ struct HostAddress {
 // exceptions
 struct SnappyExceptionData {
   1: required string                                       reason
-  2: required string                                       sqlState
-  3: required i32                                          severity
+  2: required i32                                          errorCode
+  3: optional string                                       sqlState
 }
 
 exception SnappyException {
@@ -460,6 +470,20 @@ const byte TRANSACTION_NO_CHANGE                           = 64;
 
 // constant for the default transaction isolation
 const byte DEFAULT_TRANSACTION_ISOLATION                   = TRANSACTION_NONE;
+
+// constants for XA transactions that match the values in XAResource
+const i32 XA_OK                                            = 0;
+const i32 XA_RDONLY                                        = 3;
+
+const i32 XA_TMNOFLAGS                                     = 0;
+const i32 XA_TMJOIN                                        = 0x00200000;
+const i32 XA_TMENDRSCAN                                    = 0x00800000;
+const i32 XA_TMSTARTRSCAN                                  = 0x01000000;
+const i32 TMSUSPEND                                        = 0x02000000;
+const i32 XA_TMSUCCESS                                     = 0x04000000;
+const i32 XA_TMRESUME                                      = 0x08000000;
+const i32 XA_TMFAIL                                        = 0x20000000;
+const i32 XA_TMONEPHASE                                    = 0x40000000;
 
 struct StatementAttrs {
   1: optional byte                                         resultSetType
@@ -787,13 +811,6 @@ service SnappyDataService {
       3: map<TransactionAttribute, bool> flags,
       4: binary token) throws (1: SnappyException error)
 
-  // returns true if second phase commitTransaction() is required else
-  // false where commit was single-phase (e.g. for READ_ONLY transaction)
-  bool prepareCommitTransaction(1: i64 connId,
-      // optional
-      2: map<TransactionAttribute, bool> flags,
-      3: binary token) throws (1: SnappyException error)
-
   RowSet getNextResultSet(1: i64 cursorId,
       2: byte otherResultSetBehaviour,
       3: binary token) throws (1: SnappyException error)
@@ -840,6 +857,41 @@ service SnappyDataService {
       // optional
       5: list<i32> changedRowIndexes,
       6: binary token) throws (1: SnappyException error)
+
+  // XA transaction support
+
+  void startXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      // to disable timeout use value of maximum i32 (0x7fffffff)
+      3: i32 timeoutInSeconds,
+      4: i32 flags,
+      5: binary token) throws (1: SnappyException error)
+
+  i32 prepareXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: binary token) throws (1: SnappyException error)
+
+  void commitXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: bool onePhase,
+      4: binary token) throws (1: SnappyException error)
+
+  void rollbackXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: binary token) throws (1: SnappyException error)
+
+  void forgetXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: binary token) throws (1: SnappyException error)
+
+  void endXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: i32 flags,
+      4: binary token) throws (1: SnappyException error)
+
+  list<TransactionXid> recoverXATransaction(1: i64 connId,
+      2: i32 flag,
+      3: binary token) throws (1: SnappyException error)
 
   // meta-data API
 

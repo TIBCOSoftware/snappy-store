@@ -105,7 +105,7 @@ public final class ClientFinalizer extends FinalizeObject implements
       source = finalizer.source;
     }
     if (id == snappydataConstants.INVALID_ID || service == null ||
-        source == null || !service.isOpen) {
+        source == null || service.isClosed()) {
       return;
     }
 
@@ -154,7 +154,7 @@ public final class ClientFinalizer extends FinalizeObject implements
       for (int i = numServices - 1; i >= 0; i--) {
         boolean success;
         ClientService service = services.get(i);
-        if (!service.isOpen) {
+        if (service.isClosed()) {
           removeFromBulkCloseArgs(i, entities, sources, services);
           numServices--;
           continue;

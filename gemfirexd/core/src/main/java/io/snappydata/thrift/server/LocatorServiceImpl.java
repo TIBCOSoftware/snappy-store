@@ -42,6 +42,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
+import javax.transaction.xa.XAException;
+
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.CacheClosedException;
@@ -307,11 +309,16 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     SQLException sqle;
     if (t instanceof SQLException) {
       sqle = (SQLException)t;
-    }
-    else if (t instanceof SnappyException) {
+    } else if (t instanceof SnappyException) {
       return (SnappyException)t;
-    }
-    else {
+    } else if (t instanceof XAException) {
+      XAException xae = (XAException)t;
+      sqle = new SQLException(xae.getMessage(), null, xae.errorCode);
+      if (xae.getCause() != null) {
+        sqle.setNextException(
+            TransactionResourceImpl.wrapInSQLException(xae.getCause()));
+      }
+    } else {
       if (t instanceof Error) {
         Error err = (Error)t;
         if (SystemFailure.isJVMFailureError(err)) {
@@ -343,14 +350,14 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     }
 
     SnappyExceptionData exData = new SnappyExceptionData(sqle.getMessage(),
-        sqle.getSQLState(), sqle.getErrorCode());
+        sqle.getErrorCode()).setSqlState(sqle.getSQLState());
     ArrayList<SnappyExceptionData> nextExceptions = new ArrayList<>(4);
     SQLException next = sqle.getNextException();
     if (next != null) {
       nextExceptions = new ArrayList<>();
       do {
-        nextExceptions.add(new SnappyExceptionData(next.getMessage(), next
-            .getSQLState(), next.getErrorCode()));
+        nextExceptions.add(new SnappyExceptionData(next.getMessage(),
+            next.getErrorCode()).setSqlState(next.getSQLState()));
       } while ((next = next.getNextException()) != null);
     }
     SnappyException se = new SnappyException(exData, getServerInfo());
@@ -359,14 +366,13 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     if (t instanceof TException) {
       stack = new StringBuilder("Cause: ").append(
           ThriftExceptionUtil.getExceptionString(t)).append("; Server STACK: ");
-    }
-    else {
+    } else {
       stack = new StringBuilder("Server STACK: ");
     }
     SanityManager.getStackTrace(t, stack);
     nextExceptions.add(new SnappyExceptionData(stack.toString(),
-        SQLState.SNAPPY_SERVER_STACK_INDICATOR,
-        ExceptionSeverity.STATEMENT_SEVERITY));
+        ExceptionSeverity.STATEMENT_SEVERITY)
+        .setSqlState(SQLState.SNAPPY_SERVER_STACK_INDICATOR));
     se.setNextExceptions(nextExceptions);
     return se;
   }
@@ -374,7 +380,7 @@ public class LocatorServiceImpl implements LocatorService.Iface {
   public SnappyException newSnappyException(String messageId, Object... args) {
     SnappyExceptionData exData = new SnappyExceptionData();
     exData.setSqlState(StandardException.getSQLStateFromIdentifier(messageId));
-    exData.setSeverity(StandardException.getSeverityFromIdentifier(messageId));
+    exData.setErrorCode(StandardException.getSeverityFromIdentifier(messageId));
     exData.setReason(MessageService.getCompleteMessage(messageId, args));
     return new SnappyException(exData, getServerInfo());
   }

@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.Converters;
@@ -120,6 +121,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   }
 
   protected final int prepare() throws SQLException {
+    this.attrs.setPoolable(true);
     try {
       PrepareResult pr = this.service.prepareStatement(this.preparedSQL, null,
           getAttributes());
@@ -152,6 +154,16 @@ public class ClientPreparedStatement extends ClientStatement implements
         pr.statementId, null);
     this.warnings = pr.getWarnings();
     return numParams;
+  }
+
+  final SQLException informListeners(SQLException sqle) {
+    // report only fatal errors
+    final ClientPooledConnection pooledConn = conn.getOwnerPooledConnection();
+    if (pooledConn != null && (sqle.getErrorCode() >=
+        ExceptionSeverity.SESSION_SEVERITY || isClosed())) {
+      pooledConn.onStatementError(this, sqle);
+    }
+    return sqle;
   }
 
   @Override
@@ -205,7 +217,7 @@ public class ClientPreparedStatement extends ClientStatement implements
         return false;
       }
     } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
+      throw informListeners(ThriftExceptionUtil.newSQLException(se));
     }
   }
 
@@ -225,7 +237,7 @@ public class ClientPreparedStatement extends ClientStatement implements
       this.warnings = rs.getWarnings();
       return new ClientResultSet(this.conn, this, rs);
     } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
+      throw informListeners(ThriftExceptionUtil.newSQLException(se));
     }
   }
 
@@ -247,7 +259,7 @@ public class ClientPreparedStatement extends ClientStatement implements
       this.warnings = ur.getWarnings();
       return (this.currentUpdateCount = ur.getUpdateCount());
     } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
+      throw informListeners(ThriftExceptionUtil.newSQLException(se));
     }
   }
 
@@ -279,7 +291,7 @@ public class ClientPreparedStatement extends ClientStatement implements
           return result;
         }
       } catch (SnappyException se) {
-        throw ThriftExceptionUtil.newSQLException(se);
+        throw informListeners(ThriftExceptionUtil.newSQLException(se));
       }
     }
     return new int[0];
@@ -287,6 +299,44 @@ public class ClientPreparedStatement extends ClientStatement implements
 
   protected final int getType(int parameterIndex) {
     return this.paramsList.getType(parameterIndex - 1);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void close() throws SQLException {
+    // no pooling of prepared statements since plans are already cached on the
+    // server-side; instead just inform the event callbacks on close so that
+    // the connection pool manager marks this statement as closed
+    SQLException listenerError = null;
+    final ClientPooledConnection pooledConn = conn.getOwnerPooledConnection();
+    try {
+      // record to inform the listeners if any
+      if (pooledConn != null) {
+        if (this.isClosed) {
+          listenerError = ThriftExceptionUtil.newSQLException(
+              SQLState.ALREADY_CLOSED, null, "PreparedStatement");
+        } else if (this.service.isClosed()) {
+          listenerError = ThriftExceptionUtil.newSQLException(
+              SQLState.PHYSICAL_CONNECTION_ALREADY_CLOSED);
+        }
+      }
+
+      super.close();
+      if (pooledConn != null) {
+        pooledConn.onStatementClose(this);
+      }
+    } catch (SQLException sqle) {
+      if (pooledConn != null) {
+        listenerError = sqle;
+      }
+      throw sqle;
+    } finally {
+      if (listenerError != null) {
+        pooledConn.onStatementError(this, listenerError);
+      }
+    }
   }
 
   // throw exceptions for unprepared operations
