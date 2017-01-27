@@ -239,6 +239,12 @@ public interface ClientAttribute {
   String SKIP_LOCKS = com.pivotal.gemfirexd.Attribute.SKIP_LOCKS;
 
   /**
+   * Property to change the default schema to use for a connection.
+   * The default schema is normally the user name but this allows changing it.
+   */
+  String DEFAULT_SCHEMA = com.pivotal.gemfirexd.Attribute.DEFAULT_SCHEMA;
+
+  /**
    * A connection level property to disable query routing.
    */
   String ROUTE_QUERY = com.pivotal.gemfirexd.Attribute.ROUTE_QUERY;

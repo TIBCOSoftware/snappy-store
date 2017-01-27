@@ -112,8 +112,8 @@ public class ThriftRow extends OptimizedElementArray implements
    * Performs a deep copy on <i>other</i> if copyValues is true else don't copy
    * values.
    */
-  public ThriftRow(ThriftRow other, boolean copyValues) {
-    super(other, copyValues);
+  public ThriftRow(ThriftRow other, boolean otherIsEmpty, boolean copyValues) {
+    super(other, otherIsEmpty, copyValues);
     if (copyValues) {
       final BitSet changedCols = other.changedColumns;
       this.changedColumns = changedCols == null ? null : (BitSet)changedCols

@@ -45,7 +45,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.gemstone.gnu.trove.TIntArrayList;
 import com.gemstone.gnu.trove.TIntIntHashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
@@ -132,13 +131,8 @@ public final class ClientCallableStatement extends ClientPreparedStatement
           this.outParamsPositionInRow.put(parameterIndex, outIndex);
           outIndex++;
         }
-        // initialize finalizers for LOBs in the row, if any
-        final TIntArrayList lobIndices = this.outParamValues.getRemoteLobIndices();
-        if (lobIndices != null) {
-          this.outParamValues.initializeLobFinalizers(lobIndices,
-              this.service.new ClientCreateLobFinalizer(
-                  this.service.getCurrentHostConnection()));
-        }
+        // create LOBs in the row, if any
+        this.outParamValues.initializeLobs(this.service);
       }
     }
   }

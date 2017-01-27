@@ -17,8 +17,12 @@
 
 package io.snappydata.thrift.internal;
 
+import java.io.InputStream;
+import java.io.Reader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -32,8 +36,6 @@ import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
-import com.gemstone.gnu.trove.TIntArrayList;
-import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
@@ -60,12 +62,13 @@ import org.slf4j.LoggerFactory;
  * of this class at a time (or use synchronization at higher layers).
  */
 @SuppressWarnings("serial")
-public final class ClientService extends ReentrantLock {
+public final class ClientService extends ReentrantLock implements LobService {
 
   private SnappyDataService.Client clientService;
   private volatile boolean isClosed;
   private HostConnection currentHostConnection;
   private HostAddress currentHostAddress;
+  private String currentDefaultSchema;
   final OpenConnectionArgs connArgs;
   final List<HostAddress> connHosts;
   final boolean loadBalance;
@@ -100,6 +103,9 @@ public final class ClientService extends ReentrantLock {
         }
       };
 
+  private static final FinalizeInvoker invokeFinalizers;
+  private static final Thread finalizerThread;
+
   static {
     ThriftExceptionUtil.init();
 
@@ -127,6 +133,18 @@ public final class ClientService extends ReentrantLock {
     ClientConfiguration config = ClientConfiguration.getInstance();
     getLogger().info("Starting client on '" + hostName + "' with ID='"
         + hostId + "' Source-Revision=" + config.getSourceRevision());
+
+    // thread for periodic cleanup of finalizers
+    invokeFinalizers = new FinalizeInvoker();
+    finalizerThread = new Thread(invokeFinalizers, "FinalizeInvoker");
+    finalizerThread.setDaemon(true);
+    finalizerThread.start();
+    Runtime.getRuntime().addShutdownHook(
+        new FinalizeInvoker.StopFinalizer(invokeFinalizers));
+  }
+
+  // empty method for static initialization
+  public static void init() {
   }
 
   public static Logger getLogger() {
@@ -145,10 +163,10 @@ public final class ClientService extends ReentrantLock {
     String userName = null;
     String password = null;
     for (String propName : connProperties.stringPropertyNames()) {
-      if (Attribute.USERNAME_ATTR.equals(propName)
-          || Attribute.USERNAME_ALT_ATTR.equals(propName)) {
+      if (ClientAttribute.USERNAME.equals(propName)
+          || ClientAttribute.USERNAME_ALT.equals(propName)) {
         userName = connProperties.getProperty(propName);
-      } else if (Attribute.PASSWORD_ATTR.equals(propName)) {
+      } else if (ClientAttribute.PASSWORD.equals(propName)) {
         password = connProperties.getProperty(propName);
       } else {
         connProps.put(propName, connProperties.getProperty(propName));
@@ -307,6 +325,18 @@ public final class ClientService extends ReentrantLock {
         SnappyDataService.Client service = new SnappyDataService.Client(
             inProtocol, outProtocol);
 
+        // for failures, set the default schema to the previous one
+        if (this.currentDefaultSchema != null) {
+          Map<String, String> props = this.connArgs.getProperties();
+          if (props == null) {
+            props = Collections.singletonMap(ClientAttribute.DEFAULT_SCHEMA,
+                this.currentDefaultSchema);
+            this.connArgs.setProperties(props);
+          } else {
+            props.put(ClientAttribute.DEFAULT_SCHEMA,
+                this.currentDefaultSchema);
+          }
+        }
         ConnectionProperties connProps = service.openConnection(this.connArgs);
         if (currentSocket != null) {
           currentSocket.close();
@@ -315,6 +345,7 @@ public final class ClientService extends ReentrantLock {
         this.currentHostConnection = new HostConnection(hostAddr,
             connProps.connId, connProps.token);
         this.currentHostAddress = hostAddr;
+        this.currentDefaultSchema = connProps.getDefaultSchema();
         if (SanityManager.TraceClientStatementHA
             | SanityManager.TraceClientConn) {
           if (SanityManager.TraceClientHA) {
@@ -333,8 +364,8 @@ public final class ClientService extends ReentrantLock {
         // the case of failover, for example)
         final int isolationLevel = this.isolationLevel;
         final EnumMap<TransactionAttribute, Boolean> txFlags = getTXFlags();
-        if (isolationLevel !=
-            snappydataConstants.DEFAULT_TRANSACTION_ISOLATION) {
+        if (isolationLevel != Converters.getJdbcIsolation(
+            snappydataConstants.DEFAULT_TRANSACTION_ISOLATION)) {
           beginTransaction(isolationLevel, txFlags);
         } else if (txFlags != null) {
           setTransactionAttributes(txFlags);
@@ -343,7 +374,7 @@ public final class ClientService extends ReentrantLock {
         this.isClosed = false;
         return;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, false,
+        failedServers = handleException(t, failedServers, true, false, false,
             "openConnection");
       } finally {
         super.unlock();
@@ -361,6 +392,10 @@ public final class ClientService extends ReentrantLock {
 
   public final HostConnection getCurrentHostConnection() {
     return this.currentHostConnection;
+  }
+
+  public final String getCurrentDefaultSchema() {
+    return this.currentDefaultSchema;
   }
 
   final void setTXFlag(TransactionAttribute txFlag, boolean val) {
@@ -417,17 +452,12 @@ public final class ClientService extends ReentrantLock {
 
   protected Set<HostAddress> handleException(final Throwable t,
       Set<HostAddress> failedServers, boolean tryFailover,
-      boolean createNewConnection, String op) throws SnappyException {
+      boolean ignoreNodeFailure, boolean createNewConnection,
+      String op) throws SnappyException {
     final HostConnection source = this.currentHostConnection;
     final HostAddress sourceAddr = this.currentHostAddress;
     if (this.isClosed && createNewConnection) {
-      if (t instanceof SnappyException) {
-        throw (SnappyException)t;
-      } else {
-        throw ThriftExceptionUtil.newSnappyException(
-            SQLState.NO_CURRENT_CONNECTION, t,
-            sourceAddr != null ? sourceAddr.toString() : null);
-      }
+      throw newSnappyExceptionForConnectionClose(source, t);
     }
     final int isolationLevel = this.isolationLevel;
     if (!this.loadBalance
@@ -447,12 +477,12 @@ public final class ClientService extends ReentrantLock {
         if (isolationLevel == Connection.TRANSACTION_NONE
             && SQLState.DATA_CONTAINER_CLOSED.equals(sqlState)) {
           throw newSnappyExceptionForNodeFailure(source, op, isolationLevel,
-              failedServers, createNewConnection,
-              ThriftExceptionUtil.newSQLException(se));
+              failedServers, createNewConnection, se);
         } else {
           throw se;
         }
       } else if (!tryFailover) {
+        if (ignoreNodeFailure) return failedServers;
         throw newSnappyExceptionForNodeFailure(source, op, isolationLevel,
             failedServers, createNewConnection, se);
       } else if (status == NetConnection.FailoverStatus.RETRY) {
@@ -465,6 +495,7 @@ public final class ClientService extends ReentrantLock {
             SQLState.DATA_UNEXPECTED_EXCEPTION, t,
             source != null ? source.hostAddr.toString() : null);
       } else if (!tryFailover) {
+        if (ignoreNodeFailure) return failedServers;
         throw newSnappyExceptionForNodeFailure(source, op, isolationLevel,
             failedServers, createNewConnection, t);
       }
@@ -479,6 +510,22 @@ public final class ClientService extends ReentrantLock {
       openConnection(source.hostAddr, failedServers, t);
     }
     return failedServers;
+  }
+
+  SnappyException newSnappyExceptionForConnectionClose(HostConnection source,
+      Throwable cause) {
+    // if cause is a node failure exception then return it
+    if (cause instanceof SnappyException) {
+      SnappyException se = (SnappyException)cause;
+      SnappyExceptionData seData = se.getExceptionData();
+      if (SQLState.GFXD_NODE_SHUTDOWN_PREFIX.equals(seData.getSqlState())
+          || SQLState.DATA_CONTAINER_CLOSED.equals(seData.getSqlState())) {
+        return se;
+      }
+    }
+    return ThriftExceptionUtil.newSnappyException(
+        SQLState.NO_CURRENT_CONNECTION, cause,
+        source != null ? source.hostAddr.toString() : null);
   }
 
   Exception newExceptionForNodeFailure(HostConnection expectedSource,
@@ -513,9 +560,7 @@ public final class ClientService extends ReentrantLock {
       boolean createNewConnection, Throwable cause) {
     final HostConnection source = this.currentHostConnection;
     if (this.isClosed) {
-      return ThriftExceptionUtil.newSnappyException(
-          SQLState.NO_CURRENT_CONNECTION, cause,
-          source != null ? source.hostAddr.toString() : null);
+      return newSnappyExceptionForConnectionClose(source, cause);
     }
     // create a new connection in any case for future operations
     if (createNewConnection && this.loadBalance) {
@@ -542,6 +587,24 @@ public final class ClientService extends ReentrantLock {
     // that case now only checking the HostConnection by reference only.
     throw (SnappyException)newExceptionForNodeFailure(expectedSource, op,
         isolationLevel, null, true);
+  }
+
+  public final HostConnection getLobSource(boolean throwOnFailure,
+      String op) throws SQLException {
+    // get the current source from service; if the original source has failed
+    // and this is new source after failover, then use it in any case and
+    // actual call will fail due to token mismatch on server but send
+    // it nevertheless to simplify client-side code as well as possible future
+    // support for LOB retrieval after failover
+    final HostConnection source = this.currentHostConnection;
+    if (source != null) {
+      return source;
+    } else if (throwOnFailure) {
+      throw (SQLException)newExceptionForNodeFailure(null, op,
+          this.isolationLevel, null, false);
+    } else {
+      return null;
+    }
   }
 
   final class ClientCreateLobFinalizer implements CreateLobFinalizer {
@@ -575,7 +638,7 @@ public final class ClientService extends ReentrantLock {
     }
   }
 
-  final void setSourceConnection(RowSet rs) {
+  final void setSourceConnection(RowSet rs) throws SnappyException {
     final HostConnection source = this.currentHostConnection;
     rs.setConnId(source.connId);
     rs.setToken(source.token);
@@ -583,18 +646,22 @@ public final class ClientService extends ReentrantLock {
     // initialize finalizers for LOBs in the rows, if any
     final List<Row> rows = rs.rows;
     if (rows != null && rows.size() > 0) {
-      final TIntArrayList lobIndices = rows.get(0).getRemoteLobIndices();
-      if (lobIndices != null) {
-        final ClientCreateLobFinalizer createLobFinalizer =
-            new ClientCreateLobFinalizer(source);
+      // create LOBs for each row, if any
+      try {
         for (Row row : rows) {
-          row.initializeLobFinalizers(lobIndices, createLobFinalizer);
+          row.initializeLobs(this);
         }
+      } catch (SQLException sqle) {
+        SnappyExceptionData data = new SnappyExceptionData(sqle.getMessage(),
+            sqle.getErrorCode()).setSqlState(sqle.getSQLState());
+        SnappyException se = new SnappyException(data, source.toString());
+        se.initCause(sqle);
+        throw se;
       }
     }
   }
 
-  final void setSourceConnection(StatementResult sr) {
+  final void setSourceConnection(StatementResult sr) throws SnappyException {
     RowSet rs = sr.resultSet;
     if (rs != null) {
       setSourceConnection(rs);
@@ -643,6 +710,9 @@ public final class ClientService extends ReentrantLock {
         if (attrs != null) {
           attrs.setPossibleDuplicate(false);
         }
+        if (sr.getNewDefaultSchema() != null) {
+          this.currentDefaultSchema = sr.getNewDefaultSchema();
+        }
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("execute_E", sql, source.connId,
@@ -654,7 +724,7 @@ public final class ClientService extends ReentrantLock {
           attrs = new StatementAttrs();
         }
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "executeStatement");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -683,6 +753,9 @@ public final class ClientService extends ReentrantLock {
         if (attrs != null) {
           attrs.setPossibleDuplicate(false);
         }
+        if (ur.getNewDefaultSchema() != null) {
+          this.currentDefaultSchema = ur.getNewDefaultSchema();
+        }
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("executeUpdate_E", sqlStr,
@@ -694,7 +767,7 @@ public final class ClientService extends ReentrantLock {
           attrs = new StatementAttrs();
         }
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "executeUpdate");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -733,7 +806,7 @@ public final class ClientService extends ReentrantLock {
           attrs = new StatementAttrs();
         }
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "executeQuery");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -773,7 +846,7 @@ public final class ClientService extends ReentrantLock {
           attrs = new StatementAttrs();
         }
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "prepareStatement");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -802,10 +875,13 @@ public final class ClientService extends ReentrantLock {
       }
 
       StatementResult sr = this.clientService.executePrepared(stmtId, params,
-          outputParams, source.token);
+          outputParams, attrs, source.token);
       setSourceConnection(sr);
       if (attrs != null) {
         attrs.setPossibleDuplicate(false);
+      }
+      if (sr.getNewDefaultSchema() != null) {
+        this.currentDefaultSchema = sr.getNewDefaultSchema();
       }
       if (SanityManager.TraceClientStatement) {
         final long ns = System.nanoTime();
@@ -814,7 +890,8 @@ public final class ClientService extends ReentrantLock {
       }
       return sr;
     } catch (Throwable t) {
-      failedServers = handleException(t, null, true, true, "executePrepared");
+      failedServers = handleException(t, null, true, false, true,
+          "executePrepared");
 
       source = this.currentHostConnection;
       if (SanityManager.TraceClientStatement) {
@@ -842,6 +919,9 @@ public final class ClientService extends ReentrantLock {
         setSourceConnection(sr);
         prh.updatePrepareResult(sr.getPreparedResult());
         attrs.setPossibleDuplicate(false);
+        if (sr.getNewDefaultSchema() != null) {
+          this.currentDefaultSchema = sr.getNewDefaultSchema();
+        }
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("executePrepared_E", logStmtId,
@@ -850,7 +930,7 @@ public final class ClientService extends ReentrantLock {
         return sr;
       } catch (Throwable t) {
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "executePrepared");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -861,6 +941,7 @@ public final class ClientService extends ReentrantLock {
 
   public UpdateResult executePreparedUpdate(HostConnection source,
       long stmtId, Row params, PrepareResultHolder prh) throws SnappyException {
+    StatementAttrs attrs = prh.getAttributes();
     Set<HostAddress> failedServers;
     super.lock();
     try {
@@ -875,7 +956,13 @@ public final class ClientService extends ReentrantLock {
       }
 
       UpdateResult ur = this.clientService.executePreparedUpdate(stmtId,
-          params, source.token);
+          params, attrs, source.token);
+      if (attrs != null) {
+        attrs.setPossibleDuplicate(false);
+      }
+      if (ur.getNewDefaultSchema() != null) {
+        this.currentDefaultSchema = ur.getNewDefaultSchema();
+      }
       if (SanityManager.TraceClientStatement) {
         final long ns = System.nanoTime();
         SanityManager.DEBUG_PRINT_COMPACT("executePreparedUpdate_E", null,
@@ -883,7 +970,7 @@ public final class ClientService extends ReentrantLock {
       }
       return ur;
     } catch (Throwable t) {
-      failedServers = handleException(t, null, true, true,
+      failedServers = handleException(t, null, true, false, true,
           "executePreparedUpdate");
 
       source = this.currentHostConnection;
@@ -897,7 +984,6 @@ public final class ClientService extends ReentrantLock {
     }
 
     List<Row> paramsBatch = Collections.singletonList(params);
-    StatementAttrs attrs = prh.getAttributes();
     if (attrs == null) {
       attrs = new StatementAttrs();
     }
@@ -911,6 +997,9 @@ public final class ClientService extends ReentrantLock {
             source.token);
         prh.updatePrepareResult(sr.getPreparedResult());
         attrs.setPossibleDuplicate(false);
+        if (sr.getNewDefaultSchema() != null) {
+          this.currentDefaultSchema = sr.getNewDefaultSchema();
+        }
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("executePreparedUpdate_E", null,
@@ -921,7 +1010,7 @@ public final class ClientService extends ReentrantLock {
             .setWarnings(sr.getWarnings());
       } catch (Throwable t) {
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "executePreparedUpdate");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -947,7 +1036,7 @@ public final class ClientService extends ReentrantLock {
       }
 
       RowSet rs = this.clientService.executePreparedQuery(stmtId, params,
-          source.token);
+          attrs, source.token);
       setSourceConnection(rs);
       if (attrs != null) {
         attrs.setPossibleDuplicate(false);
@@ -959,7 +1048,7 @@ public final class ClientService extends ReentrantLock {
       }
       return rs;
     } catch (Throwable t) {
-      failedServers = handleException(t, null, true, true,
+      failedServers = handleException(t, null, true, false, true,
           "executePreparedQuery");
 
       source = this.currentHostConnection;
@@ -986,6 +1075,9 @@ public final class ClientService extends ReentrantLock {
             source.token);
         prh.updatePrepareResult(sr.getPreparedResult());
         attrs.setPossibleDuplicate(false);
+        if (sr.getNewDefaultSchema() != null) {
+          this.currentDefaultSchema = sr.getNewDefaultSchema();
+        }
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("executePreparedQuery_E", null,
@@ -996,7 +1088,7 @@ public final class ClientService extends ReentrantLock {
         return rs;
       } catch (Throwable t) {
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "executePreparedQuery");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -1007,6 +1099,7 @@ public final class ClientService extends ReentrantLock {
 
   public UpdateResult executePreparedBatch(HostConnection source, long stmtId,
       List<Row> paramsBatch, PrepareResultHolder prh) throws SnappyException {
+    StatementAttrs attrs = prh.getAttributes();
     Set<HostAddress> failedServers;
     super.lock();
     try {
@@ -1021,7 +1114,13 @@ public final class ClientService extends ReentrantLock {
       }
 
       UpdateResult ur = this.clientService.executePreparedBatch(stmtId,
-          paramsBatch, source.token);
+          paramsBatch, attrs, source.token);
+      if (attrs != null) {
+        attrs.setPossibleDuplicate(false);
+      }
+      if (ur.getNewDefaultSchema() != null) {
+        this.currentDefaultSchema = ur.getNewDefaultSchema();
+      }
       if (SanityManager.TraceClientStatement) {
         final long ns = System.nanoTime();
         SanityManager.DEBUG_PRINT_COMPACT("executePreparedBatch_E", null,
@@ -1029,7 +1128,7 @@ public final class ClientService extends ReentrantLock {
       }
       return ur;
     } catch (Throwable t) {
-      failedServers = handleException(t, null, true, true,
+      failedServers = handleException(t, null, true, false, true,
           "executePreparedBatch");
 
       source = this.currentHostConnection;
@@ -1042,7 +1141,6 @@ public final class ClientService extends ReentrantLock {
       super.unlock();
     }
 
-    StatementAttrs attrs = prh.getAttributes();
     if (attrs == null) {
       attrs = new StatementAttrs();
     }
@@ -1056,6 +1154,9 @@ public final class ClientService extends ReentrantLock {
             source.token);
         prh.updatePrepareResult(sr.getPreparedResult());
         attrs.setPossibleDuplicate(false);
+        if (sr.getNewDefaultSchema() != null) {
+          this.currentDefaultSchema = sr.getNewDefaultSchema();
+        }
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("executePreparedBatch_E", null,
@@ -1067,7 +1168,7 @@ public final class ClientService extends ReentrantLock {
             .setWarnings(sr.getWarnings());
       } catch (Throwable t) {
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "executePreparedBatch");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -1097,6 +1198,9 @@ public final class ClientService extends ReentrantLock {
         if (attrs != null) {
           attrs.setPossibleDuplicate(false);
         }
+        if (sr.getNewDefaultSchema() != null) {
+          this.currentDefaultSchema = sr.getNewDefaultSchema();
+        }
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("preparedAndExecute_E", sql,
@@ -1108,7 +1212,7 @@ public final class ClientService extends ReentrantLock {
           attrs = new StatementAttrs();
         }
         attrs.setPossibleDuplicate(false);
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "prepareAndExecute");
         attrs.setPossibleDuplicate(true);
       } finally {
@@ -1130,10 +1234,10 @@ public final class ClientService extends ReentrantLock {
       super.lock();
       try {
         source = this.currentHostConnection;
-        this.clientService.beginTransaction(source.connId,
-            Converters.getThriftTransactionIsolation(jdbcIsolationLevel),
-            flags, source.token);
-        this.isolationLevel = jdbcIsolationLevel;
+        this.isolationLevel = Converters.getJdbcIsolation(this.clientService
+            .beginTransaction(source.connId,
+                Converters.getThriftTransactionIsolation(jdbcIsolationLevel),
+                flags, source.token));
         if (SanityManager.TraceClientStatement) {
           final long ns = System.nanoTime();
           SanityManager.DEBUG_PRINT_COMPACT("beginTransaction_E", null,
@@ -1141,7 +1245,7 @@ public final class ClientService extends ReentrantLock {
         }
         return;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "beginTransaction");
       } finally {
         super.unlock();
@@ -1171,7 +1275,7 @@ public final class ClientService extends ReentrantLock {
         }
         return;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "setTransactionAttributes");
       } finally {
         super.unlock();
@@ -1202,7 +1306,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "commitTransaction");
+      handleException(t, null, false, false, true, "commitTransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1233,7 +1337,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "rollbackTransaction");
+      handleException(t, null, false, false, true, "rollbackTransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1263,7 +1367,7 @@ public final class ClientService extends ReentrantLock {
       return rs;
     } catch (Throwable t) {
       // no failover possible
-      handleException(t, null, false, true, "getNextResultSet");
+      handleException(t, null, false, false, true, "getNextResultSet");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1293,7 +1397,7 @@ public final class ClientService extends ReentrantLock {
       return blob;
     } catch (Throwable t) {
       // no failover possible for multiple chunks
-      handleException(t, null, false, true, "getBlobChunk");
+      handleException(t, null, false, false, true, "getBlobChunk");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1323,11 +1427,85 @@ public final class ClientService extends ReentrantLock {
       return clob;
     } catch (Throwable t) {
       // no failover possible for multiple chunks
-      handleException(t, null, false, true, "getClobChunk");
+      handleException(t, null, false, false, true, "getClobChunk");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
       super.unlock();
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final Blob createBlob(BlobChunk firstChunk,
+      boolean forStream) throws SQLException {
+    return new ClientBlob(firstChunk, this, getLobSource(true,
+        "createBlob"), forStream);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final Blob createBlob(InputStream stream,
+      long length) throws SQLException {
+    return new ClientBlob(stream, length, this);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final Clob createClob(ClobChunk firstChunk,
+      boolean forStream) throws SQLException {
+    return new ClientClob(firstChunk, this, getLobSource(true,
+        "createClob"), forStream);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final Clob createClob(Reader reader, long length) throws SQLException {
+    return new ClientClob(reader, length, this);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final Clob createClob(InputStream asciiStream,
+      long length) throws SQLException {
+    return new ClientClob(asciiStream, length, this);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final BlobChunk getBlobChunk(long lobId, long offset, int chunkSize,
+      boolean freeLobAtEnd) throws SQLException {
+    try {
+      return getBlobChunk(getLobSource(true, "getBlobChunk"), lobId,
+          offset, chunkSize, freeLobAtEnd);
+    } catch (SnappyException se) {
+      throw ThriftExceptionUtil.newSQLException(se);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final ClobChunk getClobChunk(long lobId, long offset, int chunkSize,
+      boolean freeLobAtEnd) throws SQLException {
+    try {
+      return getClobChunk(getLobSource(true, "getClobChunk"), lobId,
+          offset, chunkSize, freeLobAtEnd);
+    } catch (SnappyException se) {
+      throw ThriftExceptionUtil.newSQLException(se);
     }
   }
 
@@ -1355,7 +1533,7 @@ public final class ClientService extends ReentrantLock {
       return lobId;
     } catch (Throwable t) {
       // no failover possible for multiple chunks
-      handleException(t, null, false, true, "sendBlobChunk");
+      handleException(t, null, false, false, true, "sendBlobChunk");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1385,7 +1563,7 @@ public final class ClientService extends ReentrantLock {
       return lobId;
     } catch (Throwable t) {
       // no failover possible for multiple chunks
-      handleException(t, null, false, true, "sendClobChunk");
+      handleException(t, null, false, false, true, "sendClobChunk");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1420,7 +1598,7 @@ public final class ClientService extends ReentrantLock {
       return true;
     } catch (Throwable t) {
       // no failover possible for multiple chunks
-      handleException(t, null, false, true, "freeLob");
+      handleException(t, null, false, false, true, "freeLob");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1452,7 +1630,7 @@ public final class ClientService extends ReentrantLock {
       return rs;
     } catch (Throwable t) {
       // no failover possible
-      handleException(t, null, false, true, "scrollCursor");
+      handleException(t, null, false, false, true, "scrollCursor");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1483,7 +1661,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover possible
-      handleException(t, null, false, true, "executeCursorUpdate");
+      handleException(t, null, false, false, true, "executeCursorUpdate");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1521,7 +1699,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "startXATransaction");
+      handleException(t, null, false, false, true, "startXATransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1548,7 +1726,7 @@ public final class ClientService extends ReentrantLock {
       return result;
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "prepareXATransaction");
+      handleException(t, null, false, false, true, "prepareXATransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1574,7 +1752,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "commitXATransaction");
+      handleException(t, null, false, false, true, "commitXATransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1600,7 +1778,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "rollbackXATransaction");
+      handleException(t, null, false, false, true, "rollbackXATransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1625,7 +1803,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "forgetXATransaction");
+      handleException(t, null, false, false, true, "forgetXATransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1651,7 +1829,7 @@ public final class ClientService extends ReentrantLock {
       }
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "endXATransaction");
+      handleException(t, null, false, false, true, "endXATransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1678,7 +1856,7 @@ public final class ClientService extends ReentrantLock {
       return recoveredIds;
     } catch (Throwable t) {
       // no failover for transactions yet
-      handleException(t, null, false, true, "reoverXATransaction");
+      handleException(t, null, false, false, true, "reoverXATransaction");
       // never reached
       throw new AssertionError("unexpectedly reached end");
     } finally {
@@ -1707,7 +1885,7 @@ public final class ClientService extends ReentrantLock {
         }
         return smd;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "getServiceMetaData");
       } finally {
         super.unlock();
@@ -1739,7 +1917,7 @@ public final class ClientService extends ReentrantLock {
         }
         return rs;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "getSchemaMetaData");
       } finally {
         super.unlock();
@@ -1771,7 +1949,7 @@ public final class ClientService extends ReentrantLock {
         }
         return rs;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "getIndexInfo");
       } finally {
         super.unlock();
@@ -1802,7 +1980,7 @@ public final class ClientService extends ReentrantLock {
         }
         return rs;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "getUDTs");
       } finally {
         super.unlock();
@@ -1834,7 +2012,7 @@ public final class ClientService extends ReentrantLock {
         }
         return rs;
       } catch (Throwable t) {
-        failedServers = handleException(t, failedServers, true, true,
+        failedServers = handleException(t, failedServers, true, false, true,
             "getBestRowIdentifier");
       } finally {
         super.unlock();
@@ -1864,7 +2042,7 @@ public final class ClientService extends ReentrantLock {
         return conns;
       } catch (Throwable t) {
         // no failover required
-        handleException(t, null, false, true, "fetchActiveConnections");
+        handleException(t, null, false, false, true, "fetchActiveConnections");
       } finally {
         super.unlock();
       }
@@ -1892,7 +2070,7 @@ public final class ClientService extends ReentrantLock {
         return stmts;
       } catch (Throwable t) {
         // no failover required
-        handleException(t, null, false, true, "fetchActiveStatements");
+        handleException(t, null, false, false, true, "fetchActiveStatements");
       } finally {
         super.unlock();
       }
@@ -1922,8 +2100,8 @@ public final class ClientService extends ReentrantLock {
             source.connId, source.token, ns, false, null);
       }
     } catch (Throwable t) {
-      // no failover should be attempted
-      handleException(t, null, false, true, "cancelStatement");
+      // no failover should be attempted and node failures ignored
+      handleException(t, null, false, true, true, "cancelStatement");
     } finally {
       super.unlock();
     }
@@ -1955,10 +2133,8 @@ public final class ClientService extends ReentrantLock {
             source.connId, source.token, ns, false, null);
       }
     } catch (Throwable t) {
-      // no failover should be attempted
-      handleException(t, null, false, true, "closeResultSet");
-      // never reached
-      throw new AssertionError("unexpectedly reached end");
+      // no failover should be attempted and node failures ignored
+      handleException(t, null, false, true, true, "closeResultSet");
     } finally {
       super.unlock();
     }
@@ -1990,10 +2166,8 @@ public final class ClientService extends ReentrantLock {
             source.connId, source.token, ns, false, null);
       }
     } catch (Throwable t) {
-      // no failover should be attempted
-      handleException(t, null, false, true, "closeStatement");
-      // never reached
-      throw new AssertionError("unexpectedly reached end");
+      // no failover should be attempted and node failures ignored
+      handleException(t, null, false, true, true, "closeStatement");
     } finally {
       super.unlock();
     }
@@ -2044,8 +2218,8 @@ public final class ClientService extends ReentrantLock {
     } catch (TException te) {
       // ignore socket exception during connection close
     } catch (Throwable t) {
-      // no failover should be attempted
-      handleException(t, null, false, false, "closeConnection");
+      // no failover should be attempted and node failures ignored
+      handleException(t, null, false, true, false, "closeConnection");
       // succeed if above returns
     } finally {
       closeService();
@@ -2146,15 +2320,13 @@ public final class ClientService extends ReentrantLock {
         SanityManager.DEBUG_PRINT_COMPACT("bulkClose_S", null,
             hostConn.connId, hostConn.token, ns, false, null);
       }
-      return true;
     } catch (Throwable t) {
-      // no failover should be attempted
-      handleException(t, null, false, false, "bulkClose");
-      // never reached
-      throw new AssertionError("unexpectedly reached end");
+      // no failover should be attempted and node failures ignored
+      handleException(t, null, false, true, false, "bulkClose");
     } finally {
       super.unlock();
     }
+    return true;
   }
 
   public final void checkClosedConnection() throws SQLException {

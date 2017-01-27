@@ -523,6 +523,12 @@ public interface Attribute {
   String SKIP_LOCKS = "skip-locks";
 
   /**
+   * Property to change the default schema to use for a connection.
+   * The default schema is normally the user name but this allows changing it.
+   */
+  String DEFAULT_SCHEMA = "default-schema";
+
+  /**
    * If true then use <code>TBinaryProtocol</code> for the thrift server, else
    * the default is to use <code>TCompactProtocol</code>.
    * <p>

@@ -156,39 +156,46 @@ public final class ClientBlob extends ClientLobBase implements Blob {
     this.dataStream = null;
   }
 
-  final int readBytes(long offset, byte[] b, int boffset, int length)
+  final int readBytes(final long offset, byte[] b, int boffset, int length)
       throws SQLException {
     BlobChunk chunk;
     checkOffset(offset);
     if (this.streamedInput) {
       try {
         long skipBytes = offset - this.streamOffset;
-        if (this.dataStream instanceof MemInputStream) {
-          ((MemInputStream)this.dataStream).changePosition((int)offset);
-        } else if (skipBytes > 0) {
-          long skipped;
-          while ((skipped = this.dataStream.skip(skipBytes)) > 0) {
-            if ((skipBytes -= skipped) <= 0) {
-              break;
-            }
-          }
-          if (skipBytes > 0) {
-            byte[] buffer = new byte[(int)Math.min(skipBytes, 8192)];
-            int readBytes;
-            while ((readBytes = this.dataStream.read(buffer)) > 0) {
-              if ((skipBytes -= readBytes) <= 0) {
+        if (skipBytes != 0) {
+          if (this.dataStream instanceof MemInputStream) {
+            ((MemInputStream)this.dataStream).changePosition((int)offset);
+          } else if (skipBytes > 0) {
+            long skipped;
+            while ((skipped = this.dataStream.skip(skipBytes)) > 0) {
+              if ((skipBytes -= skipped) <= 0) {
                 break;
               }
             }
-          }
-        } else if (skipBytes < 0) {
-          if (this.dataStream instanceof FileInputStream) {
-            // need to seek into the stream but only for FileInputStream
-            FileInputStream fis = (FileInputStream)this.dataStream;
-            fis.getChannel().position(offset);
-          } else {
-            throw ThriftExceptionUtil.newSQLException(
-                SQLState.BLOB_BAD_POSITION, null, offset + 1);
+            if (skipBytes > 0) {
+              byte[] buffer = new byte[(int)Math.min(skipBytes, 8192)];
+              int readBytes;
+              while ((readBytes = this.dataStream.read(buffer)) > 0) {
+                if ((skipBytes -= readBytes) <= 0) {
+                  break;
+                }
+              }
+            }
+            if (skipBytes > 0) {
+              // offset beyond the blob
+              throw ThriftExceptionUtil.newSQLException(
+                  SQLState.BLOB_POSITION_TOO_LARGE, null, offset + 1);
+            }
+          } else if (skipBytes < 0) {
+            if (this.dataStream instanceof FileInputStream) {
+              // need to seek into the stream but only for FileInputStream
+              FileInputStream fis = (FileInputStream)this.dataStream;
+              fis.getChannel().position(offset);
+            } else {
+              throw ThriftExceptionUtil.newSQLException(
+                  SQLState.BLOB_BAD_POSITION, null, offset + 1);
+            }
           }
         }
         // keep reading stream till end
@@ -242,7 +249,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   @Override
   public byte[] getBytes(long pos, int length) throws SQLException {
     final long offset = pos - 1;
-    length = checkOffset(offset, length);
+    length = checkOffset(offset, length, true);
 
     if (length > 0) {
       byte[] result = new byte[length];
@@ -278,7 +285,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   public InputStream getBinaryStream(long pos, long len) throws SQLException {
     if (this.streamedInput || this.currentChunk != null) {
       final long offset = pos - 1;
-      len = checkOffset(offset, len);
+      len = checkOffset(offset, len, true);
       return new LobStream(offset, len);
     } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.LOB_OBJECT_INVALID);
@@ -291,7 +298,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   @Override
   public int setBytes(long pos, byte[] bytes, int boffset, int len)
       throws SQLException {
-    len = checkOffset(pos - 1, len);
+    checkOffset(pos - 1, len, false);
     if (boffset < 0 || boffset > bytes.length) {
       throw ThriftExceptionUtil.newSQLException(SQLState.BLOB_INVALID_OFFSET,
           null, boffset);
@@ -331,8 +338,8 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         System.arraycopy(bytes, boffset, sbuffer, offset, len);
         ms.changeBuffer(sbuffer);
         ms.changeCount(newSize);
-        this.length = newSize;
       }
+      this.length = newSize;
       this.dataStream = ms;
       return len;
     } else {

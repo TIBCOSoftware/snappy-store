@@ -67,7 +67,7 @@ abstract class ClientLobBase {
   }
 
   protected ClientLobBase(ClientService service, long lobId,
-      HostConnection source) throws SQLException {
+      HostConnection source) {
     this.service = service;
     this.lobId = lobId;
     // invalid LOB ID means single lob chunk so ignore finalizer for that case
@@ -163,10 +163,11 @@ abstract class ClientLobBase {
     }
   }
 
-  protected int checkOffset(long offset, long length) throws SQLException {
+  protected int checkOffset(long offset, long length,
+      boolean trimIfRequired) throws SQLException {
     checkOffset(offset);
     checkLength(length);
-    if (this.length >= 0) {
+    if (trimIfRequired && this.length >= 0) {
       long maxLen = this.length - offset;
       if (maxLen < 0) {
         throw ThriftExceptionUtil.newSQLException(

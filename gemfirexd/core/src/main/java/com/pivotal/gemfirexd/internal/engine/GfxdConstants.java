@@ -470,6 +470,7 @@ public interface GfxdConstants {
           Attribute.SHUTDOWN_ATTR,
           Attribute.SKIP_LISTENERS,
           Attribute.SKIP_LOCKS,
+          Attribute.DEFAULT_SCHEMA,
           Attribute.CLIENT_SECURITY_MECHANISM,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.SOFT_UPGRADE_NO_FEATURE_CHECK,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.TERRITORY,

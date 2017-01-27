@@ -49,8 +49,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.FinalizeObject;
-import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.ClobChunk;
@@ -119,11 +117,11 @@ public class OptimizedElementArray {
   }
 
   protected OptimizedElementArray(OptimizedElementArray other) {
-    this(other, true);
+    this(other, false, true);
   }
 
   protected OptimizedElementArray(OptimizedElementArray other,
-      boolean copyValues) {
+      boolean otherIsEmpty, boolean copyValues) {
     final long[] prims = other.primitives;
     final Object[] nonPrims = other.nonPrimitives;
     this.headerSize = other.headerSize;
@@ -135,19 +133,22 @@ public class OptimizedElementArray {
       this.primitives = EMPTY;
     }
     if (nonPrims != null) {
-      if (copyValues) {
+      // copy values only if other row has some non-primitive values
+      if (copyValues && !otherIsEmpty) {
         this.nonPrimitives = nonPrims.clone();
       } else {
         this.nonPrimitives = new Object[nonPrims.length];
-        // mark all non-primitives as null in meta-data
-        setNonPrimitivesNull();
       }
     }
     this.nonPrimSize = other.nonPrimSize;
+    this.hasLobs = other.hasLobs;
     if (copyValues) {
       this.hash = other.hash;
+    } else {
+      // mark primitives as non-null since setters do not mark values
+      // as non-null, and mark non-primitives as null
+      setDefaultNullability();
     }
-    this.hasLobs = other.hasLobs;
   }
 
   /**
@@ -174,7 +175,6 @@ public class OptimizedElementArray {
     for (int index = 0; index < numFields; index++) {
       final ColumnDescriptor cd = metadata.get(index);
       final SnappyType type = cd.type;
-      setType(index, type.getValue());
       switch (type) {
         case INTEGER:
         case BIGINT:
@@ -182,24 +182,27 @@ public class OptimizedElementArray {
         case FLOAT:
         case DATE:
         case TIMESTAMP:
-        case REAL:
         case TIME:
         case SMALLINT:
         case BOOLEAN:
         case TINYINT:
         case NULLTYPE:
+          setType(index, type.getValue());
           // skip primitives that will be stored directly in "primitives"
           break;
         case BLOB:
         case CLOB:
-          // set the position and also space for finalizer
-          nonPrimitiveIndex++;
+          // set the position for non-primitives
           this.primitives[headerSize + index] = nonPrimitiveIndex++;
+          // mark null
+          setType(index, -type.getValue());
           this.hasLobs = true;
           break;
         default:
           // set the position for non-primitives
           this.primitives[headerSize + index] = nonPrimitiveIndex++;
+          // mark null
+          setType(index, -type.getValue());
           break;
       }
     }
@@ -210,28 +213,33 @@ public class OptimizedElementArray {
     this.headerSize = headerSize;
   }
 
-  private void setNonPrimitivesNull() {
+  private void setDefaultNullability() {
     final long[] primitives = this.primitives;
     final int end = Platform.LONG_ARRAY_OFFSET + size();
     for (int offset = Platform.LONG_ARRAY_OFFSET; offset < end; offset++) {
-      byte snappyType = Platform.getByte(primitives, offset);
-      if (snappyType > 0) {
-        // skip primitives
-        switch (snappyType) {
-          case 4: // INTEGER
-          case 5: // BIGINT
-          case 7: // DOUBLE
-          case 8: // FLOAT
-          case 6: // REAL
-          case 3: // SMALLINT
-          case 1: // BOOLEAN
-          case 2: // TINYINT
-          case 25: // NULLTYPE
-            break;
-          default:
+      final byte snappyType = Platform.getByte(primitives, offset);
+      switch (Math.abs(snappyType)) {
+        case 4: // INTEGER
+        case 5: // BIGINT
+        case 7: // DOUBLE
+        case 6: // FLOAT
+        case 12: // DATE
+        case 13: // TIME
+        case 14: // TIMESTAMP
+        case 3: // SMALLINT
+        case 1: // BOOLEAN
+        case 2: // TINYINT
+        case 24: // NULLTYPE
+          // primitives must be marked non-null
+          if (snappyType < 0) {
             Platform.putByte(primitives, offset, (byte)-snappyType);
-            break;
-        }
+          }
+          break;
+        default:
+          // non-primitives must be marked null
+          if (snappyType > 0) {
+            Platform.putByte(primitives, offset, (byte)-snappyType);
+          }
       }
     }
   }
@@ -295,6 +303,10 @@ public class OptimizedElementArray {
     return Converters.getTime(getLong(index));
   }
 
+  public final long getDateTimeMillis(int index) {
+    return getLong(index) * 1000L;
+  }
+
   public final Timestamp getTimestamp(int index) {
     return Converters.getTimestamp(getLong(index));
   }
@@ -303,11 +315,10 @@ public class OptimizedElementArray {
     return this.nonPrimitives[(int)this.primitives[headerSize + index]];
   }
 
-  public final TIntArrayList getRemoteLobIndices() {
-    if (!hasLobs || nonPrimitives == null) return null;
+  public final void initializeLobs(LobService lobService) throws SQLException {
+    if (!hasLobs || nonPrimitives == null) return;
 
     final Object[] nonPrimitives = this.nonPrimitives;
-    TIntArrayList lobIndices = null;
     final long[] primitives = this.primitives;
     final int headerSize = this.headerSize;
     final int size = primitives.length - headerSize;
@@ -317,74 +328,16 @@ public class OptimizedElementArray {
         final int lobIndex = (int)primitives[headerSize + index];
         if (nonPrimitives[lobIndex] instanceof BlobChunk) {
           BlobChunk chunk = (BlobChunk)nonPrimitives[lobIndex];
-          if (chunk != null && chunk.isSetLobId()) {
-            if (lobIndices == null) {
-              lobIndices = new TIntArrayList(4);
-            }
-            lobIndices.add(lobIndex);
-          }
+          nonPrimitives[lobIndex] = lobService.createBlob(chunk, false);
         }
       } else if (type == SnappyType.CLOB.getValue()) {
         final int lobIndex = (int)primitives[headerSize + index];
         if (nonPrimitives[lobIndex] instanceof ClobChunk) {
           ClobChunk chunk = (ClobChunk)nonPrimitives[lobIndex];
-          if (chunk != null && chunk.isSetLobId()) {
-            if (lobIndices == null) {
-              lobIndices = new TIntArrayList(4);
-            }
-            // -ve index to indicate a CLOB
-            lobIndices.add(-lobIndex);
-          }
+          nonPrimitives[lobIndex] = lobService.createClob(chunk, false);
         }
       }
     }
-    return lobIndices;
-  }
-
-  public final void initializeLobFinalizers(TIntArrayList lobIndices,
-      CreateLobFinalizer createLobFinalizer) {
-    final Object[] nonPrimitives = this.nonPrimitives;
-    int lobIndex;
-    final int size = lobIndices.size();
-    for (int index = 0; index < size; index++) {
-      lobIndex = lobIndices.getQuick(index);
-      if (lobIndex > 0) {
-        nonPrimitives[lobIndex - 1] = createLobFinalizer
-            .execute((BlobChunk)nonPrimitives[lobIndex]);
-      } else {
-        lobIndex = -lobIndex;
-        nonPrimitives[lobIndex - 1] = createLobFinalizer
-            .execute((ClobChunk)nonPrimitives[lobIndex]);
-      }
-    }
-  }
-
-  public final BlobChunk getBlobChunk(int index, boolean clearFinalizer) {
-    final int lobIndex = (int)this.primitives[headerSize + index];
-    final BlobChunk chunk = (BlobChunk)this.nonPrimitives[lobIndex];
-    if (clearFinalizer && chunk != null && chunk.isSetLobId()) {
-      final FinalizeObject finalizer =
-          (FinalizeObject)this.nonPrimitives[lobIndex - 1];
-      if (finalizer != null) {
-        finalizer.clearAll();
-        this.nonPrimitives[lobIndex - 1] = null;
-      }
-    }
-    return chunk;
-  }
-
-  public final ClobChunk getClobChunk(int index, boolean clearFinalizer) {
-    final int lobIndex = (int)this.primitives[headerSize + index];
-    final ClobChunk chunk = (ClobChunk)this.nonPrimitives[lobIndex];
-    if (clearFinalizer && chunk != null && chunk.isSetLobId()) {
-      final FinalizeObject finalizer =
-          (FinalizeObject)this.nonPrimitives[lobIndex - 1];
-      if (finalizer != null) {
-        finalizer.clearAll();
-        this.nonPrimitives[lobIndex - 1] = null;
-      }
-    }
-    return chunk;
   }
 
   public final void setNull(int index) {
@@ -444,11 +397,11 @@ public class OptimizedElementArray {
   }
 
   public final void setTimestamp(int index, Timestamp ts) {
-    setPrimLong(headerSize + index, Converters.getTimestamp(ts));
+    setPrimLong(headerSize + index, Converters.getTimestampNanos(ts));
   }
 
   public final void setTimestamp(int index, java.util.Date ts) {
-    setPrimLong(headerSize + index, Converters.getTimestamp(ts));
+    setPrimLong(headerSize + index, Converters.getTimestampNanos(ts));
   }
 
   public final void setObject(int index, Object value, SnappyType type) {
@@ -482,76 +435,73 @@ public class OptimizedElementArray {
     if (SnappyType.BIGINT.getValue() != 5) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.REAL.getValue() != 6) {
+    if (SnappyType.FLOAT.getValue() != 6) {
       throw new AssertionError("typeId mismatch");
     }
     if (SnappyType.DOUBLE.getValue() != 7) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.FLOAT.getValue() != 8) {
+    if (SnappyType.DECIMAL.getValue() != 8) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.DECIMAL.getValue() != 9) {
+    if (SnappyType.CHAR.getValue() != 9) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.CHAR.getValue() != 10) {
+    if (SnappyType.VARCHAR.getValue() != 10) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.VARCHAR.getValue() != 11) {
+    if (SnappyType.LONGVARCHAR.getValue() != 11) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.LONGVARCHAR.getValue() != 12) {
+    if (SnappyType.DATE.getValue() != 12) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.DATE.getValue() != 13) {
+    if (SnappyType.TIME.getValue() != 13) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.TIME.getValue() != 14) {
+    if (SnappyType.TIMESTAMP.getValue() != 14) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.TIMESTAMP.getValue() != 15) {
+    if (SnappyType.BINARY.getValue() != 15) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.BINARY.getValue() != 16) {
+    if (SnappyType.VARBINARY.getValue() != 16) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.VARBINARY.getValue() != 17) {
+    if (SnappyType.LONGVARBINARY.getValue() != 17) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.LONGVARBINARY.getValue() != 18) {
+    if (SnappyType.BLOB.getValue() != 18) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.BLOB.getValue() != 19) {
+    if (SnappyType.CLOB.getValue() != 19) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.CLOB.getValue() != 20) {
+    if (SnappyType.SQLXML.getValue() != 20) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.SQLXML.getValue() != 21) {
+    if (SnappyType.ARRAY.getValue() != 21) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.ARRAY.getValue() != 22) {
+    if (SnappyType.MAP.getValue() != 22) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.MAP.getValue() != 23) {
+    if (SnappyType.STRUCT.getValue() != 23) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.STRUCT.getValue() != 24) {
+    if (SnappyType.NULLTYPE.getValue() != 24) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.NULLTYPE.getValue() != 25) {
+    if (SnappyType.JSON.getValue() != 25) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.JSON.getValue() != 26) {
+    if (SnappyType.JAVA_OBJECT.getValue() != 26) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.JAVA_OBJECT.getValue() != 27) {
+    if (SnappyType.OTHER.getValue() != 27) {
       throw new AssertionError("typeId mismatch");
     }
-    if (SnappyType.OTHER.getValue() != 28) {
-      throw new AssertionError("typeId mismatch");
-    }
-    if (SnappyType.findByValue(29) != null) {
+    if (SnappyType.findByValue(28) != null) {
       throw new AssertionError("unhandled typeId 29");
     }
   }
@@ -583,9 +533,9 @@ public class OptimizedElementArray {
       final int snappyType = getType(index);
       // check more common types first
       switch (snappyType) {
-        case 10: // CHAR
-        case 11: // VARCHAR
-        case 12: // LONGVARCHAR
+        case 9: // CHAR
+        case 10: // VARCHAR
+        case 11: // LONGVARCHAR
           oprot.writeFieldBegin(ColumnValue.STRING_VAL_FIELD_DESC);
           oprot.writeString((String)nonPrimitives[(int)primitives[offset]]);
           break;
@@ -597,25 +547,24 @@ public class OptimizedElementArray {
           oprot.writeFieldBegin(ColumnValue.I64_VAL_FIELD_DESC);
           oprot.writeI64(primitives[offset]);
           break;
-        case 13: // DATE
+        case 12: // DATE
           oprot.writeFieldBegin(ColumnValue.DATE_VAL_FIELD_DESC);
           oprot.writeI64(primitives[offset]);
           break;
-        case 15: // TIMESTAMP
+        case 14: // TIMESTAMP
           oprot.writeFieldBegin(ColumnValue.TIMESTAMP_VAL_FIELD_DESC);
           oprot.writeI64(primitives[offset]);
           break;
         case 7: // DOUBLE
-        case 8: // FLOAT
           oprot.writeFieldBegin(ColumnValue.DOUBLE_VAL_FIELD_DESC);
           oprot.writeDouble(Double.longBitsToDouble(primitives[offset]));
           break;
-        case 9: // DECIMAL
+        case 8: // DECIMAL
           oprot.writeFieldBegin(ColumnValue.DECIMAL_VAL_FIELD_DESC);
           BigDecimal decimal = (BigDecimal)nonPrimitives[(int)primitives[offset]];
           Converters.getDecimal(decimal).write(oprot);
           break;
-        case 6: // REAL
+        case 6: // FLOAT
           oprot.writeFieldBegin(ColumnValue.FLOAT_VAL_FIELD_DESC);
           oprot.writeI32((int)primitives[offset]);
           break;
@@ -631,30 +580,30 @@ public class OptimizedElementArray {
           oprot.writeFieldBegin(ColumnValue.BYTE_VAL_FIELD_DESC);
           oprot.writeByte((byte)primitives[offset]);
           break;
-        case 14: // TIME
+        case 13: // TIME
           oprot.writeFieldBegin(ColumnValue.TIME_VAL_FIELD_DESC);
           oprot.writeI64(primitives[offset]);
           break;
-        case 20: // CLOB
-        case 21: // SQLXML
-        case 26: // JSON
+        case 19: // CLOB
+        case 20: // SQLXML
+        case 25: // JSON
           oprot.writeFieldBegin(ColumnValue.CLOB_VAL_FIELD_DESC);
           ClobChunk clob = (ClobChunk)nonPrimitives[(int)primitives[offset]];
           clob.write(oprot);
           break;
-        case 19: // BLOB
+        case 18: // BLOB
           oprot.writeFieldBegin(ColumnValue.BLOB_VAL_FIELD_DESC);
           BlobChunk blob = (BlobChunk)nonPrimitives[(int)primitives[offset]];
           blob.write(oprot);
           break;
-        case 16: // BINARY
-        case 17: // VARBINARY
-        case 18: // LONGVARBINARY
+        case 15: // BINARY
+        case 16: // VARBINARY
+        case 17: // LONGVARBINARY
           oprot.writeFieldBegin(ColumnValue.BINARY_VAL_FIELD_DESC);
           byte[] bytes = (byte[])nonPrimitives[(int)primitives[offset]];
           oprot.writeBinary(ByteBuffer.wrap(bytes));
           break;
-        case 22: // ARRAY
+        case 21: // ARRAY
           oprot.writeFieldBegin(ColumnValue.ARRAY_VAL_FIELD_DESC);
           @SuppressWarnings("unchecked")
           List<ColumnValue> list =
@@ -666,7 +615,7 @@ public class OptimizedElementArray {
           }
           oprot.writeListEnd();
           break;
-        case 23: // MAP
+        case 22: // MAP
           oprot.writeFieldBegin(ColumnValue.MAP_VAL_FIELD_DESC);
           @SuppressWarnings("unchecked")
           Map<ColumnValue, ColumnValue> map =
@@ -680,7 +629,7 @@ public class OptimizedElementArray {
           }
           oprot.writeMapEnd();
           break;
-        case 24: // STRUCT
+        case 23: // STRUCT
           oprot.writeFieldBegin(ColumnValue.STRUCT_VAL_FIELD_DESC);
           @SuppressWarnings("unchecked")
           List<ColumnValue> struct =
@@ -692,12 +641,12 @@ public class OptimizedElementArray {
           }
           oprot.writeListEnd();
           break;
-        case 25: // NULLTYPE
+        case 24: // NULLTYPE
           oprot.writeFieldBegin(ColumnValue.NULL_VAL_FIELD_DESC);
           // not-null case since for null type will be -ve
           oprot.writeBool(false);
           break;
-        case 27: // JAVA_OBJECT
+        case 26: // JAVA_OBJECT
           oprot.writeFieldBegin(ColumnValue.JAVA_VAL_FIELD_DESC);
           byte[] objBytes = ((Converters.JavaObjectWrapper)nonPrimitives[
               (int)primitives[offset]]).getSerialized();
@@ -1023,7 +972,7 @@ public class OptimizedElementArray {
           sqlTypeId = SnappyType.DECIMAL.getValue();
           break;
         case FLOAT_VAL:
-          sqlTypeId = SnappyType.REAL.getValue();
+          sqlTypeId = SnappyType.FLOAT.getValue();
           break;
         case I16_VAL:
           sqlTypeId = SnappyType.SMALLINT.getValue();
@@ -1038,30 +987,12 @@ public class OptimizedElementArray {
           sqlTypeId = SnappyType.TIME.getValue();
           break;
         case CLOB_VAL:
-          ClobChunk clob = (ClobChunk)cv.getFieldValue();
-          if (clob != null) {
-            // also make space for finalizer of ClobChunk for remote lobId
-            if (clob.isSetLobId()) {
-              ensureNonPrimCapacity(nonPrimSize++);
-            }
-            fieldVal = clob;
-          } else {
-            fieldVal = null;
-          }
+          fieldVal = cv.getFieldValue();
           sqlTypeId = SnappyType.CLOB.getValue();
           hasLobs = true;
           break;
         case BLOB_VAL:
-          BlobChunk blob = (BlobChunk)cv.getFieldValue();
-          if (blob != null) {
-            // also make space for finalizer of BlobChunk for remote lobId
-            if (blob.isSetLobId()) {
-              ensureNonPrimCapacity(nonPrimSize++);
-            }
-            fieldVal = blob;
-          } else {
-            fieldVal = null;
-          }
+          fieldVal = cv.getFieldValue();
           sqlTypeId = SnappyType.BLOB.getValue();
           hasLobs = true;
           break;
@@ -1133,7 +1064,7 @@ public class OptimizedElementArray {
 
   public void clear() {
     // mark all non-primitives as null
-    setNonPrimitivesNull();
+    setDefaultNullability();
     // free the non-primitives to help GC if possible
     Arrays.fill(this.nonPrimitives, null);
     // skip primitive values since it doesn't hurt
@@ -1199,47 +1130,46 @@ public class OptimizedElementArray {
         case 5: // BIGINT
           sb.append(primitives[offset]);
           break;
-        case 6: // REAL
+        case 6: // FLOAT
           sb.append(Float.intBitsToFloat((int)primitives[offset]));
           break;
         case 7: // DOUBLE
-        case 8: // FLOAT
           sb.append(Double.longBitsToDouble(primitives[offset]));
           break;
-        case 9: // DECIMAL
-        case 10: // CHAR
-        case 11: // VARCHAR
-        case 12: // LONGVARCHAR
-        case 19: // BLOB
-        case 20: // CLOB
-        case 21: // SQLXML
-        case 22: // ARRAY
-        case 23: // MAP
-        case 24: // STRUCT
-        case 26: // JSON
-        case 27: // JAVA_OBJECT
+        case 8: // DECIMAL
+        case 9: // CHAR
+        case 10: // VARCHAR
+        case 11: // LONGVARCHAR
+        case 18: // BLOB
+        case 19: // CLOB
+        case 20: // SQLXML
+        case 21: // ARRAY
+        case 22: // MAP
+        case 23: // STRUCT
+        case 25: // JSON
+        case 26: // JAVA_OBJECT
           Object o = nonPrimitives[(int)primitives[offset]];
           if (o != null) {
             sb.append("(type=").append(o.getClass().getName()).append(')');
           }
           sb.append(nonPrimitives[(int)primitives[offset]]);
           break;
-        case 13: // DATE
+        case 12: // DATE
           sb.append(primitives[offset]).append(',');
           break;
-        case 14: // TIME
+        case 13: // TIME
           sb.append(primitives[offset]).append(',');
           break;
-        case 15: // TIMESTAMP
+        case 14: // TIMESTAMP
           sb.append(primitives[offset]).append(',');
           break;
-        case 16: // BINARY
-        case 17: // VARBINARY
-        case 18: // LONGVARBINARY
+        case 15: // BINARY
+        case 16: // VARBINARY
+        case 17: // LONGVARBINARY
           byte[] bytes = (byte[])nonPrimitives[(int)primitives[offset]];
           TBaseHelper.toString(ByteBuffer.wrap(bytes), sb);
           break;
-        case 25: // NULLTYPE
+        case 24: // NULLTYPE
           sb.append("NullType=false");
           break;
         default:

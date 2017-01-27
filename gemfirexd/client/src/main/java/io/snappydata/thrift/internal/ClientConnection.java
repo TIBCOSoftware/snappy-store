@@ -92,11 +92,6 @@ public final class ClientConnection extends ReentrantLock implements Connection 
 
   private int generatedSavepointId;
 
-  static {
-    // [sumedh] Note to self: why has this been added?
-    com.pivotal.gemfirexd.internal.client.am.Connection.init();
-  }
-
   ClientConnection(ClientService service,
       ClientPooledConnection serviceOwner) throws SQLException {
     this.clientService = service;
@@ -115,7 +110,7 @@ public final class ClientConnection extends ReentrantLock implements Connection 
         ClientService.create(host, port, false, connProperties), null);
   }
 
-  final ClientService getClientService() {
+  public final ClientService getClientService() {
     return this.clientService;
   }
 
@@ -980,6 +975,11 @@ public final class ClientConnection extends ReentrantLock implements Connection 
 
   @Override
   public String getSchema() throws SQLException {
+    String defaultSchema = this.clientService.getCurrentDefaultSchema();
+    if (defaultSchema != null) {
+      return defaultSchema;
+    }
+
     super.lock();
     try {
       checkClosedConnection();

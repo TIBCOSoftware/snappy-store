@@ -168,7 +168,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
   @Override
   protected final void setCurrentRowSet(RowSet rs) {
-    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() == 0)) {
+    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() > 0)) {
       final long stmtId = rs.getStatementId();
       if (stmtId != snappydataConstants.INVALID_ID) {
         this.statementId = stmtId;
@@ -623,7 +623,7 @@ public class ClientPreparedStatement extends ClientStatement implements
         this.paramsBatch = new ArrayList<>();
       }
       this.paramsBatch.add(this.paramsList);
-      this.paramsList = new Row(this.paramsList, false);
+      this.paramsList = new Row(this.paramsList, false, false);
     }
   }
 
@@ -800,7 +800,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
     Converters.getConverter(getType(parameterIndex), "BinaryStream",
         true, parameterIndex).setBinaryStream(this.paramsList,
-        parameterIndex, x, length, this);
+        parameterIndex, x, length, this.service);
   }
 
   /**
@@ -831,7 +831,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
     Converters.getConverter(getType(parameterIndex), "CharacterStream",
         true, parameterIndex).setCharacterStream(this.paramsList,
-        parameterIndex, reader, length, this);
+        parameterIndex, reader, length, this.service);
   }
 
   /**
@@ -862,7 +862,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
     Converters.getConverter(getType(parameterIndex), "AsciiStream",
         true, parameterIndex).setAsciiStream(this.paramsList,
-        parameterIndex, x, length, this);
+        parameterIndex, x, length, this.service);
   }
 
   /**

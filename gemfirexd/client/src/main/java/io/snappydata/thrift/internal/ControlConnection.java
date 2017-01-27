@@ -257,6 +257,11 @@ final class ControlConnection {
           // determine a preferred server, so choose some server randomly
           // as the "preferredServer". In case all servers have failed
           // then the search below will also fail.
+          // Remove controlHost from failedServers since its known to be
+          // working at this point (e.g. after a reconnect).
+          if (failedServers != null && !failedServers.isEmpty()) {
+            failedServers.remove(this.controlHost);
+          }
           SearchRandomServer search = new SearchRandomServer(getServerType(),
               this.controlHostSet.size(), failedServers);
           this.controlHostSet.forEach(search);

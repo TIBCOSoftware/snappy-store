@@ -89,29 +89,28 @@ enum SnappyType {
   SMALLINT                                                 = 3
   INTEGER                                                  = 4
   BIGINT                                                   = 5
-  REAL                                                     = 6
+  FLOAT                                                    = 6
   DOUBLE                                                   = 7
-  FLOAT                                                    = 8
-  DECIMAL                                                  = 9
-  CHAR                                                     = 10
-  VARCHAR                                                  = 11
-  LONGVARCHAR                                              = 12
-  DATE                                                     = 13
-  TIME                                                     = 14
-  TIMESTAMP                                                = 15
-  BINARY                                                   = 16
-  VARBINARY                                                = 17
-  LONGVARBINARY                                            = 18
-  BLOB                                                     = 19
-  CLOB                                                     = 20
-  SQLXML                                                   = 21
-  ARRAY                                                    = 22
-  MAP                                                      = 23
-  STRUCT                                                   = 24
-  NULLTYPE                                                 = 25
-  JSON                                                     = 26
-  JAVA_OBJECT                                              = 27 // custom Java serialized object
-  OTHER                                                    = 28 // custom UDTs which will be shipped as clobs
+  DECIMAL                                                  = 8
+  CHAR                                                     = 9
+  VARCHAR                                                  = 10
+  LONGVARCHAR                                              = 11
+  DATE                                                     = 12
+  TIME                                                     = 13
+  TIMESTAMP                                                = 14
+  BINARY                                                   = 15
+  VARBINARY                                                = 16
+  LONGVARBINARY                                            = 17
+  BLOB                                                     = 18
+  CLOB                                                     = 19
+  SQLXML                                                   = 20
+  ARRAY                                                    = 21
+  MAP                                                      = 22
+  STRUCT                                                   = 23
+  NULLTYPE                                                 = 24
+  JSON                                                     = 25
+  JAVA_OBJECT                                              = 26 // custom Java serialized object
+  OTHER                                                    = 27 // custom UDTs which will be shipped as clobs
 }
 
 // constants for StatementAttrs.resultSetType
@@ -404,6 +403,8 @@ struct ConnectionProperties {
   // token is always set in openConnection result but not in
   // fetchActiveConnections (or other future APIs returning ConnectionProperties)
   5: optional binary                                       token
+  // default schema of the connection
+  6: optional string                                       defaultSchema
 }
 
 // enumeration of the various types of network services running in the system
@@ -654,7 +655,9 @@ struct UpdateResult {
   // for batch updates
   2: optional list<i32>                                    batchUpdateCounts
   3: optional RowSet                                       generatedKeys
-  4: optional SnappyExceptionData                          warnings
+  // in case the execution results in new schema being set for the connection
+  4: optional string                                       newDefaultSchema
+  5: optional SnappyExceptionData                          warnings
 }
 
 struct StatementResult {
@@ -666,9 +669,11 @@ struct StatementResult {
   3: optional list<i32>                                    batchUpdateCounts
   4: optional map<i32, ColumnValue>                        procedureOutParams
   5: optional RowSet                                       generatedKeys
-  6: optional SnappyExceptionData                          warnings
+  // in case the execution results in new schema being set for the connection
+  6: optional string                                       newDefaultSchema
+  7: optional SnappyExceptionData                          warnings
   // for prepareAndExecute
-  7: optional PrepareResult                                preparedResult
+  8: optional PrepareResult                                preparedResult
 }
 
 // type IDs for EntityId used by bulkClose API
@@ -763,19 +768,27 @@ service SnappyDataService {
       2: Row params,
       // optional
       3: map<i32, OutputParameter> outputParams,
-      4: binary token) throws (1: SnappyException error)
+      // optional
+      4: StatementAttrs attrs,
+      5: binary token) throws (1: SnappyException error)
 
   UpdateResult executePreparedUpdate(1: i64 stmtId,
       2: Row params,
-      3: binary token) throws (1: SnappyException error)
+      // optional
+      3: StatementAttrs attrs,
+      4: binary token) throws (1: SnappyException error)
 
   RowSet executePreparedQuery(1: i64 stmtId,
       2: Row params,
-      3: binary token) throws (1: SnappyException error)
+      // optional
+      3: StatementAttrs attrs,
+      4: binary token) throws (1: SnappyException error)
 
   UpdateResult executePreparedBatch(1: i64 stmtId,
       2: list<Row> paramsBatch,
-      3: binary token) throws (1: SnappyException error)
+      // optional
+      3: StatementAttrs attrs,
+      4: binary token) throws (1: SnappyException error)
 
   StatementResult prepareAndExecute(1: i64 connId,
       2: string sql,
@@ -786,7 +799,7 @@ service SnappyDataService {
       5: StatementAttrs attrs,
       6: binary token) throws (1: SnappyException error)
 
-  void beginTransaction(1: i64 connId,
+  byte beginTransaction(1: i64 connId,
       2: byte isolationLevel,
       // optional
       3: map<TransactionAttribute, bool> flags,

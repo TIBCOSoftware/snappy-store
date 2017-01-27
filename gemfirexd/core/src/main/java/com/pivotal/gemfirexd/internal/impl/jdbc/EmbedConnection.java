@@ -657,6 +657,11 @@ public abstract class EmbedConnection implements EngineConnection
 			}
 			
 			if(!shutdown) {
+			  if (tr.defaultSchema != null &&
+			      !tr.defaultSchema.equals(tr.lcc.getCurrentSchemaName())) {
+			    FabricDatabase.setupDefaultSchema(tr.lcc.getDataDictionary(), tr.lcc,
+			        tr.lcc.getTransactionExecute(), tr.defaultSchema, true);
+			  }
                             getLanguageConnection().setRunTimeStatisticsMode(
                                 tr.getDatabase().getRuntimeStatistics(), false);
 			}
@@ -1978,8 +1983,20 @@ public abstract class EmbedConnection implements EngineConnection
 											   setResultSetType(resultSetType),
 											   resultSetConcurrency,
 											   resultSetHoldability, id,execFlags);
-			} 
-			finally 
+			} catch (SQLException sqle) { // GemStoneAddition
+			  final GemFireXDQueryObserver observer =
+			      GemFireXDQueryObserverHolder.getInstance();
+			  if (observer != null) {
+			    CallableStatement ps = observer.afterQueryPrepareFailure(
+			        this, sql, resultSetType, resultSetConcurrency,
+			        resultSetHoldability, Statement.NO_GENERATED_KEYS,
+			        null, null, sqle);
+			    if (ps != null) {
+			      return ps;
+			    }
+			  }
+			  throw sqle;
+			} finally
 			{
 			    restoreContextStack();
 			}

@@ -44,14 +44,10 @@ import java.util.Calendar;
 import java.util.Map;
 
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.BlobChunk;
-import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.Row;
 import io.snappydata.thrift.RowSet;
-import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.ColumnValueConverter;
 import io.snappydata.thrift.common.Converters;
-import io.snappydata.thrift.common.LobService;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.snappydataConstants;
 
@@ -59,7 +55,7 @@ import io.snappydata.thrift.snappydataConstants;
  * Common base class to fetch various types of column values from a Row like
  * those in {@link ResultSet}.
  */
-abstract class ClientFetchColumnValue implements LobService {
+abstract class ClientFetchColumnValue {
 
   protected final ClientService service;
   protected ClientFinalizer finalizer;
@@ -73,20 +69,7 @@ abstract class ClientFetchColumnValue implements LobService {
 
   protected final HostConnection getLobSource(boolean throwOnFailure,
       String op) throws SQLException {
-    // get the current source from service; if the original source has failed
-    // and this is new source after failover, then use it in any case and
-    // actual call will fail due to token mismatch on server but send
-    // it nevertheless to simplify client-side code as well as possible future
-    // support for LOB retrieval after failover
-    final HostConnection source = service.getCurrentHostConnection();
-    if (source != null) {
-      return source;
-    } else if (throwOnFailure) {
-      throw (SQLException)service.newExceptionForNodeFailure(null, op,
-          service.isolationLevel, null, false);
-    } else {
-      return null;
-    }
+    return this.service.getLobSource(throwOnFailure, op);
   }
 
   protected final void setCurrentSource(byte entityType, long newId, RowSet rs) {
@@ -120,80 +103,6 @@ abstract class ClientFetchColumnValue implements LobService {
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final Blob createBlob(BlobChunk firstChunk,
-      boolean forStream) throws SQLException {
-    return new ClientBlob(firstChunk, service, getLobSource(true,
-        "createBlob"), forStream);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final Blob createBlob(InputStream stream,
-      long length) throws SQLException {
-    return new ClientBlob(stream, length, service);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final Clob createClob(ClobChunk firstChunk,
-      boolean forStream) throws SQLException {
-    return new ClientClob(firstChunk, service, getLobSource(true,
-        "createClob"), forStream);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final Clob createClob(Reader reader, long length) throws SQLException {
-    return new ClientClob(reader, length, service);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final Clob createClob(InputStream asciiStream,
-      long length) throws SQLException {
-    return new ClientClob(asciiStream, length, service);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final BlobChunk getBlobChunk(long lobId, long offset, int chunkSize,
-      boolean freeLobAtEnd) throws SQLException {
-    try {
-      return service.getBlobChunk(getLobSource(true, "getBlobChunk"), lobId,
-          offset, chunkSize, freeLobAtEnd);
-    } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
-    }
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final ClobChunk getClobChunk(long lobId, long offset, int chunkSize,
-      boolean freeLobAtEnd) throws SQLException {
-    try {
-      return service.getClobChunk(getLobSource(true, "getClobChunk"), lobId,
-          offset, chunkSize, freeLobAtEnd);
-    } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
-    }
-  }
-
   protected void reset() {
     this.wasNull = false;
   }
@@ -202,7 +111,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "String", false, columnIndex);
-    String str = cvc.toString(row, columnIndex, this);
+    String str = cvc.toString(row, columnIndex, this.service);
     this.wasNull = (str == null);
     return str;
   }
@@ -300,7 +209,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "byte[]", false, columnIndex);
-    byte[] v = cvc.toBytes(row, columnIndex, this);
+    byte[] v = cvc.toBytes(row, columnIndex, this.service);
     this.wasNull = (v == null);
     return v;
   }
@@ -337,7 +246,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "Object", false, columnIndex);
-    Object v = cvc.toObject(row, columnIndex, this);
+    Object v = cvc.toObject(row, columnIndex, this.service);
     this.wasNull = (v == null);
     return v;
   }
@@ -346,7 +255,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "Blob", false, columnIndex);
-    Blob v = cvc.toBlob(row, columnIndex, this);
+    Blob v = cvc.toBlob(row, columnIndex, this.service);
     this.wasNull = (v == null);
     return v;
   }
@@ -355,7 +264,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "BinaryStream", false, columnIndex);
-    InputStream v = cvc.toBinaryStream(row, columnIndex, this);
+    InputStream v = cvc.toBinaryStream(row, columnIndex, this.service);
     this.wasNull = (v == null);
     return v;
   }
@@ -364,7 +273,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "Clob", false, columnIndex);
-    Clob v = cvc.toClob(row, columnIndex, this);
+    Clob v = cvc.toClob(row, columnIndex, this.service);
     this.wasNull = (v == null);
     return v;
   }
@@ -373,7 +282,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "CharacterStream", false, columnIndex);
-    Reader v = cvc.toCharacterStream(row, columnIndex, this);
+    Reader v = cvc.toCharacterStream(row, columnIndex, this.service);
     this.wasNull = (v == null);
     return v;
   }
@@ -382,7 +291,7 @@ abstract class ClientFetchColumnValue implements LobService {
       final int snappyTypeValue, final Row row) throws SQLException {
     ColumnValueConverter cvc = Converters.getConverter(
         snappyTypeValue, "AsciiStream", false, columnIndex);
-    InputStream v = cvc.toAsciiStream(row, columnIndex, this);
+    InputStream v = cvc.toAsciiStream(row, columnIndex, this.service);
     this.wasNull = (v == null);
     return v;
   }

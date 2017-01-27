@@ -116,7 +116,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   public final StatementAttrs getAttributes() {
     final StatementAttrs attrs = this.attrs;
     return attrs.__isset_bitfield == 0 && attrs.autoIncColumnNames == null
-        && attrs.autoIncColumns == null
+        && attrs.autoIncColumns == null && attrs.cursorName == null
         && attrs.pendingTransactionAttrs == null ? null : attrs;
   }
 
@@ -154,7 +154,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   }
 
   protected void setCurrentRowSet(RowSet rs) {
-    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() == 0)) {
+    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() > 0)) {
       this.currentRowSet = rs;
       this.statementId = rs.statementId;
       setCurrentSource(snappydataConstants.BULK_CLOSE_STATEMENT,

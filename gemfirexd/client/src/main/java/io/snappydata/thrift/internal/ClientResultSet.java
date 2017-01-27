@@ -103,7 +103,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   }
 
   private void initRowSet(RowSet rs) {
-    // copy metadata if not set
+    // copy metadata from previous RowSet if not set by server
     if (rs.metadata == null) {
       rs.setMetadata(this.rowSet.metadata);
     }
@@ -2080,7 +2080,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       ColumnValueConverter cvc = Converters.getConverter(
           getSnappyType(columnIndex, currentRow), "BinaryStream",
           true, columnIndex);
-      cvc.setBinaryStream(currentRow, columnIndex, x, length, this);
+      cvc.setBinaryStream(currentRow, columnIndex, x, length, this.service);
     } else {
       currentRow.setNull(columnIndex - 1);
     }
@@ -2145,7 +2145,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       ColumnValueConverter cvc = Converters.getConverter(
           getSnappyType(columnIndex, currentRow), "CharacterStream",
           true, columnIndex);
-      cvc.setCharacterStream(currentRow, columnIndex, x, length, this);
+      cvc.setCharacterStream(currentRow, columnIndex, x, length, this.service);
     } else {
       currentRow.setNull(columnIndex - 1);
     }
@@ -2210,7 +2210,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       ColumnValueConverter cvc = Converters.getConverter(
           getSnappyType(columnIndex, currentRow), "AsciiStream",
           true, columnIndex);
-      cvc.setAsciiStream(currentRow, columnIndex, x, length, this);
+      cvc.setAsciiStream(currentRow, columnIndex, x, length, this.service);
     } else {
       currentRow.setNull(columnIndex - 1);
     }

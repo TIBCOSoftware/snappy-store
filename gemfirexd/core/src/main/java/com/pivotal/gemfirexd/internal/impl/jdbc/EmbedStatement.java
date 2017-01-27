@@ -315,7 +315,7 @@ public class EmbedStatement extends ConnectionChild
 
     private int fetchSize = 1;
     private int fetchDirection = java.sql.ResultSet.FETCH_FORWARD;
-    int MaxFieldSize;
+    int maxFieldSize;
 	/**
 	 * Query timeout in milliseconds. By default, no statements time
 	 * out. Timeout is set explicitly with setQueryTimeout().
@@ -735,7 +735,7 @@ public class EmbedStatement extends ConnectionChild
 	public int getMaxFieldSize() throws SQLException {
 		checkStatus();
 
-        return MaxFieldSize;
+        return maxFieldSize;
 	}
 
     /**
@@ -755,7 +755,7 @@ public class EmbedStatement extends ConnectionChild
 		{
 			throw newSQLException(SQLState.INVALID_MAXFIELD_SIZE, new Integer(max));
 		}
-        this.MaxFieldSize = max;
+        this.maxFieldSize = max;
 	}
 
     /**
@@ -3225,6 +3225,11 @@ public class EmbedStatement extends ConnectionChild
     this.resultSetType = newType;
     this.resultSetConcurrency = newConcurrency;
     this.resultSetHoldability = newHoldability;
+    // reset some other attributes
+    this.timeoutMillis = 0;
+    this.maxRows = 0;
+    this.maxFieldSize = 0;
+    this.cursorName = null;
   }
 
   @Override

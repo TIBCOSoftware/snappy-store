@@ -139,7 +139,7 @@ final class ConnectionHolder {
 
   final class StatementHolder extends ResultSetHolder {
     private final Statement stmt;
-    private final StatementAttrs stmtAttrs;
+    private final StatementAttrs statementAttrs;
     private final long stmtId;
     private final Object sql;
     private final long startTime;
@@ -151,7 +151,7 @@ final class ConnectionHolder {
         Object sql, long startTime, String status) {
       super(null, snappydataConstants.INVALID_ID, 0);
       this.stmt = stmt;
-      this.stmtAttrs = attrs;
+      this.statementAttrs = attrs;
       this.stmtId = stmtId;
       this.sql = sql;
       this.startTime = startTime;
@@ -176,7 +176,7 @@ final class ConnectionHolder {
     }
 
     final StatementAttrs getStatementAttrs() {
-      return this.stmtAttrs;
+      return this.statementAttrs;
     }
 
     final long getStartTime() {
@@ -528,7 +528,7 @@ final class ConnectionHolder {
     }
   }
 
-  void close(final SnappyDataServiceImpl service) {
+  void close(final SnappyDataServiceImpl service, boolean forceClose) {
     this.sync.lock();
     try {
       for (StatementHolder stmtHolder : this.registeredStatements) {
@@ -556,11 +556,24 @@ final class ConnectionHolder {
               sqle);
         }
       }
-      try {
-        this.conn.close();
-      } catch (SQLException sqle) {
-        // force close at this point
+      if (forceClose) {
         this.conn.forceClose();
+      } else {
+        if (this.xaConn != null) {
+          try {
+            this.xaConn.close();
+          } catch (SQLException sqle) {
+            // ignore exception
+          }
+        }
+        try {
+          if (!this.conn.isClosed()) {
+            this.conn.close();
+          }
+        } catch (SQLException sqle) {
+          // force close at this point
+          this.conn.forceClose();
+        }
       }
     } finally {
       this.sync.unlock();

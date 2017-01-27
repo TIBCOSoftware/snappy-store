@@ -143,35 +143,51 @@ public class ClientClob extends ClientLobBase implements Clob {
     }
   }
 
-  final String readString(long offset, int length) throws SQLException {
+  final String readString(final long offset, int length) throws SQLException {
     ClobChunk chunk;
     checkOffset(offset);
     if (this.streamedInput) {
       try {
         char[] buffer = new char[length];
         long skipBytes = offset - this.streamOffset;
-        if (this.reader instanceof MemStringReader) {
-          // negative skip also works for StringReader
-          skipBytes -= this.reader.skip(skipBytes);
-        }
-        if (skipBytes > 0) {
-          long skipped;
-          while ((skipped = this.reader.skip(skipBytes)) > 0) {
-            if ((skipBytes -= skipped) <= 0) {
-              break;
+        if (skipBytes != 0) {
+          if (this.reader instanceof MemStringReader) {
+            // negative skip also works for StringReader
+            MemStringReader ms = (MemStringReader)this.reader;
+            long skipped = ms.skip(skipBytes);
+            if (skipBytes < 0 && skipped == 0 && ms.length() > 0) {
+              // entire string has been read and cannot rewind so create new
+              ms = new MemStringReader(ms.getString());
+              skipBytes = offset > 0 ? (offset - ms.skip(offset)) : 0;
+              this.reader = ms;
+            } else {
+              skipBytes -= skipped;
             }
           }
           if (skipBytes > 0) {
-            int readBytes;
-            while ((readBytes = this.reader.read(buffer)) > 0) {
-              if ((skipBytes -= readBytes) <= 0) {
+            long skipped;
+            while ((skipped = this.reader.skip(skipBytes)) > 0) {
+              if ((skipBytes -= skipped) <= 0) {
                 break;
               }
             }
+            if (skipBytes > 0) {
+              int readBytes;
+              while ((readBytes = this.reader.read(buffer)) > 0) {
+                if ((skipBytes -= readBytes) <= 0) {
+                  break;
+                }
+              }
+            }
+            if (skipBytes > 0) {
+              // offset beyond the clob
+              throw ThriftExceptionUtil.newSQLException(
+                  SQLState.BLOB_POSITION_TOO_LARGE, null, offset + 1);
+            }
+          } else if (skipBytes < 0) {
+            throw ThriftExceptionUtil.newSQLException(
+                SQLState.BLOB_BAD_POSITION, null, offset + 1);
           }
-        } else if (skipBytes < 0) {
-          throw ThriftExceptionUtil.newSQLException(
-              SQLState.BLOB_BAD_POSITION, null, offset + 1);
         }
         // keep reading stream till end
         int readLen = readStream(this.reader, buffer, 0, length);
@@ -231,7 +247,7 @@ public class ClientClob extends ClientLobBase implements Clob {
   @Override
   public String getSubString(long pos, int length) throws SQLException {
     final long offset = pos - 1;
-    length = checkOffset(offset, length);
+    length = checkOffset(offset, length, true);
 
     if (length > 0) {
       String str = readString(offset, length);
@@ -261,7 +277,7 @@ public class ClientClob extends ClientLobBase implements Clob {
   public Reader getCharacterStream(long pos, long length) throws SQLException {
     if (this.streamedInput || this.currentChunk != null) {
       final long offset = pos - 1;
-      length = checkOffset(offset, length);
+      length = checkOffset(offset, length, true);
       return new LobReader(offset, length);
     } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.LOB_OBJECT_INVALID);
@@ -292,7 +308,7 @@ public class ClientClob extends ClientLobBase implements Clob {
   @Override
   public int setString(long pos, String str, int offset, int len)
       throws SQLException {
-    len = checkOffset(pos - 1, len);
+    checkOffset(pos - 1, len, false);
     final int clobOffset = (int)(pos - 1);
     if (offset < 0 || offset > str.length()) {
       throw ThriftExceptionUtil.newSQLException(SQLState.BLOB_INVALID_OFFSET,
@@ -328,6 +344,7 @@ public class ClientClob extends ClientLobBase implements Clob {
       // check the special case of string being set into zero sized buffer
       if (slen == 0) {
         this.reader = new MemStringReader(str.substring(offset, offset + len));
+        this.length = len;
       } else {
         StringBuilder sb = new StringBuilder(Math.max(reqLen, slen));
         if (clobOffset > 0) {
@@ -338,6 +355,7 @@ public class ClientClob extends ClientLobBase implements Clob {
           sb.append(sbuffer.substring(reqLen, this.length));
         }
         this.reader = new MemStringReader(sb.toString());
+        this.length = sb.length();
       }
       return len;
     } else {
@@ -459,7 +477,7 @@ public class ClientClob extends ClientLobBase implements Clob {
    * Adapted from android's StringReader.
    */
   static final class MemStringReader extends StringReader {
-    private String str;
+    private final String str;
 
     /**
      * Creates a new string reader.

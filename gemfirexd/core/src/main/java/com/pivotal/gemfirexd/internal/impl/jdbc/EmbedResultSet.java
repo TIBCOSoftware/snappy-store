@@ -372,7 +372,7 @@ public abstract class EmbedResultSet extends ConnectionChild
            if (stmt.resultSetType == java.sql.ResultSet.TYPE_FORWARD_ONLY)
                maxRows = stmt.maxRows;
 
-           maxFieldSize = stmt.MaxFieldSize;
+           maxFieldSize = stmt.maxFieldSize;
         }
 		else
 			maxFieldSize = 0;

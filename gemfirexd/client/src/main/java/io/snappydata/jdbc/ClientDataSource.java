@@ -182,7 +182,9 @@ public class ClientDataSource extends com.pivotal.gemfirexd.internal.jdbc.Client
         props = new Properties();
       }
       props.setProperty(ClientAttribute.USERNAME, user);
-      props.setProperty(ClientAttribute.PASSWORD, password);
+      if (password != null) {
+        props.setProperty(ClientAttribute.PASSWORD, password);
+      }
     }
     int loginTimeout = dataSource.getLoginTimeout();
     if (loginTimeout != 0) {

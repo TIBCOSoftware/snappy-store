@@ -60,15 +60,7 @@ public abstract class Connection implements java.sql.Connection,
     //---------------------navigational members-----------------------------------
 
 // GemStone changes BEGIN
-  static FinalizeInvoker finalizer;
-  static Thread finalizerThread;
   static {
-    finalizer = new FinalizeInvoker();
-    finalizerThread = new Thread(finalizer, "FinalizeInvoker");
-    finalizerThread.setDaemon(true);
-    finalizerThread.start();
-    Runtime.getRuntime().addShutdownHook(
-        new FinalizeInvoker.StopFinalizer(finalizer));
     initialize();
   }
 //GemStone changes END
@@ -495,9 +487,6 @@ public abstract class Connection implements java.sql.Connection,
     
     public static int SINGLE_HOP_MAX_CONN_PER_SERVER;
 
-    public static void init() {
-    }
-
     public static void initialize() {
       try {
         String shPoolSz = ClientBaseDataSource
@@ -535,8 +524,7 @@ public abstract class Connection implements java.sql.Connection,
     public abstract java.io.InputStream getInputStream();
 
     /**
-     * Return status of {@link Connection#doFailoverOnException(String, int)}
-     * method.
+     * Return status of {@link Connection#doFailoverOnException} method.
      */
     public enum FailoverStatus {
 
