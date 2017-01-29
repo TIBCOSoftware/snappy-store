@@ -168,7 +168,7 @@ public class ClientPreparedStatement extends ClientStatement implements
 
   @Override
   protected final void setCurrentRowSet(RowSet rs) {
-    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() > 0)) {
+    if (rs != null && (rs.getMetadata() != null || rs.getRowsSize() > 0)) {
       final long stmtId = rs.getStatementId();
       if (stmtId != snappydataConstants.INVALID_ID) {
         this.statementId = stmtId;

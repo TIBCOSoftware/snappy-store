@@ -16,6 +16,7 @@
  */
 package io.snappydata.thrift.internal;
 
+import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -57,8 +58,10 @@ public class ClientPooledConnection implements PooledConnection {
    * Create a new PooledConnection instance for user with given credentials.
    */
   public ClientPooledConnection(String server, int port,
-      boolean forXA, Properties connProps) throws SQLException {
-    this.clientService = ClientService.create(server, port, forXA, connProps);
+      boolean forXA, Properties connProps, PrintWriter logWriter)
+      throws SQLException {
+    this.clientService = ClientService.create(server, port, forXA,
+        connProps, logWriter);
     this.finalizer = new ClientFinalizer(this, this.clientService,
         snappydataConstants.BULK_CLOSE_CONNECTION);
     // don't need to call updateReferentData on finalizer for connection

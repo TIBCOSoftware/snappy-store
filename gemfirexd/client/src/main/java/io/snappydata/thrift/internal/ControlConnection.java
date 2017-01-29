@@ -37,6 +37,7 @@ package io.snappydata.thrift.internal;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -77,7 +78,7 @@ final class ControlConnection {
   private HostAddress controlHost;
   private LocatorService.Client controlLocator;
   private final ArrayList<HostAddress> controlHosts;
-  private final THashSet controlHostSet;
+  final THashSet controlHostSet;
 
   public static final class SearchRandomServer implements TObjectProcedure {
 
@@ -259,15 +260,15 @@ final class ControlConnection {
           // then the search below will also fail.
           // Remove controlHost from failedServers since its known to be
           // working at this point (e.g. after a reconnect).
-          if (failedServers != null && !failedServers.isEmpty()) {
-            failedServers.remove(this.controlHost);
+          Set<HostAddress> skipServers = failedServers;
+          if (failedServers != null && !failedServers.isEmpty() &&
+              failedServers.contains(this.controlHost)) {
+            // don't change the original failure list since that is proper
+            // for the current operation but change for random server search
+            skipServers = new HashSet<>(failedServers);
+            skipServers.remove(this.controlHost);
           }
-          SearchRandomServer search = new SearchRandomServer(getServerType(),
-              this.controlHostSet.size(), failedServers);
-          this.controlHostSet.forEach(search);
-          if ((preferredServer = search.getRandomServer()) == null) {
-            throw failoverExhausted(failedServers, failure);
-          }
+          preferredServer = searchRandomServer(skipServers, failure);
         }
         if (SanityManager.TraceClientHA) {
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
@@ -309,6 +310,19 @@ final class ControlConnection {
         throw unexpectedError(t, controlHost);
       }
       forFailover = true;
+    }
+  }
+
+  HostAddress searchRandomServer(Set<HostAddress> failedServers,
+      Throwable failure) throws SnappyException {
+    HostAddress preferredServer;
+    SearchRandomServer search = new SearchRandomServer(getServerType(),
+        this.controlHostSet.size(), failedServers);
+    this.controlHostSet.forEach(search);
+    if ((preferredServer = search.getRandomServer()) != null) {
+      return preferredServer;
+    } else {
+      throw failoverExhausted(failedServers, failure);
     }
   }
 

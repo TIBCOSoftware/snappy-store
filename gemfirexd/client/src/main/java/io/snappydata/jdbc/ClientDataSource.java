@@ -137,8 +137,6 @@ import io.snappydata.thrift.internal.ClientConnection;
  */
 public class ClientDataSource extends com.pivotal.gemfirexd.internal.jdbc.ClientDataSource {
 
-  private String sslString;
-
   public ClientDataSource() {
     super();
   }
@@ -163,7 +161,7 @@ public class ClientDataSource extends com.pivotal.gemfirexd.internal.jdbc.Client
       throws SQLException {
     if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
       return ClientConnection.create(getServerName(), getPortNumber(),
-          getThriftProperties(user, password, this));
+          getThriftProperties(user, password, this), getLogWriter());
     } else {
       return super.getConnection(user, password);
     }

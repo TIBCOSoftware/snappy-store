@@ -5380,7 +5380,8 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
 
             <msg>
                 <name>XJ213.C</name>
-                <text>The traceLevel connection property does not have a valid format for a number.</text>
+                <text>The logging level connection property is not valid: {0}</text>
+                <arg>value</arg>
             </msg>
 
             <msg>

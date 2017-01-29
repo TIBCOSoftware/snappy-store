@@ -1212,8 +1212,12 @@ public abstract class ClientSharedUtils {
     PropertyConfigurator.configure(props);
   }
 
-  public static void initLogger(String loggerName, String logFile,
-      boolean initLog4j, Level level, final Handler handler) {
+  public static synchronized void initLogger(String loggerName, String logFile,
+      boolean initLog4j, boolean skipIfInitialized, Level level,
+      final Handler handler) {
+    if (skipIfInitialized && logger != DEFAULT_LOGGER) {
+      return;
+    }
     clearLogger();
     if (initLog4j) {
       try {
@@ -1229,7 +1233,7 @@ public abstract class ClientSharedUtils {
     logger = log;
   }
 
-  public static void setLogger(Logger log) {
+  public static synchronized void setLogger(Logger log) {
     clearLogger();
     logger = log;
   }
@@ -1293,7 +1297,7 @@ public abstract class ClientSharedUtils {
 
   private static void clearLogger() {
     final Logger log = logger;
-    if (log != null) {
+    if (log != DEFAULT_LOGGER) {
       logger = DEFAULT_LOGGER;
       for (Handler h : log.getHandlers()) {
         log.removeHandler(h);

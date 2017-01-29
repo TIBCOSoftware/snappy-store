@@ -21,30 +21,21 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.Role;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.membership.
-    InternalDistributedMember;
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.execute.InternalResultSender;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.pivotal.gemfirexd.FabricService;
 import com.pivotal.gemfirexd.FabricServiceManager;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.UpdateVTITemplate;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdConfigMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -290,7 +281,18 @@ public final class DistributedMembers extends UpdateVTITemplate {
       res = SharedUtils.toCSV(sortedRoles);
     }
     else if (NETSERVERS.equals(columnName)) {
-      res = GemFireXDUtils.getGfxdAdvisor().getDRDAServers(this.currentMember);
+      GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
+      String thriftServers = advisor.getThriftServers(this.currentMember);
+      if (thriftServers.isEmpty()) {
+        res = advisor.getDRDAServers(this.currentMember);
+      } else {
+        String drdaServers = advisor.getDRDAServers(this.currentMember);
+        if (drdaServers.isEmpty()) {
+          res = thriftServers;
+        } else {
+          res = thriftServers + ',' + drdaServers;
+        }
+      }
     }
     else if (THRIFTSERVERS.equals(columnName)) {
       res = GemFireXDUtils.getGfxdAdvisor()

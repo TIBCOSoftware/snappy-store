@@ -35,6 +35,7 @@
 
 package io.snappydata.jdbc;
 
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -112,6 +113,7 @@ public class ClientDriver extends ClientDRDADriver {
   @Override
   protected java.sql.Connection createThriftConnection(String server, int port,
       java.util.Properties props) throws SQLException {
-    return ClientConnection.create(server, port, props);
+    return ClientConnection.create(server, port, props,
+        DriverManager.getLogWriter());
   }
 }

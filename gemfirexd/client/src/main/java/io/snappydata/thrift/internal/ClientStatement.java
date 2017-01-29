@@ -154,7 +154,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   }
 
   protected void setCurrentRowSet(RowSet rs) {
-    if (rs != null && (rs.getMetadataSize() > 0 || rs.getRowsSize() > 0)) {
+    if (rs != null && (rs.getMetadata() != null || rs.getRowsSize() > 0)) {
       this.currentRowSet = rs;
       this.statementId = rs.statementId;
       setCurrentSource(snappydataConstants.BULK_CLOSE_STATEMENT,

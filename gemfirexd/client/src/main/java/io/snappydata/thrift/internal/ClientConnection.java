@@ -35,6 +35,7 @@
 
 package io.snappydata.thrift.internal;
 
+import java.io.PrintWriter;
 import java.net.SocketException;
 import java.sql.*;
 import java.util.Collections;
@@ -105,9 +106,9 @@ public final class ClientConnection extends ReentrantLock implements Connection 
   }
 
   public static ClientConnection create(String host, int port,
-      Properties connProperties) throws SQLException {
-    return new ClientConnection(
-        ClientService.create(host, port, false, connProperties), null);
+      Properties connProperties, PrintWriter logWriter) throws SQLException {
+    return new ClientConnection(ClientService.create(
+        host, port, false, connProperties, logWriter), null);
   }
 
   public final ClientService getClientService() {
@@ -291,13 +292,13 @@ public final class ClientConnection extends ReentrantLock implements Connection 
   public void close() throws SQLException {
     // fire callbacks for pooled connection and return
     if (this.clientServiceOwner != null) {
-      if (this.clientService.isClosed()) {
+      if (isClosed()) {
         this.clientServiceOwner.onConnectionError(ThriftExceptionUtil
             .newSQLException(SQLState.PHYSICAL_CONNECTION_ALREADY_CLOSED));
       } else {
         this.clientServiceOwner.onConnectionClose();
       }
-      isClosed = true;
+      this.isClosed = true;
       return;
     }
     super.lock();

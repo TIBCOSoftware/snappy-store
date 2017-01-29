@@ -94,7 +94,8 @@ public class ClientConnectionPoolDataSource
       throws SQLException {
     if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
       return new ClientPooledConnection(getServerName(), getPortNumber(),
-          false, ClientDataSource.getThriftProperties(user, password, this));
+          false, ClientDataSource.getThriftProperties(user, password, this),
+          getLogWriter());
     } else {
       return super.getPooledConnection(user, password);
     }

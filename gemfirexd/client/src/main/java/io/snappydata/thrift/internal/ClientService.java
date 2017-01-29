@@ -17,7 +17,9 @@
 
 package io.snappydata.thrift.internal;
 
+import java.io.File;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.io.Reader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -29,19 +31,24 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
+import com.pivotal.gemfirexd.Attribute;
+import com.pivotal.gemfirexd.internal.client.LogHandler;
+import com.pivotal.gemfirexd.internal.client.am.LogWriter;
+import com.pivotal.gemfirexd.internal.client.am.SqlException;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
+import com.pivotal.gemfirexd.internal.jdbc.ClientBaseDataSource;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
+import com.pivotal.gemfirexd.internal.shared.common.SharedUtils.CSVVisitor;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.jdbc.ClientAttribute;
-import io.snappydata.jdbc.ClientDriver;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.*;
 import org.apache.thrift.TApplicationException;
@@ -50,8 +57,6 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of client service that wraps a {@link SnappyDataService.Client}
@@ -89,20 +94,10 @@ public final class ClientService extends ReentrantLock implements LobService {
   private static final String hostName;
   private static final String hostId;
 
-  private static Logger DEFAULT_LOGGER = LoggerFactory
-      .getLogger(ClientDriver.class);
-  private static Logger logger = DEFAULT_LOGGER;
+  private static final SanityManager.PrintWriterFactory pwFactory;
+  private static String gfxdLogFileNS;
 
-  private static final SharedUtils.CSVVisitor<Collection<HostAddress>, int[]> addHostAddresses =
-      new SharedUtils.CSVVisitor<Collection<HostAddress>, int[]>() {
-        @Override
-        public void visit(String str, Collection<HostAddress> collectAddresses,
-            int[] port) {
-          final String serverName = SharedUtils.getHostPort(str, port);
-          collectAddresses.add(ThriftUtils.getHostAddress(serverName, port[0]));
-        }
-      };
-
+  private static final CSVVisitor<Collection<HostAddress>, int[]> addHostAddresses;
   private static final FinalizeInvoker invokeFinalizers;
   private static final Thread finalizerThread;
 
@@ -123,6 +118,35 @@ public final class ClientService extends ReentrantLock implements LobService {
     }
     hostName = host;
 
+    // initialize the system logger, if any
+    pwFactory = new SanityManager.PrintWriterFactory() {
+      public final PrintWriter newPrintWriter(String file,
+          boolean appendToFile) {
+        try {
+          return LogWriter.getPrintWriter(file, appendToFile);
+        } catch (SqlException e) {
+          throw new RuntimeException(e.getCause());
+        }
+      }
+    };
+    Level level;
+    try {
+      level = getLogLevel(null);
+    } catch (SQLException sqle) {
+      // ignore exception during static initialization
+      level = Level.CONFIG;
+    }
+    initClientLogger(null, null, level);
+
+    addHostAddresses = new CSVVisitor<Collection<HostAddress>, int[]>() {
+      @Override
+      public void visit(String str, Collection<HostAddress> collectAddresses,
+          int[] port) {
+        final String serverName = SharedUtils.getHostPort(str, port);
+        collectAddresses.add(ThriftUtils.getHostAddress(serverName, port[0]));
+      }
+    };
+
     // use process ID and timestamp for ID
     int pid = NativeCalls.getInstance().getProcessId();
     long currentTime = System.currentTimeMillis();
@@ -131,8 +155,9 @@ public final class ClientService extends ReentrantLock implements LobService {
     ClientSharedUtils.formatDate(currentTime, sb);
     hostId = sb.toString();
     ClientConfiguration config = ClientConfiguration.getInstance();
-    getLogger().info("Starting client on '" + hostName + "' with ID='"
-        + hostId + "' Source-Revision=" + config.getSourceRevision());
+    ClientSharedUtils.getLogger().info("Starting client on '" + hostName +
+        "' with ID='" + hostId + "' Source-Revision=" +
+        config.getSourceRevision());
 
     // thread for periodic cleanup of finalizers
     invokeFinalizers = new FinalizeInvoker();
@@ -147,16 +172,100 @@ public final class ClientService extends ReentrantLock implements LobService {
   public static void init() {
   }
 
-  public static Logger getLogger() {
-    return logger;
+  private static Level getLogLevel(Properties props) throws SQLException {
+    Level logLevel = Level.CONFIG;
+    String level;
+    level = ClientBaseDataSource.readSystemProperty(
+        Attribute.CLIENT_JVM_PROPERTY_PREFIX + ClientAttribute.LOG_LEVEL);
+    if (level == null && props != null) {
+      level = props.getProperty(ClientAttribute.LOG_LEVEL);
+    }
+    if (level != null) {
+      try {
+        logLevel = Level.parse(level);
+      } catch (IllegalArgumentException iae) {
+        throw ThriftExceptionUtil.newSQLException(
+            SQLState.LOGLEVEL_FORMAT_INVALID, iae, level);
+      }
+    }
+    return logLevel;
   }
 
-  public static void setLogger(Logger log) {
-    logger = log;
+  public static void initClientLogger(Properties incomingProps,
+      PrintWriter logWriter, Level logLevel) {
+    // also honour GemFireXD specific log-file setting for SanityManager
+    // but do not set it as agent's PrintWriter else all kinds of client
+    // network tracing will start
+    String gfxdLogFile = null;
+    if (logWriter == null) {
+      gfxdLogFile = ClientBaseDataSource.readSystemProperty(
+          Attribute.CLIENT_JVM_PROPERTY_PREFIX + ClientAttribute.LOG_FILE);
+      if (gfxdLogFile == null && incomingProps != null) {
+        gfxdLogFile = incomingProps.getProperty(ClientAttribute.LOG_FILE);
+      }
+      if (gfxdLogFile == null) {
+        synchronized (ClientService.class) {
+          if (gfxdLogFileNS == null) {
+            final String logFileNS = ClientBaseDataSource
+                .readSystemProperty(Attribute.CLIENT_JVM_PROPERTY_PREFIX
+                    + ClientAttribute.LOG_FILE_STAMP);
+            if (logFileNS != null) {
+              do {
+                gfxdLogFileNS = logFileNS + '.' + System.nanoTime();
+              } while (new File(gfxdLogFileNS).exists());
+            }
+          }
+          if (gfxdLogFileNS != null) {
+            gfxdLogFile = gfxdLogFileNS;
+          }
+        }
+      }
+      if (gfxdLogFile != null) {
+        synchronized (ClientService.class) {
+          // try new file if it exists
+          String currLog = SanityManager.clientGfxdLogFile;
+          if (currLog == null || !gfxdLogFile.equals(currLog)) {
+            if (new File(gfxdLogFile).exists()) {
+              int dotIndex = gfxdLogFile.lastIndexOf('.');
+              final String logName;
+              final String extension;
+              if (dotIndex > 0) {
+                logName = gfxdLogFile.substring(0, dotIndex);
+                extension = gfxdLogFile.substring(dotIndex);
+              } else {
+                logName = gfxdLogFile;
+                extension = "";
+              }
+              int rollIndex = 1;
+              String logFile;
+              do {
+                logFile = logName + '-' + rollIndex + extension;
+                rollIndex++;
+              } while (((currLog = SanityManager.clientGfxdLogFile) == null ||
+                  !logFile.equals(currLog)) && new File(logFile).exists());
+              gfxdLogFile = logFile;
+            }
+          }
+          SanityManager.SET_DEBUG_STREAM(gfxdLogFile, pwFactory);
+        }
+      } else {
+        logLevel = null;
+      }
+    } else {
+      SanityManager.SET_DEBUG_STREAM_IFNULL(logWriter);
+    }
+    // also set the ClientSharedUtils logger
+    if (logLevel != null) {
+      ClientSharedUtils.initLogger(ClientSharedUtils.LOGGER_NAME,
+          gfxdLogFile, true, true, logLevel, new LogHandler(logLevel));
+    }
   }
 
   static ClientService create(String host, int port, boolean forXA,
-      Properties connProperties) throws SQLException {
+      Properties connProperties, PrintWriter logWriter) throws SQLException {
+    // first initialize logger
+    initClientLogger(connProperties, logWriter, getLogLevel(connProperties));
+
     final THashMap connProps = new THashMap();
     @SuppressWarnings("unchecked")
     Map<String, String> props = connProps;
@@ -190,7 +299,7 @@ public final class ClientService extends ReentrantLock implements LobService {
     }
   }
 
-  public ClientService(String host, int port, OpenConnectionArgs connArgs)
+  private ClientService(String host, int port, OpenConnectionArgs connArgs)
       throws SnappyException {
     this.isClosed = true;
 
@@ -437,15 +546,25 @@ public final class ClientService extends ReentrantLock implements LobService {
   }
 
   private Set<HostAddress> updateFailedServersForCurrent(
-      Set<HostAddress> failedServers) {
+      Set<HostAddress> failedServers, boolean checkAllFailed,
+      Throwable cause) throws SnappyException {
     if (failedServers == null) {
       @SuppressWarnings("unchecked")
       Set<HostAddress> servers = new THashSet(2);
       failedServers = servers;
     }
-    final HostAddress hostAddress = this.currentHostAddress;
-    if (hostAddress != null) {
-      failedServers.add(hostAddress);
+    final HostAddress host = this.currentHostAddress;
+    if (host != null && !failedServers.add(host) && checkAllFailed) {
+      // have we come around full circle?
+      ControlConnection controlService = ControlConnection
+          .getOrCreateControlConnection(connHosts.get(0), this, cause);
+      // Below call will throw failure if no servers are available.
+      // This is required to be done explicitly to break the infinite loop
+      // for cases where server is otherwise healthy (so doesn't get detected
+      //   in failover which takes out control host for reconnect cases)
+      // but the operation throws a CancelException every time for some
+      // reason (e.g. the simulation in BugsDUnit.testInsertFailoverbug_47407).
+      controlService.searchRandomServer(failedServers, cause);
     }
     return failedServers;
   }
@@ -457,7 +576,8 @@ public final class ClientService extends ReentrantLock implements LobService {
     final HostConnection source = this.currentHostConnection;
     final HostAddress sourceAddr = this.currentHostAddress;
     if (this.isClosed && createNewConnection) {
-      throw newSnappyExceptionForConnectionClose(source, t);
+      throw newSnappyExceptionForConnectionClose(source, failedServers,
+          true, t);
     }
     final int isolationLevel = this.isolationLevel;
     if (!this.loadBalance
@@ -505,14 +625,37 @@ public final class ClientService extends ReentrantLock implements LobService {
           t.getMessage());
     }
     // need to do failover to new server, so get the next one
-    failedServers = updateFailedServersForCurrent(failedServers);
+    failedServers = updateFailedServersForCurrent(failedServers, true, t);
     if (createNewConnection) {
+      // try and close the connection explicitly since server may still be alive
+      try {
+        // lock should already be held so no timeout
+        closeConnection(0);
+      } catch (SnappyException se) {
+        // ignore
+      }
       openConnection(source.hostAddr, failedServers, t);
     }
     return failedServers;
   }
 
+  private Set<HostAddress> tryCreateNewConnection(HostConnection source,
+      Set<HostAddress> failedServers, Throwable cause) {
+    // create a new connection in any case for future operations
+    if (this.loadBalance) {
+      try {
+        failedServers = updateFailedServersForCurrent(failedServers,
+            false, cause);
+        openConnection(source.hostAddr, failedServers, cause);
+      } catch (RuntimeException | SnappyException ignored) {
+        // deliberately ignored at this point
+      }
+    }
+    return failedServers;
+  }
+
   SnappyException newSnappyExceptionForConnectionClose(HostConnection source,
+      Set<HostAddress> failedServers, boolean createNewConnection,
       Throwable cause) {
     // if cause is a node failure exception then return it
     if (cause instanceof SnappyException) {
@@ -520,6 +663,9 @@ public final class ClientService extends ReentrantLock implements LobService {
       SnappyExceptionData seData = se.getExceptionData();
       if (SQLState.GFXD_NODE_SHUTDOWN_PREFIX.equals(seData.getSqlState())
           || SQLState.DATA_CONTAINER_CLOSED.equals(seData.getSqlState())) {
+        if (createNewConnection) {
+          tryCreateNewConnection(source, failedServers, cause);
+        }
         return se;
       }
     }
@@ -555,23 +701,31 @@ public final class ClientService extends ReentrantLock implements LobService {
     }
   }
 
-  SnappyException newSnappyExceptionForNodeFailure(HostConnection expectedSource,
+  SnappyException newSnappyExceptionForNodeFailure(HostConnection source,
       String op, int isolationLevel, Set<HostAddress> failedServers,
       boolean createNewConnection, Throwable cause) {
-    final HostConnection source = this.currentHostConnection;
     if (this.isClosed) {
-      return newSnappyExceptionForConnectionClose(source, cause);
+      return newSnappyExceptionForConnectionClose(source, failedServers,
+          createNewConnection, cause);
+    }
+    // try and close the connection explicitly since server may still be alive
+    try {
+      // lock should already be held so no timeout
+      closeConnection(0);
+    } catch (SnappyException se) {
+      // ignore
     }
     // create a new connection in any case for future operations
     if (createNewConnection && this.loadBalance) {
       try {
-        failedServers = updateFailedServersForCurrent(failedServers);
+        failedServers = updateFailedServersForCurrent(failedServers,
+            false, cause);
         openConnection(source.hostAddr, failedServers, cause);
       } catch (RuntimeException | SnappyException ignored) {
         // deliberately ignored at this point
       }
     }
-    return (SnappyException)newExceptionForNodeFailure(expectedSource, op,
+    return (SnappyException)newExceptionForNodeFailure(source, op,
         isolationLevel, cause, true);
   }
 
@@ -604,37 +758,6 @@ public final class ClientService extends ReentrantLock implements LobService {
           this.isolationLevel, null, false);
     } else {
       return null;
-    }
-  }
-
-  final class ClientCreateLobFinalizer implements CreateLobFinalizer {
-
-    private final HostConnection source;
-
-    ClientCreateLobFinalizer(HostConnection source) {
-      this.source = source;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public FinalizeObject execute(BlobChunk chunk) {
-      ClientFinalizer finalizer = new ClientFinalizer(chunk,
-          ClientService.this, snappydataConstants.BULK_CLOSE_LOB);
-      finalizer.updateReferentData(chunk.lobId, this.source);
-      return finalizer;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public FinalizeObject execute(ClobChunk chunk) {
-      ClientFinalizer finalizer = new ClientFinalizer(chunk,
-          ClientService.this, snappydataConstants.BULK_CLOSE_LOB);
-      finalizer.updateReferentData(chunk.lobId, this.source);
-      return finalizer;
     }
   }
 
@@ -2174,6 +2297,10 @@ public final class ClientService extends ReentrantLock implements LobService {
   }
 
   public void closeConnection(long lockTimeoutMillis) throws SnappyException {
+    if (isClosed()) {
+      return;
+    }
+
     HostConnection source = this.currentHostConnection;
     if (source == null || source.connId == snappydataConstants.INVALID_ID) {
       closeService();
@@ -2191,6 +2318,10 @@ public final class ClientService extends ReentrantLock implements LobService {
           SQLState.LOCK_TIMEOUT, null, source.toString());
     }
     try {
+      if (isClosed()) {
+        return;
+      }
+
       source = this.currentHostConnection;
       if (source == null || source.connId == snappydataConstants.INVALID_ID) {
         return;
@@ -2254,7 +2385,7 @@ public final class ClientService extends ReentrantLock implements LobService {
     if (thisSource == null || hostConn == null || !thisSource.equals(hostConn)) {
       throw new SnappyException(new SnappyExceptionData("Incorrect host = " +
           thisSource + ", current = " + hostConn, 0).setSqlState(
-              SQLState.LANG_UNEXPECTED_USER_EXCEPTION), null);
+          SQLState.LANG_UNEXPECTED_USER_EXCEPTION), null);
     }
 
     if (SanityManager.TraceClientStatement | SanityManager.TraceClientConn) {

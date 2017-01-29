@@ -203,7 +203,7 @@ public class ClientDRDADriver implements java.sql.Driver {
             } catch (java.lang.NumberFormatException e) {
                 // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
                 throw ClientExceptionUtil.newSQLException(
-                    SQLState.TRACELEVEL_FORMAT_INVALID, e);
+                    SQLState.LOGLEVEL_FORMAT_INVALID, e, e.getMessage());
             }
 
             // Jdbc 1 connections will write driver trace info on a

@@ -257,6 +257,11 @@ public interface ClientAttribute {
   String LOG_FILE = com.pivotal.gemfirexd.Attribute.LOG_FILE;
 
   /**
+   * The GemFireXD log level property.
+   */
+  String LOG_LEVEL = "log-level";
+
+  /**
    * Log file path to which the initialization nano time is appended.
    */
   String LOG_FILE_STAMP = "log-file-ns";

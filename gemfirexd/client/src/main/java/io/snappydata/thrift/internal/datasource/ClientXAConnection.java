@@ -16,7 +16,7 @@
  */
 package io.snappydata.thrift.internal.datasource;
 
-import java.sql.Connection;
+import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.util.Properties;
 import javax.sql.XAConnection;
@@ -36,8 +36,9 @@ public class ClientXAConnection extends ClientPooledConnection
    * Create a new XAConnection instance for user with given credentials.
    */
   public ClientXAConnection(String server, int port,
-      Properties connectionProperties) throws SQLException {
-    super(server, port, true, connectionProperties);
+      Properties connectionProperties, PrintWriter logWriter)
+      throws SQLException {
+    super(server, port, true, connectionProperties, logWriter);
     this.xaResource = new ClientXAResource(this.clientService);
   }
 

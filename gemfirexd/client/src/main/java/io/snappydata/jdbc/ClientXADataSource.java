@@ -40,7 +40,8 @@ public class ClientXADataSource extends com.pivotal.gemfirexd.internal.jdbc.Clie
       throws SQLException {
     if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
       return new ClientXAConnection(getServerName(), getPortNumber(),
-          ClientDataSource.getThriftProperties(user, password, this));
+          ClientDataSource.getThriftProperties(user, password, this),
+          getLogWriter());
     } else {
       return super.getXAConnection(user, password);
     }
