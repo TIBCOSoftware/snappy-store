@@ -535,7 +535,8 @@ public final class FileStreamInputOutput implements StreamContainerHandle,
       final GemFireContainer container;
       // for multiple schemas and table row formatter use schema version
       // formatter
-      if (rf.isTableFormatter() && !(container = rf.container).hasSingleSchema) {
+      if (rf.isTableFormatter()
+          && (container = rf.container).singleSchema == null) {
         r.setRowArray(db, container.getRowFormatter(db));
       }
       else {

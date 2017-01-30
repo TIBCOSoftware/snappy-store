@@ -521,7 +521,7 @@ public final class RegionEntryUtils {
     return OffHeapRegionEntryHelper.encodedAddressToObject(address, false, true);
   }
 
-  public static AbstractCompactExecRow fillRowWithoutFaultIn(
+  public static boolean fillRowWithoutFaultIn(
       final GemFireContainer baseContainer, final LocalRegion region,
       final RegionEntry entry, final AbstractCompactExecRow row)
       throws StandardException {
@@ -540,8 +540,8 @@ public final class RegionEntryUtils {
           && Misc.getMemStoreBooting().isHadoopGfxdLonerMode()) {
         final Object containerInfo = entry.getContainerInfo();
         final ExtraTableInfo tableInfo = containerInfo != null
-          ? (ExtraTableInfo)containerInfo
-          : baseContainer.getExtraTableInfo();
+            ? (ExtraTableInfo)containerInfo
+            : baseContainer.getExtraTableInfo();
         final int[] keyColumns = tableInfo.getPrimaryKeyColumns();
         if (keyColumns != null) {
           //We have a primary key. Convert that to a full row with just the primary
@@ -569,21 +569,54 @@ public final class RegionEntryUtils {
         AbstractCompactExecRow filledRow = fillRowUsingAddress(baseContainer,
             region, (OffHeapRegionEntry)entry, row, false);
         if (filledRow == null) {
-          return null;
+          return false;
         }
       }
       else if (Delta.class.isAssignableFrom(valClass)) {
         // The RegionEntry has at present deltas & the base row has not arrived,
         // return null for this case
-        return null;
+        return false;
       }
       else {
         GemFireXDUtils.throwAssert("fillRow:: unexpected value type: "
             + valClass.getName());
       }
-      return row;
+      return true;
     }
-    return null;
+    return false;
+  }
+
+  public static boolean fillRowWithoutFaultInOptimized(
+      final GemFireContainer baseContainer, final LocalRegion region,
+      final RowLocation entry, final AbstractCompactExecRow row)
+      throws StandardException {
+
+    final Object value = entry.getValueWithoutFaultInOrOffHeapEntry(region);
+    if (value != null) {
+      final Class<?> valClass = value.getClass();
+      if (valClass == byte[].class) {
+        fillRowUsingByteArray(baseContainer, row, (byte[])value);
+      } else if (valClass == byte[][].class) {
+        fillRowUsingByteArrayArray(baseContainer, row, (byte[][])value);
+      } else if (OffHeapRegionEntry.class.isAssignableFrom(valClass)) {
+        AbstractCompactExecRow filledRow = fillRowUsingAddress(baseContainer,
+            region, (OffHeapRegionEntry)entry, row, false);
+        if (filledRow == null) {
+          return false;
+        }
+      } else if (Token.class.isAssignableFrom(valClass)) {
+        return false;
+      } else if (Delta.class.isAssignableFrom(valClass)) {
+        // The RegionEntry has at present deltas & the base row has not arrived,
+        // return null for this case
+        return false;
+      } else {
+        GemFireXDUtils.throwAssert("fillRow:: unexpected value type: "
+            + valClass.getName());
+      }
+      return true;
+    }
+    return false;
   }
 
   private static void fillRowUsingByteArray(

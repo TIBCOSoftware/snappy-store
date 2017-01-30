@@ -15,52 +15,25 @@
  * LICENSE file.
  */
 
-package com.gemstone.gemfire.internal.cache;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
-
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-
-import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
-import com.gemstone.gemfire.internal.offheap.annotations.Released;
-import com.gemstone.gemfire.internal.offheap.annotations.Retained;
-import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-
-
-
-
-
-import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
-
-
-import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
-
-
-
-
-
-import com.gemstone.gemfire.internal.cache.lru.LRUClockNode;
-import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
-import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
 /**
  * Do not modify this class. It was generated.
  * Instead modify LeafRegionEntry.cpp and then run
  * bin/generateRegionEntryClasses.sh from the directory
  * that contains your build.xml.
  */
+package com.gemstone.gemfire.internal.cache;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
+import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
+import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
+import com.gemstone.gemfire.internal.offheap.annotations.Released;
+import com.gemstone.gemfire.internal.offheap.annotations.Retained;
+import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
+import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
+import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
+import com.gemstone.gemfire.internal.cache.lru.LRUClockNode;
+import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 @SuppressWarnings("serial")
 public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
     implements OffHeapRegionEntry
@@ -72,12 +45,9 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
     super(context,
           (value instanceof RecoveredEntry ? null : value)
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     initialize(context, value);
     this.key = key;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -90,9 +60,6 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -101,22 +68,14 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // disk code
   protected void initialize(RegionEntryContext drs, Object value) {
     boolean isBackup;
     if (drs instanceof LocalRegion) {
@@ -126,7 +85,6 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
     } else {
       throw new IllegalArgumentException("expected a LocalRegion or PlaceHolderDiskRegion");
     }
-    // Delay the initialization of DiskID if overflow only
     if (isBackup) {
       diskInitialize(drs, value);
     }
@@ -150,32 +108,23 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
       do {
         final int size = sysCb.entryKeySizeInBytes(key, this);
         if (size >= 0) {
-          /* reduce the ExtraInfo reference size */
           return size - ReflectionSingleObjectSizer.REFERENCE_SIZE;
         }
         if ((tries % MAX_READ_TRIES_YIELD) == 0) {
-          // enough tries; give other threads a chance to proceed
           Thread.yield();
         }
       } while (tries++ <= MAX_READ_TRIES);
       throw sysCb.checkCacheForNullKeyValue("DiskLRU RegionEntry#getKeySize");
     }
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private void diskInitialize(RegionEntryContext context, Object value) {
     DiskRecoveryStore drs = (DiskRecoveryStore)context;
     DiskStoreImpl ds = drs.getDiskStore();
     long maxOplogSize = ds.getMaxOplogSize();
-    //get appropriate instance of DiskId implementation based on maxOplogSize
-    this.id = DiskId.createDiskId(maxOplogSize, true/* is persistence */, ds.needsLinkedList());
+    this.id = DiskId.createDiskId(maxOplogSize, true , ds.needsLinkedList());
     Helper.initialize(this, drs, value);
   }
-  /**
-   * DiskId
-   * 
-   * @since 5.1
-   */
-  protected DiskId id;//= new DiskId();
+  protected DiskId id;
   public DiskId getDiskId() {
     return this.id;
   }
@@ -183,38 +132,25 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   public void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // lru code
   @Override
   public void setDelayedDiskId(LocalRegion r) {
     DiskStoreImpl ds = r.getDiskStore();
     long maxOplogSize = ds.getMaxOplogSize();
-    this.id = DiskId.createDiskId(maxOplogSize, false /* over flow only */, ds.needsLinkedList());
+    this.id = DiskId.createDiskId(maxOplogSize, false , ds.needsLinkedList());
   }
   public final synchronized int updateEntrySize(EnableLRU capacityController) {
-    return updateEntrySize(capacityController, _getValue()); // OFHEAP: _getValue ok w/o incing refcount because we are synced and only getting the size
+    return updateEntrySize(capacityController, _getValue());
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   public final synchronized int updateEntrySize(EnableLRU capacityController,
                                                 Object value) {
     int oldSize = getEntrySize();
     int newSize = capacityController.entrySize(getRawKey(), value);
-  //   GemFireCacheImpl.getInstance().getLoggerI18n().info("DEBUG updateEntrySize: oldSize=" + oldSize
-  //                                               + " newSize=" + newSize);
     setEntrySize(newSize);
     int delta = newSize - oldSize;
-  //   if ( debug ) log( "updateEntrySize key=" + getRawKey()
-  //                     + (_getValue() == Token.INVALID ? " invalid" :
-  //                        (_getValue() == Token.LOCAL_INVALID ? "local_invalid" :
-  //                         (_getValue()==null ? " evicted" : " valid")))
-  //                     + " oldSize=" + oldSize
-  //                     + " newSize=" + this.size );
     return delta;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private LRUClockNode nextLRU;
   private LRUClockNode prevLRU;
-  //private int refCount;
   private int size;
   public final void setNextLRUNode( LRUClockNode next ) {
     this.nextLRU = next;
@@ -234,43 +170,6 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   protected final void setEntrySize(int size) {
     this.size = size;
   }
-  /*
-  public final synchronized int getRefCount() {
-    return this.refCount;
-  }
-  public final synchronized void incRefCount() {
-    this.refCount++;
-    // removal from the LruList is performed as part
-    // of the eviction process (getHeadEntry())
-  }
-
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  
-  public final synchronized void decRefCount(NewLRUClockHand lruList) {
-    if (this.refCount > 0) {
-      this.refCount--;
-      if (this.refCount == 0) {
-        // No more transactions, place in lru list
-        lruList.appendEntry(this);
-      }
-    }
-  }
-  public final synchronized void resetRefCount(NewLRUClockHand lruList) {
-    if (this.refCount > 0) {
-      this.refCount = 0;
-      lruList.appendEntry(this);
-    }
-  }
-  */
-//@Override
-//public StringBuilder appendFieldsToString(final StringBuilder sb) {
-//  StringBuilder result = super.appendFieldsToString(sb);
-//  result.append("; prev=").append(this.prevLRU==null?"null":"not null");
-//  result.append("; next=").append(this.nextLRU==null?"null":"not null");
-//  return result;
-//}
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -280,21 +179,9 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   protected void _setRawKey(Object key) {
     this.key = key;
   }
-  /**
-   * All access done using ohAddrUpdater so it is used even though the compiler can not tell it is.
-   */
   @Retained @Released private volatile long ohAddress;
-  /**
-   * I needed to add this because I wanted clear to call setValue which normally can only be called while the re is synced.
-   * But if I sync in that code it causes a lock ordering deadlock with the disk regions because they also get a rw lock in clear.
-   * Some hardware platforms do not support CAS on a long. If gemfire is run on one of those the AtomicLongFieldUpdater does a sync
-   * on the re and we will once again be deadlocked.
-   * I don't know if we support any of the hardware platforms that do not have a 64bit CAS. If we do then we can expect deadlocks
-   * on disk regions.
-   */
   private final static AtomicLongFieldUpdater<VMThinDiskLRURegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMThinDiskLRURegionEntryOffHeap.class, "ohAddress");
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
@@ -326,7 +213,6 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   public void release() {
     OffHeapRegionEntryHelper.releaseEntry(this);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VMThinDiskLRURegionEntryOffHeap(context, key, value);
@@ -345,5 +231,4 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }

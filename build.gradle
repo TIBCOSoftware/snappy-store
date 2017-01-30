@@ -208,6 +208,7 @@ def replaceRegex(def fileDir, def fileName, def regex, def replacement) {
       line.replaceAll(regex, replacement)
     }
   }
+  delete filePath
   file("${tmpDir}/${fileName}").renameTo(file(filePath))
 }
 

@@ -2143,7 +2143,7 @@ RETRYLOOP:
       this.currentSegmentIndex = CustomEntryConcurrentHashMap.this
           .segments.length;
       this.nextTableIndex = -1;
-      this.currentList = new ArrayList<>(5);
+      this.currentList = new ArrayList<>(4);
       this.currentListIndex = 0;
       advance();
     }

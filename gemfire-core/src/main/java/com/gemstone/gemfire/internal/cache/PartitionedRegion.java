@@ -7165,9 +7165,10 @@ public class PartitionedRegion extends LocalRegion implements
     public boolean hasNext() {
       if (this.moveNext) {
         for (;;) {
-          if (this.bucketEntriesIter != null
-              && this.bucketEntriesIter.hasNext()) {
-            final RegionEntry val = this.bucketEntriesIter.next();
+          final Iterator<RegionEntry> bucketEntriesIter = this.bucketEntriesIter;
+          if (bucketEntriesIter != null
+              && bucketEntriesIter.hasNext()) {
+            final RegionEntry val = bucketEntriesIter.next();
             if (val != null) {
               if (val.isMarkedForEviction() && !includeHDFS && !forUpdate) {
                 // entry has been faulted in from HDFS, skip
@@ -7203,8 +7204,8 @@ public class PartitionedRegion extends LocalRegion implements
           for (;;) {
             if (!this.bucketIdsIter.hasNext()) {
               // check for an open disk iterator
-              if (this.bucketEntriesIter instanceof DiskSavyIterator) {
-                if (((DiskSavyIterator)this.bucketEntriesIter)
+              if (bucketEntriesIter instanceof DiskSavyIterator) {
+                if (((DiskSavyIterator)bucketEntriesIter)
                     .initDiskIterator()) {
                   this.diskIteratorInitialized = true;
                   break;
