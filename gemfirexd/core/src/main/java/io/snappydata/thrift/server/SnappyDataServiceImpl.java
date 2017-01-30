@@ -3222,6 +3222,25 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
    * {@inheritDoc}
    */
   @Override
+  public void cancelCurrentStatement(long connId, ByteBuffer token)
+      throws SnappyException {
+    try {
+      ConnectionHolder connHolder = getValidConnection(connId, token);
+      // check for the current active statement
+      Statement activeStatement = connHolder.uniqueActiveStatement(true);
+      if (activeStatement != null) {
+        activeStatement.cancel();
+      }
+    } catch (Throwable t) {
+      checkSystemFailure(t);
+      throw SnappyException(t);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public void closeStatement(long stmtId, ByteBuffer token)
       throws SnappyException {
     ConnectionHolder connHolder = null;

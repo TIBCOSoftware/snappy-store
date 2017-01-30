@@ -713,7 +713,10 @@ Guide.
                 <text>HDFS file rollover is supported only for write-only HDFS tables. '{0}' is not a write-only HDFS table.</text>
                 <arg>fqtn</arg>
            </msg>
-           
+           <msg>
+               <name>0A000.S.35</name>
+               <text>Statement.cancel(): no unique active statement found for the connection on server.</text>
+           </msg>
 <!--  GemStone changes END -->
         </family>
 

@@ -224,6 +224,7 @@ public class splitmessages {
         clientMessageIds.add(SQLState.SOCKET_EXCEPTION);
         clientMessageIds.add(SQLState.NET_CONNECT_AUTH_FAILED);
         clientMessageIds.add(SQLState.DRDA_CONNECTION_TERMINATED);
+        clientMessageIds.add(SQLState.CANCEL_NO_UNIQUE_STATEMENT);
 // GemStone changes END
     }
 

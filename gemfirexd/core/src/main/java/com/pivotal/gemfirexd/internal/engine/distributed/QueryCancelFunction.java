@@ -38,6 +38,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 
 /**
@@ -79,14 +80,14 @@ public final class QueryCancelFunction implements Function, Declarable {
     EmbedStatement stmt = null;
     LanguageConnectionContext lcc = null;
     if (wrapper != null) {
+      EmbedConnection conn = wrapper.getConnectionOrNull();
       stmt = wrapper.getStatementForCancellation(args.statementId,
           args.executionId);
-      if (stmt == null) {
-        lcc = getLccFromContextService(args.connectionId);
-      } else {
-        lcc = stmt.getEmbedConnection().getLanguageConnection();
+      if (conn != null) {
+        lcc = conn.getLanguageConnection();
       }
-    } else {
+    }
+    if (lcc == null) {
       lcc = getLccFromContextService(args.connectionId);
     }
     
@@ -179,12 +180,17 @@ public final class QueryCancelFunction implements Function, Declarable {
   public boolean isHA() {
     return false;
   }
-  
+
+  public static QueryCancelFunctionArgs newQueryCancelFunctionArgs(
+      long statementId, long connectionId) {
+    return new QueryCancelFunctionArgs(statementId, 0, connectionId);
+  }
+
   public static QueryCancelFunctionArgs newQueryCancelFunctionArgs(
       long statementId, long executionId, long connectionId) {
     return (new QueryCancelFunctionArgs(statementId, executionId, connectionId));
   }
-  
+
   /**
    * Arguments for the QueryCancelFunction
    * @author shirishd

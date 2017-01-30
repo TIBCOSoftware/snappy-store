@@ -879,11 +879,11 @@ public class EmbedStatement extends ConnectionChild
 	  }
 	  // send a message to cancel the query on all other data nodes
 	  QueryCancelFunctionArgs args = QueryCancelFunction
-	      .newQueryCancelFunctionArgs(this.statementID, this.executionID, 
-	          lcc.getConnectionId());
+	      .newQueryCancelFunctionArgs(this.statementID, lcc.getConnectionId());
 	  Set<DistributedMember> dataStores = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
 	  final DistributedMember myId = GemFireStore.getMyId();
-	  dataStores.remove(myId);
+	  // add self too for the wrapper connection
+	  dataStores.add(myId);
 	  if (dataStores.size() > 0) {
 	    FunctionService.onMembers(dataStores).withArgs(args).execute(
 	        QueryCancelFunction.ID);

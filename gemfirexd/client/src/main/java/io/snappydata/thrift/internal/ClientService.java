@@ -2169,7 +2169,7 @@ public final class ClientService extends ReentrantLock implements LobService {
 
   public void cancelStatement(final HostConnection source, long stmtId)
       throws SnappyException {
-    if (source == null || stmtId == snappydataConstants.INVALID_ID) {
+    if (source == null) {
       return;
     }
 
@@ -2191,7 +2191,13 @@ public final class ClientService extends ReentrantLock implements LobService {
     props.put(ClientAttribute.LOAD_BALANCE, "false");
     ClientService service = new ClientService(source.hostAddr, connArgs);
     try {
-      service.clientService.cancelStatement(stmtId, source.token);
+      if (stmtId == snappydataConstants.INVALID_ID) {
+        // cancel currently active statement for the connection
+        service.clientService.cancelCurrentStatement(source.connId,
+            source.token);
+      } else {
+        service.clientService.cancelStatement(stmtId, source.token);
+      }
       if (SanityManager.TraceClientStatement) {
         final long ns = System.nanoTime();
         SanityManager.DEBUG_PRINT_COMPACT("cancelStatement_E", null,

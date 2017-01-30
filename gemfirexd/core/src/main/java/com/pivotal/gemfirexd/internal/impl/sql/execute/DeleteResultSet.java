@@ -60,6 +60,7 @@ import com.pivotal.gemfirexd.internal.iapi.store.access.ConglomerateController;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericActivationHolder;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 // GemStone changes BEGIN
@@ -209,6 +210,7 @@ public class DeleteResultSet extends DMLWriteResultSet
 		}
 
 // GemStone changes BEGIN
+		checkCancellationFlag();
 		// do the reference key checks
 		if (this.referencedKeyCheckRows != null) {
 		  final int numRefKeys = this.referencedKeyCheckRows.size();

@@ -111,7 +111,7 @@ public final class GfxdConnectionWrapper {
 
   /**
    * Marks the current connection as being used, so any subsequent use can wait
-   * by invoking {@link #waitFor()} method.
+   * by invoking {@link #waitFor} method.
    */
   private volatile boolean inUse;
   private volatile boolean hasWaiters;
@@ -445,8 +445,7 @@ public final class GfxdConnectionWrapper {
    * Convert the wrapped {@link EmbedConnection} into a normal reference if it
    * has been wrapped as a {@link SoftReference}. This does not create a new
    * connection if the {@link SoftReference} has been GCed, so top-level should
-   * ensure that it is not GCed or invoke {@link #reconnectIfClosed()} to ensure
-   * a proper connection. Not thread-safe so should be invoked inside the
+   * ensure that it is not GCed. Not thread-safe so should be invoked inside the
    * synchronization lock on the object obtained using
    * {@link #getConnectionForSynchronization()} if multiple threads may be
    * waiting on the connection (which is the case for streaming).
@@ -523,7 +522,7 @@ public final class GfxdConnectionWrapper {
   }
 
   /**
-   * Signal any waiters on {@link #waitFor()} after a previous call to
+   * Signal any waiters on {@link #waitFor} after a previous call to
    * {@link #convertToHardReference(EmbedConnection)}.
    */
   public void markUnused() {

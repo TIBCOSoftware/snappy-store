@@ -469,6 +469,36 @@ final class ConnectionHolder {
     return stmtHolder;
   }
 
+  Statement uniqueActiveStatement(boolean skipPrepared) throws SQLException {
+    Statement result = null;
+    this.sync.lock();
+    try {
+      StatementHolder activeStatement = this.activeStatement;
+      if (activeStatement != null) {
+        result = activeStatement.getStatement();
+        if (skipPrepared && result instanceof PreparedStatement) {
+          result = null;
+        }
+      }
+      for (StatementHolder holder : this.registeredStatements) {
+        Statement stmt = holder.getStatement();
+        if (stmt != result &&
+            !(skipPrepared && stmt instanceof PreparedStatement)) {
+          // if duplicate then throw exception
+          if (result != null) {
+            throw ThriftExceptionUtil.newSQLException(
+                SQLState.CANCEL_NO_UNIQUE_STATEMENT, null);
+          } else {
+            result = stmt;
+          }
+        }
+      }
+      return result;
+    } finally {
+      this.sync.unlock();
+    }
+  }
+
   ResultSetHolder registerResultSet(final StatementHolder stmtHolder,
       ResultSet rs, long cursorId) {
     this.sync.lock();

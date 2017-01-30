@@ -935,6 +935,9 @@ service SnappyDataService {
   void cancelStatement(1: i64 stmtId,
       2: binary token) throws (1: SnappyException error)
 
+  void cancelCurrentStatement(1: i64 connId,
+      2: binary token) throws (1: SnappyException error)
+
   void closeResultSet  (1: i64 cursorId,
       2: binary token) throws (1: SnappyException error)
   void closeStatement  (1: i64 stmtId,

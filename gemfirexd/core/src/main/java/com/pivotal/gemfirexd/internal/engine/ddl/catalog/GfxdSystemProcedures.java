@@ -2113,8 +2113,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     // send a message to cancel the query on all data nodes
     QueryCancelFunctionArgs args = QueryCancelFunction
-        .newQueryCancelFunctionArgs(statementId, executionID, 
-            connectionId);
+        .newQueryCancelFunctionArgs(statementId, connectionId);
     Set<DistributedMember> otherMembers = GfxdMessage.getAllGfxdServers();
     if (otherMembers.size() > 0) {
       FunctionService.onMembers(otherMembers).withArgs(args).execute(
