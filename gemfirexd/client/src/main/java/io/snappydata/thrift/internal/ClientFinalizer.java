@@ -72,7 +72,7 @@ public final class ClientFinalizer extends FinalizeObject implements
   }
 
   @Override
-  protected final FinalizeHolder getHolder() {
+  public final FinalizeHolder getHolder() {
     return getClientHolder();
   }
 

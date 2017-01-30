@@ -136,7 +136,7 @@ public abstract class FinalizeObject extends WeakReference<Object>
     this.prev = linkable;
   }
 
-  protected abstract FinalizeHolder getHolder();
+  public abstract FinalizeHolder getHolder();
 
   protected abstract void clearThis();
 

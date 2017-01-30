@@ -182,7 +182,7 @@ public final class ClientService extends ReentrantLock implements LobService {
     }
     if (level != null) {
       try {
-        logLevel = Level.parse(level);
+        logLevel = Level.parse(level.trim().toUpperCase());
       } catch (IllegalArgumentException iae) {
         throw ThriftExceptionUtil.newSQLException(
             SQLState.LOGLEVEL_FORMAT_INVALID, iae, level);
@@ -266,23 +266,26 @@ public final class ClientService extends ReentrantLock implements LobService {
     // first initialize logger
     initClientLogger(connProperties, logWriter, getLogLevel(connProperties));
 
-    final THashMap connProps = new THashMap();
-    @SuppressWarnings("unchecked")
-    Map<String, String> props = connProps;
+    Map<String, String> props = null;
     String userName = null;
     String password = null;
-    for (String propName : connProperties.stringPropertyNames()) {
-      if (ClientAttribute.USERNAME.equals(propName)
-          || ClientAttribute.USERNAME_ALT.equals(propName)) {
-        userName = connProperties.getProperty(propName);
-      } else if (ClientAttribute.PASSWORD.equals(propName)) {
-        password = connProperties.getProperty(propName);
-      } else {
-        connProps.put(propName, connProperties.getProperty(propName));
+    if (connProperties != null) {
+      final THashMap connProps = new THashMap();
+      // noinspection unchecked
+      props = connProps;
+      for (String propName : connProperties.stringPropertyNames()) {
+        if (ClientAttribute.USERNAME.equals(propName)
+            || ClientAttribute.USERNAME_ALT.equals(propName)) {
+          userName = connProperties.getProperty(propName);
+        } else if (ClientAttribute.PASSWORD.equals(propName)) {
+          password = connProperties.getProperty(propName);
+        } else {
+          connProps.put(propName, connProperties.getProperty(propName));
+        }
       }
-    }
-    if (connProps.size() == 0) {
-      props = null;
+      if (connProps.size() == 0) {
+        props = null;
+      }
     }
     Thread currentThread = Thread.currentThread();
     String clientId = hostId + '|' + currentThread.getName() + "<0x"
@@ -293,17 +296,17 @@ public final class ClientService extends ReentrantLock implements LobService {
         SecurityMechanism.PLAIN, forXA).setUserName(userName)
         .setPassword(password).setProperties(props);
     try {
-      return new ClientService(host, port, connArgs);
+      HostAddress hostAddr = ThriftUtils.getHostAddress(host, port);
+      return new ClientService(hostAddr, connArgs);
     } catch (SnappyException se) {
       throw ThriftExceptionUtil.newSQLException(se);
     }
   }
 
-  private ClientService(String host, int port, OpenConnectionArgs connArgs)
+  private ClientService(HostAddress hostAddr, OpenConnectionArgs connArgs)
       throws SnappyException {
     this.isClosed = true;
 
-    HostAddress hostAddr = ThriftUtils.getHostAddress(host, port);
     this.currentHostConnection = null;
     this.currentHostAddress = null;
     this.connArgs = connArgs;
@@ -359,7 +362,6 @@ public final class ClientService extends ReentrantLock implements LobService {
     if (props != null) {
       binaryProtocol = Boolean.parseBoolean(props
           .remove(ClientAttribute.THRIFT_USE_BINARY_PROTOCOL));
-      String ssl = props.remove(ClientAttribute.SSL);
       useSSL = Boolean.parseBoolean(props.remove(ClientAttribute.SSL));
       // set SSL properties (csv format) into SSL params in SocketParameters
       propValue = props.remove(ClientAttribute.THRIFT_SSL_PROPERTIES);
@@ -1694,41 +1696,6 @@ public final class ClientService extends ReentrantLock implements LobService {
     }
   }
 
-  public boolean freeLob(final HostConnection source, long lobId,
-      long lockTimeoutMillis) throws SnappyException {
-    if (source == null || lobId == snappydataConstants.INVALID_ID) {
-      return true;
-    }
-
-    if (SanityManager.TraceClientStatement) {
-      final long ns = System.nanoTime();
-      SanityManager.DEBUG_PRINT_COMPACT("freeLob_S", null, source.connId,
-          source.token, ns, true, null);
-    }
-    if (!acquireLock(lockTimeoutMillis)) {
-      return false;
-    }
-    try {
-      // check if node has failed sometime before
-      checkUnexpectedNodeFailure(source, "freeLob");
-
-      this.clientService.freeLob(source.connId, lobId, source.token);
-      if (SanityManager.TraceClientStatement) {
-        final long ns = System.nanoTime();
-        SanityManager.DEBUG_PRINT_COMPACT("freeLob_E", null, source.connId,
-            source.token, ns, false, null);
-      }
-      return true;
-    } catch (Throwable t) {
-      // no failover possible for multiple chunks
-      handleException(t, null, false, false, true, "freeLob");
-      // never reached
-      throw new AssertionError("unexpectedly reached end");
-    } finally {
-      super.unlock();
-    }
-  }
-
   public RowSet scrollCursor(final HostConnection source, long cursorId,
       int offset, boolean offsetIsAbsolute, boolean fetchReverseForAbsolute,
       int fetchSize) throws SnappyException {
@@ -2211,22 +2178,30 @@ public final class ClientService extends ReentrantLock implements LobService {
       SanityManager.DEBUG_PRINT_COMPACT("cancelStatement_S", null,
           source.connId, source.token, ns, true, null);
     }
-    super.lock();
-    try {
-      // check if node has failed sometime before
-      checkUnexpectedNodeFailure(source, "closeResultSet");
+    // TODO: SW: use connection pooling for all operations including cancel
 
-      this.clientService.cancelStatement(stmtId, source.token);
+    // create a new connection to fire cancel since original statement
+    // connection will be busy and locked; set load-balance to false
+    OpenConnectionArgs connArgs = new OpenConnectionArgs(this.connArgs);
+    Map<String, String> props = connArgs.getProperties();
+    if (props == null) {
+      props = new HashMap<>(1);
+      connArgs.setProperties(props);
+    }
+    props.put(ClientAttribute.LOAD_BALANCE, "false");
+    ClientService service = new ClientService(source.hostAddr, connArgs);
+    try {
+      service.clientService.cancelStatement(stmtId, source.token);
       if (SanityManager.TraceClientStatement) {
         final long ns = System.nanoTime();
         SanityManager.DEBUG_PRINT_COMPACT("cancelStatement_E", null,
             source.connId, source.token, ns, false, null);
       }
     } catch (Throwable t) {
-      // no failover should be attempted and node failures ignored
-      handleException(t, null, false, true, true, "cancelStatement");
+      // no failover should be attempted
+      service.handleException(t, null, false, false, false, "cancelStatement");
     } finally {
-      super.unlock();
+      service.closeService();
     }
   }
 

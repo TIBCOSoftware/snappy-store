@@ -497,6 +497,16 @@ public class BrokeredStatement implements EngineStatement
     ((EngineStatement)getStatement()).reset(newType, newConcurrency,
         newHoldability);
   }
+
+  @Override
+  public final void clearFinalizer() {
+    try {
+      ((EngineStatement)getStatement()).clearFinalizer();
+    } catch (SQLException sqle) {
+      // ignore
+    }
+  }
+
 // GemStone changes END
 
     /**

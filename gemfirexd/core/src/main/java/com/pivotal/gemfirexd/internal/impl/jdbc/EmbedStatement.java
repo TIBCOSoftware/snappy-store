@@ -637,11 +637,7 @@ public class EmbedStatement extends ConnectionChild
                 iapiResultSet = null; 
 
                 // lose the finalizer so it can be GCed
-                final FinalizeStatement finalizer = this.finalizer;
-                if (finalizer != null) {
-                  finalizer.clearAll();
-                  this.finalizer = null;
-                }
+                clearFinalizer();
 // GemStone changes END
 		  closeActions();
 		 
@@ -675,6 +671,15 @@ public class EmbedStatement extends ConnectionChild
 	public final void forceClearBatch() {
 	  synchronized (getConnectionSynchronization()) {
 	    this.batchStatements = null;
+	  }
+	}
+
+	@Override
+	public final void clearFinalizer() {
+	  final FinalizeStatement finalizer = this.finalizer;
+	  if (finalizer != null) {
+	    finalizer.clearAll();
+	    this.finalizer = null;
 	  }
 	}
 
@@ -3437,7 +3442,7 @@ public class EmbedStatement extends ConnectionChild
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 

@@ -72,6 +72,7 @@ import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.internal.cache.Checkpoint;
 import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.SQLWarningFactory;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -806,6 +807,16 @@ public abstract class BrokeredConnection implements EngineConnection
         getRealConnection().forceClose();
       } catch (SQLException sqle) {
         // ignored
+      }
+    }
+
+    @Override
+    public FinalizeObject getAndClearFinalizer() {
+      try {
+        return getRealConnection().getAndClearFinalizer();
+      } catch (SQLException sqle) {
+        // ignored
+        return null;
       }
     }
 

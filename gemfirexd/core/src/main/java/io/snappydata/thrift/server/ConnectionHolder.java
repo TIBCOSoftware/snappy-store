@@ -47,6 +47,7 @@ import java.util.Properties;
 
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineStatement;
 import com.pivotal.gemfirexd.internal.jdbc.EmbedXAConnection;
@@ -536,7 +537,15 @@ final class ConnectionHolder {
         Statement stmt = stmtHolder.getStatement();
         if (stmt != null) {
           try {
-            stmt.close();
+            if (forceClose) {
+              if (stmt instanceof EngineStatement) {
+                // connection is going to be force closed so no need for
+                // any statement cleanup
+                ((EngineStatement)stmt).clearFinalizer();
+              }
+            } else {
+              stmt.close();
+            }
           } catch (SQLException sqle) {
             // ignore exception at this point
             service.logger.error("unexpected exception in Statement.close()",
@@ -547,9 +556,14 @@ final class ConnectionHolder {
         }
       }
 
-      if (this.reusableStatement != null) {
+      final EngineStatement reusableStatement = this.reusableStatement;
+      if (reusableStatement != null) {
         try {
-          this.reusableStatement.close();
+          if (forceClose) {
+            reusableStatement.clearFinalizer();
+          } else {
+            reusableStatement.close();
+          }
         } catch (SQLException sqle) {
           // ignore exception at this point
           service.logger.error("unexpected exception in Statement.close()",
@@ -557,7 +571,13 @@ final class ConnectionHolder {
         }
       }
       if (forceClose) {
+        // enqueue distribution of close
+        final FinalizeObject finalizer = this.conn.getAndClearFinalizer();
         this.conn.forceClose();
+        if (finalizer != null) {
+          finalizer.clear();
+          finalizer.getHolder().addToPendingQueue(finalizer);
+        }
       } else {
         if (this.xaConn != null) {
           try {

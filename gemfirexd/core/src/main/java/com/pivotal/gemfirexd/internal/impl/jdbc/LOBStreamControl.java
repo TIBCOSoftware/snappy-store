@@ -595,7 +595,7 @@ class LOBStreamControl {
       }
 
       @Override
-      protected final FinalizeHolder getHolder() {
+      public final FinalizeHolder getHolder() {
         return getServerHolder();
       }
 

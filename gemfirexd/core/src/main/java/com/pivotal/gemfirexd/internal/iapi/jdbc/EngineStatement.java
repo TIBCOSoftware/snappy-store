@@ -64,4 +64,6 @@ public interface EngineStatement extends Statement {
      */
     public void reset(int newType, int newConcurrency, int newHoldability)
         throws SQLException;
+
+    public void clearFinalizer();
 }

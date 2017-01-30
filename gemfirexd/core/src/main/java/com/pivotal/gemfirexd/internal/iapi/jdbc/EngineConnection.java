@@ -48,6 +48,7 @@ import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.internal.cache.Checkpoint;
 import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 
 
@@ -167,8 +168,11 @@ public interface EngineConnection extends Connection {
     /** close from network server session close */
     public void internalClose() throws SQLException;
 
-    /** force close the connection ignoring errors */
+    /** force close the connection without lock and ignoring errors */
     public void forceClose();
+
+    /** get the finalizer for connection, if any */
+    public FinalizeObject getAndClearFinalizer();
 
     /**
      * Return true if the connection is still active and false otherwise. Unlike

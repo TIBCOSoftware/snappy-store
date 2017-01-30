@@ -91,6 +91,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.StatementQueryExecutor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.ConnectionSignaller;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.ConnectionState;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
@@ -116,6 +117,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
+import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.store.access.XATransactionController;
 import com.pivotal.gemfirexd.internal.iapi.store.replication.master.MasterFactory;
 import com.pivotal.gemfirexd.internal.iapi.store.replication.slave.SlaveFactory;
@@ -2304,8 +2306,23 @@ public abstract class EmbedConnection implements EngineConnection
   }
 
   /** basic cleanup required to avoid memory leaks etc. */
+  @Override
   public final void forceClose() {
-    synchronized (getConnectionSynchronization()) {
+    final TransactionResourceImpl tr = getTR();
+    if (tr != null) {
+      // try to abort any active transaction first
+      final LanguageConnectionContext lcc = tr.getLcc();
+      if (lcc != null) {
+        TransactionController tc = lcc.getTransactionExecute();
+        if (tc != null) {
+          try {
+            tc.abort();
+          } catch (StandardException ignored) {
+          }
+          tc.releaseAllLocks(true, true);
+        }
+      }
+
       if (rootConnection == this) {
         // cleanup the CM from ContextService
         final ContextManager cm = this.tr.cm;
@@ -2313,10 +2330,17 @@ public abstract class EmbedConnection implements EngineConnection
           ContextService.removeContextManager(cm);
         }
       }
-      if (!isClosed()) {
-        setInactive();
-      }
+      this.active.state = 0;
     }
+  }
+
+  @Override
+  public final FinalizeObject getAndClearFinalizer() {
+    final FinalizeEmbedConnection finalizer = this.finalizer;
+    if (finalizer != null) {
+      this.finalizer = null;
+    }
+    return finalizer;
   }
 
   public final void close(boolean distribute) throws SQLException {
@@ -4462,7 +4486,7 @@ public abstract class EmbedConnection implements EngineConnection
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 
