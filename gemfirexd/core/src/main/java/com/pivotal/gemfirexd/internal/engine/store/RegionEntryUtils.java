@@ -21,6 +21,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -37,26 +38,8 @@ import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.cache.AbstractDiskRegion;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.EventErrorHandler;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
-import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntry;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntryWithStats;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.PlaceHolderDiskRegion;
-import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionEntryContext;
-import com.gemstone.gemfire.internal.cache.SortedIndexContainer;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
@@ -1614,6 +1597,15 @@ public final class RegionEntryUtils {
       } else {
         return null;
       }
+    }
+    public ExternalTableMetaData fetchSnappyTablesHiveMetaData(PartitionedRegion region) {
+      List<GemFireContainer> containers =  Misc.getMemStore().getAllContainers();
+      for (GemFireContainer container: containers) {
+        if (container.getRegion() != null  &&
+            container.getRegion().getName() == region.getName())
+          return container.fetchHiveMetaData(false);
+      }
+      return null;
     }
   };
 

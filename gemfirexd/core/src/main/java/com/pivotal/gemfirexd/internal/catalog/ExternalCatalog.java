@@ -20,6 +20,8 @@ package com.pivotal.gemfirexd.internal.catalog;
 import java.util.HashMap;
 import java.util.List;
 
+import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
+
 /**
  * Need to keep GemXD independent of any snappy/spark/hive related
  * classes. An implementation of this can be made which adheres to this
@@ -65,6 +67,13 @@ public interface ExternalCatalog {
    * @return
    */
   public String catalogSchemaName();
+
+  /**
+   * Returns the meta data of the Hive Table
+   *
+   */
+  public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
+      boolean skipLocks);
 
   void stop();
 }
