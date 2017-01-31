@@ -7064,6 +7064,7 @@ public class PartitionedRegion extends LocalRegion implements
 
     public PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
         final boolean forUpdate, final boolean includeValues) {
+      this.includeHDFS = includeHDFSResults();
       Iterator<Integer> iter = null;
       long numEntries = -1;
       PartitionedRegionDataStore ds = dataStore;
@@ -7105,12 +7106,12 @@ public class PartitionedRegion extends LocalRegion implements
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.diskIteratorInitialized = false;
-      this.includeHDFS = includeHDFSResults();
       this.cb = GemFireCacheImpl.getInternalProductCallbacks();
     }
 
     public PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
         final boolean forUpdate, final boolean includeValues, final boolean fetchRemote) {
+      this.includeHDFS = includeHDFSResults();
       Iterator<Integer> iter = null;
       long numEntries = -1;
       PartitionedRegionDataStore ds = dataStore;
@@ -7144,7 +7145,6 @@ public class PartitionedRegion extends LocalRegion implements
       this.includeValues = includeValues;
       this.numEntries = numEntries;
       this.diskIteratorInitialized = false;
-      this.includeHDFS = includeHDFSResults();
       this.cb = GemFireCacheImpl.getInternalProductCallbacks();
     }
 
@@ -7204,8 +7204,6 @@ public class PartitionedRegion extends LocalRegion implements
               this.currentEntry = val;
             }
             if (this.currentEntry != null) {
-              // check if
-
               this.moveNext = false;
               return true;
             }
