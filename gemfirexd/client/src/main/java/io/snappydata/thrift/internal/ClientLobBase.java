@@ -79,7 +79,6 @@ abstract class ClientLobBase {
       this.finalizer = null;
     }
     this.streamedInput = false;
-    this.streamOffset = -1;
   }
 
   protected final HostConnection getLobSource(boolean throwOnFailure,
@@ -96,12 +95,12 @@ abstract class ClientLobBase {
     }
   }
 
-  protected int getLength() throws SQLException {
+  protected final int getLength(boolean forceMaterialize) throws SQLException {
     final int len = this.length;
     if (len >= 0) {
       return len;
     } else {
-      return (this.length = streamLength(false));
+      return (this.length = streamLength(forceMaterialize));
     }
   }
 
@@ -110,7 +109,7 @@ abstract class ClientLobBase {
    * @see java.sql.Clob#length()
    */
   public final long length() throws SQLException {
-    final int len = getLength();
+    final int len = getLength(true);
     if (len >= 0) {
       return len;
     } else {
@@ -190,7 +189,7 @@ abstract class ClientLobBase {
    */
   public void truncate(long len) throws SQLException {
     checkLength(len);
-    final int length = getLength();
+    final int length = getLength(false);
     if (length >= 0 && length < len) {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.BLOB_LENGTH_TOO_LONG, null, len);
@@ -206,7 +205,7 @@ abstract class ClientLobBase {
       this.finalizer = null;
     }
     this.streamedInput = false;
-    this.streamOffset = -1;
+    this.streamOffset = 0;
     this.length = -1;
     clear();
   }

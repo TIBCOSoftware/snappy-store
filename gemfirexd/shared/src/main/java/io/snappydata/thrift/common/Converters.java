@@ -35,16 +35,11 @@
 
 package io.snappydata.thrift.common;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Reader;
+import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.Calendar;
 import java.util.List;
@@ -58,6 +53,7 @@ import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.Decimal;
 import io.snappydata.thrift.SnappyType;
 import io.snappydata.thrift.snappydataConstants;
+import org.apache.commons.io.input.ReaderInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1783,6 +1779,17 @@ public abstract class Converters {
       }
     }
     @Override
+    public Reader toCharacterStream(OptimizedElementArray row,
+        int columnPosition, LobService lobService) throws SQLException {
+      return new StringReader(toString(row, columnPosition));
+    }
+    @Override
+    public InputStream toAsciiStream(OptimizedElementArray row,
+        int columnPosition, LobService lobService) throws SQLException {
+      return new ReaderInputStream(new StringReader(toString(row,
+          columnPosition)), StandardCharsets.US_ASCII);
+    }
+    @Override
     public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
       return row.getObject(columnPosition - 1);
@@ -1975,6 +1982,11 @@ public abstract class Converters {
     public byte[] toBytes(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
       return (byte[])row.getObject(columnPosition - 1);
+    }
+    @Override
+    public InputStream toBinaryStream(OptimizedElementArray row,
+        int columnPosition, LobService lobService) throws SQLException {
+      return new ByteArrayInputStream(toBytes(row, columnPosition, lobService));
     }
     @Override
     public Object toObject(OptimizedElementArray row, int columnPosition,

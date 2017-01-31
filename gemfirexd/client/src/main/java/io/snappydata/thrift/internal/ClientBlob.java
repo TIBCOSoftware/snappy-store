@@ -35,8 +35,6 @@
 
 package io.snappydata.thrift.internal;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,6 +44,7 @@ import java.sql.Blob;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+import com.pivotal.gemfirexd.internal.shared.common.io.DynamicByteArrayOutputStream;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.SnappyException;
@@ -108,7 +107,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
     try {
       final InputStream dataStream = this.dataStream;
       if (dataStream instanceof MemInputStream) {
-        return ((MemInputStream)dataStream).length();
+        return ((MemInputStream)dataStream).size();
       } else if (!forceMaterialize && dataStream instanceof FileInputStream) {
         // can determine the size of stream for FileInputStream
         long length = ((FileInputStream)dataStream).getChannel().size() -
@@ -127,13 +126,14 @@ public final class ClientBlob extends ClientLobBase implements Blob {
           this.dataStream = new MemInputStream(buffer, readLen);
           return readLen;
         } else {
-          MemOutputStream out = new MemOutputStream(bufSize + (bufSize >>> 1));
+          DynamicByteArrayOutputStream out = new DynamicByteArrayOutputStream(
+              bufSize + (bufSize >>> 1));
           out.write(buffer, 0, bufSize);
           while ((readLen = readStream(dataStream, buffer, 0, bufSize)) > 0) {
             out.write(buffer, 0, readLen);
           }
-          int streamSize = out.size();
-          this.dataStream = new MemInputStream(out.getBuffer(), streamSize);
+          int streamSize = out.getUsed();
+          this.dataStream = new MemInputStream(out, streamSize);
           out.close(); // no-op to remove a warning
           return streamSize;
         }
@@ -331,13 +331,13 @@ public final class ClientBlob extends ClientLobBase implements Blob {
       if (newSize <= sbuffer.length) {
         // just change the underlying buffer and update count if required
         System.arraycopy(bytes, boffset, sbuffer, offset, len);
-        ms.changeCount(newSize);
+        ms.changeSize(newSize);
       } else {
         // create new buffer and set into input stream
         sbuffer = Arrays.copyOf(sbuffer, newSize);
         System.arraycopy(bytes, boffset, sbuffer, offset, len);
         ms.changeBuffer(sbuffer);
-        ms.changeCount(newSize);
+        ms.changeSize(newSize);
       }
       this.length = newSize;
       this.dataStream = ms;
@@ -360,9 +360,17 @@ public final class ClientBlob extends ClientLobBase implements Blob {
    */
   @Override
   public OutputStream setBinaryStream(long pos) throws SQLException {
-    // TODO: implement
-    throw ThriftExceptionUtil.newSQLException(
-        SQLState.NOT_IMPLEMENTED, null, "Blob.setBinaryStream");
+    checkOffset(pos - 1);
+    if (pos == 1 && this.length == 0) {
+      free();
+      DynamicByteArrayOutputStream out = new DynamicByteArrayOutputStream();
+      this.dataStream = new MemInputStream(out, 0);
+      this.streamedInput = true;
+      return out;
+    } else {
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.NOT_IMPLEMENTED, null, "Blob.setBinaryStream(" + pos + ')');
+    }
   }
 
   /**
@@ -507,52 +515,6 @@ public final class ClientBlob extends ClientLobBase implements Blob {
       if (freeForStream) {
         free();
       }
-    }
-  }
-
-  static final class MemInputStream extends ByteArrayInputStream {
-
-    public MemInputStream(byte[] b) {
-      super(b);
-    }
-
-    public MemInputStream(byte[] b, int len) {
-      super(b, 0, len);
-    }
-
-    final byte[] getBuffer() {
-      return buf;
-    }
-
-    final int getCount() {
-      return this.count;
-    }
-
-    final int length() {
-      return this.count;
-    }
-
-    final void changeBuffer(byte[] b) {
-      this.buf = b;
-    }
-
-    final void changePosition(int position) {
-      this.pos = position;
-    }
-
-    final void changeCount(int count) {
-      this.count = count;
-    }
-  }
-
-  static final class MemOutputStream extends ByteArrayOutputStream {
-
-    public MemOutputStream(int size) {
-      super(size);
-    }
-
-    final byte[] getBuffer() {
-      return buf;
     }
   }
 }

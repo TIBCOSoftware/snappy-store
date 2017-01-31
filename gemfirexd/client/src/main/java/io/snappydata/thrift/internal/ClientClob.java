@@ -40,7 +40,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -49,6 +49,7 @@ import java.sql.SQLException;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
+import com.pivotal.gemfirexd.internal.shared.common.io.DynamicByteArrayOutputStream;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.SnappyException;
@@ -157,7 +158,7 @@ public class ClientClob extends ClientLobBase implements Clob {
             long skipped = ms.skip(skipBytes);
             if (skipBytes < 0 && skipped == 0 && ms.length() > 0) {
               // entire string has been read and cannot rewind so create new
-              ms = new MemStringReader(ms.getString());
+              ms = new MemStringReader(ms.getStringBuilder());
               skipBytes = offset > 0 ? (offset - ms.skip(offset)) : 0;
               this.reader = ms;
             } else {
@@ -331,7 +332,8 @@ public class ClientClob extends ClientLobBase implements Clob {
           throw ThriftExceptionUtil.newSQLException(SQLState.NOT_IMPLEMENTED,
               null, "setString after get* invocation on stream");
         }
-        sbuffer = ms.getString();
+        StringBuffer sb = ms.getStringBuilder();
+        sbuffer = sb != null ? sb.toString() : "";
       } else {
         // materialize remote blob data
         sbuffer = getSubString(1, this.length);
@@ -365,16 +367,33 @@ public class ClientClob extends ClientLobBase implements Clob {
 
   @Override
   public OutputStream setAsciiStream(long pos) throws SQLException {
-    // TODO: implement
-    throw ThriftExceptionUtil.newSQLException(
-        SQLState.NOT_IMPLEMENTED, null, "Clob.setAsciiStream");
+    checkOffset(pos - 1);
+    if (pos == 1 && this.length == 0) {
+      free();
+      DynamicByteArrayOutputStream out = new DynamicByteArrayOutputStream();
+      this.reader = new MemStreamReader(new MemInputStream(out, 0),
+          StandardCharsets.US_ASCII);
+      this.streamedInput = true;
+      return out;
+    } else {
+      throw ThriftExceptionUtil.newSQLException(SQLState.NOT_IMPLEMENTED,
+          null, "Clob.setAsciiStream(" + pos + ')');
+    }
   }
 
   @Override
   public Writer setCharacterStream(long pos) throws SQLException {
-    // TODO: implement
-    throw ThriftExceptionUtil.newSQLException(
-        SQLState.NOT_IMPLEMENTED, null, "Clob.setCharacterStream");
+    checkOffset(pos - 1);
+    if (pos == 1 && this.length == 0) {
+      free();
+      StringWriter writer = new StringWriter();
+      this.reader = new MemStringReader(writer.getBuffer());
+      this.streamedInput = true;
+      return writer;
+    } else {
+      throw ThriftExceptionUtil.newSQLException(SQLState.NOT_IMPLEMENTED,
+          null, "Clob.setCharacterStream(" + pos + ')');
+    }
   }
 
   @Override
@@ -470,32 +489,6 @@ public class ClientClob extends ClientLobBase implements Clob {
       if (freeForStream) {
         free();
       }
-    }
-  }
-
-  /**
-   * Adapted from android's StringReader.
-   */
-  static final class MemStringReader extends StringReader {
-    private final String str;
-
-    /**
-     * Creates a new string reader.
-     *
-     * @param s String providing the character stream.
-     */
-    public MemStringReader(String s) {
-      super(s);
-      this.str = s;
-    }
-
-    public String getString() {
-      return this.str;
-    }
-
-    public int length() {
-      final String str = this.str;
-      return str != null ? str.length() : 0;
     }
   }
 
