@@ -367,28 +367,28 @@ public class ClientClob extends ClientLobBase implements Clob {
   public OutputStream setAsciiStream(long pos) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Clob.setAsciiStream");
+        SQLState.NOT_IMPLEMENTED, null, "Clob.setAsciiStream");
   }
 
   @Override
   public Writer setCharacterStream(long pos) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Clob.setCharacterStream");
+        SQLState.NOT_IMPLEMENTED, null, "Clob.setCharacterStream");
   }
 
   @Override
   public long position(String searchstr, long start) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Clob.position");
+        SQLState.NOT_IMPLEMENTED, null, "Clob.position");
   }
 
   @Override
   public long position(Clob searchstr, long start) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Clob.position");
+        SQLState.NOT_IMPLEMENTED, null, "Clob.position");
   }
 
   final class LobReader extends Reader {

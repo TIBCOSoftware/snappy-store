@@ -362,7 +362,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   public OutputStream setBinaryStream(long pos) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Blob.setBinaryStream");
+        SQLState.NOT_IMPLEMENTED, null, "Blob.setBinaryStream");
   }
 
   /**
@@ -372,7 +372,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   public long position(byte[] pattern, long start) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Blob.position");
+        SQLState.NOT_IMPLEMENTED, null, "Blob.position");
   }
 
   /**
@@ -382,7 +382,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   public long position(Blob pattern, long start) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Blob.position");
+        SQLState.NOT_IMPLEMENTED, null, "Blob.position");
   }
 
   final class LobStream extends InputStream {

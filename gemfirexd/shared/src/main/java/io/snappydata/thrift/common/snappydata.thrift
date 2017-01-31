@@ -447,6 +447,8 @@ struct SnappyExceptionData {
   1: required string                                       reason
   2: required i32                                          errorCode
   3: optional string                                       sqlState
+  // partial update counts in case of an exception during batch execution
+  4: optional list<i32>                                    updateCounts
 }
 
 exception SnappyException {

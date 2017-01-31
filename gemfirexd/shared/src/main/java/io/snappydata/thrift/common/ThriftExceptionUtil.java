@@ -36,6 +36,7 @@
 package io.snappydata.thrift.common;
 
 import java.rmi.ServerException;
+import java.sql.BatchUpdateException;
 import java.sql.ClientInfoStatus;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
@@ -104,12 +105,16 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
           while (cause.getCause() != null) {
             cause = cause.getCause();
           }
-          cause.initCause(new ServerException(nextData.getReason()));
-        } else {
-          next = newSQLException(nextData, null, null);
-          current.setNextException(next);
-          current = next;
+          try {
+            cause.initCause(new ServerException(nextData.getReason()));
+            continue;
+          } catch (IllegalStateException ignored) {
+            // continue to default
+          }
         }
+        next = newSQLException(nextData, null, null);
+        current.setNextException(next);
+        current = next;
       }
     }
     return sqle;
@@ -121,8 +126,19 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
     if (serverInfo != null) {
       message = "(" + serverInfo + ") " + message;
     }
-    return factory.getSQLException(message, payload.getSqlState(),
-        payload.getErrorCode(), null, cause);
+    List<Integer> updateCounts = payload.getUpdateCounts();
+    if (updateCounts != null) {
+      final int numUpdates = updateCounts.size();
+      int[] updates = new int[numUpdates];
+      for (int i = 0; i < numUpdates; i++) {
+        updates[i] = updateCounts.get(i);
+      }
+      return new BatchUpdateException(message, payload.getSqlState(),
+          payload.getErrorCode(), updates, cause);
+    } else {
+      return factory.getSQLException(message, payload.getSqlState(),
+          payload.getErrorCode(), null, cause);
+    }
   }
 
   public static SQLClientInfoException newSQLClientInfoException(

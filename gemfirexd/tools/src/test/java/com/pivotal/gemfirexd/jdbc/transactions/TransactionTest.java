@@ -1548,6 +1548,7 @@ public class TransactionTest extends JdbcTestBase {
     }
     // also check with network connection (#43109)
     stmt3.addBatch("update t1 set c2=3 where c1=2");
+    stmt3.addBatch("update t1 set c2=3 where c1=2");
     try {
       stmt3.executeBatch();
       fail("Batch is expected to fail");

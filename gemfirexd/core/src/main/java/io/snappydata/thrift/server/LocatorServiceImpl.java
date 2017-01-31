@@ -35,13 +35,13 @@
 
 package io.snappydata.thrift.server;
 
+import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-
 import javax.transaction.xa.XAException;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -351,6 +351,19 @@ public class LocatorServiceImpl implements LocatorService.Iface {
 
     SnappyExceptionData exData = new SnappyExceptionData(sqle.getMessage(),
         sqle.getErrorCode()).setSqlState(sqle.getSQLState());
+    if (sqle instanceof BatchUpdateException) {
+      int[] updates = ((BatchUpdateException)sqle).getUpdateCounts();
+      List<Integer> updateCounts;
+      if (updates != null && updates.length > 0) {
+        updateCounts = new ArrayList<>(updates.length);
+        for (int update : updates) {
+          updateCounts.add(update);
+        }
+      } else {
+        updateCounts = Collections.emptyList();
+      }
+      exData.setUpdateCounts(updateCounts);
+    }
     ArrayList<SnappyExceptionData> nextExceptions = new ArrayList<>(4);
     SQLException next = sqle.getNextException();
     if (next != null) {
