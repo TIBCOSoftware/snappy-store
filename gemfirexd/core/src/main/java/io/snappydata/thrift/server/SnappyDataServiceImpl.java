@@ -1388,8 +1388,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       */
 
       if (isLastBatch) flags |= snappydataConstants.ROWSET_LAST_BATCH;
-      final boolean dynamicResults = estmt == null ||
-          estmt.hasDynamicResults();
+      final boolean dynamicResults = estmt != null && estmt.hasDynamicResults();
       if (dynamicResults) flags |= snappydataConstants.ROWSET_HAS_MORE_ROWSETS;
       result.setFlags(flags);
       fillWarnings(result, rs);
@@ -1653,9 +1652,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           rowSet = getRowSet(stmt, null, rs, INVALID_ID, null, connId, attrs,
               0, false, false, 0, connHolder, "getGeneratedKeys");
           sr.setGeneratedKeys(rowSet);
-        } else {
-          // setup the Statement for reuse
-          connHolder.setStatementForReuse(stmt);
         }
         String newDefaultSchema = conn.getCurrentSchemaName();
         // noinspection StringEquality
@@ -1670,6 +1666,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       fillWarnings(sr, st);
 
+      if (rs == null) {
+        // setup the Statement for reuse
+        connHolder.setStatementForReuse(st);
+      }
       if (posDup) {
         conn.setPossibleDuplicate(false);
       }
@@ -1735,10 +1735,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       }
 
       rs = stmt.getGeneratedKeys();
-      if (rs == null) {
-        // setup the Statement for reuse
-        connHolder.setStatementForReuse(stmt);
-      } else {
+      if (rs != null) {
         RowSet rowSet = getRowSet(stmt, null, rs, INVALID_ID, null, connId,
             attrs, 0, false, false, 0, connHolder, "getGeneratedKeys");
         result.setGeneratedKeys(rowSet);
@@ -1757,6 +1754,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       fillWarnings(result, st);
 
+      if (rs == null) {
+        // setup the Statement for reuse
+        connHolder.setStatementForReuse(st);
+      }
       if (posDup) {
         conn.setPossibleDuplicate(false);
       }
