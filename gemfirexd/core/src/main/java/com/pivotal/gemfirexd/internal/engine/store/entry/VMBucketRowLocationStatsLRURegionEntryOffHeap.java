@@ -15,35 +15,24 @@
  * LICENSE file.
  */
 
+/**
+ * Do not modify this class. It was generated.
+ * Instead modify LeafRegionEntry.cpp and then run
+ * bin/generateRegionEntryClasses.sh from the directory
+ * that contains your build.xml.
+ */
 package com.pivotal.gemfirexd.internal.engine.store.entry;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-
-
-
-
-
 import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
-
-
-
-
-
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
-
-
 import com.gemstone.gemfire.internal.cache.lru.LRUClockNode;
-
 import com.gemstone.gemfire.internal.cache.lru.NewLRUClockHand;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
 import java.io.DataOutput;
@@ -79,22 +68,6 @@ import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRegionEntryUtils;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
-/**
- * Do not modify this class. It was generated.
- * Instead modify LeafRegionEntry.cpp and then run
- * bin/generateRegionEntryClasses.sh from the directory
- * that contains your build.xml.
- */
 public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationStatsLRURegionEntry
     implements OffHeapRegionEntry
 {
@@ -105,13 +78,10 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
     super(context,
           value
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     this.tableInfo = RegionEntryUtils.entryGetTableInfo(context, key, value);
     this.bucketId = RegionEntryUtils.getBucketId(context);
     this.key = RegionEntryUtils.entryGetRegionKey(key, value);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -124,9 +94,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -135,50 +102,30 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // lru code
   @Override
   public void setDelayedDiskId(LocalRegion r) {
-  // nothing needed for LRUs with no disk
   }
   public final synchronized int updateEntrySize(EnableLRU capacityController) {
-    return updateEntrySize(capacityController, _getValue()); // OFHEAP: _getValue ok w/o incing refcount because we are synced and only getting the size
+    return updateEntrySize(capacityController, _getValue());
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   public final synchronized int updateEntrySize(EnableLRU capacityController,
                                                 Object value) {
     int oldSize = getEntrySize();
     int newSize = capacityController.entrySize(getRawKey(), value);
-  //   GemFireCacheImpl.getInstance().getLoggerI18n().info("DEBUG updateEntrySize: oldSize=" + oldSize
-  //                                               + " newSize=" + newSize);
     setEntrySize(newSize);
     int delta = newSize - oldSize;
-  //   if ( debug ) log( "updateEntrySize key=" + getRawKey()
-  //                     + (_getValue() == Token.INVALID ? " invalid" :
-  //                        (_getValue() == Token.LOCAL_INVALID ? "local_invalid" :
-  //                         (_getValue()==null ? " evicted" : " valid")))
-  //                     + " oldSize=" + oldSize
-  //                     + " newSize=" + this.size );
     return delta;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private LRUClockNode nextLRU;
   private LRUClockNode prevLRU;
-  //private int refCount;
   private int size;
   public final void setNextLRUNode( LRUClockNode next ) {
     this.nextLRU = next;
@@ -198,43 +145,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   protected final void setEntrySize(int size) {
     this.size = size;
   }
-  /*
-  public final synchronized int getRefCount() {
-    return this.refCount;
-  }
-  public final synchronized void incRefCount() {
-    this.refCount++;
-    // removal from the LruList is performed as part
-    // of the eviction process (getHeadEntry())
-  }
-
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  
-  public final synchronized void decRefCount(NewLRUClockHand lruList) {
-    if (this.refCount > 0) {
-      this.refCount--;
-      if (this.refCount == 0) {
-        // No more transactions, place in lru list
-        lruList.appendEntry(this);
-      }
-    }
-  }
-  public final synchronized void resetRefCount(NewLRUClockHand lruList) {
-    if (this.refCount > 0) {
-      this.refCount = 0;
-      lruList.appendEntry(this);
-    }
-  }
-  */
-//@Override
-//public StringBuilder appendFieldsToString(final StringBuilder sb) {
-//  StringBuilder result = super.appendFieldsToString(sb);
-//  result.append("; prev=").append(this.prevLRU==null?"null":"not null");
-//  result.append("; next=").append(this.nextLRU==null?"null":"not null");
-//  return result;
-//}
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // stats code
   @Override
   public final void updateStatsForGet(boolean hit, long time)
   {
@@ -285,7 +195,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
     hitCountUpdater.set(this,0);
     missCountUpdater.set(this,0);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public final void txDidDestroy(long currTime) {
     setLastModified(currTime);
@@ -297,8 +206,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   public boolean hasStats() {
     return true;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -308,21 +215,9 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   protected void _setRawKey(Object key) {
     this.key = key;
   }
-  /**
-   * All access done using ohAddrUpdater so it is used even though the compiler can not tell it is.
-   */
   @Retained @Released private volatile long ohAddress;
-  /**
-   * I needed to add this because I wanted clear to call setValue which normally can only be called while the re is synced.
-   * But if I sync in that code it causes a lock ordering deadlock with the disk regions because they also get a rw lock in clear.
-   * Some hardware platforms do not support CAS on a long. If gemfire is run on one of those the AtomicLongFieldUpdater does a sync
-   * on the re and we will once again be deadlocked.
-   * I don't know if we support any of the hardware platforms that do not have a 64bit CAS. If we do then we can expect deadlocks
-   * on disk regions.
-   */
   private final static AtomicLongFieldUpdater<VMBucketRowLocationStatsLRURegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMBucketRowLocationStatsLRURegionEntryOffHeap.class, "ohAddress");
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
@@ -383,7 +278,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
     if (container != null && container.isByteArrayStore()) {
       tabInfo = container.getExtraTableInfo(val);
       this.tableInfo = tabInfo;
-      // cleanup the key if required
       if (tabInfo != null && tabInfo.regionKeyPartOfValue()) {
         return tabInfo;
       }
@@ -408,7 +302,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   }
   @Override
   public final int compare(DataValueDescriptor other) {
-    // just use some arbitrary criteria like hashCode for ordering
     if (this == other) {
       return 0;
     }
@@ -430,7 +323,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   public Object getObject() throws StandardException {
     return this;
   }
-  // Unimplemented methods not expected to be invoked
   @Override
   public DataValueDescriptor coalesce(DataValueDescriptor[] list,
       DataValueDescriptor returnValue) throws StandardException {
@@ -577,14 +469,7 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
       boolean isEntryUpdate, boolean valHasMetadataForGfxdOffHeapUpdate) {
     if (okToStoreOffHeap(val)
         && OffHeapRegionEntryUtils.isValidValueForGfxdOffHeapStorage(val)) {
-      // TODO:Asif:Check if this is a valid supposition
-      // final long address = this.getAddress();
       if (isEntryUpdate
-      /*
-       * (address == OffHeapRegionEntryHelper.REMOVED_PHASE1_ADDRESS || address
-       * == OffHeapRegionEntryHelper.NULL_ADDRESS) || r instanceof
-       * PlaceHolderDiskRegion
-       */
       ) {
         return OffHeapRegionEntryUtils.prepareValueForUpdate(this, r, val, valHasMetadataForGfxdOffHeapUpdate);
       } else {
@@ -639,8 +524,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   @Override
   protected StringBuilder appendFieldsToString(final StringBuilder sb) {
     sb.append("key=");
-    // OFFHEAP _getValue ok: the current toString on OffHeapCachedDeserializable
-    // is safe to use without incing refcount.
     final Object k = getKeyCopy();
     final Object val = OffHeapRegionEntryUtils.getHeapRowForInVMValue(this);
     RegionEntryUtils.entryKeyString(k, val, getTableInfo(null), sb);
@@ -651,7 +534,6 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
     sb.append("; bucketId=").append(this.bucketId);
     return sb;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VMBucketRowLocationStatsLRURegionEntryOffHeap(context, key, value);
@@ -670,5 +552,4 @@ public class VMBucketRowLocationStatsLRURegionEntryOffHeap extends RowLocationSt
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }

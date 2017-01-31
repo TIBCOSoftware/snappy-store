@@ -22,6 +22,8 @@ package PKG;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 #endif
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
+import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
 #ifdef OFFHEAP
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
@@ -633,7 +635,25 @@ public class LEAF_CLASS extends PARENT_CLASS
   }
 #else
   private volatile Object value;
-  
+
+  @Override
+  public final boolean isRemoved() {
+    final Object o = this.value;
+    return (o == Token.REMOVED_PHASE1) || (o == Token.REMOVED_PHASE2) || (o == Token.TOMBSTONE);
+  }
+
+  @Override
+  public final boolean isDestroyedOrRemoved() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2 || o == Token.TOMBSTONE;
+  }
+
+  @Override
+  public final boolean isDestroyedOrRemovedButNotTombstone() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
+  }
+
   @Override
   protected Object getValueField() {
     return this.value;
@@ -891,8 +911,10 @@ public class LEAF_CLASS extends PARENT_CLASS
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
 #ifdef OFFHEAP
     return this;
+#elif defined(DISK)
+    return Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
 #else 
-    return this.getValueInVMOrDiskWithoutFaultIn(owner);
+    return this.value;
 #endif
   }
 

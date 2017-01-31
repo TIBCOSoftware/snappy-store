@@ -553,12 +553,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   // Indicates whether foreign key checks for events received on WAN gateways should be skipped when applying them 
   private boolean skipFKChecksForGatewayEvents = false;
 
-  /** Default size for CachedBatches. */
-  private static int COLUMN_BATCH_SIZE = 10000;
-
-  /** Minimum size for CachedBatches. */
-  private static int COLUMN_MIN_BATCH_SIZE = 200;
-
   /** {@link PropertyResolver} to resolve ${} type property strings */
   protected static PropertyResolver resolver;
 
@@ -5622,6 +5616,11 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
      * Returns authentication properties required during reconnect.
      */
     public Properties getSecurityPropertiesForReconnect();
+
+    /**
+     * Fetches hive meta data for Snappy tables.
+     */
+    public ExternalTableMetaData fetchSnappyTablesHiveMetaData(PartitionedRegion region);
   }
 
   /**
@@ -5934,19 +5933,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   
   public boolean skipFKChecksForGatewayEvents() {
     return skipFKChecksForGatewayEvents;
-  }
-
-  public static void setColumnBatchSizes(int size, int minSize) {
-    COLUMN_BATCH_SIZE = size;
-    COLUMN_MIN_BATCH_SIZE = minSize < size ? minSize : size;
-  }
-
-  public static int getColumnBatchSize() {
-    return COLUMN_BATCH_SIZE;
-  }
-
-  public static int getColumnMinBatchSize() {
-    return COLUMN_MIN_BATCH_SIZE;
   }
 
   public final boolean isHadoopGfxdLonerMode() {

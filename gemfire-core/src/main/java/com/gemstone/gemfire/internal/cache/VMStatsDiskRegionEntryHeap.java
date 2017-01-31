@@ -15,34 +15,21 @@
  * LICENSE file.
  */
 
-package com.gemstone.gemfire.internal.cache;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
-import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
-import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
-import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
 /**
  * Do not modify this class. It was generated.
  * Instead modify LeafRegionEntry.cpp and then run
  * bin/generateRegionEntryClasses.sh from the directory
  * that contains your build.xml.
  */
+package com.gemstone.gemfire.internal.cache;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
+import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
+import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
+import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
+import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
+import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
 @SuppressWarnings("serial")
 public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
 {
@@ -52,12 +39,9 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
     super(context,
           (value instanceof RecoveredEntry ? null : value)
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     initialize(context, value);
     this.key = key;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -70,9 +54,6 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -81,22 +62,14 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // disk code
   protected void initialize(RegionEntryContext context, Object value) {
     diskInitialize(context, value);
   }
@@ -104,21 +77,14 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   public int updateAsyncEntrySize(EnableLRU capacityController) {
     throw new IllegalStateException("should never be called");
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private void diskInitialize(RegionEntryContext context, Object value) {
     DiskRecoveryStore drs = (DiskRecoveryStore)context;
     DiskStoreImpl ds = drs.getDiskStore();
     long maxOplogSize = ds.getMaxOplogSize();
-    //get appropriate instance of DiskId implementation based on maxOplogSize
-    this.id = DiskId.createDiskId(maxOplogSize, true/* is persistence */, ds.needsLinkedList());
+    this.id = DiskId.createDiskId(maxOplogSize, true , ds.needsLinkedList());
     Helper.initialize(this, drs, value);
   }
-  /**
-   * DiskId
-   * 
-   * @since 5.1
-   */
-  protected DiskId id;//= new DiskId();
+  protected DiskId id;
   public DiskId getDiskId() {
     return this.id;
   }
@@ -126,8 +92,6 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   public void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // stats code
   @Override
   public final void updateStatsForGet(boolean hit, long time)
   {
@@ -178,7 +142,6 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
     hitCountUpdater.set(this,0);
     missCountUpdater.set(this,0);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public final void txDidDestroy(long currTime) {
     setLastModified(currTime);
@@ -190,8 +153,6 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   public boolean hasStats() {
     return true;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -203,6 +164,21 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   }
   private volatile Object value;
   @Override
+  public final boolean isRemoved() {
+    final Object o = this.value;
+    return (o == Token.REMOVED_PHASE1) || (o == Token.REMOVED_PHASE2) || (o == Token.TOMBSTONE);
+  }
+  @Override
+  public final boolean isDestroyedOrRemoved() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2 || o == Token.TOMBSTONE;
+  }
+  @Override
+  public final boolean isDestroyedOrRemovedButNotTombstone() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
+  }
+  @Override
   protected Object getValueField() {
     return this.value;
   }
@@ -210,7 +186,6 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   protected void setValueField(Object v) {
     this.value = v;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VMStatsDiskRegionEntryHeap(context, key, value);
@@ -229,5 +204,4 @@ public class VMStatsDiskRegionEntryHeap extends VMStatsDiskRegionEntry
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }

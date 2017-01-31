@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.InternalGemFireError;
@@ -263,11 +264,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   private int schemaVersion;
 
   /**
-   * if true then this table has only one schema (e.g. no multiple schemas due
+   * if set then this table has only one schema (e.g. no multiple schemas due
    * to ALTER TABLE or recovery from old format data which had no schema
    * versions so would use {@link RowFormatter#TOKEN_RECOVERY_VERSION}
    */
-  public boolean hasSingleSchema;
+  public RowFormatter singleSchema;
 
   /**
    * the table info adjusted after recovery from disk at the end of DDL replay
@@ -305,6 +306,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       .getServerInstance().getBoolean("cacheGlobalIndexINMap", false);
 
   private CacheMap globalIndexMap;
+
+  private AtomicReference<ExternalTableMetaData> externalTableMetaData =
+      new AtomicReference<ExternalTableMetaData>(null);
+
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -387,7 +392,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             this.comparator, true, true);
       }
       this.region = null;
-      this.hasSingleSchema = true;
+      this.singleSchema = this.baseContainer.getCurrentRowFormatter();
       this.oldTableInfos = null;
       // Write the index creation records to disk store if table is persistent.
       // It doesn't really matter if the index creation ultimately fails due
@@ -422,9 +427,27 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         .get(GfxdConstants.REGION_ATTRIBUTES_KEY);
     this.indexInfo = null;
     this.schemaVersion = 1;
-    this.hasSingleSchema = true;
+    this.singleSchema = getCurrentRowFormatter();
     this.oldTableInfos = new ArrayList<ExtraTableInfo>();
     initTableFlags();
+  }
+
+  public void invalidateHiveMetaData() {
+    externalTableMetaData.set(null);
+  }
+
+  public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
+    if (refresh || externalTableMetaData.get() == null) {
+      // containers are created during initialization, ignore them
+      externalTableMetaData.compareAndSet(null,
+          Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
+              this.schemaName, this.tableName, true));
+      if (isPartitioned()) {
+        ((PartitionedRegion)this.region).
+            setColumnBatchSizes(externalTableMetaData.get().cachedBatchSize, 200);
+      }
+    }
+    return externalTableMetaData.get();
   }
 
   public boolean cachesGlobalIndex() {
@@ -503,7 +526,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         row.setRowArray(template);
       }
       this.templateRow = row.getNewNullRow();
-      this.hasSingleSchema = false;
+      this.singleSchema = null;
     }
 
     if (this.comparator != null) {
@@ -861,6 +884,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public void setExtraTableInfo(ExtraTableInfo tableInfo) {
     this.tableInfo = tableInfo;
+    schemaUpdated();
+  }
+
+  public void schemaUpdated() {
+    if (this.oldTableInfos.isEmpty()) {
+      this.singleSchema = getCurrentRowFormatter();
+    }
   }
 
   public final boolean hasLobs() {
@@ -930,7 +960,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public final ExtraTableInfo getExtraTableInfo(final byte[] rawRow) {
 
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    if (this.singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion((rowVersion = readVersion(rawRow))):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
@@ -973,7 +1003,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    */
   public final ExtraTableInfo getExtraTableInfo(final OffHeapByteSource rawRow) {
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    if (this.singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion((rowVersion = readVersion(rawRow))):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
@@ -993,7 +1023,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public final ExtraTableInfo getExtraTableInfo(final Object rawRow) {
 
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    if (this.singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion((rowVersion = readVersion_(rawRow))):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
@@ -1118,7 +1148,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.oldTableInfos.add(this.tableInfo);
 
     this.schemaVersion++;
-    this.hasSingleSchema = false;
+    this.singleSchema = null;
     ExtraTableInfo.newExtraTableInfo(dd, td, lcc.getContextManager(),
         this.schemaVersion, this, true);
     this.tableInfo.initRowFormatter(this);
@@ -1178,7 +1208,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.tableInfoOnRecovery.refreshCachedInfo(td, this);
     this.tableInfoOnRecovery.initRowFormatter(this);
     this.tableInfoOnRecovery.setLatestSchema(false);
-    this.hasSingleSchema = false;
+    this.singleSchema = null;
     this.schemaVersionOnRecovery = this.schemaVersion;
     // unmark current tableInfo as current since this new tableInfo is set
     // later and when looking up schema we may need to check for this too
@@ -1389,13 +1419,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public final RowFormatter getRowFormatter(final byte[] rawRow) {
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion(rawRow)) :
           "unexpected version in row=" + rowVersion + ", schemaVersion="
               + this.schemaVersion;
 
-      return this.tableInfo.getRowFormatter();
+      return singleSchema;
     } else if (!isByteArrayStore()) {
       return null;
     } else if (rawRow == null) {
@@ -1407,13 +1438,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public final RowFormatter getRowFormatter(final byte[][] rawRow) {
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion(rawRow[0])) :
           "unexpected version in row=" + rowVersion + ", schemaVersion="
               + this.schemaVersion;
 
-      return this.tableInfo.getRowFormatter();
+      return singleSchema;
     } else if (!isByteArrayStore()) {
       return null;
     } else if (rawRow == null || rawRow.length == 0) {
@@ -1446,13 +1478,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public final RowFormatter getRowFormatter(
       @Unretained final OffHeapByteSource rawRow) {
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion(rawRow)):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
               + this.schemaVersion;
 
-      return this.tableInfo.getRowFormatter();
+      return singleSchema;
     } else if (!isByteArrayStore()) {
       return null;
     } else if (rawRow == null) {
@@ -1467,13 +1500,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public final RowFormatter getRowFormatter(final UnsafeWrapper unsafe,
       final long memAddr, @Unretained final OffHeapByteSource rawRow) {
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion(rawRow)):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
               + this.schemaVersion;
 
-      return this.tableInfo.getRowFormatter();
+      return singleSchema;
     } else if (!isByteArrayStore()) {
       return null;
     } else {
@@ -1488,13 +1522,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    */
   public final RowFormatter getRowFormatter(@Unretained final Object rawRow) {
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion_(rawRow)):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
               + this.schemaVersion;
 
-      return this.tableInfo.getRowFormatter();
+      return singleSchema;
     } else if (!isByteArrayStore()) {
       return null;
     } else if (rawRow == null) {

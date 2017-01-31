@@ -21,6 +21,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -37,26 +38,8 @@ import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.cache.AbstractDiskRegion;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.EventErrorHandler;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
-import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntry;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntryWithStats;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.PlaceHolderDiskRegion;
-import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionEntryContext;
-import com.gemstone.gemfire.internal.cache.SortedIndexContainer;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
@@ -538,7 +521,7 @@ public final class RegionEntryUtils {
     return OffHeapRegionEntryHelper.encodedAddressToObject(address, false, true);
   }
 
-  public static AbstractCompactExecRow fillRowWithoutFaultIn(
+  public static boolean fillRowWithoutFaultIn(
       final GemFireContainer baseContainer, final LocalRegion region,
       final RegionEntry entry, final AbstractCompactExecRow row)
       throws StandardException {
@@ -557,8 +540,8 @@ public final class RegionEntryUtils {
           && Misc.getMemStoreBooting().isHadoopGfxdLonerMode()) {
         final Object containerInfo = entry.getContainerInfo();
         final ExtraTableInfo tableInfo = containerInfo != null
-          ? (ExtraTableInfo)containerInfo
-          : baseContainer.getExtraTableInfo();
+            ? (ExtraTableInfo)containerInfo
+            : baseContainer.getExtraTableInfo();
         final int[] keyColumns = tableInfo.getPrimaryKeyColumns();
         if (keyColumns != null) {
           //We have a primary key. Convert that to a full row with just the primary
@@ -586,21 +569,54 @@ public final class RegionEntryUtils {
         AbstractCompactExecRow filledRow = fillRowUsingAddress(baseContainer,
             region, (OffHeapRegionEntry)entry, row, false);
         if (filledRow == null) {
-          return null;
+          return false;
         }
       }
       else if (Delta.class.isAssignableFrom(valClass)) {
         // The RegionEntry has at present deltas & the base row has not arrived,
         // return null for this case
-        return null;
+        return false;
       }
       else {
         GemFireXDUtils.throwAssert("fillRow:: unexpected value type: "
             + valClass.getName());
       }
-      return row;
+      return true;
     }
-    return null;
+    return false;
+  }
+
+  public static boolean fillRowWithoutFaultInOptimized(
+      final GemFireContainer baseContainer, final LocalRegion region,
+      final RowLocation entry, final AbstractCompactExecRow row)
+      throws StandardException {
+
+    final Object value = entry.getValueWithoutFaultInOrOffHeapEntry(region);
+    if (value != null) {
+      final Class<?> valClass = value.getClass();
+      if (valClass == byte[].class) {
+        fillRowUsingByteArray(baseContainer, row, (byte[])value);
+      } else if (valClass == byte[][].class) {
+        fillRowUsingByteArrayArray(baseContainer, row, (byte[][])value);
+      } else if (OffHeapRegionEntry.class.isAssignableFrom(valClass)) {
+        AbstractCompactExecRow filledRow = fillRowUsingAddress(baseContainer,
+            region, (OffHeapRegionEntry)entry, row, false);
+        if (filledRow == null) {
+          return false;
+        }
+      } else if (Token.class.isAssignableFrom(valClass)) {
+        return false;
+      } else if (Delta.class.isAssignableFrom(valClass)) {
+        // The RegionEntry has at present deltas & the base row has not arrived,
+        // return null for this case
+        return false;
+      } else {
+        GemFireXDUtils.throwAssert("fillRow:: unexpected value type: "
+            + valClass.getName());
+      }
+      return true;
+    }
+    return false;
   }
 
   private static void fillRowUsingByteArray(
@@ -1581,6 +1597,15 @@ public final class RegionEntryUtils {
       } else {
         return null;
       }
+    }
+    public ExternalTableMetaData fetchSnappyTablesHiveMetaData(PartitionedRegion region) {
+      List<GemFireContainer> containers =  Misc.getMemStore().getAllContainers();
+      for (GemFireContainer container: containers) {
+        if (container.getRegion() != null  &&
+            container.getRegion().getName() == region.getName())
+          return container.fetchHiveMetaData(false);
+      }
+      return null;
     }
   };
 

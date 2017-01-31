@@ -852,7 +852,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
           if (this.templateCompactExecRow != null) {
             row = RegionEntryUtils.fillRowWithoutFaultIn(this.gfContainer,
                 owner, this.currentRowLocation.getRegionEntry(),
-                this.templateCompactExecRow);
+                this.templateCompactExecRow) ? templateCompactExecRow : null;
           }
           else {
             row = RegionEntryUtils.getRowWithoutFaultIn(this.gfContainer,

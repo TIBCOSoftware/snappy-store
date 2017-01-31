@@ -15,21 +15,17 @@
  * LICENSE file.
  */
 
+/**
+ * Do not modify this class. It was generated.
+ * Instead modify LeafRegionEntry.cpp and then run
+ * bin/generateRegionEntryClasses.sh from the directory
+ * that contains your build.xml.
+ */
 package com.pivotal.gemfirexd.internal.engine.store.entry;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-
-
-
-
-
-
-
 import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
@@ -60,22 +56,6 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
-/**
- * Do not modify this class. It was generated.
- * Instead modify LeafRegionEntry.cpp and then run
- * bin/generateRegionEntryClasses.sh from the directory
- * that contains your build.xml.
- */
 public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationStatsRegionEntry
     implements VersionStamp
 {
@@ -85,12 +65,9 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
     super(context,
           value
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     this.tableInfo = RegionEntryUtils.entryGetTableInfo(context, key, value);
     this.key = RegionEntryUtils.entryGetRegionKey(key, value);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -103,9 +80,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -114,22 +88,14 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // stats code
   @Override
   public final void updateStatsForGet(boolean hit, long time)
   {
@@ -180,7 +146,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
     hitCountUpdater.set(this,0);
     missCountUpdater.set(this,0);
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   @Override
   public final void txDidDestroy(long currTime) {
     setLastModified(currTime);
@@ -192,8 +157,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   public boolean hasStats() {
     return true;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // versioned code
   private VersionSource memberID;
   private short entryVersionLowBytes;
   private short regionVersionHighBytes;
@@ -218,7 +181,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   public int getDistributedSystemId() {
     return this.distributedSystemId;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   public void setVersions(VersionTag tag) {
     this.memberID = tag.getMemberID();
     int eVersion = tag.getEntryVersion();
@@ -244,7 +206,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   public VersionStamp getVersionStamp() {
     return this;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   public VersionTag asVersionTag() {
     VersionTag tag = VersionTag.create(memberID);
     tag.setEntryVersion(getEntryVersion());
@@ -260,20 +221,14 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   }
   @Override
   public void processVersionTag(EntryEvent cacheEvent) {
-    // this keeps Eclipse happy.  without it the sender chain becomes confused
-    // while browsing this code
     super.processVersionTag(cacheEvent);
   }
-  /** get rvv internal high byte.  Used by region entries for transferring to storage */
   public short getRegionVersionHighBytes() {
     return this.regionVersionHighBytes;
   }
-  /** get rvv internal low bytes.  Used by region entries for transferring to storage */
   public int getRegionVersionLowBytes() {
     return this.regionVersionLowBytes;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -284,6 +239,21 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
     this.key = key;
   }
   private volatile Object value;
+  @Override
+  public final boolean isRemoved() {
+    final Object o = this.value;
+    return (o == Token.REMOVED_PHASE1) || (o == Token.REMOVED_PHASE2) || (o == Token.TOMBSTONE);
+  }
+  @Override
+  public final boolean isDestroyedOrRemoved() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2 || o == Token.TOMBSTONE;
+  }
+  @Override
+  public final boolean isDestroyedOrRemovedButNotTombstone() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
+  }
   @Override
   protected Object getValueField() {
     return this.value;
@@ -321,7 +291,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
     if (container != null && container.isByteArrayStore()) {
       tabInfo = container.getExtraTableInfo(val);
       this.tableInfo = tabInfo;
-      // cleanup the key if required
       if (tabInfo != null && tabInfo.regionKeyPartOfValue()) {
         return tabInfo;
       }
@@ -346,7 +315,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   }
   @Override
   public final int compare(DataValueDescriptor other) {
-    // just use some arbitrary criteria like hashCode for ordering
     if (this == other) {
       return 0;
     }
@@ -368,7 +336,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   public Object getObject() throws StandardException {
     return this;
   }
-  // Unimplemented methods not expected to be invoked
   @Override
   public DataValueDescriptor coalesce(DataValueDescriptor[] list,
       DataValueDescriptor returnValue) throws StandardException {
@@ -494,7 +461,7 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   }
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.getHeapValueInVMOrDiskWithoutFaultIn(owner);
+    return this.value;
   }
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {
@@ -531,8 +498,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   @Override
   protected StringBuilder appendFieldsToString(final StringBuilder sb) {
     sb.append("key=");
-    // OFFHEAP _getValue ok: the current toString on OffHeapCachedDeserializable
-    // is safe to use without incing refcount.
     final Object k = getRawKey();
     final Object val = _getValue();
     RegionEntryUtils.entryKeyString(k, val, getTableInfo(null), sb);
@@ -541,7 +506,6 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
     sb.append("; lockState=0x").append(Integer.toHexString(getState()));
     return sb;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VersionedLocalRowLocationStatsRegionEntryHeap(context, key, value);
@@ -560,5 +524,4 @@ public class VersionedLocalRowLocationStatsRegionEntryHeap extends RowLocationSt
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }
