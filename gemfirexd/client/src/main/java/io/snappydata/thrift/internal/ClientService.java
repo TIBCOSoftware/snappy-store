@@ -56,6 +56,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 
 /**
@@ -78,6 +79,7 @@ public final class ClientService extends ReentrantLock implements LobService {
   final List<HostAddress> connHosts;
   final boolean loadBalance;
   final SocketParameters socketParams;
+  final boolean framedTransport;
   final Set<String> serverGroups;
   volatile int isolationLevel = Converters
       .getJdbcIsolation(snappydataConstants.DEFAULT_TRANSACTION_ISOLATION);
@@ -358,10 +360,13 @@ public final class ClientService extends ReentrantLock implements LobService {
     // now check for the protocol details like SSL etc and thus get the required
     // SnappyData ServerType
     boolean binaryProtocol = false;
+    boolean framedTransport = false;
     boolean useSSL = false;
     if (props != null) {
       binaryProtocol = Boolean.parseBoolean(props
           .remove(ClientAttribute.THRIFT_USE_BINARY_PROTOCOL));
+      framedTransport = Boolean.parseBoolean(props
+          .remove(ClientAttribute.THRIFT_USE_FRAMED_TRANSPORT));
       useSSL = Boolean.parseBoolean(props.remove(ClientAttribute.SSL));
       // set SSL properties (csv format) into SSL params in SocketParameters
       propValue = props.remove(ClientAttribute.THRIFT_SSL_PROPERTIES);
@@ -380,6 +385,7 @@ public final class ClientService extends ReentrantLock implements LobService {
     }
     this.socketParams.setServerType(ServerType.getServerType(true,
         binaryProtocol, useSSL));
+    this.framedTransport = framedTransport;
 
     connArgs.setProperties(props);
 
@@ -408,23 +414,32 @@ public final class ClientService extends ReentrantLock implements LobService {
         }
 
         final SystemProperties sysProps = SystemProperties.getClientInstance();
-        final SocketTimeout currentSocket;
+        final TTransport currentTransport;
         final int readTimeout;
         if (this.clientService != null) {
-          currentSocket = (SocketTimeout)this.clientService
+          currentTransport = this.clientService
               .getOutputProtocol().getTransport();
-          readTimeout = currentSocket.getRawTimeout();
+          if (currentTransport instanceof SocketTimeout) {
+            readTimeout = ((SocketTimeout)currentTransport).getRawTimeout();
+          } else {
+            readTimeout = socketParams.getReadTimeout(0);
+          }
         } else {
-          currentSocket = null;
+          currentTransport = null;
           readTimeout = socketParams.getReadTimeout(0);
         }
 
         TTransport inTransport, outTransport;
         TProtocol inProtocol, outProtocol;
-        inTransport = outTransport = new SnappyTSocket(
+        final SnappyTSocket socket = new SnappyTSocket(
             hostAddr.resolveHost(), hostAddr.getPort(), connArgs.clientID,
             getServerType().isThriftSSL(), true, ThriftUtils
             .isThriftSelectorServer(), socketParams, sysProps, readTimeout);
+        if (this.framedTransport) {
+          inTransport = outTransport = new TFramedTransport(socket);
+        } else {
+          inTransport = outTransport = socket;
+        }
         if (getServerType().isThriftBinaryProtocol()) {
           inProtocol = new TBinaryProtocol(inTransport);
           outProtocol = new TBinaryProtocol(outTransport);
@@ -449,8 +464,8 @@ public final class ClientService extends ReentrantLock implements LobService {
           }
         }
         ConnectionProperties connProps = service.openConnection(this.connArgs);
-        if (currentSocket != null) {
-          currentSocket.close();
+        if (currentTransport != null) {
+          currentTransport.close();
         }
         this.clientService = service;
         this.currentHostConnection = new HostConnection(hostAddr,

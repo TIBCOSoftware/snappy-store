@@ -903,7 +903,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
     private String initialLoad;
 
-    private Properties networkProps;
+    protected Properties networkProps;
 
     protected NetworkInterfaceImpl(boolean preStarted) {
       this.probe = new ConnectionCountProbe();
@@ -1486,10 +1486,13 @@ public abstract class FabricServiceImpl implements FabricService {
         // determine the thrift protocol, SSL properties etc.
         String propValue;
         final boolean useBinaryProtocol;
+        final boolean useFramedTransport;
         boolean useSSL;
         if (networkProps != null) {
           useBinaryProtocol = Boolean.parseBoolean((String)networkProps
               .remove(Attribute.THRIFT_USE_BINARY_PROTOCOL));
+          useFramedTransport = Boolean.parseBoolean((String)networkProps
+              .remove(Attribute.THRIFT_USE_FRAMED_TRANSPORT));
           useSSL = Boolean.parseBoolean((String)networkProps
               .remove(Attribute.THRIFT_USE_SSL));
           // set SSL properties (csv format) into SSL params in SocketParameters
@@ -1508,16 +1511,17 @@ public abstract class FabricServiceImpl implements FabricService {
               param.setParameter(this.socketParams, propValue);
             }
           }
-        }
-        else {
+        } else {
           useBinaryProtocol = false;
+          useFramedTransport = false;
           useSSL = false;
         }
         socketParams.setServerType(ServerType.getServerType(isServer,
             useBinaryProtocol, useSSL));
 
         this.thriftService.start(this.inetAddress, this.port, this.maxThreads,
-            isServer, useBinaryProtocol, useSSL, socketParams, this);
+            isServer, useBinaryProtocol, useFramedTransport, useSSL,
+            socketParams, this);
       } catch (TTransportException te) {
         throw new GemFireXDRuntimeException(te);
       } catch (SnappyException se) {
@@ -1600,7 +1604,20 @@ public abstract class FabricServiceImpl implements FabricService {
 
     @Override
     public Properties getCurrentProperties() {
-      return null;
+      Properties props = new Properties();
+      final String[] thriftProps = new String[]{
+          Attribute.THRIFT_USE_BINARY_PROTOCOL,
+          Attribute.THRIFT_USE_FRAMED_TRANSPORT,
+          Attribute.THRIFT_USE_SSL,
+          Attribute.THRIFT_SSL_PROPERTIES};
+
+      for (String p : thriftProps) {
+        String v = networkProps.getProperty(p);
+        if (v != null) {
+          props.setProperty(p, v);
+        }
+      }
+      return props;
     }
 
     @Override

@@ -538,6 +538,15 @@ public interface Attribute {
   String THRIFT_USE_BINARY_PROTOCOL = "thrift-binary-protocol";
 
   /**
+   * If true then use <code>TFramedTransport</code> for the thrift server, else
+   * the default is to use non-framed transport.
+   * <p>
+   * This property can be specified when specifying each thrift server startup
+   * in <code>FabricService.startThriftServer</code>.
+   */
+  String THRIFT_USE_FRAMED_TRANSPORT = "thrift-framed-transport";
+
+  /**
    * If true then use SSL sockets for thrift server.
    * <p>
    * This property can be specified when specifying each thrift server startup

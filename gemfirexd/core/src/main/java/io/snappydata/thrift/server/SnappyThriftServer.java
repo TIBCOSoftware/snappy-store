@@ -59,6 +59,7 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
+import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 
@@ -86,9 +87,9 @@ public final class SnappyThriftServer {
 
   public synchronized void start(final InetAddress thriftAddress,
       final int thriftPort, int maxThreads, final boolean isServer,
-      final boolean useBinaryProtocol, final boolean useSSL,
-      final SocketParameters socketParams, final ConnectionListener listener)
-      throws TTransportException {
+      final boolean useBinaryProtocol, final boolean useFramedTransport,
+      final boolean useSSL, final SocketParameters socketParams,
+      final ConnectionListener listener) throws TTransportException {
 
     this.thriftAddress = thriftAddress;
     this.thriftPort = thriftPort;
@@ -140,6 +141,9 @@ public final class SnappyThriftServer {
           ? new TBinaryProtocol.Factory() : new TCompactProtocol.Factory();
 
       serverArgs.processor(processor).protocolFactory(protocolFactory);
+      if (useFramedTransport) {
+        serverArgs.transportFactory(new TFramedTransport.Factory());
+      }
       this.thriftExecutor = new ThreadPoolExecutor(parallelism * 2,
           maxThreads, 30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
       serverArgs.setExecutorService(this.thriftExecutor).setConnectionListener(

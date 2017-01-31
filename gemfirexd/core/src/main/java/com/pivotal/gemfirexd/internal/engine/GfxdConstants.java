@@ -488,6 +488,7 @@ public interface GfxdConstants {
           CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
           CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
           Attribute.THRIFT_USE_BINARY_PROTOCOL,
+          Attribute.THRIFT_USE_FRAMED_TRANSPORT,
           Attribute.THRIFT_USE_SSL,
           Attribute.THRIFT_SSL_PROPERTIES,
           Attribute.PREFER_NETSERVER_IP_ADDRESS,
