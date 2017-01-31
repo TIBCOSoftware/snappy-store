@@ -94,6 +94,7 @@ implements Authorizer
 		this.lcc = lcc;
 		this.authorizationId = authorizationId;
 
+		getUserAccessLevel();
 		refresh();
 	}
 
@@ -451,7 +452,7 @@ implements Authorizer
 	  */
 	public void refresh() throws StandardException
 	{
-		getUserAccessLevel();
+		// getUserAccessLevel();
 			
                 readOnlyConnection = connectionMustRemainReadOnly();
 

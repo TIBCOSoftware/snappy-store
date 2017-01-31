@@ -441,7 +441,8 @@ final class ConnectionHolder {
   void clearActiveStatement(Statement stmt) {
     if (stmt != null) {
       this.sync.lock();
-      if (stmt == this.activeStatement.stmt) {
+      final StatementHolder activeStatement = this.activeStatement;
+      if (activeStatement != null && stmt == activeStatement.stmt) {
         this.activeStatement = null;
       }
       this.sync.unlock();

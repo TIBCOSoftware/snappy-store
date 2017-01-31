@@ -499,6 +499,7 @@ subprojects {
     exclude '**/*DUnitTest.class'
     exclude '**/*DUnit.class'
     exclude '**/derbyTesting/**'
+    exclude '**/client/am/**'
   }
   task junit {
     def testClasses = new ArrayList()
