@@ -913,8 +913,9 @@ public class LEAF_CLASS extends PARENT_CLASS
     return this;
 #elif defined(DISK)
     return Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
-#else 
-    return this.value;
+#else
+    final Object value = this.value;
+    return value != null ? value : Token.NOT_AVAILABLE;
 #endif
   }
 
