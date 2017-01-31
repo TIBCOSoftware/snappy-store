@@ -1078,8 +1078,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       final boolean tableReadOnly = ersmd.isTableReadOnly();
       String columnName, schemaName, tableName, fullTableName;
       String typeName, className;
-      String prevSchemaName = null, prevTableName = null;
-      String prevTypeName = null, prevClassName = null;
       int jdbcType, scale;
       SnappyType type;
       for (int colIndex = 1; colIndex <= columnCount; colIndex++) {
@@ -1095,20 +1093,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         schemaName = rcd.getSourceSchemaName();
         tableName = rcd.getSourceTableName();
-        if (colIndex > 1) {
-          if ((schemaName != null && !schemaName.equals(prevSchemaName))
-              || (tableName != null && !tableName.equals(prevTableName))) {
-            fullTableName = schemaName != null ? (schemaName + '.' + tableName)
-                : tableName;
-            columnDesc.setFullTableName(fullTableName);
-          }
-        } else {
-          fullTableName = schemaName != null ? (schemaName + '.' + tableName)
-              : tableName;
-          columnDesc.setFullTableName(fullTableName);
-        }
-        prevSchemaName = schemaName;
-        prevTableName = tableName;
+        fullTableName = schemaName != null ? (schemaName + '.' + tableName)
+            : tableName;
+        columnDesc.setFullTableName(fullTableName);
 
         int nullable = DataTypeUtilities.isNullable(dtd);
         if (nullable == ResultSetMetaData.columnNullable) {
@@ -1137,13 +1124,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         if (jdbcType == Types.JAVA_OBJECT) {
           typeName = typeId.getSQLTypeName();
           className = typeId.getResultSetMetaDataTypeName();
-          if ((typeName != null && !typeName.equals(prevTypeName))
-              || (className != null && !className.equals(prevClassName))) {
-            columnDesc.setUdtTypeAndClassName(typeName
-                + (className != null ? ":" + className : ""));
-          }
-          prevTypeName = typeName;
-          prevClassName = className;
+          columnDesc.setUdtTypeAndClassName(typeName
+              + (className != null ? ":" + className : ""));
         }
         descriptors.add(columnDesc);
       }
