@@ -1046,10 +1046,6 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           this.container, getObjectString(indexes), entry, success,
           event);
     }
-    if (owner.isUsedForUserReplicatedTable()) {
-      CallbackFactoryProvider.getStoreCallbacks()
-          .invalidateReplicatedTableCache(owner);
-    }
     if (event.getTXState() != null && event.isCustomEviction()) {
       return;
     }

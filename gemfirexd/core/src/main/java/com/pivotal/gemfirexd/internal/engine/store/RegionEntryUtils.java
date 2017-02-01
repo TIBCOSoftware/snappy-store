@@ -21,6 +21,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -1596,6 +1597,15 @@ public final class RegionEntryUtils {
       } else {
         return null;
       }
+    }
+    public ExternalTableMetaData fetchSnappyTablesHiveMetaData(PartitionedRegion region) {
+      List<GemFireContainer> containers =  Misc.getMemStore().getAllContainers();
+      for (GemFireContainer container: containers) {
+        if (container.getRegion() != null  &&
+            container.getRegion().getName() == region.getName())
+          return container.fetchHiveMetaData(false);
+      }
+      return null;
     }
   };
 

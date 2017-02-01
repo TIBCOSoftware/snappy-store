@@ -719,7 +719,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         endLocalWrite(event);
         //create and insert cached batch
         if (success && getPartitionedRegion().needsBatching()
-            && this.size() >= GemFireCacheImpl.getColumnBatchSize()) {
+            && this.size() >= this.getPartitionedRegion().getColumnBatchSize()) {
           createAndInsertCachedBatch(false);
         }
       }
@@ -745,9 +745,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // CachedBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    final int columnBatchSize = GemFireCacheImpl.getColumnBatchSize();
+    final int columnBatchSize = this.getPartitionedRegion().getColumnBatchSize();
     final int batchSize = !forceFlush ? columnBatchSize
-        : Math.min(GemFireCacheImpl.getColumnMinBatchSize(),
+        : Math.min(this.getPartitionedRegion().getColumnMinBatchSize(),
         Math.max(columnBatchSize, 1));
     // we may have to use region.size so that no state
     // has to be maintained
@@ -782,7 +782,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       UUID batchUUIDToUse = null;
       if (event.getPutAllOperation() != null) { //isPutAll op
         batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
-      } else if (this.size() >= GemFireCacheImpl.getColumnBatchSize()) {// loose check on size..not very strict
+      } else if (this.size() >= this.getPartitionedRegion().getColumnBatchSize()) {// loose check on size..not very strict
         batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache()

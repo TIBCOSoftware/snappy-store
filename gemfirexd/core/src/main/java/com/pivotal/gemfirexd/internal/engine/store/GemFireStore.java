@@ -565,6 +565,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         }
       }
     }
+    invalidateHiveMetaDataForAllTables();
+  }
+
+  public void invalidateHiveMetaDataForAllTables() {
+    List<GemFireContainer> containers = getAllContainers();
+    for (GemFireContainer container : containers) {
+      container.invalidateHiveMetaData();
+    }
   }
 
   public void dropConglomerate(Transaction xact, ContainerKey id)
@@ -596,6 +604,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.uninitializedConglomerates.remove(id);
       }
     }
+    invalidateHiveMetaDataForAllTables();
   }
 
   public boolean addPendingOperation(MemOperation op, GemFireTransaction tran)

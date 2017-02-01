@@ -52,42 +52,7 @@ import java.util.concurrent.locks.Lock;
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.cache.AttributesFactory;
-import com.gemstone.gemfire.cache.AttributesMutator;
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.CacheListener;
-import com.gemstone.gemfire.cache.CacheLoader;
-import com.gemstone.gemfire.cache.CacheLoaderException;
-import com.gemstone.gemfire.cache.CacheStatistics;
-import com.gemstone.gemfire.cache.CacheWriter;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.CustomExpiry;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.EntryExistsException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.ExpirationAttributes;
-import com.gemstone.gemfire.cache.InterestPolicy;
-import com.gemstone.gemfire.cache.InterestRegistrationEvent;
-import com.gemstone.gemfire.cache.LoaderHelper;
-import com.gemstone.gemfire.cache.LowMemoryException;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.PartitionResolver;
-import com.gemstone.gemfire.cache.PartitionedRegionDistributionException;
-import com.gemstone.gemfire.cache.PartitionedRegionStorageException;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.RegionEvent;
-import com.gemstone.gemfire.cache.RegionExistsException;
-import com.gemstone.gemfire.cache.RegionMembershipListener;
-import com.gemstone.gemfire.cache.TimeoutException;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.TransactionException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueStats;
 import com.gemstone.gemfire.cache.execute.EmptyRegionFunctionException;
@@ -442,7 +407,31 @@ public class PartitionedRegion extends LocalRegion implements
   public static final int OFFLINE_EQUAL_PERSISTED = 3;
 
   private volatile int shutDownAllStatus = RUNNING_MODE;
-  
+
+  /** Default size for CachedBatches. */
+  private int columnBatchSize = -1;
+
+  /** Minimum size for CachedBatches. */
+  private int columnMinBatchSize = 200;
+
+  public void setColumnBatchSizes(int size, int minSize) {
+    columnBatchSize = size;
+    columnMinBatchSize = minSize < columnBatchSize ? minSize : size;
+  }
+
+  public int getColumnBatchSize() {
+    if (columnBatchSize == -1) {
+      final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
+          .getInternalProductCallbacks();
+      ExternalTableMetaData metadata = sysCb.fetchSnappyTablesHiveMetaData(this);
+    }
+    return columnBatchSize;
+  }
+
+  public int getColumnMinBatchSize() {
+    return columnMinBatchSize;
+  }
+
   private final long birthTime = System.currentTimeMillis();
 
   public void setShutDownAllStatus(int newStatus) {

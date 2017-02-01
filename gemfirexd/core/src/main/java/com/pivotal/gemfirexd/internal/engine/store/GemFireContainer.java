@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.InternalGemFireError;
@@ -305,6 +306,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       .getServerInstance().getBoolean("cacheGlobalIndexINMap", false);
 
   private CacheMap globalIndexMap;
+
+  private AtomicReference<ExternalTableMetaData> externalTableMetaData =
+      new AtomicReference<ExternalTableMetaData>(null);
+
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -425,6 +430,24 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.singleSchema = getCurrentRowFormatter();
     this.oldTableInfos = new ArrayList<ExtraTableInfo>();
     initTableFlags();
+  }
+
+  public void invalidateHiveMetaData() {
+    externalTableMetaData.set(null);
+  }
+
+  public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
+    if (refresh || externalTableMetaData.get() == null) {
+      // containers are created during initialization, ignore them
+      externalTableMetaData.compareAndSet(null,
+          Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
+              this.schemaName, this.tableName, true));
+      if (isPartitioned()) {
+        ((PartitionedRegion)this.region).
+            setColumnBatchSizes(externalTableMetaData.get().cachedBatchSize, 200);
+      }
+    }
+    return externalTableMetaData.get();
   }
 
   public boolean cachesGlobalIndex() {
