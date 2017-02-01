@@ -103,7 +103,7 @@ public abstract class ClientSharedUtils {
    * True if using Thrift as default network server and client, false if using
    * DRDA (default).
    */
-  public static final boolean USE_THRIFT_AS_DEFAULT = SystemProperties
+  public static boolean USE_THRIFT_AS_DEFAULT = SystemProperties
       .getClientInstance().getBoolean(USE_THRIFT_AS_DEFAULT_PROP, true);
 
   private static final Object[] staticZeroLenObjectArray = new Object[0];

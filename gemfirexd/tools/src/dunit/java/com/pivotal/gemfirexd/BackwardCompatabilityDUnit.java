@@ -1501,6 +1501,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
      * and must take only one argument of type java.sql.Connection.
      */
     public static void main(String[] args) {
+      System.setProperty("gemfirexd.thrift-default", "false");
       try {
         String product = args[0];
         String host = args[1];
@@ -1953,6 +1954,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
           "-user=SYSADMIN",
           "-password=SA",
           "-locators=localhost:" + locatorPort2,
+          "-J-Dgemfirexd.thrift-default=false",
           "-client-port=" + clientPort};
     }
     else{
@@ -1960,6 +1962,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
           "-dir=" + workingDir, 
           "-log-file=" + logFile, "-peer-discovery-port=" + locatorPort1,
           "-locators=localhost:" + locatorPort2,
+          "-J-Dgemfirexd.thrift-default=false",
           "-client-port=" + clientPort};
     }
 

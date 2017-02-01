@@ -201,7 +201,7 @@ final class ControlConnection {
       throws SnappyException {
 
     if (controlLocator == null) {
-      failedServers = failoverToAvailableHost(failedServers, failure);
+      failedServers = failoverToAvailableHost(failedServers, false, failure);
       forFailover = true;
     }
 
@@ -302,7 +302,7 @@ final class ControlConnection {
         }
         failedServers.add(controlHost);
         controlLocator.getOutputProtocol().getTransport().close();
-        failedServers = failoverToAvailableHost(failedServers, te);
+        failedServers = failoverToAvailableHost(failedServers, true, te);
         if (failure == null) {
           failure = te;
         }
@@ -327,15 +327,15 @@ final class ControlConnection {
   }
 
   private synchronized Set<HostAddress> failoverToAvailableHost(
-      Set<HostAddress> failedServers, Throwable failure) throws SnappyException {
+      Set<HostAddress> failedServers, boolean checkFailedControlHosts,
+      Throwable failure) throws SnappyException {
 
     final SystemProperties sysProps = SystemProperties.getClientInstance();
     NEXT_SERVER: for (HostAddress controlAddr : this.controlHosts) {
-      /* (try all including those previously reported as failed)
-      if (failedServers != null && failedServers.contains(controlAddr)) {
+      if (checkFailedControlHosts && failedServers != null &&
+          failedServers.contains(controlAddr)) {
         continue;
       }
-      */
       this.controlHost = null;
       this.controlLocator = null;
 

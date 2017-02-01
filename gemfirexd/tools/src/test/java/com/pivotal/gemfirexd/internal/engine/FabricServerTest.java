@@ -675,7 +675,9 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     System.setProperty(com.pivotal.gemfirexd.Property.PROPERTIES_FILE, PROP_FILE_NAME);
 
-    System.setProperty(Property.START_DRDA, "true");
+    if (!ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+      System.setProperty(Property.START_DRDA, "true");
+    }
     int port;
     while ((port = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
         <= FabricService.NETSERVER_DEFAULT_PORT);
