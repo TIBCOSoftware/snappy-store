@@ -32,8 +32,8 @@ import com.gemstone.gemfire.internal.cache.locks.ReadWriteLockObject;
 import com.gemstone.gemfire.internal.cache.locks.TryLockObject;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLocalLockService;
@@ -41,8 +41,6 @@ import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockService.ReadLockState
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdReadWriteLock;
 import com.pivotal.gemfirexd.internal.iapi.error.ShutdownException;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -884,24 +882,25 @@ public final class GfxdReentrantReadWriteLock extends AtomicInteger implements
       final String logPrefix) {
     msg.append(SanityManager.lineSeparator);
     // traverse all the available contexts to determine the available readers
-    final ContextService service = ContextService.getFactory();
-    assert service != null;
-    synchronized (service) {
-      for (final ContextManager cm : service.getAllContexts()) {
-        try {
-          final LanguageConnectionContext lcc = (LanguageConnectionContext)cm
-              .getContext(LanguageConnectionContext.CONTEXT_ID);
-          final TransactionController tc;
-          final GfxdLockSet lockSet;
-          if (lcc != null && (tc = lcc.getTransactionExecute()) != null
-              && (lockSet = ((GemFireTransaction)tc).getLockSpace()) != null) {
-            lockSet.dumpReadLocks(msg, logPrefix, cm.getActiveThread());
+    final GemFireXDUtils.Visitor<LanguageConnectionContext> dumpReadLocks =
+        new GemFireXDUtils.Visitor<LanguageConnectionContext>() {
+          @Override
+          public boolean visit(LanguageConnectionContext lcc) {
+            try {
+              final TransactionController tc = lcc.getTransactionExecute();
+              final GfxdLockSet lockSet;
+              if (tc != null &&
+                  (lockSet = ((GemFireTransaction)tc).getLockSpace()) != null) {
+                lockSet.dumpReadLocks(msg, logPrefix,
+                    lcc.getContextManager().getActiveThread());
+              }
+            } catch (ShutdownException se) {
+              // ignore shutdown exception here
+            }
+            return true;
           }
-        } catch (ShutdownException se) {
-          // ignore shutdown exception here
-        }
-      }
-    }
+        };
+    GemFireXDUtils.forAllContexts(dumpReadLocks);
   }
 
   protected void dumpReaders(StringBuilder msg, Object lockObject,

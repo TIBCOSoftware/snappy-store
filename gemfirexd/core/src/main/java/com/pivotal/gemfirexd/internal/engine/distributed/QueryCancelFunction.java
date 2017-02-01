@@ -22,18 +22,14 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.sql.CallableStatement;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Properties;
 
 import com.gemstone.gemfire.cache.Declarable;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionContext;
-import com.gemstone.gemfire.internal.concurrent.ConcurrentHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
-import com.pivotal.gemfirexd.internal.iapi.reference.ContextId;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
@@ -133,28 +129,23 @@ public final class QueryCancelFunction implements Function, Declarable {
    * Get the lcc for the passed in connectionId 
    */
   private LanguageConnectionContext getLccFromContextService(
-      long connectionId) {
-    LanguageConnectionContext lcc = null;
-    ContextService singleton = ContextService.getFactory();
-    assert singleton != null;
-    Iterator<ContextManager> contextIter = null;
-    LanguageConnectionContext tempLcc;
-    synchronized (singleton) {
-      ConcurrentHashSet<ContextManager> hset = singleton.getAllContexts();
-      contextIter = hset.iterator();
-    }
-    while (contextIter.hasNext()) {
-      ContextManager cm = contextIter.next();
-      tempLcc = (LanguageConnectionContext)cm
-          .getContext(ContextId.LANG_CONNECTION);
-      if (tempLcc.getConnectionId() == connectionId) {
-        lcc = tempLcc;
-        break;
-      }
-    }
-    return lcc;
+      final long connectionId) {
+    final LanguageConnectionContext[] result = new LanguageConnectionContext[1];
+    final GemFireXDUtils.Visitor<LanguageConnectionContext> getLcc =
+        new GemFireXDUtils.Visitor<LanguageConnectionContext>() {
+          @Override
+          public boolean visit(LanguageConnectionContext lcc) {
+            if (lcc.getConnectionId() == connectionId) {
+              result[0] = lcc;
+              return false;
+            }
+            return true;
+          }
+        };
+    GemFireXDUtils.forAllContexts(getLcc);
+    return result[0];
   }
-  
+
   // is this the activation we want to cancel?
   // match statementId and executionID 
   private boolean needToCancelThisActivation(Activation activation,

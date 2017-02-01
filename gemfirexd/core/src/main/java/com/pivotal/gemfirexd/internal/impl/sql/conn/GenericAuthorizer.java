@@ -57,11 +57,9 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.StatementContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.StatementPermission;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
-import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 
-import java.util.Properties;
 import java.util.List;
 import java.util.Iterator;
 
@@ -94,7 +92,6 @@ implements Authorizer
 		this.lcc = lcc;
 		this.authorizationId = authorizationId;
 
-		getUserAccessLevel();
 		refresh();
 	}
 
@@ -153,7 +150,7 @@ implements Authorizer
                   }
                   return;
                 }
-                refresh();
+                checkAccess();
                 int sqlAllowed = RoutineAliasInfo.NO_SQL;
                 StatementContext ctx = this.lcc.getStatementContext();
                 if (ctx != null) {
@@ -452,13 +449,15 @@ implements Authorizer
 	  */
 	public void refresh() throws StandardException
 	{
-		// getUserAccessLevel();
-			
-                readOnlyConnection = connectionMustRemainReadOnly();
+		getUserAccessLevel();
+		checkAccess();
+	}
+
+	private void checkAccess() throws StandardException {
+		readOnlyConnection = connectionMustRemainReadOnly();
 
 		// Is a connection allowed.
 		if (userAccessLevel == NO_ACCESS)
 			throw StandardException.newException(SQLState.AUTH_DATABASE_CONNECTION_REFUSED);
 	}
-	
 }
