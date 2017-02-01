@@ -380,11 +380,11 @@ struct OpenConnectionArgs {
   1: required string                                       clientHostName
   2: required string                                       clientID
   3: required SecurityMechanism                            security
+  4: optional string                                       userName
+  5: optional string                                       password
   // should be true for connections to be used for XA transactions;
   // XA operations will fail unless this is set to true for the connection
-  4: required bool                                         forXA
-  5: optional string                                       userName
-  6: optional string                                       password
+  6: optional bool                                         forXA
   // number of bytes to use for connection ID token
   // default is DEFAULT_SESSION_TOKEN_SIZE;
   // in future will be used for encryption of token etc. with

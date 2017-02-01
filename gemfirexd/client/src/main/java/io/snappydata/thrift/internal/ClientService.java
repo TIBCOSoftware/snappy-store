@@ -303,8 +303,8 @@ public final class ClientService extends ReentrantLock implements LobService {
     // TODO: currently hardcoded security mechanism to PLAIN
     // implement Diffie-Hellman and additional like SASL (see Hive driver)
     OpenConnectionArgs connArgs = new OpenConnectionArgs(hostName, clientId,
-        SecurityMechanism.PLAIN, forXA).setUserName(userName)
-        .setPassword(password).setProperties(props);
+        SecurityMechanism.PLAIN).setUserName(userName)
+        .setPassword(password).setForXA(forXA).setProperties(props);
     try {
       HostAddress hostAddr = ThriftUtils.getHostAddress(host, port);
       return new ClientService(hostAddr, connArgs);

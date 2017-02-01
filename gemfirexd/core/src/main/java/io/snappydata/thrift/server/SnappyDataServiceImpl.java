@@ -258,7 +258,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         clientHost = arguments.getClientHostName();
         clientId = arguments.getClientID();
-        forXA = arguments.isForXA();
+        forXA = arguments.isSetForXA() && arguments.isForXA();
       }
 
       final String protocol;
