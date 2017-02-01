@@ -117,12 +117,15 @@ public class ClientClob extends ClientLobBase implements Clob {
         final int bufSize = 32768;
         final char[] buffer = new char[bufSize];
         int readLen = readStream(reader, buffer, 0, bufSize);
-        if (readLen < 0) {
-          return -1;
-        } else if (readLen < bufSize) {
+        if (readLen < bufSize) {
           // fits into single buffer
-          this.reader = new MemStringReader(ClientSharedUtils.newWrappedString(
-              buffer, 0, readLen));
+          if (readLen <= 0) {
+            readLen = 0;
+            this.reader = new MemStringReader("");
+          } else {
+            this.reader = new MemStringReader(ClientSharedUtils.newWrappedString(
+                buffer, 0, readLen));
+          }
           return readLen;
         } else {
           StringPrintWriter out = new StringPrintWriter(new StringBuilder());
@@ -367,7 +370,6 @@ public class ClientClob extends ClientLobBase implements Clob {
 
   @Override
   public OutputStream setAsciiStream(long pos) throws SQLException {
-    checkOffset(pos - 1);
     if (pos == 1 && this.length == 0) {
       free();
       DynamicByteArrayOutputStream out = new DynamicByteArrayOutputStream();
@@ -376,6 +378,7 @@ public class ClientClob extends ClientLobBase implements Clob {
       this.streamedInput = true;
       return out;
     } else {
+      checkOffset(pos - 1);
       throw ThriftExceptionUtil.newSQLException(SQLState.NOT_IMPLEMENTED,
           null, "Clob.setAsciiStream(" + pos + ')');
     }
@@ -383,7 +386,6 @@ public class ClientClob extends ClientLobBase implements Clob {
 
   @Override
   public Writer setCharacterStream(long pos) throws SQLException {
-    checkOffset(pos - 1);
     if (pos == 1 && this.length == 0) {
       free();
       StringWriter writer = new StringWriter();
@@ -391,6 +393,7 @@ public class ClientClob extends ClientLobBase implements Clob {
       this.streamedInput = true;
       return writer;
     } else {
+      checkOffset(pos - 1);
       throw ThriftExceptionUtil.newSQLException(SQLState.NOT_IMPLEMENTED,
           null, "Clob.setCharacterStream(" + pos + ')');
     }

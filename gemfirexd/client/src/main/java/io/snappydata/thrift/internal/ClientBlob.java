@@ -117,12 +117,16 @@ public final class ClientBlob extends ClientLobBase implements Blob {
       } else if (forceMaterialize) {
         // materialize the stream
         final int bufSize = 32768;
-        final byte[] buffer = new byte[bufSize];
+        byte[] buffer = new byte[bufSize];
         int readLen = readStream(dataStream, buffer, 0, bufSize);
-        if (readLen < 0) {
-          return -1;
-        } else if (readLen < bufSize) {
-          // fits into single buffer
+        if (readLen < bufSize) {
+          // fits into single buffer; trim if much smaller than bufSize
+          if (readLen <= 0) {
+            readLen = 0;
+            buffer = ZERO_ARRAY;
+          } else if (readLen < (bufSize >>> 1)) {
+            buffer = Arrays.copyOf(buffer, readLen);
+          }
           this.dataStream = new MemInputStream(buffer, readLen);
           return readLen;
         } else {
@@ -360,7 +364,6 @@ public final class ClientBlob extends ClientLobBase implements Blob {
    */
   @Override
   public OutputStream setBinaryStream(long pos) throws SQLException {
-    checkOffset(pos - 1);
     if (pos == 1 && this.length == 0) {
       free();
       DynamicByteArrayOutputStream out = new DynamicByteArrayOutputStream();
@@ -368,6 +371,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
       this.streamedInput = true;
       return out;
     } else {
+      checkOffset(pos - 1);
       throw ThriftExceptionUtil.newSQLException(
           SQLState.NOT_IMPLEMENTED, null, "Blob.setBinaryStream(" + pos + ')');
     }
