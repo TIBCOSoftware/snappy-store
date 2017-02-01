@@ -541,8 +541,12 @@ public interface Attribute {
    * If true then use <code>TFramedTransport</code> for the thrift server, else
    * the default is to use non-framed transport.
    * <p>
-   * This property can be specified when specifying each thrift server startup
-   * in <code>FabricService.startThriftServer</code>.
+   * This property can be specified for each thrift server startup in
+   * <code>FabricService.startThriftServer</code>.
+   * <p>
+   * WARNING: This is not recommended due to addional overheads and no gains,
+   * and also not as well tested. Only use for external connectors that don't
+   * support non-framed mode (reportedly elixir-thrift driver).
    */
   String THRIFT_USE_FRAMED_TRANSPORT = "thrift-framed-transport";
 

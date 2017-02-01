@@ -67,6 +67,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import io.snappydata.app.TestThrift;
 import io.snappydata.test.dunit.Host;
 import io.snappydata.test.dunit.RMIException;
 import io.snappydata.test.dunit.SerializableCallable;
@@ -472,12 +473,18 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
   private static volatile boolean hasQueryObservers = false;
   private static volatile int preparedExec = 0;
   private static volatile int unpreparedExec = 0;
+
   public void testNetworkClient() throws Exception {
+    networkClientTests(null, null);
+  }
+
+  private int[] networkClientTests(Properties extraProps,
+      Properties extraConnProps) throws Exception {
     // start a couple of servers
     startVMs(0, 2);
     // Start network server on the VMs
-    final int netPort = startNetworkServer(1, null, null);
-    final int netPort2 = startNetworkServer(2, null, null);
+    final int netPort = startNetworkServer(1, null, extraProps);
+    final int netPort2 = startNetworkServer(2, null, extraProps);
     final VM serverVM = this.serverVMs.get(0);
 
     // Use this VM as the network client
@@ -486,6 +493,9 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     Connection conn, conn2;
     final Properties connProps = new Properties();
     connProps.setProperty("load-balance", "false");
+    if (extraConnProps != null) {
+      connProps.putAll(extraConnProps);
+    }
     final InetAddress localHost = SocketCreator.getLocalHost();
     String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
     conn = DriverManager.getConnection(url, connProps);
@@ -758,7 +768,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     if (!TestUtil.USE_ODBC_BRIDGE) {
       url = TestUtil.getNetProtocol(localHost.getHostName(), netPort) + "test";
       try {
-        conn = DriverManager.getConnection(url);
+        DriverManager.getConnection(url);
       } catch (SQLException ex) {
         if (!"XJ028".equals(ex.getSQLState())
             && !"XJ212".equals(ex.getSQLState())) {
@@ -1331,6 +1341,20 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     stmt.execute("drop table TESTTABLE");
     stmt.close();
     conn.close();
+
+    return new int[] { netPort, netPort2 };
+  }
+
+  public void testThriftFramedProtocol() throws Exception {
+    // first check with server and JDBC client with framed protocol
+    Properties props = new Properties();
+    props.setProperty(Attribute.THRIFT_USE_FRAMED_TRANSPORT, "true");
+    Properties connProps = new Properties();
+    connProps.setProperty("framed-transport", "true");
+    int[] netPorts = networkClientTests(props, connProps);
+    // also check with direct thrift client
+    TestThrift.run(SocketCreator.getLocalHost().getHostName(),
+        netPorts[1], true);
   }
 
   public void test44240() throws Exception {

@@ -325,15 +325,6 @@ public interface ClientAttribute {
   String THRIFT_USE_BINARY_PROTOCOL = "binary-protocol";
 
   /**
-   * If true then use <code>TFramedTransport</code> for the thrift server, else
-   * the default is to use non-framed transport.
-   * <p>
-   * This property can be specified when specifying each thrift server startup
-   * in <code>FabricService.startThriftServer</code>.
-   */
-  String THRIFT_USE_FRAMED_TRANSPORT = "framed-transport";
-
-  /**
    * A comma-separated SSL property key=value pairs that can be set for a thrift
    * client connection. The available property values are:
    * 

@@ -1612,13 +1612,14 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   }
 
   public static void _startNetworkServer(String className, String name,
-      int mcastPort, int netPort, String serverGroups, Properties extraProps, Boolean configureDefautHeap)
-      throws Exception {
+      int mcastPort, int netPort, String serverGroups, Properties extraProps,
+      Boolean configureDefautHeap) throws Exception {
     final Class<?> c = Class.forName(className);
 
     // start a DataNode first.
     if (TestUtil.getFabricService().status() != FabricService.State.RUNNING) {
-      _startNewServer(className, name, mcastPort, serverGroups, extraProps, configureDefautHeap);
+      _startNewServer(className, name, mcastPort, serverGroups, extraProps,
+          configureDefautHeap);
     }
 
     DistributedSQLTestBase test = (DistributedSQLTestBase)c.getConstructor(
