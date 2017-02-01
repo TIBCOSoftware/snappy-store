@@ -205,6 +205,7 @@ final class ControlConnection {
       forFailover = true;
     }
 
+    boolean firstCall = true;
     while (true) {
       try {
         HostAddress preferredServer;
@@ -300,7 +301,13 @@ final class ControlConnection {
           Set<HostAddress> servers = new THashSet(2);
           failedServers = servers;
         }
-        failedServers.add(controlHost);
+        // for the first call do not mark controlHost as failed but retry
+        // (e.g. for a reconnect case)
+        if (firstCall) {
+          firstCall = false;
+        } else {
+          failedServers.add(controlHost);
+        }
         controlLocator.getOutputProtocol().getTransport().close();
         failedServers = failoverToAvailableHost(failedServers, true, te);
         if (failure == null) {
