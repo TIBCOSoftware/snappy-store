@@ -3291,7 +3291,7 @@ public abstract class Converters {
    * Get JDBC {@link Types} type for given {@link SnappyType}.
    */
   public static int getJdbcType(SnappyType type) {
-    return jdbcTypes[type.getValue()];
+    return type != null ? jdbcTypes[type.getValue()] : Types.NULL;
   }
 
   /**

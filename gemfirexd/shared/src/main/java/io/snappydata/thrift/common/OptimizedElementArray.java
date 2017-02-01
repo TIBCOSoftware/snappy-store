@@ -259,10 +259,6 @@ public class OptimizedElementArray {
     return Platform.getByte(primitives, Platform.LONG_ARRAY_OFFSET + index);
   }
 
-  public final SnappyType getSQLType(int index) {
-    return SnappyType.findByValue(Math.abs(getType(index)));
-  }
-
   public final boolean isNull(int index) {
     return getType(index) < 0;
   }
