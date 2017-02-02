@@ -150,6 +150,9 @@ public class GenericStatement
         private static final Pattern PUT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile(".*PUT\\s+INTO\\s+(TABLE)?.*SELECT\\s+.*",
                 Pattern.CASE_INSENSITIVE);
+        private static final Pattern FUNCTION_DDL_PREFIX =
+            Pattern.compile("\\s?(CREATE|DROP)\\s+FUNCTION\\s+.*",
+               Pattern.CASE_INSENSITIVE);
         private static final Pattern EXECUTION_ENGINE_STORE_HINT =
             Pattern.compile(".*EXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s+.*",
                 Pattern.CASE_INSENSITIVE);
@@ -585,7 +588,8 @@ public class GenericStatement
 
 					if (routeQuery && (
 							INSERT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
-							PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches())) {
+							PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
+              FUNCTION_DDL_PREFIX.matcher(source).matches() )) {
 						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc, cc.isMarkedAsDDLForSnappyUse(), checkCancellation);
