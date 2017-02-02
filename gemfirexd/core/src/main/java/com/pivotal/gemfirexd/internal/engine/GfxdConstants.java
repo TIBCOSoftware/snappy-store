@@ -449,6 +449,7 @@ public interface GfxdConstants {
           Attribute.SERVER_GROUPS,
           Attribute.GFXD_HOST_DATA,
           Attribute.GFXD_PERSIST_DD,
+          Attribute.READ_TIMEOUT,
           Attribute.KEEPALIVE_IDLE,
           Attribute.KEEPALIVE_INTVL,
           Attribute.KEEPALIVE_CNT,

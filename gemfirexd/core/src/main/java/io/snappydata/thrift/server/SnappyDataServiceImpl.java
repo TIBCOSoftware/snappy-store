@@ -2281,7 +2281,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       final Map<Integer, OutputParameter> outputParams, StatementAttrs attrs,
       ByteBuffer token) throws SnappyException {
     ConnectionHolder connHolder = null;
-    EngineConnection conn = null;
+    EngineConnection conn;
     PreparedStatement pstmt = null;
     CallableStatement cstmt = null;
     ParameterMetaData pmd = null;
@@ -2380,7 +2380,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       final Row params, StatementAttrs attrs, ByteBuffer token)
       throws SnappyException {
     ConnectionHolder connHolder = null;
-    EngineConnection conn = null;
+    EngineConnection conn;
     PreparedStatement pstmt = null;
     ResultSet rs = null;
     // prepared statement executions do not have posDup handling since
@@ -2445,7 +2445,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   public RowSet executePreparedQuery(long stmtId, final Row params,
       StatementAttrs attrs, ByteBuffer token) throws SnappyException {
     ConnectionHolder connHolder = null;
-    EngineConnection conn = null;
+    EngineConnection conn;
     PreparedStatement pstmt = null;
     ResultSet rs = null;
     // prepared statement executions do not have posDup handling since
@@ -2494,7 +2494,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
   public UpdateResult executePreparedBatch(long stmtId, List<Row> paramsBatch,
       StatementAttrs attrs, ByteBuffer token) throws SnappyException {
     ConnectionHolder connHolder = null;
-    EngineConnection conn = null;
+    EngineConnection conn;
     PreparedStatement pstmt = null;
     ResultSet rs = null;
     // prepared statement executions do not have posDup handling since
@@ -2841,7 +2841,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       throws SnappyException {
     try {
       ConnectionHolder connHolder = getValidConnection(connId, token);
-      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAResource xaResource = getXAResource(connHolder);
       xaResource.setTransactionTimeout(timeoutInSeconds);
       XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
           xid.getBranchQualifier());
@@ -2857,7 +2857,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
     try {
       ConnectionHolder connHolder = getValidConnection(connId, token);
-      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAResource xaResource = getXAResource(connHolder);
       XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
           xid.getBranchQualifier());
       return xaResource.prepare(xaXid);
@@ -2872,7 +2872,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       boolean onePhase, ByteBuffer token) throws SnappyException {
     try {
       ConnectionHolder connHolder = getValidConnection(connId, token);
-      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAResource xaResource = getXAResource(connHolder);
       XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
           xid.getBranchQualifier());
       xaResource.commit(xaXid, onePhase);
@@ -2887,7 +2887,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
     try {
       ConnectionHolder connHolder = getValidConnection(connId, token);
-      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAResource xaResource = getXAResource(connHolder);
       XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
           xid.getBranchQualifier());
       xaResource.rollback(xaXid);
@@ -2902,7 +2902,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
     try {
       ConnectionHolder connHolder = getValidConnection(connId, token);
-      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAResource xaResource = getXAResource(connHolder);
       XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
           xid.getBranchQualifier());
       xaResource.forget(xaXid);
@@ -2917,7 +2917,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       int flags, ByteBuffer token) throws SnappyException {
     try {
       ConnectionHolder connHolder = getValidConnection(connId, token);
-      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAResource xaResource = getXAResource(connHolder);
       XAXactId xaXid = new XAXactId(xid.getFormatId(), xid.getGlobalId(),
           xid.getBranchQualifier());
       xaResource.end(xaXid, flags);
@@ -2932,7 +2932,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
     try {
       ConnectionHolder connHolder = getValidConnection(connId, token);
-      XAResource xaResource = connHolder.getXAConnection().getXAResource();
+      XAResource xaResource = getXAResource(connHolder);
       Xid[] result = xaResource.recover(flag);
       if (result != null && result.length > 0) {
         final ArrayList<TransactionXid> xids = new ArrayList<>(result.length);

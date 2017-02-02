@@ -35,7 +35,7 @@
 
 package io.snappydata.thrift.common;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.pivotal.gemfirexd.Attribute;
 import io.snappydata.thrift.ServerType;
 import org.apache.thrift.transport.TSSLTransportFactory;
 
@@ -75,37 +75,37 @@ public class SocketParameters extends
    * read in socket properties and initialize SocketParameters.
    */
   public enum Param {
-    INPUT_BUFFER_SIZE(SystemProperties.SOCKET_INPUT_BUFFER_SIZE_NAME, false) {
+    INPUT_BUFFER_SIZE(Attribute.SOCKET_INPUT_BUFFER_SIZE, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.inputBufferSize = Integer.parseInt(value);
       }
     },
-    OUTPUT_BUFFER_SIZE(SystemProperties.SOCKET_OUTPUT_BUFFER_SIZE_NAME, false) {
+    OUTPUT_BUFFER_SIZE(Attribute.SOCKET_OUTPUT_BUFFER_SIZE, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.outputBufferSize = Integer.parseInt(value);
       }
     },
-    READ_TIMEOUT(SystemProperties.READ_TIMEOUT_NAME, false) {
+    READ_TIMEOUT(Attribute.READ_TIMEOUT, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.readTimeout = Integer.parseInt(value);
       }
     },
-    KEEPALIVE_IDLE(SystemProperties.KEEPALIVE_IDLE_NAME, false) {
+    KEEPALIVE_IDLE(Attribute.KEEPALIVE_IDLE, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keepAliveIdle = Integer.parseInt(value);
       }
     },
-    KEEPALIVE_INTERVAL(SystemProperties.KEEPALIVE_INTVL_NAME, false) {
+    KEEPALIVE_INTERVAL(Attribute.KEEPALIVE_INTVL, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keepAliveInterval = Integer.parseInt(value);
       }
     },
-    KEEPALIVE_COUNT(SystemProperties.KEEPALIVE_CNT_NAME, false) {
+    KEEPALIVE_COUNT(Attribute.KEEPALIVE_CNT, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keepAliveCount = Integer.parseInt(value);

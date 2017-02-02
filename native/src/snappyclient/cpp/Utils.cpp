@@ -91,7 +91,7 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
     case thrift::SnappyType::DOUBLE:
       return "DOUBLE";
     case thrift::SnappyType::FLOAT:
-      return "FLOAT";
+      return "REAL";
     case thrift::SnappyType::INTEGER:
       return "INTEGER";
     case thrift::SnappyType::JAVA_OBJECT:
@@ -106,8 +106,6 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
       return "MAP";
     case thrift::SnappyType::NULLTYPE:
       return "NULL";
-    case thrift::SnappyType::REAL:
-      return "REAL";
     case thrift::SnappyType::SMALLINT:
       return "SMALLINT";
     case thrift::SnappyType::SQLXML:

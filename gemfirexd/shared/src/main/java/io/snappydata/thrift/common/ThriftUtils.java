@@ -38,6 +38,7 @@ package io.snappydata.thrift.common;
 import java.util.EnumMap;
 
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.SnappyException;
@@ -57,7 +58,7 @@ public abstract class ThriftUtils {
 
   public static boolean isThriftSelectorServer() {
     return SystemProperties.getServerInstance().getBoolean(
-        SystemProperties.THRIFT_SELECTOR_SERVER, false);
+        Attribute.THRIFT_SELECTOR_SERVER, false);
   }
 
   public static HostAddress getHostAddress(final String hostNameAndAddress,

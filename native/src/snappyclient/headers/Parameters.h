@@ -196,8 +196,6 @@ namespace client {
     Parameters& setStruct(uint32_t paramNum, thrift::Struct&& v);
 
     Parameters& setNull(uint32_t paramNum, const bool v);
-
-    Parameters& setJSON(uint32_t paramNum, const JSON& v);
   };
 
 } /* namespace client */

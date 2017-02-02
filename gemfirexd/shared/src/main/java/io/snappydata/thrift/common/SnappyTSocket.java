@@ -46,7 +46,6 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-
 import javax.net.ssl.SSLEngine;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -54,6 +53,7 @@ import com.gemstone.gemfire.internal.shared.InputStreamChannel;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
+import com.pivotal.gemfirexd.Attribute;
 import io.snappydata.thrift.HostAddress;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -69,6 +69,13 @@ public final class SnappyTSocket extends TNonblockingTransport implements
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(SnappyTSocket.class.getName());
+
+  // these are the defaults for the per-socket TCP keepalive parameters
+  public static final int DEFAULT_KEEPALIVE_IDLE = 20;
+  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
+  public static final int DEFAULT_KEEPALIVE_CNT = 10;
+
+  public static final int DEFAULT_BUFFER_SIZE = 32 * 1024;
 
   /**
    * Wrapped SocketChannel object.
@@ -94,9 +101,9 @@ public final class SnappyTSocket extends TNonblockingTransport implements
   private volatile int timeout;
 
   private int inputBufferSize = SystemProperties.getClientInstance()
-      .getSocketInputBufferSize();
+      .getInteger(Attribute.SOCKET_INPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
   private int outputBufferSize = SystemProperties.getClientInstance()
-      .getSocketOutputBufferSize();
+      .getInteger(Attribute.SOCKET_INPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
 
   /**
    * Underlying inputStream
@@ -255,10 +262,16 @@ public final class SnappyTSocket extends TNonblockingTransport implements
   protected static int setTimeout(Socket socket, int timeout,
       SocketParameters params, SystemProperties props) throws SocketException {
     socket.setSoTimeout(timeout);
+    int defaultIdle = props.getInteger(Attribute.KEEPALIVE_IDLE,
+        DEFAULT_KEEPALIVE_IDLE);
+    int defaultInterval = props.getInteger(Attribute.KEEPALIVE_INTVL,
+        DEFAULT_KEEPALIVE_INTVL);
+    int defaultCount = props.getInteger(Attribute.KEEPALIVE_CNT,
+        DEFAULT_KEEPALIVE_CNT);
     ClientSharedUtils.setKeepAliveOptions(socket, null,
-        params.getKeepAliveIdle(props.getKeepAliveIdle()),
-        params.getKeepAliveInterval(props.getKeepAliveInterval()),
-        params.getKeepAliveCount(props.getKeepAliveCount()));
+        params.getKeepAliveIdle(defaultIdle),
+        params.getKeepAliveInterval(defaultInterval),
+        params.getKeepAliveCount(defaultCount));
     return timeout;
   }
 
@@ -274,10 +287,8 @@ public final class SnappyTSocket extends TNonblockingTransport implements
   protected void setProperties(Socket socket, int timeout,
       SocketParameters params, SystemProperties props)
       throws TTransportException, IOException {
-    this.inputBufferSize = params.getInputBufferSize(props
-        .getSocketInputBufferSize());
-    this.outputBufferSize = params.getOutputBufferSize(props
-        .getSocketOutputBufferSize());
+    this.inputBufferSize = params.getInputBufferSize(this.inputBufferSize);
+    this.outputBufferSize = params.getOutputBufferSize(this.outputBufferSize);
     socket.setSoLinger(false, 0);
     socket.setTcpNoDelay(true);
     this.timeout = setTimeout(socket, timeout, params, props);

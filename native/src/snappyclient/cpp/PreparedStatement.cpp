@@ -53,17 +53,14 @@ using namespace io::snappydata::client;
 PreparedStatement::PreparedStatement(
     const std::shared_ptr<ClientService>& service,
     const StatementAttributes& attrs) :
-    m_service(service), m_attrs(attrs),
-    m_prepResult(), m_warnings(),
+    m_service(service), m_attrs(attrs), m_prepResult(), m_warnings(),
     m_cursorId(thrift::snappydataConstants::INVALID_ID) {
 }
 
 PreparedStatement::PreparedStatement(
     const std::shared_ptr<ClientService>& service,
-    const StatementAttributes& attrs,
-    const thrift::PrepareResult& prepResult) :
-    m_service(service), m_attrs(attrs),
-    m_prepResult(prepResult), m_warnings(),
+    const StatementAttributes& attrs, const thrift::PrepareResult& prepResult) :
+    m_service(service), m_attrs(attrs), m_prepResult(prepResult), m_warnings(),
     m_cursorId(thrift::snappydataConstants::INVALID_ID) {
 }
 
@@ -100,7 +97,8 @@ std::unique_ptr<Result> PreparedStatement::execute(const Parameters& params) {
   std::unique_ptr<Result> result(new Result(m_service, m_attrs));
 
   m_service->executePrepared(result->m_result, m_prepResult, params,
-      m_outParams == NULL ? EMPTY_OUT_PARAMS : *m_outParams);
+      m_outParams == NULL ? EMPTY_OUT_PARAMS : *m_outParams,
+      m_attrs.getAttrs());
   if (result->m_result.__isset.resultSet) {
     m_cursorId = result->m_result.resultSet.cursorId;
   } else {
@@ -117,7 +115,8 @@ std::unique_ptr<Result> PreparedStatement::execute(const Parameters& params) {
 
 int32_t PreparedStatement::executeUpdate(const Parameters& params) {
   thrift::UpdateResult result;
-  m_service->executePreparedUpdate(result, m_prepResult, params);
+  m_service->executePreparedUpdate(result, m_prepResult, params,
+      m_attrs.getAttrs());
   m_cursorId = thrift::snappydataConstants::INVALID_ID;
   if (result.__isset.warnings) {
     // set back in PreparedStatement
@@ -145,7 +144,8 @@ std::unique_ptr<ResultSet> PreparedStatement::executeQuery(
   std::unique_ptr<ResultSet> resultSet(
       new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
           scrollable));
-  m_service->executePreparedQuery(*rs, m_prepResult, params);
+  m_service->executePreparedQuery(*rs, m_prepResult, params,
+      m_attrs.getAttrs());
   m_cursorId = rs->cursorId;
   if (resultSet->hasWarnings()) {
     // set back in PreparedStatement
@@ -159,7 +159,8 @@ std::unique_ptr<ResultSet> PreparedStatement::executeQuery(
 std::vector<int32_t> PreparedStatement::executeBatch(
     const ParametersBatch& paramsBatch) {
   thrift::UpdateResult result;
-  m_service->executePreparedBatch(result, m_prepResult, paramsBatch.m_batch);
+  m_service->executePreparedBatch(result, m_prepResult, paramsBatch.m_batch,
+      m_attrs.getAttrs());
   m_cursorId = thrift::snappydataConstants::INVALID_ID;
   if (result.__isset.warnings) {
     // set back in PreparedStatement

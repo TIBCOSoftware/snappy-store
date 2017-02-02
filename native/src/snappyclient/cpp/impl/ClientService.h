@@ -101,7 +101,7 @@ namespace impl {
 
     thrift::HostAddress m_currentHostAddr;
     std::vector<thrift::HostAddress> m_connHosts;
-    int32_t m_connId;
+    int64_t m_connId;
     std::string m_token;
     bool m_isOpen;
 
@@ -221,17 +221,21 @@ namespace impl {
 
     void executePrepared(thrift::StatementResult& result,
         thrift::PrepareResult& prepResult, const thrift::Row& params,
-        const std::map<int32_t, thrift::OutputParameter>& outputParams);
+        const std::map<int32_t, thrift::OutputParameter>& outputParams,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedUpdate(thrift::UpdateResult& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params);
+        thrift::PrepareResult& prepResult, const thrift::Row& params,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedQuery(thrift::RowSet& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params);
+        thrift::PrepareResult& prepResult, const thrift::Row& params,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedBatch(thrift::UpdateResult& result,
         thrift::PrepareResult& prepResult,
-        const std::vector<thrift::Row>& paramsBatch);
+        const std::vector<thrift::Row>& paramsBatch,
+        const thrift::StatementAttrs& attrs);
 
     void prepareAndExecute(thrift::StatementResult& result,
         const std::string& sql,
@@ -285,12 +289,10 @@ namespace impl {
 
     void rollbackTransaction(const bool startNewTransaction);
 
-    bool prepareCommitTransaction();
-
     void fetchActiveConnections(
         std::vector<thrift::ConnectionProperties>& result);
 
-    void fetchActiveStatements(std::map<int32_t, std::string>& result);
+    void fetchActiveStatements(std::map<int64_t, std::string>& result);
 
     void getServiceMetaData(thrift::ServiceMetaData& result);
 

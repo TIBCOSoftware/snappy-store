@@ -44,6 +44,7 @@ import java.net.Socket;
 import java.net.SocketException;
 
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.pivotal.gemfirexd.Attribute;
 import io.snappydata.thrift.HostAddress;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -75,9 +76,11 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
   private volatile int timeout;
 
   private int inputBufferSize = SystemProperties.getClientInstance()
-      .getSocketInputBufferSize();
+      .getInteger(Attribute.SOCKET_INPUT_BUFFER_SIZE,
+          SnappyTSocket.DEFAULT_BUFFER_SIZE);
   private int outputBufferSize = SystemProperties.getClientInstance()
-      .getSocketOutputBufferSize();
+      .getInteger(Attribute.SOCKET_INPUT_BUFFER_SIZE,
+          SnappyTSocket.DEFAULT_BUFFER_SIZE);
 
   /**
    * Constructor that takes an already created socket.
@@ -230,10 +233,8 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
   protected void setProperties(Socket socket, int timeout,
       SocketParameters params, SystemProperties props)
       throws TTransportException {
-    this.inputBufferSize = params.getInputBufferSize(props
-        .getSocketInputBufferSize());
-    this.outputBufferSize = params.getOutputBufferSize(props
-        .getSocketOutputBufferSize());
+    this.inputBufferSize = params.getInputBufferSize(this.inputBufferSize);
+    this.outputBufferSize = params.getInputBufferSize(this.outputBufferSize);
     try {
       socket.setSoLinger(false, 0);
       socket.setTcpNoDelay(true);
