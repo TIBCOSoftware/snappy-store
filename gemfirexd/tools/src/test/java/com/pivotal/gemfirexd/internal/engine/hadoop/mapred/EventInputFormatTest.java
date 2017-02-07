@@ -563,14 +563,22 @@ public class EventInputFormatTest extends JdbcTestBase {
   
   @Override
   public void setUp() throws Exception {
-    FileUtil.delete(new File(HDFS_DIR));
+    try {
+      FileUtil.delete(new File(HDFS_DIR));
+    } catch (IOException ioe) {
+      // ignore
+    }
     super.setUp();
   }
 
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
-    FileUtil.delete(new File(HDFS_DIR));
+    try {
+      FileUtil.delete(new File(HDFS_DIR));
+    } catch (IOException ioe) {
+      // ignore
+    }
   }
 
   public EventInputFormatTest(String name) {

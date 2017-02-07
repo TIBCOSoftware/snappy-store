@@ -139,9 +139,7 @@ public abstract class ThriftUtils {
 
   public static ByteBuffer readByteBuffer(TNonblockingTransport transport,
       int length) throws TTransportException {
-    if (length == 0) {
-      return ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
-    }
+
     if (transport.getBytesRemainingInBuffer() >= length) {
       ByteBuffer buffer = ByteBuffer.wrap(transport.getBuffer(),
           transport.getBufferPosition(), length);
@@ -149,12 +147,16 @@ public abstract class ThriftUtils {
       return buffer;
     }
 
-    // use normal byte array if length is not large else use direct ByteBuffer
-    // since latter has additional overheads of allocation and finalization
+    // use normal byte array if length is not large since direct byte buffer
+    // has additional overheads of allocation and finalization
     if (length <= (SocketParameters.DEFAULT_BUFFER_SIZE >>> 1)) {
-      byte[] buffer = new byte[length];
-      transport.readAll(buffer, 0, length);
-      return ByteBuffer.wrap(buffer);
+      if (length == 0) {
+        return ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
+      } else {
+        byte[] buffer = new byte[length];
+        transport.readAll(buffer, 0, length);
+        return ByteBuffer.wrap(buffer);
+      }
     }
 
     // use Platform.allocate which does not have the smallish limit used
