@@ -51,9 +51,7 @@ import javax.net.ssl.SSLEngine;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.InputStreamChannel;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
-import com.pivotal.gemfirexd.Attribute;
 import io.snappydata.thrift.HostAddress;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -69,13 +67,6 @@ public final class SnappyTSocket extends TNonblockingTransport implements
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(SnappyTSocket.class.getName());
-
-  // these are the defaults for the per-socket TCP keepalive parameters
-  public static final int DEFAULT_KEEPALIVE_IDLE = 20;
-  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
-  public static final int DEFAULT_KEEPALIVE_CNT = 10;
-
-  public static final int DEFAULT_BUFFER_SIZE = 32 * 1024;
 
   /**
    * Wrapped SocketChannel object.
@@ -100,10 +91,8 @@ public final class SnappyTSocket extends TNonblockingTransport implements
    */
   private volatile int timeout;
 
-  private int inputBufferSize = SystemProperties.getClientInstance()
-      .getInteger(Attribute.SOCKET_INPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
-  private int outputBufferSize = SystemProperties.getClientInstance()
-      .getInteger(Attribute.SOCKET_INPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
+  private int inputBufferSize = SocketParameters.DEFAULT_BUFFER_SIZE;
+  private int outputBufferSize = SocketParameters.DEFAULT_BUFFER_SIZE;
 
   /**
    * Underlying inputStream
@@ -122,14 +111,10 @@ public final class SnappyTSocket extends TNonblockingTransport implements
    *
    * @param srvChannel Already created socket object from server accept
    * @param params     Socket parameters like buffer sizes, keep-alive settings
-   * @param props      the system properties instance to initialize global
-   *                   socket options like keepalive and buffer sizes that
-   *                   have not been set in params
    * @throws TTransportException if there is an error setting up the streams
    */
   public SnappyTSocket(SocketChannel srvChannel, boolean useSSL,
-      boolean blocking, int timeout, SocketParameters params,
-      SystemProperties props) throws TTransportException {
+      boolean blocking, SocketParameters params) throws TTransportException {
     if (!srvChannel.isConnected())
       throw new TTransportException(TTransportException.NOT_OPEN,
           "Socket must already be connected");
@@ -139,7 +124,7 @@ public final class SnappyTSocket extends TNonblockingTransport implements
         getSocket().getPort());
     try {
       srvChannel.configureBlocking(blocking);
-      setProperties(srvChannel.socket(), timeout, params, props);
+      setProperties(srvChannel.socket(), params.getReadTimeout(), params);
 
       this.dataChannel = initChannel(srvChannel.getRemoteAddress().toString(),
           null, useSSL, params, false);
@@ -161,15 +146,12 @@ public final class SnappyTSocket extends TNonblockingTransport implements
    *
    * @param host   Remote HostAddress including port
    * @param params Socket parameters like buffer sizes, keep-alive settings
-   * @param props  the system properties instance to initialize global
-   *               socket options like keepalive and buffer sizes that
-   *               have not been set in params
    */
   public SnappyTSocket(HostAddress host, String clientId, boolean useSSL,
-      boolean blocking, boolean framedWrites, SocketParameters params,
-      SystemProperties props) throws TTransportException {
+      boolean blocking, boolean framedWrites, SocketParameters params)
+      throws TTransportException {
     this(host.resolveHost(), host.getPort(), clientId, useSSL, blocking,
-        framedWrites, params, props, params.getReadTimeout(0));
+        framedWrites, params.getReadTimeout(), params);
   }
 
   /**
@@ -177,22 +159,19 @@ public final class SnappyTSocket extends TNonblockingTransport implements
    *
    * @param srvAddress Resolved remote server address
    * @param port       Remote port
+   * @param timeout    Any explicit socket timeout or zero if using defaults
+   *                   from <code>params</code>
    * @param params     Socket parameters like buffer sizes, keep-alive settings
-   * @param props      the system properties instance to initialize global
-   *                   socket options like keepalive and buffer sizes that
-   *                   have not been set in params
-   * @param timeout    Socket timeout
    */
   public SnappyTSocket(InetAddress srvAddress, int port, String clientId,
       boolean useSSL, boolean blocking, boolean framedWrites,
-      SocketParameters params, SystemProperties props,
-      int timeout) throws TTransportException {
+      int timeout, SocketParameters params) throws TTransportException {
     try {
       this.socketChannel = initSocket(blocking);
       this.socketAddress = new InetSocketAddress(srvAddress, port);
       this.framedWrites = framedWrites;
 
-      setProperties(socketChannel.socket(), timeout, params, props);
+      setProperties(socketChannel.socket(), timeout, params);
       this.dataChannel = openChannel(clientId, useSSL, params);
     } catch (IOException ioe) {
       LOGGER.warn("Failed to create or configure socket.", ioe);
@@ -250,48 +229,27 @@ public final class SnappyTSocket extends TNonblockingTransport implements
     this.timeout = timeout;
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void setTimeout(int timeout, SocketParameters params,
-      SystemProperties props) throws SocketException {
-    this.timeout = setTimeout(getSocket(), timeout, params, props);
-  }
-
-  protected static int setTimeout(Socket socket, int timeout,
-      SocketParameters params, SystemProperties props) throws SocketException {
-    socket.setSoTimeout(timeout);
-    int defaultIdle = props.getInteger(Attribute.KEEPALIVE_IDLE,
-        DEFAULT_KEEPALIVE_IDLE);
-    int defaultInterval = props.getInteger(Attribute.KEEPALIVE_INTVL,
-        DEFAULT_KEEPALIVE_INTVL);
-    int defaultCount = props.getInteger(Attribute.KEEPALIVE_CNT,
-        DEFAULT_KEEPALIVE_CNT);
+  protected static void setTimeout(Socket socket, int timeout,
+      SocketParameters params) throws SocketException {
+    socket.setSoTimeout(timeout != 0 ? timeout : params.getReadTimeout());
     ClientSharedUtils.setKeepAliveOptions(socket, null,
-        params.getKeepAliveIdle(defaultIdle),
-        params.getKeepAliveInterval(defaultInterval),
-        params.getKeepAliveCount(defaultCount));
-    return timeout;
+        params.getKeepAliveIdle(), params.getKeepAliveInterval(),
+        params.getKeepAliveCount());
   }
 
   /**
    * Sets the socket properties like timeout, keepalive, buffer sizes.
    *
-   * @param timeout Milliseconds timeout
-   * @param params  Socket parameters like buffer sizes, keep-alive settings
-   * @param props   the system properties instance to initialize global
-   *                socket options like keepalive and buffer sizes that
-   *                have not been set in params
+   * @param params Socket parameters like buffer sizes, keep-alive settings
    */
   protected void setProperties(Socket socket, int timeout,
-      SocketParameters params, SystemProperties props)
-      throws TTransportException, IOException {
-    this.inputBufferSize = params.getInputBufferSize(this.inputBufferSize);
-    this.outputBufferSize = params.getOutputBufferSize(this.outputBufferSize);
+      SocketParameters params) throws TTransportException, IOException {
+    this.inputBufferSize = params.getInputBufferSize();
+    this.outputBufferSize = params.getOutputBufferSize();
     socket.setSoLinger(false, 0);
     socket.setTcpNoDelay(true);
-    this.timeout = setTimeout(socket, timeout, params, props);
+    setTimeout(socket, timeout, params);
+    this.timeout = timeout;
   }
 
   /**
@@ -407,20 +365,19 @@ public final class SnappyTSocket extends TNonblockingTransport implements
   @Override
   public final int read(byte[] buf, int off, int len)
       throws TTransportException {
-    int bytesRead;
     try {
-      bytesRead = this.inputStream.read(buf, off, len);
+      int bytesRead = this.inputStream.read(buf, off, len);
+      if (bytesRead >= 0) {
+        return bytesRead;
+      } else {
+        throw new TTransportException(TTransportException.END_OF_FILE,
+            "Channel closed.");
+      }
     } catch (ClosedChannelException cce) {
       throw new TTransportException(TTransportException.NOT_OPEN,
           "Cannot read from closed channel.");
     } catch (IOException ioe) {
       throw new TTransportException(TTransportException.UNKNOWN, ioe);
-    }
-    if (bytesRead >= 0) {
-      return bytesRead;
-    } else {
-      throw new TTransportException(TTransportException.END_OF_FILE,
-          "Channel closed.");
     }
   }
 

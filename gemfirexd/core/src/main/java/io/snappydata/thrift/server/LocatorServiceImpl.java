@@ -39,7 +39,6 @@ import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import javax.transaction.xa.XAException;
@@ -66,14 +65,7 @@ import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.SnappyExceptionData;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
-import org.apache.thrift.ProcessFunction;
-import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TMessage;
-import org.apache.thrift.protocol.TMessageType;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TProtocolUtil;
-import org.apache.thrift.protocol.TType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,10 +124,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
    * connection to use the main {@link SnappyDataService.Iface} thrift API.
    * A list of servers to be excluded from consideration can be passed as a
    * comma-separated string (e.g. to ignore the failed server during failover).
-   * <p>
-   * If no server is available (after excluding the "failedServers"), then this
-   * throws a SnappyException with SQLState "40XD2" (
-   * {@link SQLState#DATA_CONTAINER_VANISHED}).
    */
   @Override
   public final HostAddress getPreferredServer(Set<ServerType> serverTypes,
@@ -201,10 +189,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
    * <p>
    * This is primarily to avoid making two calls to the servers from the clients
    * during connection creation or failover.
-   * <p>
-   * If no server is available (after excluding the "failedServers"), then this
-   * throws a SnappyException with SQLState "40XD2" (
-   * {@link SQLState#DATA_CONTAINER_VANISHED}).
    */
   @Override
   public final List<HostAddress> getAllServersWithPreferredServer(
@@ -246,59 +230,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
           "server and all hosts " + prefAndAllServers);
     }
     return prefAndAllServers;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void closeConnection() {
-    // nothing to be done here; only signals the processor to cleanly close
-    // server-side socket
-  }
-
-  /**
-   * Custom Processor implementation to handle closeConnection by closing
-   * server-side connection cleanly.
-   */
-  public static final class Processor extends
-      LocatorService.Processor<LocatorServiceImpl> {
-
-    private final LocatorServiceImpl inst;
-    private final HashMap<String, ProcessFunction<LocatorServiceImpl, ?>> fnMap;
-
-    public Processor(LocatorServiceImpl inst) {
-      super(inst);
-      this.inst = inst;
-      this.fnMap = new HashMap<>(super.getProcessMapView());
-    }
-
-    @Override
-    public final boolean process(final TProtocol in, final TProtocol out)
-        throws TException {
-      final TMessage msg = in.readMessageBegin();
-      final ProcessFunction<LocatorServiceImpl, ?> fn = this.fnMap
-          .get(msg.name);
-      if (fn != null) {
-        fn.process(msg.seqid, in, out, this.inst);
-        // terminate connection on receiving closeConnection
-        // direct class comparison should be the fastest way
-        return fn.getClass() != LocatorService.Processor.closeConnection.class;
-      }
-      else {
-        TProtocolUtil.skip(in, TType.STRUCT);
-        in.readMessageEnd();
-        TApplicationException x = new TApplicationException(
-            TApplicationException.UNKNOWN_METHOD, "Invalid method name: '"
-                + msg.name + "'");
-        out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION,
-            msg.seqid));
-        x.write(out);
-        out.writeMessageEnd();
-        out.getTransport().flush();
-        return true;
-      }
-    }
   }
 
   public final CancelCriterion getCancelCriterion() {

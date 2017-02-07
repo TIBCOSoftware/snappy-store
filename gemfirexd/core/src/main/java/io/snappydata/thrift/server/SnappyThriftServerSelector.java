@@ -426,8 +426,9 @@ public final class SnappyThriftServerSelector extends TServer {
       }
 
       cleanupSelectionKey(data);
-    } catch (TTransportException tte) {
+    } catch (TTransportException te) {
       // Assume the client died and continue
+      LOGGER.debug("Thrift error occurred during processing of message.", te);
       cleanupSelectionKey(data);
     } catch (TProtocolException tpe) {
       // Assume the client died and continue
@@ -435,7 +436,7 @@ public final class SnappyThriftServerSelector extends TServer {
           + "message. Closing this connection.", tpe);
       cleanupSelectionKey(data);
     } catch (TException te) {
-      LOGGER.error("Thrift error occurred during processing of message.", te);
+      LOGGER.warn("Thrift error occurred during processing of message.", te);
       cleanupSelectionKey(data);
     } catch (Exception e) {
       LOGGER.error("Error occurred during processing of message.", e);

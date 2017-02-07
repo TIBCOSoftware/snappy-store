@@ -37,8 +37,6 @@ package io.snappydata.thrift.common;
 
 import java.net.SocketException;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
-
 /**
  * Interface that defines timeout and various keep-alive settings on the socket.
  */
@@ -60,17 +58,6 @@ public interface SocketTimeout {
    * @param timeout read timeout (SO_TIMEOUT) in milliseconds
    */
   void setSoTimeout(int timeout) throws SocketException;
-
-  /**
-   * Sets the socket read timeout and keep-alive settings.
-   *
-   * @param timeout read timeout (SO_TIMEOUT) in milliseconds
-   * @param params  Socket parameters including buffer sizes
-   *                and keep-alive settings
-   * @param props   System properties instance to use for global settings
-   */
-  void setTimeout(int timeout, SocketParameters params,
-      SystemProperties props) throws SocketException;
 
   /**
    * Close this socket

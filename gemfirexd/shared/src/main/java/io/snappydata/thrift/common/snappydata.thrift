@@ -708,8 +708,6 @@ service LocatorService {
       // get a server from among given server groups (union)
       2: set<string> serverGroups,
       3: set<HostAddress> failedServers) throws (1: SnappyException error)
-
-  oneway void closeConnection()
 }
 
 

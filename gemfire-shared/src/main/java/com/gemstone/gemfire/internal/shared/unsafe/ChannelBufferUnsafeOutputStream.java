@@ -19,6 +19,7 @@ package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferOutputStream;
@@ -91,7 +92,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
   }
 
   protected ByteBuffer allocateBuffer(int bufferSize) {
-    return ByteBuffer.allocateDirect(bufferSize);
+    return ByteBuffer.allocateDirect(bufferSize).order(ByteOrder.nativeOrder());
   }
 
   protected final void putByte(byte b) throws IOException {
@@ -151,13 +152,8 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    */
   @Override
   public final void write(byte[] b, int off, int len) throws IOException {
-    if (UnsafeHolder.checkBounds(off, len, b.length)) {
-      write_(b, off, len);
-    }
-    else {
-      throw new IndexOutOfBoundsException("offset=" + off + " length=" + len
-          + " size=" + b.length);
-    }
+    UnsafeHolder.checkBounds(b.length, off, len);
+    write_(b, off, len);
   }
 
   /**

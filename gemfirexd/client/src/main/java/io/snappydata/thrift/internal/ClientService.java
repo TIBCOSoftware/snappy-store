@@ -35,7 +35,6 @@ import java.util.logging.Level;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.Attribute;
@@ -53,8 +52,6 @@ import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.*;
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
@@ -421,20 +418,22 @@ public final class ClientService extends ReentrantLock implements LobService {
               failedServers, this.serverGroups, false, failure);
         }
 
-        final SystemProperties sysProps = SystemProperties.getClientInstance();
         final TTransport currentTransport;
-        final int readTimeout;
+        int readTimeout;
         if (this.clientService != null) {
           currentTransport = this.clientService
               .getOutputProtocol().getTransport();
           if (currentTransport instanceof SocketTimeout) {
             readTimeout = ((SocketTimeout)currentTransport).getRawTimeout();
+            if (readTimeout == 0) { // not set
+              readTimeout = socketParams.getReadTimeout();
+            }
           } else {
-            readTimeout = socketParams.getReadTimeout(0);
+            readTimeout = socketParams.getReadTimeout();
           }
         } else {
           currentTransport = null;
-          readTimeout = socketParams.getReadTimeout(0);
+          readTimeout = socketParams.getReadTimeout();
         }
 
         TTransport inTransport, outTransport;
@@ -442,18 +441,18 @@ public final class ClientService extends ReentrantLock implements LobService {
         final SnappyTSocket socket = new SnappyTSocket(
             hostAddr.resolveHost(), hostAddr.getPort(), connArgs.clientID,
             getServerType().isThriftSSL(), true, ThriftUtils
-            .isThriftSelectorServer(), socketParams, sysProps, readTimeout);
+            .isThriftSelectorServer(), readTimeout, socketParams);
         if (this.framedTransport) {
           inTransport = outTransport = new TFramedTransport(socket);
         } else {
           inTransport = outTransport = socket;
         }
         if (getServerType().isThriftBinaryProtocol()) {
-          inProtocol = new TBinaryProtocol(inTransport);
-          outProtocol = new TBinaryProtocol(outTransport);
+          inProtocol = new TBinaryProtocolOpt(inTransport, true);
+          outProtocol = new TBinaryProtocolOpt(outTransport, true);
         } else {
-          inProtocol = new TCompactProtocol(inTransport);
-          outProtocol = new TCompactProtocol(outTransport);
+          inProtocol = new TCompactProtocolOpt(inTransport, true);
+          outProtocol = new TCompactProtocolOpt(outTransport, true);
         }
 
         SnappyDataService.Client service = new SnappyDataService.Client(

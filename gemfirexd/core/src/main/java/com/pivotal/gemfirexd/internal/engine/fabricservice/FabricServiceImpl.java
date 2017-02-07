@@ -81,9 +81,7 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import io.snappydata.jdbc.AutoloadedDriver;
 import io.snappydata.thrift.ServerType;
-import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.SocketParameters;
-import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
 import io.snappydata.thrift.server.SnappyDataServiceImpl;
 import io.snappydata.thrift.server.SnappyThriftServer;
@@ -955,14 +953,6 @@ public abstract class FabricServiceImpl implements FabricService {
       }
 
       this.serialNumber = DistributionAdvisor.createSerialNumber();
-      // Create a distribution advisor to take make this NetworkServer appear
-      // as a GFE BridgeServer and enable publishing of load information.
-      // Ignore sending data if this is a stand-alone locator, but still
-      // have the advisor to reply with proper profile
-      this.advisor = BridgeServerAdvisor.createBridgeServerAdvisor(this);
-      if (isServer()) {
-        this.advisor.handshake();
-      }
 
       // [soubhik] honor drda system properties to be overridden from here. The
       // properties argument in boot() is not honored by DRDAServer so instead
@@ -1016,10 +1006,19 @@ public abstract class FabricServiceImpl implements FabricService {
         }
       }
 
+      // Create a distribution advisor to make this NetworkServer appear
+      // as a GFE BridgeServer and enable publishing of load information.
+      // Ignore sending data if this is a stand-alone locator, but still
+      // have the advisor to reply with proper profile
+      this.advisor = BridgeServerAdvisor.createBridgeServerAdvisor(this);
+      if (isServer()) {
+        this.advisor.handshake();
+      }
+
       if (GemFireXDUtils.TraceFabricServiceBoot) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
             (!this.isPreStarted ? "Started " : "Wrapped ") + this
-                + " sucessfully (prefer-ipaddress="
+                + " successfully (prefer-ipaddress="
                 + this.preferIPAddressForClients + "). status "
                 + (status() ? State.RUNNING : " UNKNOWN "));
       }
@@ -1274,7 +1273,7 @@ public abstract class FabricServiceImpl implements FabricService {
         }
         */
       }
-      if (this.advisor != null && this.advisor.isInitialized()) {
+      if (isServer() && this.advisor != null && this.advisor.isInitialized()) {
         ConnectionSignaller.getInstance().add(this);
       }
     }
@@ -1313,7 +1312,7 @@ public abstract class FabricServiceImpl implements FabricService {
         }
         */
       }
-      if (this.advisor != null && this.advisor.isInitialized()) {
+      if (isServer() && this.advisor != null && this.advisor.isInitialized()) {
         ConnectionSignaller.getInstance().add(this);
       }
     }
@@ -1489,24 +1488,23 @@ public abstract class FabricServiceImpl implements FabricService {
         final boolean useFramedTransport;
         boolean useSSL;
         if (networkProps != null) {
-          useBinaryProtocol = Boolean.parseBoolean((String)networkProps
-              .remove(Attribute.THRIFT_USE_BINARY_PROTOCOL));
-          useFramedTransport = Boolean.parseBoolean((String)networkProps
-              .remove(Attribute.THRIFT_USE_FRAMED_TRANSPORT));
-          useSSL = Boolean.parseBoolean((String)networkProps
-              .remove(Attribute.THRIFT_USE_SSL));
+          useBinaryProtocol = Boolean.parseBoolean(networkProps.getProperty(
+              Attribute.THRIFT_USE_BINARY_PROTOCOL));
+          useFramedTransport = Boolean.parseBoolean(networkProps.getProperty(
+              Attribute.THRIFT_USE_FRAMED_TRANSPORT));
+          useSSL = Boolean.parseBoolean(networkProps.getProperty(
+              Attribute.THRIFT_USE_SSL));
           // set SSL properties (csv format) into SSL params in SocketParameters
-          propValue = (String)networkProps
-              .remove(Attribute.THRIFT_SSL_PROPERTIES);
+          propValue = networkProps.getProperty(Attribute.THRIFT_SSL_PROPERTIES);
           if (propValue != null) {
             useSSL = true;
-            ThriftUtils.getSSLParameters(socketParams, propValue);
+            ThriftUtils.getSSLParameters(this.socketParams, propValue);
           }
           // parse remaining properties like socket buffer sizes, read timeout
           // and keep alive settings
           for (SocketParameters.Param param : SocketParameters
               .getAllParamsNoSSL()) {
-            propValue = (String)networkProps.remove(param.getPropertyName());
+            propValue = networkProps.getProperty(param.getPropertyName());
             if (propValue != null) {
               param.setParameter(this.socketParams, propValue);
             }
@@ -1524,9 +1522,6 @@ public abstract class FabricServiceImpl implements FabricService {
             socketParams, this);
       } catch (TTransportException te) {
         throw new GemFireXDRuntimeException(te);
-      } catch (SnappyException se) {
-        throw new GemFireXDRuntimeException(
-            ThriftExceptionUtil.newSQLException(se));
       }
     }
 

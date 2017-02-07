@@ -1053,18 +1053,16 @@ public abstract class ClientSharedUtils {
     if (wrapsFullArray(buffer)) {
       final byte[] bytes = buffer.array();
       sb.append(toHexChars(bytes, 0, bytes.length));
-    }
-    else {
-      int pos = buffer.position();
+    } else {
       final int limit = buffer.limit();
-      while (pos++ < limit) {
+      for (int pos = buffer.position(); pos < limit; pos++) {
         byte b = buffer.get(pos);
         toHexChars(b, sb);
       }
     }
   }
 
-  static final int toHexChars(final byte b, final char[] chars, int index) {
+  static int toHexChars(final byte b, final char[] chars, int index) {
     final int highByte = (b & 0xf0) >>> 4;
     final int lowByte = (b & 0x0f);
     chars[index] = HEX_DIGITS[highByte];
@@ -1677,6 +1675,7 @@ public abstract class ClientSharedUtils {
     }
     ByteBuffer newBuffer = useDirectBuffer
         ? ByteBuffer.allocateDirect(newLength) : ByteBuffer.allocate(newLength);
+    newBuffer.order(buffer.order());
     buffer.flip();
     newBuffer.put(buffer);
     return newBuffer;

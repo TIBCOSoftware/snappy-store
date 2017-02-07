@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
@@ -54,12 +53,13 @@ import io.snappydata.thrift.ServerType;
 import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.SnappyTSocket;
 import io.snappydata.thrift.common.SocketParameters;
+import io.snappydata.thrift.common.TBinaryProtocolOpt;
+import io.snappydata.thrift.common.TCompactProtocolOpt;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 
 /**
@@ -70,6 +70,7 @@ import org.apache.thrift.transport.TTransport;
  */
 final class ControlConnection {
   private final SocketParameters socketParams;
+  private final boolean framedTransport;
   private final Set<ServerType> snappyServerTypeSet;
   // TODO: SW: the initial set of locators created from initial connection
   // into this DS need not be static; we should refresh/adjust if later
@@ -128,6 +129,7 @@ final class ControlConnection {
 
   ControlConnection(ClientService service) {
     this.socketParams = service.socketParams;
+    this.framedTransport = service.framedTransport;
     this.snappyServerTypeSet = Collections.singleton(getServerType());
     this.locators = service.connHosts;
     this.controlHosts = new ArrayList<>(service.connHosts);
@@ -251,7 +253,7 @@ final class ControlConnection {
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
               "Got preferred server " + preferredServer
                   + " using control connection to " + this.controlHost
-                  + (preferredServer.getPort() <= 0 ? "" : " (trying random "
+                  + (preferredServer.getPort() > 0 ? "" : " (trying random "
                   + "server since no preferred server received)"));
         }
         if (preferredServer.getPort() <= 0) {
@@ -337,7 +339,6 @@ final class ControlConnection {
       Set<HostAddress> failedServers, boolean checkFailedControlHosts,
       Throwable failure) throws SnappyException {
 
-    final SystemProperties sysProps = SystemProperties.getClientInstance();
     NEXT_SERVER: for (HostAddress controlAddr : this.controlHosts) {
       if (checkFailedControlHosts && failedServers != null &&
           failedServers.contains(controlAddr)) {
@@ -368,16 +369,20 @@ final class ControlConnection {
                 SanityManager.TraceClientConn ? new Throwable() : null);
           }
 
-          inTransport = outTransport = new SnappyTSocket(controlAddr, null,
+          final SnappyTSocket socket = new SnappyTSocket(controlAddr, null,
               getServerType().isThriftSSL(), true, ThriftUtils
-              .isThriftSelectorServer(), this.socketParams, sysProps);
-          if (getServerType().isThriftBinaryProtocol()) {
-            inProtocol = new TBinaryProtocol(inTransport);
-            outProtocol = new TBinaryProtocol(outTransport);
+              .isThriftSelectorServer(), this.socketParams);
+          if (this.framedTransport) {
+            inTransport = outTransport = new TFramedTransport(socket);
+          } else {
+            inTransport = outTransport = socket;
           }
-          else {
-            inProtocol = new TCompactProtocol(inTransport);
-            outProtocol = new TCompactProtocol(outTransport);
+          if (getServerType().isThriftBinaryProtocol()) {
+            inProtocol = new TBinaryProtocolOpt(inTransport, true);
+            outProtocol = new TBinaryProtocolOpt(outTransport, true);
+          } else {
+            inProtocol = new TCompactProtocolOpt(inTransport, true);
+            outProtocol = new TCompactProtocolOpt(outTransport, true);
           }
           break;
         } catch (TException te) {

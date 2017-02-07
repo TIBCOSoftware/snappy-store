@@ -47,7 +47,7 @@ import java.security.*;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.pivotal.gemfirexd.Attribute;
-import io.snappydata.thrift.common.SnappyTSocket;
+import io.snappydata.thrift.common.SocketParameters;
 
 final class ClientThread extends Thread {
 
@@ -99,11 +99,11 @@ final class ClientThread extends Thread {
                           final SystemProperties props = SystemProperties
                               .getServerInstance();
                           int defaultIdle = props.getInteger(Attribute.KEEPALIVE_IDLE,
-                              SnappyTSocket.DEFAULT_KEEPALIVE_IDLE);
+                              SocketParameters.DEFAULT_KEEPALIVE_IDLE);
                           int defaultInterval = props.getInteger(Attribute.KEEPALIVE_INTVL,
-                              SnappyTSocket.DEFAULT_KEEPALIVE_INTVL);
+                              SocketParameters.DEFAULT_KEEPALIVE_INTVL);
                           int defaultCount = props.getInteger(Attribute.KEEPALIVE_CNT,
-                              SnappyTSocket.DEFAULT_KEEPALIVE_CNT);
+                              SocketParameters.DEFAULT_KEEPALIVE_CNT);
                           ClientSharedUtils.setKeepAliveOptions(clientSocket,
                               null, defaultIdle, defaultInterval, defaultCount);
                         }

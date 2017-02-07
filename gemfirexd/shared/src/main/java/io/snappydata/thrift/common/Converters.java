@@ -48,8 +48,6 @@ import java.util.Map;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.JDBC40Translation;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.BlobChunk;
-import io.snappydata.thrift.ClobChunk;
 import io.snappydata.thrift.Decimal;
 import io.snappydata.thrift.SnappyType;
 import io.snappydata.thrift.snappydataConstants;
@@ -3183,79 +3181,6 @@ public abstract class Converters {
 
   public static long getTimestampNanos(java.util.Date date) {
     return date.getTime() * 1000000L;
-  }
-
-  public static String getClobAsString(ClobChunk clob, LobService lobService)
-      throws SQLException {
-    if (clob.last) {
-      return clob.chunk;
-    }
-
-    final long totalLength = clob.getTotalLength();
-    if (totalLength <= 0) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_NONPOSITIVE_LENGTH, null, totalLength);
-    }
-    if (totalLength > Integer.MAX_VALUE) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, Long.toString(totalLength),
-          Long.toString(Integer.MAX_VALUE));
-    }
-    if (!clob.isSetLobId()) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.LOB_LOCATOR_INVALID, new RuntimeException("missing LOB id"));
-    }
-
-    final long lobId = clob.lobId;
-    final StringBuilder sb = new StringBuilder((int)totalLength);
-    String chunk = clob.chunk;
-    sb.append(chunk);
-    int offset = 0;
-    while (!clob.last) {
-      int chunkSize = chunk.length();
-      offset += chunkSize;
-      clob = lobService.getClobChunk(lobId, offset, chunkSize, true);
-      chunk = clob.chunk;
-      sb.append(chunk);
-    }
-    return sb.toString();
-  }
-
-  public static byte[] getBlobAsBytes(BlobChunk blob, LobService lobService)
-      throws SQLException {
-    if (blob.last) {
-      return blob.getChunk();
-    }
-
-    final long totalLength = blob.getTotalLength();
-    if (totalLength <= 0) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_NONPOSITIVE_LENGTH, null, totalLength);
-    }
-    if (totalLength > Integer.MAX_VALUE) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, Long.toString(totalLength),
-          Long.toString(Integer.MAX_VALUE));
-    }
-    if (!blob.isSetLobId()) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.LOB_LOCATOR_INVALID, new RuntimeException("missing LOB id"));
-    }
-
-    final long lobId = blob.lobId;
-    final byte[] fullBytes = new byte[(int)totalLength];
-    byte[] chunk = blob.getChunk();
-    int chunkSize = chunk.length;
-    System.arraycopy(chunk, 0, fullBytes, 0, chunkSize);
-    int offset = 0;
-    while (!blob.last) {
-      offset += chunkSize;
-      blob = lobService.getBlobChunk(lobId, offset, chunkSize, true);
-      chunk = blob.getChunk();
-      chunkSize = chunk.length;
-      System.arraycopy(chunk, 0, fullBytes, offset, chunkSize);
-    }
-    return fullBytes;
   }
 
   public static Object getJavaObject(byte[] bytes, int columnPosition,

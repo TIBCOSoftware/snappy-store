@@ -118,8 +118,7 @@ public final class SnappyTServerSocket extends TNonblockingServerTransport {
     try {
       SocketChannel srvChannel = this.serverSockChannel.accept();
       return new SnappyTSocket(srvChannel, this.useSSL, this.clientBlocking,
-          this.socketParams.getReadTimeout(0), this.socketParams,
-          SystemProperties.getServerInstance());
+          this.socketParams);
     } catch (IOException ioe) {
       throw new TTransportException(ioe);
     }

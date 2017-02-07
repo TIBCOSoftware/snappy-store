@@ -39,6 +39,7 @@ package io.snappydata.thrift.internal;
 import java.io.IOException;
 import java.io.InputStream;
 
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.pivotal.gemfirexd.internal.shared.common.io.DynamicByteArrayOutputStream;
 
 /**
@@ -177,7 +178,7 @@ public final class MemInputStream extends InputStream {
    */
   @Override
   public synchronized int read(byte[] buf, int offset, int length) {
-    checkOffsetAndCount(buf.length, offset, length);
+    UnsafeHolder.checkBounds(buf.length, offset, length);
     // Are there any bytes available?
     final int count = buffer.getUsed();
     if (this.pos >= count) {
@@ -222,19 +223,6 @@ public final class MemInputStream extends InputStream {
     final int count = buffer.getUsed();
     pos = count - pos < byteCount ? count : (int)(pos + byteCount);
     return pos - temp;
-  }
-
-  /**
-   * Checks that the range described by {@code offset} and {@code count}
-   * doesn't exceed {@code arrayLength}.
-   */
-  public static void checkOffsetAndCount(int arrayLength, int offset,
-      int count) {
-    if ((offset | count) < 0 || offset > arrayLength ||
-        arrayLength - offset < count) {
-      throw new ArrayIndexOutOfBoundsException("Array index out of range: " +
-          "length=" + arrayLength + " offset=" + offset + " count=" + count);
-    }
   }
 
   final byte[] getBuffer() {

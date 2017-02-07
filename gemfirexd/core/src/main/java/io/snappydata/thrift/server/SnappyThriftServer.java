@@ -52,7 +52,10 @@ import com.pivotal.gemfirexd.internal.engine.diag.SessionsVTI;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
+import io.snappydata.thrift.LocatorService;
 import io.snappydata.thrift.common.SocketParameters;
+import io.snappydata.thrift.common.TBinaryProtocolOpt;
+import io.snappydata.thrift.common.TCompactProtocolOpt;
 import io.snappydata.thrift.common.ThriftUtils;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -128,7 +131,7 @@ public final class SnappyThriftServer {
       // only locator service on non-server VMs
       LocatorServiceImpl service = new LocatorServiceImpl(hostAddress,
           this.thriftPort);
-      processor = new LocatorServiceImpl.Processor(service);
+      processor = new LocatorService.Processor<>(service);
       this.service = service;
     }
 
@@ -138,7 +141,8 @@ public final class SnappyThriftServer {
       final SnappyThriftServerThreadPool.Args serverArgs =
           new SnappyThriftServerThreadPool.Args(serverTransport);
       TProtocolFactory protocolFactory = useBinaryProtocol
-          ? new TBinaryProtocol.Factory() : new TCompactProtocol.Factory();
+          ? new TBinaryProtocolOpt.Factory(true)
+          : new TCompactProtocolOpt.Factory(true);
 
       serverArgs.processor(processor).protocolFactory(protocolFactory);
       if (useFramedTransport) {

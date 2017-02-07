@@ -134,7 +134,15 @@ public abstract class UnsafeHolder {
         : new ChannelBufferFramedOutputStream(channel, bufferSize));
   }
 
-  public static boolean checkBounds(int off, int len, int size) {
-    return ((off | len | (off + len) | (size - (off + len))) >= 0);
+  /**
+   * Checks that the range described by {@code offset} and {@code size}
+   * doesn't exceed {@code arrayLength}.
+   */
+  public static void checkBounds(int arrayLength, int offset, int len) {
+    if ((offset | len) < 0 || offset > arrayLength ||
+        arrayLength - offset < len) {
+      throw new ArrayIndexOutOfBoundsException("Array index out of range: " +
+          "length=" + arrayLength + " offset=" + offset + " length=" + len);
+    }
   }
 }

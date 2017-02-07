@@ -35,14 +35,21 @@
 
 package io.snappydata.thrift.common;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.EnumMap;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import io.snappydata.thrift.HostAddress;
-import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.TransactionAttribute;
+import org.apache.spark.unsafe.Platform;
+import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 /**
  * Some Thrift utility methods shared by client and server code. Only has static
@@ -101,7 +108,7 @@ public abstract class ThriftUtils {
    * parameters list.
    */
   public static void getSSLParameters(SocketParameters socketParams,
-      String sslProperties) throws SnappyException {
+      String sslProperties) {
     if (sslProperties != null && sslProperties.length() > 0) {
       socketParams.setHasSSLParams();
       SharedUtils.splitCSV(sslProperties, parseSSLParams, socketParams, null);
@@ -110,5 +117,52 @@ public abstract class ThriftUtils {
 
   public static EnumMap<TransactionAttribute, Boolean> newTransactionFlags() {
     return new EnumMap<>(TransactionAttribute.class);
+  }
+
+  public static byte[] toBytes(ByteBuffer buffer) {
+    if (ClientSharedUtils.wrapsFullArray(buffer)) {
+      return buffer.array();
+    } else {
+      final int numBytes = buffer.remaining();
+      final byte[] bytes = new byte[numBytes];
+      buffer.get(bytes, 0, numBytes);
+      return bytes;
+    }
+  }
+
+  public static ByteBuffer readDirectBuffer(TNonblockingTransport transport,
+      int length) throws TTransportException {
+    if (length == 0) {
+      return ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
+    }
+    ByteBuffer buffer = Platform.allocateDirectBuffer(length);
+    try {
+      while (length > 0) {
+        length -= transport.read(buffer);
+      }
+    } catch (IOException ioe) {
+      throw new TTransportException(ioe);
+    }
+    return buffer;
+  }
+
+  public static void writeDirectBuffer(ByteBuffer buffer,
+      TTransport transport, TNonblockingTransport nonblockingTransport,
+      int length) throws TTransportException {
+    if (buffer.hasArray()) {
+      transport.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
+          length);
+    } else if (nonblockingTransport != null) {
+      try {
+        while (length > 0) {
+          length -= nonblockingTransport.write(buffer);
+        }
+      } catch (IOException ioe) {
+        throw new TTransportException(ioe);
+      }
+    } else {
+      final byte[] bytes = toBytes(buffer);
+      transport.write(bytes, 0, length);
+    }
   }
 }

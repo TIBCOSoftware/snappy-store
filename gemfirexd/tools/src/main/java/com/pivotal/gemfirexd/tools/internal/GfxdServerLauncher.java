@@ -1118,39 +1118,40 @@ public class GfxdServerLauncher extends CacheServerLauncher {
   @Override
   protected void startAdditionalServices(Cache cache,
       Map<String, Object> options, Properties props) throws Exception {
-    String runNetServer = (String)options.get(RUN_NETSERVER);
-    if (runNetServer == null
-        || Boolean.valueOf(runNetServer).equals(Boolean.TRUE)) {
-      Properties networkProperties = new Properties();
-      if (props != null) {
-        networkProperties.putAll(props);
-      }
-      Object val = null;
-      String bindAddress = null;
-      int port = -1;
-      if ((val = options.get(getLWCAddressArgName())) != null) {
-        bindAddress = (String)val;
-      }
-      if ((val = options.get(getLWCPortArgName())) != null) {
-        port = Integer.parseInt((String)val);
-      }
-      getFabricServiceInstance().startNetworkServer(bindAddress, port,
-          networkProperties);
-    }
-
     // check for thrift server arguments
-    Object val;
-    if ((val = options.get(getThriftPortArgName())) != null) {
-      final int port = Integer.parseInt((String)val);
+    Object thriftPortObj = options.get(getThriftPortArgName());
+    if (thriftPortObj != null) {
+      final int port = Integer.parseInt((String)thriftPortObj);
       String bindAddress = null;
-      if ((val = options.get(getThriftAddressArgName())) != null) {
-        bindAddress = (String)val;
+      if ((thriftPortObj = options.get(getThriftAddressArgName())) != null) {
+        bindAddress = (String)thriftPortObj;
       }
       Properties networkProperties = new Properties();
       if (props != null) {
         networkProperties.putAll(props);
       }
       getFabricServiceInstance().startThriftServer(bindAddress, port,
+          networkProperties);
+    }
+
+    String runNetServer = (String)options.get(RUN_NETSERVER);
+    // default for run-netserver is true if no explicit thrift server present
+    if ((runNetServer == null && thriftPortObj == null)
+        || "true".equalsIgnoreCase(runNetServer)) {
+      Properties networkProperties = new Properties();
+      if (props != null) {
+        networkProperties.putAll(props);
+      }
+      Object lwcPortObj;
+      String bindAddress = null;
+      int port = -1;
+      if ((lwcPortObj = options.get(getLWCAddressArgName())) != null) {
+        bindAddress = (String)lwcPortObj;
+      }
+      if ((lwcPortObj = options.get(getLWCPortArgName())) != null) {
+        port = Integer.parseInt((String)lwcPortObj);
+      }
+      getFabricServiceInstance().startNetworkServer(bindAddress, port,
           networkProperties);
     }
   }

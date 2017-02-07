@@ -40,6 +40,8 @@ package io.snappydata.thrift.internal;
 import java.io.IOException;
 import java.io.Reader;
 
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
+
 /**
  * Extension of JDK StringReader to use a StringBuffer which can be shared
  * with StringWriter if required.
@@ -175,7 +177,7 @@ public final class MemStringReader extends Reader {
   public int read(char[] buf, int offset, int len) throws IOException {
     synchronized (lock) {
       checkNotClosed();
-      MemInputStream.checkOffsetAndCount(buf.length, offset, len);
+      UnsafeHolder.checkBounds(buf.length, offset, len);
       if (len == 0) {
         return 0;
       }

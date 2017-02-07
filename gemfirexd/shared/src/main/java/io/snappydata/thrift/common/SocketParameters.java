@@ -35,6 +35,7 @@
 
 package io.snappydata.thrift.common;
 
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.pivotal.gemfirexd.Attribute;
 import io.snappydata.thrift.ServerType;
 import org.apache.thrift.transport.TSSLTransportFactory;
@@ -44,6 +45,16 @@ import org.apache.thrift.transport.TSSLTransportFactory;
  */
 public class SocketParameters extends
     TSSLTransportFactory.TSSLTransportParameters {
+
+  // these are the defaults for the per-socket TCP keepalive parameters
+  public static final int DEFAULT_KEEPALIVE_IDLE = 20;
+  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
+  public static final int DEFAULT_KEEPALIVE_CNT = 10;
+
+  /**
+   * Default input and output socket buffer size.
+   */
+  public static final int DEFAULT_BUFFER_SIZE = 32 * 1024;
 
   private static final java.util.HashMap<String, Param> paramsMap =
       new java.util.HashMap<>();
@@ -182,8 +193,7 @@ public class SocketParameters extends
       public void setParameter(SocketParameters params, String value) {
         params.trustManagerType = value;
       }
-    }
-    ;
+    };
 
     private final String propertyName;
 
@@ -191,8 +201,7 @@ public class SocketParameters extends
       this.propertyName = propertyName;
       if (ssl) {
         sslParamsMap.put(propertyName, this);
-      }
-      else {
+      } else {
         paramsMap.put(propertyName, this);
       }
     }
@@ -207,12 +216,12 @@ public class SocketParameters extends
   private volatile ServerType serverType;
   private boolean hasSSLParams;
   private String[] sslEnabledProtocols;
-  private int inputBufferSize = -1;
-  private int outputBufferSize = -1;
+  private int inputBufferSize;
+  private int outputBufferSize;
   private int readTimeout;
-  private int keepAliveIdle = -1;
-  private int keepAliveInterval = -1;
-  private int keepAliveCount = -1;
+  private int keepAliveIdle;
+  private int keepAliveInterval;
+  private int keepAliveCount;
 
   /**
    * Default empty parameters.
@@ -220,6 +229,20 @@ public class SocketParameters extends
   public SocketParameters() {
     super(null, EMPTY_CIPHERS, false);
     this.protocol = null;
+
+    // set socket parameters from global defaults
+    final SystemProperties props = SystemProperties.getClientInstance();
+    this.inputBufferSize = props.getInteger(
+        Attribute.SOCKET_INPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
+    this.outputBufferSize = props.getInteger(
+        Attribute.SOCKET_OUTPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
+    this.readTimeout = props.getInteger(Attribute.READ_TIMEOUT, 0);
+    this.keepAliveIdle = props.getInteger(
+        Attribute.KEEPALIVE_IDLE, DEFAULT_KEEPALIVE_IDLE);
+    this.keepAliveInterval = props.getInteger(
+        Attribute.KEEPALIVE_INTVL, DEFAULT_KEEPALIVE_INTVL);
+    this.keepAliveCount = props.getInteger(
+        Attribute.KEEPALIVE_CNT, DEFAULT_KEEPALIVE_CNT);
   }
 
   /**
@@ -238,58 +261,28 @@ public class SocketParameters extends
     return this.serverType;
   }
 
-  public final int getInputBufferSize(int defaultValue) {
-    if (this.inputBufferSize > 0) {
-      return this.inputBufferSize;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getInputBufferSize() {
+    return this.inputBufferSize;
   }
 
-  public final int getOutputBufferSize(int defaultValue) {
-    if (this.outputBufferSize > 0) {
-      return this.outputBufferSize;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getOutputBufferSize() {
+    return this.outputBufferSize;
   }
 
-  public final int getReadTimeout(int defaultValue) {
-    if (this.readTimeout != 0) {
-      return this.readTimeout;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getReadTimeout() {
+    return this.readTimeout;
   }
 
-  public final int getKeepAliveIdle(int defaultValue) {
-    if (this.keepAliveIdle >= 0) {
-      return this.keepAliveIdle;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getKeepAliveIdle() {
+    return this.keepAliveIdle;
   }
 
-  public final int getKeepAliveInterval(int defaultValue) {
-    if (this.keepAliveInterval >= 0) {
-      return this.keepAliveInterval;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getKeepAliveInterval() {
+    return this.keepAliveInterval;
   }
 
-  public final int getKeepAliveCount(int defaultValue) {
-    if (this.keepAliveCount >= 0) {
-      return this.keepAliveCount;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getKeepAliveCount() {
+    return this.keepAliveCount;
   }
 
   void setHasSSLParams() {

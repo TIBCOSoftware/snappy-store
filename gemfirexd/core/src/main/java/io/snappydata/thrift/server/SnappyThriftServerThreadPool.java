@@ -271,10 +271,11 @@ public final class SnappyThriftServerThreadPool extends TServer {
             break;
           }
         }
-      } catch (TTransportException tte) {
-        // Assume the client died and continue silently
+      } catch (TTransportException te) {
+        // Assume the client died and continue
+        logger.debug("Thrift error occurred during processing of message.", te);
       } catch (TException te) {
-        logger.error("Thrift error occurred during processing of message.", te);
+        logger.warn("Thrift error occurred during processing of message.", te);
       } catch (Exception e) {
         logger.error("Error occurred during processing of message.", e);
       }

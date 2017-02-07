@@ -177,7 +177,6 @@ public class TestThrift {
     conn.execute(conn.getId(), "drop table orders", null, null, token);
     conn.close();
 
-    controlService.closeConnection();
     transport.close();
   }
 

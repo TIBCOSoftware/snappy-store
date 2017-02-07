@@ -111,12 +111,14 @@ public abstract class InputStreamChannel extends InputStream implements
         final int pos = channelBuffer.position();
         // reduce this buffer's limit temporarily to the required len
         channelBuffer.limit(pos + dstLen);
-        dst.put(channelBuffer);
-        // restore the limit
-        channelBuffer.limit(pos + remaining);
+        try {
+          dst.put(channelBuffer);
+        } finally {
+          // restore the limit
+          channelBuffer.limit(pos + remaining);
+        }
         return dstLen;
-      }
-      else {
+      } else {
         return 0;
       }
     }
@@ -129,34 +131,33 @@ public abstract class InputStreamChannel extends InputStream implements
       dstLen -= remaining;
       readBytes += remaining;
     }
-    // if dst is a direct byte buffer that is larger than ours, then refill from
-    // channel directly else use our direct byte buffer for best performance
-    if (dstLen >= channelBuffer.limit() && dst.isDirect()) {
+    // if dst is a reasonably large direct byte buffer, then refill from
+    // channel directly else use channel direct buffer for best performance
+    if ((dstLen << 1) >= channelBuffer.limit() && dst.isDirect()) {
       final int bufBytes = readIntoBufferNonBlocking(dst);
       if (bufBytes > 0) {
         return (readBytes + bufBytes);
-      }
-      else {
+      } else {
         return readBytes > 0 ? readBytes : bufBytes;
       }
-    }
-    else {
+    } else {
       final int bufBytes = refillBuffer(channelBuffer, -1, null);
       if (bufBytes > 0) {
         if (dstLen >= bufBytes) {
           dst.put(channelBuffer);
           return (readBytes + bufBytes);
-        }
-        else {
+        } else {
           // reduce this buffer's limit temporarily to the required len
           channelBuffer.limit(dstLen);
-          dst.put(channelBuffer);
-          // restore the limit
-          channelBuffer.limit(bufBytes);
+          try {
+            dst.put(channelBuffer);
+          } finally {
+            // restore the limit
+            channelBuffer.limit(bufBytes);
+          }
           return (readBytes + dstLen);
         }
-      }
-      else {
+      } else {
         return readBytes > 0 ? readBytes : bufBytes;
       }
     }

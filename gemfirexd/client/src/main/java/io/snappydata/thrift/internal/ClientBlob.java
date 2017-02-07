@@ -44,14 +44,16 @@ import java.sql.Blob;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.pivotal.gemfirexd.internal.shared.common.io.DynamicByteArrayOutputStream;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.SnappyException;
+import io.snappydata.thrift.common.BufferedBlob;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.snappydataConstants;
 
-public final class ClientBlob extends ClientLobBase implements Blob {
+public final class ClientBlob extends ClientLobBase implements BufferedBlob {
 
   private BlobChunk currentChunk;
   private InputStream dataStream;
@@ -59,11 +61,9 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   private long initOffset;
   private final boolean freeForStream;
 
-  static final byte[] ZERO_ARRAY = new byte[0];
-
   ClientBlob(ClientService service) {
     super(service);
-    this.dataStream = new MemInputStream(ZERO_ARRAY);
+    this.dataStream = new MemInputStream(ClientSharedData.ZERO_ARRAY);
     this.length = 0;
     this.freeForStream = false;
   }
@@ -102,6 +102,14 @@ public final class ClientBlob extends ClientLobBase implements Blob {
     this.length = (int)length;
   }
 
+  public ClientBlob(ByteBuffer buffer) {
+    super(null);
+    this.currentChunk = new BlobChunk(buffer, true);
+    this.streamedInput = false;
+    this.length = buffer.remaining();
+    this.freeForStream = false;
+  }
+
   @Override
   protected int streamLength(boolean forceMaterialize) throws SQLException {
     try {
@@ -123,7 +131,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
           // fits into single buffer; trim if much smaller than bufSize
           if (readLen <= 0) {
             readLen = 0;
-            buffer = ZERO_ARRAY;
+            buffer = ClientSharedData.ZERO_ARRAY;
           } else if (readLen < (bufSize >>> 1)) {
             buffer = Arrays.copyOf(buffer, readLen);
           }
@@ -218,8 +226,9 @@ public final class ClientBlob extends ClientLobBase implements Blob {
     } else if ((chunk = this.currentChunk) != null) {
       ByteBuffer buffer = chunk.chunk;
       // check if it lies outside the current chunk
-      if (offset < chunk.offset
-          || (offset + length) > (chunk.offset + buffer.remaining())) {
+      if (chunk.lobId != snappydataConstants.INVALID_ID &&
+          (offset < chunk.offset ||
+              (offset + length) > (chunk.offset + buffer.remaining()))) {
         // fetch new chunk
         try {
           this.currentChunk = chunk = service.getBlobChunk(
@@ -251,6 +260,20 @@ public final class ClientBlob extends ClientLobBase implements Blob {
    * {@inheritDoc}
    */
   @Override
+  public ByteBuffer getAsBuffer() throws SQLException {
+    BlobChunk chunk = this.currentChunk;
+    if (chunk != null && chunk.last && chunk.offset == 0) {
+      // the first and only chunk
+      return chunk.chunk;
+    } else {
+      return ByteBuffer.wrap(getBytes(1, (int)length()));
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public byte[] getBytes(long pos, int length) throws SQLException {
     final long offset = pos - 1;
     length = checkOffset(offset, length, true);
@@ -264,7 +287,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         return Arrays.copyOf(result, nbytes);
       }
     } else {
-      return ZERO_ARRAY;
+      return ClientSharedData.ZERO_ARRAY;
     }
   }
 
