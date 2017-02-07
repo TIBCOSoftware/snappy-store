@@ -28,6 +28,8 @@ package io.snappydata.thrift;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import io.snappydata.thrift.common.ThriftUtils;
+import org.apache.thrift.TBaseHelper;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolException;
@@ -1089,16 +1091,21 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   }
 
   public byte[] getBinary_val() {
-    setBinary_val(org.apache.thrift.TBaseHelper.rightSize(bufferForBinary_val()));
-    ByteBuffer b = bufferForBinary_val();
-    return b == null ? null : b.array();
-  }
-
-  public ByteBuffer bufferForBinary_val() {
     if (getSetField() == _Fields.BINARY_VAL) {
-      return org.apache.thrift.TBaseHelper.copyBinary((ByteBuffer)getFieldValue());
+      ByteBuffer buffer = (ByteBuffer)getFieldValue();
+      if (buffer == null) {
+        return null;
+      }
+      if (!TBaseHelper.wrapsFullArray(buffer)) {
+        // replace with byte array wrapper
+        buffer = ByteBuffer.wrap(ThriftUtils.toBytes(buffer));
+        setBinary_val(buffer);
+      }
+      return buffer.array();
     } else {
-      throw new RuntimeException("Cannot get field 'binary_val' because union is currently set to " + getFieldDesc(getSetField()).name);
+      throw new RuntimeException(
+          "Cannot get field 'binary_val' because union is currently set to " +
+              getFieldDesc(getSetField()).name);
     }
   }
 
@@ -1203,16 +1210,21 @@ public final class ColumnValue extends org.apache.thrift.TUnion<ColumnValue, Col
   }
 
   public byte[] getJava_val() {
-    setJava_val(org.apache.thrift.TBaseHelper.rightSize(bufferForJava_val()));
-    ByteBuffer b = bufferForJava_val();
-    return b == null ? null : b.array();
-  }
-
-  public ByteBuffer bufferForJava_val() {
     if (getSetField() == _Fields.JAVA_VAL) {
-      return org.apache.thrift.TBaseHelper.copyBinary((ByteBuffer)getFieldValue());
+      ByteBuffer buffer = (ByteBuffer)getFieldValue();
+      if (buffer == null) {
+        return null;
+      }
+      if (!TBaseHelper.wrapsFullArray(buffer)) {
+        // replace with byte array wrapper
+        buffer = ByteBuffer.wrap(ThriftUtils.toBytes(buffer));
+        setJava_val(buffer);
+      }
+      return buffer.array();
     } else {
-      throw new RuntimeException("Cannot get field 'java_val' because union is currently set to " + getFieldDesc(getSetField()).name);
+      throw new RuntimeException(
+          "Cannot get field 'java_val' because union is currently set to " +
+              getFieldDesc(getSetField()).name);
     }
   }
 

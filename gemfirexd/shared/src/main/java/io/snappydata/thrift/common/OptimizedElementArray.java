@@ -824,7 +824,7 @@ public class OptimizedElementArray {
           case BINARY_VAL:
             if (field.type == ColumnValue.BINARY_VAL_FIELD_DESC.type) {
               ensureNonPrimCapacity(nonPrimSize);
-              byte[] bytes = TBaseHelper.byteBufferToByteArray(iprot.readBinary());
+              byte[] bytes = ThriftUtils.toBytes(iprot.readBinary());
               primitives[offset] = nonPrimSize;
               nonPrimitives[nonPrimSize++] = bytes;
               setType(index, SnappyType.VARBINARY.getValue());
@@ -889,7 +889,7 @@ public class OptimizedElementArray {
           case JAVA_VAL:
             if (field.type == ColumnValue.JAVA_VAL_FIELD_DESC.type) {
               ensureNonPrimCapacity(nonPrimSize);
-              byte[] serializedBytes = TBaseHelper.byteBufferToByteArray(
+              byte[] serializedBytes = ThriftUtils.toBytes(
                   iprot.readBinary());
               primitives[offset] = nonPrimSize;
               nonPrimitives[nonPrimSize++] = new Converters.JavaObjectWrapper(

@@ -41,13 +41,13 @@ import java.nio.ByteBuffer;
 import java.util.EnumMap;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.TransactionAttribute;
 import org.apache.spark.unsafe.Platform;
+import org.apache.thrift.TBaseHelper;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -126,8 +126,15 @@ public abstract class ThriftUtils {
     return new EnumMap<>(TransactionAttribute.class);
   }
 
+  public static ByteBuffer copyBuffer(ByteBuffer buffer) {
+    final int numBytes = buffer.remaining();
+    final byte[] bytes = new byte[numBytes];
+    buffer.get(bytes, 0, numBytes);
+    return ByteBuffer.wrap(bytes);
+  }
+
   public static byte[] toBytes(ByteBuffer buffer) {
-    if (ClientSharedUtils.wrapsFullArray(buffer)) {
+    if (TBaseHelper.wrapsFullArray(buffer)) {
       return buffer.array();
     } else {
       final int numBytes = buffer.remaining();
@@ -139,7 +146,9 @@ public abstract class ThriftUtils {
 
   public static ByteBuffer readByteBuffer(TNonblockingTransport transport,
       int length) throws TTransportException {
-
+    if (length == 0) {
+      return ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
+    }
     if (transport.getBytesRemainingInBuffer() >= length) {
       ByteBuffer buffer = ByteBuffer.wrap(transport.getBuffer(),
           transport.getBufferPosition(), length);
@@ -150,13 +159,9 @@ public abstract class ThriftUtils {
     // use normal byte array if length is not large since direct byte buffer
     // has additional overheads of allocation and finalization
     if (length <= (SocketParameters.DEFAULT_BUFFER_SIZE >>> 1)) {
-      if (length == 0) {
-        return ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
-      } else {
-        byte[] buffer = new byte[length];
-        transport.readAll(buffer, 0, length);
-        return ByteBuffer.wrap(buffer);
-      }
+      byte[] buffer = new byte[length];
+      transport.readAll(buffer, 0, length);
+      return ByteBuffer.wrap(buffer);
     }
 
     // use Platform.allocate which does not have the smallish limit used
