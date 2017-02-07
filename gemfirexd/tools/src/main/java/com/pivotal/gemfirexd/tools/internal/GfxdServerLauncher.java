@@ -1024,7 +1024,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     // THRIFT Related Ends
   }
 
-  private String checkAvailablePort(String portStr) {
+  private String availablePort(String portStr) {
     if (portStr != null) {
       try {
         int port = Integer.parseInt(portStr);
@@ -1034,9 +1034,11 @@ public class GfxdServerLauncher extends CacheServerLauncher {
               portStr = Integer.toString(port);
               break;
             }
+            // wait a bit before trying next port
+            Thread.sleep(50);
           }
         }
-      } catch (NumberFormatException nfe) {
+      } catch (NumberFormatException | InterruptedException e) {
         // ignore
       }
     }
@@ -1074,7 +1076,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       System.out.println(LocalizedStrings.GfxdServerLauncher_STARTING_NET_SERVER
           .toLocalizedString(new Object[] { this.useThriftServerDefault
               ? thriftDisplay : "DRDA", "SnappyData", listenAddr,
-              checkAvailablePort(port) }));
+              availablePort(port) }));
     }
     // check for thrift server arguments
     if ((port = (String)options.get(getThriftPortArgName())) != null) {
@@ -1083,7 +1085,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
           config);
       System.out.println(LocalizedStrings.GfxdServerLauncher_STARTING_NET_SERVER
           .toLocalizedString(new Object[] { thriftDisplay, this.baseName,
-              listenAddr, checkAvailablePort(port) }));
+              listenAddr, availablePort(port) }));
     }
   }
 
