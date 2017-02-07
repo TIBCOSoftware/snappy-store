@@ -726,23 +726,24 @@ public abstract class FabricServiceImpl implements FabricService {
         ? new ThriftNetworkInterface(listenAddress, port)
         : new DRDANetworkInterface(listenAddress, port);
 
-    int numtries = 0;
+    int numTries = 0;
     boolean retry = (port == NETSERVER_DEFAULT_PORT);
     // Start the netserver on the specified port. If the specified port is the
     // default port and it is already occupied by another process, try creating port
     // on an incremented number. Try this for 10 times before failing.
     do {
       try {
-        numtries++;
+        numTries++;
+        this.clientPort = port;
         netImpl.internalStart(networkProperties);
         retry = false;
       } catch (GemFireXDRuntimeException e) {
-        if (retry && numtries <= 10) {
+        if (retry && numTries <= 10) {
           // retry with an incremented port.
-          netImpl.setPort(port++);
+          netImpl.setPort(++port);
         } else throw e;
       }
-    } while (retry && numtries <= 10);
+    } while (retry && numTries <= 10);
 
     if (netImpl.getServerType().isThrift()) {
       serverType += (" (" + netImpl.getServerType().getProtocolString() + ')');
