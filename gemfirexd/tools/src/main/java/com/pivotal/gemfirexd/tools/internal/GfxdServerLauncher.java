@@ -40,6 +40,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.SocketCreator;
@@ -1023,6 +1024,25 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     // THRIFT Related Ends
   }
 
+  private String checkAvailablePort(String portStr) {
+    if (portStr != null) {
+      try {
+        int port = Integer.parseInt(portStr);
+        if (port == FabricService.NETSERVER_DEFAULT_PORT) {
+          for (int i = 0; i < 10; i++, port++) {
+            if (AvailablePort.isPortAvailable(port, AvailablePort.SOCKET)) {
+              portStr = Integer.toString(port);
+              break;
+            }
+          }
+        }
+      } catch (NumberFormatException nfe) {
+        // ignore
+      }
+    }
+    return portStr;
+  }
+
   @Override
   protected void printStartMessage(Map<String, Object> options,
       Properties props, int pid) throws Exception {
@@ -1053,7 +1073,8 @@ public class GfxdServerLauncher extends CacheServerLauncher {
 
       System.out.println(LocalizedStrings.GfxdServerLauncher_STARTING_NET_SERVER
           .toLocalizedString(new Object[] { this.useThriftServerDefault
-              ? thriftDisplay : "DRDA", "SnappyData", listenAddr, port }));
+              ? thriftDisplay : "DRDA", "SnappyData", listenAddr,
+              checkAvailablePort(port) }));
     }
     // check for thrift server arguments
     if ((port = (String)options.get(getThriftPortArgName())) != null) {
@@ -1062,7 +1083,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
           config);
       System.out.println(LocalizedStrings.GfxdServerLauncher_STARTING_NET_SERVER
           .toLocalizedString(new Object[] { thriftDisplay, this.baseName,
-              listenAddr, port }));
+              listenAddr, checkAvailablePort(port) }));
     }
   }
 
