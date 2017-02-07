@@ -26,28 +26,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Time;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
-
-import io.snappydata.test.dunit.AvailablePortHelper;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.DFSConfigKeys;
-import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.MiniDFSCluster.Builder;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.lib.input.CombineFileSplit;
 
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.EvictionAlgorithm;
@@ -60,7 +40,6 @@ import com.gemstone.gemfire.cache.hdfs.internal.hoplog.DDLHoplogOrganizer.DDLHop
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.mapreduce.GFInputFormat;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.mapreduce.HDFSSplitIterator;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.FileUtil;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
@@ -80,6 +59,18 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSet;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.TableScanResultSet;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
+import io.snappydata.test.dunit.AvailablePortHelper;
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.hadoop.hdfs.MiniDFSCluster.Builder;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.CombineFileSplit;
 
 /**
  * Class to test the persistence of DDLs on HDFS 
@@ -97,15 +88,15 @@ public class DDLPersistenceHDFSTest extends JdbcTestBase {
 
   @Override
   public void setUp() throws Exception {
-    FileUtil.delete(new File(HDFS_DIR));
+    FileUtils.deleteQuietly(new File(HDFS_DIR));
     super.setUp();
   }
 
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
-    FileUtil.delete(new File(HDFS_DIR));
-    FileUtil.delete(new File("./mynewhdfs"));
+    FileUtils.deleteQuietly(new File(HDFS_DIR));
+    FileUtils.deleteQuietly(new File("./mynewhdfs"));
   }
 
   @Override
