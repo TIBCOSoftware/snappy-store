@@ -77,6 +77,9 @@ public class ClientStatement extends ClientFetchColumnValue implements
     if (holdability == ResultSet.HOLD_CURSORS_OVER_COMMIT) {
       this.attrs.setHoldCursorsOverCommit(true);
     }
+    if (this.service.lobChunkSize > 0) {
+      this.attrs.setLobChunkSize(this.service.lobChunkSize);
+    }
     this.currentUpdateCount = -1;
   }
 

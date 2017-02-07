@@ -70,7 +70,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
       final ByteBuffer channelBuffer) throws IOException {
     int srcLen = src.remaining();
     // flush large direct buffers directly into channel
-    final boolean flushBuffer = (srcLen << 1) > channelBuffer.limit() &&
+    final boolean flushBuffer = srcLen > (channelBuffer.limit() >>> 1) &&
         src.isDirect();
     int numWritten = 0;
     while (srcLen > 0) {

@@ -65,7 +65,7 @@ public final class TBinaryProtocolOpt extends TBinaryProtocol {
         throw new TProtocolException(TProtocolException.SIZE_LIMIT,
             "Binary field exceeded string size limit");
       }
-      return ThriftUtils.readDirectBuffer(this.nonBlockingTransport, length);
+      return ThriftUtils.readByteBuffer(this.nonBlockingTransport, length);
     } else {
       return super.readBinary();
     }
@@ -80,7 +80,7 @@ public final class TBinaryProtocolOpt extends TBinaryProtocol {
     writeI32(length);
     // call this in blocking transport case also to correctly deal with
     // case when ByteBuffer is not a heap one
-    ThriftUtils.writeDirectBuffer(buffer, trans_, nonBlockingTransport, length);
+    ThriftUtils.writeByteBuffer(buffer, trans_, nonBlockingTransport, length);
   }
 
   public static class Factory extends TBinaryProtocol.Factory {

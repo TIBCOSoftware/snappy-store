@@ -69,6 +69,7 @@ import javax.naming.directory.InitialDirContext;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * Some shared methods now also used by GemFireXD clients so should not have any
@@ -1567,100 +1568,33 @@ public abstract class ClientSharedUtils {
       return false;
     }
     // read in longs to minimize ByteBuffer get() calls
-    int index = 0;
     int pos = buffer.position();
     final int endPos = (pos + len);
+    final boolean sameOrder = ByteOrder.nativeOrder() == buffer.order();
     // round off to nearest factor of 8 to read in longs
     final int endRound8Pos = (len % 8) != 0 ? (endPos - 8) : endPos;
-    byte b;
-    if (buffer.order() == ByteOrder.BIG_ENDIAN) {
-      while (pos < endRound8Pos) {
-        // splitting into longs is faster than reading one byte at a time even
-        // though it costs more operations (about 20% in micro-benchmarks)
-        final long v = buffer.getLong(pos);
-        b = (byte)(v >>> 56);
-        if (b != bytes[index++]) {
+    long indexPos = Platform.BYTE_ARRAY_OFFSET;
+    while (pos < endRound8Pos) {
+      // splitting into longs is faster than reading one byte at a time even
+      // though it costs more operations (about 20% in micro-benchmarks)
+      final long s = Platform.getLong(bytes, indexPos);
+      final long v = buffer.getLong(pos);
+      if (sameOrder) {
+        if (s != v) {
           return false;
         }
-        b = (byte)(v >>> 48);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 40);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 32);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 24);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 16);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 8);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 0);
-        if (b != bytes[index++]) {
-          return false;
-        }
-
-        pos += 8;
+      } else if (s != Long.reverseBytes(v)) {
+        return false;
       }
-    }
-    else {
-      while (pos < endRound8Pos) {
-        // splitting into longs is faster than reading one byte at a time even
-        // though it costs more operations (about 20% in micro-benchmarks)
-        final long v = buffer.getLong(pos);
-        b = (byte)(v >>> 0);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 8);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 16);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 24);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 32);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 40);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 48);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 56);
-        if (b != bytes[index++]) {
-          return false;
-        }
-
-        pos += 8;
-      }
+      pos += 8;
+      indexPos += 8;
     }
     while (pos < endPos) {
-      if (bytes[index] != buffer.get(pos)) {
+      if (Platform.getByte(bytes, indexPos) != buffer.get(pos)) {
         return false;
       }
       pos++;
-      index++;
+      indexPos++;
     }
     return true;
   }

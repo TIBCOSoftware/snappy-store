@@ -35,6 +35,7 @@
 
 package io.snappydata.thrift.common;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
@@ -94,8 +95,14 @@ public abstract class ThriftUtils {
       if (eqIndex > 0) {
         String key = str.substring(0, eqIndex).trim();
         String value = str.substring(eqIndex + 1).trim();
-        SocketParameters.findSSLParameterByPropertyName(key).setParameter(
-            sslParams, value);
+        try {
+          SocketParameters.findSSLParameterByPropertyName(key).setParameter(
+              sslParams, value);
+        } catch (NumberFormatException nfe) {
+          throw new IllegalArgumentException(
+              "Expected numeric format for SSL property '" + key +
+                  "' but got: " + value, nfe);
+        }
       } else {
         throw new IllegalArgumentException("Missing equality: expected "
             + "comma-separated <property>=<value> pairs");
@@ -130,35 +137,74 @@ public abstract class ThriftUtils {
     }
   }
 
-  public static ByteBuffer readDirectBuffer(TNonblockingTransport transport,
+  public static ByteBuffer readByteBuffer(TNonblockingTransport transport,
       int length) throws TTransportException {
     if (length == 0) {
       return ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
     }
+    if (transport.getBytesRemainingInBuffer() >= length) {
+      ByteBuffer buffer = ByteBuffer.wrap(transport.getBuffer(),
+          transport.getBufferPosition(), length);
+      transport.consumeBuffer(length);
+      return buffer;
+    }
+
+    // use normal byte array if length is not large else use direct ByteBuffer
+    // since latter has additional overheads of allocation and finalization
+    if (length <= (SocketParameters.DEFAULT_BUFFER_SIZE >>> 1)) {
+      byte[] buffer = new byte[length];
+      transport.readAll(buffer, 0, length);
+      return ByteBuffer.wrap(buffer);
+    }
+
+    // use Platform.allocate which does not have the smallish limit used
+    // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
     ByteBuffer buffer = Platform.allocateDirectBuffer(length);
     try {
       while (length > 0) {
-        length -= transport.read(buffer);
+        int numReadBytes = transport.read(buffer);
+        if (numReadBytes > 0) {
+          length -= numReadBytes;
+        } else if (numReadBytes == 0) {
+          // sleep a bit before retrying
+          // TODO: this should use selector signal
+          Thread.sleep(1);
+        } else {
+          throw new EOFException("Socket channel closed in read.");
+        }
       }
-    } catch (IOException ioe) {
-      throw new TTransportException(ioe);
+    } catch (IOException | InterruptedException e) {
+      throw new TTransportException(e instanceof EOFException
+          ? TTransportException.END_OF_FILE : TTransportException.UNKNOWN);
     }
+    buffer.flip();
     return buffer;
   }
 
-  public static void writeDirectBuffer(ByteBuffer buffer,
-      TTransport transport, TNonblockingTransport nonblockingTransport,
+  public static void writeByteBuffer(ByteBuffer buffer,
+      TTransport transport, TNonblockingTransport nonBlockingTransport,
       int length) throws TTransportException {
     if (buffer.hasArray()) {
       transport.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
           length);
-    } else if (nonblockingTransport != null) {
+    } else if (nonBlockingTransport != null) {
       try {
         while (length > 0) {
-          length -= nonblockingTransport.write(buffer);
+          int numWrittenBytes = nonBlockingTransport.write(buffer);
+          if (numWrittenBytes > 0) {
+            length -= numWrittenBytes;
+          } else if (numWrittenBytes == 0) {
+            // sleep a bit before retrying
+            // TODO: this should use selector signal
+            Thread.sleep(1);
+          } else {
+            throw new EOFException("Socket channel closed in write.");
+          }
         }
-      } catch (IOException ioe) {
-        throw new TTransportException(ioe);
+        buffer.flip();
+      } catch (IOException | InterruptedException e) {
+        throw new TTransportException(e instanceof EOFException
+            ? TTransportException.END_OF_FILE : TTransportException.UNKNOWN);
       }
     } else {
       final byte[] bytes = toBytes(buffer);

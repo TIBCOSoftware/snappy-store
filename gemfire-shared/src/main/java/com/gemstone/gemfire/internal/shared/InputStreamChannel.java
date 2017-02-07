@@ -133,7 +133,7 @@ public abstract class InputStreamChannel extends InputStream implements
     }
     // if dst is a reasonably large direct byte buffer, then refill from
     // channel directly else use channel direct buffer for best performance
-    if ((dstLen << 1) >= channelBuffer.limit() && dst.isDirect()) {
+    if (dstLen >= (channelBuffer.limit() >>> 1) && dst.isDirect()) {
       final int bufBytes = readIntoBufferNonBlocking(dst);
       if (bufBytes > 0) {
         return (readBytes + bufBytes);

@@ -83,7 +83,7 @@ public final class TCompactProtocolOpt extends TCompactProtocol {
     if (this.useDirectBuffers && this.nonBlockingTransport != null) {
       int length = readVarInt32();
       checkStringReadLength(length);
-      return ThriftUtils.readDirectBuffer(this.nonBlockingTransport, length);
+      return ThriftUtils.readByteBuffer(this.nonBlockingTransport, length);
     } else {
       return super.readBinary();
     }
@@ -98,7 +98,7 @@ public final class TCompactProtocolOpt extends TCompactProtocol {
     writeVarInt32(length);
     // call this in blocking transport case also to correctly deal with
     // case when ByteBuffer is not a heap one
-    ThriftUtils.writeDirectBuffer(buffer, trans_, nonBlockingTransport, length);
+    ThriftUtils.writeByteBuffer(buffer, trans_, nonBlockingTransport, length);
   }
 
   /**

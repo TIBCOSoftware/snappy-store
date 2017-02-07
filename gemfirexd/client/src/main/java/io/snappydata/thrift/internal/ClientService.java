@@ -77,6 +77,7 @@ public final class ClientService extends ReentrantLock implements LobService {
   final boolean loadBalance;
   final SocketParameters socketParams;
   final boolean framedTransport;
+  final int lobChunkSize;
   final Set<String> serverGroups;
   volatile int isolationLevel = Converters
       .getJdbcIsolation(snappydataConstants.DEFAULT_TRANSACTION_ISOLATION);
@@ -367,6 +368,7 @@ public final class ClientService extends ReentrantLock implements LobService {
     boolean binaryProtocol = false;
     boolean framedTransport = false;
     boolean useSSL = false;
+    int lobChunkSize = -1;
     if (props != null) {
       binaryProtocol = Boolean.parseBoolean(props
           .remove(ClientAttribute.THRIFT_USE_BINARY_PROTOCOL));
@@ -387,10 +389,25 @@ public final class ClientService extends ReentrantLock implements LobService {
           p.setParameter(this.socketParams, propValue);
         }
       }
+      // set the chunk size for LOBs if set
+      String chunkSize = props.remove(ClientAttribute.THRIFT_LOB_CHUNK_SIZE);
+      if (chunkSize != null) {
+        try {
+          lobChunkSize = Integer.parseInt(chunkSize);
+          if (lobChunkSize <= 0) {
+            throw new NumberFormatException("Input string: " + lobChunkSize);
+          }
+        } catch (NumberFormatException nfe) {
+          throw new IllegalArgumentException("Expected valid integer for " +
+              ClientAttribute.THRIFT_LOB_CHUNK_SIZE + " but got: " +
+              chunkSize, nfe);
+        }
+      }
     }
     this.socketParams.setServerType(ServerType.getServerType(true,
         binaryProtocol, useSSL));
     this.framedTransport = framedTransport;
+    this.lobChunkSize = lobChunkSize;
 
     connArgs.setProperties(props);
 

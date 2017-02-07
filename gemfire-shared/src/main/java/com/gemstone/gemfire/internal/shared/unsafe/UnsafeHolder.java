@@ -19,7 +19,7 @@ package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
@@ -87,11 +87,11 @@ public abstract class UnsafeHolder {
     return hasUnsafe;
   }
 
-  public static long getDirectByteBufferAddress(Buffer buffer) {
+  public static long getDirectByteBufferAddress(ByteBuffer buffer) {
     return ((sun.nio.ch.DirectBuffer)buffer).address();
   }
 
-  public static void releaseDirectByteBuffer(Buffer buffer) {
+  public static void releaseDirectByteBuffer(ByteBuffer buffer) {
     sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer)buffer).cleaner();
     if (cleaner != null) {
       cleaner.clean();
