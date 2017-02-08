@@ -89,7 +89,7 @@ public class SQLBlob extends SQLBinary
 			super(val);
         }
 	
-	public SQLBlob(Blob val)
+	public SQLBlob(Blob val) throws StandardException
         {
 			super(val);
         }

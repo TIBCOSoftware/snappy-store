@@ -130,6 +130,7 @@ public abstract class ThriftUtils {
     final int numBytes = buffer.remaining();
     final byte[] bytes = new byte[numBytes];
     buffer.get(bytes, 0, numBytes);
+    buffer.flip();
     return ByteBuffer.wrap(bytes);
   }
 
@@ -140,6 +141,7 @@ public abstract class ThriftUtils {
       final int numBytes = buffer.remaining();
       final byte[] bytes = new byte[numBytes];
       buffer.get(bytes, 0, numBytes);
+      buffer.flip();
       return bytes;
     }
   }

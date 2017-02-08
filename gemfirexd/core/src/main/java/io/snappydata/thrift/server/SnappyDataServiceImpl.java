@@ -95,6 +95,7 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.JDBC40Translation;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.RowIdLifetime;
+import io.snappydata.thrift.common.BufferedBlob;
 import io.snappydata.thrift.common.Converters;
 import io.snappydata.thrift.common.OptimizedElementArray;
 import io.snappydata.thrift.common.ThriftUtils;
@@ -625,6 +626,15 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         : ResultSet.CLOSE_CURSORS_AT_COMMIT;
   }
 
+  private static ByteBuffer getAsBuffer(Blob blob, int length)
+      throws SQLException {
+    if (blob instanceof BufferedBlob) {
+      return ((BufferedBlob)blob).getAsBuffer();
+    } else {
+      return ByteBuffer.wrap(blob.getBytes(1, length));
+    }
+  }
+
   private BlobChunk handleBlob(Blob blob, ConnectionHolder connHolder,
       StatementAttrs attrs) throws SQLException {
     final long length = blob.length();
@@ -640,7 +650,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       chunkSize = snappydataConstants.DEFAULT_LOB_CHUNKSIZE;
     }
     if (chunkSize > 0 && chunkSize < length) {
-      chunk.setChunk(blob.getBytes(1, chunkSize)).setLast(false);
+      chunk.chunk = ByteBuffer.wrap(blob.getBytes(1, chunkSize));
+      chunk.setLast(false);
       // need to add explicit mapping for the LOB in this case
       long lobId;
       if (blob instanceof EngineLOB) {
@@ -651,7 +662,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       }
       chunk.setLobId(lobId);
     } else {
-      chunk.setChunk(blob.getBytes(1, (int)length)).setLast(true);
+      chunk.chunk = getAsBuffer(blob, (int)length);
+      chunk.setLast(true);
     }
     return chunk;
   }
@@ -3036,9 +3048,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         BlobChunk chunk = new BlobChunk().setLobId(lobId).setOffset(offset);
         if (chunkSize > 0 && chunkSize < length) {
-          chunk.setChunk(blob.getBytes(offset + 1, chunkSize)).setLast(false);
+          chunk.chunk = ByteBuffer.wrap(blob.getBytes(offset + 1, chunkSize));
+          chunk.setLast(false);
         } else {
-          chunk.setChunk(blob.getBytes(offset + 1, (int)length)).setLast(true);
+          chunk.chunk = getAsBuffer(blob, (int)length);
+          chunk.setLast(true);
           if (freeLobAtEnd) {
             conn.removeLOBMapping(lobId);
             blob.free();

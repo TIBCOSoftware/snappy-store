@@ -68,7 +68,7 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
     this.buffer.flip();
 
     try {
-      this.baseAddress = UnsafeHolder.getDirectByteBufferAddress(this.buffer);
+      this.baseAddress = UnsafeHolder.getDirectBufferAddress(this.buffer);
       resetBufferPositions();
     } catch (Exception e) {
       throw ClientSharedUtils.newRuntimeException(
@@ -241,6 +241,6 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
   public void close() throws IOException {
     this.buffer.clear();
     this.addrPosition = this.addrLimit = 0;
-    UnsafeHolder.releaseDirectByteBuffer(this.buffer);
+    UnsafeHolder.releaseDirectBuffer(this.buffer);
   }
 }
