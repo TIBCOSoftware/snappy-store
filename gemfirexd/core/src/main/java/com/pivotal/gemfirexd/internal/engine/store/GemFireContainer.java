@@ -59,12 +59,10 @@ import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.DataAsAddress;
-import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -444,7 +442,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
               this.schemaName, this.tableName, true));
       if (isPartitioned()) {
         ((PartitionedRegion)this.region).
-            setColumnBatchSizes(externalTableMetaData.get().cachedBatchSize, 200);
+            setColumnBatchSizes(externalTableMetaData.get().columnBatchSize, 200);
       }
     }
     return externalTableMetaData.get();

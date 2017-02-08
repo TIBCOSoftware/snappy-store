@@ -20,8 +20,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -68,7 +66,6 @@ import com.gemstone.gemfire.internal.cache.partitioned.PutMessage;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientTombstoneMessage;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientUpdateMessage;
-import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
@@ -83,7 +80,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
-import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantLock;
 
 /**
  * The storage used for a Partitioned Region.
@@ -717,16 +713,16 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     } finally {
       if (locked) {
         endLocalWrite(event);
-        //create and insert cached batch
+        //create and insert column batch
         if (success && getPartitionedRegion().needsBatching()
             && this.size() >= this.getPartitionedRegion().getColumnBatchSize()) {
-          createAndInsertCachedBatch(false);
+          createAndInsertColumnBatch(false);
         }
       }
     }
   }
 
-  public final boolean createAndInsertCachedBatch(boolean forceFlush) {
+  public final boolean createAndInsertColumnBatch(boolean forceFlush) {
     // do nothing if a flush is already in progress
     if (this.columnBatchFlushLock.isWriteLocked()) {
       return false;
@@ -735,15 +731,15 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         this.columnBatchFlushLock.writeLock();
     sync.lock();
     try {
-      return internalCreateAndInsertCachedBatch(forceFlush);
+      return internalCreateAndInsertColumnBatch(forceFlush);
     } finally {
       sync.unlock();
     }
   }
 
-  private boolean internalCreateAndInsertCachedBatch(boolean forceFlush) {
+  private boolean internalCreateAndInsertColumnBatch(boolean forceFlush) {
     // TODO: with forceFlush, ideally we should merge with an existing
-    // CachedBatch if the current size to be flushed is small like < 1000
+    // ColumnBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
     final int columnBatchSize = this.getPartitionedRegion().getColumnBatchSize();
     final int batchSize = !forceFlush ? columnBatchSize
@@ -757,11 +753,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         getRegionSize() >= batchSize) {
       // need to flush the region
       if (getCache().getLoggerI18n().fineEnabled()) {
-        getCache().getLoggerI18n().fine("createAndInsertCachedBatch: " +
-            "Creating the cached batch for bucket " + this.getId()
+        getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
+            "Creating the column batch for bucket " + this.getId()
             + ", and batchID " + this.batchUUID);
       }
-      Set keysToDestroy = createCachedBatchAndPutInColumnTable();
+      Set keysToDestroy = createColumnBatchAndPutInColumnTable();
       destroyAllEntries(keysToDestroy);
       // create new batchUUID
       generateAndSetBatchIDIfNULL(true);
@@ -832,9 +828,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     return this.batchUUID;
   }
 
-  private Set createCachedBatchAndPutInColumnTable() {
+  private Set createColumnBatchAndPutInColumnTable() {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    return callback.createCachedBatch(this, this.batchUUID, this.getId());
+    return callback.createColumnBatch(this, this.batchUUID, this.getId());
   }
 
   // TODO: Suranjan Not optimized way to destroy all entries, as changes at level of RVV required.
@@ -849,7 +845,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
             .getLoggerI18n()
-            .fine("Destroying the entries after creating CachedBatch " + key +
+            .fine("Destroying the entries after creating ColumnBatch " + key +
                 " batchid " + this.batchUUID + " total size " + this.size() +
                 " keysToDestroy size " + keysToDestroy.size());
       }

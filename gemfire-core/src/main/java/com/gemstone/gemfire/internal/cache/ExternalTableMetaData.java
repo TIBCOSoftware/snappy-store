@@ -22,7 +22,7 @@ public class ExternalTableMetaData {
   public ExternalTableMetaData(String entityName,
       Object schema,
       Object externalStore,
-      int cachedBatchSize,
+      int columnBatchSize,
       Boolean useCompression,
       String baseTable,
       String dml,
@@ -30,7 +30,7 @@ public class ExternalTableMetaData {
     this.entityName = entityName;
     this.schema = schema;
     this.externalStore = externalStore;
-    this.cachedBatchSize = cachedBatchSize;
+    this.columnBatchSize = columnBatchSize;
     this.useCompression = useCompression;
     this.baseTable = baseTable;
     this.dml = dml;
@@ -41,7 +41,7 @@ public class ExternalTableMetaData {
   public Object schema;
   // No type specified as the class is in snappy core
   public Object externalStore;
-  public int cachedBatchSize;
+  public int columnBatchSize;
   public boolean useCompression;
   public String baseTable;
   public String dml;

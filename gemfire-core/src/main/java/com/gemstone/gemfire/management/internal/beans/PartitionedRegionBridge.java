@@ -332,8 +332,8 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
   }
 
   @Override
-  public long getRowsInCachedBatches() {
-    return this.prStats.getPRNumRowsInCachedBatches();
+  public long getRowsInColumnBatches() {
+    return this.prStats.getPRNumRowsInColumnBatches();
   }
 
   private int minimumReservoirEntrySize = Sizeable.PER_OBJECT_OVERHEAD * 6;

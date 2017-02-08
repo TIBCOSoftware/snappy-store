@@ -89,16 +89,16 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
         for (SnappyRegionStats tableStats : otherStats) {
           String rgnName = tableStats.getRegionName();
           StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-          String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
-          if (cachBatchStats.containsKey(catchBatchTableName)) {
+          String columnBatchTableName = callback.columnBatchTableName(tableStats.getRegionName());
+          if (cachBatchStats.containsKey(columnBatchTableName)) {
             String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable("APP", rgnName);
             PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
             if (pr != null) {
               RegionMXBean reservoirBean = managementService.getLocalRegionMBean(pr.getFullPath());
               if (reservoirBean != null) {
                 SnappyRegionStats rStats = collectDataFromBeanImpl(pr, reservoirBean, true);
-                SnappyRegionStats cStats = cachBatchStats.get(catchBatchTableName);
-                cachBatchStats.put(catchBatchTableName, cStats.getCombinedStats(rStats));
+                SnappyRegionStats cStats = cachBatchStats.get(columnBatchTableName);
+                cachBatchStats.put(columnBatchTableName, cStats.getCombinedStats(rStats));
               }
             }
           }
@@ -108,9 +108,9 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
       // Create one entry per Column Table by combining the results of row buffer and column table
       for (SnappyRegionStats tableStats : otherStats) {
         StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-        String catchBatchTableName = callback.cachedBatchTableName(tableStats.getRegionName());
-        if (cachBatchStats.containsKey(catchBatchTableName)) {
-          result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(catchBatchTableName)));
+        String columnBatchTableName = callback.columnBatchTableName(tableStats.getRegionName());
+        if (cachBatchStats.containsKey(columnBatchTableName)) {
+          result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(columnBatchTableName)));
         } else {
           result.addRegionStat(tableStats);
         }
@@ -146,7 +146,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
       long numLocalEntries = bean.getRowsInReservoir();
       tableStats.setRowCount(numLocalEntries);
     } else {
-      tableStats.setRowCount(isColumnTable ? bean.getRowsInCachedBatches() : bean.getEntryCount());
+      tableStats.setRowCount(isColumnTable ? bean.getRowsInColumnBatches() : bean.getEntryCount());
     }
 
     GemFireXDInstrumentation sizer = GemFireXDInstrumentation.getInstance();

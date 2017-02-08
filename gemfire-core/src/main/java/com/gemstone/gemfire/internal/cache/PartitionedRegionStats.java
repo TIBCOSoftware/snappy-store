@@ -17,8 +17,6 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.Map;
 
 import com.gemstone.gemfire.StatisticDescriptor;
@@ -28,8 +26,6 @@ import com.gemstone.gemfire.StatisticsType;
 import com.gemstone.gemfire.StatisticsTypeFactory;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
@@ -172,7 +168,7 @@ public class PartitionedRegionStats {
 
 
   //Column table Stats
-  private static final int prNumRowsInCachedBatches;
+  private static final int prNumRowsInColumnBatches;
   
   static {
     final boolean largerIsBetter = true;
@@ -551,8 +547,8 @@ public class PartitionedRegionStats {
                 "total number of times meta data refreshed sent on client's request.",
                 "operation", false),
         f.createLongCounter(
-              "prNumRowsInCachedBatches",
-              "total number of rows which are part of cached batches.",
+              "prNumRowsInColumnBatches",
+              "total number of rows which are part of column batches.",
               "entries", false),
 
 
@@ -653,7 +649,7 @@ public class PartitionedRegionStats {
     putLocalTimeId = type.nameToId("putLocalTime");
     
     prMetaDataSentCountId = type.nameToId("prMetaDataSentCount");
-    prNumRowsInCachedBatches = type.nameToId("prNumRowsInCachedBatches");
+    prNumRowsInColumnBatches = type.nameToId("prNumRowsInColumnBatches");
   }
   
   private final Statistics stats;
@@ -1233,11 +1229,11 @@ type, name /* fixes bug 42343 */);
     return this.stats.getLong(prMetaDataSentCountId);
   }
 
-  public void setPRNumRowsInCachedBatches(long value) {
-    this.stats.setLong(prNumRowsInCachedBatches, value);
+  public void setPRNumRowsInColumnBatches(long value) {
+    this.stats.setLong(prNumRowsInColumnBatches, value);
   }
 
-  public long getPRNumRowsInCachedBatches() {
-    return this.stats.getLong(prNumRowsInCachedBatches);
+  public long getPRNumRowsInColumnBatches() {
+    return this.stats.getLong(prNumRowsInColumnBatches);
   }
 }
