@@ -7871,7 +7871,7 @@ public class LocalRegion extends AbstractRegion
                 .getDistributedSystem();
             system.handleResourceEvent(ResourceEvent.REGION_REMOVE, this);
           }
-      
+
           try {
             LocalRegion parent = this.parentRegion;
             if (parent == null) {
@@ -12613,6 +12613,30 @@ public class LocalRegion extends AbstractRegion
   public void updateSizeOnFaultIn(Object key, int newSize, int bytesOnDisk) {
     // Only needed by BucketRegion
   }
+
+  protected boolean acquireMemoryOnPut(Object key, int oldSize, int newSize) {
+    return true;
+  }
+
+  /**
+   * It should always succeed . If not enough memory it will evict some of entries to make room.
+   */
+  protected void acquireMemoryOnCreate(Object key, int newSize) throws LowMemoryException{
+    // Only needed by BucketRegion & Distributed Region
+  }
+
+  protected void freeMemoryOnRemove(Object key, int oldSize) {
+    // Only needed by BucketRegion
+  }
+
+  protected void freeMemoryOnEvict(Object key, int oldSize) {
+    // Only needed by BucketRegion
+  }
+
+  protected boolean updateMemoryOnFaultIn(Object key, int newSize, int bytesOnDisk) {
+    return true;
+  }
+
 
   public void initializeStats(long numEntriesInVM, long numOverflowOnDisk,
       long numOverflowBytesOnDisk) {

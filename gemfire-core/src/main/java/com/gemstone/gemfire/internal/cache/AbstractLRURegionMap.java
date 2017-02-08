@@ -45,6 +45,8 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 
 /**
  * Abstract implementation of {@link RegionMap} that adds LRU behaviour.
@@ -63,6 +65,8 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
 //  private Object lruCreatedKey;
 
   public static final boolean debug = Boolean.getBoolean("gemfire.verbose-lru");
+
+  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
 
   private static volatile LogWriterI18n logWriter;
 
@@ -625,6 +629,9 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
  } 
   
   private boolean mustEvict() {
+    if(callback.isSnappyStore()){
+      return this.sizeInVM() > 0;
+    }
     LocalRegion owner = _getOwner();
     InternalResourceManager resourceManager = owner.getCache().getResourceManager();
     

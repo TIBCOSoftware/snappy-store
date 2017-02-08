@@ -2509,7 +2509,7 @@ RETRY_LOOP:
                           }
                         } else {
                           processVersionTag(oldRe, event);
-                          event.putExistingEntry(owner, oldRe);
+                          event.putExistingEntry(owner, oldRe, oldSize);
                           EntryLogger.logInvalidate(event);
                           owner.recordEvent(event);
                           owner.updateSizeOnPut(event.getKey(), oldSize, event.getNewValueBucketSize());
@@ -2824,7 +2824,7 @@ RETRY_LOOP:
   protected void invalidateEntry(EntryEventImpl event, RegionEntry re,
       int oldSize) throws RegionClearedException {
     processVersionTag(re, event);
-    event.putExistingEntry(_getOwner(), re);
+    event.putExistingEntry(_getOwner(), re, oldSize);
     EntryLogger.logInvalidate(event);
     _getOwner().recordEvent(event);
     _getOwner().updateSizeOnPut(event.getKey(), oldSize, event.getNewValueBucketSize());
@@ -4202,7 +4202,7 @@ RETRY_LOOP:
     final boolean wasTombstone = re.isTombstone();
     processVersionTag(re, event);
     event.putExistingEntry(event.getLocalRegion(), re, requireOldValue,
-        oldValueForDelta);
+        oldValueForDelta, oldSize);
     EntryLogger.logPut(event);
     updateSize(event, oldSize, true/* isUpdate */, wasTombstone);
   }

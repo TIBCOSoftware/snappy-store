@@ -46,4 +46,10 @@ public interface StoreCallbacks {
   void registerRelationDestroyForHiveStore();
 
   int getLastIndexOfRow(Object o);
+
+  boolean acquireStorageMemory(long numBytes);
+
+  void releaseStorageMemory(long numBytes);
+
+  boolean isSnappyStore();
 }

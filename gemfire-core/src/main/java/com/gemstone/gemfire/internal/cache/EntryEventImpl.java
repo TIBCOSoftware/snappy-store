@@ -1697,9 +1697,9 @@ public class EntryEventImpl extends KeyInfo implements
    */
   private static final boolean EVENT_OLD_VALUE = !Boolean.getBoolean("gemfire.disable-event-old-value");
 
-  final void putExistingEntry(final LocalRegion owner, RegionEntry re)
+  final void putExistingEntry(final LocalRegion owner, RegionEntry re, int olValueSize)
       throws RegionClearedException {
-    putExistingEntry(owner, re, false, null);
+    putExistingEntry(owner, re, false, null, olValueSize);
   }
 
   /**
@@ -1710,7 +1710,7 @@ public class EntryEventImpl extends KeyInfo implements
    * @throws RegionClearedException
    */
   final void putExistingEntry(final LocalRegion owner, final RegionEntry reentry,
-     boolean requireOldValue, Object oldValueForDelta) throws RegionClearedException {
+     boolean requireOldValue, Object oldValueForDelta, int olValueSize) throws RegionClearedException {
     makeUpdate();
     // only set oldValue if it hasn't already been set to something
     if (this.oldValue == null) {
@@ -1753,7 +1753,7 @@ public class EntryEventImpl extends KeyInfo implements
     }
 
     //setNewValueInRegion(null);
-    setNewValueInRegion(owner, reentry, oldValueForDelta);
+    setNewValueInRegion(owner, reentry, oldValueForDelta, olValueSize);
   }
 
   /**
@@ -1784,7 +1784,15 @@ public class EntryEventImpl extends KeyInfo implements
       basicSetOldValue(null);
     }
     makeCreate();
-    setNewValueInRegion(owner, reentry, null);
+    setNewValueInRegion(owner, reentry, null, 0);
+  }
+
+  private void aqcuireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
+    if (isUpdate && !wasTombstone) {
+      owner.acquireMemoryOnPut(event.getKey(), oldSize, event.getNewValueBucketSize());
+    } else {
+      owner.acquireMemoryOnCreate(event.getKey(), event.getNewValueBucketSize());
+    }
   }
 
   public final void setRegionEntry(RegionEntry re) {
@@ -1797,7 +1805,7 @@ public class EntryEventImpl extends KeyInfo implements
 
   @Retained(ENTRY_EVENT_NEW_VALUE)
   private final void setNewValueInRegion(final LocalRegion owner,
-      final RegionEntry reentry, Object oldValueForDelta)
+      final RegionEntry reentry, Object oldValueForDelta, int oldValueSize)
       throws RegionClearedException {
 
     final LogWriterI18n logger = this.region.getCache().getLoggerI18n();
@@ -1876,6 +1884,7 @@ public class EntryEventImpl extends KeyInfo implements
     boolean calledSetValue = false;
     try {
     setNewValueBucketSize(owner, v);
+    aqcuireMemory(owner, this, oldValueSize, this.op.isUpdate(), isTombstone);
 
     // ezoerner:20081030 
     // last possible moment to do index maintenance with old value in

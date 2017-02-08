@@ -79,6 +79,21 @@ public abstract class CallbackFactoryProvider {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
+
+    @Override
+    public boolean acquireStorageMemory(long numBytes) {
+      return true;
+    }
+
+    @Override
+    public void releaseStorageMemory(long numBytes) {
+
+    }
+
+    @Override
+    public boolean isSnappyStore() {
+      return false;
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

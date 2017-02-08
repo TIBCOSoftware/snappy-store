@@ -45,27 +45,7 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.InvalidDeltaException;
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.cache.CacheListener;
-import com.gemstone.gemfire.cache.CacheLoader;
-import com.gemstone.gemfire.cache.CacheLoaderException;
-import com.gemstone.gemfire.cache.CacheWriter;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.ConflictException;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.LossAction;
-import com.gemstone.gemfire.cache.MembershipAttributes;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.RegionAccessException;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.RegionDistributionException;
-import com.gemstone.gemfire.cache.RegionMembershipListener;
-import com.gemstone.gemfire.cache.ResumptionAction;
-import com.gemstone.gemfire.cache.RoleException;
-import com.gemstone.gemfire.cache.TimeoutException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionException;
@@ -101,6 +81,7 @@ import com.gemstone.gemfire.internal.cache.InitialImageOperation.InitialImageVer
 import com.gemstone.gemfire.internal.cache.RemoteFetchVersionMessage.FetchVersionResponse;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.ResourceType;
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
+import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.DistributedRegionFunctionExecutor;
 import com.gemstone.gemfire.internal.cache.execute.DistributedRegionFunctionResultSender;
 import com.gemstone.gemfire.internal.cache.execute.DistributedRegionFunctionResultWaiter;
@@ -123,6 +104,7 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySenderEventProcessor;
+import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
@@ -134,6 +116,8 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArraySortedCollection;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gnu.trove.TObjectIntProcedure;
@@ -4869,5 +4853,66 @@ public class DistributedRegion extends LocalRegion implements
    */
   public boolean hasNetLoader() {
     return this.hasNetLoader(getCacheDistributionAdvisor());
+  }
+
+  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+
+  @Override
+  protected void acquireMemoryOnCreate(Object key, int newSize) throws LowMemoryException {
+    if (!callback.acquireStorageMemory(newSize)) {
+      Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+      throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+    }
+  }
+
+  @Override
+  protected void freeMemoryOnRemove(Object key, int oldSize) {
+    callback.releaseStorageMemory(oldSize);
+  }
+
+  @Override
+  void updateSizeOnRemove(Object key, int oldSize) {
+    freeMemoryOnRemove(key, oldSize);
+  }
+
+  @Override
+  public int calculateRegionEntryValueSize(RegionEntry re) {
+    //@TODO remove the internal region check.
+    if (!this.isInternalRegion() && callback.isSnappyStore()) {
+      return calcMemSize(re._getValue());
+    } else {
+      return 0;
+    }
+  }
+
+  @Override
+  public int calculateValueSize(Object val) {
+    //@TODO remove the internal region check.
+    if (!this.isInternalRegion() && callback.isSnappyStore()) {
+      return calcMemSize(val);
+    } else {
+      return 0;
+    }
+  }
+
+  static int calcMemSize(Object value) {
+    if (value == null || value instanceof Token) {
+      return 0;
+    }
+    if (!(value instanceof byte[])
+        && !CachedDeserializableFactory.preferObject()
+        && !(value instanceof CachedDeserializable)
+        && !(value instanceof com.gemstone.gemfire.Delta)
+        && !(value instanceof Delta)) {
+      // ezoerner:20090401 it's possible this value is a Delta
+      throw new InternalGemFireError("DEBUG: calcMemSize: weird value (class "
+          + value.getClass() + "): " + value);
+    }
+
+    try {
+      return CachedDeserializableFactory.calcMemSize(value);
+    } catch (IllegalArgumentException e) {
+      return 0;
+    }
   }
 }
