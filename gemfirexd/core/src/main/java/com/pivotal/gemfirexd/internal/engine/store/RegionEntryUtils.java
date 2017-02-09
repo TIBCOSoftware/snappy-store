@@ -594,11 +594,12 @@ public final class RegionEntryUtils {
     final Object value = entry.getValueWithoutFaultInOrOffHeapEntry(region);
     if (value != null) {
       final Class<?> valClass = value.getClass();
-      if (valClass == byte[].class) {
-        fillRowUsingByteArray(baseContainer, row, (byte[])value);
-      } else if (valClass == byte[][].class) {
+      if (valClass == byte[][].class) {
         fillRowUsingByteArrayArray(baseContainer, row, (byte[][])value);
-      } else if (OffHeapRegionEntry.class.isAssignableFrom(valClass)) {
+      } else if (valClass == byte[].class) {
+        fillRowUsingByteArray(baseContainer, row, (byte[])value);
+      } else if (region.getEnableOffHeapMemory() &&
+          OffHeapRegionEntry.class.isAssignableFrom(valClass)) {
         AbstractCompactExecRow filledRow = fillRowUsingAddress(baseContainer,
             region, (OffHeapRegionEntry)entry, row, false);
         if (filledRow == null) {

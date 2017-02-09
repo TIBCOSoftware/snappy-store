@@ -1607,8 +1607,8 @@ public abstract class ClientSharedUtils {
     if (newLength <= buffer.capacity()) {
       return buffer;
     }
-    ByteBuffer newBuffer = useDirectBuffer
-        ? ByteBuffer.allocateDirect(newLength) : ByteBuffer.allocate(newLength);
+    ByteBuffer newBuffer = useDirectBuffer ? Platform.allocateDirectBuffer(
+        newLength) : ByteBuffer.allocate(newLength);
     newBuffer.order(buffer.order());
     buffer.flip();
     newBuffer.put(buffer);
