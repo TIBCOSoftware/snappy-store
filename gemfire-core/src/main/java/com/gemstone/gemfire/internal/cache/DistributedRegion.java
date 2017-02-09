@@ -4857,22 +4857,33 @@ public class DistributedRegion extends LocalRegion implements
 
   StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
 
+  private volatile long entryOverHead = -1L;
+
   @Override
-  protected void acquireMemoryOnCreate(Object key, int newSize) throws LowMemoryException {
-    if (!callback.acquireStorageMemory(newSize)) {
+  protected long calculateEntryOverhead(RegionEntry entry) {
+    if (!this.isInternalRegion() && entryOverHead == -1L) {
+      entryOverHead = callback.getEntryOverhead(entry);
+    }
+    return entryOverHead;
+  }
+
+  @Override
+  protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
+    if (!this.isInternalRegion() &&
+        !callback.acquireStorageMemory(newSize + Math.max(0L,entryOverHead))) {
       Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
       throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
     }
   }
 
   @Override
-  protected void freeMemoryOnRemove(Object key, int oldSize) {
-    callback.releaseStorageMemory(oldSize);
+  protected void freePoolMemory(Object key, int oldSize) {
+    callback.releaseStorageMemory(oldSize + Math.max(0L,entryOverHead));
   }
 
   @Override
   void updateSizeOnRemove(Object key, int oldSize) {
-    freeMemoryOnRemove(key, oldSize);
+    freePoolMemory(key, oldSize);
   }
 
   @Override

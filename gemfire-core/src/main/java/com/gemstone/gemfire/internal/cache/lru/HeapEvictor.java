@@ -44,9 +44,12 @@ import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.ResourceType;
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
+import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.concurrent.AB;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectLongHashMap;
 
@@ -352,9 +355,15 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
   protected volatile int numFastLoops;
   private long previousBytesUsed;
   private final Object evictionLock = new Object();
+  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
   @Override
   public void onEvent(final MemoryEvent event) {
     if (DISABLE_HEAP_EVICTIOR_THREAD_POOL) {
+      return;
+    }
+
+    //Disable centralized eviction for snappydata. Critical_UP eviction will be still there.
+    if(callback.isSnappyStore() && event.getState() == MemoryThresholds.MemoryState.EVICTION){
       return;
     }
     

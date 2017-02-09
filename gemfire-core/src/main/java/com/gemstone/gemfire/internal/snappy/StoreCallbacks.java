@@ -23,6 +23,7 @@ import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.RegionEntry;
 
 public interface StoreCallbacks {
 
@@ -52,4 +53,6 @@ public interface StoreCallbacks {
   void releaseStorageMemory(long numBytes);
 
   boolean isSnappyStore();
+
+  long getEntryOverhead(RegionEntry entry);
 }

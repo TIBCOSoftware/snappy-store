@@ -12614,25 +12614,6 @@ public class LocalRegion extends AbstractRegion
     // Only needed by BucketRegion
   }
 
-  protected boolean acquireMemoryOnPut(Object key, int oldSize, int newSize) {
-    return true;
-  }
-
-  /**
-   * It should always succeed . If not enough memory it will evict some of entries to make room.
-   */
-  protected void acquireMemoryOnCreate(Object key, int newSize) throws LowMemoryException{
-    // Only needed by BucketRegion & Distributed Region
-  }
-
-  protected void freeMemoryOnRemove(Object key, int oldSize) {
-    // Only needed by BucketRegion
-  }
-
-  protected void freeMemoryOnEvict(Object key, int oldSize) {
-    // Only needed by BucketRegion
-  }
-
   protected boolean updateMemoryOnFaultIn(Object key, int newSize, int bytesOnDisk) {
     return true;
   }
@@ -14314,4 +14295,19 @@ public class LocalRegion extends AbstractRegion
       uuidAdvisor.postInitialize();
     }
   }
+
+
+  protected void acquirePoolMemory(Object key, int oldSize, int newSize) throws LowMemoryException {
+  }
+
+  protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
+  }
+
+  protected void freePoolMemory(Object key, int oldSize) {
+  }
+
+  protected long calculateEntryOverhead(RegionEntry entry) {
+    return 0;
+  }
+
 }

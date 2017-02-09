@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.RegionEntry;
 
 public abstract class CallbackFactoryProvider {
 
@@ -93,6 +94,11 @@ public abstract class CallbackFactoryProvider {
     @Override
     public boolean isSnappyStore() {
       return false;
+    }
+
+    @Override
+    public long getEntryOverhead(RegionEntry entry) {
+      return 0;
     }
   };
 

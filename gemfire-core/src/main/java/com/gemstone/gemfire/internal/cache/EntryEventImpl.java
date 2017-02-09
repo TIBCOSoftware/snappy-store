@@ -1789,9 +1789,9 @@ public class EntryEventImpl extends KeyInfo implements
 
   private void aqcuireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
     if (isUpdate && !wasTombstone) {
-      owner.acquireMemoryOnPut(event.getKey(), oldSize, event.getNewValueBucketSize());
+      owner.acquirePoolMemory(event.getKey(), oldSize, event.getNewValueBucketSize());
     } else {
-      owner.acquireMemoryOnCreate(event.getKey(), event.getNewValueBucketSize());
+      owner.acquirePoolMemory(event.getKey(), event.getNewValueBucketSize());
     }
   }
 
@@ -1884,6 +1884,7 @@ public class EntryEventImpl extends KeyInfo implements
     boolean calledSetValue = false;
     try {
     setNewValueBucketSize(owner, v);
+    owner.calculateEntryOverhead(reentry);
     aqcuireMemory(owner, this, oldValueSize, this.op.isUpdate(), isTombstone);
 
     // ezoerner:20081030 

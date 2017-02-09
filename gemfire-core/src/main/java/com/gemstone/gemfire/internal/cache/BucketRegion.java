@@ -2551,7 +2551,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
     if(this.isDestroyed || this.isDestroyingDiskRegion) {
       //If this region is destroyed, mark the stat as destroyed.
-      callback.releaseStorageMemory(Math.max(this.bytesInMemory.get(), 0L));
+      long totalEntryOverhead = Math.max(0,entryOverHead) * this.getNumEntriesInVM();
+      callback.releaseStorageMemory(Math.max(this.bytesInMemory.get(), 0L) + totalEntryOverhead);
       oldMemValue = this.bytesInMemory.getAndSet(BUCKET_DESTROYED);
             
     } else if(!this.isInitialized()) {
@@ -2593,9 +2594,19 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     return calcMemSize(re._getValue()); // OFFHEAP _getValue ok
   }
 
+  private volatile long entryOverHead = -1L;
+
   @Override
-  protected void acquireMemoryOnCreate(Object key, int newSize) throws LowMemoryException {
-    if (!callback.acquireStorageMemory(newSize)) {
+  protected long calculateEntryOverhead(RegionEntry entry) {
+    if (entryOverHead == -1L) {
+      entryOverHead = callback.getEntryOverhead(entry);
+    }
+    return entryOverHead;
+  }
+
+  @Override
+  protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
+    if (!callback.acquireStorageMemory(newSize + Math.max(0L,entryOverHead))) {
       Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
       throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
     }
@@ -2693,14 +2704,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   @Override
-  protected void freeMemoryOnRemove(Object key, int oldSize) {
-    callback.releaseStorageMemory(oldSize);
+  protected void freePoolMemory(Object key, int oldSize) {
+    callback.releaseStorageMemory(oldSize + Math.max(0L,entryOverHead));
   }
 
-  @Override
-  protected void freeMemoryOnEvict(Object key, int oldSize) {
-    callback.releaseStorageMemory(oldSize);
-  }
 
   @Override
   void updateSizeOnRemove(Object key, int oldSize) {
@@ -2726,7 +2733,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     this.debugMap.remove(key);
     this.partitionedRegion.getPrStats().incDataStoreEntryCount(-1);
     updateBucket2Size(oldSize, 0, SizeOp.DESTROY);
-    freeMemoryOnRemove(key, oldSize);
+    freePoolMemory(key, oldSize);
   }
 
   @Override
@@ -2753,7 +2760,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     Assert.assertTrue(oldSize == this.debugMap.get(key), "expected " + oldSize + "==" + this.debugMap.get(key));
 //     this.debugMap.put(key, 0);
     updateBucket2Size(oldSize, newDiskSize, SizeOp.EVICT);
-    freeMemoryOnEvict(key, oldSize);
+    freePoolMemory(key, oldSize);
     return newDiskSize;
   }
 
