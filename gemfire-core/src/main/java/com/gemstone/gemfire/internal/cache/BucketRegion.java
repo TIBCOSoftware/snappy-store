@@ -2705,7 +2705,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   @Override
   protected void freePoolMemory(Object key, int oldSize) {
-    callback.releaseStorageMemory(oldSize + Math.max(0L,entryOverHead));
+    callback.releaseStorageMemory(oldSize);
   }
 
 
@@ -2760,7 +2760,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     Assert.assertTrue(oldSize == this.debugMap.get(key), "expected " + oldSize + "==" + this.debugMap.get(key));
 //     this.debugMap.put(key, 0);
     updateBucket2Size(oldSize, newDiskSize, SizeOp.EVICT);
-    freePoolMemory(key, oldSize);
     return newDiskSize;
   }
 

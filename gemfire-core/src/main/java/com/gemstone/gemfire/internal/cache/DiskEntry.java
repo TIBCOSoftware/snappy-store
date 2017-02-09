@@ -1427,6 +1427,7 @@ public interface DiskEntry extends RegionEntry {
         if (movedValueToDisk) {
           valueLength = getValueLength(did);
         }
+        region.freePoolMemory(entry.getKey(), change * -1);
         incrementBucketStats(region, -1/*InVM*/, 1/*OnDisk*/, valueLength);
       }
       } finally {

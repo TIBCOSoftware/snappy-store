@@ -4869,16 +4869,19 @@ public class DistributedRegion extends LocalRegion implements
 
   @Override
   protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
-    if (!this.isInternalRegion() &&
-        !callback.acquireStorageMemory(newSize + Math.max(0L,entryOverHead))) {
-      Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
-      throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+    if (!this.isInternalRegion() && !this.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/")) {
+      if (!callback.acquireStorageMemory(newSize + Math.max(0L, entryOverHead))) {
+        Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+        throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+      }
     }
   }
 
   @Override
   protected void freePoolMemory(Object key, int oldSize) {
-    callback.releaseStorageMemory(oldSize + Math.max(0L,entryOverHead));
+    if (!this.isInternalRegion() && !this.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/")) {
+      callback.releaseStorageMemory(oldSize + Math.max(0L,entryOverHead));
+    }
   }
 
   @Override
