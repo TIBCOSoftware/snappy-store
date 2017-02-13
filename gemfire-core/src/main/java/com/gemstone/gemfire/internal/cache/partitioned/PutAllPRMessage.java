@@ -654,8 +654,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
         // TODO: For tx it may change.
         // TODO: For concurrent putALLs, this will club other putall as well
         // the putAlls in worst case so columnBatchSize may be large?
-        if (success && bucketRegion.getPartitionedRegion().needsBatching()
-            && bucketRegion.size() >= bucketRegion.getPartitionedRegion().getColumnBatchSize()) {
+        if (success && bucketRegion.checkForColumnBatchCreation()) {
           bucketRegion.createAndInsertColumnBatch(false);
         }
           if (lockedForPrimary) {

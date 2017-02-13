@@ -19,19 +19,18 @@ package com.gemstone.gemfire.internal.cache;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import com.gemstone.gemfire.CancelException;
-import com.gemstone.gemfire.CopyHelper;
-import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.DeltaSerializationException;
-import com.gemstone.gemfire.GemFireIOException;
-import com.gemstone.gemfire.InternalGemFireError;
-import com.gemstone.gemfire.InvalidDeltaException;
-import com.gemstone.gemfire.SystemFailure;
+import com.gemstone.gemfire.*;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.hdfs.HDFSIOException;
 import com.gemstone.gemfire.cache.hdfs.internal.AbstractBucketRegionQueue;
@@ -55,14 +54,7 @@ import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
-import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
-import com.gemstone.gemfire.internal.cache.partitioned.DestroyMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.InvalidateMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.LockObject;
-import com.gemstone.gemfire.internal.cache.partitioned.PRTombstoneMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.PartitionMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.PutAllPRMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.PutMessage;
+import com.gemstone.gemfire.internal.cache.partitioned.*;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientTombstoneMessage;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientUpdateMessage;
@@ -713,13 +705,21 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     } finally {
       if (locked) {
         endLocalWrite(event);
-        //create and insert column batch
-        if (success && getPartitionedRegion().needsBatching()
-            && this.size() >= this.getPartitionedRegion().getColumnBatchSize()) {
+        // create and insert column batch
+        if (success && checkForColumnBatchCreation()) {
           createAndInsertColumnBatch(false);
         }
       }
     }
+  }
+
+  public final boolean checkForColumnBatchCreation() {
+    final PartitionedRegion pr = getPartitionedRegion();
+    final int size;
+    return pr.needsBatching()
+        && ((size = getRegionSize()) >= pr.getColumnMaxDeltaRows()
+        || (size >= pr.getColumnMinBatchSize()
+        && getTotalBytes() >= pr.getColumnBatchSize()));
   }
 
   public final boolean createAndInsertColumnBatch(boolean forceFlush) {
@@ -741,16 +741,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // ColumnBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    final int columnBatchSize = this.getPartitionedRegion().getColumnBatchSize();
-    final int batchSize = !forceFlush ? columnBatchSize
-        : Math.min(this.getPartitionedRegion().getColumnMinBatchSize(),
-        Math.max(columnBatchSize, 1));
+    final boolean doFlush = forceFlush ? getRegionSize() >=
+        getPartitionedRegion().getColumnMinBatchSize()
+        : checkForColumnBatchCreation();
     // we may have to use region.size so that no state
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.
     // anyway batchUUID will be null in that case.
-    if (this.batchUUID != null && this.getBucketAdvisor().isPrimary() &&
-        getRegionSize() >= batchSize) {
+    if (this.batchUUID != null && doFlush && getBucketAdvisor().isPrimary()) {
       // need to flush the region
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
@@ -775,10 +773,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // PUTALL
     boolean resetBatchId = false;
     if (getBucketAdvisor().isPrimary()) {
-      UUID batchUUIDToUse = null;
+      UUID batchUUIDToUse;
       if (event.getPutAllOperation() != null) { //isPutAll op
         batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
-      } else if (this.size() >= this.getPartitionedRegion().getColumnBatchSize()) {// loose check on size..not very strict
+        // loose check on size, not very strict
+      } else if (size() >= getPartitionedRegion().getColumnMaxDeltaRows()) {
         batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache()

@@ -16,14 +16,14 @@
  */
 package com.gemstone.gemfire.internal.cache;
 
-
 public class ExternalTableMetaData {
 
   public ExternalTableMetaData(String entityName,
       Object schema,
       Object externalStore,
       int columnBatchSize,
-      Boolean useCompression,
+      int columnMaxDeltaRows,
+      String compressionCodec,
       String baseTable,
       String dml,
       String[] dependents) {
@@ -31,7 +31,8 @@ public class ExternalTableMetaData {
     this.schema = schema;
     this.externalStore = externalStore;
     this.columnBatchSize = columnBatchSize;
-    this.useCompression = useCompression;
+    this.columnMaxDeltaRows = columnMaxDeltaRows;
+    this.compressionCodec = compressionCodec;
     this.baseTable = baseTable;
     this.dml = dml;
     this.dependents = dependents;
@@ -42,9 +43,9 @@ public class ExternalTableMetaData {
   // No type specified as the class is in snappy core
   public Object externalStore;
   public int columnBatchSize;
-  public boolean useCompression;
+  public int columnMaxDeltaRows;
+  public String compressionCodec;
   public String baseTable;
   public String dml;
   public String[] dependents;
-
 }

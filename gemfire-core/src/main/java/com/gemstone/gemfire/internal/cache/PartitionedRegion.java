@@ -408,24 +408,51 @@ public class PartitionedRegion extends LocalRegion implements
 
   private volatile int shutDownAllStatus = RUNNING_MODE;
 
-  /** Default size for ColumnBatches. */
+  /** Maximum size in bytes for ColumnBatches. */
   private int columnBatchSize = -1;
+
+  /** Maximum rows to keep in the delta buffer. */
+  private int columnMaxDeltaRows = -1;
 
   /** Minimum size for ColumnBatches. */
   private int columnMinBatchSize = 200;
 
-  public void setColumnBatchSizes(int size, int minSize) {
+  public void setColumnBatchSizes(int size, int maxDeltaRows, int minSize) {
     columnBatchSize = size;
+    columnMaxDeltaRows = maxDeltaRows;
     columnMinBatchSize = minSize < columnBatchSize ? minSize : size;
   }
 
+  private ExternalTableMetaData getHiveMetaData() {
+    final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
+        .getInternalProductCallbacks();
+    if (sysCb != null) {
+      return sysCb.fetchSnappyTablesHiveMetaData(this);
+    } else {
+      return null;
+    }
+  }
+
   public int getColumnBatchSize() {
+    int columnBatchSize = this.columnBatchSize;
     if (columnBatchSize == -1) {
-      final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
-          .getInternalProductCallbacks();
-      ExternalTableMetaData metadata = sysCb.fetchSnappyTablesHiveMetaData(this);
+      ExternalTableMetaData metaData = getHiveMetaData();
+      if (metaData != null) {
+        this.columnBatchSize = columnBatchSize = metaData.columnBatchSize;
+      }
     }
     return columnBatchSize;
+  }
+
+  public int getColumnMaxDeltaRows() {
+    int columnMaxDeltaRows = this.columnMaxDeltaRows;
+    if (columnMaxDeltaRows == -1) {
+      ExternalTableMetaData metaData = getHiveMetaData();
+      if (metaData != null) {
+        this.columnMaxDeltaRows = columnMaxDeltaRows = metaData.columnMaxDeltaRows;
+      }
+    }
+    return columnMaxDeltaRows;
   }
 
   public int getColumnMinBatchSize() {
