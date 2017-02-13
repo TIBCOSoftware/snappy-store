@@ -81,6 +81,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantLock;
@@ -2595,6 +2596,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   private volatile long entryOverHead = -1L;
+  private volatile long diskIdOverHead = -1L;
+
+  private volatile boolean regionOverHeadAccounted = false;
 
   @Override
   protected long calculateEntryOverhead(RegionEntry entry) {
@@ -2605,8 +2609,31 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   @Override
+  protected long calculateDiskIdOverhead(DiskId diskId) {
+    if (diskIdOverHead == -1L) {
+      diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
+    }
+    return diskIdOverHead;
+  }
+
+  private void accountRegionOverhead() {
+    if (!regionOverHeadAccounted) {
+      synchronized (this) {
+        if (!regionOverHeadAccounted) {
+          // Acquire pool memory for region
+          if (this.isUsedForPartitionedRegionBucket()) {
+            callback.acquireStorageMemory(this.getFullPath(), callback.getRegionOverhead(this));
+            regionOverHeadAccounted = true;
+          }
+        }
+      }
+    }
+  }
+
+  @Override
   protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
-    if (!callback.acquireStorageMemory(newSize + Math.max(0L,entryOverHead))) {
+    accountRegionOverhead();
+    if (!callback.acquireStorageMemory(key.toString(), newSize + Math.max(0L,entryOverHead))) {
       Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
       throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
     }

@@ -68,19 +68,15 @@ import java.util.concurrent.RejectedExecutionException;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.internal.cache.*;
+import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.BucketRegionIndexCleaner;
-import com.gemstone.gemfire.internal.cache.CacheObserver;
-import com.gemstone.gemfire.internal.cache.CacheObserverHolder;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
 
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
@@ -903,6 +899,29 @@ RETRYLOOP:
       final int oldCapacity = oldTable.length;
       if (oldCapacity >= MAXIMUM_CAPACITY) {
         return;
+      }
+
+      // update the acquired memory storage; this will always increase
+      // monotonically
+      if (CallbackFactoryProvider.getStoreCallbacks() != null
+          && !CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory("CustomEntryConcurrentHashMap",
+          oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE)) {
+        // check if CRITICAL_UP else force heap stats update
+        GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+        if (cache != null) {
+          HeapMemoryMonitor monitor = cache.getResourceManager().getHeapMonitor();
+          if (!monitor.isCriticalUp()) {
+            monitor.updateStateAndSendEvent();
+            // check for CRITICAL_UP again
+            if (!monitor.isCriticalUp()) {
+              // log an error and move on; throwing an exception
+              // here can cause trouble
+              // cache.getLogger().error("No size remaining in pool but no CRITICAL_UP!");
+              throw new AssertionError(
+                  "No size remaining in pool but no CRITICAL_UP!");
+            }
+          }
+        }
       }
 
       /*

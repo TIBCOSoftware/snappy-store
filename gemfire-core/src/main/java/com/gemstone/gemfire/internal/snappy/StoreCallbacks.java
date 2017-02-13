@@ -48,11 +48,15 @@ public interface StoreCallbacks {
 
   int getLastIndexOfRow(Object o);
 
-  boolean acquireStorageMemory(long numBytes);
+  boolean acquireStorageMemory(String name, long numBytes);
 
   void releaseStorageMemory(long numBytes);
 
   boolean isSnappyStore();
 
   long getEntryOverhead(RegionEntry entry);
+
+  long getRegionOverhead(LocalRegion region);
+
+  long getNumBytesForEviction();
 }

@@ -116,6 +116,8 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArraySortedCollection;
@@ -4858,6 +4860,7 @@ public class DistributedRegion extends LocalRegion implements
   StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
 
   private volatile long entryOverHead = -1L;
+  private volatile long diskIdOverhead = -1L;
 
   @Override
   protected long calculateEntryOverhead(RegionEntry entry) {
@@ -4868,9 +4871,17 @@ public class DistributedRegion extends LocalRegion implements
   }
 
   @Override
+  protected long calculateDiskIdOverhead(DiskId diskId) {
+    if (!this.isInternalRegion() && diskIdOverhead == -1L) {
+      diskIdOverhead = ReflectionObjectSizer.getInstance().sizeof(diskId);
+    }
+    return diskIdOverhead;
+  }
+
+  @Override
   protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
     if (!this.isInternalRegion() && !this.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/")) {
-      if (!callback.acquireStorageMemory(newSize + Math.max(0L, entryOverHead))) {
+      if (!callback.acquireStorageMemory(key.toString(), newSize + Math.max(0L, entryOverHead))) {
         Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
         throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
       }

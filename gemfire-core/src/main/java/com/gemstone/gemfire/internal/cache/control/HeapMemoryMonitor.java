@@ -989,7 +989,11 @@ public void stopMonitoring() {
     }
     return this.resourceAdvisor.isHeapCritical(member);
   }
-  
+
+  public final boolean isCriticalUp() {
+    return this.mostRecentEvent.getState().isCritical();
+  }
+
   class LocalHeapStatListener implements LocalStatListener {
     /* (non-Javadoc)
      * @see com.gemstone.gemfire.internal.LocalStatListener#statValueChanged(double)

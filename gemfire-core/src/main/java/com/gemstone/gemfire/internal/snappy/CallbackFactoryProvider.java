@@ -82,7 +82,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public boolean acquireStorageMemory(long numBytes) {
+    public boolean acquireStorageMemory(String name, long numBytes) {
       return true;
     }
 
@@ -98,6 +98,16 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public long getEntryOverhead(RegionEntry entry) {
+      return 0;
+    }
+
+    @Override
+    public long getRegionOverhead(LocalRegion region) {
+      return 0;
+    }
+
+    @Override
+    public long getNumBytesForEviction() {
       return 0;
     }
   };

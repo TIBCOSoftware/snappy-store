@@ -51,8 +51,6 @@ public final class GemFireXDInstrumentation implements SingleObjectSizer {
 
   private static String agentArguments = null;
   
-  private final static ReflectionSingleObjectSizer reflectionSizer = new ReflectionSingleObjectSizer();
-  
   private static final GemFireXDInstrumentation theInstance;
   
   static {
@@ -82,7 +80,7 @@ public final class GemFireXDInstrumentation implements SingleObjectSizer {
       return 0;
     }
     if (instAgent == null) {
-      return reflectionSizer.sizeof(objectToSize);
+      return ReflectionSingleObjectSizer.INSTANCE.sizeof(objectToSize);
     }
 
     return instAgent.getObjectSize(objectToSize);

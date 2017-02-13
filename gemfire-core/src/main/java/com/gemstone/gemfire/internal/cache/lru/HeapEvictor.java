@@ -366,6 +366,7 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
     if(callback.isSnappyStore() && event.getState() == MemoryThresholds.MemoryState.EVICTION){
       return;
     }
+
     
     // Do we care about eviction events and did the eviction event originate
     // in this VM ...
@@ -379,6 +380,9 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
             logWriter.fine("Updating eviction in response to memory event: " + event + ". previousBytesUsed=" + previousBytesUsed);
           }
 
+          if(callback.isSnappyStore()){
+            logWriter.info("CRITICAL_UP event received by HeapEvictor thread. Total bytes used now is " + event.getBytesUsed());
+          }
           // We lock here to make sure that the thread that was previously
           // started and running eviction loops is in a state where it's okay
           // to update the number of fast loops to perform.

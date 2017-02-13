@@ -46,6 +46,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 
 /**
@@ -73,6 +74,8 @@ import com.gemstone.gemfire.internal.util.BlobHelper;
  * @since 3.2
  */
 public interface DiskEntry extends RegionEntry {
+
+  public static ThreadLocal<Long> entryEvictionMemoryOverHead = new ThreadLocal<Long>();
 
   /**
    * Sets the value with a {@link RegionEntryContext}.
@@ -1360,7 +1363,8 @@ public interface DiskEntry extends RegionEntry {
         }
       }
       DiskRegion dr = region.getDiskRegion();
-      final int oldSize = region.calculateRegionEntryValueSize(entry);;
+      final int oldSize = region.calculateRegionEntryValueSize(entry);
+      int change = 0;
 //      dr.getOwner().getCache().getLogger().info("DEBUG: overflowing entry with key " + entry.getKey());
       //Asif:Get diskID . If it is null, it implies it is
       // overflow only mode.
@@ -1369,6 +1373,8 @@ public interface DiskEntry extends RegionEntry {
       if (did == null) {
         ((AbstractDiskLRURegionEntry)entry).setDelayedDiskId(region);
         did = entry.getDiskId();
+        // add DiskId overhead to change
+        change += region.calculateDiskIdOverhead(did);
       }
       
       // Notify the GemFireXD IndexManager if present
@@ -1377,7 +1383,6 @@ public interface DiskEntry extends RegionEntry {
         indexUpdater.onOverflowToDisk(entry);
       }*/
       
-      int change = 0;
       boolean scheduledAsyncHere = false;
       dr.acquireReadLock();
       try {
@@ -1407,7 +1412,7 @@ public interface DiskEntry extends RegionEntry {
         // then treat it like the sync case. This fixes bug 41310
         if (scheduledAsyncHere || wasAlreadyPendingAsync) {
           // we call _setValue(null) after it is actually written to disk
-          change = entry.updateAsyncEntrySize(ccHelper);
+          change += entry.updateAsyncEntrySize(ccHelper);
           // do the stats when it is actually written to disk
         } else {
           region.updateSizeOnEvict(entry.getKey(), oldSize);
@@ -1419,7 +1424,7 @@ public interface DiskEntry extends RegionEntry {
             entry.afterValueOverflow(region);
           }
           movedValueToDisk = true;
-          change = ((LRUClockNode)entry).updateEntrySize(ccHelper);
+          change += ((LRUClockNode)entry).updateEntrySize(ccHelper);
         }
         dr.incNumEntriesInVM(-1L);
         dr.incNumOverflowOnDisk(1L);
@@ -1427,7 +1432,13 @@ public interface DiskEntry extends RegionEntry {
         if (movedValueToDisk) {
           valueLength = getValueLength(did);
         }
-        region.freePoolMemory(entry.getKey(), change * -1);
+        if (change < 0) {
+          region.freePoolMemory(entry.getKey(), change * -1);
+        } else {
+           long moreMemoryNeeded = entryEvictionMemoryOverHead.get() + change;
+          entryEvictionMemoryOverHead.set(moreMemoryNeeded);
+        }
+
         incrementBucketStats(region, -1/*InVM*/, 1/*OnDisk*/, valueLength);
       }
       } finally {

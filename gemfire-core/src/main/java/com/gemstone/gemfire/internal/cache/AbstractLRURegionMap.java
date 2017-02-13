@@ -363,6 +363,9 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
                           + entry.getKeyCopy()
                           + " because moving its value to disk resulted in a net change of "
                           + change + " bytes.");
+        // TODO: check if this works as expected and stops evictor threads since
+        // eviction is increasing the overhead and not decreasing
+        return 0;
       }
       return change * -1;
 

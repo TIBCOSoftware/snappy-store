@@ -212,6 +212,8 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
@@ -320,6 +322,9 @@ public class LocalRegion extends AbstractRegion
    * Set to true if this region supports transaction else false.
    */
   private final boolean supportsTX;
+
+
+  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
 
   public static final ReadEntryUnderLock READ_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
@@ -1402,7 +1407,8 @@ public class LocalRegion extends AbstractRegion
                 
               } else {
                 newRegion = new BucketRegion(subregionName, regionAttributes,
-                    this, this.cache, internalRegionArgs);  
+                    this, this.cache, internalRegionArgs);
+
               }
             }
             else if (regionAttributes.getPartitionAttributes() != null) {
@@ -14310,4 +14316,7 @@ public class LocalRegion extends AbstractRegion
     return 0;
   }
 
+  protected long calculateDiskIdOverhead(DiskId diskId) {
+    return 0;
+  }
 }
