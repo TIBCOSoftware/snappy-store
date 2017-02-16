@@ -1789,9 +1789,9 @@ public class EntryEventImpl extends KeyInfo implements
 
   private void aqcuireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
     if (isUpdate && !wasTombstone) {
-      owner.acquirePoolMemory(event.getKey(), oldSize, event.getNewValueBucketSize());
+      owner.acquirePoolMemory(oldSize, event.getNewValueBucketSize(), true);
     } else {
-      owner.acquirePoolMemory(event.getKey(), event.getNewValueBucketSize());
+      owner.acquirePoolMemory(event.getNewValueBucketSize(), true);
     }
   }
 
@@ -1884,8 +1884,12 @@ public class EntryEventImpl extends KeyInfo implements
     boolean calledSetValue = false;
     try {
     setNewValueBucketSize(owner, v);
-    owner.calculateEntryOverhead(reentry);
-    aqcuireMemory(owner, this, oldValueSize, this.op.isUpdate(), isTombstone);
+    if(!region.reservedTable()){
+      owner.calculateEntryOverhead(reentry);
+      LocalRegion.regionPath.set(region.getFullPath());
+      aqcuireMemory(owner, this, oldValueSize, this.op.isUpdate(), isTombstone);
+    }
+
 
     // ezoerner:20081030 
     // last possible moment to do index maintenance with old value in

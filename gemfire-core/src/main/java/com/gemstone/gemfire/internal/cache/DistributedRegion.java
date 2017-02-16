@@ -4857,47 +4857,16 @@ public class DistributedRegion extends LocalRegion implements
     return this.hasNetLoader(getCacheDistributionAdvisor());
   }
 
-  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-
-  private volatile long entryOverHead = -1L;
-  private volatile long diskIdOverhead = -1L;
-
-  @Override
-  protected long calculateEntryOverhead(RegionEntry entry) {
-    if (!this.isInternalRegion() && entryOverHead == -1L) {
-      entryOverHead = callback.getEntryOverhead(entry);
-    }
-    return entryOverHead;
-  }
-
-  @Override
-  protected long calculateDiskIdOverhead(DiskId diskId) {
-    if (!this.isInternalRegion() && diskIdOverhead == -1L) {
-      diskIdOverhead = ReflectionObjectSizer.getInstance().sizeof(diskId);
-    }
-    return diskIdOverhead;
-  }
-
-  @Override
-  protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
-    if (!this.isInternalRegion() && !this.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/")) {
-      if (!callback.acquireStorageMemory(key.toString(), newSize + Math.max(0L, entryOverHead))) {
-        Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
-        throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
-      }
-    }
-  }
-
-  @Override
-  protected void freePoolMemory(Object key, int oldSize) {
-    if (!this.isInternalRegion() && !this.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/")) {
-      callback.releaseStorageMemory(oldSize + Math.max(0L,entryOverHead));
-    }
-  }
-
   @Override
   void updateSizeOnRemove(Object key, int oldSize) {
-    freePoolMemory(key, oldSize);
+    freePoolMemory(oldSize, true);
+  }
+
+  @Override
+  void updateSizeOnClearRegion(int sizeBeforeClear){
+    if(!this.reservedTable()){
+      callback.dropStorageMemory(getFullPath());
+    }
   }
 
   @Override

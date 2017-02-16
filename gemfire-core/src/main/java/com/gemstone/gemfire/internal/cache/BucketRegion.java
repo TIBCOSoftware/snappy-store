@@ -114,7 +114,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private static final ThreadLocal<BucketRegionIndexCleaner> bucketRegionIndexCleaner = 
       new ThreadLocal<BucketRegionIndexCleaner>() ;
 
-  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+
   /**
    * Contains size in bytes of the values stored
    * in theRealMap. Sizes are tallied during put and remove operations.
@@ -2552,8 +2552,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
     if(this.isDestroyed || this.isDestroyingDiskRegion) {
       //If this region is destroyed, mark the stat as destroyed.
-      long totalEntryOverhead = Math.max(0,entryOverHead) * this.getNumEntriesInVM();
-      callback.releaseStorageMemory(Math.max(this.bytesInMemory.get(), 0L) + totalEntryOverhead);
+      if(!this.reservedTable()){
+        callback.dropStorageMemory(getFullPath());
+      }
       oldMemValue = this.bytesInMemory.getAndSet(BUCKET_DESTROYED);
             
     } else if(!this.isInitialized()) {
@@ -2595,49 +2596,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     return calcMemSize(re._getValue()); // OFFHEAP _getValue ok
   }
 
-  private volatile long entryOverHead = -1L;
-  private volatile long diskIdOverHead = -1L;
-
-  private volatile boolean regionOverHeadAccounted = false;
-
-  @Override
-  protected long calculateEntryOverhead(RegionEntry entry) {
-    if (entryOverHead == -1L) {
-      entryOverHead = callback.getEntryOverhead(entry);
-    }
-    return entryOverHead;
-  }
-
-  @Override
-  protected long calculateDiskIdOverhead(DiskId diskId) {
-    if (diskIdOverHead == -1L) {
-      diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
-    }
-    return diskIdOverHead;
-  }
-
-  private void accountRegionOverhead() {
-    if (!regionOverHeadAccounted) {
-      synchronized (this) {
-        if (!regionOverHeadAccounted) {
-          // Acquire pool memory for region
-          if (this.isUsedForPartitionedRegionBucket()) {
-            callback.acquireStorageMemory(this.getFullPath(), callback.getRegionOverhead(this));
-            regionOverHeadAccounted = true;
-          }
-        }
-      }
-    }
-  }
-
-  @Override
-  protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
-    accountRegionOverhead();
-    if (!callback.acquireStorageMemory(key.toString(), newSize + Math.max(0L,entryOverHead))) {
-      Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
-      throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
-    }
-  }
 
   @Override
   void updateSizeOnPut(Object key, int oldSize, int newSize) {
@@ -2700,7 +2658,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     return this.createCount.get() - this.removeCount.get() - this.invalidateCount.get()
 //       - (this.evictCount.get() - this.faultInCount.get());
 //   }
-  
+
+  int ik = 0;
   @Override
   void updateSizeOnCreate(Object key, int newSize) {
 //     if (cache.getLogger().infoEnabled()) {
@@ -2727,14 +2686,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //       this.debugMap.put(key, newSize);
 //     }
     this.partitionedRegion.getPrStats().incDataStoreEntryCount(1);
+/*    if(!reservedTable() && ik==0){
+      System.out.println("Getting new size "+ newSize);
+      Thread.dumpStack();
+      ik++;
+    }*/
     updateBucket2Size(0, newSize, SizeOp.CREATE);
   }
-
-  @Override
-  protected void freePoolMemory(Object key, int oldSize) {
-    callback.releaseStorageMemory(oldSize);
-  }
-
 
   @Override
   void updateSizeOnRemove(Object key, int oldSize) {
@@ -2760,7 +2718,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     this.debugMap.remove(key);
     this.partitionedRegion.getPrStats().incDataStoreEntryCount(-1);
     updateBucket2Size(oldSize, 0, SizeOp.DESTROY);
-    freePoolMemory(key, oldSize);
+    freePoolMemory(oldSize, true);
   }
 
   @Override
@@ -3227,5 +3185,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
      return ServerPingMessage.send(cache, hostingservers);
     
   }
+
+
+
+
 }
 

@@ -211,6 +211,8 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
@@ -324,7 +326,10 @@ public class LocalRegion extends AbstractRegion
   private final boolean supportsTX;
 
 
-  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+
+
+  public static final ThreadLocal<String> regionPath =
+      new ThreadLocal<String>() ;
 
   public static final ReadEntryUnderLock READ_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
@@ -3544,7 +3549,7 @@ public class LocalRegion extends AbstractRegion
       if (isEntryExpiryPossible()) {
         rescheduleEntryExpiryTasks(); // called after gii to fix bug 35214
       }
-      
+      this.accountRegionOverhead();
       initialized();
     }
     catch (RegionDestroyedException e) {
@@ -12620,11 +12625,6 @@ public class LocalRegion extends AbstractRegion
     // Only needed by BucketRegion
   }
 
-  protected boolean updateMemoryOnFaultIn(Object key, int newSize, int bytesOnDisk) {
-    return true;
-  }
-
-
   public void initializeStats(long numEntriesInVM, long numOverflowOnDisk,
       long numOverflowBytesOnDisk) {
     getDiskRegion().getStats().incNumEntriesInVM(numEntriesInVM); 
@@ -14302,21 +14302,103 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
+  protected StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+  protected volatile boolean regionOverHeadAccounted = false;
+  protected volatile long entryOverHead = -1L;
+  protected volatile long diskIdOverHead = -1L;
 
-  protected void acquirePoolMemory(Object key, int oldSize, int newSize) throws LowMemoryException {
+  protected void accountRegionOverhead() {// Not throwing LowMemoryException while region creation
+    if (!this.reservedTable() && !regionOverHeadAccounted) {
+      synchronized (this) {
+        if (!regionOverHeadAccounted) {
+          callback.acquireStorageMemory(getFullPath(), callback.getRegionOverhead(this));
+          regionOverHeadAccounted = true;
+
+        }
+      }
+    }
   }
 
-  protected void acquirePoolMemory(Object key, int newSize) throws LowMemoryException {
-  }
-
-  protected void freePoolMemory(Object key, int oldSize) {
+  private long getEntryOverhead(RegionEntry entry){
+    long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
+    Object key = entry.getRawKey();
+    if (key != null) {
+      entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(key);
+    }
+    if (entry instanceof DiskEntry) {
+      DiskId diskId = ((DiskEntry)entry).getDiskId();
+      if(diskId != null){
+        entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(diskId);
+      }
+    }
+    return entryOverhead;
   }
 
   protected long calculateEntryOverhead(RegionEntry entry) {
-    return 0;
+    if (!this.reservedTable() && entryOverHead == -1L) {
+      entryOverHead = getEntryOverhead(entry);
+    }
+    return entryOverHead;
   }
 
   protected long calculateDiskIdOverhead(DiskId diskId) {
-    return 0;
+    if (!this.reservedTable() && diskIdOverHead == -1L) {
+      diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
+    }
+    return diskIdOverHead;
+  }
+
+  //@TODO implement properly to compute delta
+  protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead) throws LowMemoryException {
+    if (!this.reservedTable()) {
+      if (withEntryOverHead) {
+        if (!callback.acquireStorageMemory(getFullPath(),
+            newSize + Math.max(0L, entryOverHead))) {
+          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+        }
+      } else {
+        if (!callback.acquireStorageMemory(getFullPath(), newSize)) {
+          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+        }
+      }
+    }
+  }
+
+  protected void acquirePoolMemory(int newSize, boolean withEntryOverHead) throws LowMemoryException {
+    if (!this.reservedTable()) {
+      if (withEntryOverHead) {
+        if (!callback.acquireStorageMemory(getFullPath(),
+            newSize + Math.max(0L, entryOverHead))) {
+          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+        }
+      } else {
+        if (!callback.acquireStorageMemory(getFullPath(), newSize)) {
+          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+        }
+      }
+    }
+  }
+
+  protected void freePoolMemory(int oldSize, boolean withEntryOverHead) {
+    if (!this.reservedTable()) {
+      if (withEntryOverHead) {
+        callback.releaseStorageMemory(getFullPath(), oldSize + Math.max(0L, entryOverHead));
+      } else {
+        callback.releaseStorageMemory(getFullPath(), oldSize);
+      }
+    }
+  }
+
+  protected boolean isHiveTable() {
+    return this.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE");
+  }
+
+  protected boolean reservedTable() {
+    return isSecret() || isUsedForMetaRegion() || isUsedForPartitionedRegionAdmin()
+        || isHiveTable();
   }
 }

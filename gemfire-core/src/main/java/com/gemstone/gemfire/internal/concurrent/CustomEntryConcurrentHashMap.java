@@ -902,26 +902,12 @@ RETRYLOOP:
       }
 
       // update the acquired memory storage; this will always increase
-      // monotonically
-      if (CallbackFactoryProvider.getStoreCallbacks() != null
-          && !CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory("CustomEntryConcurrentHashMap",
-          oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE)) {
-        // check if CRITICAL_UP else force heap stats update
-        GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-        if (cache != null) {
-          HeapMemoryMonitor monitor = cache.getResourceManager().getHeapMonitor();
-          if (!monitor.isCriticalUp()) {
-            monitor.updateStateAndSendEvent();
-            // check for CRITICAL_UP again
-            if (!monitor.isCriticalUp()) {
-              // log an error and move on; throwing an exception
-              // here can cause trouble
-              // cache.getLogger().error("No size remaining in pool but no CRITICAL_UP!");
-              throw new AssertionError(
-                  "No size remaining in pool but no CRITICAL_UP!");
-            }
-          }
-        }
+      // monotonically. Not throwing any exception if memory could not be allocated from
+      // memory manager as this is the last step of a region operation.
+      if(LocalRegion.regionPath.get() != null){
+        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory("CustomHashMap",
+            oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE);
+        LocalRegion.regionPath.set(null);
       }
 
       /*

@@ -87,18 +87,18 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public void releaseStorageMemory(long numBytes) {
+    public void releaseStorageMemory(String objectName, long numBytes) {
+
+    }
+
+    @Override
+    public void dropStorageMemory(String objectName) {
 
     }
 
     @Override
     public boolean isSnappyStore() {
       return false;
-    }
-
-    @Override
-    public long getEntryOverhead(RegionEntry entry) {
-      return 0;
     }
 
     @Override

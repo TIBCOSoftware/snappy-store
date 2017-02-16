@@ -1433,9 +1433,9 @@ public interface DiskEntry extends RegionEntry {
           valueLength = getValueLength(did);
         }
         if (change < 0) {
-          region.freePoolMemory(entry.getKey(), change * -1);
+          region.freePoolMemory(change * -1, false);
         } else {
-           long moreMemoryNeeded = entryEvictionMemoryOverHead.get() + change;
+          long moreMemoryNeeded = entryEvictionMemoryOverHead.get() + change;
           entryEvictionMemoryOverHead.set(moreMemoryNeeded);
         }
 
