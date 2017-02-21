@@ -14337,6 +14337,7 @@ public class LocalRegion extends AbstractRegion
   protected long calculateEntryOverhead(RegionEntry entry) {
     if (!this.reservedTable() && entryOverHead == -1L) {
       entryOverHead = getEntryOverhead(entry);
+      System.out.println("Entry overhead for "+ getFullPath() + " = "+ entryOverHead);
     }
     return entryOverHead;
   }
@@ -14344,21 +14345,22 @@ public class LocalRegion extends AbstractRegion
   protected long calculateDiskIdOverhead(DiskId diskId) {
     if (!this.reservedTable() && diskIdOverHead == -1L) {
       diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
+      System.out.println("diskIdOverHead = " + diskIdOverHead);
     }
     return diskIdOverHead;
   }
 
-  //@TODO implement properly to compute delta
+  //@TODO implement properly to compute delta based on operation
   protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead) throws LowMemoryException {
     if (!this.reservedTable()) {
       if (withEntryOverHead) {
         if (!callback.acquireStorageMemory(getFullPath(),
-            newSize + Math.max(0L, entryOverHead))) {
+            (newSize - oldSize) + Math.max(0L, entryOverHead))) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
       } else {
-        if (!callback.acquireStorageMemory(getFullPath(), newSize)) {
+        if (!callback.acquireStorageMemory(getFullPath(), (newSize - oldSize))) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
