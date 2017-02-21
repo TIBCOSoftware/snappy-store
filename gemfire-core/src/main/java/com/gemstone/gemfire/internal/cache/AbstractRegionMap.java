@@ -1266,7 +1266,11 @@ abstract class AbstractRegionMap implements RegionMap {
                       invokingIndexManager = true;
                       indexUpdater.onEvent(owner, event, oldRe);
                       lruEntryUpdate(oldRe);
-                      owner.updateSizeOnPut(key, oldSize, owner.calculateRegionEntryValueSize(oldRe));
+                      int newSize = owner.calculateRegionEntryValueSize(oldRe);
+                      //Can safely accquire memory here. If fails this block removes the current entry from map.
+                      LocalRegion.regionPath.set(owner.getFullPath());
+                      owner.acquirePoolMemory(newSize, oldSize, false);
+                      owner.updateSizeOnPut(key, oldSize, newSize);
                       EntryLogger.logInitialImagePut(_getOwnerObject(), key,
                           newValue);
                       result = true;
@@ -1324,9 +1328,14 @@ abstract class AbstractRegionMap implements RegionMap {
                       }
                     } else {
                       int newSize = owner.calculateRegionEntryValueSize(oldRe);
+                      //Can safely accquire memory here. If fails this block removes the current entry from map.
+                      owner.calculateEntryOverhead(newRe);
+                      LocalRegion.regionPath.set(owner.getFullPath());
                       if(!oldIsTombstone) {
+                        owner.acquirePoolMemory(newSize, oldSize, false);
                         owner.updateSizeOnPut(key, oldSize, newSize);
                       } else {
+                        owner.acquirePoolMemory(newSize, true);
                         owner.updateSizeOnCreate(key, newSize);
                       }
                       EntryLogger.logInitialImagePut(_getOwnerObject(), key, newValue);
@@ -1389,7 +1398,13 @@ abstract class AbstractRegionMap implements RegionMap {
                 if (newValue == Token.TOMBSTONE) {
                   owner.scheduleTombstone(newRe, entryVersion);
                 } else {
-                  owner.updateSizeOnCreate(key, owner.calculateRegionEntryValueSize(newRe));
+                  int newSize = owner.calculateRegionEntryValueSize(newRe);
+                  //Can safely accquire memory here. If fails, this block removes the current entry from map.
+                  owner.calculateEntryOverhead(newRe);
+                  LocalRegion.regionPath.set(owner.getFullPath());
+                  //System.out.println("Put "+newRe);
+                  owner.acquirePoolMemory(newSize, true);
+                  owner.updateSizeOnCreate(key, newSize);
                   EntryLogger.logInitialImagePut(_getOwnerObject(), key, newValue);
                   lruEntryCreate(newRe);
                 }

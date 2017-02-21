@@ -2659,7 +2659,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //       - (this.evictCount.get() - this.faultInCount.get());
 //   }
 
-  int ik = 0;
   @Override
   void updateSizeOnCreate(Object key, int newSize) {
 //     if (cache.getLogger().infoEnabled()) {

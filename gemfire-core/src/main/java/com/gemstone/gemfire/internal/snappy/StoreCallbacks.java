@@ -58,5 +58,7 @@ public interface StoreCallbacks {
 
   long getRegionOverhead(LocalRegion region);
 
+  void resetMemoryManager();
+
   long getNumBytesForEviction();
 }

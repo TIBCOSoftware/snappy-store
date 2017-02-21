@@ -1364,7 +1364,7 @@ public interface DiskEntry extends RegionEntry {
       }
       DiskRegion dr = region.getDiskRegion();
       final int oldSize = region.calculateRegionEntryValueSize(entry);
-      int change = 0;
+      int diskIDOverhead =  0;
 //      dr.getOwner().getCache().getLogger().info("DEBUG: overflowing entry with key " + entry.getKey());
       //Asif:Get diskID . If it is null, it implies it is
       // overflow only mode.
@@ -1374,7 +1374,7 @@ public interface DiskEntry extends RegionEntry {
         ((AbstractDiskLRURegionEntry)entry).setDelayedDiskId(region);
         did = entry.getDiskId();
         // add DiskId overhead to change
-        change += region.calculateDiskIdOverhead(did);
+        diskIDOverhead += region.calculateDiskIdOverhead(did);
       }
       
       // Notify the GemFireXD IndexManager if present
@@ -1382,7 +1382,8 @@ public interface DiskEntry extends RegionEntry {
       if(indexUpdater != null && dr.isSync()) {
         indexUpdater.onOverflowToDisk(entry);
       }*/
-      
+
+      int change = 0;
       boolean scheduledAsyncHere = false;
       dr.acquireReadLock();
       try {
@@ -1424,7 +1425,7 @@ public interface DiskEntry extends RegionEntry {
             entry.afterValueOverflow(region);
           }
           movedValueToDisk = true;
-          change += ((LRUClockNode)entry).updateEntrySize(ccHelper);
+          change = ((LRUClockNode)entry).updateEntrySize(ccHelper);
         }
         dr.incNumEntriesInVM(-1L);
         dr.incNumOverflowOnDisk(1L);
@@ -1432,10 +1433,10 @@ public interface DiskEntry extends RegionEntry {
         if (movedValueToDisk) {
           valueLength = getValueLength(did);
         }
-        if (change < 0) {
-          region.freePoolMemory(change * -1, false);
-        } else {
-          long moreMemoryNeeded = entryEvictionMemoryOverHead.get() + change;
+        if (oldSize - diskIDOverhead > 0) {
+          region.freePoolMemory(oldSize - diskIDOverhead, false);
+        } else if (diskIDOverhead > 0 && entryEvictionMemoryOverHead.get() != null) { //Account positive memory increase for eviction thread.
+          long moreMemoryNeeded = entryEvictionMemoryOverHead.get() + diskIDOverhead;
           entryEvictionMemoryOverHead.set(moreMemoryNeeded);
         }
 

@@ -905,7 +905,7 @@ RETRYLOOP:
       // monotonically. Not throwing any exception if memory could not be allocated from
       // memory manager as this is the last step of a region operation.
       if(LocalRegion.regionPath.get() != null){
-        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory("CustomHashMap",
+        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(LocalRegion.regionPath.get(),
             oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE);
         LocalRegion.regionPath.set(null);
       }

@@ -107,6 +107,11 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public void resetMemoryManager() {
+
+    }
+
+    @Override
     public long getNumBytesForEviction() {
       return 0;
     }
