@@ -317,10 +317,10 @@ public class FabricServerHelper {
     String gfxdScript = null;
     switch (hd.getOSType()) {
       case unix:
-        gfxdScript = "snappy-shell";
+        gfxdScript = "snappy-sql";
         break;
       case windows:
-        gfxdScript = "snappy-shell.bat";
+        gfxdScript = "snappy-sql.bat";
         break;
     }
     String gfxd = productBin + sep + gfxdScript;
