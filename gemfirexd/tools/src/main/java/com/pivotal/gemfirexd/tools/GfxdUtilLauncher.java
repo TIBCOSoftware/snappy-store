@@ -116,10 +116,7 @@ public class GfxdUtilLauncher extends GemFireUtilLauncher {
     try {
       gfxdDdlUtilsClass = Class
           .forName("com.pivotal.gemfirexd.tools.internal.GfxdDdlUtils");
-    } catch (LinkageError le) {
-      // ddlutils dir is likely not on path, so ignore it
-      gfxdDdlUtilsClass = null;
-    } catch (ClassNotFoundException cnfe) {
+    } catch (LinkageError | ClassNotFoundException e) {
       // ddlutils dir is likely not on path, so ignore it
       gfxdDdlUtilsClass = null;
     } catch (Exception e) {
