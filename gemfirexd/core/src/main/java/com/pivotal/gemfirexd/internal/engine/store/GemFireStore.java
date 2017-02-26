@@ -2366,6 +2366,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.database.setdisableStatementOptimizationToGenericPlan();
       }
     }
+    ClientSharedUtils.setThriftIsDefault(this.snappyStore);
   }
 
   private String databaseName;

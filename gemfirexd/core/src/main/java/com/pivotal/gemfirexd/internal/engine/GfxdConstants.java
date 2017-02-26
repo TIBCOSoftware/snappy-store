@@ -810,7 +810,7 @@ public interface GfxdConstants {
 //  public static final String GFXD_COST_OPTIMIZED_ROUTING_THRESHOLD =
 //      GFXD_PREFIX +"cost-optimized-routing-threshold";
 
-  int SNAPPY_MIN_COLUMN_BATCH_ROWS = 200;
+  int SNAPPY_MIN_COLUMN_DELTA_ROWS = 200;
 
   // --------------------- Defaults for GFXD connection/transaction props
 

@@ -283,6 +283,8 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.LONGVARCHAR_TYPE_ID:
       case StoredFormatIds.VARCHAR_TYPE_ID:
       case StoredFormatIds.CLOB_TYPE_ID:
+        // TODO: SW: change format in SQLChar to be full UTF8
+        // and below is broken for > 3-character UTF8 strings
         return UTF8String.fromAddress(inBytes,
             Platform.BYTE_ARRAY_OFFSET + offset, columnWidth);
       default:

@@ -104,8 +104,7 @@ public abstract class ClientSharedUtils {
    * True if using Thrift as default network server and client, false if using
    * DRDA (default).
    */
-  public static boolean USE_THRIFT_AS_DEFAULT = SystemProperties
-      .getClientInstance().getBoolean(USE_THRIFT_AS_DEFAULT_PROP, true);
+  public static boolean USE_THRIFT_AS_DEFAULT = thriftIsDefault(true);
 
   private static final Object[] staticZeroLenObjectArray = new Object[0];
 
@@ -128,6 +127,15 @@ public abstract class ClientSharedUtils {
           return System.getProperty("line.separator");
         }
       });
+
+  public static boolean thriftIsDefault(boolean defaultValue) {
+    return SystemProperties.getClientInstance().getBoolean(
+        USE_THRIFT_AS_DEFAULT_PROP, defaultValue);
+  }
+
+  public static void setThriftIsDefault(boolean defaultValue) {
+    USE_THRIFT_AS_DEFAULT = thriftIsDefault(defaultValue);
+  }
 
   /** we cache localHost to avoid bug #40619, access-violation in native code */
   private static final InetAddress localHost;

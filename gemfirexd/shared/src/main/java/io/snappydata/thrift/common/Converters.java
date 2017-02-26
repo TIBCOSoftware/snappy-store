@@ -73,6 +73,10 @@ public abstract class Converters {
   static final BigDecimal MINLONG_MINUS_ONE = BigDecimal
       .valueOf(Long.MIN_VALUE).subtract(BigDecimal.ONE);
 
+  public static final long MICROS_PER_SECOND = 1000L * 1000L;
+  public static final long NANOS_PER_SECOND = MICROS_PER_SECOND * 1000L;
+  public static final long NANOS_PER_MILLI = 1000L * 1000L;
+
   public static final ColumnValueConverter BOOLEAN_TYPE =
       new ColumnValueConverter() {
 
@@ -1534,10 +1538,10 @@ public abstract class Converters {
         Calendar cal) throws SQLException {
       long ts = row.getLong(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Date(ts / 1000000L);
+        return new java.sql.Date(ts / NANOS_PER_MILLI);
       }
       else {
-        cal.setTimeInMillis(ts / 1000000L);
+        cal.setTimeInMillis(ts / NANOS_PER_MILLI);
         return new java.sql.Date(cal.getTimeInMillis());
       }
     }
@@ -1548,9 +1552,16 @@ public abstract class Converters {
       if (cal == null) {
         return Converters.getTimestamp(ts);
       } else {
-        cal.setTimeInMillis(ts / 1000000L);
-        return Converters.getTimestamp(cal.getTimeInMillis() * 1000000L +
-            (ts % 1000000000L));
+        // pass only the seconds for epoch time
+        long seconds = ts / NANOS_PER_SECOND;
+        long nanos = ts % NANOS_PER_SECOND;
+        if (nanos < 0) {
+          nanos += NANOS_PER_SECOND;
+          seconds--;
+        }
+        cal.setTimeInMillis(seconds * 1000L);
+        return Converters.getTimestamp(cal.getTimeInMillis() *
+            NANOS_PER_MILLI + nanos);
       }
     }
     @Override
@@ -1558,10 +1569,10 @@ public abstract class Converters {
         Calendar cal) throws SQLException {
       long ts = row.getLong(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Time(ts / 1000000L);
+        return new java.sql.Time(ts / NANOS_PER_MILLI);
       }
       else {
-        cal.setTimeInMillis(ts / 1000000L);
+        cal.setTimeInMillis(ts / NANOS_PER_MILLI);
         return new java.sql.Time(cal.getTimeInMillis());
       }
     }
@@ -1742,8 +1753,8 @@ public abstract class Converters {
           return ts;
         } else {
           cal.setTime(ts);
-          return Converters.getTimestamp(cal.getTimeInMillis() * 1000000L +
-              ts.getNanos());
+          return Converters.getTimestamp(cal.getTimeInMillis() *
+              NANOS_PER_MILLI + ts.getNanos());
         }
       }
       else {
@@ -3170,17 +3181,23 @@ public abstract class Converters {
 
   public static java.sql.Timestamp getTimestamp(long ts) {
     // pass only the seconds for epoch time
-    java.sql.Timestamp jts = new java.sql.Timestamp((ts / 1000000000L) * 1000L);
-    jts.setNanos((int)(ts % 1000000000L));
+    long seconds = ts / NANOS_PER_SECOND;
+    long nanos = ts % NANOS_PER_SECOND;
+    if (nanos < 0) {
+      nanos += NANOS_PER_SECOND;
+      seconds--;
+    }
+    java.sql.Timestamp jts = new java.sql.Timestamp(seconds * 1000L);
+    jts.setNanos((int)nanos);
     return jts;
   }
 
-  public static long getTimestampNanos(java.sql.Timestamp jts) {
-    return (jts.getTime() * 1000000L) + (jts.getNanos() % 1000000);
+  public static long getTimestampNanos(java.sql.Timestamp ts) {
+    return (ts.getTime() * NANOS_PER_MILLI) + (ts.getNanos() % NANOS_PER_MILLI);
   }
 
   public static long getTimestampNanos(java.util.Date date) {
-    return date.getTime() * 1000000L;
+    return date.getTime() * NANOS_PER_MILLI;
   }
 
   public static Object getJavaObject(byte[] bytes, int columnPosition,

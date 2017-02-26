@@ -95,8 +95,13 @@ public class ClientDriver extends ClientDRDADriver {
   @Override
   protected boolean useThriftProtocol(Matcher m) {
     String drdaGroup = m.group(2);
+    String protocol = m.group(1);
+    // if USE_THRIFT_AS_DEFAULT_PROP has been set explicitly then use that
+    // for default value else use the protocol string (jdbc:snappydata://
+    //   defaults to thrift while jdbc:gemfirexd:// defaults to old DRDA)
     return drdaGroup == null || drdaGroup.length() == 0
-        ? ClientSharedUtils.USE_THRIFT_AS_DEFAULT
+        ? ClientSharedUtils.thriftIsDefault(
+        protocol.equalsIgnoreCase(SNAPPY_PROTOCOL))
         : "thrift:".equalsIgnoreCase(drdaGroup);
   }
 

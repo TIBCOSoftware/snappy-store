@@ -26,14 +26,14 @@ import java.util.TreeSet;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.internal.GemFireTerminateError;
 import com.gemstone.gemfire.internal.GemFireUtilLauncher;
-import com.gemstone.gemfire.internal.GemFireUtilLauncher.CommandEntry;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.LocalizedResource;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.tools.ij;
+import com.pivotal.gemfirexd.tools.internal.GfxdServerLauncher;
 import com.pivotal.gemfirexd.tools.internal.JarTools;
 import com.pivotal.gemfirexd.tools.internal.MiscTools;
-import com.pivotal.gemfirexd.tools.internal.GfxdServerLauncher;
 import jline.console.ConsoleReader;
 import jline.console.history.FileHistory;
 
@@ -139,7 +139,9 @@ public class GfxdUtilLauncher extends GemFireUtilLauncher {
     return m;
   }
 
-  protected GfxdUtilLauncher() {}
+  protected GfxdUtilLauncher() {
+    ClientSharedUtils.setThriftIsDefault(false);
+  }
 
  /**
   * This method should be overridden if the name of the script is different.

@@ -715,11 +715,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public final boolean checkForColumnBatchCreation() {
     final PartitionedRegion pr = getPartitionedRegion();
-    final int size;
     return pr.needsBatching()
-        && ((size = getRegionSize()) >= pr.getColumnMaxDeltaRows()
-        || (size >= pr.getColumnMinBatchSize()
-        && getTotalBytes() >= pr.getColumnBatchSize()));
+        && (getRegionSize() >= pr.getColumnMaxDeltaRows()
+        || getTotalBytes() >= pr.getColumnBatchSize());
   }
 
   public final boolean createAndInsertColumnBatch(boolean forceFlush) {
@@ -741,9 +739,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // ColumnBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    final boolean doFlush = forceFlush ? getRegionSize() >=
-        getPartitionedRegion().getColumnMinBatchSize()
-        : checkForColumnBatchCreation();
+    boolean doFlush = false;
+    if (forceFlush) {
+      doFlush = getRegionSize() >= getPartitionedRegion()
+          .getColumnMinDeltaRows();
+    }
+    if (!doFlush) {
+      doFlush = checkForColumnBatchCreation();
+    }
     // we may have to use region.size so that no state
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.

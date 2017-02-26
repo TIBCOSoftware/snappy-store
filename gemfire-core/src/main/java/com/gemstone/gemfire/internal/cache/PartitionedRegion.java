@@ -415,12 +415,13 @@ public class PartitionedRegion extends LocalRegion implements
   private int columnMaxDeltaRows = -1;
 
   /** Minimum size for ColumnBatches. */
-  private int columnMinBatchSize = 200;
+  private int columnMinDeltaRows = 200;
 
-  public void setColumnBatchSizes(int size, int maxDeltaRows, int minSize) {
+  public void setColumnBatchSizes(int size, int maxDeltaRows,
+      int minDeltaRows) {
     columnBatchSize = size;
     columnMaxDeltaRows = maxDeltaRows;
-    columnMinBatchSize = minSize < columnBatchSize ? minSize : size;
+    columnMinDeltaRows = minDeltaRows;
   }
 
   private ExternalTableMetaData getHiveMetaData() {
@@ -455,8 +456,8 @@ public class PartitionedRegion extends LocalRegion implements
     return columnMaxDeltaRows;
   }
 
-  public int getColumnMinBatchSize() {
-    return columnMinBatchSize;
+  public int getColumnMinDeltaRows() {
+    return columnMinDeltaRows;
   }
 
   private final long birthTime = System.currentTimeMillis();
