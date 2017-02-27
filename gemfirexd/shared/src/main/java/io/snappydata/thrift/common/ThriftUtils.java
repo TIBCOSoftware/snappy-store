@@ -135,13 +135,19 @@ public abstract class ThriftUtils {
   }
 
   public static byte[] toBytes(ByteBuffer buffer) {
-    if (TBaseHelper.wrapsFullArray(buffer)) {
+    final int bufferSize = buffer.remaining();
+    return toBytes(buffer, bufferSize, bufferSize);
+  }
+
+  public static byte[] toBytes(ByteBuffer buffer, int bufferSize, int length) {
+    if (length >= bufferSize && TBaseHelper.wrapsFullArray(buffer)) {
       return buffer.array();
     } else {
-      final int numBytes = buffer.remaining();
+      final int numBytes = Math.min(bufferSize, length);
       final byte[] bytes = new byte[numBytes];
+      final int initPosition = buffer.position();
       buffer.get(bytes, 0, numBytes);
-      buffer.flip();
+      buffer.position(initPosition);
       return bytes;
     }
   }
@@ -169,6 +175,7 @@ public abstract class ThriftUtils {
     // use Platform.allocate which does not have the smallish limit used
     // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
     ByteBuffer buffer = Platform.allocateDirectBuffer(length);
+    buffer.limit(length);
     try {
       while (length > 0) {
         int numReadBytes = transport.read(buffer);
@@ -216,7 +223,7 @@ public abstract class ThriftUtils {
             ? TTransportException.END_OF_FILE : TTransportException.UNKNOWN);
       }
     } else {
-      final byte[] bytes = toBytes(buffer);
+      final byte[] bytes = toBytes(buffer, buffer.remaining(), length);
       transport.write(bytes, 0, length);
     }
   }

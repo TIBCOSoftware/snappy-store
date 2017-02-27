@@ -101,7 +101,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
         }
         // if we were able to write the full buffer then try writing the
         // remaining from source else return with whatever was written
-        if (!flushBufferNonBlocking(channelBuffer, true)) {
+        if (!flushBufferNonBlockingBase(channelBuffer)) {
           return numWritten;
         } else if (flushBuffer) {
           return numWritten + writeBufferNonBlocking(src);
@@ -115,6 +115,11 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
   protected boolean flushBufferNonBlocking(final ByteBuffer buffer,
       boolean isChannelBuffer) throws IOException {
+    return flushBufferNonBlockingBase(buffer);
+  }
+
+  protected final boolean flushBufferNonBlockingBase(final ByteBuffer buffer)
+      throws IOException {
     buffer.flip();
 
     final boolean flushed;

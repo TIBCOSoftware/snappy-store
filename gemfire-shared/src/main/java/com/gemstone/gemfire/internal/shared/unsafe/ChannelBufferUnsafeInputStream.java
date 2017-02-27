@@ -175,7 +175,7 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
     // adjust this buffer position first
     this.buffer.position((int)(this.addrPosition - this.baseAddress));
     try {
-      // now we are actually set to just call base class method
+      // now we are set to just call base class method
       return super.readBuffered(dst, this.buffer);
     } finally {
       // finally reset the raw positions from buffer

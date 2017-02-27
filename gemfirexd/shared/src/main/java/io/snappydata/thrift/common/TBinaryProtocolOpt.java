@@ -33,24 +33,15 @@ import org.apache.thrift.transport.TTransport;
 public final class TBinaryProtocolOpt extends TBinaryProtocol {
 
   private final TNonblockingTransport nonBlockingTransport;
-  private final long stringLengthLimit;
   private final boolean useDirectBuffers;
 
   public TBinaryProtocolOpt(TTransport trans, boolean useDirectBuffers) {
-    this(trans, -1, -1, false, true, useDirectBuffers);
-  }
-
-  public TBinaryProtocolOpt(TTransport transport, long stringLengthLimit,
-      long containerLengthLimit, boolean strictRead, boolean strictWrite,
-      boolean useDirectBuffers) {
-    super(transport, stringLengthLimit, containerLengthLimit, strictRead,
-        strictWrite);
-    if (transport instanceof TNonblockingTransport) {
-      this.nonBlockingTransport = (TNonblockingTransport)transport;
+    super(trans);
+    if (trans instanceof TNonblockingTransport) {
+      this.nonBlockingTransport = (TNonblockingTransport)trans;
     } else {
       this.nonBlockingTransport = null;
     }
-    this.stringLengthLimit = stringLengthLimit;
     this.useDirectBuffers = useDirectBuffers;
   }
 
@@ -61,9 +52,9 @@ public final class TBinaryProtocolOpt extends TBinaryProtocol {
   public ByteBuffer readBinary() throws TException {
     if (this.useDirectBuffers && this.nonBlockingTransport != null) {
       int length = readI32();
-      if (this.stringLengthLimit > 0 && length > this.stringLengthLimit) {
-        throw new TProtocolException(TProtocolException.SIZE_LIMIT,
-            "Binary field exceeded string size limit");
+      if (length < 0) {
+        throw new TProtocolException(TProtocolException.NEGATIVE_SIZE,
+            "Negative length: " + length);
       }
       return ThriftUtils.readByteBuffer(this.nonBlockingTransport, length);
     } else {
@@ -92,16 +83,8 @@ public final class TBinaryProtocolOpt extends TBinaryProtocol {
       this.useDirectBuffers = useDirectBuffers;
     }
 
-    public Factory(boolean strictRead, boolean strictWrite,
-        long stringLengthLimit, long containerLengthLimit,
-        boolean useDirectBuffers) {
-      super(strictRead, strictWrite, stringLengthLimit, containerLengthLimit);
-      this.useDirectBuffers = useDirectBuffers;
-    }
-
     public TProtocol getProtocol(TTransport trans) {
-      return new TBinaryProtocolOpt(trans, stringLengthLimit_,
-          containerLengthLimit_, strictRead_, strictWrite_, useDirectBuffers);
+      return new TBinaryProtocolOpt(trans, useDirectBuffers);
     }
   }
 }

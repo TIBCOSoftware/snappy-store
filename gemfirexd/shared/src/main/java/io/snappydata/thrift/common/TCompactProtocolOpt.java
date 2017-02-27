@@ -56,22 +56,15 @@ import org.apache.thrift.transport.TTransport;
 public final class TCompactProtocolOpt extends TCompactProtocol {
 
   private final TNonblockingTransport nonBlockingTransport;
-  private final long stringLengthLimit;
   private final boolean useDirectBuffers;
 
   public TCompactProtocolOpt(TTransport transport, boolean useDirectBuffers) {
-    this(transport, -1, -1, useDirectBuffers);
-  }
-
-  public TCompactProtocolOpt(TTransport transport, long stringLengthLimit,
-      long containerLengthLimit, boolean useDirectBuffers) {
-    super(transport, stringLengthLimit, containerLengthLimit);
+    super(transport, -1, -1);
     if (transport instanceof TNonblockingTransport) {
       this.nonBlockingTransport = (TNonblockingTransport)transport;
     } else {
       this.nonBlockingTransport = null;
     }
-    this.stringLengthLimit = stringLengthLimit;
     this.useDirectBuffers = useDirectBuffers;
   }
 
@@ -82,7 +75,10 @@ public final class TCompactProtocolOpt extends TCompactProtocol {
   public ByteBuffer readBinary() throws TException {
     if (this.useDirectBuffers && this.nonBlockingTransport != null) {
       int length = readVarInt32();
-      checkStringReadLength(length);
+      if (length < 0) {
+        throw new TProtocolException(TProtocolException.NEGATIVE_SIZE,
+            "Negative length: " + length);
+      }
       return ThriftUtils.readByteBuffer(this.nonBlockingTransport, length);
     } else {
       return super.readBinary();
@@ -151,37 +147,16 @@ public final class TCompactProtocolOpt extends TCompactProtocol {
     trans_.write(i32buf, 0, idx);
   }
 
-  private void checkStringReadLength(int length) throws TProtocolException {
-    if (length < 0) {
-      throw new TProtocolException(TProtocolException.NEGATIVE_SIZE,
-          "Negative length: " + length);
-    }
-    if (this.stringLengthLimit != -1 && length > this.stringLengthLimit) {
-      throw new TProtocolException(TProtocolException.SIZE_LIMIT,
-          "Length exceeded max allowed: " + length);
-    }
-  }
-
   public static class Factory implements TProtocolFactory {
 
-    protected final long stringLengthLimit;
-    protected final long containerLengthLimit;
     protected final boolean useDirectBuffers;
 
     public Factory(boolean useDirectBuffers) {
-      this(-1, -1, useDirectBuffers);
-    }
-
-    public Factory(long stringLengthLimit, long containerLengthLimit,
-        boolean useDirectBuffers) {
-      this.containerLengthLimit = containerLengthLimit;
-      this.stringLengthLimit = stringLengthLimit;
       this.useDirectBuffers = useDirectBuffers;
     }
 
     public TProtocol getProtocol(TTransport trans) {
-      return new TCompactProtocolOpt(trans, this.stringLengthLimit,
-          this.containerLengthLimit, this.useDirectBuffers);
+      return new TCompactProtocolOpt(trans, this.useDirectBuffers);
     }
   }
 }

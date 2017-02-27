@@ -141,19 +141,20 @@ public abstract class InputStreamChannel extends InputStream implements
         return readBytes > 0 ? readBytes : bufBytes;
       }
     } else {
-      final int bufBytes = refillBuffer(channelBuffer, -1, null);
+      final int bufBytes = refillBufferBase(channelBuffer, -1, null);
       if (bufBytes > 0) {
         if (dstLen >= bufBytes) {
           dst.put(channelBuffer);
           return (readBytes + bufBytes);
         } else {
-          // reduce this buffer's limit temporarily to the required len
-          channelBuffer.limit(dstLen);
+          final int pos = channelBuffer.position();
+          // reduce this buffer's limit temporarily to the required length
+          channelBuffer.limit(pos + dstLen);
           try {
             dst.put(channelBuffer);
           } finally {
             // restore the limit
-            channelBuffer.limit(bufBytes);
+            channelBuffer.limit(pos + bufBytes);
           }
           return (readBytes + dstLen);
         }
@@ -165,11 +166,16 @@ public abstract class InputStreamChannel extends InputStream implements
 
   protected int refillBuffer(final ByteBuffer channelBuffer,
       final int tryReadBytes, final String eofMessage) throws IOException {
+    return refillBufferBase(channelBuffer, tryReadBytes, eofMessage);
+  }
+
+  protected final int refillBufferBase(final ByteBuffer channelBuffer,
+      final int tryReadBytes, final String eofMessage) throws IOException {
     resetAndCopyLeftOverBytes(channelBuffer);
     int initPosition = channelBuffer.position();
     int totalReadBytes = initPosition;
     final int channelBytes = readIntoBuffer(channelBuffer);
-    if (channelBytes >= 0) {
+    if (channelBytes > 0) {
       totalReadBytes += channelBytes;
     }
     // eof on stream but we may still have remaining bytes in channelBuffer
