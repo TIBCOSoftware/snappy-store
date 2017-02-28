@@ -20,6 +20,7 @@ public class ExternalTableMetaData {
 
   public ExternalTableMetaData(String entityName,
       Object schema,
+      String tableType,
       Object externalStore,
       int columnBatchSize,
       int columnMaxDeltaRows,
@@ -29,6 +30,7 @@ public class ExternalTableMetaData {
       String[] dependents) {
     this.entityName = entityName;
     this.schema = schema;
+    this.tableType = tableType;
     this.externalStore = externalStore;
     this.columnBatchSize = columnBatchSize;
     this.columnMaxDeltaRows = columnMaxDeltaRows;
@@ -40,6 +42,7 @@ public class ExternalTableMetaData {
 
   public String entityName;
   public Object schema;
+  public String tableType;
   // No type specified as the class is in snappy core
   public Object externalStore;
   public int columnBatchSize;
