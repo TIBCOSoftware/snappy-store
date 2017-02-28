@@ -949,7 +949,8 @@ implements Cloneable
       + Constants.QueryHints.hashMaxCapacity + ","
       + Constants.QueryHints.bulkFetch + ","
       + Constants.QueryHints.withSecondaries + ","
-      + Constants.QueryHints.queryHDFS;
+      + Constants.QueryHints.queryHDFS + ","
+      + Constants.QueryHints.executionEngine;
 
   // GemStone changes END
 	
