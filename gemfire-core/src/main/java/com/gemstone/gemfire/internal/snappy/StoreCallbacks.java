@@ -23,7 +23,6 @@ import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
 
 public interface StoreCallbacks {
 
@@ -48,7 +47,8 @@ public interface StoreCallbacks {
 
   int getLastIndexOfRow(Object o);
 
-  boolean acquireStorageMemory(String objectName, long numBytes);
+  boolean acquireStorageMemory(String objectName, long numBytes,
+      UMMMemoryTracker buffer);
 
   void releaseStorageMemory(String objectName, long numBytes);
 

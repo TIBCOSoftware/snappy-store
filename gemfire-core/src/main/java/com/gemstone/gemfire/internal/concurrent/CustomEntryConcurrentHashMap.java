@@ -904,9 +904,9 @@ RETRYLOOP:
       // update the acquired memory storage; this will always increase
       // monotonically. Not throwing any exception if memory could not be allocated from
       // memory manager as this is the last step of a region operation.
-      if(LocalRegion.regionPath.get() != null){
+      if (LocalRegion.regionPath.get() != null){
         CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(LocalRegion.regionPath.get(),
-            oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE);
+            oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE, null);
         LocalRegion.regionPath.set(null);
       }
 

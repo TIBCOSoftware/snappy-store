@@ -216,6 +216,7 @@ import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
@@ -11631,13 +11632,18 @@ public class LocalRegion extends AbstractRegion
         final PutAllPartialResult partialKeys = new PutAllPartialResult(size);
         final Iterator iterator;
         final boolean isVersionedResults;
+        int putAllSize = 0;
         if (proxyResult != null) {
           iterator = proxyResult.iterator();
+          putAllSize = proxyResult.size();
           isVersionedResults = true;
         } else {
           iterator = map.entrySet().iterator();
+          putAllSize = map.size();
           isVersionedResults = false;
         }
+        UMMMemoryTracker memoryTracker = null;
+
         Runnable r = new Runnable() {
           public void run() {
             int offset = 0;
@@ -11743,7 +11749,23 @@ public class LocalRegion extends AbstractRegion
             }
           }
         };
-        this.syncPutAll(tx, r, eventId);
+        try {
+          if (callback.isSnappyStore()) {
+            memoryTracker = new UMMMemoryTracker(
+                Thread.currentThread().getId(), putAllSize);
+            putAllOp.getEvent().setBufferedMemoryTracker(memoryTracker);
+          }
+          this.syncPutAll(tx, r, eventId);
+        } finally {
+          if (memoryTracker != null) {
+            long unusedMemory = memoryTracker.freeMemory();
+            if (unusedMemory > 0) {
+              callback.releaseStorageMemory(
+                  memoryTracker.getFirstAllocationObject(), unusedMemory);
+            }
+          }
+        }
+
         if (partialKeys.hasFailure()) {
           partialKeys.addKeysAndVersions(succeeded);
           getGemFireCache().getLoggerI18n().info(
@@ -11867,6 +11889,7 @@ public class LocalRegion extends AbstractRegion
         putallOp, this, Operation.PUTALL_CREATE, key, value, callbackArg);
     event.setFetchFromHDFS(putallOp.getEvent().isFetchFromHDFS());
     event.setPutDML(putallOp.getEvent().isPutDML());
+    event.setBufferedMemoryTracker(putallOp.getEvent().getMemoryTracker());
     try {
     if (tagHolder != null) {
       event.setVersionTag(tagHolder.getVersionTag());
@@ -14311,7 +14334,8 @@ public class LocalRegion extends AbstractRegion
     if (!this.reservedTable() && !regionOverHeadAccounted) {
       synchronized (this) {
         if (!regionOverHeadAccounted) {
-          callback.acquireStorageMemory(getFullPath(), callback.getRegionOverhead(this));
+          callback.acquireStorageMemory(getFullPath(),
+              callback.getRegionOverhead(this), null);
           regionOverHeadAccounted = true;
 
         }
@@ -14351,16 +14375,17 @@ public class LocalRegion extends AbstractRegion
   }
 
   //@TODO implement properly to compute delta based on operation
-  protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead) throws LowMemoryException {
+  protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
+      UMMMemoryTracker buffer) throws LowMemoryException {
     if (!this.reservedTable()) {
       if (withEntryOverHead) {
         if (!callback.acquireStorageMemory(getFullPath(),
-            (newSize - oldSize) + Math.max(0L, entryOverHead))) {
+            (newSize - oldSize) + Math.max(0L, entryOverHead), buffer)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
       } else {
-        if (!callback.acquireStorageMemory(getFullPath(), (newSize - oldSize))) {
+        if (!callback.acquireStorageMemory(getFullPath(), (newSize - oldSize), buffer)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
@@ -14368,16 +14393,19 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  protected void acquirePoolMemory(int newSize, boolean withEntryOverHead) throws LowMemoryException {
+  private AtomicLong memoryBeforeAccounting = new AtomicLong(0L);
+
+  protected void acquirePoolMemory(int newSize, boolean withEntryOverHead,
+      UMMMemoryTracker buffer) throws LowMemoryException {
     if (!this.reservedTable()) {
       if (withEntryOverHead) {
         if (!callback.acquireStorageMemory(getFullPath(),
-            newSize + Math.max(0L, entryOverHead))) {
+            newSize + Math.max(0L, entryOverHead), buffer)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
       } else {
-        if (!callback.acquireStorageMemory(getFullPath(), newSize)) {
+        if (!callback.acquireStorageMemory(getFullPath(), newSize, buffer)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }

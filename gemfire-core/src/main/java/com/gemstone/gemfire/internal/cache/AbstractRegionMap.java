@@ -911,7 +911,7 @@ abstract class AbstractRegionMap implements RegionMap {
         }
          int valueSize  = _getOwner().calculateRegionEntryValueSize(re);
         _getOwner().calculateEntryOverhead(re);
-        _getOwner().acquirePoolMemory(valueSize, true);
+        _getOwner().acquirePoolMemory(valueSize, true, null);
         _getOwner().updateSizeOnCreate(re.getRawKey(), valueSize);
       }
       // Since lru was not being done during recovery call it now.
@@ -1269,7 +1269,7 @@ abstract class AbstractRegionMap implements RegionMap {
                       int newSize = owner.calculateRegionEntryValueSize(oldRe);
                       //Can safely accquire memory here. If fails this block removes the current entry from map.
                       LocalRegion.regionPath.set(owner.getFullPath());
-                      owner.acquirePoolMemory(newSize, oldSize, false);
+                      owner.acquirePoolMemory(newSize, oldSize, false, null);
                       owner.updateSizeOnPut(key, oldSize, newSize);
                       EntryLogger.logInitialImagePut(_getOwnerObject(), key,
                           newValue);
@@ -1332,10 +1332,10 @@ abstract class AbstractRegionMap implements RegionMap {
                       owner.calculateEntryOverhead(newRe);
                       LocalRegion.regionPath.set(owner.getFullPath());
                       if(!oldIsTombstone) {
-                        owner.acquirePoolMemory(newSize, oldSize, false);
+                        owner.acquirePoolMemory(newSize, oldSize, false, null);
                         owner.updateSizeOnPut(key, oldSize, newSize);
                       } else {
-                        owner.acquirePoolMemory(newSize, true);
+                        owner.acquirePoolMemory(newSize, true, null);
                         owner.updateSizeOnCreate(key, newSize);
                       }
                       EntryLogger.logInitialImagePut(_getOwnerObject(), key, newValue);
@@ -1403,7 +1403,7 @@ abstract class AbstractRegionMap implements RegionMap {
                   owner.calculateEntryOverhead(newRe);
                   LocalRegion.regionPath.set(owner.getFullPath());
                   //System.out.println("Put "+newRe);
-                  owner.acquirePoolMemory(newSize, true);
+                  owner.acquirePoolMemory(newSize, true, null);
                   owner.updateSizeOnCreate(key, newSize);
                   EntryLogger.logInitialImagePut(_getOwnerObject(), key, newValue);
                   lruEntryCreate(newRe);

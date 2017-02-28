@@ -77,6 +77,7 @@ import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifie
 import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.ENTRY_EVENT_OLD_VALUE;
 
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 import com.gemstone.gemfire.pdx.internal.PeerTypeRegistration;
@@ -156,6 +157,8 @@ public class EntryEventImpl extends KeyInfo implements
    * from raw byte arrays and routing object.
    */
   private transient Object contextObj = null;
+
+  private transient UMMMemoryTracker memoryTracker;
 
   /**
    * The current operation's lastModified stamp, if any.
@@ -1789,9 +1792,11 @@ public class EntryEventImpl extends KeyInfo implements
 
   private void aqcuireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
     if (isUpdate && !wasTombstone) {
-      owner.acquirePoolMemory(oldSize, event.getNewValueBucketSize(), true);
+      owner.acquirePoolMemory(oldSize, event.getNewValueBucketSize(), true,
+          this.memoryTracker);
     } else {
-      owner.acquirePoolMemory(event.getNewValueBucketSize(), true);
+      owner.acquirePoolMemory(event.getNewValueBucketSize(), true,
+          this.memoryTracker);
     }
   }
 
@@ -2942,6 +2947,14 @@ public class EntryEventImpl extends KeyInfo implements
 
   public final Object getContextObject() {
     return this.contextObj;
+  }
+
+  public final void setBufferedMemoryTracker(UMMMemoryTracker memoryTracker) {
+    this.memoryTracker = memoryTracker;
+  }
+
+  public final UMMMemoryTracker getMemoryTracker(){
+    return this.memoryTracker;
   }
 
   public final void setEntryLastModified(long v) {

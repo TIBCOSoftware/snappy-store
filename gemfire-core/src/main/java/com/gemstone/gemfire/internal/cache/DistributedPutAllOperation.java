@@ -60,6 +60,8 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 
@@ -1212,7 +1214,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
      */
     protected final void doEntryPut(PutAllEntryData entry,
         DistributedRegion rgn, boolean requiresRegionContext,
-        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML, long lastModifiedTime) {
+        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML, long lastModifiedTime, UMMMemoryTracker memoryTracker) {
       EntryEventImpl ev = PutAllMessage.createEntryEvent(entry, getSender(),
           this.context, rgn, requiresRegionContext, this.possibleDuplicate,
           this.needsRouting, this.callbackArg, true, skipCallbacks,
@@ -1221,6 +1223,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         ev.setEntryLastModified(lastModifiedTime);
       ev.setFetchFromHDFS(fetchFromHDFS);
       ev.setPutDML(isPutDML);
+      ev.setBufferedMemoryTracker(memoryTracker);
 //      rgn.getLogWriterI18n().info(LocalizedStrings.DEBUG, "PutAllOp.doEntryPut sender=" + getSender() +
 //          " event="+ev);
       // we don't need to set old value here, because the msg is from remote. local old value will get from next step
@@ -1309,29 +1312,43 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     }
 
      @Override
-    protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn)
-    {
-      for (int i = 0; i < putAllDataSize; ++i) {
-        if (putAllData[i].versionTag != null) {
-          checkVersionTag(rgn, putAllData[i].versionTag);
-        }
-      }
-      
-      final TXStateInterface tx = ev.getTXState(rgn);
+     protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn) {
+       for (int i = 0; i < putAllDataSize; ++i) {
+         if (putAllData[i].versionTag != null) {
+           checkVersionTag(rgn, putAllData[i].versionTag);
+         }
+       }
 
-      rgn.syncPutAll(tx, new Runnable() {
-        public void run() {
-          final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
-          for (int i = 0; i < putAllDataSize; ++i) {
-            if (rgn.getLogWriterI18n().finerEnabled()) {
-              rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
-            }
-            putAllData[i].setSender(sender);
-            doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified());
-          }
-        }
-      }, ev.getEventId());
-    }
+       final TXStateInterface tx = ev.getTXState(rgn);
+       rgn.syncPutAll(tx, new Runnable() {
+         public void run() {
+           UMMMemoryTracker memoryTracker = null;
+           if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()) {
+             memoryTracker = new UMMMemoryTracker(
+                 Thread.currentThread().getId(), putAllDataSize);
+           }
+           try {
+             final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
+             for (int i = 0; i < putAllDataSize; ++i) {
+               if (rgn.getLogWriterI18n().finerEnabled()) {
+                 rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
+               }
+               putAllData[i].setSender(sender);
+               doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified(), memoryTracker);
+             }
+           } finally {
+             if (memoryTracker != null) {
+               long unusedMemory = memoryTracker.freeMemory();
+               if (unusedMemory > 0) {
+                 CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
+                     memoryTracker.getFirstAllocationObject(), unusedMemory);
+               }
+             }
+           }
+
+         }
+       }, ev.getEventId());
+     }
 
     public int getDSFID() {
       return PUT_ALL_MESSAGE;
