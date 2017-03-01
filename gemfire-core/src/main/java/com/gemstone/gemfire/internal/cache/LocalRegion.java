@@ -14335,7 +14335,7 @@ public class LocalRegion extends AbstractRegion
       synchronized (this) {
         if (!regionOverHeadAccounted) {
           callback.acquireStorageMemory(getFullPath(),
-              callback.getRegionOverhead(this), null);
+              callback.getRegionOverhead(this), null, true);
           regionOverHeadAccounted = true;
 
         }
@@ -14376,16 +14376,16 @@ public class LocalRegion extends AbstractRegion
 
   //@TODO implement properly to compute delta based on operation
   protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
-      UMMMemoryTracker buffer) throws LowMemoryException {
+      UMMMemoryTracker buffer, boolean shouldEvict) throws LowMemoryException {
     if (!this.reservedTable()) {
       if (withEntryOverHead) {
         if (!callback.acquireStorageMemory(getFullPath(),
-            (newSize - oldSize) + Math.max(0L, entryOverHead), buffer)) {
+            (newSize - oldSize) + Math.max(0L, entryOverHead), buffer, shouldEvict)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
       } else {
-        if (!callback.acquireStorageMemory(getFullPath(), (newSize - oldSize), buffer)) {
+        if (!callback.acquireStorageMemory(getFullPath(), (newSize - oldSize), buffer, shouldEvict)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
@@ -14396,16 +14396,16 @@ public class LocalRegion extends AbstractRegion
   private AtomicLong memoryBeforeAccounting = new AtomicLong(0L);
 
   protected void acquirePoolMemory(int newSize, boolean withEntryOverHead,
-      UMMMemoryTracker buffer) throws LowMemoryException {
+      UMMMemoryTracker buffer , boolean shouldEvict) throws LowMemoryException {
     if (!this.reservedTable()) {
       if (withEntryOverHead) {
         if (!callback.acquireStorageMemory(getFullPath(),
-            newSize + Math.max(0L, entryOverHead), buffer)) {
+            newSize + Math.max(0L, entryOverHead), buffer, shouldEvict)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }
       } else {
-        if (!callback.acquireStorageMemory(getFullPath(), newSize, buffer)) {
+        if (!callback.acquireStorageMemory(getFullPath(), newSize, buffer, shouldEvict)) {
           Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
           throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
         }

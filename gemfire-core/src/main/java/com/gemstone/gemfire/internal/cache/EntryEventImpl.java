@@ -1793,10 +1793,10 @@ public class EntryEventImpl extends KeyInfo implements
   private void aqcuireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
     if (isUpdate && !wasTombstone) {
       owner.acquirePoolMemory(oldSize, event.getNewValueBucketSize(), true,
-          this.memoryTracker);
+          this.memoryTracker, true);
     } else {
       owner.acquirePoolMemory(event.getNewValueBucketSize(), true,
-          this.memoryTracker);
+          this.memoryTracker, true);
     }
   }
 

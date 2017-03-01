@@ -75,7 +75,6 @@ import com.gemstone.gemfire.internal.util.BlobHelper;
  */
 public interface DiskEntry extends RegionEntry {
 
-  public static ThreadLocal<Long> entryEvictionMemoryOverHead = new ThreadLocal<Long>();
 
   /**
    * Sets the value with a {@link RegionEntryContext}.
@@ -1433,11 +1432,11 @@ public interface DiskEntry extends RegionEntry {
         if (movedValueToDisk) {
           valueLength = getValueLength(did);
         }
-        if (oldSize - diskIDOverhead > 0) {
-          region.freePoolMemory(oldSize - diskIDOverhead, false);
-        } else if (diskIDOverhead > 0 && entryEvictionMemoryOverHead.get() != null) { //Account positive memory increase for eviction thread.
-          long moreMemoryNeeded = entryEvictionMemoryOverHead.get() + diskIDOverhead;
-          entryEvictionMemoryOverHead.set(moreMemoryNeeded);
+
+        region.freePoolMemory(oldSize, false);
+        if (diskIDOverhead > 0) {
+          //Account positive memory increase for eviction thread.
+          region.acquirePoolMemory(diskIDOverhead, false, null, false);
         }
 
         incrementBucketStats(region, -1/*InVM*/, 1/*OnDisk*/, valueLength);
@@ -1897,5 +1896,26 @@ public interface DiskEntry extends RegionEntry {
     public final void setLastModifiedTime(long timestamp) {
       this.lastModifiedTime = timestamp;
     }
+  }
+
+  public class DiskIDDetails {
+
+    public String getRegionPath() {
+      return regionPath;
+    }
+
+    public DiskIDDetails(String regionPath, int diskIDSize){
+      this.regionPath = regionPath;
+      this.diskIDSize = diskIDSize;
+    }
+
+    public int getDiskIDSize() {
+      return diskIDSize;
+    }
+
+    private String regionPath;
+    private int diskIDSize ;
+
+
   }
 }

@@ -48,7 +48,7 @@ public interface StoreCallbacks {
   int getLastIndexOfRow(Object o);
 
   boolean acquireStorageMemory(String objectName, long numBytes,
-      UMMMemoryTracker buffer);
+      UMMMemoryTracker buffer, boolean shouldEvict);
 
   void releaseStorageMemory(String objectName, long numBytes);
 

@@ -82,7 +82,7 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public boolean acquireStorageMemory(String name, long numBytes,
-        UMMMemoryTracker buffer) {
+        UMMMemoryTracker buffer, boolean shouldEvict) {
       return true;
     }
 
