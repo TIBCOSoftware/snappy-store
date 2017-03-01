@@ -115,6 +115,26 @@ public abstract class CallbackFactoryProvider {
     public long getNumBytesForEviction() {
       return 0;
     }
+
+    @Override
+    public long getStoragePoolUsedMemory() {
+      return 0;
+    }
+
+    @Override
+    public long getStoragePoolSize() {
+      return 0;
+    }
+
+    @Override
+    public long getExecutionPoolUsedMemory() {
+      return 0;
+    }
+
+    @Override
+    public long getExecutionPoolSize() {
+      return 0;
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

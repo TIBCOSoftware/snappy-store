@@ -61,4 +61,9 @@ public interface StoreCallbacks {
   void resetMemoryManager();
 
   long getNumBytesForEviction();
+
+  long getStoragePoolUsedMemory();
+  long getStoragePoolSize();
+  long getExecutionPoolUsedMemory();
+  long getExecutionPoolSize();
 }
