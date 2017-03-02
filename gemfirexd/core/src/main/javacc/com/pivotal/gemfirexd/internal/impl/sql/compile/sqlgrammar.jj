@@ -13341,8 +13341,10 @@ propertyList(boolean propertiesUseAllowed) throws StandardException :
                                         value = value.trim();
                                 }
                                 // GemStone changes END
-				else 
+				else {
+					value = value.trim();
 					value = value.toUpperCase();
+					}
 				// Do not allow user to specify multiple values for the same key
 				if (properties.put(key, value) != null)
 				{

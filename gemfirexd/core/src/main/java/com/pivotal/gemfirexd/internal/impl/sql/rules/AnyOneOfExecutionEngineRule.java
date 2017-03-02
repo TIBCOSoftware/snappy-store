@@ -20,6 +20,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.rules;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfo;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 class AnyOneOfExecutionEngineRule extends ExecutionEngineRule {
@@ -51,18 +52,13 @@ class AnyOneOfExecutionEngineRule extends ExecutionEngineRule {
       }
     }
 
-    if (qInfo.isQuery(QueryInfo.MARK_NOT_GET_CONVERTIBLE)) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "AnyOneOfExecutionEngineRule:NOT_GET_CONVERTIBLE_RULE:SPARK");
-      return ExecutionEngine.SPARK;
+    if (qInfo.isSelect()) {
+      if (!qInfo.isPrimaryKeyBased() && !qInfo.isGetAllOnLocalIndex()) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "AnyOneOfExecutionEngineRule:PRIMARY_KEY_BASED_RULE:STORE");
+        return ExecutionEngine.SPARK;
+      }
     }
-
-    if (!qInfo.isQuery(QueryInfo.IS_GETALL_ON_LOCAL_INDEX)) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "AnyOneOfExecutionEngineRule:GETALL_ON_LOCAL_INDEX_RULE:SPARK");
-      return ExecutionEngine.SPARK;
-    }
-
     return ExecutionEngine.NOT_DECIDED;
   }
 }
