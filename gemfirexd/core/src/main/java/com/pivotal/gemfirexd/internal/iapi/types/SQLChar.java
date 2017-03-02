@@ -51,6 +51,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.distributed.ByteArrayDataOutput;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 // GemStone changes END
@@ -1849,6 +1850,13 @@ readingLoop:
 
         int desiredWidth = desiredType.getMaximumWidth();
         int sourceWidth = sourceValue.length();
+
+      if (desiredType.getTypeName().equals(TypeId.CLOB_NAME) &&
+          Misc.getMemStore().isSnappyStore()) {
+        if (desiredWidth == Integer.MAX_VALUE) {
+          desiredWidth = sourceWidth;
+        }
+      }
 
         /*
         ** If the input is already the right length, no normalization is
