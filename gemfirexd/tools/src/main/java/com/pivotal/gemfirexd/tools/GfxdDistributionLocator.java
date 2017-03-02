@@ -169,7 +169,7 @@ public class GfxdDistributionLocator extends GfxdServerLauncher {
   }
 
   @Override
-  protected String getLWCPortArgName() {
+  protected String getNetworkPortArgName() {
     return LWC_PORT_ARG;
   }
 
