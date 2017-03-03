@@ -909,9 +909,11 @@ abstract class AbstractRegionMap implements RegionMap {
             tombstones.put(re.getVersionStamp().asVersionTag(), re);
           }
         }
+        LocalRegion.regionPath.set(_getOwner().getFullPath());
          int valueSize  = _getOwner().calculateRegionEntryValueSize(re);
         _getOwner().calculateEntryOverhead(re);
-        _getOwner().acquirePoolMemory(valueSize, true, null, true);
+        //Always take the value size from recovery thread.
+        _getOwner().acquirePoolMemory(0, true, null, false);
         _getOwner().updateSizeOnCreate(re.getRawKey(), valueSize);
       }
       // Since lru was not being done during recovery call it now.

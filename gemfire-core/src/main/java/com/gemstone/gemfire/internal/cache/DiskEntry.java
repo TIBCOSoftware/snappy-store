@@ -47,6 +47,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 
 /**
@@ -1170,7 +1171,10 @@ public interface DiskEntry extends RegionEntry {
     /**
      *  Caller must have "did" synced.
      */
-    private static Object getValueFromDisk(DiskRegionView dr, DiskId did, ByteArrayDataInput in) {
+    private static Object  getValueFromDisk(DiskRegionView dr, DiskId did, ByteArrayDataInput in) {
+      if(dr.getName().contains("APP_T1")){
+        int i = 1;
+      }
       Object value;
       if (dr.isBackup() && did.getKeyId() == DiskRegion.INVALID_ID) {
         // must have been destroyed
@@ -1287,7 +1291,17 @@ public interface DiskEntry extends RegionEntry {
       // NOTE that we return this value unretained because the retain is owned by the region entry not the caller.
       @Retained Object preparedValue = entry.prepareValueForCache((RegionEntryContext) region, value,
           false, false);
-      region.updateSizeOnFaultIn(entry.getKey(), region.calculateValueSize(preparedValue), bytesOnDisk);
+
+      //Putting a workaround here. At this moment no real region is assigned for recovery.
+      //All value calculations come as zero. The below updateSizeOnFaultIn is wrong and give does not update the
+      // stats after recovery. @TODO fix the PR region Stats.
+      int recoveredValueSize = BucketRegion.calcMemSize(preparedValue);
+
+      if(!LocalRegion.isMetaTable(dr.getName())){
+        CallbackFactoryProvider.getStoreCallbacks().
+            acquireStorageMemory(dr.getName(), recoveredValueSize, null, false);
+      }
+      region.updateSizeOnFaultIn(entry.getKey(), recoveredValueSize, bytesOnDisk);
       //did.setValueSerializedSize(0);
       // I think the following assertion is true but need to run
       // a regression with it. Reenable this post 6.5

@@ -14423,12 +14423,19 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  protected boolean isHiveTable() {
-    return this.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE");
+  public static boolean isMetaTable(String fullpath) {
+    return fullpath.startsWith("/SNAPPY_HIVE_METASTORE") ||
+        fullpath.startsWith("/__UUID_PERSIST") ||
+        fullpath.startsWith("/_DDL_STMTS_META_REGION");
   }
 
   protected boolean reservedTable() {
     return isSecret() || isUsedForMetaRegion() || isUsedForPartitionedRegionAdmin()
-        || isHiveTable();
+        || isMetaTable(this.getFullPath());
+  }
+
+
+  public CustomEntryConcurrentHashMap<Object, Object>  getMap(){
+    return ((AbstractRegionMap)this.getRegionMap())._getMap();
   }
 }
