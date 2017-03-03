@@ -4063,7 +4063,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
               changedRow[column] = dvd;
             }
             if (origDVD != null
-                && origDVD.getTypeFormatId() == StoredFormatIds.SQL_CHAR_ID
+                && dtd.getTypeId().getTypeFormatId() == StoredFormatIds.SQL_CHAR_ID
                 && origDVD.getString() != null) {
               // See #46933
               ((SQLChar)origDVD).normalize(dtd, origDVD);
