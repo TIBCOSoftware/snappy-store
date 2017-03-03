@@ -31,7 +31,7 @@ public abstract class CallbackFactoryProvider {
   private static StoreCallbacks storeCallbacks = new StoreCallbacks() {
 
     @Override
-    public Set<Object> createCachedBatch(BucketRegion region, UUID batchID,
+    public Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
         int bucketID) {
       return null;
     }
@@ -54,7 +54,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public String cachedBatchTableName(String tableName) {
+    public String columnBatchTableName(String tableName) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }

@@ -15,7 +15,7 @@
  * LICENSE file.
  */
 
-package com.pivotal.gemfirexd.internal.client.am;
+package io.snappydata.thrift.internal;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

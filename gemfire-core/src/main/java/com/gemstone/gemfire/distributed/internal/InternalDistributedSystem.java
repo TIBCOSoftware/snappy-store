@@ -567,7 +567,7 @@ public final class InternalDistributedSystem
       // initialize the ClientSharedUtils logger
     if (this.logger instanceof LogWriterImpl) {
       final LogWriterImpl logImpl = (LogWriterImpl)this.logger;
-      ClientSharedUtils.initLogger("com.gemstone.gemfire", null, false,
+      ClientSharedUtils.initLogger("com.gemstone.gemfire", null, false, false,
           GemFireLevel.create(logImpl.getLevel()), logImpl.getHandler());
     }
     if (this.attemptingToReconnect) {

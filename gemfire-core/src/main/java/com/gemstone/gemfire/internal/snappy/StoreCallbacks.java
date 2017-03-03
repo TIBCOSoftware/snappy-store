@@ -28,7 +28,7 @@ public interface StoreCallbacks {
 
   String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
 
-  Set<Object> createCachedBatch(BucketRegion region, UUID batchID,
+  Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
       int bucketID);
 
   List<String> getInternalTableSchemas();
@@ -37,7 +37,7 @@ public interface StoreCallbacks {
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
-  public String cachedBatchTableName(String tableName);
+  public String columnBatchTableName(String tableName);
 
   public String snappyInternalSchemaName();
 

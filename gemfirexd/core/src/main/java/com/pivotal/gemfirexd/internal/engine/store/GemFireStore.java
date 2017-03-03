@@ -141,6 +141,8 @@ import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PersistentSet;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyFactory;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.Authorizer;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.AccessFactory;
@@ -1880,6 +1882,28 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   public void setProperty(String key, Serializable value, boolean dbOnlyProperty)
       throws StandardException {
     this.xactProperties.setProperty(null, key, value, dbOnlyProperty);
+    if (key.contains("auth") || key.contains("security")) {
+      // refresh the cached access-level in authorizers
+      final GemFireXDUtils.Visitor<LanguageConnectionContext> refresh =
+          new GemFireXDUtils.Visitor<LanguageConnectionContext>() {
+            @Override
+            public boolean visit(LanguageConnectionContext lcc) {
+              Authorizer authorizer = lcc.getAuthorizer();
+              if (authorizer != null) {
+                try {
+                  authorizer.refresh();
+                } catch (StandardException se) {
+                  // log a warning and move on
+                  SanityManager.DEBUG_PRINT("warning:"
+                          + GfxdConstants.TRACE_AUTHENTICATION,
+                      "Exception in refreshing access-level", se);
+                }
+              }
+              return true;
+            }
+          };
+      GemFireXDUtils.forAllContexts(refresh);
+    }
   }
 
   @Override
@@ -2342,6 +2366,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.database.setdisableStatementOptimizationToGenericPlan();
       }
     }
+    ClientSharedUtils.setThriftIsDefault(this.snappyStore);
   }
 
   private String databaseName;
@@ -2669,10 +2694,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           .currentFabricServiceInstance();
       if (service != null) {
         assert service instanceof FabricServiceImpl;
-        Iterator<NetworkInterface> nwIter = ((FabricServiceImpl)service)
-            .getAllNetworkServers().iterator();
-        while (nwIter.hasNext()) {
-          NetworkInterfaceImpl nwImpl = (NetworkInterfaceImpl)nwIter.next();
+        for (NetworkInterface nw : service.getAllNetworkServers()) {
+          NetworkInterfaceImpl nwImpl = (NetworkInterfaceImpl)nw;
           nwImpl.collectStatisticsSample();
         }
       }

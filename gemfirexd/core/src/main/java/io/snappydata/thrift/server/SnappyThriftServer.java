@@ -38,21 +38,31 @@ package io.snappydata.thrift.server;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.concurrent.ExecutorService;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import com.gemstone.gemfire.internal.SocketCreator;
+import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.NetworkInterface.ConnectionListener;
+import com.pivotal.gemfirexd.internal.engine.diag.SessionsVTI;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
+import io.snappydata.thrift.LocatorService;
 import io.snappydata.thrift.common.SocketParameters;
+import io.snappydata.thrift.common.TBinaryProtocolOpt;
+import io.snappydata.thrift.common.TCompactProtocolOpt;
 import io.snappydata.thrift.common.ThriftUtils;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
+import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 
@@ -74,15 +84,15 @@ public final class SnappyThriftServer {
 
   private LocatorServiceImpl service;
   private TServer thriftServer;
-  private ExecutorService thriftExecutor;
+  private ThreadPoolExecutor thriftExecutor;
   private ThreadPoolExecutor thriftThreadPerConnExecutor;
   private Thread thriftMainThread;
 
   public synchronized void start(final InetAddress thriftAddress,
       final int thriftPort, int maxThreads, final boolean isServer,
-      final boolean useBinaryProtocol, final boolean useSSL,
-      final SocketParameters socketParams, final ConnectionListener listener)
-      throws TTransportException {
+      final boolean useBinaryProtocol, final boolean useFramedTransport,
+      final boolean useSSL, final SocketParameters socketParams,
+      final ConnectionListener listener) throws TTransportException {
 
     this.thriftAddress = thriftAddress;
     this.thriftPort = thriftPort;
@@ -97,8 +107,7 @@ public final class SnappyThriftServer {
     final String hostAddress;
     if (this.thriftAddress != null) {
       bindAddress = new InetSocketAddress(this.thriftAddress, this.thriftPort);
-    }
-    else {
+    } else {
       try {
         bindAddress = new InetSocketAddress(SocketCreator.getLocalHost(),
             this.thriftPort);
@@ -108,9 +117,8 @@ public final class SnappyThriftServer {
       }
     }
 
-    serverTransport = useSSL
-        ? SnappyTSSLServerSocketFactory.getServerSocket(bindAddress, socketParams)
-        : new SnappyTServerSocket(bindAddress, true, true, socketParams);
+    serverTransport = new SnappyTServerSocket(bindAddress,
+        useSSL, true, true, socketParams);
     hostAddress = bindAddress.getAddress().toString();
 
     final TProcessor processor;
@@ -119,32 +127,34 @@ public final class SnappyThriftServer {
           this.thriftPort);
       processor = new SnappyDataServiceImpl.Processor(service);
       this.service = service;
-    }
-    else {
+    } else {
       // only locator service on non-server VMs
       LocatorServiceImpl service = new LocatorServiceImpl(hostAddress,
           this.thriftPort);
-      processor = new LocatorServiceImpl.Processor(service);
+      processor = new LocatorService.Processor<>(service);
       this.service = service;
     }
 
     final int parallelism = Math.max(
         Runtime.getRuntime().availableProcessors(), 4);
-    if (useSSL || !ThriftUtils.isThriftSelectorServer()) {
+    if (!ThriftUtils.isThriftSelectorServer()) {
       final SnappyThriftServerThreadPool.Args serverArgs =
           new SnappyThriftServerThreadPool.Args(serverTransport);
       TProtocolFactory protocolFactory = useBinaryProtocol
-          ? new TBinaryProtocol.Factory() : new TCompactProtocol.Factory();
+          ? new TBinaryProtocolOpt.Factory(true)
+          : new TCompactProtocolOpt.Factory(true);
 
       serverArgs.processor(processor).protocolFactory(protocolFactory);
+      if (useFramedTransport) {
+        serverArgs.transportFactory(new TFramedTransport.Factory());
+      }
       this.thriftExecutor = new ThreadPoolExecutor(parallelism * 2,
           maxThreads, 30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
       serverArgs.setExecutorService(this.thriftExecutor).setConnectionListener(
           listener);
 
       this.thriftServer = new SnappyThriftServerThreadPool(serverArgs);
-    }
-    else {
+    } else {
       // selector and per-thread hybrid server
       final SnappyThriftServerSelector.Args serverArgs =
           new SnappyThriftServerSelector.Args(serverTransport);
@@ -155,8 +165,13 @@ public final class SnappyThriftServer {
       final int numThreads = parallelism * 2;
       serverArgs.processor(processor).protocolFactory(protocolFactory)
           .setNumSelectors(numSelectors).setConnectionListener(listener);
-      this.thriftExecutor = new ThreadPoolExecutor(1, maxThreads, 30L,
-          TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+      // Keep finite size of blocking queue to allow queueing.
+      // Limit the maximum number of threads further to avoid OOMEs.
+      int executorThreads = Math.min(Math.max(64, numThreads * 2), maxThreads);
+      int maxQueued = Math.min(Math.max(1024, numThreads * 16), maxThreads);
+      this.thriftExecutor = new ThreadPoolExecutor(executorThreads, executorThreads,
+          60L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(maxQueued));
+      this.thriftExecutor.allowCoreThreadTimeOut(true);
       this.thriftThreadPerConnExecutor = new ThreadPoolExecutor(1, numThreads,
           30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
       serverArgs.setExecutorService(this.thriftExecutor);
@@ -203,5 +218,133 @@ public final class SnappyThriftServer {
   public final boolean isServing() {
     final TServer thriftServer = this.thriftServer;
     return thriftServer != null && thriftServer.isServing();
+  }
+
+  public void collectStatisticsSample() {
+    // TODO: SW: create statistics for thrift (especially the
+    //   selector mode since many below are not relevant for it)
+    /*
+    final ConnectionStats stats = InternalDriver.activeDriver()
+        .getConnectionStats();
+
+    int connOpen = 0;
+    long bytesRead = 0, bytesWritten = 0;
+    long totNumTimesWaited = 0, totalServerThreadIdleTime = 0;
+    long totalNumCommandsProcessed = 0, totalProcessTime = 0;
+    final long totalThreads;
+    long waitingThreads = 0;
+    int numClientConnectionsIdle = 0;
+
+    synchronized (threadsSync) {
+      totalThreads = threadList.size();
+
+      final long[] connThreadStats = new long[5];
+      for (int i = 0; i < totalThreads; i++) {
+        final DRDAConnThread connThread = ((DRDAConnThread)threadList.get(i));
+        if (connThread.hasSession()) {
+          connOpen++;
+        }
+        bytesRead += connThread.getAndResetBytesRead();
+        bytesWritten += connThread.getAndResetBytesWritten();
+
+        connThread.getAndResetConnActivityStats(connThreadStats);
+        // if begin is non-zero that means this thread is waiting.
+        long beginWaitTimeMillis = connThreadStats[0];
+        final long numTimesCurrentThreadWaited = connThreadStats[1];
+        if (numTimesCurrentThreadWaited > 0) {
+          totNumTimesWaited += numTimesCurrentThreadWaited; // numTimesWaited
+          waitingThreads++;
+        }
+        long currWaitingTime = (beginWaitTimeMillis > 0 ? (System
+            .currentTimeMillis() - beginWaitTimeMillis) : 0)
+            /*in case this thread is stuck on readHeader().*;
+        totalServerThreadIdleTime += connThreadStats[2];
+        if (currWaitingTime > 0) {
+          numClientConnectionsIdle++;
+          totalServerThreadIdleTime += (currWaitingTime * 1000000);
+        }
+        totalNumCommandsProcessed += connThreadStats[3];
+        totalProcessTime += connThreadStats[4];
+      }
+    }
+
+    stats.setNetServerThreads(totalThreads);
+    stats.setNetServerWaitingThreads(waitingThreads);
+    stats.setClientConnectionsIdle(numClientConnectionsIdle);
+    stats.setClientConnectionsOpen(connOpen);
+    stats.setClientConnectionsQueued(queuedConn);
+    stats.incTotalBytesRead(bytesRead);
+    stats.incTotalBytesWritten(bytesWritten);
+
+    stats.incNetServerThreadLongWaits(totNumTimesWaited);
+    stats.incNetServerThreadIdleTime(totalServerThreadIdleTime / 1000000);
+    stats.incCommandsProcessed(totalNumCommandsProcessed);
+    stats.incCommandsProcessTime(totalProcessTime);
+    */
+  }
+
+  public void getSessionInfo(final SessionsVTI.SessionInfo info) {
+    final LocatorServiceImpl service = this.service;
+    if (service instanceof SnappyDataServiceImpl) {
+      final SnappyDataServiceImpl dataService = (SnappyDataServiceImpl)service;
+      dataService.recordStatementStartTime = true;
+      dataService.connectionMap.forEachValue(new TObjectProcedure() {
+        @Override
+        public boolean execute(Object holder) {
+          ConnectionHolder connHolder = (ConnectionHolder)holder;
+          final SessionsVTI.SessionInfo.ClientSession cs =
+              new SessionsVTI.SessionInfo.ClientSession();
+          cs.connNum = connHolder.getConnectionId();
+          cs.isActive = connHolder.getConnection().isActive();
+          cs.clientBindAddress = connHolder.getClientHostName() + ':' +
+              connHolder.getClientID();
+          cs.clientBindPort = dataService.hostPort;
+          cs.hadConnectedOnce = dataService.clientTrackerMap.containsKey(
+              connHolder.getClientHostId());
+          cs.isConnected = dataService.connectionMap.containsKeyPrimitive(
+              connHolder.getConnectionId());
+          cs.userId = connHolder.getUserName();
+          cs.connectionBeginTimeStamp = new Timestamp(connHolder.getStartTime());
+          // statement information
+          ConnectionHolder.StatementHolder activeStatement =
+              connHolder.getActiveStatement();
+          if (activeStatement != null) {
+            Statement stmt = activeStatement.getStatement();
+            EmbedStatement estmt = (stmt instanceof EmbedStatement)
+                ? (EmbedStatement)stmt : null;
+            cs.currentStatementUUID = estmt != null ? estmt.getStatementUUID()
+                : "Statement@" + Integer.toHexString(
+                System.identityHashCode(stmt));
+            cs.currentStatement = String.valueOf(activeStatement.getSQL());
+            cs.currentStatementStatus = activeStatement.getStatus();
+            final long startTime = activeStatement.getStartTime();
+            if (startTime > 0) {
+              cs.currentStatementElapsedTime = Math.max(System.nanoTime()
+                  - startTime, 0L) / 1000000000.0;
+            }
+            cs.currentStatementAccessFrequency =
+                activeStatement.getAccessFrequency();
+            if (estmt != null) {
+              try {
+                cs.currentStatementEstimatedMemUsage =
+                    estmt.getEstimatedMemoryUsage();
+              } catch (StandardException se) {
+                throw new GemFireXDRuntimeException(se);
+              }
+            }
+          }
+          info.addClientSession(cs);
+          return false;
+        }
+      });
+    } else if (service != null) {
+      final SessionsVTI.SessionInfo.ClientSession cs =
+          new SessionsVTI.SessionInfo.ClientSession();
+      cs.isActive = service.isActive();
+      cs.clientBindAddress = service.hostAddress;
+      cs.clientBindPort = service.hostPort;
+      cs.currentStatementStatus = "LOCATOR";
+      info.addClientSession(cs);
+    }
   }
 }

@@ -439,6 +439,7 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
 		    this.distributeBulkOpToDBSynchronizer();
 		  }
 		}
+		checkCancellationFlag();
 //              GemStone changes END   
 		/*
 		** If this is a deferred update, read the new rows and RowLocations

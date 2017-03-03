@@ -81,22 +81,22 @@ namespace impl {
 
     static void compactHeader(std::ostream& out,
         const boost::thread::id tid, const char* opId,
-        const char* opSql, const int32_t sqlId, const bool isStart,
+        const char* opSql, const int64_t sqlId, const bool isStart,
         const int64_t nanos, const int64_t milliTime,
-        const int32_t connId, const std::string& token);
+        const int64_t connId, const std::string& token);
 
     friend class io::snappydata::client::LogWriter;
 
   public:
     static void traceCompact(const boost::thread::id tid,
-        const char* opId, const char* opSql, const int32_t sqlId,
-        const bool isStart, const int64_t nanos, const int32_t connId,
+        const char* opId, const char* opSql, const int64_t sqlId,
+        const bool isStart, const int64_t nanos, const int64_t connId,
         const std::string& token, const std::exception* se = NULL,
         const int64_t milliTime = 0);
 
     static void traceCompact(const boost::thread::id tid,
-        const char* opId, const char* opSql, const int32_t sqlId,
-        const bool isStart, const int64_t nanos, const int32_t connId,
+        const char* opId, const char* opSql, const int64_t sqlId,
+        const bool isStart, const int64_t nanos, const int64_t connId,
         const std::string& token, const SQLException* sqle,
         const int64_t milliTime = 0);
   };

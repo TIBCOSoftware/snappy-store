@@ -41,7 +41,7 @@ public final class ConnectionStats {
 
   private static boolean enableClockStats = false;
   static {
-    /** Enable time stats. */
+    // Enable time stats.
     setClockStats(false, true);
   }
 
@@ -93,15 +93,15 @@ public final class ConnectionStats {
   /** Index for internal connections closed */
   public static final int internalConnectionsClosedId;
 
-  private static final int drdaServerThreadsId;
+  private static final int netServerThreadsId;
   
-  private static final int drdaServerWaitingThreadsId;
+  private static final int netServerWaitingThreadsId;
 
   private static final int clientConnectionsTotalBytesReadId;
 
   private static final int clientConnectionsTotalBytesWrittenId;
 
-  /** connections waiting due to DRDA thread pool limits.*/
+  /** connections waiting due to network server thread pool limits.*/
   private static final int clientConnectionsQueuedId;
 
   /** Index for connection open attempted */
@@ -128,9 +128,9 @@ public final class ConnectionStats {
   /** Index for time taken for each connection. */
   private static final int clientConnectionsLifeTimeId;
 
-  private static final int drdaThreadLongWaitsId;
+  private static final int netServerThreadLongWaitsId;
 
-  private static final int drdaThreadIdleTimeId;
+  private static final int netServerThreadIdleTimeId;
 
   private static final int clientCommandsProcessedId;
 
@@ -188,17 +188,17 @@ public final class ConnectionStats {
                 f.createLongCounter("clientConnectionsAttempted",
                     "Number of client connections attempted", "operations"),
                 f.createLongGauge(
-                    "drdaServerThreads",
-                    "Number of DRDA server threads created for servicing client connections.",
+                    "netServerThreads",
+                    "Number of network server threads created for servicing client connections.",
                     "operations"),
                 f.createLongGauge(
-                    "drdaServerWaitingThreads",
-                    "Number of DRDA server threads that waited > 1 millisecond for client requests.",
+                    "netServerWaitingThreads",
+                    "Number of network server threads that waited > 1 millisecond for client requests.",
                     "operations"),
 
                 f.createLongGauge(
                     "clientConnectionsQueued",
-                    "Number of client connections active but in the wait queue and yet to be serviced by DRDAServer threads.",
+                    "Number of client connections active but in the wait queue and yet to be serviced by network server threads.",
                     "operations"),
                 f.createLongCounter(
                     "clientConnectionsTotalBytesRead",
@@ -230,21 +230,21 @@ public final class ConnectionStats {
                     "nanoseconds"),
 
                 f.createLongCounter(
-                    "drdaThreadLongWaits",
-                    "Number of times server DRDA threads waited > 5 millisecond for client requests.",
+                    "netServerThreadLongWaits",
+                    "Number of times server network server threads waited > 5 millisecond for client requests.",
                     "operations"),
                 f.createLongCounter(
-                    "drdaThreadIdleTime",
-                    "Time for which server DRDA threads were waiting for clients to submit requests. "
-                        + "This divided by drdaThreadLongWaits gives average idle time across all receiving threads that waited beyond 5 millisecond. "
+                    "netServerThreadIdleTime",
+                    "Time for which server network server threads were waiting for clients to submit requests. "
+                        + "This divided by netServerThreadLongWaits gives average idle time across all receiving threads that waited beyond 5 millisecond. "
                         + "This divided by clientConnectionsIdle gives average per thread idle time.",
                     "milliseconds"),
                 f.createLongCounter("clientCommandsProcessed",
-                    "Number of commands processed by the server DRDA threads.",
+                    "Number of commands processed by the network server threads.",
                     "operations"),
                 f.createLongCounter(
                     "clientCommandsProcessTime",
-                    " Total time taken by server DRDA threads to process commands submitted.",
+                    " Total time taken by network server threads to process commands submitted.",
                     "nanoseconds"), });
 
     peerConnectionsAttemptedId = type
@@ -266,8 +266,8 @@ public final class ConnectionStats {
     internalConnectionsClosedId = type.nameToId("internalConnectionsClosed");
 
     clientConnectionAttemptedId = type.nameToId("clientConnectionsAttempted");
-    drdaServerThreadsId = type.nameToId("drdaServerThreads");
-    drdaServerWaitingThreadsId = type.nameToId("drdaServerWaitingThreads");
+    netServerThreadsId = type.nameToId("netServerThreads");
+    netServerWaitingThreadsId = type.nameToId("netServerWaitingThreads");
     clientConnectionsQueuedId = type.nameToId("clientConnectionsQueued");
     clientConnectionsTotalBytesReadId = type
         .nameToId("clientConnectionsTotalBytesRead");
@@ -281,10 +281,10 @@ public final class ConnectionStats {
     clientConnectionsClosedId = type.nameToId("clientConnectionsClosed");
     clientConnectionsLifeTimeId = type.nameToId("clientConnectionsLifeTime");
 
-    drdaThreadLongWaitsId = type
-        .nameToId("drdaThreadLongWaits");
-    drdaThreadIdleTimeId = type
-        .nameToId("drdaThreadIdleTime");
+    netServerThreadLongWaitsId = type
+        .nameToId("netServerThreadLongWaits");
+    netServerThreadIdleTimeId = type
+        .nameToId("netServerThreadIdleTime");
     clientCommandsProcessedId = type.nameToId("clientCommandsProcessed");
     clientCommandsProcessTimeId = type
         .nameToId("clientCommandsProcessTime");
@@ -413,12 +413,12 @@ public final class ConnectionStats {
     this.stats.incLong(clientConnectionAttemptedId, 1);
   }
 
-  public void setDRDAServerThreads(long newValue) {
-    this.stats.setLong(drdaServerThreadsId, newValue);
+  public void setNetServerThreads(long newValue) {
+    this.stats.setLong(netServerThreadsId, newValue);
   }
 
-  public void setDRDAServerWaitingThreads(long newValue) {
-    this.stats.setLong(drdaServerWaitingThreadsId, newValue);
+  public void setNetServerWaitingThreads(long newValue) {
+    this.stats.setLong(netServerWaitingThreadsId, newValue);
   }
 
   public void setClientConnectionsQueued(long newValue) {
@@ -471,12 +471,12 @@ public final class ConnectionStats {
     }
   }
 
-  public void incDRDAThreadLongWaits(long inc) {
-    this.stats.incLong(drdaThreadLongWaitsId, inc);
+  public void incNetServerThreadLongWaits(long inc) {
+    this.stats.incLong(netServerThreadLongWaitsId, inc);
   }
 
-  public void incDRDAThreadIdleTime(long inc) {
-    this.stats.incLong(drdaThreadIdleTimeId, inc);
+  public void incNetServerThreadIdleTime(long inc) {
+    this.stats.incLong(netServerThreadIdleTimeId, inc);
   }
 
   public void incCommandsProcessed(long inc) {

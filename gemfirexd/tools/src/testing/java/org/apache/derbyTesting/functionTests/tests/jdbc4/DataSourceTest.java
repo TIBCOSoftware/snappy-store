@@ -23,8 +23,6 @@ package org.apache.derbyTesting.functionTests.tests.jdbc4;
 
 import junit.framework.*;
 
-import com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource;
-import com.pivotal.gemfirexd.internal.jdbc.EmbeddedConnectionPoolDataSource;
 import org.apache.derbyTesting.functionTests.tests.jdbcapi.AssertEventCatcher;
 import org.apache.derbyTesting.junit.BaseJDBCTestCase;
 import org.apache.derbyTesting.junit.J2EEDataSource;

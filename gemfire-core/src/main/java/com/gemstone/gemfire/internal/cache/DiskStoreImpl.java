@@ -25,28 +25,8 @@ import java.net.InetAddress;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -73,7 +53,6 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.FileUtil;
-import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
@@ -86,19 +65,7 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholds.MemoryState;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.cache.lru.LRUAlgorithm;
 import com.gemstone.gemfire.internal.cache.lru.LRUStatistics;
-import com.gemstone.gemfire.internal.cache.persistence.BackupInspector;
-import com.gemstone.gemfire.internal.cache.persistence.BackupManager;
-import com.gemstone.gemfire.internal.cache.persistence.BytesAndBits;
-import com.gemstone.gemfire.internal.cache.persistence.DiskExceptionHandler;
-import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
-import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
-import com.gemstone.gemfire.internal.cache.persistence.DiskStoreFilter;
-import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
-import com.gemstone.gemfire.internal.cache.persistence.OplogType;
-import com.gemstone.gemfire.internal.cache.persistence.PRPersistentConfig;
-import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
-import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberPattern;
-import com.gemstone.gemfire.internal.cache.persistence.RestoreScript;
+import com.gemstone.gemfire.internal.cache.persistence.*;
 import com.gemstone.gemfire.internal.cache.snapshot.GFSnapshot;
 import com.gemstone.gemfire.internal.cache.snapshot.GFSnapshot.SnapshotWriter;
 import com.gemstone.gemfire.internal.cache.snapshot.SnapshotPacket.SnapshotRecord;
@@ -2236,7 +2203,15 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       IndexRecoveryTask task = new IndexRecoveryTask(allOplogs, recreateIndexes);
       // other disk store threads wait for this task, so use a different
       // thread pool for execution
-      executeDiskStoreTask(task, this.delayedWritePool);
+      ExecutorService waitingPool = getCache().getDistributionManager()
+          .getWaitingThreadPool();
+      ThreadPoolExecutor executor;
+      if (waitingPool instanceof ThreadPoolExecutor) {
+        executor = (ThreadPoolExecutor)waitingPool;
+      } else {
+        executor = this.delayedWritePool;
+      }
+      executeDiskStoreTask(task, executor);
     }
   }
 

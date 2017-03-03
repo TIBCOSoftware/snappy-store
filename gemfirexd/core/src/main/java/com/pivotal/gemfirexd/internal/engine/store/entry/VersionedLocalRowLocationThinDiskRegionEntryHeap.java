@@ -426,7 +426,9 @@ public class VersionedLocalRowLocationThinDiskRegionEntryHeap extends RowLocatio
   }
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
+    final Object value = this.value;
+    return value != null && !Token.isRemovedFromDisk(value)
+        ? value : Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
   }
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {

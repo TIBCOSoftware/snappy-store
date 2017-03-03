@@ -75,7 +75,7 @@ public class DefaultExceptionFactory40 extends DefaultExceptionFactory30 {
     SQLException sqle;
     if (sqlState == null) {
       sqle = new SQLException(getMessage(message, "XJ001", errCode), "XJ001",
-          errCode);
+          errCode, t);
     }
     else if (sqlState.startsWith(SQLState.CONNECTIVITY_PREFIX)
         || sqlState.equals(DRDA_CONVERSATION_TERMINATED)
@@ -83,28 +83,28 @@ public class DefaultExceptionFactory40 extends DefaultExceptionFactory30 {
       // none of the sqlstate supported by derby belongs to
       // TransientConnectionException. DERBY-3075
       sqle = new SQLNonTransientConnectionException(getMessage(message,
-          sqlState, errCode), sqlState, errCode);
+          sqlState, errCode), sqlState, errCode, t);
     }
     else if (sqlState.startsWith(SQLState.SQL_DATA_PREFIX)) {
       sqle = new SQLDataException(getMessage(message, sqlState, errCode),
-          sqlState, errCode);
+          sqlState, errCode, t);
     }
     else if (sqlState.startsWith(SQLState.INTEGRITY_VIOLATION_PREFIX)) {
       sqle = new SQLIntegrityConstraintViolationException(getMessage(message,
-          sqlState, errCode), sqlState, errCode);
+          sqlState, errCode), sqlState, errCode, t);
     }
     else if (sqlState.startsWith(SQLState.AUTHORIZATION_SPEC_PREFIX)) {
       sqle = new SQLInvalidAuthorizationSpecException(getMessage(message,
-          sqlState, errCode), sqlState, errCode);
+          sqlState, errCode), sqlState, errCode, t);
     }
     else if (isTransactionException(sqlState)
         || errCode >= ExceptionSeverity.TRANSACTION_SEVERITY) {
       sqle = new SQLTransactionRollbackException(getMessage(message, sqlState,
-          errCode), sqlState, errCode);
+          errCode), sqlState, errCode, t);
     }
     else if (sqlState.startsWith(SQLState.LSE_COMPILATION_PREFIX)) {
       sqle = new SQLSyntaxErrorException(
-          getMessage(message, sqlState, errCode), sqlState, errCode);
+          getMessage(message, sqlState, errCode), sqlState, errCode, t);
     }
     else if (sqlState.startsWith(SQLState.UNSUPPORTED_PREFIX)
         || sqlState.equals(DRDA_COMMAND_NOT_SUPPORTED)
@@ -115,18 +115,15 @@ public class DefaultExceptionFactory40 extends DefaultExceptionFactory30 {
         || sqlState.equals(DRDA_CONVERSION_NOT_SUPPORTED)
         || sqlState.equals(DRDA_REPLY_MSG_NOT_SUPPORTED)) {
       sqle = new SQLFeatureNotSupportedException(getMessage(message, sqlState,
-          errCode), sqlState, errCode);
+          errCode), sqlState, errCode, t);
     }
     else {
       sqle = new SQLException(getMessage(message, sqlState, errCode), sqlState,
-          errCode);
+          errCode, t);
     }
 
     if (next != null) {
       sqle.setNextException(next);
-    }
-    if (t != null) {
-      sqle.initCause(t);
     }
     return sqle;
   }

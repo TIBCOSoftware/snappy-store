@@ -159,7 +159,7 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     assertTrue(recommended.exists());
 
     // FileUtils.copyDirectory(outputDirectory, new File("/kuwait1/users/bansods/test"));
-    FileUtils.deleteDirectory(outputDirectory);
+    FileUtils.deleteQuietly(outputDirectory);
   }
 
   public void testMultiDiskStore() throws Exception {
@@ -224,8 +224,8 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     assertTrue(summaryFile.exists());
     
     File recommended = new File(outputDirectory, "Recommended.txt");
-    assertTrue(recommended.exists());  
-    FileUtils.deleteDirectory(outputDirectory);
+    assertTrue(recommended.exists());
+    FileUtils.deleteQuietly(outputDirectory);
   }
   
 //  public void DISABLED_BUG51473testHappyPathDataSalvagerAndLoader() throws Exception {
@@ -344,7 +344,7 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     
     File recommended = new File(outputDirectory, "Recommended.txt");
     assertTrue(recommended.exists());
-    FileUtils.deleteDirectory(outputDirectory);
+    FileUtils.deleteQuietly(outputDirectory);
   }
   
   public void testCorruptIfOnOneNode() throws Exception {
@@ -401,8 +401,8 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     
     File recommended = new File(outputDirectory, "Recommended.txt");
     assertTrue(recommended.exists());
-    
-    FileUtils.deleteDirectory(outputDirectory);
+
+    FileUtils.deleteQuietly(outputDirectory);
   }
   
   public void testMissingCRFOnOneNode() throws Exception {
@@ -458,9 +458,9 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     assertTrue(summaryFile.exists());
     
     File recommended = new File(outputDirectory, "Recommended.txt");
-    assertTrue(recommended.exists()); 
-    
-    FileUtils.deleteDirectory(outputDirectory);
+    assertTrue(recommended.exists());
+
+    FileUtils.deleteQuietly(outputDirectory);
   }
   
   public void testCorruptDataDictionary() throws Exception {
@@ -517,7 +517,7 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     
     File recommended = new File(outputDirectory, "Recommended.txt");
     assertTrue(recommended.exists());
-    FileUtils.deleteDirectory(outputDirectory);
+    FileUtils.deleteQuietly(outputDirectory);
   }
   
   
@@ -594,7 +594,7 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
       assertNotNull(statsGroup);
       stat = statsGroup.get(0);
       assertTrue(stat.getServerName().equals(server1Name));
-      FileUtils.deleteDirectory(new File(salvager.getOutputDirectory()));
+      FileUtils.deleteQuietly(new File(salvager.getOutputDirectory()));
 
       restartVMNums(-1,-2,-3);
     } finally {
@@ -662,7 +662,7 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
       assertFalse(hostToStatsMap.isEmpty());
       assertTrue(hostToStatsMap.size() == 3);
       restartVMNums(-1, -2, -3);
-      FileUtils.deleteDirectory(new File(salvager.getOutputDirectory()));
+      FileUtils.deleteQuietly(new File(salvager.getOutputDirectory()));
 
     } finally {
       tearDown2();
@@ -725,7 +725,7 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     
     File recommended = new File(outputDirectory, "Recommended.txt");
     assertTrue(recommended.exists());
-    FileUtils.deleteDirectory(outputDirectory);
+    FileUtils.deleteQuietly(outputDirectory);
   }
   
   
@@ -980,7 +980,11 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     if (lk != null) {
     //remove lock
       for (int i = 0; i < lk.length; i++) {
-        FileUtils.forceDelete(new File(copiedDirectory, lk[i]));
+        try {
+          FileUtils.forceDelete(new File(copiedDirectory, lk[i]));
+        } catch (IOException ioe) {
+          // ignore
+        }
       }
     }
   }
@@ -1013,7 +1017,11 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     });
     
     for (int i = 0; i < deleteFiles.length; i++) {
-      FileUtils.forceDelete(new File(copiedDirectory, deleteFiles[i]));
+      try {
+        FileUtils.forceDelete(new File(copiedDirectory, deleteFiles[i]));
+      } catch (IOException ioe) {
+        // ignore
+      }
     }
   }
   

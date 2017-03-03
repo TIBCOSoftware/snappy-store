@@ -20,6 +20,8 @@ package com.pivotal.gemfirexd.internal.engine;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.gemstone.gemfire.cache.Cache;
+import com.gemstone.gemfire.cache.CacheFactory;
 import com.gemstone.org.jgroups.oswego.concurrent.WriterPreferenceReadWriteLock;
 import com.pivotal.gemfirexd.internal.engine.locks.impl.GfxdReentrantReadWriteLock;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
@@ -54,6 +56,7 @@ public class GfxdLocalLockTest extends JdbcTestBase {
     currentWriters.set(0);
     final Object startObject = new Object();
 
+    Cache cache = new CacheFactory().set("mcast-port", "0").create();
     // create some reader and writer threads
     final Thread[] readers = new Thread[numReaders];
     final Thread[] writers = new Thread[numWriters];
@@ -163,6 +166,7 @@ public class GfxdLocalLockTest extends JdbcTestBase {
             + " in iteration " + times + ": " + (end - start) + "ms");
       }
     }
+    cache.close();
   }
 
   public void testReadWriteLockWithPerf2() throws Exception {
@@ -178,6 +182,7 @@ public class GfxdLocalLockTest extends JdbcTestBase {
     final Thread[] readers = new Thread[numReaders];
     final Thread[] writers = new Thread[numWriters];
 
+    Cache cache = new CacheFactory().set("mcast-port", "0").create();
     // runnable for the reader threads
     final Runnable readRun = new Runnable() {
 
@@ -292,6 +297,7 @@ public class GfxdLocalLockTest extends JdbcTestBase {
             + " in iteration " + times + ": " + (end - start) + "ms");
       }
     }
+    cache.close();
   }
 
   private static final class SharedStruct {

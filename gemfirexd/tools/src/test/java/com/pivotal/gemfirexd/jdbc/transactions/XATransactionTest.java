@@ -16,13 +16,11 @@
  */
 package com.pivotal.gemfirexd.jdbc.transactions;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
-
 import javax.naming.Context;
 import javax.sql.DataSource;
 import javax.sql.XAConnection;
@@ -32,17 +30,16 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-import org.apache.derbyTesting.junit.XATestUtil;
-
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.client.ClientXid;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.impl.services.monitor.FileMonitor;
-import com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource;
 import com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
+import io.snappydata.jdbc.ClientXADataSource;
+import org.apache.derbyTesting.junit.XATestUtil;
 
 public class XATransactionTest extends JdbcTestBase {
 

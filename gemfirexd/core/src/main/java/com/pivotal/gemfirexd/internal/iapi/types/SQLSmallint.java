@@ -43,17 +43,13 @@ package com.pivotal.gemfirexd.internal.iapi.types;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
+import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -832,7 +828,7 @@ public final class SQLSmallint
   @Override
   public int readBytes(final byte[] inBytes, int offset,
       final int columnWidth) {
-    this.value = getAsShort(inBytes, offset);
+    this.value = RowFormatter.readShort(inBytes, offset);
     this.isnull = false;
     assert columnWidth == (Short.SIZE >>> 3);
     return Short.SIZE >>> 3;
@@ -842,9 +838,8 @@ public final class SQLSmallint
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
-    this.value = getAsShort(unsafe, memOffset);
+  public int readBytes(long memOffset, final int columnWidth, ByteSource bs) {
+    this.value = RowFormatter.readShort(memOffset);
     this.isnull = false;
     assert columnWidth == (Short.SIZE >>> 3);
     return Short.SIZE >>> 3;
@@ -855,18 +850,6 @@ public final class SQLSmallint
     assert !isNull();
     return ResolverUtils.addIntToBucketHash(this.value & 0xFFFF, hash,
         getTypeFormatId());
-  }
-
-  static final short getAsShort(final byte[] bytes, final int offset) {
-    // keep this in big-endian format
-    return (short)(((bytes[offset] & 0xFF) << 8) | (bytes[offset + 1] & 0xFF));
-  }
-
-  static final short getAsShort(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    // keep this in big-endian format
-    return (short)(((unsafe.getByte(memOffset) & 0xFF) << 8)
-        | (unsafe.getByte(memOffset + 1) & 0xFF));
   }
 
   @Override

@@ -32,7 +32,6 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
@@ -49,7 +48,6 @@ import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
-import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLPreprocess;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
@@ -59,11 +57,8 @@ import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore.VMKind;
-import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
-import com.pivotal.gemfirexd.internal.iapi.reference.ContextId;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -86,7 +81,6 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.TablePrivilegeInfo;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
 /**
  * System Procedure Message that is sent out to members to execute procedures
@@ -1276,8 +1270,8 @@ public final class GfxdSystemProcedureMessage extends
       public void processMessage(Object[] params, DistributedMember sender)
           throws StandardException {
 
-        Boolean enableStats = (Boolean)params[0];
-        Boolean enableTimeStats = (Boolean)params[1];
+        final Boolean enableStats = (Boolean)params[0];
+        final Boolean enableTimeStats = (Boolean)params[1];
 
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_PLAN_GENERATION,
             "GfxdSystemProcedure: Switching " + (enableStats ? "On" : "Off")
@@ -1291,21 +1285,16 @@ public final class GfxdSystemProcedureMessage extends
             enableTimeStats.toString());
 
         // next set on all active connections
-        ContextService factory = ContextService.getFactory();
-        LanguageConnectionContext lcc;
-        if (factory != null) {
-          for (ContextManager cm : factory.getAllContexts()) {
-            if (cm == null) {
-              continue;
-            }
-            lcc = (LanguageConnectionContext)cm
-                .getContext(ContextId.LANG_CONNECTION);
-            if (lcc != null) {
-              lcc.setStatsEnabled(enableStats, enableTimeStats,
-                  lcc.explainConnection());
-            }
-          }
-        }
+        final GemFireXDUtils.Visitor<LanguageConnectionContext> setStats =
+            new GemFireXDUtils.Visitor<LanguageConnectionContext>() {
+              @Override
+              public boolean visit(LanguageConnectionContext lcc) {
+                lcc.setStatsEnabled(enableStats, enableTimeStats,
+                    lcc.explainConnection());
+                return true;
+              }
+            };
+        GemFireXDUtils.forAllContexts(setStats);
 
         // also enable GemFire and other timing stats
         if (enableTimeStats) {

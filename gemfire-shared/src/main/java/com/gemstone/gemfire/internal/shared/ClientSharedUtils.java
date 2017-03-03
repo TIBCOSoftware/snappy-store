@@ -40,6 +40,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
@@ -67,6 +69,7 @@ import javax.naming.directory.InitialDirContext;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * Some shared methods now also used by GemFireXD clients so should not have any
@@ -101,10 +104,12 @@ public abstract class ClientSharedUtils {
    * True if using Thrift as default network server and client, false if using
    * DRDA (default).
    */
-  public static final boolean USE_THRIFT_AS_DEFAULT = SystemProperties
-      .getClientInstance().getBoolean(USE_THRIFT_AS_DEFAULT_PROP, false);
+  public static boolean USE_THRIFT_AS_DEFAULT = thriftIsDefault(true);
 
   private static final Object[] staticZeroLenObjectArray = new Object[0];
+
+  public static final boolean isLittleEndian =
+      ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
 
   /**
    * all classes should use this variable to determine whether to use IPv4 or
@@ -122,6 +127,15 @@ public abstract class ClientSharedUtils {
           return System.getProperty("line.separator");
         }
       });
+
+  public static boolean thriftIsDefault(boolean defaultValue) {
+    return SystemProperties.getClientInstance().getBoolean(
+        USE_THRIFT_AS_DEFAULT_PROP, defaultValue);
+  }
+
+  public static void setThriftIsDefault(boolean defaultValue) {
+    USE_THRIFT_AS_DEFAULT = thriftIsDefault(defaultValue);
+  }
 
   /** we cache localHost to avoid bug #40619, access-violation in native code */
   private static final InetAddress localHost;
@@ -1048,18 +1062,16 @@ public abstract class ClientSharedUtils {
     if (wrapsFullArray(buffer)) {
       final byte[] bytes = buffer.array();
       sb.append(toHexChars(bytes, 0, bytes.length));
-    }
-    else {
-      int pos = buffer.position();
+    } else {
       final int limit = buffer.limit();
-      while (pos++ < limit) {
+      for (int pos = buffer.position(); pos < limit; pos++) {
         byte b = buffer.get(pos);
         toHexChars(b, sb);
       }
     }
   }
 
-  static final int toHexChars(final byte b, final char[] chars, int index) {
+  static int toHexChars(final byte b, final char[] chars, int index) {
     final int highByte = (b & 0xf0) >>> 4;
     final int lowByte = (b & 0x0f);
     chars[index] = HEX_DIGITS[highByte];
@@ -1207,8 +1219,12 @@ public abstract class ClientSharedUtils {
     PropertyConfigurator.configure(props);
   }
 
-  public static void initLogger(String loggerName, String logFile,
-      boolean initLog4j, Level level, final Handler handler) {
+  public static synchronized void initLogger(String loggerName, String logFile,
+      boolean initLog4j, boolean skipIfInitialized, Level level,
+      final Handler handler) {
+    if (skipIfInitialized && logger != DEFAULT_LOGGER) {
+      return;
+    }
     clearLogger();
     if (initLog4j) {
       try {
@@ -1224,7 +1240,7 @@ public abstract class ClientSharedUtils {
     logger = log;
   }
 
-  public static void setLogger(Logger log) {
+  public static synchronized void setLogger(Logger log) {
     clearLogger();
     logger = log;
   }
@@ -1288,7 +1304,7 @@ public abstract class ClientSharedUtils {
 
   private static void clearLogger() {
     final Logger log = logger;
-    if (log != null) {
+    if (log != DEFAULT_LOGGER) {
       logger = DEFAULT_LOGGER;
       for (Handler h : log.getHandlers()) {
         log.removeHandler(h);
@@ -1376,6 +1392,160 @@ public abstract class ClientSharedUtils {
     }
   }
 
+  /**
+   * State constants used by the FSM inside getStatementToken.
+   *
+   * @see #getStatementToken
+   */
+  private static final int TOKEN_OUTSIDE = 0;
+  private static final int TOKEN_INSIDE_SIMPLECOMMENT = 1;
+  private static final int TOKEN_INSIDE_BRACKETED_COMMENT = 2;
+
+  /**
+   * Minion of getStatementToken. If the input string starts with an
+   * identifier consisting of letters only (like "select", "update"..),return
+   * it, else return supplied string.
+   *
+   * @param sql input string
+   * @return identifier or unmodified string
+   * @see #getStatementToken
+   */
+  private static String isolateAnyInitialIdentifier(String sql) {
+    int idx;
+    for (idx = 0; idx < sql.length(); idx++) {
+      char ch = sql.charAt(idx);
+      if (!Character.isLetter(ch)
+          && ch != '<' /* for <local>/<global> tags */) {
+        // first non-token char found
+        break;
+      }
+    }
+    // return initial token if one is found, or the entire string otherwise
+    return (idx > 0) ? sql.substring(0, idx) : sql;
+  }
+
+  /**
+   * Moved from Derby's <code>Statement.getStatementToken</code> to shared between
+   * client and server code.
+   * <p>
+   * Step past any initial non-significant characters to find first
+   * significant SQL token so we can classify statement.
+   *
+   * @return first significant SQL token
+   */
+  public static String getStatementToken(String sql, int idx) {
+    int bracketNesting = 0;
+    int state = TOKEN_OUTSIDE;
+    String tokenFound = null;
+    char next;
+
+    final int sqlLen = sql.length();
+    while (idx < sqlLen && tokenFound == null) {
+      next = sql.charAt(idx);
+
+      switch (state) {
+        case TOKEN_OUTSIDE:
+          switch (next) {
+            case '\n':
+            case '\t':
+            case '\r':
+            case '\f':
+            case ' ':
+            case '(':
+            case '{': // JDBC escape characters
+            case '=': //
+            case '?': //
+              idx++;
+              break;
+            case '/':
+              if (idx == sql.length() - 1) {
+                // no more characters, so this is the token
+                tokenFound = "/";
+              } else if (sql.charAt(idx + 1) == '*') {
+                state = TOKEN_INSIDE_BRACKETED_COMMENT;
+                bracketNesting++;
+                idx++; // step two chars
+              }
+
+              idx++;
+              break;
+            case '-':
+              if (idx == sql.length() - 1) {
+                // no more characters, so this is the token
+                tokenFound = "/";
+              } else if (sql.charAt(idx + 1) == '-') {
+                state = TOKEN_INSIDE_SIMPLECOMMENT;
+                idx++;
+              }
+
+              idx++;
+              break;
+            default:
+              // a token found
+              tokenFound = isolateAnyInitialIdentifier(
+                  sql.substring(idx));
+
+              break;
+          }
+
+          break;
+        case TOKEN_INSIDE_SIMPLECOMMENT:
+          switch (next) {
+            case '\n':
+            case '\r':
+            case '\f':
+
+              state = TOKEN_OUTSIDE;
+              idx++;
+
+              break;
+            default:
+              // anything else inside a simple comment is ignored
+              idx++;
+              break;
+          }
+
+          break;
+        case TOKEN_INSIDE_BRACKETED_COMMENT:
+          switch (next) {
+            case '/':
+              if (idx != sql.length() - 1 &&
+                  sql.charAt(idx + 1) == '*') {
+
+                bracketNesting++;
+                idx++; // step two chars
+              }
+              idx++;
+
+              break;
+            case '*':
+              if (idx != sql.length() - 1 &&
+                  sql.charAt(idx + 1) == '/') {
+
+                bracketNesting--;
+
+                if (bracketNesting == 0) {
+                  state = TOKEN_OUTSIDE;
+                  idx++; // step two chars
+                }
+              }
+
+              idx++;
+              break;
+            default:
+              idx++;
+              break;
+          }
+
+          break;
+        default:
+          break;
+      }
+    }
+
+    return tokenFound;
+  }
+
   public static boolean equalBuffers(final ByteBuffer connToken,
       final ByteBuffer otherId) {
     if (connToken == otherId) {
@@ -1406,101 +1576,86 @@ public abstract class ClientSharedUtils {
       return false;
     }
     // read in longs to minimize ByteBuffer get() calls
-    int index = 0;
     int pos = buffer.position();
     final int endPos = (pos + len);
+    final boolean sameOrder = ByteOrder.nativeOrder() == buffer.order();
     // round off to nearest factor of 8 to read in longs
     final int endRound8Pos = (len % 8) != 0 ? (endPos - 8) : endPos;
-    byte b;
-    if (buffer.order() == ByteOrder.BIG_ENDIAN) {
-      while (pos < endRound8Pos) {
-        // splitting into longs is faster than reading one byte at a time even
-        // though it costs more operations (about 20% in micro-benchmarks)
-        final long v = buffer.getLong(pos);
-        b = (byte)(v >>> 56);
-        if (b != bytes[index++]) {
+    long indexPos = Platform.BYTE_ARRAY_OFFSET;
+    while (pos < endRound8Pos) {
+      // splitting into longs is faster than reading one byte at a time even
+      // though it costs more operations (about 20% in micro-benchmarks)
+      final long s = Platform.getLong(bytes, indexPos);
+      final long v = buffer.getLong(pos);
+      if (sameOrder) {
+        if (s != v) {
           return false;
         }
-        b = (byte)(v >>> 48);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 40);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 32);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 24);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 16);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 8);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 0);
-        if (b != bytes[index++]) {
-          return false;
-        }
-
-        pos += 8;
+      } else if (s != Long.reverseBytes(v)) {
+        return false;
       }
-    }
-    else {
-      while (pos < endRound8Pos) {
-        // splitting into longs is faster than reading one byte at a time even
-        // though it costs more operations (about 20% in micro-benchmarks)
-        final long v = buffer.getLong(pos);
-        b = (byte)(v >>> 0);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 8);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 16);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 24);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 32);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 40);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 48);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 56);
-        if (b != bytes[index++]) {
-          return false;
-        }
-
-        pos += 8;
-      }
+      pos += 8;
+      indexPos += 8;
     }
     while (pos < endPos) {
-      if (bytes[index] != buffer.get(pos)) {
+      if (Platform.getByte(bytes, indexPos) != buffer.get(pos)) {
         return false;
       }
       pos++;
-      index++;
+      indexPos++;
     }
     return true;
+  }
+
+  /**
+   * Allocate new ByteBuffer if capacity of given ByteBuffer has exceeded.
+   */
+  public static ByteBuffer ensureCapacity(ByteBuffer buffer,
+      int newLength, boolean useDirectBuffer) {
+    if (newLength <= buffer.capacity()) {
+      return buffer;
+    }
+    ByteBuffer newBuffer = useDirectBuffer ? Platform.allocateDirectBuffer(
+        newLength) : ByteBuffer.allocate(newLength);
+    newBuffer.order(buffer.order());
+    buffer.flip();
+    newBuffer.put(buffer);
+    return newBuffer;
+  }
+
+  public static final ThreadLocal ALLOW_THREADCONTEXT_CLASSLOADER =
+      new ThreadLocal();
+
+  /**
+   * allow using Thread context ClassLoader to load classes
+   */
+  public static final class ThreadContextObjectInputStream extends
+      ObjectInputStream {
+
+    protected ThreadContextObjectInputStream() throws IOException,
+        SecurityException {
+      super();
+    }
+
+    public ThreadContextObjectInputStream(final InputStream in)
+        throws IOException {
+      super(in);
+    }
+
+    protected Class resolveClass(final ObjectStreamClass desc)
+        throws IOException, ClassNotFoundException {
+      try {
+        return super.resolveClass(desc);
+      } catch (ClassNotFoundException cnfe) {
+        // try to load using Thread context ClassLoader, if required
+        final Object allowTCCL = ALLOW_THREADCONTEXT_CLASSLOADER.get();
+        if (allowTCCL == null || !Boolean.TRUE.equals(allowTCCL)) {
+          throw cnfe;
+        } else {
+          return Thread.currentThread().getContextClassLoader()
+              .loadClass(desc.getName());
+        }
+      }
+    }
   }
 }

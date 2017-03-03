@@ -791,14 +791,14 @@ public class SanityManager {
           final String tid;
           final String opId;
           final Object sql;
-          final int sqlId;
+          final long sqlId;
           final long connId;
           final ByteBuffer sessionToken;
           final long nanoTime;
           final long milliTime;
           final Throwable t;
 
-          CompactLogLine(String tid, String opId, Object sql, int sqlId,
+          CompactLogLine(String tid, String opId, Object sql, long sqlId,
               long connId, ByteBuffer sessionToken, long nanoTime,
               long milliTime, Throwable t) {
             this.tid = tid;
@@ -815,7 +815,7 @@ public class SanityManager {
           void toString(StringBuilder sb) {
             sb.append(this.tid).append(' ').append(this.opId).append(' ');
             final Object sql = this.sql;
-            final int sqlId;
+            final long sqlId;
             if (sql != null) {
               Class<?> cls = sql.getClass();
               if (cls == Integer.class) {
@@ -865,7 +865,7 @@ public class SanityManager {
           DEBUG_PRINT_COMPACT(opId, opSql, connId, null, nanoTime, isStart, t);
         }
 
-        static public void DEBUG_PRINT_COMPACT(String opId, final int sqlId,
+        static public void DEBUG_PRINT_COMPACT(String opId, final long sqlId,
             long connId, ByteBuffer sessionToken, long nanoTime,
             boolean isStart, Throwable t) {
           DEBUG_PRINT_COMPACT(opId, null, sqlId, connId, sessionToken,
@@ -880,7 +880,7 @@ public class SanityManager {
         }
 
         static public void DEBUG_PRINT_COMPACT(String opId, final String opSql,
-            int sqlId, long connId, ByteBuffer sessionToken, long nanoTime,
+            long sqlId, long connId, ByteBuffer sessionToken, long nanoTime,
             boolean isStart, Throwable t) {
           final Object sql;
           final Thread currentThread = Thread.currentThread();

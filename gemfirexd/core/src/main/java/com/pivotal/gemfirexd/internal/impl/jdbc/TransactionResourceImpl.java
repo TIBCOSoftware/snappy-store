@@ -202,6 +202,8 @@ public final class TransactionResourceImpl
 		// only allowed for admin user by LCC.setSkipLocksForConnection
 		this.skipLocks = getPropertyValue(
                     Attribute.SKIP_LOCKS, null, info, false);
+		this.defaultSchema = PropertyUtil.findAndGetProperty(info,
+		    Attribute.DEFAULT_SCHEMA, null);
 		// default is streaming enabled
 		this.disableStreaming = getPropertyValue(
 		    Attribute.DISABLE_STREAMING,
@@ -351,7 +353,9 @@ public final class TransactionResourceImpl
 
 	private final boolean skipLocks;
 
-        private final boolean enableMetadataPrepare;
+	final String defaultSchema;
+
+  private final boolean enableMetadataPrepare;
         
 	public final EnumSet<TransactionFlag> getTXFlags() {
 	  return this.txFlags;

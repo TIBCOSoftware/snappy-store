@@ -532,12 +532,6 @@ void Connection::rollbackTransaction(bool startNewTransaction) {
   service.rollbackTransaction(startNewTransaction);
 }
 
-void Connection::prepareCommitTransaction() {
-  ClientService& service = checkAndGetService();
-
-  service.prepareCommitTransaction();
-}
-
 const std::string Connection::getNativeSQL(const std::string& sql) const {
   // SnappyData can handle the escape syntax directly so only needs escape
   // processing for { ? = CALL  ....}

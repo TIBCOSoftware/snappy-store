@@ -53,7 +53,6 @@
 #include "types/DateTime.h"
 #include "types/Decimal.h"
 #include "types/Timestamp.h"
-#include "types/JSON.h"
 
 using namespace io::snappydata::client::types;
 

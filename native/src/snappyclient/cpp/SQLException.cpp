@@ -64,7 +64,7 @@ SQLException::SQLException(const char* file, int line,
 	const thrift::SnappyException& se) :
     m_reason(se.exceptionData.reason),
     m_state(se.exceptionData.sqlState),
-    m_severity(se.exceptionData.severity), m_next(NULL),
+    m_severity(se.exceptionData.errorCode), m_next(NULL),
     m_file(file), m_line(line) {
   initNextException(se.nextExceptions);
   init();

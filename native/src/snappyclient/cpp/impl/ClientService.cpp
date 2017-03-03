@@ -747,7 +747,8 @@ void ClientService::prepareStatement(thrift::PrepareResult& result,
 
 void ClientService::executePrepared(thrift::StatementResult& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params,
-    const std::map<int32_t, thrift::OutputParameter>& outputParams) {
+    const std::map<int32_t, thrift::OutputParameter>& outputParams,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -755,7 +756,7 @@ void ClientService::executePrepared(thrift::StatementResult& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePrepared(result, prepResult.statementId, params,
-        outputParams, m_token);
+        outputParams, attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -772,7 +773,8 @@ void ClientService::executePrepared(thrift::StatementResult& result,
 }
 
 void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
-    thrift::PrepareResult& prepResult, const thrift::Row& params) {
+    thrift::PrepareResult& prepResult, const thrift::Row& params,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -780,7 +782,7 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePreparedUpdate(result, prepResult.statementId, params,
-        m_token);
+        attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -797,7 +799,8 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
 }
 
 void ClientService::executePreparedQuery(thrift::RowSet& result,
-    thrift::PrepareResult& prepResult, const thrift::Row& params) {
+    thrift::PrepareResult& prepResult, const thrift::Row& params,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -805,7 +808,7 @@ void ClientService::executePreparedQuery(thrift::RowSet& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePreparedQuery(result, prepResult.statementId, params,
-        m_token);
+        attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -823,7 +826,8 @@ void ClientService::executePreparedQuery(thrift::RowSet& result,
 
 void ClientService::executePreparedBatch(thrift::UpdateResult& result,
     thrift::PrepareResult& prepResult,
-    const std::vector<thrift::Row>& paramsBatch) {
+    const std::vector<thrift::Row>& paramsBatch,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -831,7 +835,7 @@ void ClientService::executePreparedBatch(thrift::UpdateResult& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePreparedBatch(result, prepResult.statementId, paramsBatch,
-        m_token);
+        attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -1232,30 +1236,6 @@ void ClientService::rollbackTransaction(const bool startNewTransaction) {
   }
 }
 
-bool ClientService::prepareCommitTransaction() {
-  try {
-    boost::lock_guard<boost::mutex> sync(m_lock);
-
-    return m_client.prepareCommitTransaction(m_connId, m_pendingTXAttrs,
-        m_token);
-    clearPendingTransactionAttrs();
-  } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException(sqle);
-  } catch (const TTransportException& tte) {
-    handleTTransportException("prepareCommitTransaction", tte);
-  } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("prepareCommitTransaction", tpe);
-  } catch (const TException& te) {
-    handleTException("prepareCommitTransaction", te);
-  } catch (const std::exception& stde) {
-    handleStdException("prepareCommitTransaction", stde);
-  } catch (...) {
-    handleUnknownException("prepareCommitTransaction");
-  }
-  // never reached
-  return false;
-}
-
 void ClientService::fetchActiveConnections(
     std::vector<thrift::ConnectionProperties>& result) {
   try {
@@ -1281,7 +1261,7 @@ void ClientService::fetchActiveConnections(
 }
 
 void ClientService::fetchActiveStatements(
-    std::map<int32_t, std::string>& result) {
+    std::map<int64_t, std::string>& result) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -1535,7 +1515,7 @@ void ClientService::close() {
 
     BufferedSocketTransport* transport = m_transport.get();
     if (transport != NULL) {
-      m_client.closeConnection(m_connId, m_token);
+      m_client.closeConnection(m_connId, true, m_token);
       if (transport->isOpen()) {
         transport->close();
       }

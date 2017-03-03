@@ -153,6 +153,12 @@ public abstract class QueryCancelTestHelper extends DistributedSQLTestBase {
     } else {
       // cancel using system procedure
       String stmtUUID = getStatementUUIDfromBBMap(testKey);
+      // execution ID may be different for remote connection vs query
+      // connection entry in SESSIONS table
+      int lastDash = stmtUUID.lastIndexOf('-');
+      if (lastDash > 0) {
+        stmtUUID = stmtUUID.substring(0, lastDash);
+      }
       getLogWriter().info("UUID for " + testKey + "=" + stmtUUID);
       Connection c = TestUtil.getConnection();
       Statement s = c.createStatement();
@@ -160,22 +166,22 @@ public abstract class QueryCancelTestHelper extends DistributedSQLTestBase {
       // make sure that the sessions VTI contains the statement to be cancelled
       ResultSet rs = s
           .executeQuery("select current_statement_UUID, CURRENT_STATEMENT from sys.sessions");
-      boolean UUIDfound = false;
+      String foundUUID = null;
       while (rs.next()) {
-        if (rs.getString(1).equals(stmtUUID)) {
-          UUIDfound = true;
+        if (rs.getString(1).startsWith(stmtUUID)) {
+          foundUUID = rs.getString(1);
         } else {
-          getLogWriter().info("UUID in the sessions is :" + rs.getString(1)
-              + "and statement text is : " + rs.getString(2));
+          getLogWriter().info("UUID in the sessions is " + rs.getString(1)
+              + " and statement text is: " + rs.getString(2));
         }
       }
-      assertTrue("Statement UUID " + stmtUUID
-          + " is not present in sessions VTI", UUIDfound);
+      assertNotNull("Statement UUID " + stmtUUID
+          + " is not present in sessions VTI", foundUUID);
       rs.close();
 
       String cancelStmt = "CALL SYS.CANCEL_STATEMENT(?)";
       CallableStatement cs = c.prepareCall(cancelStmt);
-      cs.setString(1, stmtUUID);
+      cs.setString(1, foundUUID);
       cs.execute();
     }
   }

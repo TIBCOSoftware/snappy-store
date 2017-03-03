@@ -73,15 +73,19 @@ public final class SnappyTServerSocket extends TNonblockingServerTransport {
    */
   private final SocketParameters socketParams;
 
+  /** True if client socket on accept has to use SSL (using SSLEngine). */
+  private final boolean useSSL;
+
   /** Whether the client socket is in blocking or non-blocking mode. */
   private final boolean clientBlocking;
 
   /**
    * Creates a port listening server socket
    */
-  public SnappyTServerSocket(InetSocketAddress bindAddress, boolean blocking,
-      boolean clientBlocking, SocketParameters params)
+  public SnappyTServerSocket(InetSocketAddress bindAddress, boolean useSSL,
+      boolean blocking, boolean clientBlocking, SocketParameters params)
       throws TTransportException {
+    this.useSSL = useSSL;
     this.clientBlocking = clientBlocking;
     this.socketParams = params;
     try {
@@ -113,9 +117,8 @@ public final class SnappyTServerSocket extends TNonblockingServerTransport {
   protected SnappyTSocket acceptImpl() throws TTransportException {
     try {
       SocketChannel srvChannel = this.serverSockChannel.accept();
-      return new SnappyTSocket(srvChannel, this.clientBlocking,
-          this.socketParams.getReadTimeout(0), this.socketParams,
-          SystemProperties.getServerInstance());
+      return new SnappyTSocket(srvChannel, this.useSSL, this.clientBlocking,
+          this.socketParams);
     } catch (IOException ioe) {
       throw new TTransportException(ioe);
     }

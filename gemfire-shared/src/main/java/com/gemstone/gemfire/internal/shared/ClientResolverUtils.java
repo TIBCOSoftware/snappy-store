@@ -156,4 +156,13 @@ public abstract class ClientResolverUtils {
     hash = addByteToHash((byte)(val >>> 8), hash);
     return addByteToHash((byte)val, hash);
   }
+
+  public static int addIntToHashOpt(final int val, int hash) {
+    return (hash ^ 0x9e3779b9) + val + (hash << 6) + (hash >>> 2);
+  }
+
+  public static int addLongToHashOpt(final long val, int hash) {
+    return (hash ^ 0x9e3779b9) + (int)(val ^ (val >>> 32)) +
+        (hash << 6) + (hash >>> 2);
+  }
 }

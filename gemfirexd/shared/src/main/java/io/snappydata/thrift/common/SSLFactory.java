@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -40,25 +40,17 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.*;
 
-import org.apache.thrift.transport.TSSLTransportFactory;
 import org.apache.thrift.transport.TTransportException;
 
 /**
- * A Factory for providing and setting up client SSL sockets.
- * <p>
- * Modified from {@link TSSLTransportFactory} to add SnappyData specific config.
+ * A Factory for providing and setting up client SSL sockets
+ * and client/server {@link SSLEngine} instances.
  */
-public abstract class SnappyTSSLSocketFactory {
+public abstract class SSLFactory {
 
-  private SnappyTSSLSocketFactory() {
+  private SSLFactory() {
     // no instance
   }
 
@@ -81,21 +73,9 @@ public abstract class SnappyTSSLSocketFactory {
    */
   public static SSLSocket getClientSocket(InetAddress hostAddress, int port,
       int timeout, SocketParameters params) throws TTransportException {
-    if (params == null) {
-      SSLSocketFactory factory = (SSLSocketFactory)SSLSocketFactory
-          .getDefault();
-      return createClient(factory, hostAddress, port, timeout, null);
-    } else {
-      if (!(params.isSSLKeyStoreSet() || params.isSSLTrustStoreSet())) {
-        throw new TTransportException(
-            "Either one of the KeyStore or TrustStore must be set "
-                + "for SSLSocketParameters");
-      }
-
-      SSLContext ctx = createSSLContext(params);
-      return createClient(ctx.getSocketFactory(), hostAddress, port, timeout,
-          params);
-    }
+    SSLContext ctx = createSSLContext(params);
+    return createClient(ctx.getSocketFactory(), hostAddress, port, timeout,
+        params);
   }
 
   private static SSLSocket createClient(SSLSocketFactory factory,
@@ -121,6 +101,27 @@ public abstract class SnappyTSSLSocketFactory {
     }
   }
 
+  public static SSLEngine createEngine(String peerHostName, int peerPort,
+      SocketParameters params, boolean forClient) throws TTransportException {
+    SSLContext ctx = createSSLContext(params);
+    SSLEngine engine = ctx.createSSLEngine(peerHostName, peerPort);
+    if (params != null) {
+      if (params.getSSLEnabledProtocols() != null) {
+        engine.setEnabledProtocols(params.getSSLEnabledProtocols());
+      }
+      if (params.getSSLCipherSuites() != null) {
+        engine.setEnabledCipherSuites(params.getSSLCipherSuites());
+      }
+      if (forClient) {
+        engine.setUseClientMode(true);
+      } else {
+        engine.setUseClientMode(false);
+        engine.setNeedClientAuth(params.getSSLClientAuth());
+      }
+    }
+    return engine;
+  }
+
   private static final String[] DEFAULT_PROTOCOLS = new String[]{"TLSv1.2",
       "Default", "TLSv1", "TLS"};
 
@@ -129,7 +130,13 @@ public abstract class SnappyTSSLSocketFactory {
     SSLContext ctx;
     FileInputStream tsInput = null, ksInput = null;
     try {
-      if (params.getSSLProtocol() != null) {
+      if (params == null || !params.hasSSLParams()) {
+        return SSLContext.getDefault();
+      } else if (!(params.isSSLKeyStoreSet() || params.isSSLTrustStoreSet())) {
+        throw new TTransportException(
+            "Either one of the KeyStore or TrustStore must be set "
+                + "in SSLSocketParameters having explicit SSL parameters");
+      } else if (params.getSSLProtocol() != null) {
         ctx = SSLContext.getInstance(params.getSSLProtocol());
       } else {
         ctx = null;
@@ -145,8 +152,11 @@ public abstract class SnappyTSSLSocketFactory {
             failure = nsae;
           }
         }
-        if (ctx == null) {
+        if (failure != null) {
           throw failure;
+        } else if (ctx == null) {
+          throw new NoSuchAlgorithmException(
+              java.util.Arrays.toString(DEFAULT_PROTOCOLS));
         }
       }
       TrustManagerFactory tmf;

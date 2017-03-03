@@ -19,6 +19,7 @@ dependencies {
   compile 'org.apache.thrift:libthrift:0.9.3'
 
   compile project(subprojectBase + 'gemfire-shared')
+  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 }
 
 // Creates the version properties file and writes it to the resources dir

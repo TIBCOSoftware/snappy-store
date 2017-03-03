@@ -429,7 +429,7 @@ public final class BinarySQLHybridType extends DataType {
             // got the bytes as bytesource
             final int bytesLen = rhsBS.getLength();
             rhsAddr = rhsBS.getUnsafeAddress(0, bytesLen);
-            rf = containerInfo.getRowFormatter(unsafe, rhsAddr, rhsBS);
+            rf = containerInfo.getRowFormatter(rhsAddr, rhsBS);
             final int[] keyPositions = containerInfo.getPrimaryKeyColumns();
             logicalPosition = keyPositions[logicalPosition - 1];
             rhsOffsetWidth = rf.getOffsetAndWidth(logicalPosition, unsafe,
@@ -572,8 +572,7 @@ public final class BinarySQLHybridType extends DataType {
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
-      ByteSource bs) {
+  public int readBytes(long memOffset, int columnWidth, ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + getClass());
   }

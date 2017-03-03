@@ -175,11 +175,18 @@ public class BugsDUnit extends DistributedSQLTestBase {
     st.execute("CREATE TABLE app.t1 (c1 int not null, c2 int not null) persistent asynchronous");
 
     PreparedStatement ps = conn.prepareStatement("insert into app.t1 values (?, ?)");
-    for(int i=0; i<2300000; i++) {
-      ps.setInt(1, i);
-      ps.setInt(2, i);
-      int cnt = ps.executeUpdate();
-      assertEquals(1, cnt);
+    final int batchSize = 230000;
+    for (int run = 1; run <= 10; run++) {
+      for (int i = 0; i < batchSize; i++) {
+        ps.setInt(1, i * run);
+        ps.setInt(2, i * run);
+        ps.addBatch();
+      }
+      int[] cnts = ps.executeBatch();
+      assertEquals(batchSize, cnts.length);
+      for (int cnt : cnts) {
+        assertEquals(1, cnt);
+      }
     }
     st.execute("ALTER TABLE app.t1 ADD OPP_ID int");
     long start = System.currentTimeMillis();
@@ -943,7 +950,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
           + "cust_name varchar(100), addr varchar(100), tid int, primary key (cid))");
       PreparedStatement psInsert = connClient
           .prepareStatement("insert into trade.customers values(?, ?, ?, ?)");
-      for (int i = 0; i < 1; i++) {
+      for (int i = 0; i < 2; i++) {
         psInsert.setInt(1, i);
         psInsert.setString(2, "name" + i);
         psInsert.setString(3, "addr" + i);
@@ -4262,8 +4269,8 @@ public class BugsDUnit extends DistributedSQLTestBase {
       throw failure[0];
     }
 
-    checkIdentityData(conn, numInserts * numThreads, numInserts * numThreads
-        * 2, numThreads * 2);
+    checkIdentityData(conn, numInserts * numThreads,
+        numInserts * numThreads * 2, numThreads * 2);
   }
 
   private void checkIdentityData(Connection conn, int numInserts, int start,

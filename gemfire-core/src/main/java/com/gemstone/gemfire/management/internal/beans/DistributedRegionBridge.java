@@ -682,8 +682,8 @@ public class DistributedRegionBridge {
     return monitor.getEstimatedSizeForHDFSRegion();
   }
 
-  public long getRowsInCachedBatches(){
-    return monitor.getRowsInCachedBatches();
+  public long getRowsInColumnBatches(){
+    return monitor.getRowsInColumnBatches();
   }
 
   public boolean isColumnTable(){

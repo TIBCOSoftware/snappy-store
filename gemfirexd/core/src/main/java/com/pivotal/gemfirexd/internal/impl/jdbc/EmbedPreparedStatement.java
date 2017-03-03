@@ -68,7 +68,6 @@ import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
-import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.PrepStatementSnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
@@ -94,6 +93,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.GenericActivationHolder;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.shared.common.SingleHopInformation;
+import io.snappydata.thrift.common.BufferedBlob;
+
 /**
  *
  * EmbedPreparedStatement is a local JDBC statement.
@@ -365,6 +366,7 @@ public abstract class EmbedPreparedStatement
 	  return results;
 	}
 
+        @Override
         public int getStatementType() {
           return ((GenericPreparedStatement)this.preparedStatement).getStatementType();
         }
@@ -1685,6 +1687,17 @@ public abstract class EmbedPreparedStatement
 			setNull(i, Types.BLOB);
 		else
         {
+// GemStone changes BEGIN
+            if (x instanceof BufferedBlob) {
+              try {
+                getParms().getParameterForSet(i - 1).setValue(x);
+                return;
+              } catch (StandardException t) {
+                throw EmbedResultSet.noStateChangeException(t,
+                    "parameter index " + i);
+              }
+            }
+// GemStone changes END
             // Note, x.length() needs to be called before retrieving the
             // stream using x.getBinaryStream() because EmbedBlob.length()
             // will read from the stream and drain some part of the stream 

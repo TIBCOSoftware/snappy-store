@@ -46,7 +46,7 @@ dependencies {
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
   provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
-  provided "com.esotericsoftware:kryo-shaded:3.0.3"
+  provided "com.esotericsoftware:kryo-shaded:${kryoVersion}"
 }
 
 // move javacc output directory to a place where IDEA can easily register

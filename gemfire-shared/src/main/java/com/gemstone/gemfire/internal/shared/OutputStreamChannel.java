@@ -36,6 +36,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
   protected final WritableByteChannel channel;
   protected volatile Thread parkedThread;
+  protected volatile long bytesWritten;
 
   /**
    * nanos to park reader thread to wait for writing data in non-blocking mode
@@ -68,44 +69,57 @@ public abstract class OutputStreamChannel extends OutputStream implements
   protected final int writeBuffered(final ByteBuffer src,
       final ByteBuffer channelBuffer) throws IOException {
     int srcLen = src.remaining();
+    // flush large direct buffers directly into channel
+    final boolean flushBuffer = srcLen > (channelBuffer.limit() >>> 1) &&
+        src.isDirect();
     int numWritten = 0;
-    while (true) {
+    while (srcLen > 0) {
       final int remaining = channelBuffer.remaining();
       if (srcLen <= remaining) {
         channelBuffer.put(src);
         return (numWritten + srcLen);
-      }
-      else {
+      } else {
+        // flush directly if there is nothing in the channel buffer
+        if (flushBuffer && channelBuffer.position() == 0) {
+          return numWritten + writeBufferNonBlocking(src);
+        }
         // copy src to buffer and flush
         if (remaining > 0) {
           // lower limit of src temporarily to remaining
           final int srcPos = src.position();
           src.limit(srcPos + remaining);
-          channelBuffer.put(src);
-          // restore the limit
-          src.limit(srcPos + srcLen);
+          try {
+            channelBuffer.put(src);
+          } finally {
+            // restore the limit
+            src.limit(srcPos + srcLen);
+          }
           srcLen -= remaining;
           numWritten += remaining;
-          assert srcLen == src.remaining(): "srcLen=" + srcLen
+          assert srcLen == src.remaining() : "srcLen=" + srcLen
               + " srcRemaining=" + src.remaining();
         }
         // if we were able to write the full buffer then try writing the
         // remaining from source else return with whatever was written
-        if (!flushBufferNonBlocking(channelBuffer, true)) {
+        if (!flushBufferNonBlockingBase(channelBuffer)) {
           return numWritten;
-        }
-        // write large direct byte buffers directly to channel
-        else if (srcLen > channelBuffer.limit() && src.isDirect()) {
+        } else if (flushBuffer) {
           return numWritten + writeBufferNonBlocking(src);
         }
-        // for non-direct buffers use our buffer for best performance
-        // back into the loop
+        // for non-direct buffers use channel buffer for best performance
+        // so loop back and try again
       }
     }
+    return numWritten;
   }
 
   protected boolean flushBufferNonBlocking(final ByteBuffer buffer,
       boolean isChannelBuffer) throws IOException {
+    return flushBufferNonBlockingBase(buffer);
+  }
+
+  protected final boolean flushBufferNonBlockingBase(final ByteBuffer buffer)
+      throws IOException {
     buffer.flip();
 
     final boolean flushed;
@@ -128,8 +142,8 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
   protected int writeBuffer(final ByteBuffer buffer) throws IOException {
     long parkNanos = 0;
-    int writtenBytes;
-    while ((writtenBytes = this.channel.write(buffer)) == 0) {
+    int numWritten;
+    while ((numWritten = this.channel.write(buffer)) == 0) {
       if (!buffer.hasRemaining()) {
         break;
       }
@@ -143,14 +157,25 @@ public abstract class OutputStreamChannel extends OutputStream implements
         throw new SocketTimeoutException("Connection write timed out.");
       }
     }
-    return writtenBytes;
+    if (numWritten > 0) {
+      this.bytesWritten += numWritten;
+    }
+    return numWritten;
   }
 
   protected int writeBufferNonBlocking(ByteBuffer buffer) throws IOException {
-    return this.channel.write(buffer);
+    int numWritten = this.channel.write(buffer);
+    if (numWritten > 0) {
+      this.bytesWritten += numWritten;
+    }
+    return numWritten;
   }
 
   public final Thread getParkedThread() {
     return this.parkedThread;
+  }
+
+  public final long getBytesWritten() {
+    return this.bytesWritten;
   }
 }

@@ -41,7 +41,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import io.snappydata.thrift.common.SnappyTSSLSocket;
 import io.snappydata.thrift.common.SocketParameters;
 import org.apache.thrift.transport.TServerTransport;
@@ -104,8 +103,7 @@ public final class SnappyTSSLServerSocket extends TServerTransport {
   protected SnappyTSSLSocket acceptImpl() throws TTransportException {
     try {
       Socket srvSock = this.serverSocket.accept();
-      return new SnappyTSSLSocket(srvSock, this.socketParams.getReadTimeout(0),
-          this.socketParams, SystemProperties.getServerInstance());
+      return new SnappyTSSLSocket(srvSock, this.socketParams);
     } catch (IOException ioe) {
       throw new TTransportException(ioe);
     }
@@ -125,9 +123,5 @@ public final class SnappyTSSLServerSocket extends TServerTransport {
     // The thread-safeness of this is dubious, but Java documentation suggests
     // that it is safe to do this from a different thread context
     close();
-  }
-
-  public ServerSocket getServerSocket() {
-    return this.serverSocket;
   }
 }

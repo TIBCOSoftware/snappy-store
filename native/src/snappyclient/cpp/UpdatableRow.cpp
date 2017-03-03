@@ -139,7 +139,7 @@ void UpdatableRow::setTime(const uint32_t columnIndex, const DateTime v) {
 void UpdatableRow::setTimestamp(const uint32_t columnIndex,
     const Timestamp& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->setTimestamp(v.getEpochTime(), v.getNanos());
+  cv->set(thrift::Timestamp(v.getTotalNanos()));
 }
 
 void UpdatableRow::setBinary(const uint32_t columnIndex, const std::string& v) {
@@ -187,10 +187,4 @@ void UpdatableRow::setStruct(const uint32_t columnIndex, thrift::Struct&& v) {
 void UpdatableRow::setNull(const uint32_t columnIndex, const bool v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
   cv->setIsNull(v);
-}
-
-void UpdatableRow::setJSON(const uint32_t columnIndex,
-    const JSON& v) {
-  thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  cv->set(v.getThriftObject());
 }

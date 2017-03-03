@@ -1159,7 +1159,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 

@@ -188,6 +188,7 @@ public class splitmessages {
         clientMessageIds.add(SQLState.LANG_SYNTAX_ERROR);
         clientMessageIds.add(SQLState.JAVA_EXCEPTION);
         clientMessageIds.add(SQLState.LANG_UNEXPECTED_USER_EXCEPTION);
+        clientMessageIds.add(SQLState.DATA_UNEXPECTED_EXCEPTION);
 
         clientMessageIds.add(SQLState.COLUMN_NOT_FOUND);
         clientMessageIds.add(SQLState.NULL_COLUMN_NAME);
@@ -223,6 +224,7 @@ public class splitmessages {
         clientMessageIds.add(SQLState.SOCKET_EXCEPTION);
         clientMessageIds.add(SQLState.NET_CONNECT_AUTH_FAILED);
         clientMessageIds.add(SQLState.DRDA_CONNECTION_TERMINATED);
+        clientMessageIds.add(SQLState.CANCEL_NO_UNIQUE_STATEMENT);
 // GemStone changes END
     }
 

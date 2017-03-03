@@ -139,12 +139,12 @@ public class GfxdAgentLauncher extends GfxdServerLauncher {
   }
 
   @Override
-  protected String getLWCAddressArgName() {
+  protected String getNetworkAddressArgName() {
     return null;
   }
 
   @Override
-  protected String getLWCPortArgName() {
+  protected String getNetworkPortArgName() {
     return null;
   }
 

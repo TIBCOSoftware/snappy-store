@@ -54,7 +54,7 @@ public class ChannelBufferInputStream extends InputStreamChannel {
   }
 
   protected ByteBuffer allocateBuffer(int bufferSize) {
-    return ByteBuffer.allocateDirect(bufferSize);
+    return ByteBuffer.allocate(bufferSize);
   }
 
   /**

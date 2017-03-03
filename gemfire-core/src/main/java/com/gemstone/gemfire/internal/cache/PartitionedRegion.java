@@ -408,28 +408,56 @@ public class PartitionedRegion extends LocalRegion implements
 
   private volatile int shutDownAllStatus = RUNNING_MODE;
 
-  /** Default size for CachedBatches. */
+  /** Maximum size in bytes for ColumnBatches. */
   private int columnBatchSize = -1;
 
-  /** Minimum size for CachedBatches. */
-  private int columnMinBatchSize = 200;
+  /** Maximum rows to keep in the delta buffer. */
+  private int columnMaxDeltaRows = -1;
 
-  public void setColumnBatchSizes(int size, int minSize) {
+  /** Minimum size for ColumnBatches. */
+  private int columnMinDeltaRows = 200;
+
+  public void setColumnBatchSizes(int size, int maxDeltaRows,
+      int minDeltaRows) {
     columnBatchSize = size;
-    columnMinBatchSize = minSize < columnBatchSize ? minSize : size;
+    columnMaxDeltaRows = maxDeltaRows;
+    columnMinDeltaRows = minDeltaRows;
+  }
+
+  private ExternalTableMetaData getHiveMetaData() {
+    final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
+        .getInternalProductCallbacks();
+    if (sysCb != null) {
+      return sysCb.fetchSnappyTablesHiveMetaData(this);
+    } else {
+      return null;
+    }
   }
 
   public int getColumnBatchSize() {
+    int columnBatchSize = this.columnBatchSize;
     if (columnBatchSize == -1) {
-      final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
-          .getInternalProductCallbacks();
-      ExternalTableMetaData metadata = sysCb.fetchSnappyTablesHiveMetaData(this);
+      ExternalTableMetaData metaData = getHiveMetaData();
+      if (metaData != null) {
+        this.columnBatchSize = columnBatchSize = metaData.columnBatchSize;
+      }
     }
     return columnBatchSize;
   }
 
-  public int getColumnMinBatchSize() {
-    return columnMinBatchSize;
+  public int getColumnMaxDeltaRows() {
+    int columnMaxDeltaRows = this.columnMaxDeltaRows;
+    if (columnMaxDeltaRows == -1) {
+      ExternalTableMetaData metaData = getHiveMetaData();
+      if (metaData != null) {
+        this.columnMaxDeltaRows = columnMaxDeltaRows = metaData.columnMaxDeltaRows;
+      }
+    }
+    return columnMaxDeltaRows;
+  }
+
+  public int getColumnMinDeltaRows() {
+    return columnMinDeltaRows;
   }
 
   private final long birthTime = System.currentTimeMillis();
@@ -7053,6 +7081,7 @@ public class PartitionedRegion extends LocalRegion implements
 
     public PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
         final boolean forUpdate, final boolean includeValues) {
+      this.includeHDFS = includeHDFSResults();
       Iterator<Integer> iter = null;
       long numEntries = -1;
       PartitionedRegionDataStore ds = dataStore;
@@ -7094,12 +7123,12 @@ public class PartitionedRegion extends LocalRegion implements
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.diskIteratorInitialized = false;
-      this.includeHDFS = includeHDFSResults();
       this.cb = GemFireCacheImpl.getInternalProductCallbacks();
     }
 
     public PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
         final boolean forUpdate, final boolean includeValues, final boolean fetchRemote) {
+      this.includeHDFS = includeHDFSResults();
       Iterator<Integer> iter = null;
       long numEntries = -1;
       PartitionedRegionDataStore ds = dataStore;
@@ -7133,7 +7162,6 @@ public class PartitionedRegion extends LocalRegion implements
       this.includeValues = includeValues;
       this.numEntries = numEntries;
       this.diskIteratorInitialized = false;
-      this.includeHDFS = includeHDFSResults();
       this.cb = GemFireCacheImpl.getInternalProductCallbacks();
     }
 
@@ -7193,8 +7221,6 @@ public class PartitionedRegion extends LocalRegion implements
               this.currentEntry = val;
             }
             if (this.currentEntry != null) {
-              // check if
-
               this.moveNext = false;
               return true;
             }

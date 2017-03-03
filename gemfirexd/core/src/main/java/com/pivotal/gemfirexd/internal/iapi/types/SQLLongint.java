@@ -54,11 +54,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -909,8 +904,6 @@ public final class SQLLongint
      * This method implements the isNegative method.
      *
      * @return  A boolean.  if this.value is negative, return true.
-     *
-     * @exception StandException       Thrown on error
      */
     
     protected boolean isNegative()
@@ -1010,10 +1003,10 @@ public final class SQLLongint
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
+  public int readBytes(long memOffset,
       final int columnWidth, ByteSource bs) {
     assert columnWidth == (Long.SIZE >>> 3): columnWidth;
-    this.value = RowFormatter.readLong(unsafe, memOffset);
+    this.value = RowFormatter.readLong(memOffset);
     this.isnull = false;
     return Long.SIZE >>> 3;
   }
@@ -1023,15 +1016,6 @@ public final class SQLLongint
     assert !isNull();
     return ResolverUtils.addLongToBucketHash(this.value, hash,
         getTypeFormatId());
-  }
-
-  static final long getAsLong(final byte[] inBytes, final int offset) {
-    return RowFormatter.readLong(inBytes, offset);
-  }
-
-  static final long getAsLong(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    return RowFormatter.readLong(unsafe, memOffset);
   }
 
   @Override

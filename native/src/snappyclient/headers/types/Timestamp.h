@@ -58,18 +58,20 @@ namespace types {
     static const int32_t NANOS_MAX = 1000000000;
 
     /**
-     * Seconds since Epoch 1970-01-01 00:00:00 +0000 (UTC).
+     * Total nanoseconds since Epoch 1970-01-01 00:00:00 +0000 (UTC).
      */
-    Timestamp(const int64_t secsSinceEpoch) :
-        DateTime(secsSinceEpoch), m_nanos(0) {
+    Timestamp(const int64_t totalNanos) :
+        DateTime(totalNanos / NANOS_MAX),
+        m_nanos(static_cast<int32_t>(totalNanos % NANOS_MAX)) {
     }
 
     /**
      * Seconds since Epoch 1970-01-01 00:00:00 +0000 (UTC)
-     * and nano seconds component of this timestamp.
+     * and nanoseconds component of this timestamp.
      */
     Timestamp(const int64_t secsSinceEpoch, const int32_t nanos) :
         DateTime(secsSinceEpoch) {
+      // setter invoked to check for valid nanoseconds
       setNanos(nanos);
     }
 
@@ -85,7 +87,7 @@ namespace types {
      * @param sec   number of seconds after the minute,
      *              normally in the range 0 to 59, but can be up to 60
      *              to allow for leap seconds
-     * @param nanos the nano seconds component of this timestamp
+     * @param nanos the nanoseconds component of this timestamp
      */
     Timestamp(const uint16_t year, const uint16_t month,
         const uint16_t day, const uint16_t hour, const uint16_t min,
@@ -94,12 +96,17 @@ namespace types {
       setNanos(nanos);
     }
 
-    /** Get the nano seconds component of this timestamp */
+    /** Get the nanoseconds component of this timestamp */
     inline int32_t getNanos() const noexcept {
       return m_nanos;
     }
 
-    /** Set the new nano seconds component of this timestamp */
+    /** Get the total nanoseconds since Epoch . */
+    inline int64_t getTotalNanos() const noexcept {
+      return getEpochTime() * NANOS_MAX + m_nanos;
+    }
+
+    /** Set the new nanoseconds component of this timestamp */
     void setNanos(int32_t nanos);
 
     /**
@@ -112,7 +119,7 @@ namespace types {
     /**
      * Get the UTC date time representation
      * yyyy-mm-dd hh:mm:ss[.NNNNNNNNN]. The last portion is the
-     * nano seconds component that is printed only if present
+     * nanoseconds component that is printed only if present
      * and trailing zeros may be removed.
      */
     std::string& toString(std::string& str,

@@ -90,8 +90,8 @@ void InternalLogger::compactLogThreadName(std::ostream& out,
 
 void InternalLogger::compactHeader(std::ostream& out,
     const boost::thread::id tid, const char* opId, const char* opSql,
-    const int32_t sqlId, const bool isStart, const int64_t nanos,
-    const int64_t milliTime, const int32_t connId, const std::string& token) {
+    const int64_t sqlId, const bool isStart, const int64_t nanos,
+    const int64_t milliTime, const int64_t connId, const std::string& token) {
   compactLogThreadName(out, tid);
   out << tid << ' ' << opId;
   if (opSql != NULL) {
@@ -115,8 +115,8 @@ void InternalLogger::compactHeader(std::ostream& out,
 }
 
 void InternalLogger::traceCompact(const boost::thread::id tid,
-    const char* opId, const char* opSql, const int32_t sqlId,
-    const bool isStart, const int64_t nanos, const int32_t connId,
+    const char* opId, const char* opSql, const int64_t sqlId,
+    const bool isStart, const int64_t nanos, const int64_t connId,
     const std::string& token, const std::exception* se,
     const int64_t milliTime) {
   std::ostream& out = LogWriter::global().getRawStream();
@@ -129,8 +129,8 @@ void InternalLogger::traceCompact(const boost::thread::id tid,
 }
 
 void InternalLogger::traceCompact(const boost::thread::id tid,
-    const char* opId, const char* opSql, const int32_t sqlId,
-    const bool isStart, const int64_t nanos, const int32_t connId,
+    const char* opId, const char* opSql, const int64_t sqlId,
+    const bool isStart, const int64_t nanos, const int64_t connId,
     const std::string& token, const SQLException* sqle,
     const int64_t milliTime) {
   std::ostream& out = LogWriter::global().getRawStream();

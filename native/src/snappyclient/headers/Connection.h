@@ -270,8 +270,6 @@ namespace client {
 
     void rollbackTransaction(bool startNewTransaction);
 
-    void prepareCommitTransaction();
-
     const std::string getNativeSQL(const std::string& sql) const;
 
     ResultSetHoldability getResultSetHoldability() const noexcept;

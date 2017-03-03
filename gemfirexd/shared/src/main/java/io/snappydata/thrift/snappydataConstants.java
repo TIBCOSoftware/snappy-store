@@ -76,6 +76,28 @@ public class snappydataConstants {
 
   public static final byte DEFAULT_TRANSACTION_ISOLATION = (byte)0;
 
+  public static final int XA_OK = 0;
+
+  public static final int XA_RDONLY = 3;
+
+  public static final int XA_TMNOFLAGS = 0;
+
+  public static final int XA_TMJOIN = 2097152;
+
+  public static final int XA_TMENDRSCAN = 8388608;
+
+  public static final int XA_TMSTARTRSCAN = 16777216;
+
+  public static final int TMSUSPEND = 33554432;
+
+  public static final int XA_TMSUCCESS = 67108864;
+
+  public static final int XA_TMRESUME = 134217728;
+
+  public static final int XA_TMFAIL = 536870912;
+
+  public static final int XA_TMONEPHASE = 1073741824;
+
   public static final short COLUMN_PRECISION_UNKNOWN = (short)0;
 
   public static final short COLUMN_SCALE_UNKNOWN = (short)0;
@@ -94,11 +116,9 @@ public class snappydataConstants {
 
   public static final byte ROWSET_HAS_MORE_ROWSETS = (byte)2;
 
-  public static final byte ROWSET_DONE_FOR_LOBS = (byte)4;
+  public static final byte ROWSET_BEFORE_FIRST = (byte)4;
 
-  public static final byte ROWSET_BEFORE_FIRST = (byte)8;
-
-  public static final byte ROWSET_AFTER_LAST = (byte)16;
+  public static final byte ROWSET_AFTER_LAST = (byte)8;
 
   public static final byte STATEMENT_TYPE_SELECT = (byte)0;
 
@@ -107,6 +127,10 @@ public class snappydataConstants {
   public static final byte STATEMENT_TYPE_UPDATE = (byte)2;
 
   public static final byte STATEMENT_TYPE_DELETE = (byte)3;
+
+  public static final byte STATEMENT_TYPE_CALL = (byte)4;
+
+  public static final byte STATEMENT_TYPE_DDL = (byte)5;
 
   public static final byte BULK_CLOSE_RESULTSET = (byte)1;
 

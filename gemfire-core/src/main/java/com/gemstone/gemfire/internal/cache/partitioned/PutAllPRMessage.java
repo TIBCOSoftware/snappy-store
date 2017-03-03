@@ -22,9 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.LogWriter;
@@ -64,7 +62,6 @@ import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.THashMap;
-import com.gemstone.gnu.trove.THashSet;
 
 /**
  * A Partitioned Region update message.  Meant to be sent only to
@@ -656,10 +653,9 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
         //bucketRegion.columnBatchFlushLock.readLock().unlock();
         // TODO: For tx it may change.
         // TODO: For concurrent putALLs, this will club other putall as well
-        // the putAlls in worst case so cachedbatchsize may be large?
-        if (success && bucketRegion.getPartitionedRegion().needsBatching()
-            && bucketRegion.size() >= bucketRegion.getPartitionedRegion().getColumnBatchSize()) {
-          bucketRegion.createAndInsertCachedBatch(false);
+        // the putAlls in worst case so columnBatchSize may be large?
+        if (success && bucketRegion.checkForColumnBatchCreation()) {
+          bucketRegion.createAndInsertColumnBatch(false);
         }
           if (lockedForPrimary) {
             bucketRegion.doUnlockForPrimary();

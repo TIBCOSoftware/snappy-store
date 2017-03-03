@@ -28,17 +28,27 @@ import com.gemstone.gnu.trove.TLinkable;
  * This will eventually be used by all server/client classes that need
  * finalizers (instead of the expensive finalize methods) so is in the shared
  * location now part of GemFire.
- * 
- * Note that there is a very significant performance impact on GC when using
+ * <p>
+ * Note that there is a significant performance impact on GC when using
  * {@link Object#finalize()} vs the approach below, so former should be removed
  * from all code and never used in product code. It also leads to significant
  * delays in GC itself leading to memory buildups.
- * 
+ * <p>
+ * Also note that this uses a {@link WeakReference} rather than a
+ * <code>PhantomReference</code>. The reason is that PhantomReference is not
+ * cleared when it is enqueued (at least in Java 7/8) so the referent remains
+ * alive till it is explicitly cleared by the queue poller. This unnecessarily
+ * increases the lifetime of the referent and can cause trouble if there is
+ * a rapid increase of such objects. Using a {@link WeakReference} avoids this
+ * where the referent will be cleared as before it is enqueued and will
+ * otherwise behave similar to a <code>PhantomReference</code> assuming the
+ * referent is not overriding the finalize method too.
+ *
  * @author swale
  */
 @SuppressWarnings("serial")
-public abstract class FinalizeObject extends WeakReference<Object> implements
-    TLinkable {
+public abstract class FinalizeObject extends WeakReference<Object>
+    implements TLinkable {
 
   // Seperate holders for server and client side so that they do not intefere
   // with one another (e.g. server-side executor trying to cleanup client-side
@@ -126,7 +136,7 @@ public abstract class FinalizeObject extends WeakReference<Object> implements
     this.prev = linkable;
   }
 
-  protected abstract FinalizeHolder getHolder();
+  public abstract FinalizeHolder getHolder();
 
   protected abstract void clearThis();
 
