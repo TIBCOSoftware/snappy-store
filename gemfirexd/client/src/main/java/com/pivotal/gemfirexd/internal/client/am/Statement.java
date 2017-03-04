@@ -914,7 +914,7 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
                 try {
                 conn = (NetConnection)java.sql.DriverManager.getConnection(
                     com.pivotal.gemfirexd.internal.client.am.Configuration
-                        .jdbcDerbyNETProtocol + host + ':' + serverPort,
+                        .jdbcDerbyNETProtocol() + host + ':' + serverPort,
                         props);
                 // cancel the statement
                 String cancelStmt = "CALL SYS.CANCEL_STATEMENT(" + 

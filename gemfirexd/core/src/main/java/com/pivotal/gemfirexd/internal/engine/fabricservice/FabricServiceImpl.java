@@ -159,14 +159,6 @@ public abstract class FabricServiceImpl implements FabricService {
     return Attribute.DNC_PROTOCOL;
   }
 
-  public String getDRDAProtocol() {
-    return Attribute.DRDA_PROTOCOL;
-  }
-
-  public String getThriftProtocol() {
-    return Attribute.THRIFT_PROTOCOL;
-  }
-
   protected void startImpl(Properties bootProperties, boolean ignoreIfStarted,
       boolean isLocator) throws SQLException {
 

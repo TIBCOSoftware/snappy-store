@@ -1507,7 +1507,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
             String host = SharedUtils.getHostPort(serverUrl, prefServerPort);
             conn = (NetConnection)java.sql.DriverManager.getConnection(
                 com.pivotal.gemfirexd.internal.client.am.Configuration
-                    .jdbcDerbyNETProtocol + host + ':' + prefServerPort[0],
+                    .jdbcDerbyNETProtocol() + host + ':' + prefServerPort[0],
                     locateProps);
             // force set the isolation-level,auto-commit to NONE,false
             try {
@@ -3628,7 +3628,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
     }
 
     public Object create() throws SQLException {
-      String connURL = com.pivotal.gemfirexd.internal.client.am.Configuration.jdbcDerbyNETProtocol
+      String connURL = com.pivotal.gemfirexd.internal.client.am.Configuration.jdbcDerbyNETProtocol()
           + this.serverhost + ':' + this.port;
       if (SanityManager.TraceSingleHop) {
         SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,

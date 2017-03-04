@@ -25,6 +25,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.jdbc.ClientAttribute;
 
 import sql.GFEDBManager.Isolation;
@@ -42,7 +43,7 @@ import hydra.gemfirexd.NetworkServerHelper.Endpoint;
  */
 public class GFEDBClientManager {
   protected static String driver = "com.pivotal.gemfirexd.jdbc.ClientDriver";
-  protected static String protocol = "jdbc:gemfirexd://";
+  protected static String protocol = Attribute.DNC_PROTOCOL;
   //private static String dbName = "";
   private static String userPrefix = "thr_";
   protected static boolean useGemFireXDHA = TestConfig.tab().booleanAt(SQLPrms.
@@ -289,11 +290,15 @@ public class GFEDBClientManager {
   public static String getDriver() {
     return driver;
   }
-  
+
   public static String getProtocol() {
     return protocol;
   }
-  
+
+  public static String getDRDAProtocol() {
+    return Attribute.DRDA_PROTOCOL;
+  }
+
   public static void closeConnection(Connection conn) {
     try {
       conn.close();
