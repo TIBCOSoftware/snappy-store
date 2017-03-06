@@ -1790,13 +1790,23 @@ public class EntryEventImpl extends KeyInfo implements
     setNewValueInRegion(owner, reentry, null, 0);
   }
 
-  private void aqcuireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
+  private void acquireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
     if (isUpdate && !wasTombstone) {
-      owner.acquirePoolMemory(oldSize, event.getNewValueBucketSize(), true,
-          this.memoryTracker, true);
+      if(this.memoryTracker != null){
+        owner.acquirePoolMemory(oldSize, event.getNewValueBucketSize(), true,
+            this.memoryTracker, true);
+      } else {
+        owner.delayedAcquirePoolMemory(oldSize, event.getNewValueBucketSize(), true, true);
+      }
+
     } else {
-      owner.acquirePoolMemory(event.getNewValueBucketSize(), true,
-          this.memoryTracker, true);
+      if(this.memoryTracker != null){
+        owner.acquirePoolMemory(0, event.getNewValueBucketSize(), true,
+            this.memoryTracker, true);
+      }else{
+        owner.delayedAcquirePoolMemory(0, event.getNewValueBucketSize(), true, true);
+      }
+
     }
   }
 
@@ -1889,10 +1899,10 @@ public class EntryEventImpl extends KeyInfo implements
     boolean calledSetValue = false;
     try {
     setNewValueBucketSize(owner, v);
-    if(!region.reservedTable()){
+    if(!region.reservedTable() && region.needAccounting()){
       owner.calculateEntryOverhead(reentry);
       LocalRegion.regionPath.set(region.getFullPath());
-      aqcuireMemory(owner, this, oldValueSize, this.op.isUpdate(), isTombstone);
+      acquireMemory(owner, this, oldValueSize, this.op.isUpdate(), isTombstone);
     }
 
 
@@ -1955,7 +1965,8 @@ public class EntryEventImpl extends KeyInfo implements
     } finally {
       if (!success && reentry instanceof OffHeapRegionEntry && v instanceof Chunk) {
         OffHeapRegionEntryHelper.releaseEntry((OffHeapRegionEntry)reentry, (Chunk)v);
-      }      
+      }
+      LocalRegion.regionPath.remove();
     }
     if (logger.finerEnabled()) {
       if (v instanceof CachedDeserializable) {

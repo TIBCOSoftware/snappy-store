@@ -907,7 +907,7 @@ RETRYLOOP:
       if (LocalRegion.regionPath.get() != null){
         CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(LocalRegion.regionPath.get(),
             oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE, null, true);
-        LocalRegion.regionPath.set(null);
+        LocalRegion.regionPath.remove();
       }
 
       /*

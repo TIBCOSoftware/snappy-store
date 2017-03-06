@@ -913,7 +913,7 @@ abstract class AbstractRegionMap implements RegionMap {
          int valueSize  = _getOwner().calculateRegionEntryValueSize(re);
         _getOwner().calculateEntryOverhead(re);
         //Always take the value size from recovery thread.
-        _getOwner().acquirePoolMemory(0, true, null, false);
+        _getOwner().acquirePoolMemory(0, 0, true, null, false);
         _getOwner().updateSizeOnCreate(re.getRawKey(), valueSize);
       }
       // Since lru was not being done during recovery call it now.
@@ -1337,7 +1337,7 @@ abstract class AbstractRegionMap implements RegionMap {
                         owner.acquirePoolMemory(newSize, oldSize, false, null, true);
                         owner.updateSizeOnPut(key, oldSize, newSize);
                       } else {
-                        owner.acquirePoolMemory(newSize, true, null, true);
+                        owner.acquirePoolMemory(0, newSize, true, null, true);
                         owner.updateSizeOnCreate(key, newSize);
                       }
                       EntryLogger.logInitialImagePut(_getOwnerObject(), key, newValue);
@@ -1405,7 +1405,7 @@ abstract class AbstractRegionMap implements RegionMap {
                   owner.calculateEntryOverhead(newRe);
                   LocalRegion.regionPath.set(owner.getFullPath());
                   //System.out.println("Put "+newRe);
-                  owner.acquirePoolMemory(newSize, true, null, true);
+                  owner.acquirePoolMemory(0, newSize, true, null, true);
                   owner.updateSizeOnCreate(key, newSize);
                   EntryLogger.logInitialImagePut(_getOwnerObject(), key, newValue);
                   lruEntryCreate(newRe);

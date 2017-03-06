@@ -4864,7 +4864,7 @@ public class DistributedRegion extends LocalRegion implements
 
   @Override
   void updateSizeOnClearRegion(int sizeBeforeClear){
-    if(!this.reservedTable()){
+    if(!this.reservedTable() && needAccounting()){
       callback.dropStorageMemory(getFullPath());
     }
   }

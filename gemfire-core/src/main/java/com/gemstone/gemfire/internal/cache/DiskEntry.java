@@ -1450,7 +1450,7 @@ public interface DiskEntry extends RegionEntry {
         region.freePoolMemory(oldSize, false);
         if (diskIDOverhead > 0) {
           //Account positive memory increase for eviction thread.
-          region.acquirePoolMemory(diskIDOverhead, false, null, false);
+          region.acquirePoolMemory(0, diskIDOverhead, false, null, false);
         }
 
         incrementBucketStats(region, -1/*InVM*/, 1/*OnDisk*/, valueLength);

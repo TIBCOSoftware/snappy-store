@@ -2552,7 +2552,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
     if(this.isDestroyed || this.isDestroyingDiskRegion) {
       //If this region is destroyed, mark the stat as destroyed.
-      if(!this.reservedTable()){
+      if(!this.reservedTable() && needAccounting()){
         callback.dropStorageMemory(getFullPath());
       }
       oldMemValue = this.bytesInMemory.getAndSet(BUCKET_DESTROYED);

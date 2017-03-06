@@ -14331,7 +14331,7 @@ public class LocalRegion extends AbstractRegion
   protected volatile long diskIdOverHead = -1L;
 
   protected void accountRegionOverhead() {// Not throwing LowMemoryException while region creation
-    if (!this.reservedTable() && !regionOverHeadAccounted) {
+    if (!this.reservedTable() && !regionOverHeadAccounted && needAccounting() ) {
       synchronized (this) {
         if (!regionOverHeadAccounted) {
           callback.acquireStorageMemory(getFullPath(),
@@ -14359,62 +14359,77 @@ public class LocalRegion extends AbstractRegion
   }
 
   protected long calculateEntryOverhead(RegionEntry entry) {
-    if (!this.reservedTable() && entryOverHead == -1L) {
-      entryOverHead = getEntryOverhead(entry);
-      System.out.println("Entry overhead for "+ getFullPath() + " = "+ entryOverHead);
+    if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
+      synchronized (this) {
+        if (entryOverHead == -1L) {
+          entryOverHead = getEntryOverhead(entry);
+          System.out.println("Entry overhead for " + getFullPath() + " = " + entryOverHead);
+        }
+      }
     }
     return entryOverHead;
   }
 
   protected long calculateDiskIdOverhead(DiskId diskId) {
-    if (!this.reservedTable() && diskIdOverHead == -1L) {
-      diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
-      System.out.println("diskIdOverHead = " + diskIdOverHead);
+    if (!this.reservedTable() && diskIdOverHead == -1L && needAccounting()) {
+      synchronized (this) {
+        if (diskIdOverHead == -1L) {
+          diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
+          System.out.println("diskIdOverHead = " + diskIdOverHead);
+        }
+      }
     }
     return diskIdOverHead;
   }
 
-  //@TODO implement properly to compute delta based on operation
-  protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
-      UMMMemoryTracker buffer, boolean shouldEvict) throws LowMemoryException {
-    if (!this.reservedTable()) {
+  private AtomicLong memoryBeforeAcquire = new AtomicLong(0L);
+
+  public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 100; //100 KB
+
+  protected void delayedAcquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
+      boolean shouldEvict) throws LowMemoryException {
+    if (!this.reservedTable() && needAccounting()) {
+      long size = 0L;
       if (withEntryOverHead) {
-        if (!callback.acquireStorageMemory(getFullPath(),
-            (newSize - oldSize) + Math.max(0L, entryOverHead), buffer, shouldEvict)) {
-          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
-          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
-        }
+        size = (newSize - oldSize) + Math.max(0L, entryOverHead);
       } else {
-        if (!callback.acquireStorageMemory(getFullPath(), (newSize - oldSize), buffer, shouldEvict)) {
-          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
-          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
+        size = (newSize - oldSize);
+      }
+      long currentMemoryBeforeAcquire = memoryBeforeAcquire.addAndGet(size);
+      if (currentMemoryBeforeAcquire >= MAX_VALUE_BEFORE_ACQUIRE) {
+        memoryBeforeAcquire.addAndGet(Math.min(0L, -1 * currentMemoryBeforeAcquire));
+        if (!callback.acquireStorageMemory(getFullPath(),
+            currentMemoryBeforeAcquire, null, shouldEvict)) {
+          throwLowMemoryException(size);
         }
+
       }
     }
   }
 
-  private AtomicLong memoryBeforeAccounting = new AtomicLong(0L);
-
-  protected void acquirePoolMemory(int newSize, boolean withEntryOverHead,
-      UMMMemoryTracker buffer , boolean shouldEvict) throws LowMemoryException {
-    if (!this.reservedTable()) {
+  protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
+      UMMMemoryTracker buffer, boolean shouldEvict) throws LowMemoryException {
+    if (!this.reservedTable() && needAccounting()) {
+      long size = 0L;
       if (withEntryOverHead) {
-        if (!callback.acquireStorageMemory(getFullPath(),
-            newSize + Math.max(0L, entryOverHead), buffer, shouldEvict)) {
-          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
-          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
-        }
+        size = (newSize - oldSize) + Math.max(0L, entryOverHead);
       } else {
-        if (!callback.acquireStorageMemory(getFullPath(), newSize, buffer, shouldEvict)) {
-          Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
-          throw new LowMemoryException("Could not obtain memory of size " + newSize, sm);
-        }
+        size = (newSize - oldSize);
+      }
+      if (!callback.acquireStorageMemory(getFullPath(),
+          size, buffer, shouldEvict)) {
+        throwLowMemoryException(size);
       }
     }
+  }
+
+  private void throwLowMemoryException(long size) {
+    Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+    throw new LowMemoryException("Could not obtain memory of size " + size, sm);
   }
 
   protected void freePoolMemory(int oldSize, boolean withEntryOverHead) {
-    if (!this.reservedTable()) {
+    if (!this.reservedTable() && needAccounting()) {
       if (withEntryOverHead) {
         callback.releaseStorageMemory(getFullPath(), oldSize + Math.max(0L, entryOverHead));
       } else {
@@ -14434,8 +14449,8 @@ public class LocalRegion extends AbstractRegion
         || isMetaTable(this.getFullPath());
   }
 
-
-  public CustomEntryConcurrentHashMap<Object, Object>  getMap(){
-    return ((AbstractRegionMap)this.getRegionMap())._getMap();
+  protected boolean needAccounting(){
+    return callback.isSnappyStore();
   }
+
 }
