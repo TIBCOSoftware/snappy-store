@@ -342,7 +342,7 @@ public class GenericStatement
 		boolean foundInCache = false;
 		if (preparedStmt == null)
 		{
-                        boolean isRemoteDDLAndSnappyStore = lcc.isConnectionForRemoteDDL() && !routeQuery;
+                        boolean isRemoteDDLAndSnappyStore =  Misc.getMemStore().isSnappyStore() && lcc.isConnectionForRemoteDDL() && !routeQuery;
                         if (cacheMe && !isRemoteDDLAndSnappyStore) {
                                 preparedStmt = (GenericPreparedStatement)((GenericLanguageConnectionContext)lcc).lookupStatement(this);
                         }
