@@ -32,10 +32,17 @@ import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 
 public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   private transient List<SnappyRegionStats> combinedStats = new ArrayList<>();
+  private transient List<SnappyIndexStats> indexStats = new ArrayList<>();
 
 
   public void addRegionStat(SnappyRegionStats stats) {
     combinedStats.add(stats);
+  }
+  public void addIndexStat(SnappyIndexStats stats) {
+    indexStats.add(stats);
+  }
+  public void addAllIndexStat(List<SnappyIndexStats> stats) {
+    indexStats.addAll(stats);
   }
 
   public SnappyRegionStatsCollectorResult() {
@@ -43,6 +50,9 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
 
   public List<SnappyRegionStats> getRegionStats() {
     return combinedStats;
+  }
+  public List<SnappyIndexStats> getIndexStats() {
+    return indexStats;
   }
 
   @Override
@@ -66,6 +76,12 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
       InternalDataSerializer.writeBoolean(stats.isColumnTable(), out);
       InternalDataSerializer.writeBoolean(stats.isReplicatedTable(), out);
     }
+    out.writeInt(indexStats.size());
+    for (SnappyIndexStats stats : indexStats) {
+      InternalDataSerializer.writeString(stats.getIndexName(), out);
+      InternalDataSerializer.writeLong(stats.getRowCount(), out);
+      InternalDataSerializer.writeLong(stats.getSizeInMemory(), out);
+    }
   }
 
   @Override
@@ -80,6 +96,14 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
       boolean isColumnTable = InternalDataSerializer.readBoolean(in);
       boolean isReplicated = InternalDataSerializer.readBoolean(in);
       addRegionStat(new SnappyRegionStats(regionName, totalSize, memorySize, count, isColumnTable, isReplicated));
+    }
+    int numIndex = in.readInt();
+    while (numIndex > 0) {
+      numIndex--;
+      String indexName = InternalDataSerializer.readString(in);
+      long rowCount = InternalDataSerializer.readLong(in);
+      long sizeInMemory = InternalDataSerializer.readLong(in);
+      addIndexStat(new SnappyIndexStats(indexName, rowCount, sizeInMemory));
     }
   }
 

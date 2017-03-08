@@ -1798,7 +1798,6 @@ public class EntryEventImpl extends KeyInfo implements
       } else {
         owner.delayedAcquirePoolMemory(oldSize, event.getNewValueBucketSize(), true, true);
       }
-
     } else {
       if(this.memoryTracker != null){
         owner.acquirePoolMemory(0, event.getNewValueBucketSize(), true,
@@ -1806,7 +1805,6 @@ public class EntryEventImpl extends KeyInfo implements
       }else{
         owner.delayedAcquirePoolMemory(0, event.getNewValueBucketSize(), true, true);
       }
-
     }
   }
 

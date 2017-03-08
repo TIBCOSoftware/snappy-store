@@ -964,7 +964,7 @@ public class ObjectSizer {
 
   }
 
-  private void estimateIndexEntryValueSizes(
+  public void estimateIndexEntryValueSizes(
       final String baseTableContainerName, List<GemFireContainer> indexes,
       final LinkedHashMap<String, Object[]> retEstimates,
       final PreQualifier preQualifier) throws StandardException,

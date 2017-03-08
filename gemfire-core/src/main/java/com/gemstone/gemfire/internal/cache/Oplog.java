@@ -7389,6 +7389,7 @@ public final class Oplog implements CompactableOplog {
     }
 
     long numRecovered = 0;
+    int alreadyAccounted = 0;
     for (KRFEntry entry : sortedLiveEntries) {
       // Early out if we start closing the parent.
       if (getParent().isClosing() || indexRecoveryMap.isEmpty()) {
@@ -7417,6 +7418,7 @@ public final class Oplog implements CompactableOplog {
               for (IndexData indexData : affectedIndexes) {
                 SortedIndexKey indexKey = indexData.index.getIndexKey(val,
                     diskEntry);
+                indexData.getIndex().accountMemoryForIndex(baseRegion, numRecovered, false);
                 indexData.indexJob.addJob(indexKey, diskEntry);
               }
               numRecovered++;

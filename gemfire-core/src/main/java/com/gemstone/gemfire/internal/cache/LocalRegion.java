@@ -33,6 +33,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -14407,7 +14408,7 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  protected void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
+  public void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
       UMMMemoryTracker buffer, boolean shouldEvict) throws LowMemoryException {
     if (!this.reservedTable() && needAccounting()) {
       long size = 0L;
@@ -14428,7 +14429,7 @@ public class LocalRegion extends AbstractRegion
     throw new LowMemoryException("Could not obtain memory of size " + size, sm);
   }
 
-  protected void freePoolMemory(int oldSize, boolean withEntryOverHead) {
+  public void freePoolMemory(int oldSize, boolean withEntryOverHead) {
     if (!this.reservedTable() && needAccounting()) {
       if (withEntryOverHead) {
         callback.releaseStorageMemory(getFullPath(), oldSize + Math.max(0L, entryOverHead));
@@ -14451,6 +14452,15 @@ public class LocalRegion extends AbstractRegion
 
   protected boolean needAccounting(){
     return callback.isSnappyStore();
+  }
+
+  //Can be racy as we are not estimating exact value. All put should take care of this value;
+  private int indicesOverHead = 0;
+  protected long indicesOverHead(){
+    return indicesOverHead;
+  }
+  public void setIndicesOverHead(int indicesOverHead){
+    this.indicesOverHead = indicesOverHead;
   }
 
 }

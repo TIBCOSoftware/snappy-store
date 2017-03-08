@@ -305,6 +305,10 @@ public final class OplogIndex {
       return other instanceof IndexData &&
           this.index.equals(((IndexData)other).index);
     }
+
+    public SortedIndexContainer getIndex(){
+      return this.index;
+    }
   }
 
   public void writeIndexRecords(List<KRFEntry> entries,

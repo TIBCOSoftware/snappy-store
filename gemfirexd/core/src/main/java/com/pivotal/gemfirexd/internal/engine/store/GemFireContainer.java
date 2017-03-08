@@ -146,6 +146,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
 
 /**
  * Masquerades as a ContainerHandle, but has almost none of the behavior of one.
@@ -1375,6 +1376,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+
+
   public static GemFireContainer getContainerFromIdentityKey(String key) {
     String tableName;
     int uuidIndex = key.lastIndexOf(':');
@@ -1874,6 +1877,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       if (r != null
           && (indexManager = (GfxdIndexManager)r.getIndexUpdater()) != null) {
         indexManager.drop(tran);
+      }
+      if(r == null){
+        releaseMeoryForIndex();
       }
     }
   }
@@ -6341,6 +6347,53 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public void updateCache(Serializable globalIndexKey, Object robj) {
     if (this.globalIndexMap != null) {
       this.globalIndexMap.put(globalIndexKey, robj);
+    }
+  }
+
+
+  final ObjectSizer sizer = ObjectSizer.getInstance(false);
+
+  int alreadyAccounted = 0;
+
+  int START_POINT_OF_ACCOUNT = 8;
+
+  @Override
+  public void accountMemoryForIndex(LocalRegion baseRegion, long cursorPos, boolean forceAccount) {
+    if ((cursorPos >= START_POINT_OF_ACCOUNT && (cursorPos & (cursorPos - 1)) == 0) || forceAccount) {
+      if(LocalRegion.isMetaTable(baseRegion.getFullPath())) return;
+      final String baseTableContainerName = baseRegion.getFullPath();
+      List<GemFireContainer> indexes = new ArrayList();
+      indexes.add(this);
+      final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap();
+      int sum = 0;
+      try {
+        sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes, retEstimates, null);
+        for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
+          long[] value = (long[]) e.getValue()[0];
+          sum += value[0]; //constantOverhead
+          sum += value[1]; //entryOverhead[0] + /entryOverhead[1]
+          sum += value[2]; //keySize
+          sum += value[3]; //valueSize
+          long rowCount = value[5];
+          baseRegion.acquirePoolMemory(0, (sum - alreadyAccounted)
+                  , false, null, false);
+
+        }
+      } catch (StandardException e) {
+        e.printStackTrace();
+      } catch (IllegalAccessException e) {
+        e.printStackTrace();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      alreadyAccounted = sum;
+    }
+  }
+
+  private void releaseMeoryForIndex(){
+    LocalRegion baseRegion = getBaseRegion();
+    if(!LocalRegion.isMetaTable(baseRegion.getFullPath())){
+      getBaseRegion().freePoolMemory(alreadyAccounted, false);
     }
   }
 }

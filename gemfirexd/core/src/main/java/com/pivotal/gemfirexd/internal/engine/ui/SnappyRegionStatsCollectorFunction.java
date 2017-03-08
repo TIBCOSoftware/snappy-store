@@ -16,13 +16,7 @@
  */
 package com.pivotal.gemfirexd.internal.engine.ui;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DataPolicy;
@@ -36,12 +30,17 @@ import com.gemstone.gemfire.management.ManagementService;
 import com.gemstone.gemfire.management.RegionMXBean;
 import com.gemstone.gemfire.management.internal.SystemManagementService;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
+import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.tools.sizer.GemFireXDInstrumentation;
+import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
 
 public class SnappyRegionStatsCollectorFunction implements Function, Declarable {
 
   public static String ID = "SnappyRegionStatsCollectorFunction";
+
+  public static final ObjectSizer sizer = ObjectSizer.getInstance(false);
 
   @Override
   public void init(Properties props) {
@@ -61,6 +60,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
     SnappyRegionStatsCollectorResult result = new SnappyRegionStatsCollectorResult();
     Map<String, SnappyRegionStats> cachBatchStats = new HashMap<>();
     ArrayList<SnappyRegionStats> otherStats = new ArrayList<>();
+
 
     try {
       List<GemFireContainer> containers = Misc.getMemStore().getAllContainers();
@@ -82,8 +82,13 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
               }
             }
           }
+          if(!LocalRegion.isMetaTable(r.getFullPath())){
+            result.addAllIndexStat(getIndexStatForContainer(container));
+          }
         }
       }
+
+
 
       if (Misc.reservoirRegionCreated) {
         for (SnappyRegionStats tableStats : otherStats) {
@@ -221,6 +226,41 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
       tableStats.setTotalSize(sizeOfRegion + entryOverhead);
     }
     return tableStats;
+  }
+
+  public ArrayList<SnappyIndexStats> getIndexStatForContainer(GemFireContainer c){
+    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<String, Object[]>();
+    final String baseTableContainerName = c.getQualifiedTableName();
+    ArrayList<SnappyIndexStats> indexStats = new ArrayList<>();
+    final LocalRegion reg = c.getRegion();
+    final GfxdIndexManager idxMgr = (GfxdIndexManager)reg.getIndexUpdater();
+
+    List<GemFireContainer> indexes = (idxMgr != null ? idxMgr.getAllIndexes()
+        : Collections.<GemFireContainer> emptyList());
+    try {
+      sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes,
+          retEstimates, null);
+      int regionIndicesOverhead = 0;
+      for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
+        long[] value = (long[])e.getValue()[0];
+        long sum = 0L;
+        sum += value[0]; //constantOverhead
+        sum += value[1]; //entryOverhead[0] + /entryOverhead[1]
+        sum += value[2]; //keySize
+        sum += value[3]; //valueSize
+        long rowCount =  value[5];
+        indexStats.add(new SnappyIndexStats(e.getKey(), rowCount, sum));
+        regionIndicesOverhead += Math.ceil(sum / rowCount);
+      }
+      reg.setIndicesOverHead(regionIndicesOverhead);
+    } catch (StandardException e) {
+      e.printStackTrace();
+    } catch (IllegalAccessException e) {
+      e.printStackTrace();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    return indexStats;
   }
 
 
