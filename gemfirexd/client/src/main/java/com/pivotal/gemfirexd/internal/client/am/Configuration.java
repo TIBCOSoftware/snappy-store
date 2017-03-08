@@ -111,13 +111,13 @@ public class Configuration {
 // GemStone changes BEGIN
 
     public static String jdbcDerbyNETProtocol() {
-        return ClientSharedUtils.USE_THRIFT_AS_DEFAULT
+        return ClientSharedUtils.isThriftDefault()
             ? com.pivotal.gemfirexd.Attribute.DRDA_PROTOCOL
             : com.pivotal.gemfirexd.Attribute.DNC_PROTOCOL;
     }
 
     public static String jdbcSnappyNETProtocol() {
-        return ClientSharedUtils.USE_THRIFT_AS_DEFAULT
+        return ClientSharedUtils.isThriftDefault()
             ? Attribute.SNAPPY_DRDA_PROTOCOL
             : Attribute.SNAPPY_DNC_PROTOCOL;
     }

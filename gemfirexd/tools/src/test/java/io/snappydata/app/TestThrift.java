@@ -49,6 +49,9 @@ public class TestThrift {
     }
 
     try {
+      // set the third "framedTransport" argument to true to enable framed
+      // transport which will also require the locators/servers to use
+      // "-thrift-framed-transport=true" option at startup
       run(locatorHost, locatorPort, false);
     } catch (GemFireTerminateError err) {
       System.err.println(err.getMessage());
@@ -59,12 +62,20 @@ public class TestThrift {
   public static void run(String locatorHost, int locatorPort,
       boolean framedTransport) throws Exception {
     String hostName = InetAddress.getLocalHost().getCanonicalHostName();
+    // This adds the process ID to its unique client ID but this can be
+    // something else like a UUID that can be used to distinguish it uniquely
+    // on this client machine. The combination of this with the hostName above
+    // is assumed to be unique by the server and used to track/retrieve
+    // connections from a machine and detect if a machine has failed (and thus
+    //   all its connections need to be cleaned up).
     int pid = NativeCalls.getInstance().getProcessId();
 
     // search only for servers using TCompactProtocol without SSL
     Set<ServerType> serverType = Collections.singleton(ServerType.THRIFT_SNAPPY_CP);
     TSocket socket = new TSocket(locatorHost, locatorPort);
     final TTransport transport;
+    // currently there is no search for framed servers and it is assumed
+    // that servers are using framed transport when client is so configured
     if (framedTransport) {
       transport = new TFramedTransport(socket);
     } else {
@@ -73,14 +84,21 @@ public class TestThrift {
     TCompactProtocol inProtocol = new TCompactProtocol(transport);
     TCompactProtocol outProtocol = new TCompactProtocol(transport);
     transport.open();
+    // establish a connection to locator which will be used to get the
+    // server as per load balancing to which data connection will be made
     LocatorService.Client controlService = new LocatorService.Client(
         inProtocol, outProtocol);
 
     ClientConnection conn = ClientConnection.open(hostName, pid,
         controlService, serverType, framedTransport);
 
-    // create the table
+    // the unique token assigned by server is required in all the calls and
+    // helps make the protocol "stateless" in the sense that any thrift
+    // connection to the server can be used to fire commands corresponding
+    // to this connection
     ByteBuffer token = conn.getToken();
+
+    // create the table
     conn.execute(conn.getId(), "drop table if exists orders",
         null, null, token);
     conn.execute(conn.getId(), "create table orders (" +
@@ -92,6 +110,7 @@ public class TestThrift {
 
     System.out.println("Created table");
 
+    // inserts using a prepared statement with parameters for best performance
     final int numRows = 10000;
     PrepareResult pstmt = conn.prepareStatement(conn.getId(),
         "insert into orders values (?, ?, ?, ?)", null, null, token);
@@ -121,6 +140,7 @@ public class TestThrift {
       }
     }
 
+    // selects with first round being "warmup"
     pstmt = conn.prepareStatement(conn.getId(), "SELECT * FROM orders " +
             "WHERE no_d_id = ? AND no_w_id = ? AND no_o_id = ?",
         null, null, token);
@@ -149,7 +169,9 @@ public class TestThrift {
 
         sr = conn.executePrepared(pstmt.statementId, params,
             Collections.<Integer, OutputParameter>emptyMap(), null, token);
-        // rs = conn.executePreparedQuery(pstmt.statementId, params, token);
+
+        // below will also work as well returning a RowSet directly
+        // rs = conn.executePreparedQuery(pstmt.statementId, params, null, token);
         rs = sr.getResultSet();
 
         int numResults = 0;
@@ -174,12 +196,15 @@ public class TestThrift {
       }
     }
 
+    // drop the table and close the connection
     conn.execute(conn.getId(), "drop table orders", null, null, token);
     conn.close();
-
-    transport.close();
   }
 
+  /**
+   * A simple extension to the SnappyData client service to encapsulate
+   * load-balancing using the locator "control" connection.
+   */
   static class ClientConnection extends SnappyDataService.Client {
 
     ConnectionProperties connProperties;
@@ -197,6 +222,9 @@ public class TestThrift {
       return this.connProperties.token;
     }
 
+    /**
+     * Open a data connection using given locator connection.
+     */
     static ClientConnection open(String hostName, int pid,
         LocatorService.Client controlService,
         Set<ServerType> serverType, boolean framedTransport) throws TException {

@@ -126,7 +126,7 @@ public:
 
 class Timestamp : public DateTime {
 public:
-  Timestamp(int64_t nanos) : DateTime(nanos) {
+  Timestamp(int64_t totalNanos) : DateTime(totalNanos) {
   }
 };
 

@@ -242,11 +242,6 @@ public interface GfxdConstants {
   final String PROTOCOL = Attribute.PROTOCOL;
 
   /**
-   * Protocol string used for thin network clients.
-   */
-  final String NET_PROTOCOL = Attribute.THRIFT_PROTOCOL;
-
-  /**
    * A random date selected to represent infinity value
    */
   final String INFINITY_DATE_STR = "1900-01-01";

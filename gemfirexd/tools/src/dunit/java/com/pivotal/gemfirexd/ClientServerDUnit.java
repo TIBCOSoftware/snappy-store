@@ -665,7 +665,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
         }
         else {
@@ -710,7 +710,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(1, batchExecutions.size());
           ArrayList<Integer> batchExecs = batchExecutions
               .get(null /* no string for unprepared execs */);
@@ -973,7 +973,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(1, batchExecutions.size());
           ArrayList<Integer> batchExecs = batchExecutions
               .get(null /* no string for unprepared execs */);
@@ -1014,7 +1014,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
         }
         else {
@@ -1175,7 +1175,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
           // three unpreparedExec due to successes in batch statement and delete
           assertEquals(3, unpreparedExec);
@@ -1213,7 +1213,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         assertEquals(0, preparedExec);
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           // 2 for the selects
           assertEquals(2, unpreparedExec);
         }
@@ -1234,7 +1234,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     results = cstmt.executeBatch();
     assertEquals(numOps, results.length);
     for (int res : results) {
-      if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+      if (ClientSharedUtils.isThriftDefault()) {
         assertEquals(0, res);
       }
       else {
@@ -1248,7 +1248,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
         assertEquals(numOps, preparedExec);
         assertEquals(0, unpreparedExec);
         preparedExec = 0;
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(1, batchExecutions.size());
           ArrayList<Integer> batchExecs = batchExecutions
               .get("call proc.test(?)");
@@ -1272,7 +1272,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         assertEquals(0, batchExecutions.size());
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
           assertEquals(1, unpreparedExec);
         }
@@ -1295,7 +1295,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
         }
         else {
@@ -1313,7 +1313,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         assertEquals(0, batchExecutions.size());
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
           assertEquals(1, unpreparedExec);
         }
@@ -1347,7 +1347,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
   public void testThriftFramedProtocol() throws Exception {
     // only if thrift is being used
-    if (!ClientSharedUtils.USE_THRIFT_AS_DEFAULT) return;
+    if (!ClientSharedUtils.isThriftDefault()) return;
     // first check with server and JDBC client with framed protocol
     Properties props = new Properties();
     props.setProperty(Attribute.THRIFT_USE_FRAMED_TRANSPORT, "true");
@@ -1685,7 +1685,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
     // Some sanity checks for DB meta-data
     // URL remains the first control connection one for thrift
-    if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (ClientSharedUtils.isThriftDefault()) {
       checkDBMetadata(conn2, url);
     } else {
       checkDBMetadata(conn2, url2);
@@ -1893,7 +1893,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
         localHost.getCanonicalHostName(), netPort, null, new Properties());
 
     int port;
-    if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (ClientSharedUtils.isThriftDefault()) {
       ClientConnection clientConn = (ClientConnection)conn;
       port = clientConn.getClientService().getCurrentHostConnection()
           .hostAddr.getPort();

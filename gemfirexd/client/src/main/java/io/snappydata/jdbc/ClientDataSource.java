@@ -146,7 +146,7 @@ public class ClientDataSource extends com.pivotal.gemfirexd.internal.jdbc.Client
    */
   @Override
   public Connection getConnection() throws SQLException {
-    if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (ClientSharedUtils.isThriftDefault()) {
       return getConnection(getUser(), getPassword());
     } else {
       return super.getConnection();
@@ -159,7 +159,7 @@ public class ClientDataSource extends com.pivotal.gemfirexd.internal.jdbc.Client
   @Override
   public Connection getConnection(String user, String password)
       throws SQLException {
-    if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (ClientSharedUtils.isThriftDefault()) {
       return ClientConnection.create(getServerName(), getPortNumber(),
           getThriftProperties(user, password, this), getLogWriter());
     } else {

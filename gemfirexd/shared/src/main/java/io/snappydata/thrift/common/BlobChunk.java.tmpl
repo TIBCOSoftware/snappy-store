@@ -144,7 +144,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     boolean last)
   {
     this();
-    this.chunk = ThriftUtils.copyBuffer(chunk);
+    this.chunk = chunk;
     this.last = last;
     setLastIsSet(true);
   }

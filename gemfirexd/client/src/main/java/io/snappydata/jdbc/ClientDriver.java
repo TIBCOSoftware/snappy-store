@@ -51,7 +51,7 @@ import io.snappydata.thrift.internal.ClientConnection;
 /**
  * Client driver encapsulating both Thrift and DRDA protocols as per protocol
  * string. Default is determined by
- * {@link ClientSharedUtils#USE_THRIFT_AS_DEFAULT}
+ * {@link ClientSharedUtils#isThriftDefault()}
  */
 public class ClientDriver extends ClientDRDADriver {
 
@@ -100,7 +100,7 @@ public class ClientDriver extends ClientDRDADriver {
     // for default value else use the protocol string (jdbc:snappydata://
     //   defaults to thrift while jdbc:gemfirexd:// defaults to old DRDA)
     return drdaGroup == null || drdaGroup.length() == 0
-        ? ClientSharedUtils.thriftIsDefault(
+        ? ClientSharedUtils.isUsingThrift(
         protocol.equalsIgnoreCase(SNAPPY_PROTOCOL))
         : "thrift:".equalsIgnoreCase(drdaGroup);
   }

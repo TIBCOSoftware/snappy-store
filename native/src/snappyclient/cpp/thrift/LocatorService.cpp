@@ -687,61 +687,6 @@ uint32_t LocatorService_getAllServersWithPreferredServer_presult::read(::apache:
   return xfer;
 }
 
-
-LocatorService_closeConnection_args::~LocatorService_closeConnection_args() noexcept {
-}
-
-
-uint32_t LocatorService_closeConnection_args::read(::apache::thrift::protocol::TProtocol* iprot) {
-
-  uint32_t xfer = 0;
-  std::string fname;
-  ::apache::thrift::protocol::TType ftype;
-  int16_t fid;
-
-  xfer += iprot->readStructBegin(fname);
-
-  using ::apache::thrift::protocol::TProtocolException;
-
-
-  while (true)
-  {
-    xfer += iprot->readFieldBegin(fname, ftype, fid);
-    if (ftype == ::apache::thrift::protocol::T_STOP) {
-      break;
-    }
-    xfer += iprot->skip(ftype);
-    xfer += iprot->readFieldEnd();
-  }
-
-  xfer += iprot->readStructEnd();
-
-  return xfer;
-}
-
-uint32_t LocatorService_closeConnection_args::write(::apache::thrift::protocol::TProtocol* oprot) const {
-  uint32_t xfer = 0;
-  xfer += oprot->writeStructBegin("LocatorService_closeConnection_args");
-
-  xfer += oprot->writeFieldStop();
-  xfer += oprot->writeStructEnd();
-  return xfer;
-}
-
-
-LocatorService_closeConnection_pargs::~LocatorService_closeConnection_pargs() noexcept {
-}
-
-
-uint32_t LocatorService_closeConnection_pargs::write(::apache::thrift::protocol::TProtocol* oprot) const {
-  uint32_t xfer = 0;
-  xfer += oprot->writeStructBegin("LocatorService_closeConnection_pargs");
-
-  xfer += oprot->writeFieldStop();
-  xfer += oprot->writeStructEnd();
-  return xfer;
-}
-
 void LocatorServiceClient::getPreferredServer(HostAddress& _return, const std::set<ServerType::type> & serverTypes, const std::set<std::string> & serverGroups, const std::set<HostAddress> & failedServers)
 {
   send_getPreferredServer(serverTypes, serverGroups, failedServers);
@@ -866,24 +811,6 @@ void LocatorServiceClient::recv_getAllServersWithPreferredServer(std::vector<Hos
     throw result.error;
   }
   throw ::apache::thrift::TApplicationException(::apache::thrift::TApplicationException::MISSING_RESULT, "getAllServersWithPreferredServer failed: unknown result");
-}
-
-void LocatorServiceClient::closeConnection()
-{
-  send_closeConnection();
-}
-
-void LocatorServiceClient::send_closeConnection()
-{
-  int32_t cseqid = 0;
-  oprot_->writeMessageBegin("closeConnection", ::apache::thrift::protocol::T_ONEWAY, cseqid);
-
-  LocatorService_closeConnection_pargs args;
-  args.write(oprot_);
-
-  oprot_->writeMessageEnd();
-  oprot_->getTransport()->writeEnd();
-  oprot_->getTransport()->flush();
 }
 
 bool LocatorServiceProcessor::dispatchCall(::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, const std::string& fname, int32_t seqid, void* callContext) {
@@ -1017,43 +944,6 @@ void LocatorServiceProcessor::process_getAllServersWithPreferredServer(int32_t s
   if (this->eventHandler_.get() != NULL) {
     this->eventHandler_->postWrite(ctx, "LocatorService.getAllServersWithPreferredServer", bytes);
   }
-}
-
-void LocatorServiceProcessor::process_closeConnection(int32_t, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol*, void* callContext)
-{
-  void* ctx = NULL;
-  if (this->eventHandler_.get() != NULL) {
-    ctx = this->eventHandler_->getContext("LocatorService.closeConnection", callContext);
-  }
-  ::apache::thrift::TProcessorContextFreer freer(this->eventHandler_.get(), ctx, "LocatorService.closeConnection");
-
-  if (this->eventHandler_.get() != NULL) {
-    this->eventHandler_->preRead(ctx, "LocatorService.closeConnection");
-  }
-
-  LocatorService_closeConnection_args args;
-  args.read(iprot);
-  iprot->readMessageEnd();
-  uint32_t bytes = iprot->getTransport()->readEnd();
-
-  if (this->eventHandler_.get() != NULL) {
-    this->eventHandler_->postRead(ctx, "LocatorService.closeConnection", bytes);
-  }
-
-  try {
-    iface_->closeConnection();
-  } catch (const std::exception&) {
-    if (this->eventHandler_.get() != NULL) {
-      this->eventHandler_->handlerError(ctx, "LocatorService.closeConnection");
-    }
-    return;
-  }
-
-  if (this->eventHandler_.get() != NULL) {
-    this->eventHandler_->asyncComplete(ctx, "LocatorService.closeConnection");
-  }
-
-  return;
 }
 
 ::boost::shared_ptr< ::apache::thrift::TProcessor > LocatorServiceProcessorFactory::getProcessor(const ::apache::thrift::TConnectionInfo& connInfo) {

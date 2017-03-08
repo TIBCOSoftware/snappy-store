@@ -79,7 +79,7 @@ public class ClientConnectionPoolDataSource
    */
   @Override
   public PooledConnection getPooledConnection() throws SQLException {
-    if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (ClientSharedUtils.isThriftDefault()) {
       return getPooledConnection(getUser(), getPassword());
     } else {
       return super.getPooledConnection();
@@ -92,7 +92,7 @@ public class ClientConnectionPoolDataSource
   @Override
   public PooledConnection getPooledConnection(String user, String password)
       throws SQLException {
-    if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (ClientSharedUtils.isThriftDefault()) {
       return new ClientPooledConnection(getServerName(), getPortNumber(),
           false, ClientDataSource.getThriftProperties(user, password, this),
           getLogWriter());

@@ -2251,7 +2251,7 @@ public class ClientDBMetaData implements DatabaseMetaData {
   @Override
   public String getURL() throws SQLException {
     StringBuilder url = new StringBuilder();
-    url.append(ClientConfiguration.CURRENT_DRIVER_PROTOCOL);
+    url.append(ClientConfiguration.CURRENT_DRIVER_PROTOCOL());
     final List<HostAddress> connHosts = this.service.connHosts;
     if (connHosts == null || connHosts.isEmpty()) {
       url.append(this.service.getCurrentHostConnection()

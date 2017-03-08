@@ -54,7 +54,6 @@ class LocatorServiceIf {
   virtual ~LocatorServiceIf() {}
   virtual void getPreferredServer(HostAddress& _return, const std::set<ServerType::type> & serverTypes, const std::set<std::string> & serverGroups, const std::set<HostAddress> & failedServers) = 0;
   virtual void getAllServersWithPreferredServer(std::vector<HostAddress> & _return, const std::set<ServerType::type> & serverTypes, const std::set<std::string> & serverGroups, const std::set<HostAddress> & failedServers) = 0;
-  virtual void closeConnection() = 0;
 };
 
 class LocatorServiceIfFactory {
@@ -88,9 +87,6 @@ class LocatorServiceNull : virtual public LocatorServiceIf {
     return;
   }
   void getAllServersWithPreferredServer(std::vector<HostAddress> & /* _return */, const std::set<ServerType::type> & /* serverTypes */, const std::set<std::string> & /* serverGroups */, const std::set<HostAddress> & /* failedServers */) {
-    return;
-  }
-  void closeConnection() {
     return;
   }
 };
@@ -355,45 +351,6 @@ class LocatorService_getAllServersWithPreferredServer_presult {
 
 };
 
-
-class LocatorService_closeConnection_args {
- public:
-
-  LocatorService_closeConnection_args(const LocatorService_closeConnection_args&);
-  LocatorService_closeConnection_args(LocatorService_closeConnection_args&&) noexcept;
-  LocatorService_closeConnection_args& operator=(const LocatorService_closeConnection_args&);
-  LocatorService_closeConnection_args& operator=(LocatorService_closeConnection_args&&) noexcept;
-  LocatorService_closeConnection_args() {
-  }
-
-  virtual ~LocatorService_closeConnection_args() noexcept;
-
-  bool operator == (const LocatorService_closeConnection_args & /* rhs */) const
-  {
-    return true;
-  }
-  bool operator != (const LocatorService_closeConnection_args &rhs) const {
-    return !(*this == rhs);
-  }
-
-  bool operator < (const LocatorService_closeConnection_args & ) const;
-
-  uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
-  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
-
-};
-
-
-class LocatorService_closeConnection_pargs {
- public:
-
-
-  virtual ~LocatorService_closeConnection_pargs() noexcept;
-
-  uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
-
-};
-
 class LocatorServiceClient : virtual public LocatorServiceIf {
  public:
   LocatorServiceClient(boost::shared_ptr< ::apache::thrift::protocol::TProtocol> prot) {
@@ -425,8 +382,6 @@ class LocatorServiceClient : virtual public LocatorServiceIf {
   void getAllServersWithPreferredServer(std::vector<HostAddress> & _return, const std::set<ServerType::type> & serverTypes, const std::set<std::string> & serverGroups, const std::set<HostAddress> & failedServers);
   void send_getAllServersWithPreferredServer(const std::set<ServerType::type> & serverTypes, const std::set<std::string> & serverGroups, const std::set<HostAddress> & failedServers);
   void recv_getAllServersWithPreferredServer(std::vector<HostAddress> & _return);
-  void closeConnection();
-  void send_closeConnection();
  protected:
   boost::shared_ptr< ::apache::thrift::protocol::TProtocol> piprot_;
   boost::shared_ptr< ::apache::thrift::protocol::TProtocol> poprot_;
@@ -444,13 +399,11 @@ class LocatorServiceProcessor : public ::apache::thrift::TDispatchProcessor {
   ProcessMap processMap_;
   void process_getPreferredServer(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_getAllServersWithPreferredServer(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
-  void process_closeConnection(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
  public:
   LocatorServiceProcessor(boost::shared_ptr<LocatorServiceIf> iface) :
     iface_(iface) {
     processMap_["getPreferredServer"] = &LocatorServiceProcessor::process_getPreferredServer;
     processMap_["getAllServersWithPreferredServer"] = &LocatorServiceProcessor::process_getAllServersWithPreferredServer;
-    processMap_["closeConnection"] = &LocatorServiceProcessor::process_closeConnection;
   }
 
   virtual ~LocatorServiceProcessor() {}
@@ -497,15 +450,6 @@ class LocatorServiceMultiface : virtual public LocatorServiceIf {
     }
     ifaces_[i]->getAllServersWithPreferredServer(_return, serverTypes, serverGroups, failedServers);
     return;
-  }
-
-  void closeConnection() {
-    size_t sz = ifaces_.size();
-    size_t i = 0;
-    for (; i < (sz - 1); ++i) {
-      ifaces_[i]->closeConnection();
-    }
-    ifaces_[i]->closeConnection();
   }
 
 };

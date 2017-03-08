@@ -675,13 +675,13 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     System.setProperty(com.pivotal.gemfirexd.Property.PROPERTIES_FILE, PROP_FILE_NAME);
 
-    if (!ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (!ClientSharedUtils.isThriftDefault()) {
       System.setProperty(Property.START_DRDA, "true");
     }
     int port;
     while ((port = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
         <= FabricService.NETSERVER_DEFAULT_PORT);
-    if (!ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (!ClientSharedUtils.isThriftDefault()) {
       System.setProperty(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER,
           String.valueOf(port));
     }
@@ -693,7 +693,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
       final NetworkInterface ni = fabapi.startNetworkServer(null,
           -1, null);
-      if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+      if (ClientSharedUtils.isThriftDefault()) {
         ni2 = fabapi.startNetworkServer(null, port, null);
       }
       try {
@@ -705,7 +705,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
         int maxT = ni.getMaxThreads();
         assertEquals(20, maxT);
         int timSl = ni.getTimeSlice();
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(-1, timSl);
         } else {
           assertEquals(10, timSl);

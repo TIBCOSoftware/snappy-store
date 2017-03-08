@@ -77,7 +77,6 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TLongHashSet;
 import com.pivotal.gemfirexd.Attribute;
@@ -1464,9 +1463,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       // persistence to be created; however, if "sys-disk-dir" is explicitly
       // set then that can be used for overflow/gateway
 
-      StoreCallbacks callback = com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks();
+      String serverGroup = this.getBootProperty("server-groups");
+      Boolean isLeadMember = serverGroup != null ? serverGroup.contains("IMPLICIT_LEADER_SERVERGROUP") : false;
 
-      if (this.persistingDD || this.persistenceDir != null || (this.myKind.isAccessor() && callback != null)) {
+      if (this.persistingDD || this.persistenceDir != null || isLeadMember) {
         try {
           DiskStoreFactory dsf = this.gemFireCache.createDiskStoreFactory();
           File file = new File(generatePersistentDirName(null))
@@ -1484,7 +1484,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
               dsf.setMaxOplogSize(DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE);
             }
             else {
-              if (this.myKind.isAccessor()) {
+              if (isLeadMember) {
                 dsf.setMaxOplogSize(1);
               } else {
                 dsf.setMaxOplogSize(10);
@@ -2366,7 +2366,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.database.setdisableStatementOptimizationToGenericPlan();
       }
     }
-    ClientSharedUtils.setThriftIsDefault(this.snappyStore);
+    ClientSharedUtils.setThriftDefault(this.snappyStore);
   }
 
   private String databaseName;

@@ -114,16 +114,16 @@ enum SnappyType {
 }
 
 // constants for StatementAttrs.resultSetType
-const byte RESULTSET_TYPE_FORWARD_ONLY                     = 1;
-const byte RESULTSET_TYPE_INSENSITIVE                      = 2;
-const byte RESULTSET_TYPE_SENSITIVE                        = 3;
-const byte RESULTSET_TYPE_UNKNOWN                          = 4;
+const byte RESULTSET_TYPE_FORWARD_ONLY                     = 1
+const byte RESULTSET_TYPE_INSENSITIVE                      = 2
+const byte RESULTSET_TYPE_SENSITIVE                        = 3
+const byte RESULTSET_TYPE_UNKNOWN                          = 4
 
 // defaults for connection/statement attributes
-const bool DEFAULT_AUTOCOMMIT                              = false;
-const byte DEFAULT_RESULTSET_TYPE                          = RESULTSET_TYPE_FORWARD_ONLY;
-const bool DEFAULT_RESULTSET_UPDATABLE                     = false;
-const bool DEFAULT_RESULTSET_HOLD_CURSORS_OVER_COMMIT      = false;
+const bool DEFAULT_AUTOCOMMIT                              = false
+const byte DEFAULT_RESULTSET_TYPE                          = RESULTSET_TYPE_FORWARD_ONLY
+const bool DEFAULT_RESULTSET_UPDATABLE                     = false
+const bool DEFAULT_RESULTSET_HOLD_CURSORS_OVER_COMMIT      = false
 
 // additional flags for transactions
 enum TransactionAttribute {
@@ -347,8 +347,8 @@ enum ServiceMetaDataCall {
 }
 
 // constants for driver type
-const byte DRIVER_JDBC                                     = 1;
-const byte DRIVER_ODBC                                     = 2;
+const byte DRIVER_JDBC                                     = 1
+const byte DRIVER_ODBC                                     = 2
 
 struct ServiceMetaDataArgs {
   1: required i64                                          connId
@@ -369,7 +369,7 @@ struct ServiceMetaDataArgs {
 
 // constant for the default session token size used by security mechanisms
 // like PLAIN and DIFFIE_HELLMAN
-const i32 DEFAULT_SESSION_TOKEN_SIZE                       = 16;
+const i32 DEFAULT_SESSION_TOKEN_SIZE                       = 16
 
 enum SecurityMechanism {
   PLAIN                                                    = 1
@@ -458,35 +458,35 @@ exception SnappyException {
 }
 
 // default batch size
-const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 1024;
+const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 1024
 // default LOB chunk size
-const i32 DEFAULT_LOB_CHUNKSIZE                            = 2097152; // 2MB
+const i32 DEFAULT_LOB_CHUNKSIZE                            = 2097152 // 2MB
 
 // constants for transaction isolation levels
-const byte TRANSACTION_NONE                                = 0;
-const byte TRANSACTION_READ_UNCOMMITTED                    = 1;
-const byte TRANSACTION_READ_COMMITTED                      = 2;
-const byte TRANSACTION_REPEATABLE_READ                     = 4;
-const byte TRANSACTION_SERIALIZABLE                        = 8;
+const byte TRANSACTION_NONE                                = 0
+const byte TRANSACTION_READ_UNCOMMITTED                    = 1
+const byte TRANSACTION_READ_COMMITTED                      = 2
+const byte TRANSACTION_REPEATABLE_READ                     = 4
+const byte TRANSACTION_SERIALIZABLE                        = 8
 // special flag to indicate no change to current isolation level
-const byte TRANSACTION_NO_CHANGE                           = 64;
+const byte TRANSACTION_NO_CHANGE                           = 64
 
 // constant for the default transaction isolation
-const byte DEFAULT_TRANSACTION_ISOLATION                   = TRANSACTION_NONE;
+const byte DEFAULT_TRANSACTION_ISOLATION                   = TRANSACTION_NONE
 
 // constants for XA transactions that match the values in XAResource
-const i32 XA_OK                                            = 0;
-const i32 XA_RDONLY                                        = 3;
+const i32 XA_OK                                            = 0
+const i32 XA_RDONLY                                        = 3
 
-const i32 XA_TMNOFLAGS                                     = 0;
-const i32 XA_TMJOIN                                        = 0x00200000;
-const i32 XA_TMENDRSCAN                                    = 0x00800000;
-const i32 XA_TMSTARTRSCAN                                  = 0x01000000;
-const i32 TMSUSPEND                                        = 0x02000000;
-const i32 XA_TMSUCCESS                                     = 0x04000000;
-const i32 XA_TMRESUME                                      = 0x08000000;
-const i32 XA_TMFAIL                                        = 0x20000000;
-const i32 XA_TMONEPHASE                                    = 0x40000000;
+const i32 XA_TMNOFLAGS                                     = 0
+const i32 XA_TMJOIN                                        = 0x00200000
+const i32 XA_TMENDRSCAN                                    = 0x00800000
+const i32 XA_TMSTARTRSCAN                                  = 0x01000000
+const i32 TMSUSPEND                                        = 0x02000000
+const i32 XA_TMSUCCESS                                     = 0x04000000
+const i32 XA_TMRESUME                                      = 0x08000000
+const i32 XA_TMFAIL                                        = 0x20000000
+const i32 XA_TMONEPHASE                                    = 0x40000000
 
 struct StatementAttrs {
   1: optional byte                                         resultSetType
@@ -539,10 +539,10 @@ union ColumnValue {
 }
 
 // constants for unknown precision/scale
-const i16 COLUMN_PRECISION_UNKNOWN                         = 0;
-const i16 COLUMN_SCALE_UNKNOWN                             = 0;
+const i16 COLUMN_PRECISION_UNKNOWN                         = 0
+const i16 COLUMN_SCALE_UNKNOWN                             = 0
 // max decimal precision supported by server
-const i32 DECIMAL_MAX_PRECISION                            = 127;
+const i32 DECIMAL_MAX_PRECISION                            = 127
 
 struct ColumnDescriptor {
   1: required SnappyType                                   type
@@ -586,24 +586,24 @@ struct OutputParameter {
 // been closed.
 // If cursorId for a RowSet is set this value, then it is already finished
 // and no further operations are possible
-const i32 INVALID_ID                                       = 0;
+const i32 INVALID_ID                                       = 0
 
 // values for otherResultSetBehaviour flag of getNextResultSet
-const byte NEXTRS_CLOSE_ALL_RESULTS                        = 0;
-const byte NEXTRS_KEEP_CURRENT_RESULT                      = 1;
-const byte NEXTRS_CLOSE_CURRENT_RESULT                     = 2;
+const byte NEXTRS_CLOSE_ALL_RESULTS                        = 0
+const byte NEXTRS_KEEP_CURRENT_RESULT                      = 1
+const byte NEXTRS_CLOSE_CURRENT_RESULT                     = 2
 
 // bitmasks for RowSet.flags
 // if this is the last batch of rows for current result set
-const byte ROWSET_LAST_BATCH                               = 1;
+const byte ROWSET_LAST_BATCH                               = 1
 // for multiple result sets with CALL PROCEDUREs
-const byte ROWSET_HAS_MORE_ROWSETS                         = 2;
+const byte ROWSET_HAS_MORE_ROWSETS                         = 2
 // set if offset from scrollCursor operation resulted in cursor being placed
 // before first row (RowSet can contain rows after that as per fetch direction)
-const byte ROWSET_BEFORE_FIRST                             = 4;
+const byte ROWSET_BEFORE_FIRST                             = 4
 // set if offset from scrollCursor operation resulted in cursor being placed
 // after last row (RowSet can contain rows before that as per fetch direction)
-const byte ROWSET_AFTER_LAST                               = 8;
+const byte ROWSET_AFTER_LAST                               = 8
 
 struct RowSet {
   1: required list<Row>                                    rows
@@ -636,12 +636,12 @@ struct RowSet {
 }
 
 // statement types
-const byte STATEMENT_TYPE_SELECT                           = 0;
-const byte STATEMENT_TYPE_INSERT                           = 1;
-const byte STATEMENT_TYPE_UPDATE                           = 2;
-const byte STATEMENT_TYPE_DELETE                           = 3;
-const byte STATEMENT_TYPE_CALL                             = 4;
-const byte STATEMENT_TYPE_DDL                              = 5;
+const byte STATEMENT_TYPE_SELECT                           = 0
+const byte STATEMENT_TYPE_INSERT                           = 1
+const byte STATEMENT_TYPE_UPDATE                           = 2
+const byte STATEMENT_TYPE_DELETE                           = 3
+const byte STATEMENT_TYPE_CALL                             = 4
+const byte STATEMENT_TYPE_DDL                              = 5
 
 struct PrepareResult {
   1: required i64                                          statementId
@@ -679,10 +679,10 @@ struct StatementResult {
 }
 
 // type IDs for EntityId used by bulkClose API
-const byte BULK_CLOSE_RESULTSET                            = 1;
-const byte BULK_CLOSE_LOB                                  = 2;
-const byte BULK_CLOSE_STATEMENT                            = 3;
-const byte BULK_CLOSE_CONNECTION                           = 4;
+const byte BULK_CLOSE_RESULTSET                            = 1
+const byte BULK_CLOSE_LOB                                  = 2
+const byte BULK_CLOSE_STATEMENT                            = 3
+const byte BULK_CLOSE_CONNECTION                           = 4
 
 struct EntityId {
   1: required i64                                          id

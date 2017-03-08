@@ -32,7 +32,7 @@ class BlobChunk {
   BlobChunk() : chunk(), last(0), lobId(0), offset(0), totalLength(0) {
   }
 
-  virtual ~BlobChunk();
+  virtual ~BlobChunk() noexcept;
   std::string chunk;
   bool last;
   int64_t lobId;
@@ -83,7 +83,7 @@ class BlobChunk {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(BlobChunk &a, BlobChunk &b);
+void swap(BlobChunk &a, BlobChunk &b) noexcept;
 
 inline std::ostream& operator<<(std::ostream& out, const BlobChunk& obj)
 {

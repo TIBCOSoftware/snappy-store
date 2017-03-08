@@ -140,7 +140,7 @@ public class GfxdUtilLauncher extends GemFireUtilLauncher {
   }
 
   protected GfxdUtilLauncher() {
-    ClientSharedUtils.setThriftIsDefault(false);
+    ClientSharedUtils.setThriftDefault(false);
   }
 
  /**

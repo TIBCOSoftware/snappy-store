@@ -110,7 +110,7 @@ public abstract class BackwardCompatabilityTestBase extends
   @Override
   public void setUp() throws Exception {
     System.setProperty("gemfirexd.thrift-default", "false");
-    ClientSharedUtils.USE_THRIFT_AS_DEFAULT = false;
+    ClientSharedUtils.setThriftDefault(false);
     super.setUp();
     vm1WorkingDir = (String)Host.getHost(0).getVM(0).invoke(getVMWorkingDir);
     vm2WorkingDir = (String)Host.getHost(0).getVM(1).invoke(getVMWorkingDir);
@@ -121,7 +121,7 @@ public abstract class BackwardCompatabilityTestBase extends
   @Override
   public void tearDown2() throws Exception {
     System.clearProperty("gemfirexd.thrift-default");
-    ClientSharedUtils.USE_THRIFT_AS_DEFAULT = true;
+    ClientSharedUtils.setThriftDefault(true);
     super.tearDown2();
     final String workingDir = getSysDirName();
     if (currentListIdx >= 0 && currentVersIdx >= 0) {

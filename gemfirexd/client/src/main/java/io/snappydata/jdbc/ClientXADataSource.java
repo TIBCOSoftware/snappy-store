@@ -38,7 +38,7 @@ public class ClientXADataSource extends com.pivotal.gemfirexd.internal.jdbc.Clie
   @Override
   public XAConnection getXAConnection(String user, String password)
       throws SQLException {
-    if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+    if (ClientSharedUtils.isThriftDefault()) {
       return new ClientXAConnection(getServerName(), getPortNumber(),
           ClientDataSource.getThriftProperties(user, password, this),
           getLogWriter());

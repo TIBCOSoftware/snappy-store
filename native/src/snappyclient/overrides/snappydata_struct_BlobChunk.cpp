@@ -23,7 +23,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 
-BlobChunk::~BlobChunk() {
+BlobChunk::~BlobChunk() noexcept {
 }
 
 
@@ -160,7 +160,7 @@ uint32_t BlobChunk::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(BlobChunk &a, BlobChunk &b) {
+void swap(BlobChunk &a, BlobChunk &b) noexcept {
   using ::std::swap;
   swap(a.chunk, b.chunk);
   swap(a.last, b.last);

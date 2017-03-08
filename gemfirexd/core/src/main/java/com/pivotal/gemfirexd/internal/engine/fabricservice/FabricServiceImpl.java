@@ -749,7 +749,7 @@ public abstract class FabricServiceImpl implements FabricService {
   @Override
   public NetworkInterface startNetworkServer(String bindAddress, int port,
       Properties networkProperties) throws SQLException {
-    return ClientSharedUtils.USE_THRIFT_AS_DEFAULT
+    return ClientSharedUtils.isThriftDefault()
         ? startThriftServer(bindAddress, port, networkProperties)
         : startDRDAServer(bindAddress, port, networkProperties);
   }
