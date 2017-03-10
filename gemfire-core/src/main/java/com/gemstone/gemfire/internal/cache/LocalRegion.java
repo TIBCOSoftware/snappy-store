@@ -14361,24 +14361,16 @@ public class LocalRegion extends AbstractRegion
 
   protected long calculateEntryOverhead(RegionEntry entry) {
     if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
-      synchronized (this) {
-        if (entryOverHead == -1L) {
-          entryOverHead = getEntryOverhead(entry);
-          System.out.println("Entry overhead for " + getFullPath() + " = " + entryOverHead);
-        }
-      }
+      entryOverHead = getEntryOverhead(entry);
+      System.out.println("Entry overhead for " + getFullPath() + " = " + entryOverHead);
     }
     return entryOverHead;
   }
 
   protected long calculateDiskIdOverhead(DiskId diskId) {
     if (!this.reservedTable() && diskIdOverHead == -1L && needAccounting()) {
-      synchronized (this) {
-        if (diskIdOverHead == -1L) {
-          diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
-          System.out.println("diskIdOverHead = " + diskIdOverHead);
-        }
-      }
+      diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
+      System.out.println("diskIdOverHead = " + diskIdOverHead);
     }
     return diskIdOverHead;
   }
@@ -14387,7 +14379,7 @@ public class LocalRegion extends AbstractRegion
 
   public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 100; //100 KB
 
-  protected void delayedAcquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
+  protected void delayedAcquirePoolMemory(long oldSize, long newSize, boolean withEntryOverHead,
       boolean shouldEvict) throws LowMemoryException {
     if (!this.reservedTable() && needAccounting()) {
       long size = 0L;
@@ -14408,7 +14400,7 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  public void acquirePoolMemory(int oldSize, int newSize, boolean withEntryOverHead,
+  public void acquirePoolMemory(long oldSize, long newSize, boolean withEntryOverHead,
       UMMMemoryTracker buffer, boolean shouldEvict) throws LowMemoryException {
     if (!this.reservedTable() && needAccounting()) {
       long size = 0L;
@@ -14429,7 +14421,7 @@ public class LocalRegion extends AbstractRegion
     throw new LowMemoryException("Could not obtain memory of size " + size, sm);
   }
 
-  public void freePoolMemory(int oldSize, boolean withEntryOverHead) {
+  public void freePoolMemory(long oldSize, boolean withEntryOverHead) {
     if (!this.reservedTable() && needAccounting()) {
       if (withEntryOverHead) {
         callback.releaseStorageMemory(getFullPath(), oldSize + Math.max(0L, entryOverHead));
@@ -14454,13 +14446,34 @@ public class LocalRegion extends AbstractRegion
     return callback.isSnappyStore();
   }
 
-  //Can be racy as we are not estimating exact value. All put should take care of this value;
-  private int indicesOverHead = 0;
-  protected long indicesOverHead(){
-    return indicesOverHead;
+  // All put/delete should take care of this value;
+  protected AtomicInteger indexOverhead = new AtomicInteger(0);
+
+  // Num bytes to be ignored by LocalRegion while region destroy
+  protected AtomicLong ignoreBytes = new AtomicLong(0L);
+
+  protected int indicesOverHead() {
+    if (isUsedForPartitionedRegionBucket) {
+      return getPartitionedRegion().indexOverhead.get();
+    } else {
+      return indexOverhead.get();
+    }
   }
-  public void setIndicesOverHead(int indicesOverHead){
-    this.indicesOverHead = indicesOverHead;
+
+  public void setIndexOverhead(int val) {
+    indexOverhead.addAndGet(val);
+  }
+
+  public void incIgnoreBytes(long numBytes) {
+    ignoreBytes.addAndGet(numBytes);
+  }
+
+  protected long getIgnoreBytes() {
+    if (isUsedForPartitionedRegionBucket) {
+      return getPartitionedRegion().ignoreBytes.get();
+    } else {
+      return ignoreBytes.get();
+    }
   }
 
 }

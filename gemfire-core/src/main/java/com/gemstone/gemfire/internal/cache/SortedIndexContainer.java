@@ -97,9 +97,8 @@ public interface SortedIndexContainer {
 
   /**
    * New API added to account Index memory while index is getting loaded
-   * @param region base region
    * @param cursorPosition for which we are trying to estimate memory
    * @param forceAccount whether to account irrespective of cursor position
    */
-  public void accountMemoryForIndex(LocalRegion region, long cursorPosition, boolean forceAccount);
+  public void accountMemoryForIndex(long cursorPosition, boolean forceAccount);
 }

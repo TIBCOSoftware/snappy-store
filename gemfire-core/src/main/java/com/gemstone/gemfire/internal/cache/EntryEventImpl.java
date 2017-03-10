@@ -1790,20 +1790,38 @@ public class EntryEventImpl extends KeyInfo implements
     setNewValueInRegion(owner, reentry, null, 0);
   }
 
-  private void acquireMemory(final LocalRegion owner, EntryEventImpl event, int oldSize, boolean isUpdate, boolean wasTombstone) {
+  private void acquireMemory(final LocalRegion owner,
+                             EntryEventImpl event,
+                             int oldSize,
+                             boolean isUpdate,
+                             boolean wasTombstone) {
+
     if (isUpdate && !wasTombstone) {
-      if(this.memoryTracker != null){
-        owner.acquirePoolMemory(oldSize, event.getNewValueBucketSize(), true,
-            this.memoryTracker, true);
+      if (this.memoryTracker != null) {
+        owner.acquirePoolMemory(oldSize,
+                event.getNewValueBucketSize(),
+                true,
+                this.memoryTracker,
+                true);
       } else {
-        owner.delayedAcquirePoolMemory(oldSize, event.getNewValueBucketSize(), true, true);
+        owner.delayedAcquirePoolMemory(oldSize,
+                event.getNewValueBucketSize(),
+                true,
+                true);
       }
     } else {
-      if(this.memoryTracker != null){
-        owner.acquirePoolMemory(0, event.getNewValueBucketSize(), true,
-            this.memoryTracker, true);
-      }else{
-        owner.delayedAcquirePoolMemory(0, event.getNewValueBucketSize(), true, true);
+      int indexOverhead = owner.indicesOverHead();
+      if (this.memoryTracker != null) {
+        owner.acquirePoolMemory(0,
+                event.getNewValueBucketSize() + indexOverhead,
+                true,
+                this.memoryTracker,
+                true);
+      } else {
+        owner.delayedAcquirePoolMemory(0,
+                event.getNewValueBucketSize() + indexOverhead,
+                true,
+                true);
       }
     }
   }

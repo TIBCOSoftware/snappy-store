@@ -52,7 +52,7 @@ public interface StoreCallbacks {
 
   void releaseStorageMemory(String objectName, long numBytes);
 
-  void dropStorageMemory(String objectName);
+  void dropStorageMemory(String objectName, long ignoreBytes);
 
   boolean isSnappyStore();
 

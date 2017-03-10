@@ -92,7 +92,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public void dropStorageMemory(String objectName) {
+    public void dropStorageMemory(String objectName, long ignoreBytes) {
 
     }
 

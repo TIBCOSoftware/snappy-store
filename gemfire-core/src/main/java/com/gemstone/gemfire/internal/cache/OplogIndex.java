@@ -720,7 +720,6 @@ public final class OplogIndex {
                           diskEntry, currentIndex,
                           Arrays.toString(indexKeyBytes)));
                 }
-
                 currentIndexJob.addJob(currentIndex.getIndexKey(indexKeyBytes,
                     diskEntry), diskEntry);
               } else {

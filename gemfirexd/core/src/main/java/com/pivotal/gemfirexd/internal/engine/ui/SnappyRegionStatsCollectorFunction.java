@@ -240,7 +240,6 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
     try {
       sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes,
           retEstimates, null);
-      int regionIndicesOverhead = 0;
       for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
         long[] value = (long[])e.getValue()[0];
         long sum = 0L;
@@ -248,11 +247,9 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
         sum += value[1]; //entryOverhead[0] + /entryOverhead[1]
         sum += value[2]; //keySize
         sum += value[3]; //valueSize
-        long rowCount =  value[5];
+        long rowCount = value[5];
         indexStats.add(new SnappyIndexStats(e.getKey(), rowCount, sum));
-        regionIndicesOverhead += Math.ceil(sum / rowCount);
       }
-      reg.setIndicesOverHead(regionIndicesOverhead);
     } catch (StandardException e) {
       e.printStackTrace();
     } catch (IllegalAccessException e) {

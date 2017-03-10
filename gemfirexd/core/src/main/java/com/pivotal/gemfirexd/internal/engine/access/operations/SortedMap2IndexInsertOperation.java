@@ -296,6 +296,8 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
     if (observer != null) {
       observer.keyAndContainerAfterLocalIndexInsert(key, value, container);
     }
+    // For UMM. Run an estimation after some puts
+    container.runEstimation();
 
     if (GemFireXDUtils.TraceIndex | GemFireXDUtils.TraceQuery) {
       GfxdIndexManager.traceIndex("SortedMap2IndexInsertOp: successfully "
@@ -350,6 +352,10 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
         if (oldValue instanceof TXEntryState && value instanceof RowLocation) {
           observer.keyAndContainerAfterLocalIndexInsert(key, value, container);
         }
+      }
+      if(success){
+        // For UMM. Run an estimation after some puts
+        container.runEstimation();
       }
 
       if (GemFireXDUtils.TraceIndex | GemFireXDUtils.TraceQuery) {

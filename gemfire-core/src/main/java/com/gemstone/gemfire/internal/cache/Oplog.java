@@ -7418,7 +7418,7 @@ public final class Oplog implements CompactableOplog {
               for (IndexData indexData : affectedIndexes) {
                 SortedIndexKey indexKey = indexData.index.getIndexKey(val,
                     diskEntry);
-                indexData.getIndex().accountMemoryForIndex(baseRegion, numRecovered, false);
+                indexData.getIndex().accountMemoryForIndex(numRecovered, false);
                 indexData.indexJob.addJob(indexKey, diskEntry);
               }
               numRecovered++;

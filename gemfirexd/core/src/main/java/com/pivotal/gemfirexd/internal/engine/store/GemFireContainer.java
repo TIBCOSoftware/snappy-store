@@ -25,6 +25,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.GemFireException;
@@ -43,6 +46,7 @@ import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.SizeEntry;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException.PutAllPartialResult;
+import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
@@ -63,6 +67,8 @@ import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
@@ -1853,6 +1859,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   final void drop(final GemFireTransaction tran) throws StandardException {
     try {
+      if (this.baseContainer != null) {
+        accountIndexMemory(false, true);
+      }
       localDestroy(tran);
     } finally {
       // remove dependencies for ExtraTableInfo
@@ -1879,7 +1888,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         indexManager.drop(tran);
       }
       if(r == null){
-        releaseMeoryForIndex();
+        releaseIndexMemory();
       }
     }
   }
@@ -6350,50 +6359,136 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+  private StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
 
   final ObjectSizer sizer = ObjectSizer.getInstance(false);
 
-  int alreadyAccounted = 0;
+  // This field is to be used only for initial index setup. If index is big we compute
+  // the cost step-wise and acquire memory accoringly
+  long intialAccounting = 0;
 
-  int START_POINT_OF_ACCOUNT = 8;
+  private AtomicLong sizeAccountedByIndex = new AtomicLong(0L);
+  // Cuurrent overhead which is stamped in the region
+  private int currenrOverhead = 0;
+  // Total number of rows in Index
+  private long totalRows = 0;
+
+  private AtomicLong numOperations = new AtomicLong(0L);
+
+  private boolean doAccounting() {
+    if (!callback.isSnappyStore()) {
+      return false;
+    }
+    LocalRegion baseRegion = getBaseRegion();
+    if (!LocalRegion.isMetaTable(baseRegion.getFullPath())) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 
   @Override
-  public void accountMemoryForIndex(LocalRegion baseRegion, long cursorPos, boolean forceAccount) {
-    if ((cursorPos >= START_POINT_OF_ACCOUNT && (cursorPos & (cursorPos - 1)) == 0) || forceAccount) {
-      if(LocalRegion.isMetaTable(baseRegion.getFullPath())) return;
-      final String baseTableContainerName = baseRegion.getFullPath();
-      List<GemFireContainer> indexes = new ArrayList();
-      indexes.add(this);
-      final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap();
-      int sum = 0;
-      try {
-        sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes, retEstimates, null);
-        for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
-          long[] value = (long[]) e.getValue()[0];
-          sum += value[0]; //constantOverhead
-          sum += value[1]; //entryOverhead[0] + /entryOverhead[1]
-          sum += value[2]; //keySize
-          sum += value[3]; //valueSize
-          long rowCount = value[5];
-          baseRegion.acquirePoolMemory(0, (sum - alreadyAccounted)
-                  , false, null, false);
-
-        }
-      } catch (StandardException e) {
-        e.printStackTrace();
-      } catch (IllegalAccessException e) {
-        e.printStackTrace();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      alreadyAccounted = sum;
+  public void accountMemoryForIndex(long cursorPos, boolean forceAccount) {
+    if ((cursorPos >= 8
+            && (cursorPos & (cursorPos - 1)) == 0) // Power of 2
+            || forceAccount) {
+      accountIndexMemory(true, false);
     }
   }
 
-  private void releaseMeoryForIndex(){
+  public void accountIndexMemory(boolean askMemoryManager, boolean isDestroy) {
+    if (!doAccounting()) {
+      return;
+    }
     LocalRegion baseRegion = getBaseRegion();
-    if(!LocalRegion.isMetaTable(baseRegion.getFullPath())){
-      getBaseRegion().freePoolMemory(alreadyAccounted, false);
+    final String baseTableContainerName = baseRegion.getFullPath();
+    List<GemFireContainer> indexes = new ArrayList();
+    indexes.add(this);
+    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap();
+    long sum = 0L;
+    long totalOverhead = 0L;
+    try {
+      sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes, retEstimates, null);
+      for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
+        long[] value = (long[]) e.getValue()[0];
+        sum += value[0]; //constantOverhead
+        sum += value[1]; //entryOverhead[0] + /entryOverhead[1]
+        sum += value[2]; //keySize
+        sum += value[3]; //valueSize
+        long rowCount = value[5];
+        totalOverhead += (rowCount == 0 ? 0 : Math.round((sum - intialAccounting) / rowCount));
+        if (askMemoryManager) {
+          // Only acquire memory while initial index creation. Rest all index accounting will be done by
+          // region put/delete
+          baseRegion.acquirePoolMemory(0, sum - intialAccounting
+                  , false, null, false);
+          intialAccounting = sum;
+          sizeAccountedByIndex.set(sum);
+        }
+        totalRows = rowCount;
+        System.out.println("Index Name = " + this.getQualifiedTableName() +
+                " Index Stats" + sizeAccountedByIndex.get() + " And rowCount " + totalRows);
+      }
+
+      if (!isDestroy) {
+        adjustAccountedMemory(totalOverhead);
+        currenrOverhead = (int) totalOverhead;
+      }
+    } catch (StandardException e) {
+      e.printStackTrace();
+    } catch (IllegalAccessException e) {
+      e.printStackTrace();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
   }
+
+  // Release the current size of index from memory manager.
+  private void releaseIndexMemory() {
+    LocalRegion baseRegion = getBaseRegion();
+    if (doAccounting()) {
+      long memoryToBeFreed = currenrOverhead * totalRows;
+      // Free all memory by index + (index overhead * row count)
+      getBaseRegion().freePoolMemory(memoryToBeFreed + sizeAccountedByIndex.get()
+              , false);
+      if (!baseRegion.isDestroyed) {
+        baseRegion.setIndexOverhead(-1 * currenrOverhead);
+        // mark (index overhead * row count) as ignore bytes in local region , which will be ignored by
+        // dropping the table
+        baseRegion.incIgnoreBytes(memoryToBeFreed);
+      }
+    }
+  }
+
+  public void accountSnapshotEntry(int numBytes) {
+    LocalRegion baseRegion = getBaseRegion();
+    if (doAccounting()) {
+      getBaseRegion().acquirePoolMemory(0, numBytes
+              , false, null, false);
+      sizeAccountedByIndex.addAndGet(numBytes);
+    }
+  }
+
+  public void adjustAccountedMemory(long newValue) {
+    LocalRegion baseRegion = getBaseRegion();
+    if (doAccounting()) {
+      long adjustedMemory = newValue - currenrOverhead;
+      baseRegion.setIndexOverhead((int)adjustedMemory);
+    }
+  }
+
+  public void runEstimation() {
+    if (doAccounting()) {
+      long numOps = numOperations.incrementAndGet();
+      if (numOps >= 8
+              && (numOps & (numOps - 1)) == 0) { // Power of 2
+        // accounting in sync call. One of the operation will be slow.
+        // But it will lead to more resiliency.
+        // @TODO will see if cost is very high will make it a async call.
+        accountIndexMemory(false, false);
+      }
+    }
+  }
+
+
 }

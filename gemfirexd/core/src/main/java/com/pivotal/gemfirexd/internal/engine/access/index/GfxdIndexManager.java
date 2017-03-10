@@ -1535,7 +1535,12 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
                 // snapshot
                 // the value in the key.
                 if (!updatedValue) {
-                  foundKey.snapshotKeyFromValue();
+                  byte[] value = foundKey.snapshotKeyFromValue();
+                  if(value != null){
+                    indexContainer.accountSnapshotEntry(value.length);
+                  }
+
+
                 }
               }
             } finally {
@@ -4949,8 +4954,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         Misc.checkIfCacheClosing(null);
       }
       indexRecoveryJob.endJobs();
-      indexContainer.accountMemoryForIndex(this.container.getRegion()
-              , numEntries, true);
+      indexContainer.accountMemoryForIndex(numEntries, true);
       return numEntries;
     } catch (IOException ioe) {
       // check for node shutdown
@@ -4985,7 +4989,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       Iterator<?> entryIterator = this.container.getEntrySetIterator(null,
           false, 0, true);
       while (entryIterator.hasNext()) {
-        indexContainer.accountMemoryForIndex(region, numEntries, false);
+        indexContainer.accountMemoryForIndex(numEntries, false);
         RegionEntry entry = (RegionEntry)entryIterator.next();
         @Released
         final Object val = ((RowLocation)entry)
@@ -5013,7 +5017,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         numEntries++;
       }
       indexRecoveryJob.endJobs();
-      indexContainer.accountMemoryForIndex(region, numEntries, true);
+      indexContainer.accountMemoryForIndex(numEntries, true);
       List<GemFireContainer> indexes = getAllIndexes();
       return numEntries;
     } catch (CancelException ce) {
