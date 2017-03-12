@@ -101,7 +101,7 @@ namespace impl {
 
     thrift::HostAddress m_currentHostAddr;
     std::vector<thrift::HostAddress> m_connHosts;
-    int32_t m_connId;
+    int64_t m_connId;
     std::string m_token;
     bool m_isOpen;
 
@@ -221,17 +221,21 @@ namespace impl {
 
     void executePrepared(thrift::StatementResult& result,
         thrift::PrepareResult& prepResult, const thrift::Row& params,
-        const std::map<int32_t, thrift::OutputParameter>& outputParams);
+        const std::map<int32_t, thrift::OutputParameter>& outputParams,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedUpdate(thrift::UpdateResult& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params);
+        thrift::PrepareResult& prepResult, const thrift::Row& params,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedQuery(thrift::RowSet& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params);
+        thrift::PrepareResult& prepResult, const thrift::Row& params,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedBatch(thrift::UpdateResult& result,
         thrift::PrepareResult& prepResult,
-        const std::vector<thrift::Row>& paramsBatch);
+        const std::vector<thrift::Row>& paramsBatch,
+        const thrift::StatementAttrs& attrs);
 
     void prepareAndExecute(thrift::StatementResult& result,
         const std::string& sql,
@@ -240,7 +244,7 @@ namespace impl {
         const thrift::StatementAttrs& attrs);
 
     void getNextResultSet(thrift::RowSet& result,
-        const int32_t cursorId, const int8_t otherResultSetBehaviour);
+        const int64_t cursorId, const int8_t otherResultSetBehaviour);
 
     void getBlobChunk(thrift::BlobChunk& result, const int32_t lobId,
         const int64_t offset, const int32_t size,
@@ -250,23 +254,23 @@ namespace impl {
         const int64_t offset, const int32_t size,
         const bool freeLobAtEnd);
 
-    int32_t sendBlobChunk(thrift::BlobChunk& chunk);
+    int64_t sendBlobChunk(thrift::BlobChunk& chunk);
 
-    int32_t sendClobChunk(thrift::ClobChunk& chunk);
+    int64_t sendClobChunk(thrift::ClobChunk& chunk);
 
     void freeLob(const int32_t lobId);
 
-    void scrollCursor(thrift::RowSet& result, const int32_t cursorId,
+    void scrollCursor(thrift::RowSet& result, const int64_t cursorId,
         const int32_t offset, const bool offsetIsAbsolute,
         const bool fetchReverse, const int32_t fetchSize);
 
-    void executeCursorUpdate(const int32_t cursorId,
+    void executeCursorUpdate(const int64_t cursorId,
         const thrift::CursorUpdateOperation::type operation,
         const thrift::Row& changedRow,
         const std::vector<int32_t>& changedColumns,
         const int32_t changedRowIndex);
 
-    void executeBatchCursorUpdate(const int32_t cursorId,
+    void executeBatchCursorUpdate(const int64_t cursorId,
         const std::vector<thrift::CursorUpdateOperation::type>& operations,
         const std::vector<thrift::Row>& changedRows,
         const std::vector<std::vector<int32_t> >& changedColumnsList,
@@ -285,12 +289,10 @@ namespace impl {
 
     void rollbackTransaction(const bool startNewTransaction);
 
-    bool prepareCommitTransaction();
-
     void fetchActiveConnections(
         std::vector<thrift::ConnectionProperties>& result);
 
-    void fetchActiveStatements(std::map<int32_t, std::string>& result);
+    void fetchActiveStatements(std::map<int64_t, std::string>& result);
 
     void getServiceMetaData(thrift::ServiceMetaData& result);
 
@@ -310,11 +312,11 @@ namespace impl {
         thrift::ServiceMetaDataArgs& metadataArgs, const int32_t scope,
         const bool nullable);
 
-    void closeResultSet(const int32_t cursorId);
+    void closeResultSet(const int64_t cursorId);
 
-    void cancelStatement(const int32_t stmtId);
+    void cancelStatement(const int64_t stmtId);
 
-    void closeStatement(const int32_t stmtId);
+    void closeStatement(const int64_t stmtId);
 
     void bulkClose(const std::vector<thrift::EntityId>& entities);
 

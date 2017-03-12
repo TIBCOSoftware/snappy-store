@@ -39,7 +39,7 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 /**
  * Client driver encapsulating both Thrift and DRDA protocols as per protocol
  * string. Default is determined by
- * {@link ClientSharedUtils#USE_THRIFT_AS_DEFAULT}.
+ * {@link ClientSharedUtils#isThriftDefault()}.
  * <p>
  * This is class is only for backward compatibility. Use
  * {@link io.snappydata.jdbc.ClientDriver} instead.

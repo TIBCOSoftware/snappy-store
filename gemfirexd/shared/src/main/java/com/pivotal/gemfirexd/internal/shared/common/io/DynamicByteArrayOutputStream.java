@@ -72,7 +72,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 	/*
 	 *	OutputStream methods
 	 */
-	public void write(int b) 
+	public final void write(int b)
 	{
 		if (position >= buf.length)
 			expandBuffer(INITIAL_SIZE);
@@ -83,7 +83,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 			used = position;
 	}
 	
-	public void write(byte[] b, int off, int len) 
+	public final void write(byte[] b, int off, int len)
 	{
 		if ((position+len) > buf.length)
 			expandBuffer(len);
@@ -95,7 +95,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 			used = position;
 	}
 
-	void writeCompleteStream(InputStream dataIn, int len) throws IOException
+	final void writeCompleteStream(InputStream dataIn, int len) throws IOException
 	{
 		if ((position+len) > buf.length)
 			expandBuffer(len);
@@ -107,7 +107,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 			used = position;
 	}
 
-	public void close()
+	public final void close()
 	{
 		buf = null;
 		reset();
@@ -120,7 +120,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 	/**
 		Reset the stream for reuse
 	*/
-	public void reset()
+	public final void reset()
 	{
 		position = 0;
 		beginPosition = 0;
@@ -132,7 +132,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 		stream. Note that the byte array may be longer that getPosition().
 		Bytes beyond and including the current poistion are invalid.
 	*/
-	public byte[] getByteArray()
+	public final byte[] getByteArray()
 	{
 		return buf;
 	}
@@ -140,7 +140,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 	/**
 		Get the number of bytes that was used.
 	*/
-	public int getUsed()
+	public final int getUsed()
 	{
 		return used;
 	}
@@ -148,7 +148,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 	/**
 		Get the current position in the stream
 	*/
-	public int getPosition()
+	public final int getPosition()
 	{
 		return position;
 	}
@@ -156,7 +156,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 	/**
 		Get the current position in the stream
 	*/
-	public int getBeginPosition()
+	public final int getBeginPosition()
 	{
 		return beginPosition;
 	}
@@ -167,7 +167,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 		it or useful information is not left out at the end because the stream
 		does not remember anything about the previous position.
 	*/
-	public void setPosition(int newPosition)
+	public final void setPosition(int newPosition)
 	{
 		if (newPosition > position)
 		{
@@ -188,7 +188,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 		If the newBeginPosition is larger than the stream itself,
 		then, the begin position is not set.
 	*/
-	public void setBeginPosition(int newBeginPosition)
+	public final void setBeginPosition(int newBeginPosition)
 	{
 
 		if (newBeginPosition > buf.length)
@@ -201,7 +201,7 @@ public class DynamicByteArrayOutputStream extends OutputStream {
 		Shrink the buffer left by the amount given. Ie.
 		bytes from 0 to amountToShrinkBy are thrown away
 	*/
-	public void discardLeft(int amountToShrinkBy) {
+	public final void discardLeft(int amountToShrinkBy) {
 
 		System.arraycopy(buf, amountToShrinkBy, buf, 0,
 			used - amountToShrinkBy);

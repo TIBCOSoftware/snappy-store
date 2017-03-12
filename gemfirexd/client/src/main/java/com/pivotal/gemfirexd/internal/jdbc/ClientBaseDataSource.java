@@ -952,28 +952,29 @@ public abstract class ClientBaseDataSource implements Serializable, Referenceabl
 
     // ----------------------- ssl
 
-    private int sslMode;
+    private String sslString;
 
-    public void setSsl(String mode) 
-        throws SqlException
-    {
-        sslMode = getSSLModeFromString(mode);
+    public void setSsl(String mode) {
+      this.sslString = mode;
     }
 
     public void setSsl(int mode) {
-        sslMode = mode;
+      switch (mode) {
+        case SSL_BASIC:
+          this.sslString = "basic";
+          break;
+        case SSL_PEER_AUTHENTICATION:
+          this.sslString = "peerAuthentication";
+          break;
+        case SSL_OFF:
+        default:
+          this.sslString = "off";
+          break;
+      }
     }
 
     public String getSsl() {
-        switch(sslMode) {
-        case SSL_OFF: 
-        default: 
-            return "off";
-        case SSL_BASIC: 
-            return "basic";
-        case SSL_PEER_AUTHENTICATION: 
-            return "peerAuthentication";
-        }
+      return this.sslString;
     }
 
     // ----------------------- set/getCreate/ShutdownDatabase ---------------------------

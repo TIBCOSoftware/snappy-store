@@ -31,7 +31,6 @@ import com.gemstone.gemfire.pdx.JSONFormatter;
 import com.gemstone.gemfire.pdx.JSONFormatterException;
 import com.gemstone.gemfire.pdx.PdxInstance;
 import com.gemstone.gemfire.pdx.internal.PdxInstanceImpl;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -294,11 +293,9 @@ public final class JSON extends SQLClob {
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, final long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(final long memOffset, int columnWidth, ByteSource bs) {
     jsonPdxInstanceBytes = new byte[columnWidth];
-    UnsafeMemoryChunk.readUnsafeBytes(unsafe, memOffset, jsonPdxInstanceBytes,
-        columnWidth);
+    UnsafeMemoryChunk.readUnsafeBytes(memOffset, jsonPdxInstanceBytes, columnWidth);
     return columnWidth;
   }
 

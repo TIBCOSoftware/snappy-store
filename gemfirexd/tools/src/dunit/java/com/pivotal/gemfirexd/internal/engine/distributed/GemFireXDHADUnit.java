@@ -358,8 +358,8 @@ public class GemFireXDHADUnit extends DistributedSQLTestBase {
     // 1 control conn on locator + 1 data conn + data connection closed
     // no close message is sent rather only closed on client which maybe
     // detected by server after sometime during the read
-    assertNumConnections(-2, -2, 2);
-    assertNumConnections(-1, -2, 1);
+    assertNumConnections(-3, -2, 2);
+    assertNumConnections(-2, -2, 1);
 
     sop(testName + " part1 ended");
 
@@ -378,11 +378,11 @@ public class GemFireXDHADUnit extends DistributedSQLTestBase {
     attachConnectionListener(3, connListener);
 
     dmlMethod.invoke(this, netPort1, Boolean.FALSE, changeValues5[1], null);
-    assertNumConnections(-2, 0, 4);
-    assertNumConnections(-2, -2, 2);
+    assertNumConnections(-3, 0, 4);
+    assertNumConnections(-3, -3, 2);
     // 1 control connection + 1 data connection + data connection closed
-    assertNumConnections(-3, -3, 1);
-    assertNumConnections(-1, -2, 3);
+    assertNumConnections(-4, -3, 1);
+    assertNumConnections(-2, -3, 3);
 
     sop(testName + " part2 ended");
 
@@ -392,11 +392,11 @@ public class GemFireXDHADUnit extends DistributedSQLTestBase {
 
     // Part 3: check if failover succeeds on an old connection
     dmlMethod.invoke(this, netPort4, Boolean.FALSE, changeValues5[2], conn);
-    assertNumConnections(-2, 0, 4);
+    assertNumConnections(-3, 0, 4);
     // we expect connection close to be detected now that server is down
-    assertNumConnections(-2, -2, 2);
+    assertNumConnections(-3, -3, 2);
     // 1 data connection
-    assertNumConnections(-5, -5, 1, 3);
+    assertNumConnections(-6, -5, 1, 3);
 
     sop(testName + " part3 ended");
 
@@ -411,8 +411,8 @@ public class GemFireXDHADUnit extends DistributedSQLTestBase {
         "disconnect");
 
     dmlMethod.invoke(this, netPort1, Boolean.FALSE, changeValues5[3], null);
-    assertNumConnections(-2, 0, 4);
-    assertNumConnections(-2, -2, 2);
+    assertNumConnections(-3, 0, 4);
+    assertNumConnections(-3, -3, 2);
     // 1 data connection to vm1 opened and then closed by server
     // 1 new control connection (optional since the control connection to vm1
     // may work) + 1 data connection + data connection closed to vm3
@@ -423,8 +423,8 @@ public class GemFireXDHADUnit extends DistributedSQLTestBase {
 
     // closing a now "invalid" connection should be fine and cause no failover
     conn.close();
-    assertNumConnections(-2, 0, 4);
-    assertNumConnections(-2, -2, 2);
+    assertNumConnections(-3, 0, 4);
+    assertNumConnections(-3, -3, 2);
     assertNumConnections(-9, -7, 1, 3);
 
     sop(testName + " part4 ended");

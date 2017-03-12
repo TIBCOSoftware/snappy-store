@@ -23,12 +23,14 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import org.apache.spark.unsafe.Platform;
+
 
 /**
  * A buffered DataInput abstraction over channel using direct byte buffers, and
- * using internal Unsafe class for best performance. Users must check for
- * {@link UnsafeHolder#getDirectByteBufferAddressMethod()} to be non-null before
- * trying to use this class.
+ * using internal Unsafe class for best performance.
+ * Use this only when {@link UnsafeHolder#hasUnsafe()} returns true.
  * <p>
  * The implementation is not thread-safe by design. This particular class can be
  * used as an efficient, buffered DataInput implementation for file channels,
@@ -94,35 +96,33 @@ public class ChannelBufferUnsafeDataInputStream extends
    * {@inheritDoc}
    */
   public final byte readByte() throws IOException {
-    final long addrPos = this.addrPosition;
-    if (addrPos < this.addrLimit) {
-      this.addrPosition++;
-      return unsafe.getByte(addrPos);
-    }
-    else {
+    if (this.addrPosition >= this.addrLimit) {
       refillBuffer(this.buffer, 1, "readByte: premature end of stream");
-      return unsafe.getByte(this.addrPosition++);
     }
+    return Platform.getByte(null, this.addrPosition++);
   }
 
   /**
    * {@inheritDoc}
    */
   public final int readUnsignedByte() throws IOException {
-    return (readByte() & 0xFF);
+    return (readByte() & 0xff);
   }
 
   /**
    * {@inheritDoc}
    */
   public final short readShort() throws IOException {
-    final long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 2) {
-      return getShort(addrPos);
-    }
-    else {
+    long addrPos = this.addrPosition;
+    if ((this.addrLimit - addrPos) < 2) {
       refillBuffer(this.buffer, 2, "readShort: premature end of stream");
-      return getShort(this.addrPosition);
+      addrPos = this.addrPosition;
+    }
+    this.addrPosition += 2;
+    if (ClientSharedUtils.isLittleEndian) {
+      return Short.reverseBytes(Platform.getShort(null, addrPos));
+    } else {
+      return Platform.getShort(null, addrPos);
     }
   }
 
@@ -137,14 +137,7 @@ public class ChannelBufferUnsafeDataInputStream extends
    * {@inheritDoc}
    */
   public final char readChar() throws IOException {
-    final long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 2) {
-      return (char)getShort(addrPos);
-    }
-    else {
-      refillBuffer(this.buffer, 2, "readChar: premature end of stream");
-      return (char)getShort(this.addrPosition);
-    }
+    return (char)readShort();
   }
 
   /**
@@ -152,16 +145,15 @@ public class ChannelBufferUnsafeDataInputStream extends
    */
   public final long readLong() throws IOException {
     long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 8) {
-      // more efficient to use getLong() instead of bytewise on most platforms
-      this.addrPosition += 8;
-      return this.buffer.getLong((int)(addrPos - this.baseAddress));
-    }
-    else {
+    if ((this.addrLimit - addrPos) < 8) {
       refillBuffer(this.buffer, 8, "readLong: premature end of stream");
       addrPos = this.addrPosition;
-      this.addrPosition += 8;
-      return this.buffer.getLong((int)(addrPos - this.baseAddress));
+    }
+    this.addrPosition += 8;
+    if (ClientSharedUtils.isLittleEndian) {
+      return Long.reverseBytes(Platform.getLong(null, addrPos));
+    } else {
+      return Platform.getLong(null, addrPos);
     }
   }
 
@@ -169,32 +161,14 @@ public class ChannelBufferUnsafeDataInputStream extends
    * {@inheritDoc}
    */
   public final float readFloat() throws IOException {
-    final long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 4) {
-      return Float.intBitsToFloat(getInt(addrPos));
-    }
-    else {
-      refillBuffer(this.buffer, 4, "readFloat: premature end of stream");
-      return Float.intBitsToFloat(getInt(this.addrPosition));
-    }
+    return Float.intBitsToFloat(readInt());
   }
 
   /**
    * {@inheritDoc}
    */
   public final double readDouble() throws IOException {
-    long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 8) {
-      // more efficient to use getLong() instead of bytewise on most platforms
-      this.addrPosition += 8;
-      return this.buffer.getDouble((int)(addrPos - this.baseAddress));
-    }
-    else {
-      refillBuffer(this.buffer, 8, "readDouble: premature end of stream");
-      addrPos = this.addrPosition;
-      this.addrPosition += 8;
-      return this.buffer.getDouble((int)(addrPos - this.baseAddress));
-    }
+    return Double.longBitsToDouble(readLong());
   }
 
   /**
@@ -209,13 +183,5 @@ public class ChannelBufferUnsafeDataInputStream extends
    */
   public String readUTF() throws IOException {
     return DataInputStream.readUTF(this);
-  }
-
-  protected final short getShort(long addrPos) {
-    final sun.misc.Unsafe unsafe = ChannelBufferUnsafeInputStream.unsafe;
-    int result = (unsafe.getByte(addrPos++) & 0xff);
-    result = (result << 8) | (unsafe.getByte(addrPos++) & 0xff);
-    this.addrPosition = addrPos;
-    return (short)result;
   }
 }

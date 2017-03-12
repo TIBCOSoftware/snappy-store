@@ -51,7 +51,11 @@ public final class Row extends io.snappydata.thrift.common.ThriftRow {
   }
 
   public Row(List<ColumnDescriptor> metadata) {
-    super(metadata);
+    this(metadata, false);
+  }
+
+  public Row(List<ColumnDescriptor> metadata, boolean checkOutputParameters) {
+    super(metadata, checkOutputParameters);
   }
 
   /**
@@ -65,8 +69,8 @@ public final class Row extends io.snappydata.thrift.common.ThriftRow {
    * Performs a deep copy on <i>other</i> if copyValues is true else don't copy
    * values.
    */
-  public Row(Row other, boolean copyValues) {
-    super(other, copyValues);
+  public Row(Row other, boolean otherIsEmpty, boolean copyValues) {
+    super(other, otherIsEmpty, copyValues);
   }
 
   @Override

@@ -669,10 +669,9 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
         //bucketRegion.columnBatchFlushLock.readLock().unlock();
         // TODO: For tx it may change.
         // TODO: For concurrent putALLs, this will club other putall as well
-        // the putAlls in worst case so cachedbatchsize may be large?
-        if (success && bucketRegion.getPartitionedRegion().needsBatching()
-            && bucketRegion.size() >= bucketRegion.getPartitionedRegion().getColumnBatchSize()) {
-          bucketRegion.createAndInsertCachedBatch(false);
+        // the putAlls in worst case so columnBatchSize may be large?
+        if (success && bucketRegion.checkForColumnBatchCreation()) {
+          bucketRegion.createAndInsertColumnBatch(false);
         }
           if (lockedForPrimary) {
             bucketRegion.doUnlockForPrimary();

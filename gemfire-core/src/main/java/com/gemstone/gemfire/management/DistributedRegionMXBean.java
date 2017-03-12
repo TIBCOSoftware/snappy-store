@@ -315,7 +315,7 @@ public interface DistributedRegionMXBean {
   public long getEstimatedSizeForHDFSRegion();
 
 
-  public long getRowsInCachedBatches();
+  public long getRowsInColumnBatches();
 
   public boolean isColumnTable();
 }

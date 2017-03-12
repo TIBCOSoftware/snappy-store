@@ -669,12 +669,12 @@ public final class FabricDatabase implements ModuleControl,
       for (String storeTable : storeEntry.getValue()) {
         if (Misc.getMemStoreBooting().getExternalCatalog().
             isColumnTable(storeEntry.getKey(), storeTable, false)) {
-          String cachedBatchTable = com.gemstone.gemfire.
+          String columnBatchTable = com.gemstone.gemfire.
               internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
-              cachedBatchTableName(storeEntry.getKey() + "." + storeTable);
-          cachedBatchTable = cachedBatchTable.substring(cachedBatchTable.indexOf(".") + 1);
-//          SanityManager.DEBUG_PRINT("info", "cachedBatchTable = " + cachedBatchTable);
-          if (!internalColumnTablesSet.contains(cachedBatchTable)) {
+              columnBatchTableName(storeEntry.getKey() + "." + storeTable);
+          columnBatchTable = columnBatchTable.substring(columnBatchTable.indexOf(".") + 1);
+//          SanityManager.DEBUG_PRINT("info", "columnBatchTable = " + columnBatchTable);
+          if (!internalColumnTablesSet.contains(columnBatchTable)) {
             tablesMissingColumnBuffer.add(storeTable);
           }
         }
@@ -732,14 +732,14 @@ public final class FabricDatabase implements ModuleControl,
         SanityManager.DEBUG_PRINT("info", "FabricDatabase.dropTables " +
             " processing " + tableName);
 
-        // drop cached batch table
-        String cachedBatchTableName = com.gemstone.gemfire.
+        // drop column batch table
+        String columnBatchTableName = com.gemstone.gemfire.
             internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
-            cachedBatchTableName(tableName);
-        // set to true only if cached batch table is present and could not be removed
-        boolean cachedBatchTableExists = false;
+            columnBatchTableName(tableName);
+        // set to true only if column batch table is present and could not be removed
+        boolean columnBatchTableExists = false;
         final Region<?, ?> targetRegion =
-            Misc.getRegionForTable(cachedBatchTableName, false);
+            Misc.getRegionForTable(columnBatchTableName, false);
         if (targetRegion != null) {
           // make sure that corresponding row buffer also does not contain data
           final Region<?, ?> rowTableRegion =
@@ -747,20 +747,20 @@ public final class FabricDatabase implements ModuleControl,
           if (targetRegion.size() == 0 &&
               (rowTableRegion == null || rowTableRegion.size() == 0)) {
             SanityManager.DEBUG_PRINT("info", "Dropping table " +
-                cachedBatchTableName);
+                columnBatchTableName);
             embedConn.createStatement().execute(
-                "DROP TABLE IF EXISTS " + cachedBatchTableName);
+                "DROP TABLE IF EXISTS " + columnBatchTableName);
           } else {
-            cachedBatchTableExists = true;
+            columnBatchTableExists = true;
             SanityManager.DEBUG_PRINT("info", "Not dropping table " +
-                cachedBatchTableName + " as it is not empty");
+                columnBatchTableName + " as it is not empty");
           }
         }
 
         // drop row table
 
-        // don't drop if corresponding cached batch table could not removed
-        if (!cachedBatchTableExists) {
+        // don't drop if corresponding column batch table could not removed
+        if (!columnBatchTableExists) {
           final Region<?, ?> rowTableRegion =
               Misc.getRegionForTable(tableName, false);
           if (rowTableRegion != null) {

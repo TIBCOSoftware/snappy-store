@@ -54,6 +54,7 @@ package com.pivotal.gemfirexd.internal.impl.tools.ij;
 import com.pivotal.gemfirexd.internal.iapi.reference.JDBC20Translation;
 
 // GemStone changes BEGIN
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.FabricServer;
 import com.pivotal.gemfirexd.FabricService;
 import com.pivotal.gemfirexd.FabricServiceManager;
@@ -690,7 +691,7 @@ class ij {
       rs = theConnection.createStatement().executeQuery
         ("SELECT * FROM SYS.MEMBERS ORDER BY ID ASC");
 
-      String servers = ClientSharedUtils.USE_THRIFT_AS_DEFAULT ? "THRIFTSERVERS" : "NETSERVERS";
+      String servers = ClientSharedUtils.isThriftDefault() ? "THRIFTSERVERS" : "NETSERVERS";
       int[] displayColumns = new int[] {
         rs.findColumn("ID"),
         rs.findColumn("HOST"),
@@ -2075,7 +2076,8 @@ throws SQLException
 {
 // GemStone changes BEGIN
 	<CONNECT> <CLIENT>
-	( result = dynamicConnection("jdbc:snappydata://", true, false) )
+	( result = dynamicConnection(ClientSharedUtils.isThriftDefault()
+	      ? Attribute.SNAPPY_DNC_PROTOCOL : Attribute.DNC_PROTOCOL, true, false) )
 	{
 		return result;
 	}

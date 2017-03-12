@@ -35,6 +35,7 @@
 
 package io.snappydata.jdbc;
 
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,7 +51,7 @@ import io.snappydata.thrift.internal.ClientConnection;
 /**
  * Client driver encapsulating both Thrift and DRDA protocols as per protocol
  * string. Default is determined by
- * {@link ClientSharedUtils#USE_THRIFT_AS_DEFAULT}
+ * {@link ClientSharedUtils#isThriftDefault()}
  */
 public class ClientDriver extends ClientDRDADriver {
 
@@ -94,8 +95,13 @@ public class ClientDriver extends ClientDRDADriver {
   @Override
   protected boolean useThriftProtocol(Matcher m) {
     String drdaGroup = m.group(2);
+    String protocol = m.group(1);
+    // if USE_THRIFT_AS_DEFAULT_PROP has been set explicitly then use that
+    // for default value else use the protocol string (jdbc:snappydata://
+    //   defaults to thrift while jdbc:gemfirexd:// defaults to old DRDA)
     return drdaGroup == null || drdaGroup.length() == 0
-        ? ClientSharedUtils.USE_THRIFT_AS_DEFAULT
+        ? ClientSharedUtils.isUsingThrift(
+        protocol.equalsIgnoreCase(SNAPPY_PROTOCOL))
         : "thrift:".equalsIgnoreCase(drdaGroup);
   }
 
@@ -112,6 +118,7 @@ public class ClientDriver extends ClientDRDADriver {
   @Override
   protected java.sql.Connection createThriftConnection(String server, int port,
       java.util.Properties props) throws SQLException {
-    return ClientConnection.create(server, port, props);
+    return ClientConnection.create(server, port, props,
+        DriverManager.getLogWriter());
   }
 }

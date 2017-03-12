@@ -110,7 +110,8 @@ public class CacheServerLauncher  {
   protected String initialHeapSize;
   protected String offHeapSize;
   protected String maxPermGenSize;
-  protected boolean useThriftServerDefault;
+  protected boolean useThriftServerDefault =
+      ClientSharedUtils.isThriftDefault();
 
   protected static CacheServerLauncher instance;
 

@@ -110,13 +110,17 @@ public class Configuration {
     // For DatabaseMetaData.getURL()
 // GemStone changes BEGIN
 
-    public static final String jdbcDerbyNETProtocol = ClientSharedUtils
-        .USE_THRIFT_AS_DEFAULT ? com.pivotal.gemfirexd.Attribute.DRDA_PROTOCOL
+    public static String jdbcDerbyNETProtocol() {
+        return ClientSharedUtils.isThriftDefault()
+            ? com.pivotal.gemfirexd.Attribute.DRDA_PROTOCOL
             : com.pivotal.gemfirexd.Attribute.DNC_PROTOCOL;
+    }
 
-    public static final String jdbcSnappyNETProtocol = ClientSharedUtils
-        .USE_THRIFT_AS_DEFAULT ? Attribute.SNAPPY_DRDA_PROTOCOL
-        : Attribute.SNAPPY_DNC_PROTOCOL;
+    public static String jdbcSnappyNETProtocol() {
+        return ClientSharedUtils.isThriftDefault()
+            ? Attribute.SNAPPY_DRDA_PROTOCOL
+            : Attribute.SNAPPY_DNC_PROTOCOL;
+    }
 
     /* (original code)
     public final static String jdbcDerbyNETProtocol = "jdbc:derby://";

@@ -73,7 +73,7 @@ public class SimpleNetworkClientSample
 	 */
 
 public static final String DERBY_CLIENT_DRIVER = "com.pivotal.gemfirexd.jdbc.ClientDriver";
-	private static final String DERBY_CLIENT_DS = "com.pivotal.gemfirexd.internal.jdbc.ClientDataSource";
+	private static final String DERBY_CLIENT_DS = "io.snappydata.jdbc.ClientDataSource";
 
 	/**
 	 * This URL is used to connect to Derby Network Server using the DriverManager.

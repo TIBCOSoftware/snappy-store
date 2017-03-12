@@ -19,26 +19,26 @@ package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferOutputStream;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * A somewhat more efficient implementation of {@link ChannelBufferOutputStream}
- * using internal unsafe class (~30% in raw single byte write calls). Use this
- * only when {@link UnsafeHolder#getDirectByteBufferAddressMethod()} returns
- * non-null. Alternatively use {@link UnsafeHolder#newChannelBufferOutputStream}
- * method to create either this or {@link ChannelBufferOutputStream} depending
- * on availability.
+ * using internal unsafe class (~30% in raw single byte write calls).
+ * Use {@link UnsafeHolder#newChannelBufferOutputStream} method to create
+ * either this or {@link ChannelBufferOutputStream} depending on availability.
  * <p>
  * NOTE: THIS CLASS IS NOT THREAD-SAFE BY DESIGN. IF IT IS USED CONCURRENTLY
  * BY MULTIPLE THREADS THEN BAD THINGS CAN HAPPEN DUE TO UNSAFE MEMORY WRITES.
  * <p>
  * Note that the close() method of this class does not closing the underlying
  * channel.
- * 
+ *
  * @author swale
  * @since gfxd 1.1
  */
@@ -53,8 +53,6 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    */
   protected long addrPosition;
   protected long addrLimit;
-
-  protected static final sun.misc.Unsafe unsafe = UnsafeHolder.getUnsafe();
 
   /**
    * Some minimum buffer size, particularly for longs and encoding UTF strings
@@ -80,8 +78,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     this.buffer = allocateBuffer(bufferSize);
 
     try {
-      this.baseAddress = (Long)UnsafeHolder.getDirectByteBufferAddressMethod()
-          .invoke(this.buffer);
+      this.baseAddress = UnsafeHolder.getDirectBufferAddress(this.buffer);
       resetBufferPositions();
     } catch (Exception e) {
       throw ClientSharedUtils.newRuntimeException(
@@ -95,7 +92,18 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
   }
 
   protected ByteBuffer allocateBuffer(int bufferSize) {
-    return ByteBuffer.allocateDirect(bufferSize);
+    // use Platform.allocate which does not have the smallish limit used
+    // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
+    return Platform.allocateDirectBuffer(bufferSize)
+        // set the order to native explicitly to skip any byte order conversions
+        .order(ByteOrder.nativeOrder());
+  }
+
+  protected final void putByte(byte b) throws IOException {
+    if (this.addrPosition >= this.addrLimit) {
+      flushBufferBlocking(this.buffer);
+    }
+    Platform.putByte(null, this.addrPosition++, b);
   }
 
   /**
@@ -103,28 +111,12 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    */
   @Override
   public final void write(int b) throws IOException {
-    final long addrPos = this.addrPosition;
-    if (addrPos < this.addrLimit) {
-      unsafe.putByte(addrPos, (byte)(b & 0xff));
-      this.addrPosition++;
-    }
-    else {
-      flushBufferBlocking(this.buffer);
-      unsafe.putByte(this.addrPosition++, (byte)(b & 0xff));
-    }
+    putByte((byte)(b & 0xff));
   }
 
   protected final void write_(byte[] b, int off, int len) throws IOException {
     if (len == 1) {
-      final long addrPos = this.addrPosition;
-      if (addrPos < this.addrLimit) {
-        unsafe.putByte(addrPos, b[off]);
-        this.addrPosition++;
-      }
-      else {
-        flushBufferBlocking(this.buffer);
-        unsafe.putByte(this.addrPosition++, b[off]);
-      }
+      putByte(b[off]);
       return;
     }
 
@@ -132,14 +124,16 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
       final long addrPos = this.addrPosition;
       final int remaining = (int)(this.addrLimit - addrPos);
       if (len <= remaining) {
-        UnsafeHolder.bufferPut(b, addrPos, off, len, unsafe);
+        Platform.copyMemory(b, Platform.BYTE_ARRAY_OFFSET + off,
+            null, addrPos, len);
         this.addrPosition += len;
         return;
       }
       else {
         // copy b to buffer and flush
         if (remaining > 0) {
-          UnsafeHolder.bufferPut(b, addrPos, off, remaining, unsafe);
+          Platform.copyMemory(b, Platform.BYTE_ARRAY_OFFSET + off,
+              null, addrPos, remaining);
           this.addrPosition += remaining;
           len -= remaining;
           off += remaining;
@@ -162,13 +156,8 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    */
   @Override
   public final void write(byte[] b, int off, int len) throws IOException {
-    if (UnsafeHolder.checkBounds(off, len, b.length)) {
-      write_(b, off, len);
-    }
-    else {
-      throw new IndexOutOfBoundsException("offset=" + off + " length=" + len
-          + " size=" + b.length);
-    }
+    UnsafeHolder.checkBounds(b.length, off, len);
+    write_(b, off, len);
   }
 
   /**
@@ -218,6 +207,8 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
   @Override
   public void close() throws IOException {
     flushBufferBlocking(this.buffer);
+    this.addrPosition = this.addrLimit = 0;
+    UnsafeHolder.releaseDirectBuffer(this.buffer);
   }
 
   protected void flushBufferBlocking(final ByteBuffer buffer)

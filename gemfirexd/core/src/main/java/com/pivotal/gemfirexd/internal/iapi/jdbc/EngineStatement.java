@@ -46,4 +46,24 @@ public interface EngineStatement extends Statement {
      * @see java.sql.Statement#getResultSetHoldability()
      */ 
     public int getResultSetHoldability() throws SQLException;
+
+    /** Returns true if this is a {@link java.sql.PreparedStatement}. */
+    public boolean isPrepared() throws SQLException;
+
+    /** Returns true if there are dynamic ResultSet from a procedure call. */
+    public boolean hasDynamicResults() throws SQLException;
+
+    /** Try and clear the batch even if statement is marked as closed. */
+    public void forceClearBatch();
+
+    /** Reset the connection so that it can be reused. */
+    public void resetForReuse() throws SQLException;
+
+    /**
+     * Change the type, concurrency and holdability of this statement.
+     */
+    public void reset(int newType, int newConcurrency, int newHoldability)
+        throws SQLException;
+
+    public void clearFinalizer();
 }

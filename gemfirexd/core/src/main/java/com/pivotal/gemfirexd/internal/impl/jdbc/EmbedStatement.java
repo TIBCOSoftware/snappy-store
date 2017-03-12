@@ -315,7 +315,7 @@ public class EmbedStatement extends ConnectionChild
 
     private int fetchSize = 1;
     private int fetchDirection = java.sql.ResultSet.FETCH_FORWARD;
-    int MaxFieldSize;
+    int maxFieldSize;
 	/**
 	 * Query timeout in milliseconds. By default, no statements time
 	 * out. Timeout is set explicitly with setQueryTimeout().
@@ -637,11 +637,7 @@ public class EmbedStatement extends ConnectionChild
                 iapiResultSet = null; 
 
                 // lose the finalizer so it can be GCed
-                final FinalizeStatement finalizer = this.finalizer;
-                if (finalizer != null) {
-                  finalizer.clearAll();
-                  this.finalizer = null;
-                }
+                clearFinalizer();
 // GemStone changes END
 		  closeActions();
 		 
@@ -671,15 +667,19 @@ public class EmbedStatement extends ConnectionChild
 	  return this.active;
 	}
 
-	
-	public final boolean hasBatch() {
-	  return this.batchStatements != null
-	      && this.batchStatements.size() > 0;
-	}
-
-	public final void clearBatchIfPossible() {
+	@Override
+	public final void forceClearBatch() {
 	  synchronized (getConnectionSynchronization()) {
 	    this.batchStatements = null;
+	  }
+	}
+
+	@Override
+	public final void clearFinalizer() {
+	  final FinalizeStatement finalizer = this.finalizer;
+	  if (finalizer != null) {
+	    finalizer.clearAll();
+	    this.finalizer = null;
 	  }
 	}
 
@@ -740,7 +740,7 @@ public class EmbedStatement extends ConnectionChild
 	public int getMaxFieldSize() throws SQLException {
 		checkStatus();
 
-        return MaxFieldSize;
+        return maxFieldSize;
 	}
 
     /**
@@ -760,7 +760,7 @@ public class EmbedStatement extends ConnectionChild
 		{
 			throw newSQLException(SQLState.INVALID_MAXFIELD_SIZE, new Integer(max));
 		}
-        this.MaxFieldSize = max;
+        this.maxFieldSize = max;
 	}
 
     /**
@@ -879,11 +879,11 @@ public class EmbedStatement extends ConnectionChild
 	  }
 	  // send a message to cancel the query on all other data nodes
 	  QueryCancelFunctionArgs args = QueryCancelFunction
-	      .newQueryCancelFunctionArgs(this.statementID, this.executionID, 
-	          lcc.getConnectionId());
+	      .newQueryCancelFunctionArgs(this.statementID, lcc.getConnectionId());
 	  Set<DistributedMember> dataStores = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
 	  final DistributedMember myId = GemFireStore.getMyId();
-	  dataStores.remove(myId);
+	  // add self too for the wrapper connection
+	  dataStores.add(myId);
 	  if (dataStores.size() > 0) {
 	    FunctionService.onMembers(dataStores).withArgs(args).execute(
 	        QueryCancelFunction.ID);
@@ -2808,6 +2808,7 @@ public class EmbedStatement extends ConnectionChild
 	  clearResultSets(false);
 	}
 
+	@Override
 	public void resetForReuse() throws SQLException {
 	  // will get closed either via EmbedResultSet or
 	  // right after collecting updateCount.
@@ -2824,6 +2825,7 @@ public class EmbedStatement extends ConnectionChild
 	  clearParameters();
 	}
 
+	@Override
 	public boolean hasDynamicResults() {
 	  return this.dynamicResults != null;
 	}
@@ -3192,6 +3194,7 @@ public class EmbedStatement extends ConnectionChild
 
 
 // GemStone changes BEGIN
+  @Override
   public boolean isPrepared() {
     return false;
   }
@@ -3220,12 +3223,18 @@ public class EmbedStatement extends ConnectionChild
     }
   }
 
+  @Override
   public void reset(int newType, int newConcurrency, int newHoldability)
       throws SQLException {
     checkAttributes(newType, newConcurrency, newHoldability);
     this.resultSetType = newType;
     this.resultSetConcurrency = newConcurrency;
     this.resultSetHoldability = newHoldability;
+    // reset some other attributes
+    this.timeoutMillis = 0;
+    this.maxRows = 0;
+    this.maxFieldSize = 0;
+    this.cursorName = null;
   }
 
   @Override
@@ -3433,7 +3442,7 @@ public class EmbedStatement extends ConnectionChild
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 

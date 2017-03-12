@@ -44,6 +44,7 @@ import java.text.RuleBasedCollator;
 
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
@@ -250,11 +251,11 @@ public class SQLVarchar
     }
   }
 
-  static final String getAsString(final UnsafeWrapper unsafe,
-      final long memOffset, final int columnWidth, final OffHeapByteSource bs) {
+  static final String getAsString(final long memOffset, final int columnWidth,
+			final OffHeapByteSource bs) {
     final char[] chars = new char[columnWidth];
-    final int strlen = readIntoCharsFromByteSource(unsafe, memOffset,
-        columnWidth, bs, chars);
+    final int strlen = readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
+				memOffset, columnWidth, bs, chars);
     if (columnWidth == strlen) {
       // don't make a copy
       return ClientSharedUtils.newWrappedString(chars, 0, strlen);

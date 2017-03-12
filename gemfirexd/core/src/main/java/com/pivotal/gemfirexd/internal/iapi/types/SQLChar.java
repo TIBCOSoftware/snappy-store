@@ -44,8 +44,8 @@ package com.pivotal.gemfirexd.internal.iapi.types;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
@@ -64,17 +64,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.FormatIdInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.io.StreamStorable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.ConcatableDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLDate;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLTime;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLTimestamp;
-import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
@@ -3650,11 +3639,10 @@ readingLoop:
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, final ByteSource bs) {
+  public int readBytes(long memOffset, int columnWidth, final ByteSource bs) {
     final char[] chars = new char[columnWidth];
-    final int strlen = readIntoCharsFromByteSource(unsafe, memOffset,
-        columnWidth, bs, chars);
+    final int strlen = readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
+        memOffset, columnWidth, bs, chars);
     // if char[] length is much larger than actual length then it is
     // worthwhile to make a copy of required chars only
     if (columnWidth >= (strlen >>> 1)) {
@@ -3720,7 +3708,7 @@ readingLoop:
   }
 
   public static final int readIntoCharsFromByteSource(
-      final UnsafeWrapper unsafe, long memOffset, final int utflen,
+      final sun.misc.Unsafe unsafe, long memOffset, final int utflen,
       final ByteSource inBytes, final char[] chars) {
     if (utflen == 0) return 0; // fixes 50281
     int count = 0;
@@ -3890,7 +3878,7 @@ readingLoop:
     }
     else {
       final OffHeapByteSource bs = (OffHeapByteSource)inBytes;
-      return readIntoCharsFromByteSource(UnsafeMemoryChunk.getUnsafeWrapper(),
+      return readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
           bs.getUnsafeAddress(offset, utflen), utflen, bs, chars);
     }
   }
@@ -5360,13 +5348,12 @@ readingLoop:
     return ClientSharedUtils.newWrappedString(chars, 0, size);
   }
 
-  static final String getAsString(final UnsafeWrapper inBytes,
-      final long memOffset, final int columnWidth, final OffHeapByteSource bs,
-      final DataTypeDescriptor dtd) {
+  static final String getAsString(final long memOffset, final int columnWidth,
+      final OffHeapByteSource bs, final DataTypeDescriptor dtd) {
     final int size = dtd.getMaximumWidth();
     final char[] chars = new char[size];
-    int strlen = readIntoCharsFromByteSource(inBytes, memOffset, columnWidth,
-        bs, chars);
+    int strlen = readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
+        memOffset, columnWidth, bs, chars);
     // TODO: SW: change derby layer that still pads DVDs with blanks in puts
     // pad with blanks if required
     if (size > strlen) {

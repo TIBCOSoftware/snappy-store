@@ -1162,10 +1162,10 @@ public final class SQLDate extends DataType
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset,
+			final int columnWidth, ByteSource bs) {
     this.valueString = null;
-    this.encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    this.encodedDate = RowFormatter.readInt(memOffset);
     return Integer.SIZE >>> 3;
   }
 
@@ -1196,7 +1196,7 @@ public final class SQLDate extends DataType
 
   static final long getAsDateMillis(final UnsafeWrapper unsafe,
       final long memOffset, final Calendar cal) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return 0L;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
@@ -1205,7 +1205,7 @@ public final class SQLDate extends DataType
 
   static final java.sql.Date getAsDate(final UnsafeWrapper unsafe,
       final long memOffset, final Calendar cal) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
@@ -1232,7 +1232,7 @@ public final class SQLDate extends DataType
 
   static final long getAsTimeStampMicros(final UnsafeWrapper unsafe,
       final long memOffset, final Calendar cal) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return 0L;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
@@ -1241,7 +1241,7 @@ public final class SQLDate extends DataType
 
   static final java.sql.Timestamp getAsTimeStamp(final UnsafeWrapper unsafe,
       final long memOffset, final Calendar cal) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
@@ -1262,7 +1262,7 @@ public final class SQLDate extends DataType
   }
 
   static String getAsString(final UnsafeWrapper unsafe, final long memOffset) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     char[] str = new char[DATE_CHARS];
     SharedUtils.dateTimeToString(str, 0, SQLDate.getYear(encodedDate),
@@ -1282,9 +1282,8 @@ public final class SQLDate extends DataType
     buffer.advance(DATE_CHARS);
   }
 
-  static void writeAsString(final UnsafeWrapper unsafe, final long memOffset,
-      final ByteArrayDataOutput buffer) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+  static void writeAsString(final long memOffset, ByteArrayDataOutput buffer) {
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return;
     final int bufferPos = buffer.ensureCapacity(DATE_CHARS, buffer.position());
     SharedUtils.dateTimeToChars(buffer.getData(), bufferPos,

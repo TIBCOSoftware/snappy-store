@@ -357,7 +357,8 @@ public class VMLocalRowLocationThinLRURegionEntryHeap extends RowLocationThinLRU
   }
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.value;
+    final Object value = this.value;
+    return value != null ? value : Token.NOT_AVAILABLE;
   }
   @Override
   public Object getValueOrOffHeapEntry(LocalRegion owner) {

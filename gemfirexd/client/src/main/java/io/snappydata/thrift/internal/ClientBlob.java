@@ -35,8 +35,6 @@
 
 package io.snappydata.thrift.internal;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,74 +44,110 @@ import java.sql.Blob;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
+import com.pivotal.gemfirexd.internal.shared.common.io.DynamicByteArrayOutputStream;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.SnappyException;
+import io.snappydata.thrift.common.BufferedBlob;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
+import io.snappydata.thrift.common.ThriftUtils;
 import io.snappydata.thrift.snappydataConstants;
 
-public final class ClientBlob extends ClientLobBase implements Blob {
+public final class ClientBlob extends ClientLobBase implements BufferedBlob {
 
   private BlobChunk currentChunk;
   private InputStream dataStream;
   private int baseChunkSize;
-
-  static final byte[] ZERO_ARRAY = new byte[0];
+  private long initOffset;
+  private final boolean freeForStream;
+  private boolean skipCurrentChunkClean;
 
   ClientBlob(ClientService service) {
     super(service);
-    this.dataStream = new MemInputStream(ZERO_ARRAY);
+    this.dataStream = new MemInputStream(ClientSharedData.ZERO_ARRAY);
     this.length = 0;
+    this.freeForStream = false;
   }
 
-  ClientBlob(InputStream dataStream, ClientService service) {
+  ClientBlob(InputStream dataStream, long length,
+      ClientService service) throws SQLException {
     super(service);
+    checkLength(length > 0 ? length : 0);
     this.dataStream = dataStream;
+    if (dataStream instanceof FileInputStream) {
+      try {
+        this.initOffset = ((FileInputStream)dataStream).getChannel().position();
+      } catch (IOException ioe) {
+        throw ThriftExceptionUtil.newSQLException(
+            SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, "java.sql.Blob");
+      }
+    }
+    this.length = (int)length;
+    this.freeForStream = true;
   }
 
   ClientBlob(BlobChunk firstChunk, ClientService service,
-      HostConnection source) throws SQLException {
+      HostConnection source, boolean freeForStream) throws SQLException {
     super(service, firstChunk.last ? snappydataConstants.INVALID_ID
         : firstChunk.lobId, source);
     this.baseChunkSize = firstChunk.chunk.remaining();
     this.currentChunk = firstChunk;
+    this.freeForStream = freeForStream;
+    long length = -1;
     if (firstChunk.isSetTotalLength()) {
-      this.length = firstChunk.getTotalLength();
+      length = firstChunk.getTotalLength();
     } else if (firstChunk.last) {
-      this.length = this.baseChunkSize;
-    } else {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_NONPOSITIVE_LENGTH, null, 0);
+      length = this.baseChunkSize;
     }
+    checkLength(length);
+    this.length = (int)length;
+  }
+
+  public ClientBlob(ByteBuffer buffer) {
+    super(null);
+    this.currentChunk = new BlobChunk(buffer, true);
+    this.streamedInput = false;
+    this.length = buffer.remaining();
+    this.freeForStream = false;
   }
 
   @Override
-  protected long streamLength(boolean forceMaterialize) throws SQLException {
+  protected int streamLength(boolean forceMaterialize) throws SQLException {
     try {
       final InputStream dataStream = this.dataStream;
       if (dataStream instanceof MemInputStream) {
-        return ((MemInputStream)dataStream).getCount();
+        return ((MemInputStream)dataStream).size();
       } else if (!forceMaterialize && dataStream instanceof FileInputStream) {
-        // need to seek into the stream but only for FileInputStream
-        return ((FileInputStream)dataStream).getChannel().size();
-      } else if (this.streamOffset == 0) {
+        // can determine the size of stream for FileInputStream
+        long length = ((FileInputStream)dataStream).getChannel().size() -
+            initOffset;
+        checkLength(length);
+        return (int)length;
+      } else if (forceMaterialize) {
         // materialize the stream
         final int bufSize = 32768;
-        final byte[] buffer = new byte[bufSize];
+        byte[] buffer = new byte[bufSize];
         int readLen = readStream(dataStream, buffer, 0, bufSize);
         if (readLen < bufSize) {
-          // fits into single buffer
-          this.dataStream = new MemInputStream(buffer, 0, readLen);
+          // fits into single buffer; trim if much smaller than bufSize
+          if (readLen <= 0) {
+            readLen = 0;
+            buffer = ClientSharedData.ZERO_ARRAY;
+          } else if (readLen < (bufSize >>> 1)) {
+            buffer = Arrays.copyOf(buffer, readLen);
+          }
+          this.dataStream = new MemInputStream(buffer, readLen);
           return readLen;
         } else {
-          MemOutputStream out = new MemOutputStream(bufSize + (bufSize >>> 1));
+          DynamicByteArrayOutputStream out = new DynamicByteArrayOutputStream(
+              bufSize + (bufSize >>> 1));
           out.write(buffer, 0, bufSize);
           while ((readLen = readStream(dataStream, buffer, 0, bufSize)) > 0) {
             out.write(buffer, 0, readLen);
           }
-          int streamSize = out.size();
-          this.dataStream = new MemInputStream(out.getBuffer(), 0, streamSize);
-          out.close(); // no-op to remove a warning
+          int streamSize = out.getUsed();
+          this.dataStream = new MemInputStream(out, streamSize);
           return streamSize;
         }
       } else {
@@ -130,60 +164,76 @@ public final class ClientBlob extends ClientLobBase implements Blob {
    */
   @Override
   protected void clear() {
+    final BlobChunk chunk = this.currentChunk;
+    if (chunk != null && !this.skipCurrentChunkClean) {
+      ThriftUtils.releaseBlobChunk(chunk);
+    }
     this.currentChunk = null;
     // don't need to do anything to close MemInputStream yet
     this.dataStream = null;
   }
 
-  static int readStream(final InputStream is, byte[] buf, int offset, int len)
-      throws IOException {
-    int readLen = 0;
-    int readBytes;
-    while (len > 0 && (readBytes = is.read(buf, offset, len)) > 0) {
-      readLen += readBytes;
-      offset += readLen;
-      len -= readLen;
-    }
-    return readLen;
-  }
-
-  final int readBytes(long offset, byte[] b, int boffset, int length)
+  final int readBytes(final long offset, byte[] b, int boffset, int length)
       throws SQLException {
     BlobChunk chunk;
+    checkOffset(offset);
     if (this.streamedInput) {
       try {
-        long skipBytes = this.streamOffset - offset;
-        if (skipBytes > 0) {
-          long skipped;
-          while ((skipped = this.dataStream.skip(skipBytes)) > 0) {
-            if ((skipBytes -= skipped) <= 0) {
-              break;
+        long skipBytes = offset - this.streamOffset;
+        if (skipBytes != 0) {
+          if (this.dataStream instanceof MemInputStream) {
+            ((MemInputStream)this.dataStream).changePosition((int)offset);
+          } else if (skipBytes > 0) {
+            long skipped;
+            while ((skipped = this.dataStream.skip(skipBytes)) > 0) {
+              if ((skipBytes -= skipped) <= 0) {
+                break;
+              }
             }
-          }
-        } else if (skipBytes < 0) {
-          if (this.dataStream instanceof FileInputStream) {
-            // need to seek into the stream but only for FileInputStream
-            FileInputStream fis = (FileInputStream)this.dataStream;
-            fis.getChannel().position(offset);
-          } else {
-            throw ThriftExceptionUtil.newSQLException(
-                SQLState.BLOB_BAD_POSITION, null, offset + 1);
+            if (skipBytes > 0) {
+              byte[] buffer = new byte[(int)Math.min(skipBytes, 8192)];
+              int readBytes;
+              while ((readBytes = this.dataStream.read(buffer)) > 0) {
+                if ((skipBytes -= readBytes) <= 0) {
+                  break;
+                }
+              }
+            }
+            if (skipBytes > 0) {
+              // offset beyond the blob
+              throw ThriftExceptionUtil.newSQLException(
+                  SQLState.BLOB_POSITION_TOO_LARGE, null, offset + 1);
+            }
+          } else if (skipBytes < 0) {
+            if (this.dataStream instanceof FileInputStream) {
+              // need to seek into the stream but only for FileInputStream
+              FileInputStream fis = (FileInputStream)this.dataStream;
+              fis.getChannel().position(offset);
+            } else {
+              throw ThriftExceptionUtil.newSQLException(
+                  SQLState.BLOB_BAD_POSITION, null, offset + 1);
+            }
           }
         }
         // keep reading stream till end
         int readLen = readStream(this.dataStream, b, boffset, length);
-        this.streamOffset = (offset + readLen);
-        return readLen;
+        if (readLen >= 0) {
+          checkOffset(offset + readLen);
+          this.streamOffset = (int)(offset + readLen);
+          return readLen;
+        } else {
+          return -1; // end of data
+        }
       } catch (IOException ioe) {
         throw ThriftExceptionUtil.newSQLException(
-            SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe,
-            "java.sql.Blob");
+            SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, "java.sql.Blob");
       }
     } else if ((chunk = this.currentChunk) != null) {
       ByteBuffer buffer = chunk.chunk;
       // check if it lies outside the current chunk
-      if (offset < chunk.offset
-          || (offset + length) > (chunk.offset + buffer.remaining())) {
+      if (chunk.lobId != snappydataConstants.INVALID_ID &&
+          (offset < chunk.offset ||
+              (offset + length) > (chunk.offset + buffer.remaining()))) {
         // fetch new chunk
         try {
           this.currentChunk = chunk = service.getBlobChunk(
@@ -195,10 +245,17 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         }
       }
       int bpos = buffer.position();
+      if (offset > chunk.offset) {
+        buffer.position((int)(offset - chunk.offset));
+      }
       length = Math.min(length, buffer.remaining());
-      buffer.get(b, boffset, length);
-      buffer.position(bpos);
-      return length;
+      if (length > 0) {
+        buffer.get(b, boffset, length);
+        buffer.position(bpos);
+        return length;
+      } else {
+        return -1; // end of data
+      }
     } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.LOB_OBJECT_INVALID);
     }
@@ -208,9 +265,24 @@ public final class ClientBlob extends ClientLobBase implements Blob {
    * {@inheritDoc}
    */
   @Override
+  public ByteBuffer getAsBuffer() throws SQLException {
+    BlobChunk chunk = this.currentChunk;
+    if (chunk != null && chunk.last && chunk.offset == 0) {
+      // the first and only chunk whose ownership is handed over to caller
+      this.skipCurrentChunkClean = true;
+      return chunk.chunk;
+    } else {
+      return ByteBuffer.wrap(getBytes(1, (int)length()));
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public byte[] getBytes(long pos, int length) throws SQLException {
     final long offset = pos - 1;
-    length = (int)checkOffset(offset, length);
+    length = checkOffset(offset, length, true);
 
     if (length > 0) {
       byte[] result = new byte[length];
@@ -221,7 +293,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         return Arrays.copyOf(result, nbytes);
       }
     } else {
-      return ZERO_ARRAY;
+      return ClientSharedData.ZERO_ARRAY;
     }
   }
 
@@ -233,7 +305,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
     if (this.streamedInput) {
       return this.dataStream;
     } else if (this.currentChunk != null) {
-      return new Stream(0, this.length);
+      return new LobStream(0, this.length);
     } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.LOB_OBJECT_INVALID);
     }
@@ -244,9 +316,13 @@ public final class ClientBlob extends ClientLobBase implements Blob {
    */
   @Override
   public InputStream getBinaryStream(long pos, long len) throws SQLException {
-    final long offset = pos - 1;
-    len = checkOffset(offset, len);
-    return new Stream(offset, len);
+    if (this.streamedInput || this.currentChunk != null) {
+      final long offset = pos - 1;
+      len = checkOffset(offset, len, true);
+      return new LobStream(offset, len);
+    } else {
+      throw ThriftExceptionUtil.newSQLException(SQLState.LOB_OBJECT_INVALID);
+    }
   }
 
   /**
@@ -255,7 +331,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   @Override
   public int setBytes(long pos, byte[] bytes, int boffset, int len)
       throws SQLException {
-    checkOffset(pos - 1, len);
+    checkOffset(pos - 1, len, false);
     if (boffset < 0 || boffset > bytes.length) {
       throw ThriftExceptionUtil.newSQLException(SQLState.BLOB_INVALID_OFFSET,
           null, boffset);
@@ -276,7 +352,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         sbuffer = ms.getBuffer();
       } else {
         // materialize remote blob data
-        sbuffer = getBytes(1, (int)this.length);
+        sbuffer = getBytes(1, this.length);
         @SuppressWarnings("resource")
         MemInputStream mms = new MemInputStream(sbuffer);
         this.currentChunk = null;
@@ -288,16 +364,16 @@ public final class ClientBlob extends ClientLobBase implements Blob {
       if (newSize <= sbuffer.length) {
         // just change the underlying buffer and update count if required
         System.arraycopy(bytes, boffset, sbuffer, offset, len);
-        if (newSize > ms.getCount()) {
-          ms.changeCount(newSize);
-        }
+        ms.changeSize(newSize);
       } else {
         // create new buffer and set into input stream
         sbuffer = Arrays.copyOf(sbuffer, newSize);
         System.arraycopy(bytes, boffset, sbuffer, offset, len);
         ms.changeBuffer(sbuffer);
-        ms.changeCount(newSize);
+        ms.changeSize(newSize);
       }
+      this.length = newSize;
+      this.dataStream = ms;
       return len;
     } else {
       return 0;
@@ -317,9 +393,17 @@ public final class ClientBlob extends ClientLobBase implements Blob {
    */
   @Override
   public OutputStream setBinaryStream(long pos) throws SQLException {
-    // TODO: implement
-    throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Blob.setBinaryStream");
+    if (pos == 1 && this.length == 0) {
+      free();
+      DynamicByteArrayOutputStream out = new DynamicByteArrayOutputStream();
+      this.dataStream = new MemInputStream(out, 0);
+      this.streamedInput = true;
+      return out;
+    } else {
+      checkOffset(pos - 1);
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.NOT_IMPLEMENTED, null, "Blob.setBinaryStream(" + pos + ')');
+    }
   }
 
   /**
@@ -329,7 +413,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   public long position(byte[] pattern, long start) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Blob.position");
+        SQLState.NOT_IMPLEMENTED, null, "Blob.position");
   }
 
   /**
@@ -339,16 +423,16 @@ public final class ClientBlob extends ClientLobBase implements Blob {
   public long position(Blob pattern, long start) throws SQLException {
     // TODO: implement
     throw ThriftExceptionUtil.newSQLException(
-        SQLState.JDBC_METHOD_NOT_IMPLEMENTED, null, "Blob.position");
+        SQLState.NOT_IMPLEMENTED, null, "Blob.position");
   }
 
-  final class Stream extends InputStream {
+  final class LobStream extends InputStream {
 
     private long blobOffset;
     private final long length;
     private final byte[] singleByte;
 
-    Stream(long offset, long length) {
+    LobStream(long offset, long length) {
       this.blobOffset = offset;
       this.length = length;
       this.singleByte = new byte[1];
@@ -362,11 +446,14 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         }
       }
       try {
-        int nbytes = readBytes(this.blobOffset, b, offset, len);
-        if (nbytes > 0) {
+        int nbytes;
+        if (len > 0 && (nbytes = readBytes(this.blobOffset,
+            b, offset, len)) >= 0) {
           this.blobOffset += nbytes;
+          return nbytes;
+        } else {
+          return -1; // end of data
         }
-        return nbytes;
       } catch (SQLException sqle) {
         if (sqle.getCause() instanceof IOException) {
           throw (IOException)sqle.getCause();
@@ -392,7 +479,8 @@ public final class ClientBlob extends ClientLobBase implements Blob {
      * {@inheritDoc}
      */
     @Override
-    public int read(byte[] b, int offset, int len) throws IOException {
+    public int read(@SuppressWarnings("NullableProblems") byte[] b,
+        int offset, int len) throws IOException {
       if (b == null) {
         throw new NullPointerException();
       } else if (offset < 0 || len < 0 || len > (b.length - offset)) {
@@ -443,7 +531,7 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         return dataStream.available();
       } else if ((chunk = currentChunk) != null) {
         long coffset = this.blobOffset - chunk.offset;
-        if (coffset >= 0 && coffset <= Integer.MAX_VALUE) {
+        if (coffset >= 0 && coffset < Integer.MAX_VALUE) {
           int remaining = chunk.chunk.remaining() - (int)coffset;
           if (remaining >= 0) {
             return remaining;
@@ -454,43 +542,12 @@ public final class ClientBlob extends ClientLobBase implements Blob {
         return 0;
       }
     }
-  }
 
-  static final class MemInputStream extends ByteArrayInputStream {
-
-    public MemInputStream(byte[] b) {
-      super(b);
-    }
-
-    public MemInputStream(byte[] b, int offset, int len) {
-      super(b, offset, len);
-    }
-
-    final byte[] getBuffer() {
-      return buf;
-    }
-
-    final int getCount() {
-      return this.count;
-    }
-
-    final void changeBuffer(byte[] b) {
-      this.buf = b;
-    }
-
-    final void changeCount(int count) {
-      this.count = count;
-    }
-  }
-
-  static final class MemOutputStream extends ByteArrayOutputStream {
-
-    public MemOutputStream(int size) {
-      super(size);
-    }
-
-    final byte[] getBuffer() {
-      return buf;
+    @Override
+    public void close() throws IOException {
+      if (freeForStream) {
+        free();
+      }
     }
   }
 }

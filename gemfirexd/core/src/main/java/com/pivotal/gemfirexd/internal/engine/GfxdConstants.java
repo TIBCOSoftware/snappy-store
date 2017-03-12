@@ -242,11 +242,6 @@ public interface GfxdConstants {
   final String PROTOCOL = Attribute.PROTOCOL;
 
   /**
-   * Protocol string used for thin network clients.
-   */
-  final String NET_PROTOCOL = Attribute.THRIFT_PROTOCOL;
-
-  /**
    * A random date selected to represent infinity value
    */
   final String INFINITY_DATE_STR = "1900-01-01";
@@ -449,6 +444,7 @@ public interface GfxdConstants {
           Attribute.SERVER_GROUPS,
           Attribute.GFXD_HOST_DATA,
           Attribute.GFXD_PERSIST_DD,
+          Attribute.READ_TIMEOUT,
           Attribute.KEEPALIVE_IDLE,
           Attribute.KEEPALIVE_INTVL,
           Attribute.KEEPALIVE_CNT,
@@ -470,6 +466,7 @@ public interface GfxdConstants {
           Attribute.SHUTDOWN_ATTR,
           Attribute.SKIP_LISTENERS,
           Attribute.SKIP_LOCKS,
+          Attribute.DEFAULT_SCHEMA,
           Attribute.CLIENT_SECURITY_MECHANISM,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.SOFT_UPGRADE_NO_FEATURE_CHECK,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.TERRITORY,
@@ -487,6 +484,7 @@ public interface GfxdConstants {
           CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
           CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
           Attribute.THRIFT_USE_BINARY_PROTOCOL,
+          Attribute.THRIFT_USE_FRAMED_TRANSPORT,
           Attribute.THRIFT_USE_SSL,
           Attribute.THRIFT_SSL_PROPERTIES,
           Attribute.PREFER_NETSERVER_IP_ADDRESS,
@@ -807,6 +805,7 @@ public interface GfxdConstants {
 //  public static final String GFXD_COST_OPTIMIZED_ROUTING_THRESHOLD =
 //      GFXD_PREFIX +"cost-optimized-routing-threshold";
 
+  int SNAPPY_MIN_COLUMN_DELTA_ROWS = 200;
 
   // --------------------- Defaults for GFXD connection/transaction props
 

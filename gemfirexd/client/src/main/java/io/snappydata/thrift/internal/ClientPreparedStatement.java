@@ -40,13 +40,13 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.Converters;
@@ -121,6 +121,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   }
 
   protected final int prepare() throws SQLException {
+    this.attrs.setPoolable(true);
     try {
       PrepareResult pr = this.service.prepareStatement(this.preparedSQL, null,
           getAttributes());
@@ -135,7 +136,7 @@ public class ClientPreparedStatement extends ClientStatement implements
     final List<ColumnDescriptor> pmd = pr.getParameterMetaData();
     int numParams;
     if (pmd != null && (numParams = pmd.size()) > 0) {
-      this.paramsList = new Row(pmd);
+      this.paramsList = new Row(pmd, true);
       this.parameterMetaData = pmd;
     } else {
       this.paramsList = EMPTY_ROW;
@@ -155,10 +156,20 @@ public class ClientPreparedStatement extends ClientStatement implements
     return numParams;
   }
 
+  final SQLException informListeners(SQLException sqle) {
+    // report only fatal errors
+    final ClientPooledConnection pooledConn = conn.getOwnerPooledConnection();
+    if (pooledConn != null && (sqle.getErrorCode() >=
+        ExceptionSeverity.SESSION_SEVERITY || isClosed())) {
+      pooledConn.onStatementError(this, sqle);
+    }
+    return sqle;
+  }
+
   @Override
   protected final void setCurrentRowSet(RowSet rs) {
-    if (rs != null) {
-      final int stmtId = rs.getStatementId();
+    if (rs != null && (rs.getMetadata() != null || rs.getRowsSize() > 0)) {
+      final long stmtId = rs.getStatementId();
       if (stmtId != snappydataConstants.INVALID_ID) {
         this.statementId = stmtId;
       }
@@ -206,7 +217,7 @@ public class ClientPreparedStatement extends ClientStatement implements
         return false;
       }
     } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
+      throw informListeners(ThriftExceptionUtil.newSQLException(se));
     }
   }
 
@@ -220,14 +231,13 @@ public class ClientPreparedStatement extends ClientStatement implements
     try {
       // don't throw exception in getLobSource rather return null and
       // service will failover to new node and do re-prepare as required
-      RowSet rs = this.service.executePreparedQuery(
-          getLobSource(false, "executeQuery"), statementId, this.paramsList,
-          this);
+      RowSet rs = this.service.executePreparedQuery(getLobSource(
+          false, "executeQuery"), statementId, this.paramsList, this);
       setCurrentRowSet(rs);
       this.warnings = rs.getWarnings();
       return new ClientResultSet(this.conn, this, rs);
     } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
+      throw informListeners(ThriftExceptionUtil.newSQLException(se));
     }
   }
 
@@ -241,16 +251,15 @@ public class ClientPreparedStatement extends ClientStatement implements
     try {
       // don't throw exception in getLobSource rather return null and
       // service will failover to new node and do re-prepare as required
-      UpdateResult ur = this.service.executePreparedUpdate(
-          getLobSource(false, "executeUpdate"), statementId, this.paramsList,
-          this);
+      UpdateResult ur = this.service.executePreparedUpdate(getLobSource(
+          false, "executeUpdate"), statementId, this.paramsList, this);
       if (this.attrs.isRequireAutoIncCols()) {
         this.currentGeneratedKeys = ur.getGeneratedKeys();
       }
       this.warnings = ur.getWarnings();
       return (this.currentUpdateCount = ur.getUpdateCount());
     } catch (SnappyException se) {
-      throw ThriftExceptionUtil.newSQLException(se);
+      throw informListeners(ThriftExceptionUtil.newSQLException(se));
     }
   }
 
@@ -266,13 +275,14 @@ public class ClientPreparedStatement extends ClientStatement implements
       try {
         // don't throw exception in getLobSource rather return null and
         // service will failover to new node and do re-prepare as required
-        UpdateResult ur = this.service.executePreparedBatch(
-            getLobSource(false, "executeBatch"), statementId, batch, this);
+        UpdateResult ur = this.service.executePreparedBatch(getLobSource(
+            false, "executeBatch"), statementId, batch, this);
         this.warnings = ur.getWarnings();
         if (this.attrs.isRequireAutoIncCols()) {
           this.currentGeneratedKeys = ur.getGeneratedKeys();
         }
         List<Integer> updateCounts = ur.getBatchUpdateCounts();
+        clearBatchData();
         if (updateCounts != null) {
           int[] result = new int[updateCounts.size()];
           for (int i = 0; i < result.length; i++) {
@@ -281,14 +291,52 @@ public class ClientPreparedStatement extends ClientStatement implements
           return result;
         }
       } catch (SnappyException se) {
-        throw ThriftExceptionUtil.newSQLException(se);
+        throw informListeners(ThriftExceptionUtil.newSQLException(se));
       }
     }
     return new int[0];
   }
 
-  protected final SnappyType getType(int parameterIndex) {
-    return this.parameterMetaData.get(parameterIndex - 1).type;
+  protected final int getType(int parameterIndex) {
+    return this.paramsList.getType(parameterIndex - 1);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void close() throws SQLException {
+    // no pooling of prepared statements since plans are already cached on the
+    // server-side; instead just inform the event callbacks on close so that
+    // the connection pool manager marks this statement as closed
+    SQLException listenerError = null;
+    final ClientPooledConnection pooledConn = conn.getOwnerPooledConnection();
+    try {
+      // record to inform the listeners if any
+      if (pooledConn != null) {
+        if (this.isClosed) {
+          listenerError = ThriftExceptionUtil.newSQLException(
+              SQLState.ALREADY_CLOSED, null, "PreparedStatement");
+        } else if (this.service.isClosed()) {
+          listenerError = ThriftExceptionUtil.newSQLException(
+              SQLState.PHYSICAL_CONNECTION_ALREADY_CLOSED);
+        }
+      }
+
+      super.close();
+      if (pooledConn != null) {
+        pooledConn.onStatementClose(this);
+      }
+    } catch (SQLException sqle) {
+      if (pooledConn != null) {
+        listenerError = sqle;
+      }
+      throw sqle;
+    } finally {
+      if (listenerError != null) {
+        pooledConn.onStatementError(this, listenerError);
+      }
+    }
   }
 
   // throw exceptions for unprepared operations
@@ -531,6 +579,14 @@ public class ClientPreparedStatement extends ClientStatement implements
     }
   }
 
+  protected final void clearBatchData() {
+    final ArrayList<Row> batch = this.paramsBatch;
+    if (batch != null && !batch.isEmpty()) {
+      batch.clear();
+    }
+    super.clearBatchData();
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -539,7 +595,7 @@ public class ClientPreparedStatement extends ClientStatement implements
       throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    Converters.getConverter(Converters.getThriftSQLType(targetSqlType),
+    Converters.getConverter(getType(parameterIndex),
         "Object", true, parameterIndex).setObject(
         this.paramsList, parameterIndex, x);
   }
@@ -567,7 +623,7 @@ public class ClientPreparedStatement extends ClientStatement implements
         this.paramsBatch = new ArrayList<>();
       }
       this.paramsBatch.add(this.paramsList);
-      this.paramsList = new Row(this.parameterMetaData);
+      this.paramsList = new Row(this.paramsList, false, false);
     }
   }
 
@@ -668,8 +724,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // ignore sqlType and typeName
-    this.paramsList.setNull(parameterIndex - 1);
+    // ignore typeName
+    this.paramsList.setNull(parameterIndex - 1,
+        Converters.getThriftSQLType(sqlType).getValue());
   }
 
   /**
@@ -728,9 +785,8 @@ public class ClientPreparedStatement extends ClientStatement implements
     } else if (x instanceof Reader) {
       setCharacterStream(parameterIndex, (Reader)x, scaleOrLength);
     } else {
-      Converters.getConverter(Converters.getThriftSQLType(targetSqlType),
-          "Object", true, parameterIndex).setObject(
-          this.paramsList, parameterIndex, x);
+      Converters.getConverter(getType(parameterIndex), "Object", true,
+          parameterIndex).setObject(this.paramsList, parameterIndex, x);
     }
   }
 
@@ -742,8 +798,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       long length) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "BinaryStream",
+        true, parameterIndex).setBinaryStream(this.paramsList,
+        parameterIndex, x, length, this.service);
   }
 
   /**
@@ -772,8 +829,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       long length) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "CharacterStream",
+        true, parameterIndex).setCharacterStream(this.paramsList,
+        parameterIndex, reader, length, this.service);
   }
 
   /**
@@ -802,8 +860,9 @@ public class ClientPreparedStatement extends ClientStatement implements
       long length) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "AsciiStream",
+        true, parameterIndex).setAsciiStream(this.paramsList,
+        parameterIndex, x, length, this.service);
   }
 
   /**
@@ -840,10 +899,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   @Override
   public final void setBlob(int parameterIndex, InputStream inputStream,
       long length) throws SQLException {
-    checkValidParameterIndex(parameterIndex);
-
-    // TODO Auto-generated method stub
-
+    setBinaryStream(parameterIndex, inputStream, length);
   }
 
   /**
@@ -853,8 +909,8 @@ public class ClientPreparedStatement extends ClientStatement implements
   public final void setBlob(int parameterIndex, Blob x) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "blob",
+        true, parameterIndex).setBlob(this.paramsList, parameterIndex, x);
   }
 
   /**
@@ -872,10 +928,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   @Override
   public final void setClob(int parameterIndex, Reader reader, long length)
       throws SQLException {
-    checkValidParameterIndex(parameterIndex);
-
-    // TODO Auto-generated method stub
-
+    setCharacterStream(parameterIndex, reader, length);
   }
 
   /**
@@ -885,8 +938,8 @@ public class ClientPreparedStatement extends ClientStatement implements
   public final void setClob(int parameterIndex, Clob x) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
-    // TODO Auto-generated method stub
-
+    Converters.getConverter(getType(parameterIndex), "clob",
+        true, parameterIndex).setClob(this.paramsList, parameterIndex, x);
   }
 
   /**
@@ -962,7 +1015,7 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public int getStatementId() {
+  public long getStatementId() {
     return this.statementId;
   }
 

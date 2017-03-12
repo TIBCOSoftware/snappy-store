@@ -66,6 +66,8 @@ public final class ClientSharedData {
 
   public static final byte CLIENT_TXID_NOT_WRITTEN = (byte)0;
 
+  public static final byte[] ZERO_ARRAY = new byte[0];
+
   private static final ThreadLocal<GregorianCalendar> DEFAULT_CALENDAR =
       new ThreadLocal<GregorianCalendar>() {
     @Override

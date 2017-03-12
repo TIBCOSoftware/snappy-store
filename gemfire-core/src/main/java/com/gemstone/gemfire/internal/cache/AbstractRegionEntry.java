@@ -2876,8 +2876,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     throw new UnsupportedOperationException("unexpected invocation");
   }
 
-  public final int readBytes(UnsafeWrapper unsafe, long memOffset,
-      int columnWidth, ByteSource bs) {
+  public final int readBytes(long memOffset, int columnWidth, ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation");
   }
 

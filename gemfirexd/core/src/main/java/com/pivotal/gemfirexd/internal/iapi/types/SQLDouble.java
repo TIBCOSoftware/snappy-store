@@ -42,7 +42,6 @@ package com.pivotal.gemfirexd.internal.iapi.types;
 
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -50,12 +49,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLBoolean;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -994,9 +987,9 @@ public final class SQLDouble extends NumberDataType
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
+  public int readBytes(long memOffset,
       final int columnWidth, ByteSource bs) {
-    long bits = RowFormatter.readLong(unsafe, memOffset);
+    long bits = RowFormatter.readLong(memOffset);
     this.isnull = false;
     this.value = Double.longBitsToDouble(bits);
     assert columnWidth == (Double.SIZE >>> 3);
@@ -1015,9 +1008,8 @@ public final class SQLDouble extends NumberDataType
     return Double.longBitsToDouble(bits);
   }
 
-  static final double getAsDouble(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    final long bits = RowFormatter.readLong(unsafe, memOffset);
+  static final double getAsDouble(final long memOffset) {
+    final long bits = RowFormatter.readLong(memOffset);
     return Double.longBitsToDouble(bits);
   }
 

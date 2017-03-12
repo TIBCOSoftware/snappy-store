@@ -59,10 +59,10 @@
 package io.snappydata.jdbc;
 
 import java.sql.SQLException;
+import javax.sql.PooledConnection;
 
-import com.pivotal.gemfirexd.internal.client.am.ClientMessageId;
-import com.pivotal.gemfirexd.internal.client.am.SqlException;
-import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import io.snappydata.thrift.internal.ClientPooledConnection;
 
 /**
  * ClientConnectionPoolDataSource is a factory for PooledConnection objects.
@@ -73,51 +73,31 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
  */
 public class ClientConnectionPoolDataSource
     extends com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource {
+
   /**
-   * Returns false unless <code>interfaces</code> is implemented
-   *
-   * @param interfaces a Class defining an interface.
-   * @return true                   if this implements the interface or
-   * directly or indirectly wraps an object
-   * that does.
-   * @throws java.sql.SQLException if an error occurs while determining
-   *                               whether this is a wrapper for an object
-   *                               with the given interface.
+   * {@inheritDoc}
    */
-// GemStone changes BEGIN
-  // made non-generic so can override the method in base class so that can
-  // be compiled with both JDK 1.6 and 1.4
-  public boolean isWrapperFor(Class interfaces) throws SQLException {
-    /* (original code)
-    public boolean isWrapperFor(Class<?> interfaces) throws SQLException {
-    */
-// GemStone changes END
-    return interfaces.isInstance(this);
+  @Override
+  public PooledConnection getPooledConnection() throws SQLException {
+    if (ClientSharedUtils.isThriftDefault()) {
+      return getPooledConnection(getUser(), getPassword());
+    } else {
+      return super.getPooledConnection();
+    }
   }
 
   /**
-   * Returns <code>this</code> if this class implements the interface
-   *
-   * @param interfaces a Class defining an interface
-   * @return an object that implements the interface
-   * @throws java.sql.SQLException if no object if found that implements the
-   *                               interface
+   * {@inheritDoc}
    */
-// GemStone changes BEGIN
-  // made non-generic so can override the method in base class so that can
-  // be compiled with both JDK 1.6 and 1.4
-  public Object unwrap(java.lang.Class interfaces) throws SQLException {
-    /* (original code)
-    public <T> T unwrap(java.lang.Class<T> interfaces)
-                                   throws SQLException {
-    */
-// GemStone changes END
-    try {
-      return interfaces.cast(this);
-    } catch (ClassCastException cce) {
-      throw new SqlException(null, new ClientMessageId(
-          SQLState.UNABLE_TO_UNWRAP), interfaces).getSQLException(
-          null /* GemStoneAddition */);
+  @Override
+  public PooledConnection getPooledConnection(String user, String password)
+      throws SQLException {
+    if (ClientSharedUtils.isThriftDefault()) {
+      return new ClientPooledConnection(getServerName(), getPortNumber(),
+          false, ClientDataSource.getThriftProperties(user, password, this),
+          getLogWriter());
+    } else {
+      return super.getPooledConnection(user, password);
     }
   }
 }

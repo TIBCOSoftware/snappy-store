@@ -24,6 +24,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
+import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
@@ -1978,30 +1979,39 @@ public class GfxdSystemProcedures extends SystemProcedures {
           GfxdSystemProcedureMessage.SysProcMethod.dumpStacks, false, true);
     }
   }
-  
-	/**
-	 * This procedure sets the local execution mode for a particular bucket. To prevent
-     * clearing of lcc in case of thin client connections a flag BUCKET_RENTION_FOR_LOCAL_EXECUTION
-     * is set.
-	 */
 
-	public static void SET_BUCKETS_FOR_LOCAL_EXECUTION(String tableName,
-			String buckets) throws SQLException, StandardException {
-		if (tableName == null) {
-			throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
-		}
-		Region region = Misc.getRegionForTable(tableName, true);
-		LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-        Set<Integer> bucketSet = new HashSet();
-        StringTokenizer st = new StringTokenizer(buckets,",");
-        while(st.hasMoreTokens()){
-          bucketSet.add(Integer.parseInt(st.nextToken()));
-        }
-        lcc.setExecuteLocally(bucketSet, region, false, null);
-         if (lcc instanceof GenericLanguageConnectionContext)
-            ((GenericLanguageConnectionContext) lcc).setBucketRetentionForLocalExecution(true);
-	}
-  
+  /**
+   * This procedure sets the local execution mode for a particular bucket.
+   */
+  public static void setBucketsForLocalExecution(String tableName,
+      Set<Integer> bucketSet, @Nonnull LanguageConnectionContext lcc) {
+    Region region = Misc.getRegionForTable(tableName, true);
+    lcc.setExecuteLocally(bucketSet, region, false, null);
+  }
+
+  /**
+   * This procedure sets the local execution mode for a particular bucket.
+   * To prevent clearing of lcc in case of thin client connections a flag
+   * BUCKET_RENTION_FOR_LOCAL_EXECUTION is set.
+   */
+  public static void SET_BUCKETS_FOR_LOCAL_EXECUTION(String tableName,
+      String buckets) throws SQLException {
+    if (tableName == null) {
+      throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
+    }
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    Set<Integer> bucketSet = new HashSet<>();
+    StringTokenizer st = new StringTokenizer(buckets, ",");
+    while (st.hasMoreTokens()) {
+      bucketSet.add(Integer.parseInt(st.nextToken()));
+    }
+    setBucketsForLocalExecution(tableName, bucketSet, lcc);
+    if (lcc instanceof GenericLanguageConnectionContext) {
+      ((GenericLanguageConnectionContext)lcc)
+          .setBucketRetentionForLocalExecution(true);
+    }
+  }
+
   /**
    * This procedure sets the Nanotimer type. NanoTimer are used extensively while 
    * generating the Explain plans. The timer can either be set to use 
@@ -2113,8 +2123,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     // send a message to cancel the query on all data nodes
     QueryCancelFunctionArgs args = QueryCancelFunction
-        .newQueryCancelFunctionArgs(statementId, executionID, 
-            connectionId);
+        .newQueryCancelFunctionArgs(statementId, connectionId);
     Set<DistributedMember> otherMembers = GfxdMessage.getAllGfxdServers();
     if (otherMembers.size() > 0) {
       FunctionService.onMembers(otherMembers).withArgs(args).execute(

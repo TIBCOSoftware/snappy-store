@@ -143,8 +143,6 @@ namespace client {
     void setStruct(const uint32_t columnIndex, thrift::Struct&& v);
 
     void setNull(const uint32_t columnIndex, const bool v);
-
-    void setJSON(const uint32_t columnIndex, const JSON& v);
   };
 
 } /* namespace client */

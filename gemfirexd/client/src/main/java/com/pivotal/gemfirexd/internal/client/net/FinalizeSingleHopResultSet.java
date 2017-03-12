@@ -109,7 +109,7 @@ public class FinalizeSingleHopResultSet extends FinalizeObject {
   }
 
   @Override
-  protected final FinalizeHolder getHolder() {
+  public final FinalizeHolder getHolder() {
     return getClientHolder();
   }
 

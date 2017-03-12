@@ -1050,7 +1050,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     HashMap<InternalDistributedMember, String> mbrToNetworkServerMap =
       new HashMap<InternalDistributedMember, String>();
     StringBuilder serverSB = new StringBuilder();
-    final boolean useThrift = ClientSharedUtils.USE_THRIFT_AS_DEFAULT;
+    final boolean useThrift = ClientSharedUtils.isThriftDefault();
     this.mapLock.readLock().lock();
     try {
       VMKind kind = this.myProfile.getVMKind();

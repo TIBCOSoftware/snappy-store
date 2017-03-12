@@ -5,9 +5,14 @@ set -e
 # classes. Those hand optimized files overwrite the generated files. If thrift
 # version is updated then that code may also need to be updated correspondingly.
 
-THRIFT_VERSION=1.0.0-1
-PATH=$PATH:/export/shared/software/thrift-${THRIFT_VERSION}/lin64/bin
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/export/shared/software/thrift-${THRIFT_VERSION}/lin64/lib
+if [ -z ${THRIFT_VERSION} ]; then
+  THRIFT_VERSION=0.10.0
+fi
+if [ -z ${SOFTWARE_PREFIX} ]; then
+  SOFTWARE_PREFIX=/export/shared/software
+fi
+PATH=$PATH:${SOFTWARE_PREFIX}/thrift-${THRIFT_VERSION}/lin64/bin
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${SOFTWARE_PREFIX}/thrift-${THRIFT_VERSION}/lin64/lib
 
 export PATH LD_LIBRARY_PATH
 

@@ -63,6 +63,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.client.am.ClientJDBCObjectFactory;
 import com.pivotal.gemfirexd.internal.client.am.SqlException;
 import com.pivotal.gemfirexd.internal.client.am.Utils;
@@ -190,9 +191,14 @@ public class ClientDRDADriver implements java.sql.Driver {
             String database = "";
             java.util.Properties augmentedProperties = getURLProperties(m,
                 properties);
-            augmentedProperties.put(DRDA_CONNECTION_PROTOCOL , m.group(1));
+            augmentedProperties.put(DRDA_CONNECTION_PROTOCOL, m.group(1));
 
             if (thriftProtocol) {
+              // disable query routing for gemfirexd URL
+              String protocol = m.group(1);
+              if (protocol.equalsIgnoreCase(GEMXD_PROTOCOL)) {
+                augmentedProperties.put(Attribute.ROUTE_QUERY, "false");
+              }
               return createThriftConnection(server, port[0], augmentedProperties);
             }
 // GemStone changes END
@@ -203,7 +209,7 @@ public class ClientDRDADriver implements java.sql.Driver {
             } catch (java.lang.NumberFormatException e) {
                 // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
                 throw ClientExceptionUtil.newSQLException(
-                    SQLState.TRACELEVEL_FORMAT_INVALID, e);
+                    SQLState.LOGLEVEL_FORMAT_INVALID, e, e.getMessage());
             }
 
             // Jdbc 1 connections will write driver trace info on a
@@ -297,22 +303,22 @@ public class ClientDRDADriver implements java.sql.Driver {
                         properties.getProperty(Attribute.USERNAME_ATTR, ClientDataSource.propertyDefault_user));
          */
         boolean isUserNameAttribute = false;
-        String userName = properties.getProperty(com.pivotal.gemfirexd.Attribute.USERNAME_ATTR);
+        String userName = properties.getProperty(Attribute.USERNAME_ATTR);
         if( userName == null) {
-          userName = properties.getProperty(com.pivotal.gemfirexd.Attribute.USERNAME_ALT_ATTR);
+          userName = properties.getProperty(Attribute.USERNAME_ALT_ATTR);
           if(userName != null) {
             isUserNameAttribute = true;
           }
         }
         
         driverPropertyInfo[0] = new java.sql.DriverPropertyInfo(
-            isUserNameAttribute ? com.pivotal.gemfirexd.Attribute.USERNAME_ALT_ATTR
-                : com.pivotal.gemfirexd.Attribute.USERNAME_ATTR, userName);
+            isUserNameAttribute ? Attribute.USERNAME_ALT_ATTR
+                : Attribute.USERNAME_ATTR, userName);
         // GemStone changes END
         
         driverPropertyInfo[1] =
-                new java.sql.DriverPropertyInfo(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR,
-                        properties.getProperty(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR));
+                new java.sql.DriverPropertyInfo(Attribute.PASSWORD_ATTR,
+                        properties.getProperty(Attribute.PASSWORD_ATTR));
 
         driverPropertyInfo[0].description =
             SqlException.getMessageUtil().getTextMessage(

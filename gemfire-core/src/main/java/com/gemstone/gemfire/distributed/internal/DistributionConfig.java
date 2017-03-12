@@ -423,7 +423,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
    */
   public boolean isLogFileModifiable();
   /** The name of the "logFile" property */
-  public static final String LOG_FILE_NAME = SystemProperties.LOG_FILE_NAME;
+  public static final String LOG_FILE_NAME = "log-file";
 
   /**
    * The default log file.

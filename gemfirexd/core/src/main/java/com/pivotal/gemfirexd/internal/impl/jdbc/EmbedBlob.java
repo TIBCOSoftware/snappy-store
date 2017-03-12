@@ -44,7 +44,6 @@ package com.pivotal.gemfirexd.internal.impl.jdbc;
 import com.gemstone.gemfire.DataSerializable.Replaceable;
 import com.gemstone.gemfire.internal.shared.FinalizeHolder;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
-import com.gemstone.gnu.trove.TLinkable;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineLOB;
 import com.pivotal.gemfirexd.internal.iapi.reference.Limits;
@@ -1168,7 +1167,7 @@ final class EmbedBlob extends ConnectionChild implements Blob, EngineLOB
       }
 
       @Override
-      protected final FinalizeHolder getHolder() {
+      public final FinalizeHolder getHolder() {
         return getServerHolder();
       }
 

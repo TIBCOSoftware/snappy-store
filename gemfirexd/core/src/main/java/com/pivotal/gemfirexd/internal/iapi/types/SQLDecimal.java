@@ -57,6 +57,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
+import org.apache.spark.unsafe.Platform;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -1825,16 +1826,14 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset, final int columnWidth, ByteSource bs) {
     final int numBytes = columnWidth - 2;
     // clear the previous value to ensure that the rawData value will be used
     this.value = null;
     this.rawData = new byte[numBytes];
-    this.rawScale = unsafe.getByte(memOffset++);
-    this.rawSig = unsafe.getByte(memOffset++);
-    UnsafeMemoryChunk
-        .readUnsafeBytes(unsafe, memOffset, this.rawData, numBytes);
+    this.rawScale = Platform.getByte(null, memOffset++);
+    this.rawSig = Platform.getByte(null, memOffset++);
+    UnsafeMemoryChunk.readUnsafeBytes(memOffset, this.rawData, numBytes);
     assert ((int)this.rawSig) == 0 || ((int)this.rawSig) == -1
         || ((int)this.rawSig) == 1: ((int)this.rawSig) + " byte=" + this.rawSig;
     return columnWidth;
@@ -1891,17 +1890,16 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
     return new BigDecimal(new BigInteger(signum, bytes), scale);
   }
 
-  static final BigDecimal getAsBigDecimal(final UnsafeWrapper unsafe,
-      long memOffset, final int columnWidth) {
+  static final BigDecimal getAsBigDecimal(long memOffset, final int columnWidth) {
     final int scale, signum;
-    scale = unsafe.getByte(memOffset++);
-    signum = unsafe.getByte(memOffset++);
+    scale = Platform.getByte(null, memOffset++);
+    signum = Platform.getByte(null, memOffset++);
     // we need to create intermediate byte[] since the package private
     // constructor of BigInteger that directly takes int[] is only available
     // in Sun JDK >= 1.6.0_20
     final int numBytes = columnWidth - 2;
     final byte[] bytes = new byte[numBytes];
-    UnsafeMemoryChunk.readUnsafeBytes(unsafe, memOffset, bytes, numBytes);
+    UnsafeMemoryChunk.readUnsafeBytes(memOffset, bytes, numBytes);
     return new BigDecimal(new BigInteger(signum, bytes), scale);
   }
 

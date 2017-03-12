@@ -397,7 +397,7 @@ public class TestUtil {
 				case DB2JCC_FRAMEWORK:
 					return "com.ibm.db2.jcc.DB2";
 				case DERBY_NET_CLIENT_FRAMEWORK:
-					return "com.pivotal.gemfirexd.internal.jdbc.Client";
+					return "io.snappydata.jdbc.Client";
 				case EMBEDDED_FRAMEWORK:
 					return "com.pivotal.gemfirexd.internal.jdbc.Embedded";
 				default:

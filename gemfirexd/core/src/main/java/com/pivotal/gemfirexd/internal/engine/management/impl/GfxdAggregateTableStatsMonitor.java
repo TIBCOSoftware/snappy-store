@@ -133,9 +133,7 @@ public class GfxdAggregateTableStatsMonitor {
                 }
               }
             } catch (Exception e) {
-              logger.warning(LocalizedStrings.DEBUG, "exception in updatestas = "
-                  + e);
-              
+              logger.warning(LocalizedStrings.DEBUG, "exception in updatestats", e);
               //continue for other members
               continue;
             }
@@ -143,8 +141,7 @@ public class GfxdAggregateTableStatsMonitor {
         }
       }
     } catch (Exception ex) {
-      logger.warning(LocalizedStrings.DEBUG, "exception occured in updatestas = "
-          + ex);
+      logger.warning(LocalizedStrings.DEBUG, "exception occured in updatestats", ex);
     }   
   }
 }

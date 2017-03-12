@@ -58,11 +58,15 @@
 
 package io.snappydata.jdbc;
 
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Properties;
 
-import com.pivotal.gemfirexd.internal.client.am.ClientMessageId;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.am.SqlException;
-import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import com.pivotal.gemfirexd.internal.jdbc.ClientBaseDataSource;
+import com.pivotal.gemfirexd.jdbc.ClientAttribute;
+import io.snappydata.thrift.internal.ClientConnection;
 
 /**
  * ClientDataSource is a simple data source implementation
@@ -128,6 +132,8 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
  * Care must taken by the user to prevent security
  * breaches.
  * <p/>
+ *
+ * @see javax.sql.DataSource
  */
 public class ClientDataSource extends com.pivotal.gemfirexd.internal.jdbc.ClientDataSource {
 
@@ -136,49 +142,67 @@ public class ClientDataSource extends com.pivotal.gemfirexd.internal.jdbc.Client
   }
 
   /**
-   * Returns false unless <code>interfaces</code> is implemented
-   *
-   * @param interfaces a Class defining an interface.
-   * @return true                   if this implements the interface or
-   * directly or indirectly wraps an object
-   * that does.
-   * @throws java.sql.SQLException if an error occurs while determining
-   *                               whether this is a wrapper for an object
-   *                               with the given interface.
+   * {@inheritDoc}
    */
-// GemStone changes BEGIN
-  // made non-generic so can override the method in base class so that can
-  // be compiled with both JDK 1.6 and 1.4
-  public boolean isWrapperFor(Class interfaces) throws SQLException {
-    /* (original code)
-    public boolean isWrapperFor(Class<?> interfaces) throws SQLException {
-    */
-// GemStone changes END
-    return interfaces.isInstance(this);
+  @Override
+  public Connection getConnection() throws SQLException {
+    if (ClientSharedUtils.isThriftDefault()) {
+      return getConnection(getUser(), getPassword());
+    } else {
+      return super.getConnection();
+    }
   }
 
   /**
-   * Returns <code>this</code> if this class implements the interface
-   *
-   * @param interfaces a Class defining an interface
-   * @return an object that implements the interface
-   * @throws java.sql.SQLException if no object if found that implements the
-   *                               interface
+   * {@inheritDoc}
    */
-// GemStone changes BEGIN
-  // made non-generic so can override the method in base class so that can
-  // be compiled with both JDK 1.6 and 1.4
-  public Object unwrap(java.lang.Class interfaces) throws SQLException {
-    /* (original code)
-    public <T> T unwrap(java.lang.Class<T> interfaces)
-                                   throws SQLException {
-    */
-// GemStone changes END
-    try {
-      return interfaces.cast(this);
-    } catch (ClassCastException cce) {
-      throw new SqlException(null, new ClientMessageId(SQLState.UNABLE_TO_UNWRAP),
-          interfaces).getSQLException(null /* GemStoneAddition */);
+  @Override
+  public Connection getConnection(String user, String password)
+      throws SQLException {
+    if (ClientSharedUtils.isThriftDefault()) {
+      return ClientConnection.create(getServerName(), getPortNumber(),
+          getThriftProperties(user, password, this), getLogWriter());
+    } else {
+      return super.getConnection(user, password);
     }
+  }
+
+  static Properties getThriftProperties(String user, String password,
+      ClientBaseDataSource dataSource) throws SQLException {
+    Properties props;
+    try {
+      props = tokenizeAttributes(dataSource.getConnectionAttributes(), null);
+    } catch (SqlException sqle) {
+      throw sqle.getSQLException(null);
+    }
+    if (user != null) {
+      if (props == null) {
+        props = new Properties();
+      }
+      props.setProperty(ClientAttribute.USERNAME, user);
+      if (password != null) {
+        props.setProperty(ClientAttribute.PASSWORD, password);
+      }
+    }
+    int loginTimeout = dataSource.getLoginTimeout();
+    if (loginTimeout != 0) {
+      props.setProperty(ClientAttribute.READ_TIMEOUT,
+          Integer.toString(loginTimeout));
+    }
+    String ssl = dataSource.getSsl();
+    if (ssl != null && !ssl.isEmpty()) {
+      if (ssl.equalsIgnoreCase("off") || ssl.equalsIgnoreCase("false")) {
+        props.remove(ClientAttribute.SSL);
+      } else {
+        props.put(ClientAttribute.SSL, "true");
+        if (!ssl.equalsIgnoreCase("basic") && !ssl.equalsIgnoreCase("true")) {
+          if (ssl.equalsIgnoreCase("peerAuthentication")) {
+            ssl = "client-auth=true";
+          }
+          props.put(ClientAttribute.THRIFT_SSL_PROPERTIES, ssl);
+        }
+      }
+    }
+    return props;
   }
 }

@@ -26,7 +26,7 @@ import com.gemstone.gnu.trove.TLinkedList;
 
 /**
  * Holds reference queue, pending queue etc for {@link FinalizeObject} cleanup.
- * 
+ *
  * @author swale
  */
 public final class FinalizeHolder {
@@ -53,7 +53,7 @@ public final class FinalizeHolder {
   private final TLinkedList pendingQueue;
 
   /** number of items added in the finalizerQueue */
-  private int numAdds;
+  private long numAdds;
 
   /** maximum number of finalizers to clear in foreground threads */
   private static final int MAX_FOREGROUND_FINALIZE = 8;
@@ -66,7 +66,7 @@ public final class FinalizeHolder {
   }
 
   // TODO: PERF: change to use the CAS techniques of ConcurrentLinkedDeque
-  synchronized final int addToFinalizerQueue(FinalizeObject obj) {
+  synchronized final long addToFinalizerQueue(FinalizeObject obj) {
     this.finalizerQueue.add(obj);
     return ++this.numAdds;
   }
@@ -81,9 +81,8 @@ public final class FinalizeHolder {
   }
 
   public final void addToPendingQueue(FinalizeObject obj) {
-    final TLinkedList pendingQ = this.pendingQueue;
-    if (emptyReferenceQueue(this.referenceQueue, pendingQ, obj,
-        MAX_FOREGROUND_FINALIZE) >= MAX_FOREGROUND_FINALIZE) {
+    if (emptyReferenceQueue(this.pendingQueue, obj, MAX_FOREGROUND_FINALIZE) >=
+        MAX_FOREGROUND_FINALIZE) {
       invokePendingFinalizers(MAX_FOREGROUND_FINALIZE);
     }
   }
@@ -97,14 +96,13 @@ public final class FinalizeHolder {
     return list.size() > 0 ? list.removeFirst() : null;
   }
 
-  private synchronized int emptyReferenceQueue(
-      final ReferenceQueue<Object> refQ, final TLinkedList pendingQ,
+  private synchronized int emptyReferenceQueue(final TLinkedList pendingQ,
       final FinalizeObject newObj, int maxPoll) {
     assert Thread.holdsLock(this);
 
     final TLinkedList finalizerQ = this.finalizerQueue;
     Object o;
-    while (maxPoll-- > 0 && (o = refQ.poll()) != null) {
+    while (maxPoll-- > 0 && (o = this.referenceQueue.poll()) != null) {
       ((FinalizeObject)o).clearSuper();
       finalizerQ.remove(o);
       pendingQ.add(o);
@@ -204,7 +202,6 @@ public final class FinalizeHolder {
    */
   public final void invokePendingFinalizers(int maxPoll) {
     Object o;
-    final ReferenceQueue<Object> refQ = this.referenceQueue;
     final TLinkedList pendingQ = this.pendingQueue;
     // keep clearing from queues and filling into local array for batch
     // finalization if possible
@@ -213,7 +210,7 @@ public final class FinalizeHolder {
     // clear from reference queue and local queue upfront;
     // maxPoll argument is to protect for the rare case where reference queue
     // is growing as fast as this method empties it
-    emptyReferenceQueue(refQ, pendingQ, null, maxPoll);
+    emptyReferenceQueue(pendingQ, null, maxPoll);
     while (maxPoll-- > 0 && (o = pollQueue(pendingQ)) != null) {
       addToBatch(o, finalizeList, batchFinalizeList);
     }
@@ -231,11 +228,11 @@ public final class FinalizeHolder {
   }
 
   final void initializeFinalizer(FinalizeObject obj) {
-    final int n = addToFinalizerQueue(obj);
+    final long n = addToFinalizerQueue(obj);
     if ((n % 4) == 0) {
       // empty the reference queue and check size of resulting pending queue
-      if (emptyReferenceQueue(referenceQueue, pendingQueue, null,
-          MAX_FOREGROUND_FINALIZE) >= MAX_FOREGROUND_FINALIZE) {
+      if (emptyReferenceQueue(pendingQueue, null, MAX_FOREGROUND_FINALIZE) >=
+          MAX_FOREGROUND_FINALIZE) {
         invokePendingFinalizers(MAX_FOREGROUND_FINALIZE);
       }
     }

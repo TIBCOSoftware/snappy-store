@@ -124,7 +124,7 @@ Timestamp Timestamp::parseString(const std::string& str,
     err.append(": ").append(e.what());
     Utils::throwDataFormatError("TIMESTAMP", columnIndex, err.c_str());
     // never reached
-    return Timestamp(0);
+    return Timestamp(0L);
   }
 }
 

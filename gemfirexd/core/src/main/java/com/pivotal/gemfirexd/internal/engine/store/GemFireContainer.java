@@ -63,14 +63,12 @@ import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.DataAsAddress;
-import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -450,8 +448,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
               this.schemaName, this.tableName, true));
       if (isPartitioned()) {
-        ((PartitionedRegion)this.region).
-            setColumnBatchSizes(externalTableMetaData.get().cachedBatchSize, 200);
+        ExternalTableMetaData metaData = externalTableMetaData.get();
+        ((PartitionedRegion)this.region).setColumnBatchSizes(
+            metaData.columnBatchSize, metaData.columnMaxDeltaRows,
+            GfxdConstants.SNAPPY_MIN_COLUMN_DELTA_ROWS);
       }
     }
     return externalTableMetaData.get();
@@ -984,11 +984,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   /**
    * Return the table info for this container given the first row byte array.
    */
-  private final ExtraTableInfo getExtraTableInfoForMultiSchema(
+  private ExtraTableInfo getExtraTableInfoForMultiSchema(
       final OffHeapByteSource rawRow) {
-    final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
     final long memAddr = rawRow.getUnsafeAddress();
-    final int schemaVersion = RowFormatter.readVersion(unsafe, memAddr);
+    final int schemaVersion = RowFormatter.readVersion(memAddr);
     // schemaVersion == TOKEN_RECOVERY_VERSION indicates recovery from old
     // product files
     if (isCurrentVersion(schemaVersion)) {
@@ -1065,12 +1064,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
-  private final int readVersion(final OffHeapByteSource rowBytes) {
+  private int readVersion(final OffHeapByteSource rowBytes) {
     if (rowBytes != null && isByteArrayStore()) {
-      return RowFormatter.readVersion(UnsafeMemoryChunk.getUnsafeWrapper(),
-          rowBytes.getUnsafeAddress());
-    }
-    else {
+      return RowFormatter.readVersion(rowBytes.getUnsafeAddress());
+    } else {
       return this.schemaVersion;
     }
   }
@@ -1464,10 +1461,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
-  private final RowFormatter getRowFormatterForMultiSchema(
-      final UnsafeWrapper unsafe, final long memAddr,
+  private RowFormatter getRowFormatterForMultiSchema(final long memAddr,
       @Unretained final OffHeapByteSource rawRow) {
-    final int schemaVersion = RowFormatter.readVersion(unsafe, memAddr);
+    final int schemaVersion = RowFormatter.readVersion(memAddr);
     // schemaVersion == TOKEN_RECOVERY_VERSION indicates recovery from old
     // product files
     if (isCurrentVersion(schemaVersion)) {
@@ -1500,14 +1496,12 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     } else if (rawRow == null) {
       return this.tableInfo.getRowFormatter();
     } else {
-      return getRowFormatterForMultiSchema(
-          UnsafeMemoryChunk.getUnsafeWrapper(), rawRow.getUnsafeAddress(),
-          rawRow);
+      return getRowFormatterForMultiSchema(rawRow.getUnsafeAddress(), rawRow);
     }
   }
 
-  public final RowFormatter getRowFormatter(final UnsafeWrapper unsafe,
-      final long memAddr, @Unretained final OffHeapByteSource rawRow) {
+  public final RowFormatter getRowFormatter(final long memAddr,
+      @Unretained final OffHeapByteSource rawRow) {
     // if there are no old schemas then simply return current formatter
     final RowFormatter singleSchema = this.singleSchema;
     if (singleSchema != null) {
@@ -1520,7 +1514,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     } else if (!isByteArrayStore()) {
       return null;
     } else {
-      return getRowFormatterForMultiSchema(unsafe, memAddr, rawRow);
+      return getRowFormatterForMultiSchema(memAddr, rawRow);
     }
   }
 
@@ -1554,8 +1548,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
     else if (OffHeapByteSource.isOffHeapBytesClass(cls)) {
       final OffHeapByteSource bs = (OffHeapByteSource)rawRow;
-      return getRowFormatterForMultiSchema(
-          UnsafeMemoryChunk.getUnsafeWrapper(), bs.getUnsafeAddress(), bs);
+      return getRowFormatterForMultiSchema(bs.getUnsafeAddress(), bs);
     }
     else {
       return this.tableInfo.getRowFormatter();
@@ -4078,7 +4071,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
               changedRow[column] = dvd;
             }
             if (origDVD != null
-                && origDVD.getTypeFormatId() == StoredFormatIds.SQL_CHAR_ID
+                && dtd.getTypeId().getTypeFormatId() == StoredFormatIds.SQL_CHAR_ID
                 && origDVD.getString() != null) {
               // See #46933
               ((SQLChar)origDVD).normalize(dtd, origDVD);

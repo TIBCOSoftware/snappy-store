@@ -102,7 +102,6 @@ import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.AuthenticationService;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.DRDAServerStarter;
-import com.pivotal.gemfirexd.internal.iapi.reference.Attribute;
 import com.pivotal.gemfirexd.internal.iapi.reference.DRDAConstants;
 import com.pivotal.gemfirexd.internal.iapi.reference.MessageId;
 import com.pivotal.gemfirexd.internal.iapi.reference.Module;
@@ -298,7 +297,7 @@ public final class NetworkServerControlImpl {
 										// logConnections value
 	private int minThreads;				// default minimum number of connection threads
 	private int maxThreads;				// default maximum number of connection threads
-	private Object threadsSync = new Object(); // object to use for syncing reading
+	private final Object threadsSync = new Object(); // object to use for syncing reading
 										// and changing default min and max threads
 	private int timeSlice;				// default time slice of a session to a thread
 	private Object timeSliceSync = new Object();// object to use for syncing reading
@@ -347,7 +346,7 @@ public final class NetworkServerControlImpl {
 
 	// queue of sessions waiting for a free thread - the queue is managed
 	// in a simple first come, first serve manner - no priorities
-	private Vector runQueue = new Vector();
+	private final Vector runQueue = new Vector();
 
 	// number of DRDAConnThreads waiting for something to do
 	private int freeThreads;
@@ -4416,18 +4415,43 @@ public final class NetworkServerControlImpl {
 
     final int queuedConn = runQueue.size();
 
-    stats.setDRDAServerThreads(totalThreads);
-    stats.setDRDAServerWaitingThreads(waitingThreads);
+    stats.setNetServerThreads(totalThreads);
+    stats.setNetServerWaitingThreads(waitingThreads);
     stats.setClientConnectionsIdle(numClientConnectionsIdle);
     stats.setClientConnectionsOpen(connOpen);
     stats.setClientConnectionsQueued(queuedConn);
     stats.incTotalBytesRead(bytesRead);
     stats.incTotalBytesWritten(bytesWritten);
 
-    stats.incDRDAThreadLongWaits(totNumTimesWaited);
-    stats.incDRDAThreadIdleTime(totalDRDAThreadIdleTime / 1000000);
+    stats.incNetServerThreadLongWaits(totNumTimesWaited);
+    stats.incNetServerThreadIdleTime(totalDRDAThreadIdleTime / 1000000);
     stats.incCommandsProcessed(totalNumCommandsProcessed);
     stats.incCommandsProcessTime(totalProcessTime);
+  }
+
+  private void setConnectionProperties(SessionsVTI.SessionInfo.ClientSession cs,
+      final Database db) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("failover=").append(db.failover)
+        .append(SanityManager.lineSeparator);
+    if (db.skipLocks) {
+      sb.append(";skipLocks=true").append(SanityManager.lineSeparator);
+    }
+    sb.append(";disableStreaming=").append(db.disableStreaming)
+        .append(SanityManager.lineSeparator);
+    sb.append(";skipListeners=").append(db.skipListeners)
+        .append(SanityManager.lineSeparator);
+    sb.append(";disableTXBatching=").append(db.disableTXBatching)
+        .append(SanityManager.lineSeparator);
+    sb.append(";syncCommits=").append(db.syncCommits)
+        .append(SanityManager.lineSeparator);
+    sb.append(";skipConstraintChecks=").append(db.skipConstraintChecks)
+        .append(SanityManager.lineSeparator);
+    sb.append(";routeQuery=").append(db.routeQuery)
+        .append(SanityManager.lineSeparator);
+    sb.append(";queryHDFS=").append(db.queryHDFS)
+        .append(SanityManager.lineSeparator);
+    cs.connectionProperties = sb.toString();
   }
 
   public void getSessionInfo(SessionsVTI.SessionInfo info) throws StandardException {
@@ -4453,15 +4477,7 @@ public final class NetworkServerControlImpl {
           continue;
         }
         cs.userId = db.userId;
-        cs.failover = db.failover;
-        cs.disableStreaming = db.disableStreaming;
-        cs.skipListeners = db.skipListeners;
-        cs.queryHDFS = db.queryHDFS;
-        cs.routeQuery = db.routeQuery;
-        cs.skipConstraintChecks = db.skipConstraintChecks;
-        cs.syncCommits = db.syncCommits;
-        cs.disableTXBatching = db.disableTXBatching;
-        cs.skipLocks = db.skipLocks;
+        setConnectionProperties(cs, db);
         cs.connectionBeginTimeStamp = db.connectionBeginTimeStamp;
         final DRDAStatement st = db.getCurrentStatement();
         if (st != null) {
@@ -4499,15 +4515,7 @@ public final class NetworkServerControlImpl {
           continue;
         }
         cs.userId = db.userId;
-        cs.failover = db.failover;
-        cs.disableStreaming = db.disableStreaming;
-        cs.skipListeners = db.skipListeners;
-        cs.queryHDFS = db.queryHDFS;
-        cs.routeQuery = db.routeQuery;
-        cs.skipConstraintChecks = db.skipConstraintChecks;
-        cs.syncCommits = db.syncCommits;
-        cs.disableTXBatching = db.disableTXBatching;
-        cs.skipLocks = db.skipLocks;
+        setConnectionProperties(cs, db);
         cs.connectionBeginTimeStamp = db.connectionBeginTimeStamp;
         final DRDAStatement st = db.getCurrentStatement();
         if (st != null) {

@@ -912,9 +912,12 @@ public class LEAF_CLASS extends PARENT_CLASS
 #ifdef OFFHEAP
     return this;
 #elif defined(DISK)
-    return Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
-#else 
-    return this.value;
+    final Object value = this.value;
+    return value != null && !Token.isRemovedFromDisk(value)
+        ? value : Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
+#else
+    final Object value = this.value;
+    return value != null ? value : Token.NOT_AVAILABLE;
 #endif
   }
 

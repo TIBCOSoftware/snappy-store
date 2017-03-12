@@ -33,105 +33,12 @@ import java.util.logging.Logger;
  */
 public final class SystemProperties {
 
-  /** The name of the "logFile" property */
-  public static final String LOG_FILE_NAME = "log-file";
-
-  /**
-   * The socket buffer size to use for reading.
-   */
-  public static final String SOCKET_INPUT_BUFFER_SIZE_NAME =
-      "socket-input-buffer-size";
-
-  /**
-   * The socket buffer size to use for writing.
-   */
-  public static final String SOCKET_OUTPUT_BUFFER_SIZE_NAME =
-      "socket-output-buffer-size";
-
-  /**
-   * Read timeout for the connection, in seconds. Only for thin client
-   * connections.
-   */
-  public static final String READ_TIMEOUT_NAME = "read-timeout";
-
-  /**
-   * TCP KeepAlive IDLE timeout in seconds for the network server and client
-   * sockets. This is the idle time after which a TCP KeepAlive probe is sent
-   * over the socket to determine if the other side is alive or not.
-   */
-  public static final String KEEPALIVE_IDLE_NAME = "keepalive-idle";
-
-  /**
-   * TCP KeepAlive INTERVAL timeout in seconds for the network server and client
-   * sockets. This is the time interval between successive TCP KeepAlive probes
-   * if there is no response to the previous probe ({@link #KEEPALIVE_IDLE_NAME})
-   * to determine if the other side is alive or not.
-   *
-   * Note that this may not be supported by all platforms (e.g. Solaris), in
-   * which case this will be ignored and an info-level message logged that the
-   * option could not be enabled on the socket.
-   */
-  public static final String KEEPALIVE_INTVL_NAME = "keepalive-interval";
-
-  /**
-   * TCP KeepAlive COUNT for the network server and client sockets. This is the
-   * number of TCP KeepAlive probes sent before declaring the other side to be
-   * dead.
-   *
-   * Note that this may not be supported by all platforms (e.g. Solaris), in
-   * which case this will be ignored and an info-level message logged that the
-   * option could not be enabled on the socket.
-   */
-  public static final String KEEPALIVE_CNT_NAME = "keepalive-count";
-
-  /**
-   * The maximum size of <code>DNSCacheService</code>. Zero or negative means to
-   * use Java default DNS cache and not <code>DNSCacheService</code>. Default is
-   * {@value #DEFAULT_DNS_CACHE_SIZE}.
-   */
-  public static final String DNS_CACHE_SIZE = "dns-cache-size";
-
-  /**
-   * Time interval in seconds after which <code>DNSCacheService</code> is
-   * flushed and refreshed on demand for DNS entries that do no specify a TTL. A
-   * value of zero or negative means the cache is never flushed of such records.
-   * Default is {@value #DEFAULT_DNS_CACHE_FLUSH_INTERVAL} seconds.
-   */
-  public static final String DNS_CACHE_FLUSH_INTERVAL =
-      "dns-cache-flush-interval";
-
-  /**
-   * Whether to use selector based server (recommended) for the thrift server or
-   * per connection thread server model. Thrift SSL implementation cannot use
-   * selectors yet. Default is true for non-SSL and false for SSL.
-   */
-  public static final String THRIFT_SELECTOR_SERVER = "thrift-selector";
-
   public static final String DEFAULT_PROPERTY_NAME_PREFIX = "gemfire.";
   public static final String DEFAULT_GFXDCLIENT_PROPERTY_NAME_PREFIX =
       "gemfirexd.client.";
 
-  public static String DEFAULT_LOG_FILE = null;
-  public static final int DEFAULT_INPUT_BUFFER_SIZE = 32 * 1024;
-  public static final int DEFAULT_OUTPUT_BUFFER_SIZE = 32 * 1024;
-  // these are the defaults for the per-socket TCP keepalive parameters
-  public static final int DEFAULT_KEEPALIVE_IDLE = 20;
-  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
-  public static final int DEFAULT_KEEPALIVE_CNT = 10;
-  public static final int DEFAULT_DNS_CACHE_SIZE = 0;
-  public static final int DEFAULT_DNS_CACHE_FLUSH_INTERVAL = 3600;
-
   public static final String GFXD_FACTORY_PROVIDER = "com.pivotal.gemfirexd."
       + "internal.engine.store.entry.GfxdObjectFactoriesProvider";
-
-  private String logFile;
-  private int sockInputBufferSize;
-  private int sockOutputBufferSize;
-  private int keepAliveIdle;
-  private int keepAliveIntvl;
-  private int keepAliveCnt;
-  private int dnsCacheSize;
-  private int dnsCacheFlushInterval;
 
   /**
    * Common internal product callbacks on client and server side to possibly
@@ -139,10 +46,14 @@ public final class SystemProperties {
    */
   public interface Callbacks {
 
-    /** Get prefix to be used for system property names. */
+    /**
+     * Get prefix to be used for system property names.
+     */
     String getSystemPropertyNamePrefix();
 
-    /** Get system property for given key or null if key not set. */
+    /**
+     * Get system property for given key or null if key not set.
+     */
     String getSystemProperty(String key, SystemProperties properties)
         throws PrivilegedActionException;
   }
@@ -182,8 +93,7 @@ public final class SystemProperties {
       final String key = this._propertyName;
       if (key != null) {
         return System.getProperty(key);
-      }
-      else {
+      } else {
         return null;
       }
     }
@@ -198,8 +108,7 @@ public final class SystemProperties {
     final Callbacks cb;
     if (isUsingGemFireXDEntryPoint()) {
       cb = getGFXDServerCallbacks();
-    }
-    else {
+    } else {
       cb = new DefaultCallbacks(DEFAULT_PROPERTY_NAME_PREFIX);
     }
     serverInstance = new SystemProperties(cb);
@@ -213,24 +122,24 @@ public final class SystemProperties {
     for (StackTraceElement frame : stack) {
       final String frameCls = frame.getClassName();
       if ("com.pivotal.gemfirexd.internal.engine.store.GemFireStore"
-          .equals(frameCls)
-          || "com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor"
-              .equals(frameCls)
-          || "com.pivotal.gemfirexd.tools.internal.GfxdServerLauncher"
-              .equals(frameCls)
-          || "com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl"
-              .equals(frameCls)
-          || "com.pivotal.gemfirexd.tools.GfxdDistributionLocator"
-              .equals(frameCls)
-          || "com.pivotal.gemfirexd.tools.GfxdAgentLauncher"
-              .equals(frameCls)
-          || "com.pivotal.gemfirexd.internal.engine.fabricservice.FabricAgentImpl"
-              .equals(frameCls)
-          || "com.pivotal.gemfirexd.tools.GfxdSystemAdmin"
-               .equals(frameCls)
-          || "com.pivotal.gemfirexd.internal.GemFireXDVersion"
-              .equals(frameCls)
-          || "io.snappydata.gemxd.SnappyDataVersion$"
+          .equals(frameCls) ||
+          "com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor"
+              .equals(frameCls) ||
+          "com.pivotal.gemfirexd.tools.internal.GfxdServerLauncher"
+              .equals(frameCls) ||
+          "com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl"
+              .equals(frameCls) ||
+          "com.pivotal.gemfirexd.tools.GfxdDistributionLocator"
+              .equals(frameCls) ||
+          "com.pivotal.gemfirexd.tools.GfxdAgentLauncher"
+              .equals(frameCls) ||
+          "com.pivotal.gemfirexd.internal.engine.fabricservice.FabricAgentImpl"
+              .equals(frameCls) ||
+          "com.pivotal.gemfirexd.tools.GfxdSystemAdmin"
+              .equals(frameCls) ||
+          "com.pivotal.gemfirexd.internal.GemFireXDVersion"
+              .equals(frameCls) ||
+          "io.snappydata.gemxd.SnappyDataVersion$"
               .equals(frameCls)) {
         return true;
       }
@@ -238,10 +147,9 @@ public final class SystemProperties {
     return false;
   }
 
+  // no external instances allowed
   private SystemProperties(Callbacks cb) {
     this.callbacks = cb;
-    // no external instances allowed
-    refreshProperties();
   }
 
   /**
@@ -267,9 +175,8 @@ public final class SystemProperties {
   }
 
   public static Callbacks getGFXDServerCallbacks() {
-    final String provider = GFXD_FACTORY_PROVIDER;
     try {
-      Class<?> factoryProvider = Class.forName(provider);
+      Class<?> factoryProvider = Class.forName(GFXD_FACTORY_PROVIDER);
       Method method;
 
       method = factoryProvider.getDeclaredMethod("getSystemCallbacksImpl");
@@ -282,30 +189,10 @@ public final class SystemProperties {
 
   public synchronized void setCallbacks(Callbacks cb) {
     this.callbacks = cb;
-    // reinitialize the property values if required
-    refreshProperties();
   }
 
   public synchronized Callbacks getCallbacks() {
     return this.callbacks;
-  }
-
-  public synchronized void refreshProperties() {
-    this.logFile = getString(LOG_FILE_NAME, DEFAULT_LOG_FILE);
-    this.sockInputBufferSize = getInteger(
-        SOCKET_INPUT_BUFFER_SIZE_NAME, DEFAULT_INPUT_BUFFER_SIZE);
-    this.sockOutputBufferSize = getInteger(
-        SOCKET_OUTPUT_BUFFER_SIZE_NAME, DEFAULT_OUTPUT_BUFFER_SIZE);
-    this.keepAliveIdle = getInteger(KEEPALIVE_IDLE_NAME,
-        DEFAULT_KEEPALIVE_IDLE);
-    this.keepAliveIntvl = getInteger(KEEPALIVE_INTVL_NAME,
-        DEFAULT_KEEPALIVE_INTVL);
-    this.keepAliveCnt = getInteger(KEEPALIVE_CNT_NAME,
-        DEFAULT_KEEPALIVE_CNT);
-    this.dnsCacheSize = getInteger(DNS_CACHE_SIZE,
-        DEFAULT_DNS_CACHE_SIZE);
-    this.dnsCacheFlushInterval = getInteger(DNS_CACHE_FLUSH_INTERVAL,
-        DEFAULT_DNS_CACHE_FLUSH_INTERVAL);
   }
 
   public String getString(final String name, final String defaultValue) {
@@ -314,12 +201,10 @@ public final class SystemProperties {
       String value = cb.getSystemProperty(name, this);
       if (value != null) {
         return value;
-      }
-      else if (this == clientInstance) {
+      } else if (this == clientInstance) {
         // try with server instance
         return serverInstance.getString(name, defaultValue);
-      }
-      else {
+      } else {
         return defaultValue;
       }
     } catch (PrivilegedActionException | SecurityException e) {
@@ -359,8 +244,7 @@ public final class SystemProperties {
             "Expected long value for system property [" + name
                 + "] but found [" + value + "]", nfe);
       }
-    }
-    else {
+    } else {
       return defaultValue;
     }
   }
@@ -369,77 +253,12 @@ public final class SystemProperties {
     String value = getString(name, null);
     if (value != null) {
       return Boolean.parseBoolean(value);
-    }
-    else {
+    } else {
       return defaultValue;
     }
   }
 
   public String getSystemPropertyNamePrefix() {
     return this.callbacks.getSystemPropertyNamePrefix();
-  }
-
-  public String getLogFile() {
-    return this.logFile;
-  }
-
-  public void setLogFile(String fileName) {
-    this.logFile = fileName;
-  }
-
-  public int getSocketInputBufferSize() {
-    return this.sockInputBufferSize;
-  }
-
-  public void setSocketInputBufferSize(int size) {
-    this.sockInputBufferSize = size;
-  }
-
-  public int getSocketOutputBufferSize() {
-    return this.sockOutputBufferSize;
-  }
-
-  public void setSocketOutputBufferSize(int size) {
-    this.sockOutputBufferSize = size;
-  }
-
-  public int getKeepAliveIdle() {
-    return this.keepAliveIdle;
-  }
-
-  public void setKeepAliveIdle(int v) {
-    this.keepAliveIdle = v;
-  }
-
-  public int getKeepAliveInterval() {
-    return this.keepAliveIntvl;
-  }
-
-  public void setKeepAliveInterval(int v) {
-    this.keepAliveIntvl = v;
-  }
-
-  public int getKeepAliveCount() {
-    return this.keepAliveCnt;
-  }
-
-  public void setKeepAliveCount(int v) {
-    this.keepAliveCnt = v;
-  }
-
-  public int getDNSCacheSize() {
-    return this.dnsCacheSize;
-  }
-
-  public void setDNSCacheSize(int v) {
-    this.dnsCacheSize = v;
-  }
-
-  public int getDNSCacheFlushInterval() {
-    return this.dnsCacheFlushInterval;
-  }
-
-  public void setDNSCacheFlushInterval(int v) {
-    this.dnsCacheFlushInterval = v;
   }
 }

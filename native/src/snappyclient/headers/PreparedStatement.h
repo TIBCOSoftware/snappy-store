@@ -61,7 +61,7 @@ namespace client {
     std::unique_ptr<SQLWarning> m_warnings;
     std::unique_ptr<std::map<int32_t, thrift::OutputParameter> > m_outParams;
     // cursorId of last execution
-    int32_t m_cursorId;
+    int64_t m_cursorId;
 
     friend class Connection;
     friend class Result;

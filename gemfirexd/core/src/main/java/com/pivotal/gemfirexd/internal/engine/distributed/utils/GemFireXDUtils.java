@@ -115,6 +115,9 @@ import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 import com.pivotal.gemfirexd.internal.iapi.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.iapi.error.ShutdownException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.reference.ContextId;
+import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
+import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.services.loader.ClassInspector;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -1428,6 +1431,31 @@ public final class GemFireXDUtils {
     if(dataRegion.getEnableOffHeapMemory() && entryRemoved) {
       if (entry instanceof OffHeapRegionEntry) {
         ((OffHeapRegionEntry)entry).release();
+      }
+    }
+  }
+
+  public interface Visitor<T> {
+    boolean visit(T visited);
+  }
+
+  public static void forAllContexts(Visitor<LanguageConnectionContext> action) {
+    final ContextService factory = ContextService.getFactory();
+    LanguageConnectionContext lcc;
+    if (factory != null) {
+      synchronized (factory) {
+        for (ContextManager cm : factory.getAllContexts()) {
+          if (cm == null) {
+            continue;
+          }
+          lcc = (LanguageConnectionContext)cm.getContext(
+              ContextId.LANG_CONNECTION);
+          if (lcc != null) {
+            if (!action.visit(lcc)) {
+              return;
+            }
+          }
+        }
       }
     }
   }

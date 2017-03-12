@@ -37,11 +37,11 @@ package io.snappydata.thrift.internal;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
@@ -51,7 +51,6 @@ import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.LocatorService;
 import io.snappydata.thrift.ServerType;
 import io.snappydata.thrift.SnappyException;
-import io.snappydata.thrift.common.SnappyTSSLSocket;
 import io.snappydata.thrift.common.SnappyTSocket;
 import io.snappydata.thrift.common.SocketParameters;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
@@ -60,6 +59,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 
 /**
@@ -70,6 +70,7 @@ import org.apache.thrift.transport.TTransport;
  */
 final class ControlConnection {
   private final SocketParameters socketParams;
+  private final boolean framedTransport;
   private final Set<ServerType> snappyServerTypeSet;
   // TODO: SW: the initial set of locators created from initial connection
   // into this DS need not be static; we should refresh/adjust if later
@@ -78,7 +79,7 @@ final class ControlConnection {
   private HostAddress controlHost;
   private LocatorService.Client controlLocator;
   private final ArrayList<HostAddress> controlHosts;
-  private final THashSet controlHostSet;
+  final THashSet controlHostSet;
 
   public static final class SearchRandomServer implements TObjectProcedure {
 
@@ -128,6 +129,7 @@ final class ControlConnection {
 
   ControlConnection(ClientService service) {
     this.socketParams = service.socketParams;
+    this.framedTransport = service.framedTransport;
     this.snappyServerTypeSet = Collections.singleton(getServerType());
     this.locators = service.connHosts;
     this.controlHosts = new ArrayList<>(service.connHosts);
@@ -139,7 +141,7 @@ final class ControlConnection {
   }
 
   static ControlConnection getOrCreateControlConnection(HostAddress hostAddr,
-      ClientService service) throws SnappyException {
+      ClientService service, Throwable failure) throws SnappyException {
     // loop through all ControlConnections since size of this global list is
     // expected to be in single digit (total number of distributed systems)
     synchronized (allControlConnections) {
@@ -166,7 +168,7 @@ final class ControlConnection {
       }
       // if we reached here, then need to create a new ControlConnection
       ControlConnection controlService = new ControlConnection(service);
-      controlService.getPreferredServer(null, null, true);
+      controlService.getPreferredServer(null, null, true, failure);
       allControlConnections.add(controlService);
       return controlService;
     }
@@ -197,13 +199,15 @@ final class ControlConnection {
   }
 
   synchronized HostAddress getPreferredServer(Set<HostAddress> failedServers,
-      Set<String> serverGroups, boolean forFailover) throws SnappyException {
+      Set<String> serverGroups, boolean forFailover, Throwable failure)
+      throws SnappyException {
 
     if (controlLocator == null) {
-      failedServers = failoverToAvailableHost(failedServers, null);
+      failedServers = failoverToAvailableHost(failedServers, false, failure);
       forFailover = true;
     }
 
+    boolean firstCall = true;
     while (true) {
       try {
         HostAddress preferredServer;
@@ -240,8 +244,7 @@ final class ControlConnection {
                 "getAllServersWithPreferredServer_E", null, 0, ns, false,
                 null);
           }
-        }
-        else {
+        } else {
           preferredServer = getLocatorPreferredServer(failedServers,
               serverGroups);
         }
@@ -250,22 +253,25 @@ final class ControlConnection {
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
               "Got preferred server " + preferredServer
                   + " using control connection to " + this.controlHost
-                  + (preferredServer.getPort() <= 0 ? "" : " (trying random "
-                      + "server since no preferred server received)"));
+                  + (preferredServer.getPort() > 0 ? "" : " (trying random "
+                  + "server since no preferred server received)"));
         }
         if (preferredServer.getPort() <= 0) {
-          // for this case we don't have a locator so choose some server
-          // randomly as the "preferredServer"
-          SearchRandomServer search = new SearchRandomServer(getServerType(),
-              this.controlHostSet.size(), failedServers);
-          this.controlHostSet.forEach(search);
-          if ((preferredServer = search.getRandomServer()) == null) {
-            // try with no failedServers list before failing
-            preferredServer = getLocatorPreferredServer(null, serverGroups);
-            if (preferredServer.getPort() <= 0) {
-              throw failoverExhausted(failedServers, null);
-            }
+          // For this case we don't have a locator or locator unable to
+          // determine a preferred server, so choose some server randomly
+          // as the "preferredServer". In case all servers have failed
+          // then the search below will also fail.
+          // Remove controlHost from failedServers since its known to be
+          // working at this point (e.g. after a reconnect).
+          Set<HostAddress> skipServers = failedServers;
+          if (failedServers != null && !failedServers.isEmpty() &&
+              failedServers.contains(this.controlHost)) {
+            // don't change the original failure list since that is proper
+            // for the current operation but change for random server search
+            skipServers = new HashSet<>(failedServers);
+            skipServers.remove(this.controlHost);
           }
+          preferredServer = searchRandomServer(skipServers, failure);
         }
         if (SanityManager.TraceClientHA) {
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
@@ -284,10 +290,9 @@ final class ControlConnection {
           NetConnection.FailoverStatus status;
           if ((status = NetConnection.getFailoverStatus(se
               .getExceptionData().getSqlState(), se.getExceptionData()
-              .getSeverity(), se)).isNone()) {
+              .getErrorCode(), se)).isNone()) {
             throw se;
-          }
-          else if (status == NetConnection.FailoverStatus.RETRY) {
+          } else if (status == NetConnection.FailoverStatus.RETRY) {
             forFailover = true;
             continue;
           }
@@ -298,9 +303,18 @@ final class ControlConnection {
           Set<HostAddress> servers = new THashSet(2);
           failedServers = servers;
         }
-        failedServers.add(controlHost);
+        // for the first call do not mark controlHost as failed but retry
+        // (e.g. for a reconnect case)
+        if (firstCall) {
+          firstCall = false;
+        } else {
+          failedServers.add(controlHost);
+        }
         controlLocator.getOutputProtocol().getTransport().close();
-        failedServers = failoverToAvailableHost(failedServers, te);
+        failedServers = failoverToAvailableHost(failedServers, true, te);
+        if (failure == null) {
+          failure = te;
+        }
       } catch (Throwable t) {
         throw unexpectedError(t, controlHost);
       }
@@ -308,16 +322,28 @@ final class ControlConnection {
     }
   }
 
-  private synchronized Set<HostAddress> failoverToAvailableHost(
-      Set<HostAddress> failedServers, Exception failure) throws SnappyException {
+  HostAddress searchRandomServer(Set<HostAddress> failedServers,
+      Throwable failure) throws SnappyException {
+    HostAddress preferredServer;
+    SearchRandomServer search = new SearchRandomServer(getServerType(),
+        this.controlHostSet.size(), failedServers);
+    this.controlHostSet.forEach(search);
+    if ((preferredServer = search.getRandomServer()) != null) {
+      return preferredServer;
+    } else {
+      throw failoverExhausted(failedServers, failure);
+    }
+  }
 
-    final SystemProperties sysProps = SystemProperties.getClientInstance();
+  private synchronized Set<HostAddress> failoverToAvailableHost(
+      Set<HostAddress> failedServers, boolean checkFailedControlHosts,
+      Throwable failure) throws SnappyException {
+
     NEXT_SERVER: for (HostAddress controlAddr : this.controlHosts) {
-      /* (try all including those previously reported as failed)
-      if (failedServers != null && failedServers.contains(controlAddr)) {
+      if (checkFailedControlHosts && failedServers != null &&
+          failedServers.contains(controlAddr)) {
         continue;
       }
-      */
       this.controlHost = null;
       this.controlLocator = null;
 
@@ -343,20 +369,18 @@ final class ControlConnection {
                 SanityManager.TraceClientConn ? new Throwable() : null);
           }
 
-          if (getServerType().isThriftSSL()) {
-            inTransport = outTransport = new SnappyTSSLSocket(controlAddr,
-                this.socketParams, sysProps);
-          }
-          else {
-            inTransport = outTransport = new SnappyTSocket(controlAddr, true,
-                ThriftUtils.isThriftSelectorServer(), this.socketParams,
-                sysProps);
+          final SnappyTSocket socket = new SnappyTSocket(controlAddr, null,
+              getServerType().isThriftSSL(), true, ThriftUtils
+              .isThriftSelectorServer(), this.socketParams);
+          if (this.framedTransport) {
+            inTransport = outTransport = new TFramedTransport(socket);
+          } else {
+            inTransport = outTransport = socket;
           }
           if (getServerType().isThriftBinaryProtocol()) {
             inProtocol = new TBinaryProtocol(inTransport);
             outProtocol = new TBinaryProtocol(outTransport);
-          }
-          else {
+          } else {
             inProtocol = new TCompactProtocol(inTransport);
             outProtocol = new TCompactProtocol(outTransport);
           }

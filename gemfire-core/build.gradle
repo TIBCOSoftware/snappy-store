@@ -77,6 +77,7 @@ dependencies {
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
+  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compile group: 'org.apache.hbase', name: 'hbase-protocol', version: hbaseVersion
   compile(group: 'org.apache.hbase', name: 'hbase-common', version: hbaseVersion) {

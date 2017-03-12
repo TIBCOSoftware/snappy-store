@@ -310,9 +310,7 @@ public class ArraySortedCollectionWithOverflow extends
       return new OverflowData(fis, numElements, startPos, endPos, bufSize);
     } catch (IOException ioe) {
       handleIOException(ioe, this.resourceManager);
-      AssertionError ae = new AssertionError("did not expect to reach");
-      ae.initCause(ioe);
-      throw ae;
+      throw new AssertionError("did not expect to reach", ioe);
     }
   }
 
@@ -606,7 +604,7 @@ public class ArraySortedCollectionWithOverflow extends
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 

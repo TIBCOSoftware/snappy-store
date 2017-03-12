@@ -115,7 +115,7 @@ Parameters& Parameters::setTime(uint32_t paramNum, const DateTime v) {
 
 Parameters& Parameters::setTimestamp(uint32_t paramNum, const Timestamp& v) {
   checkBounds(--paramNum);
-  m_values[paramNum].setTimestamp(v.getEpochTime(), v.getNanos());
+  m_values[paramNum].set(thrift::Timestamp(v.getTotalNanos()));
   return *this;
 }
 
@@ -177,11 +177,5 @@ Parameters& Parameters::setStruct(uint32_t paramNum, thrift::Struct&& v) {
 Parameters& Parameters::setNull(uint32_t paramNum, const bool v) {
   checkBounds(--paramNum);
   m_values[paramNum].setIsNull(v);
-  return *this;
-}
-
-Parameters& Parameters::setJSON(uint32_t paramNum, const JSON& v) {
-  checkBounds(--paramNum);
-  m_values[paramNum].set(v.getThriftObject());
   return *this;
 }

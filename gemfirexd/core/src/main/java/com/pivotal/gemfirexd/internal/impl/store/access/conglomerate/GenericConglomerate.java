@@ -41,7 +41,6 @@
 package com.pivotal.gemfirexd.internal.impl.store.access.conglomerate;
 
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
@@ -267,8 +266,7 @@ public abstract class GenericConglomerate
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
-      ByteSource bs) {
+  public int readBytes(long memOffset, int columnWidth, ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + getClass());
   }

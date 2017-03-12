@@ -43,6 +43,7 @@ import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.junit.UnitTest;
 import com.pivotal.gemfirexd.*;
@@ -674,18 +675,27 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     System.setProperty(com.pivotal.gemfirexd.Property.PROPERTIES_FILE, PROP_FILE_NAME);
 
-    System.setProperty(Property.START_DRDA, "true");
+    if (!ClientSharedUtils.isThriftDefault()) {
+      System.setProperty(Property.START_DRDA, "true");
+    }
     int port;
     while ((port = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
         <= FabricService.NETSERVER_DEFAULT_PORT);
-    System.setProperty(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER, String.valueOf(port));
+    if (!ClientSharedUtils.isThriftDefault()) {
+      System.setProperty(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER,
+          String.valueOf(port));
+    }
 
     final FabricServer fabapi = FabricServiceManager.getFabricServerInstance();
+    NetworkInterface ni2 = null;
     try {
       fabapi.start(null);
 
       final NetworkInterface ni = fabapi.startNetworkServer(null,
           -1, null);
+      if (ClientSharedUtils.isThriftDefault()) {
+        ni2 = fabapi.startNetworkServer(null, port, null);
+      }
       try {
         ni.logConnections(true);
         ni.setMaxThreads(20);
@@ -695,7 +705,11 @@ public class FabricServerTest extends TestUtil implements UnitTest {
         int maxT = ni.getMaxThreads();
         assertEquals(20, maxT);
         int timSl = ni.getTimeSlice();
-        assertEquals(10, timSl);
+        if (ClientSharedUtils.isThriftDefault()) {
+          assertEquals(-1, timSl);
+        } else {
+          assertEquals(10, timSl);
+        }
         ni.trace(false);
 
         // expect a specific exception as connection number 2 shouldn't exist.
@@ -769,6 +783,9 @@ public class FabricServerTest extends TestUtil implements UnitTest {
         assertFalse("expected no more than one row from SYS.MEMBERS", rs.next());
       } finally {
         ni.stop();
+        if (ni2 != null) {
+          ni2.stop();
+        }
       }
     } finally {
       f.delete();

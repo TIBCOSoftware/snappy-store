@@ -202,14 +202,14 @@ public class OffHeapIndexKeyComparator extends IndexKeyComparator {
             ccik1BS = ohrow;
             ccik1BSLen = ohrow.getLength();
             ccik1MemAddr = ohrow.getUnsafeAddress(0, ccik1BSLen);
-            ccik1RF = indexInfo.getRowFormatter(unsafe, ccik1MemAddr, ohrow);
+            ccik1RF = indexInfo.getRowFormatter(ccik1MemAddr, ohrow);
           }
           else if (vclass == OffHeapRowWithLobs.class) {
             final OffHeapRowWithLobs ohrow = (OffHeapRowWithLobs)vbytes;
             ccik1BS = ohrow;
             ccik1BSLen = ohrow.getLength();
             ccik1MemAddr = ohrow.getUnsafeAddress(0, ccik1BSLen);
-            ccik1RF = indexInfo.getRowFormatter(unsafe, ccik1MemAddr, ohrow);
+            ccik1RF = indexInfo.getRowFormatter(ccik1MemAddr, ohrow);
           }
           else {
             kbytes = (byte[])vbytes;
@@ -254,14 +254,14 @@ public class OffHeapIndexKeyComparator extends IndexKeyComparator {
             ccik2BS = ohrow;
             ccik2BSLen = ohrow.getLength();
             ccik2MemAddr = ohrow.getUnsafeAddress(0, ccik2BSLen);
-            ccik2RF = indexInfo.getRowFormatter(unsafe, ccik2MemAddr, ohrow);
+            ccik2RF = indexInfo.getRowFormatter(ccik2MemAddr, ohrow);
           }
           else if (vclass == OffHeapRowWithLobs.class) {
             final OffHeapRowWithLobs ohrow = (OffHeapRowWithLobs)vbytes;
             ccik2BS = ohrow;
             ccik2BSLen = ohrow.getLength();
             ccik2MemAddr = ohrow.getUnsafeAddress(0, ccik2BSLen);
-            ccik2RF = indexInfo.getRowFormatter(unsafe, ccik2MemAddr, ohrow);
+            ccik2RF = indexInfo.getRowFormatter(ccik2MemAddr, ohrow);
           }
           else {
             kbytes = (byte[])vbytes;

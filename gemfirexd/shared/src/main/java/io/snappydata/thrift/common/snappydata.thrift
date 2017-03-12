@@ -61,33 +61,12 @@ struct Decimal {
   3: required binary                                       magnitude
 }
 
-struct Timestamp {
-  1: required i64                                          secsSinceEpoch
-  2: optional i32                                          nanos
-}
-
-union JSONValue {
-  1: string                                                string_val
-  2: bool                                                  bool_val
-  3: i32                                                   i32_val
-  4: i64                                                   i64_val
-  5: double                                                double_val
-  6: map<string, JSONValue>                                object_val
-  7: list<JSONValue>                                       array_val
-  8: bool                                                  null_val
-}
-
-union JSONObject {
-  1: map<string, JSONValue>                                pairs
-  2: list<JSONValue>                                       array
-}
-
 struct BlobChunk {
   1: required binary                                       chunk
   2: required bool                                         last
   // optional when sending from client to server for update,
   // but required when returning from server to client or for gets
-  3: optional i32                                          lobId
+  3: optional i64                                          lobId
   4: optional i64                                          offset
   // total length of LOB; will be set for first chunk but optional for rest
   5: optional i64                                          totalLength
@@ -98,7 +77,7 @@ struct ClobChunk {
   2: required bool                                         last
   // optional when sending from client to server for update,
   // but required when returning from server to client or for gets
-  3: optional i32                                          lobId
+  3: optional i64                                          lobId
   4: optional i64                                          offset
   // total length of LOB; will be set for first chunk but optional for rest
   5: optional i64                                          totalLength
@@ -110,42 +89,41 @@ enum SnappyType {
   SMALLINT                                                 = 3
   INTEGER                                                  = 4
   BIGINT                                                   = 5
-  REAL                                                     = 6
+  FLOAT                                                    = 6
   DOUBLE                                                   = 7
-  FLOAT                                                    = 8
-  DECIMAL                                                  = 9
-  CHAR                                                     = 10
-  VARCHAR                                                  = 11
-  LONGVARCHAR                                              = 12
-  DATE                                                     = 13
-  TIME                                                     = 14
-  TIMESTAMP                                                = 15
-  BINARY                                                   = 16
-  VARBINARY                                                = 17
-  LONGVARBINARY                                            = 18
-  BLOB                                                     = 19
-  CLOB                                                     = 20
-  SQLXML                                                   = 21
-  ARRAY                                                    = 22
-  MAP                                                      = 23
-  STRUCT                                                   = 24
-  NULLTYPE                                                 = 25
-  JSON                                                     = 26
-  JAVA_OBJECT                                              = 27 // custom Java serialized object
-  OTHER                                                    = 28 // custom UDTs which will be shipped as clobs
+  DECIMAL                                                  = 8
+  CHAR                                                     = 9
+  VARCHAR                                                  = 10
+  LONGVARCHAR                                              = 11
+  DATE                                                     = 12
+  TIME                                                     = 13
+  TIMESTAMP                                                = 14
+  BINARY                                                   = 15
+  VARBINARY                                                = 16
+  LONGVARBINARY                                            = 17
+  BLOB                                                     = 18
+  CLOB                                                     = 19
+  SQLXML                                                   = 20
+  ARRAY                                                    = 21
+  MAP                                                      = 22
+  STRUCT                                                   = 23
+  NULLTYPE                                                 = 24
+  JSON                                                     = 25
+  JAVA_OBJECT                                              = 26 // custom Java serialized object
+  OTHER                                                    = 27 // custom UDTs which will be shipped as clobs
 }
 
 // constants for StatementAttrs.resultSetType
-const byte RESULTSET_TYPE_FORWARD_ONLY                     = 1;
-const byte RESULTSET_TYPE_INSENSITIVE                      = 2;
-const byte RESULTSET_TYPE_SENSITIVE                        = 3;
-const byte RESULTSET_TYPE_UNKNOWN                          = 4;
+const byte RESULTSET_TYPE_FORWARD_ONLY                     = 1
+const byte RESULTSET_TYPE_INSENSITIVE                      = 2
+const byte RESULTSET_TYPE_SENSITIVE                        = 3
+const byte RESULTSET_TYPE_UNKNOWN                          = 4
 
 // defaults for connection/statement attributes
-const bool DEFAULT_AUTOCOMMIT                              = false;
-const byte DEFAULT_RESULTSET_TYPE                          = RESULTSET_TYPE_FORWARD_ONLY;
-const bool DEFAULT_RESULTSET_UPDATABLE                     = false;
-const bool DEFAULT_RESULTSET_HOLD_CURSORS_OVER_COMMIT      = false;
+const bool DEFAULT_AUTOCOMMIT                              = false
+const byte DEFAULT_RESULTSET_TYPE                          = RESULTSET_TYPE_FORWARD_ONLY
+const bool DEFAULT_RESULTSET_UPDATABLE                     = false
+const bool DEFAULT_RESULTSET_HOLD_CURSORS_OVER_COMMIT      = false
 
 // additional flags for transactions
 enum TransactionAttribute {
@@ -154,6 +132,13 @@ enum TransactionAttribute {
   WAITING_MODE                                             = 3
   DISABLE_BATCHING                                         = 4
   SYNC_COMMITS                                             = 5
+}
+
+// the Xid for XA transactions
+struct TransactionXid {
+  1: required i32                                          formatId
+  2: required binary                                       globalId
+  3: required binary                                       branchQualifier
 }
 
 enum RowIdLifetime {
@@ -325,12 +310,12 @@ struct ServiceMetaData {
  39: required i32                                          maxUserNameLength
  40: required i32                                          defaultTransactionIsolation
  41: required byte                                         defaultResultSetType
- 42: required bool defaultResultSetHoldabilityHoldCursorsOverCommit
+ 42: required bool                                         defaultResultSetHoldabilityHoldCursorsOverCommit
  // if true then the SQLSTATEs returned by SnappyException are
  // X/Open (now known as Open Group) SQL CLI else they are SQL99
  43: required bool                                         sqlStateIsXOpen
  44: required bool                                         catalogAtStart
- 45: required map<TransactionAttribute, bool> transactionDefaults
+ 45: required map<TransactionAttribute, bool>              transactionDefaults
  46: required RowIdLifetime                                rowIdLifeTime
  47: required set<ServiceFeature>                          supportedFeatures
  48: required map<ServiceFeatureParameterized, list<i32>>  featuresWithParams
@@ -362,13 +347,13 @@ enum ServiceMetaDataCall {
 }
 
 // constants for driver type
-const byte DRIVER_JDBC                                     = 1;
-const byte DRIVER_ODBC                                     = 2;
+const byte DRIVER_JDBC                                     = 1
+const byte DRIVER_ODBC                                     = 2
 
 struct ServiceMetaDataArgs {
-  1: required i32                                          connId
+  1: required i64                                          connId
   2: required byte                                         driverType
-  3: optional binary                                       token
+  3: required binary                                       token
   4: optional string                                       schema
   5: optional string                                       table
   6: optional list<string>                                 tableTypes
@@ -384,7 +369,7 @@ struct ServiceMetaDataArgs {
 
 // constant for the default session token size used by security mechanisms
 // like PLAIN and DIFFIE_HELLMAN
-const i32 DEFAULT_SESSION_TOKEN_SIZE                       = 16;
+const i32 DEFAULT_SESSION_TOKEN_SIZE                       = 16
 
 enum SecurityMechanism {
   PLAIN                                                    = 1
@@ -397,22 +382,29 @@ struct OpenConnectionArgs {
   3: required SecurityMechanism                            security
   4: optional string                                       userName
   5: optional string                                       password
+  // should be true for connections to be used for XA transactions;
+  // XA operations will fail unless this is set to true for the connection
+  6: optional bool                                         forXA
   // number of bytes to use for connection ID token
   // default is DEFAULT_SESSION_TOKEN_SIZE;
   // in future will be used for encryption of token etc. with
   // policy like in GFE client-server to defeat MIM attacks;
   // addition of the token argument allows for that expansion in future
-  6: optional i32                                          tokenSize
-  7: optional bool                                         useStringForDecimal
-  8: optional map<string, string>                          properties
+  7: optional i32                                          tokenSize
+  8: optional bool                                         useStringForDecimal
+  9: optional map<string, string>                          properties
 }
 
 struct ConnectionProperties {
-  1: required i32                                          connId
+  1: required i64                                          connId
   2: required string                                       clientHostName
   3: required string                                       clientID
   4: optional string                                       userName
+  // token is always set in openConnection result but not in
+  // fetchActiveConnections (or other future APIs returning ConnectionProperties)
   5: optional binary                                       token
+  // default schema of the connection
+  6: optional string                                       defaultSchema
 }
 
 // enumeration of the various types of network services running in the system
@@ -453,8 +445,10 @@ struct HostAddress {
 // exceptions
 struct SnappyExceptionData {
   1: required string                                       reason
-  2: required string                                       sqlState
-  3: required i32                                          severity
+  2: required i32                                          errorCode
+  3: optional string                                       sqlState
+  // partial update counts in case of an exception during batch execution
+  4: optional list<i32>                                    updateCounts
 }
 
 exception SnappyException {
@@ -464,21 +458,35 @@ exception SnappyException {
 }
 
 // default batch size
-const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 1024;
+const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 1024
 // default LOB chunk size
-const i32 DEFAULT_LOB_CHUNKSIZE                            = 2097152; // 2MB
+const i32 DEFAULT_LOB_CHUNKSIZE                            = 2097152 // 2MB
 
 // constants for transaction isolation levels
-const byte TRANSACTION_NONE                                = 0;
-const byte TRANSACTION_READ_UNCOMMITTED                    = 1;
-const byte TRANSACTION_READ_COMMITTED                      = 2;
-const byte TRANSACTION_REPEATABLE_READ                     = 4;
-const byte TRANSACTION_SERIALIZABLE                        = 8;
+const byte TRANSACTION_NONE                                = 0
+const byte TRANSACTION_READ_UNCOMMITTED                    = 1
+const byte TRANSACTION_READ_COMMITTED                      = 2
+const byte TRANSACTION_REPEATABLE_READ                     = 4
+const byte TRANSACTION_SERIALIZABLE                        = 8
 // special flag to indicate no change to current isolation level
-const byte TRANSACTION_NO_CHANGE                           = 64;
+const byte TRANSACTION_NO_CHANGE                           = 64
 
 // constant for the default transaction isolation
-const byte DEFAULT_TRANSACTION_ISOLATION                   = TRANSACTION_NONE;
+const byte DEFAULT_TRANSACTION_ISOLATION                   = TRANSACTION_NONE
+
+// constants for XA transactions that match the values in XAResource
+const i32 XA_OK                                            = 0
+const i32 XA_RDONLY                                        = 3
+
+const i32 XA_TMNOFLAGS                                     = 0
+const i32 XA_TMJOIN                                        = 0x00200000
+const i32 XA_TMENDRSCAN                                    = 0x00800000
+const i32 XA_TMSTARTRSCAN                                  = 0x01000000
+const i32 TMSUSPEND                                        = 0x02000000
+const i32 XA_TMSUCCESS                                     = 0x04000000
+const i32 XA_TMRESUME                                      = 0x08000000
+const i32 XA_TMFAIL                                        = 0x20000000
+const i32 XA_TMONEPHASE                                    = 0x40000000
 
 struct StatementAttrs {
   1: optional byte                                         resultSetType
@@ -501,10 +509,10 @@ struct StatementAttrs {
  15: optional bool                                         poolable
  16: optional bool                                         doEscapeProcessing
  17: optional map<TransactionAttribute, bool>              pendingTransactionAttrs
-}
-
-struct DateTime {
-  1: required i64                                          secsSinceEpoch
+ // restrict execution to given bucket IDs of a table
+ // (i.e. queries will scan only these bucketIds)
+ 18: optional set<i32>                                     bucketIds
+ 19: optional string                                       bucketIdsTable
 }
 
 union ColumnValue {
@@ -519,27 +527,26 @@ union ColumnValue {
   // union having two fields namely float & int for conversion between the two
   6: i32                                                   float_val     // REAL
   7: double                                                double_val    // DOUBLE/FLOAT
-  8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR, SQLXML
+  8: string                                                string_val    // CHAR, VARCHAR, LONGVARCHAR
   9: Decimal                                               decimal_val   // DECIMAL
- 10: DateTime                                              date_val      // DATE (only the date portion is used)
- 11: DateTime                                              time_val      // TIME (only the time portion is used)
- 12: Timestamp                                             timestamp_val // TIMESTAMP
+ 10: i64                                                   date_val      // DATE (seconds since epoch)
+ 11: i64                                                   time_val      // TIME (seconds since epoch)
+ 12: i64                                                   timestamp_val // TIMESTAMP (nanos since epoch)
  13: binary                                                binary_val    // BINARY, VARBINARY, LONGVARBINARY
  14: BlobChunk                                             blob_val      // BLOB
- 15: ClobChunk                                             clob_val      // CLOB
+ 15: ClobChunk                                             clob_val      // CLOB, JSON, SQLXML
  16: list<ColumnValue>                                     array_val     // ARRAY
  17: map<ColumnValue, ColumnValue>                         map_val       // MAP
  18: list<ColumnValue>                                     struct_val    // STRUCT
  19: bool                                                  null_val      // NULLTYPE
- 20: JSONObject                                            json_val      // JSON
- 21: binary                                                java_val      // JAVA_OBJECT (serialized)
+ 20: binary                                                java_val      // JAVA_OBJECT (serialized)
 }
 
 // constants for unknown precision/scale
-const i16 COLUMN_PRECISION_UNKNOWN                         = 0;
-const i16 COLUMN_SCALE_UNKNOWN                             = 0;
+const i16 COLUMN_PRECISION_UNKNOWN                         = 0
+const i16 COLUMN_SCALE_UNKNOWN                             = 0
 // max decimal precision supported by server
-const i32 DECIMAL_MAX_PRECISION                            = 127;
+const i32 DECIMAL_MAX_PRECISION                            = 127
 
 struct ColumnDescriptor {
   1: required SnappyType                                   type
@@ -583,40 +590,38 @@ struct OutputParameter {
 // been closed.
 // If cursorId for a RowSet is set this value, then it is already finished
 // and no further operations are possible
-const i32 INVALID_ID                                       = 0;
+const i32 INVALID_ID                                       = 0
 
 // values for otherResultSetBehaviour flag of getNextResultSet
-const byte NEXTRS_CLOSE_ALL_RESULTS                        = 0;
-const byte NEXTRS_KEEP_CURRENT_RESULT                      = 1;
-const byte NEXTRS_CLOSE_CURRENT_RESULT                     = 2;
+const byte NEXTRS_CLOSE_ALL_RESULTS                        = 0
+const byte NEXTRS_KEEP_CURRENT_RESULT                      = 1
+const byte NEXTRS_CLOSE_CURRENT_RESULT                     = 2
 
 // bitmasks for RowSet.flags
 // if this is the last batch of rows for current result set
-const byte ROWSET_LAST_BATCH                               = 1;
+const byte ROWSET_LAST_BATCH                               = 1
 // for multiple result sets with CALL PROCEDUREs
-const byte ROWSET_HAS_MORE_ROWSETS                         = 2;
-// if all data for BLOB and CLOB columns has been already fetched
-// and does not need to be obtained using LOB calls separately
-const byte ROWSET_DONE_FOR_LOBS                            = 4;
+const byte ROWSET_HAS_MORE_ROWSETS                         = 2
 // set if offset from scrollCursor operation resulted in cursor being placed
 // before first row (RowSet can contain rows after that as per fetch direction)
-const byte ROWSET_BEFORE_FIRST                             = 8;
+const byte ROWSET_BEFORE_FIRST                             = 4
 // set if offset from scrollCursor operation resulted in cursor being placed
 // after last row (RowSet can contain rows before that as per fetch direction)
-const byte ROWSET_AFTER_LAST                               = 16;
+const byte ROWSET_AFTER_LAST                               = 8
 
 struct RowSet {
   1: required list<Row>                                    rows
   // bitmask flags as a combination of constants defined above
   2: required byte                                         flags
   // ID associated with this RowSet
-  3: required i32                                          cursorId
+  3: required i64                                          cursorId
   // ID of the associated statement
-  4: required i32                                          statementId
-  // three arguments below are used to fix the origin of this result
-  // so client can detect failure cases easily when iterating over results
-  // (token and address are optional and will not be set by server)
-  5: required i32                                          connId
+  4: required i64                                          statementId
+  // Three arguments below are used to determine the origin of this result
+  // so client can detect failure cases easily when iterating over results.
+  // Server will fill in only the connId while token and source need to be
+  // filled on the client itself, if required.
+  5: required i64                                          connId
   6: optional binary                                       token
   7: optional HostAddress                                  source
   // the starting row number (0-based) in case of batched results
@@ -635,13 +640,15 @@ struct RowSet {
 }
 
 // statement types
-const byte STATEMENT_TYPE_SELECT                           = 0;
-const byte STATEMENT_TYPE_INSERT                           = 1;
-const byte STATEMENT_TYPE_UPDATE                           = 2;
-const byte STATEMENT_TYPE_DELETE                           = 3;
+const byte STATEMENT_TYPE_SELECT                           = 0
+const byte STATEMENT_TYPE_INSERT                           = 1
+const byte STATEMENT_TYPE_UPDATE                           = 2
+const byte STATEMENT_TYPE_DELETE                           = 3
+const byte STATEMENT_TYPE_CALL                             = 4
+const byte STATEMENT_TYPE_DDL                              = 5
 
 struct PrepareResult {
-  1: required i32                                          statementId
+  1: required i64                                          statementId
   2: required byte                                         statementType
   3: required list<ColumnDescriptor>                       parameterMetaData
   4: optional list<ColumnDescriptor>                       resultSetMetaData
@@ -654,7 +661,9 @@ struct UpdateResult {
   // for batch updates
   2: optional list<i32>                                    batchUpdateCounts
   3: optional RowSet                                       generatedKeys
-  4: optional SnappyExceptionData                          warnings
+  // in case the execution results in new schema being set for the connection
+  4: optional string                                       newDefaultSchema
+  5: optional SnappyExceptionData                          warnings
 }
 
 struct StatementResult {
@@ -666,22 +675,24 @@ struct StatementResult {
   3: optional list<i32>                                    batchUpdateCounts
   4: optional map<i32, ColumnValue>                        procedureOutParams
   5: optional RowSet                                       generatedKeys
-  6: optional SnappyExceptionData                          warnings
+  // in case the execution results in new schema being set for the connection
+  6: optional string                                       newDefaultSchema
+  7: optional SnappyExceptionData                          warnings
   // for prepareAndExecute
-  7: optional PrepareResult                                preparedResult
+  8: optional PrepareResult                                preparedResult
 }
 
 // type IDs for EntityId used by bulkClose API
-const byte BULK_CLOSE_RESULTSET                            = 1;
-const byte BULK_CLOSE_LOB                                  = 2;
-const byte BULK_CLOSE_STATEMENT                            = 3;
-const byte BULK_CLOSE_CONNECTION                           = 4;
+const byte BULK_CLOSE_RESULTSET                            = 1
+const byte BULK_CLOSE_LOB                                  = 2
+const byte BULK_CLOSE_STATEMENT                            = 3
+const byte BULK_CLOSE_CONNECTION                           = 4
 
 struct EntityId {
-  1: required i32                                          id
+  1: required i64                                          id
   2: required byte                                         type
-  3: required i32                                          connId
-  4: optional binary                                       token
+  3: required i64                                          connId
+  4: required binary                                       token
 }
 
 
@@ -701,8 +712,6 @@ service LocatorService {
       // get a server from among given server groups (union)
       2: set<string> serverGroups,
       3: set<HostAddress> failedServers) throws (1: SnappyException error)
-
-  oneway void closeConnection()
 }
 
 
@@ -731,167 +740,179 @@ service SnappyDataService {
   ConnectionProperties openConnection(1: OpenConnectionArgs arguments)
       throws (1: SnappyException error)
 
-  StatementResult execute(1: i32 connId,
+  StatementResult execute(1: i64 connId,
       2: string sql,
       // optional
       3: map<i32, OutputParameter> outputParams,
       // optional
       4: StatementAttrs attrs,
-      // optional
       5: binary token) throws (1: SnappyException error)
 
-  UpdateResult executeUpdate(1: i32 connId,
+  UpdateResult executeUpdate(1: i64 connId,
       2: list<string> sqls,
       // optional
       3: StatementAttrs attrs,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
-  RowSet executeQuery(1: i32 connId,
+  RowSet executeQuery(1: i64 connId,
       2: string sql,
       // optional
       3: StatementAttrs attrs,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
-  PrepareResult prepareStatement(1: i32 connId,
+  PrepareResult prepareStatement(1: i64 connId,
       2: string sql,
       // optional
       3: map<i32, OutputParameter> outputParams,
       // optional
       4: StatementAttrs attrs,
-      // optional
       5: binary token) throws (1: SnappyException error)
 
-  StatementResult executePrepared(1: i32 stmtId,
+  StatementResult executePrepared(1: i64 stmtId,
       2: Row params,
       // optional
       3: map<i32, OutputParameter> outputParams,
       // optional
+      4: StatementAttrs attrs,
+      5: binary token) throws (1: SnappyException error)
+
+  UpdateResult executePreparedUpdate(1: i64 stmtId,
+      2: Row params,
+      // optional
+      3: StatementAttrs attrs,
       4: binary token) throws (1: SnappyException error)
 
-  UpdateResult executePreparedUpdate(1: i32 stmtId,
+  RowSet executePreparedQuery(1: i64 stmtId,
       2: Row params,
       // optional
-      3: binary token) throws (1: SnappyException error)
+      3: StatementAttrs attrs,
+      4: binary token) throws (1: SnappyException error)
 
-  RowSet executePreparedQuery(1: i32 stmtId,
-      2: Row params,
-      // optional
-      3: binary token) throws (1: SnappyException error)
-
-  UpdateResult executePreparedBatch(1: i32 stmtId,
+  UpdateResult executePreparedBatch(1: i64 stmtId,
       2: list<Row> paramsBatch,
       // optional
-      3: binary token) throws (1: SnappyException error)
+      3: StatementAttrs attrs,
+      4: binary token) throws (1: SnappyException error)
 
-  StatementResult prepareAndExecute(1: i32 connId,
+  StatementResult prepareAndExecute(1: i64 connId,
       2: string sql,
       3: list<Row> paramsBatch,
       // optional
       4: map<i32, OutputParameter> outputParams,
       // optional
       5: StatementAttrs attrs,
-      // optional
       6: binary token) throws (1: SnappyException error)
 
-  void beginTransaction(1: i32 connId,
+  byte beginTransaction(1: i64 connId,
       2: byte isolationLevel,
       // optional
       3: map<TransactionAttribute, bool> flags,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
-  void setTransactionAttributes(1: i32 connId,
+  void setTransactionAttributes(1: i64 connId,
       2: map<TransactionAttribute, bool> flags,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
-  map<TransactionAttribute, bool> getTransactionAttributes(1: i32 connId,
-      // optional
+  map<TransactionAttribute, bool> getTransactionAttributes(1: i64 connId,
       2: binary token) throws (1: SnappyException error)
 
-  void commitTransaction(1: i32 connId,
+  void commitTransaction(1: i64 connId,
       2: bool startNewTransaction,
       // optional
       3: map<TransactionAttribute, bool> flags,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
-  void rollbackTransaction(1: i32 connId,
+  void rollbackTransaction(1: i64 connId,
       2: bool startNewTransaction,
       // optional
       3: map<TransactionAttribute, bool> flags,
-      // optional
       4: binary token) throws (1: SnappyException error)
 
-  // returns true if second phase commitTransaction() is required else
-  // false where commit was single-phase (e.g. for READ_ONLY transaction)
-  bool prepareCommitTransaction(1: i32 connId,
-      // optional
-      2: map<TransactionAttribute, bool> flags,
-      // optional
-      3: binary token) throws (1: SnappyException error)
-
-  RowSet getNextResultSet(1: i32 cursorId,
+  RowSet getNextResultSet(1: i64 cursorId,
       2: byte otherResultSetBehaviour,
-      // optional
       3: binary token) throws (1: SnappyException error)
 
-  BlobChunk getBlobChunk(1: i32 connId,
-      2: i32 lobId,
+  BlobChunk getBlobChunk(1: i64 connId,
+      2: i64 lobId,
       3: i64 offset,
       4: i32 size,
       // if true then free the server-side handle to blob when last==true
       5: bool freeLobAtEnd,
-      // optional
       6: binary token) throws (1: SnappyException error)
-  ClobChunk getClobChunk(1: i32 connId,
-      2: i32 lobId,
+  ClobChunk getClobChunk(1: i64 connId,
+      2: i64 lobId,
       3: i64 offset,
       4: i32 size,
       // if true then free the server-side handle to blob when last==true
       5: bool freeLobAtEnd,
-      // optional
       6: binary token) throws (1: SnappyException error)
 
-  i32 sendBlobChunk(1: BlobChunk chunk,
-      2: i32 connId,
-      // optional
+  i64 sendBlobChunk(1: BlobChunk chunk,
+      2: i64 connId,
       3: binary token) throws (1: SnappyException error)
-  i32 sendClobChunk(1: ClobChunk chunk,
-      2: i32 connId,
-      // optional
+  i64 sendClobChunk(1: ClobChunk chunk,
+      2: i64 connId,
       3: binary token) throws (1: SnappyException error)
 
-  void freeLob(1: i32 connId,
-      2: i32 lobId,
-      // optional
+  void freeLob(1: i64 connId,
+      2: i64 lobId,
       3: binary token) throws (1: SnappyException error)
 
   // cursor operations
 
-  RowSet scrollCursor(1: i32 cursorId,
+  RowSet scrollCursor(1: i64 cursorId,
       2: i32 offset,
       3: bool offsetIsAbsolute,
       4: bool fetchReverse,
       5: i32 fetchSize,
-      // optional
       6: binary token) throws (1: SnappyException error)
 
-  void executeCursorUpdate(1: i32 cursorId,
+  void executeCursorUpdate(1: i64 cursorId,
       2: list<CursorUpdateOperation> operations,
       3: list<Row> changedRows,
       4: list<list<i32>> changedColumnsList,
       // optional
       5: list<i32> changedRowIndexes,
-      // optional
       6: binary token) throws (1: SnappyException error)
+
+  // XA transaction support
+
+  void startXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      // to disable timeout use value of maximum i32 (0x7fffffff)
+      3: i32 timeoutInSeconds,
+      4: i32 flags,
+      5: binary token) throws (1: SnappyException error)
+
+  i32 prepareXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: binary token) throws (1: SnappyException error)
+
+  void commitXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: bool onePhase,
+      4: binary token) throws (1: SnappyException error)
+
+  void rollbackXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: binary token) throws (1: SnappyException error)
+
+  void forgetXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: binary token) throws (1: SnappyException error)
+
+  void endXATransaction(1: i64 connId,
+      2: TransactionXid xid,
+      3: i32 flags,
+      4: binary token) throws (1: SnappyException error)
+
+  list<TransactionXid> recoverXATransaction(1: i64 connId,
+      2: i32 flag,
+      3: binary token) throws (1: SnappyException error)
 
   // meta-data API
 
-  ServiceMetaData getServiceMetaData(1: i32 connId,
-      // optional
+  ServiceMetaData getServiceMetaData(1: i64 connId,
       2: binary token) throws (1: SnappyException error)
 
   RowSet getSchemaMetaData(1: ServiceMetaDataCall schemaCall,
@@ -910,26 +931,24 @@ service SnappyDataService {
 
   // end meta-data API
 
-  list<ConnectionProperties> fetchActiveConnections(1: i32 connId,
-      // optional
+  list<ConnectionProperties> fetchActiveConnections(1: i64 connId,
       2: binary token) throws (1: SnappyException error)
-  map<i32, string> fetchActiveStatements(1: i32 connId,
-      // optional
+  map<i64, string> fetchActiveStatements(1: i64 connId,
       2: binary token) throws (1: SnappyException error)
 
-  void cancelStatement(1: i32 stmtId,
-      // optional
+  void cancelStatement(1: i64 stmtId,
       2: binary token) throws (1: SnappyException error)
 
-  void closeResultSet  (1: i32 cursorId,
-      // optional
+  void cancelCurrentStatement(1: i64 connId,
       2: binary token) throws (1: SnappyException error)
-  void closeStatement  (1: i32 stmtId,
-      // optional
+
+  void closeResultSet  (1: i64 cursorId,
       2: binary token) throws (1: SnappyException error)
-  oneway void closeConnection (1: i32 connId,
-      // optional
-      2: binary token)
+  void closeStatement  (1: i64 stmtId,
+      2: binary token) throws (1: SnappyException error)
+  oneway void closeConnection (1: i64 connId,
+      2: bool closeSocket,
+      3: binary token)
 
   oneway void bulkClose(
       // IDs of entities to be closed (ResultSet, LOB, Statement or Connection)

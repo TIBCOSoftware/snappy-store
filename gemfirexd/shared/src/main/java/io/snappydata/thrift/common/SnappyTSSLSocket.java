@@ -43,7 +43,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import io.snappydata.thrift.HostAddress;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -51,13 +50,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A custom SSL TSocket allowing to increase input/output buffer sizes.
- * 
- * Currently this uses blocking Sockets and not NIO. Using SSLEngine is tricky
- * to get correct so will be implemented later. When it shall implement it, then
- * this will extend {@link SnappyTSocket} so higher layer should use the
- * "instanceof {@link SnappyTSocket}" check to determine whether to use selector
- * based server or old threaded one.
+ * A custom SSL TSocket allowing to increase input/output buffer sizes
+ * and also providing for non-blocking operations like in NIO.
  */
 public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
 
@@ -79,27 +73,22 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
    */
   private volatile int timeout;
 
-  private int inputBufferSize = SystemProperties.getClientInstance()
-      .getSocketInputBufferSize();
-  private int outputBufferSize = SystemProperties.getClientInstance()
-      .getSocketOutputBufferSize();
+  private int inputBufferSize = SocketParameters.DEFAULT_BUFFER_SIZE;
+  private int outputBufferSize = SocketParameters.DEFAULT_BUFFER_SIZE;
 
   /**
    * Constructor that takes an already created socket.
-   * 
-   * @param socket
-   *          Already created socket object
-   * 
-   * @throws TTransportException
-   *           if there is an error setting up the streams
+   *
+   * @param socket Already created socket object
+   * @throws TTransportException if there is an error setting up the streams
    */
-  public SnappyTSSLSocket(Socket socket, int timeout, SocketParameters params,
-      SystemProperties props) throws TTransportException {
+  public SnappyTSSLSocket(Socket socket, SocketParameters params)
+      throws TTransportException {
     super(socket);
 
     if (isOpen()) {
       try {
-        setProperties(socket, timeout, params, props);
+        setProperties(socket, params.getReadTimeout(), params);
         this.inputStream_ = new BufferedInputStream(socket.getInputStream(),
             this.inputBufferSize);
         this.outputStream_ = new BufferedOutputStream(socket.getOutputStream(),
@@ -114,45 +103,31 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
   /**
    * Creates a new SSL socket that will connect to the given host on the given
    * port.
-   * 
-   * @param host
-   *          Remote HostAddress including port
-   * @param params
-   *          Socket parameters including SSL properties
-   * @param props
-   *          the system properties instance to use and initialize global socket
-   *          options like keepalive and buffer sizes that are not set in params
+   *
+   * @param host   Remote HostAddress including port
+   * @param params Socket parameters including SSL properties
    */
-  public SnappyTSSLSocket(HostAddress host, SocketParameters params,
-      SystemProperties props) throws TTransportException {
-    this(host.resolveHost(), host.getPort(), params, props, params
-        .getReadTimeout(0));
+  public SnappyTSSLSocket(HostAddress host, SocketParameters params)
+      throws TTransportException {
+    this(host.resolveHost(), host.getPort(), params.getReadTimeout(), params);
   }
 
   /**
    * Creates a new unconnected SSL socket that will connect to the given host on
    * the given port.
-   * 
-   * @param hostAddress
-   *          Resolved remote host address
-   * @param port
-   *          Remote port
-   * @param params
-   *          Socket parameters including SSL properties
-   * @param props
-   *          the system properties instance to use and initialize global socket
-   *          options like keepalive and buffer sizes that are not set in params
-   * @param timeout
-   *          Socket timeout
+   *
+   * @param hostAddress Resolved remote host address
+   * @param port        Remote port
+   * @param timeout     Socket timeout
+   * @param params      Socket parameters including SSL properties
    */
-  public SnappyTSSLSocket(InetAddress hostAddress, int port,
-      SocketParameters params, SystemProperties props, int timeout)
-      throws TTransportException {
+  public SnappyTSSLSocket(InetAddress hostAddress, int port, int timeout,
+      SocketParameters params) throws TTransportException {
     super(initSSLSocket(hostAddress, port, params, timeout));
     this.hostAddress = hostAddress;
     this.port = port;
 
-    setProperties(getSocket(), timeout, params, props);
+    setProperties(getSocket(), timeout, params);
 
     if (!isOpen()) {
       this.open();
@@ -164,15 +139,14 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
    */
   private static Socket initSSLSocket(InetAddress hostAddress, int port,
       SocketParameters sockParams, int timeout) throws TTransportException {
-    return SnappyTSSLSocketFactory.getClientSocket(hostAddress,
+    return SSLFactory.getClientSocket(hostAddress,
         port, timeout, sockParams);
   }
 
   /**
    * Sets the socket read timeout.
-   * 
-   * @param timeout
-   *          read timeout (SO_TIMEOUT) in milliseconds
+   *
+   * @param timeout read timeout (SO_TIMEOUT) in milliseconds
    */
   @Override
   public void setTimeout(int timeout) {
@@ -202,9 +176,8 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
 
   /**
    * Sets the socket read timeout.
-   * 
-   * @param timeout
-   *          read timeout (SO_TIMEOUT) in milliseconds
+   *
+   * @param timeout read timeout (SO_TIMEOUT) in milliseconds
    */
   @Override
   public void setSoTimeout(int timeout) throws SocketException {
@@ -213,36 +186,19 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
   }
 
   /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void setTimeout(int timeout, SocketParameters params,
-      SystemProperties props) throws SocketException {
-    this.timeout = SnappyTSocket.setTimeout(getSocket(), timeout, params, props);
-  }
-
-  /**
    * Sets the socket properties like timeout, keepalive, buffer sizes.
-   * 
-   * @param timeout
-   *          Milliseconds timeout
-   * @param params
-   *          Socket parameters including buffer sizes and keep-alive settings
-   * @param props
-   *          the system properties instance to use and initialize global socket
-   *          options like keepalive and buffer sizes that are not set in params
+   *
+   * @param params Socket parameters including buffer sizes and keep-alive settings
    */
   protected void setProperties(Socket socket, int timeout,
-      SocketParameters params, SystemProperties props)
-      throws TTransportException {
-    this.inputBufferSize = params.getInputBufferSize(props
-        .getSocketInputBufferSize());
-    this.outputBufferSize = params.getOutputBufferSize(props
-        .getSocketOutputBufferSize());
+      SocketParameters params) throws TTransportException {
+    this.inputBufferSize = params.getInputBufferSize();
+    this.outputBufferSize = params.getInputBufferSize();
     try {
       socket.setSoLinger(false, 0);
       socket.setTcpNoDelay(true);
-      this.timeout = SnappyTSocket.setTimeout(socket, timeout, params, props);
+      SnappyTSocket.setTimeout(socket, timeout, params);
+      this.timeout = timeout;
     } catch (SocketException se) {
       LOGGER.warn("Could not set socket timeout.", se);
       throw new TTransportException(TTransportException.NOT_OPEN,

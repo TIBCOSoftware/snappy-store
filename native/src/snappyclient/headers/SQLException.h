@@ -160,7 +160,7 @@ namespace client {
         const thrift::SnappyExceptionData& snappyExceptionData) :
         m_reason(snappyExceptionData.reason),
         m_state(snappyExceptionData.sqlState),
-        m_severity(snappyExceptionData.severity), m_next(NULL),
+        m_severity(snappyExceptionData.errorCode), m_next(NULL),
         m_file(file), m_line(line) {
       init();
     }

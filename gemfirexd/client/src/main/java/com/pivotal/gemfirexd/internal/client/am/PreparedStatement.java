@@ -47,6 +47,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.ClientPooledConnection;
 import com.pivotal.gemfirexd.internal.client.net.FdocaConstants;
 import com.pivotal.gemfirexd.internal.client.net.NetResultSet;
@@ -1838,7 +1839,7 @@ public class PreparedStatement extends Statement
         }
         catch (ClassNotFoundException e) { problem = e; }
 // GemStone changes BEGIN
-        if (Boolean.TRUE.equals(Cursor.ALLOW_THREADCONTEXT_CLASSLOADER.get())) {
+        if (Boolean.TRUE.equals(ClientSharedUtils.ALLOW_THREADCONTEXT_CLASSLOADER.get())) {
           try {
             // also check with current thread context ClassLoader
             Class targetClass = Class.forName(targetClassName, true,

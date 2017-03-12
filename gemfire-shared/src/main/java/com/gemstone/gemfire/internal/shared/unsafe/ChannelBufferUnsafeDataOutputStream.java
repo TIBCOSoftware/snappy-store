@@ -22,12 +22,13 @@ import java.io.IOException;
 import java.io.UTFDataFormatException;
 import java.nio.channels.WritableByteChannel;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * A buffered DataOutput abstraction over channel using direct byte buffers, and
  * using internal Unsafe class for best performance. Users must check for
- * {@link UnsafeHolder#getDirectByteBufferAddressMethod()} to be non-null before
- * trying to use this class.
+ * {@link UnsafeHolder#hasUnsafe()} before trying to use this class.
  * <p>
  * The implementation is not thread-safe by design. This particular class can be
  * used as an efficient, buffered DataOutput implementation for file channels,
@@ -54,7 +55,7 @@ public class ChannelBufferUnsafeDataOutputStream extends
    */
   @Override
   public final void writeBoolean(boolean v) throws IOException {
-    super.write(v ? 1 : 0);
+    putByte(v ? (byte)1 : 0);
   }
 
   /**
@@ -62,7 +63,7 @@ public class ChannelBufferUnsafeDataOutputStream extends
    */
   @Override
   public final void writeByte(int v) throws IOException {
-    super.write(v);
+    putByte((byte)(v & 0xff));
   }
 
   /**
@@ -70,14 +71,12 @@ public class ChannelBufferUnsafeDataOutputStream extends
    */
   @Override
   public final void writeShort(int v) throws IOException {
-    final long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 2) {
-      this.addrPosition = putShort(addrPos, v);
-    }
-    else {
+    long addrPos = this.addrPosition;
+    if ((this.addrLimit - addrPos) < 2) {
       flushBufferBlocking(this.buffer);
-      this.addrPosition = putShort(this.addrPosition, v);
+      addrPos = this.addrPosition;
     }
+    this.addrPosition = putShort(addrPos, v);
   }
 
   /**
@@ -93,14 +92,12 @@ public class ChannelBufferUnsafeDataOutputStream extends
    */
   @Override
   public final void writeInt(int v) throws IOException {
-    final long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 4) {
-      this.addrPosition = putInt(addrPos, v);
-    }
-    else {
+    long addrPos = this.addrPosition;
+    if ((this.addrLimit - addrPos) < 4) {
       flushBufferBlocking(this.buffer);
-      this.addrPosition = putInt(this.addrPosition, v);
+      addrPos = this.addrPosition;
     }
+    this.addrPosition = putInt(addrPos, v);
   }
 
   /**
@@ -109,17 +106,11 @@ public class ChannelBufferUnsafeDataOutputStream extends
   @Override
   public final void writeLong(long v) throws IOException {
     long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) >= 8) {
-      // more efficient to use putLong() instead of bytewise on most platforms
-      this.addrPosition += 8;
-      this.buffer.putLong((int)(addrPos - this.baseAddress), v);
-    }
-    else {
+    if ((this.addrLimit - addrPos) < 8) {
       flushBufferBlocking(this.buffer);
       addrPos = this.addrPosition;
-      this.addrPosition += 8;
-      this.buffer.putLong((int)(addrPos - this.baseAddress), v);
     }
+    this.addrPosition = putLong(addrPos, v);
   }
 
   /**
@@ -143,7 +134,6 @@ public class ChannelBufferUnsafeDataOutputStream extends
    */
   @Override
   public final void writeBytes(String s) throws IOException {
-    final sun.misc.Unsafe unsafe = ChannelBufferUnsafeOutputStream.unsafe;
     int off = 0;
     int len = s.length();
     while (len > 0) {
@@ -152,17 +142,16 @@ public class ChannelBufferUnsafeDataOutputStream extends
       if (len <= remaining) {
         final int end = (off + len);
         while (off < end) {
-          unsafe.putByte(addrPos, (byte)(s.charAt(off) & 0xff));
+          Platform.putByte(null, addrPos, (byte)(s.charAt(off) & 0xff));
           addrPos++;
           off++;
         }
         this.addrPosition = addrPos;
         return;
-      }
-      else {
+      } else {
         final int end = (off + remaining);
         while (off < end) {
-          unsafe.putByte(addrPos, (byte)(s.charAt(off) & 0xff));
+          Platform.putByte(null, addrPos, (byte)(s.charAt(off) & 0xff));
           addrPos++;
           off++;
         }
@@ -178,7 +167,6 @@ public class ChannelBufferUnsafeDataOutputStream extends
    */
   @Override
   public final void writeChars(String s) throws IOException {
-    final sun.misc.Unsafe unsafe = ChannelBufferUnsafeOutputStream.unsafe;
     int off = 0;
     int len = s.length();
     while (len > 0) {
@@ -186,11 +174,8 @@ public class ChannelBufferUnsafeDataOutputStream extends
       final int remaining = (int)(this.addrLimit - addrPos);
       if ((len << 1) <= remaining) {
         final int end = (off + len);
-        int c;
         while (off < end) {
-          c = s.charAt(off++);
-          unsafe.putByte(addrPos++, (byte)((c >>> 8) & 0xff));
-          unsafe.putByte(addrPos++, (byte)(c & 0xff));
+          addrPos = putShort(addrPos, s.charAt(off++));
         }
         this.addrPosition = addrPos;
         return;
@@ -198,11 +183,8 @@ public class ChannelBufferUnsafeDataOutputStream extends
       else {
         final int remchars = (remaining >>> 1);
         final int end = (off + remchars);
-        int c;
         while (off < end) {
-          c = s.charAt(off++);
-          unsafe.putByte(addrPos++, (byte)((c >>> 8) & 0xff));
-          unsafe.putByte(addrPos++, (byte)(c & 0xff));
+          addrPos = putShort(addrPos, s.charAt(off++));
         }
         this.addrPosition = addrPos;
         flushBufferBlocking(this.buffer);
@@ -216,7 +198,6 @@ public class ChannelBufferUnsafeDataOutputStream extends
    */
   @Override
   public final void writeUTF(String str) throws IOException {
-    final sun.misc.Unsafe unsafe = ChannelBufferUnsafeOutputStream.unsafe;
     int strlen = str.length();
     if (strlen > 65535) {
       throw new UTFDataFormatException("encoded string too long: " + strlen);
@@ -230,12 +211,10 @@ public class ChannelBufferUnsafeDataOutputStream extends
       // write the UTF string skipping the length, then write length at the last
       addrPos += 2;
       final long finalAddrPos = writeUTFSegmentNoOverflow(str, 0, strlen,
-          addrPos, unsafe);
+          addrPos, UnsafeHolder.getUnsafe());
       long utflen = (finalAddrPos - addrPos);
       if (utflen <= 65535) {
-        addrPos -= 2;
-        unsafe.putByte(addrPos++, (byte)((utflen >>> 8) & 0xff));
-        unsafe.putByte(addrPos++, (byte)(utflen & 0xff));
+        putShort(addrPos - 2, (int)utflen);
         this.addrPosition = finalAddrPos;
       }
       else {
@@ -287,7 +266,7 @@ public class ChannelBufferUnsafeDataOutputStream extends
         // write the UTF segment and update the number of remaining characters,
         // offset, remaining buffer size etc
         long newAddrPos = writeUTFSegmentNoOverflow(str, offset, writeLen,
-            addrPos, unsafe);
+            addrPos, UnsafeHolder.getUnsafe());
         strlen -= writeLen;
         offset += writeLen;
         remaining -= (newAddrPos - addrPos);
@@ -303,7 +282,7 @@ public class ChannelBufferUnsafeDataOutputStream extends
     }
   }
 
-  private static final long writeUTFSegmentNoOverflow(String str, int offset,
+  private static long writeUTFSegmentNoOverflow(String str, int offset,
       int length, long addrPos, final sun.misc.Unsafe unsafe)
       throws IOException {
     final int end = (offset + length);
@@ -311,34 +290,46 @@ public class ChannelBufferUnsafeDataOutputStream extends
       int c = str.charAt(offset);
       if ((c >= 0x0001) && (c <= 0x007F)) {
         unsafe.putByte(addrPos++, (byte)c);
-      }
-      else if (c > 0x07FF) {
+      } else if (c > 0x07FF) {
         unsafe.putByte(addrPos++, (byte)(0xE0 | ((c >> 12) & 0x0F)));
         unsafe.putByte(addrPos++, (byte)(0x80 | ((c >> 6) & 0x3F)));
-        unsafe.putByte(addrPos++, (byte)(0x80 | ((c >> 0) & 0x3F)));
-      }
-      else {
+        unsafe.putByte(addrPos++, (byte)(0x80 | (c & 0x3F)));
+      } else {
         unsafe.putByte(addrPos++, (byte)(0xC0 | ((c >> 6) & 0x1F)));
-        unsafe.putByte(addrPos++, (byte)(0x80 | ((c >> 0) & 0x3F)));
+        unsafe.putByte(addrPos++, (byte)(0x80 | (c & 0x3F)));
       }
       offset++;
     }
     return addrPos;
   }
 
-  protected static final long putShort(long addrPos, final int v) {
-    final sun.misc.Unsafe unsafe = ChannelBufferUnsafeOutputStream.unsafe;
-    unsafe.putByte(addrPos++, (byte)((v >>> 8) & 0xff));
-    unsafe.putByte(addrPos++, (byte)(v & 0xff));
-    return addrPos;
+  /** Write a short in big-endian format on given off-heap address. */
+  protected static long putShort(long addrPos, final int v) {
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putShort(null, addrPos, Short.reverseBytes((short)v));
+    } else {
+      Platform.putShort(null, addrPos, (short)v);
+    }
+    return addrPos + 2;
   }
 
-  protected static final long putInt(long addrPos, final int v) {
-    final sun.misc.Unsafe unsafe = ChannelBufferUnsafeOutputStream.unsafe;
-    unsafe.putByte(addrPos++, (byte)((v >>> 24) & 0xff));
-    unsafe.putByte(addrPos++, (byte)((v >>> 16) & 0xff));
-    unsafe.putByte(addrPos++, (byte)((v >>> 8) & 0xff));
-    unsafe.putByte(addrPos++, (byte)(v & 0xff));
-    return addrPos;
+  /** Write an integer in big-endian format on given off-heap address. */
+  protected static long putInt(long addrPos, final int v) {
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putInt(null, addrPos, Integer.reverseBytes(v));
+    } else {
+      Platform.putInt(null, addrPos, v);
+    }
+    return addrPos + 4;
+  }
+
+  /** Write a long in big-endian format on given off-heap address. */
+  protected static long putLong(long addrPos, final long v) {
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putLong(null, addrPos, Long.reverseBytes(v));
+    } else {
+      Platform.putLong(null, addrPos, v);
+    }
+    return addrPos + 8;
   }
 }

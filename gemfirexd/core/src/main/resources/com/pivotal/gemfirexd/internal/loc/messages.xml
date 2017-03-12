@@ -713,7 +713,10 @@ Guide.
                 <text>HDFS file rollover is supported only for write-only HDFS tables. '{0}' is not a write-only HDFS table.</text>
                 <arg>fqtn</arg>
            </msg>
-           
+           <msg>
+               <name>0A000.S.35</name>
+               <text>Statement.cancel(): no unique active statement found for the connection on server.</text>
+           </msg>
 <!--  GemStone changes END -->
         </family>
 
@@ -5380,7 +5383,8 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
 
             <msg>
                 <name>XJ213.C</name>
-                <text>The traceLevel connection property does not have a valid format for a number.</text>
+                <text>The logging level connection property is not valid: {0}</text>
+                <arg>value</arg>
             </msg>
 
             <msg>

@@ -37,16 +37,20 @@ package io.snappydata.thrift.server;
 
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Properties;
 
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
-import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
+import com.gemstone.gemfire.internal.shared.FinalizeObject;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineStatement;
+import com.pivotal.gemfirexd.internal.jdbc.EmbedXAConnection;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.OpenConnectionArgs;
 import io.snappydata.thrift.SecurityMechanism;
@@ -58,22 +62,29 @@ import io.snappydata.thrift.snappydataConstants;
  * Holder for a connection on the server side for each open client connection.
  */
 final class ConnectionHolder {
-  private final EmbedConnection conn;
-  private final int connId;
+  private final EngineConnection conn;
+  private final EmbedXAConnection xaConn;
+  private final long connId;
+  private final Properties props;
   private final ByteBuffer token;
   private final String clientHostName;
   private final String clientID;
   private final String clientHostId;
   private final String userName;
   private final boolean useStringForDecimal;
-  private EmbedStatement reusableStatement;
-  private final ArrayList<StatementHolder> activeStatements;
+  private EngineStatement reusableStatement;
+  private volatile StatementHolder activeStatement;
+  private final ArrayList<StatementHolder> registeredStatements;
   private final NonReentrantLock sync;
+  private final long startTime;
 
-  ConnectionHolder(final EmbedConnection conn, final OpenConnectionArgs args,
-      final int connId, final SecureRandom rnd) throws SQLException {
+  ConnectionHolder(final EngineConnection conn, final EmbedXAConnection xaConn,
+      final OpenConnectionArgs args, final long connId, final Properties props,
+      final SecureRandom rnd) throws SQLException {
     this.conn = conn;
+    this.xaConn = xaConn;
     this.connId = connId;
+    this.props = props;
 
     // generate a unique ID for the connection; this is a secure random string
     // rather than the internal long connection ID to ensure security and is
@@ -88,16 +99,14 @@ final class ConnectionHolder {
               SQLState.NET_CONNECT_AUTH_FAILED, null,
               "specified connection token size " + args.getTokenSize()
                   + " smaller than minimum allowed of " + tokenSize);
-        }
-        else {
+        } else {
           tokenSize = args.getTokenSize();
         }
       }
       byte[] rndBytes = new byte[tokenSize];
       rnd.nextBytes(rndBytes);
       this.token = ByteBuffer.wrap(rndBytes);
-    }
-    else {
+    } else {
       // no other security mechanism supported yet
       throw ThriftExceptionUtil.newSQLException(
           SQLState.NET_CONNECT_AUTH_FAILED, null,
@@ -111,17 +120,18 @@ final class ConnectionHolder {
     this.userName = args.getUserName();
     this.useStringForDecimal = args.isSetUseStringForDecimal()
         && args.useStringForDecimal;
-    this.reusableStatement = (EmbedStatement)conn.createStatement();
-    this.activeStatements = new ArrayList<>(4);
+    this.reusableStatement = (EngineStatement)conn.createStatement();
+    this.registeredStatements = new ArrayList<>(4);
     this.sync = new NonReentrantLock(true);
+    this.startTime = System.currentTimeMillis();
   }
 
   static class ResultSetHolder {
     protected ResultSet resultSet;
-    protected int rsCursorId;
+    protected long rsCursorId;
     protected int rsOffset;
 
-    ResultSetHolder(ResultSet rs, int cursorId, int offset) {
+    ResultSetHolder(ResultSet rs, long cursorId, int offset) {
       this.resultSet = rs;
       this.rsCursorId = cursorId;
       this.rsOffset = offset;
@@ -130,18 +140,24 @@ final class ConnectionHolder {
 
   final class StatementHolder extends ResultSetHolder {
     private final Statement stmt;
-    private final StatementAttrs stmtAttrs;
-    private final int stmtId;
-    private final String sql;
+    private final StatementAttrs statementAttrs;
+    private final long stmtId;
+    private final Object sql;
+    private final long startTime;
+    private volatile String status;
+    private volatile int accessFrequency;
     private ArrayList<ResultSetHolder> moreResultSets;
 
-    private StatementHolder(Statement stmt, StatementAttrs attrs, int stmtId,
-        String sql) {
+    private StatementHolder(Statement stmt, StatementAttrs attrs, long stmtId,
+        Object sql, long startTime, String status) {
       super(null, snappydataConstants.INVALID_ID, 0);
       this.stmt = stmt;
-      this.stmtAttrs = attrs;
+      this.statementAttrs = attrs;
       this.stmtId = stmtId;
       this.sql = sql;
+      this.startTime = startTime;
+      this.status = status;
+      this.accessFrequency = 1;
     }
 
     final ConnectionHolder getConnectionHolder() {
@@ -152,19 +168,40 @@ final class ConnectionHolder {
       return this.stmt;
     }
 
-    final int getStatementId() {
+    final long getStatementId() {
       return this.stmtId;
     }
 
-    final String getSQL() {
+    final Object getSQL() {
       return this.sql;
     }
 
     final StatementAttrs getStatementAttrs() {
-      return this.stmtAttrs;
+      return this.statementAttrs;
     }
 
-    ResultSetHolder addResultSet(ResultSet rs, int cursorId) {
+    final long getStartTime() {
+      return this.startTime;
+    }
+
+    final String getStatus() {
+      return this.status;
+    }
+
+    final int getAccessFrequency() {
+      return this.accessFrequency;
+    }
+
+    final void setStatus(String newStatus) {
+      this.status = newStatus;
+    }
+
+    final void incrementAccessFrequency() {
+      final int accessFrequency = this.accessFrequency;
+      this.accessFrequency = accessFrequency + 1;
+    }
+
+    ResultSetHolder addResultSet(ResultSet rs, long cursorId) {
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
       try {
@@ -174,7 +211,7 @@ final class ConnectionHolder {
       }
     }
 
-    private ResultSetHolder addResultSetNoLock(ResultSet rs, int cursorId) {
+    private ResultSetHolder addResultSetNoLock(ResultSet rs, long cursorId) {
       if (this.resultSet == null) {
         this.resultSet = rs;
         this.rsCursorId = cursorId;
@@ -191,7 +228,7 @@ final class ConnectionHolder {
       }
     }
 
-    ResultSetHolder findResultSet(int cursorId) {
+    ResultSetHolder findResultSet(long cursorId) {
       final ArrayList<ResultSetHolder> moreResults;
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
@@ -211,7 +248,7 @@ final class ConnectionHolder {
       return null;
     }
 
-    ResultSet removeResultSet(int cursorId) {
+    ResultSet removeResultSet(long cursorId) {
       final ArrayList<ResultSetHolder> moreResults;
       final NonReentrantLock sync = ConnectionHolder.this.sync;
       sync.lock();
@@ -249,7 +286,7 @@ final class ConnectionHolder {
       return null;
     }
 
-    void closeResultSet(int cursorId, final SnappyDataServiceImpl service) {
+    void closeResultSet(long cursorId, final SnappyDataServiceImpl service) {
       final ResultSet rs = removeResultSet(cursorId);
       if (rs != null) {
         service.resultSetMap.removePrimitive(cursorId);
@@ -295,7 +332,7 @@ final class ConnectionHolder {
     }
   }
 
-  EmbedStatement createNewStatement(StatementAttrs attrs) throws SQLException {
+  EngineStatement createNewStatement(StatementAttrs attrs) throws SQLException {
     // Get the result type
     int resultSetType = SnappyDataServiceImpl.getResultType(attrs);
     // Get the resultSetConcurrency
@@ -304,7 +341,7 @@ final class ConnectionHolder {
     int resultSetHoldability = SnappyDataServiceImpl.getResultSetHoldability(attrs);
     this.sync.lock();
     try {
-      final EmbedStatement stmt = this.reusableStatement;
+      final EngineStatement stmt = this.reusableStatement;
       if (stmt != null) {
         stmt.reset(resultSetType, resultSetConcurrency, resultSetHoldability);
         this.reusableStatement = null;
@@ -313,16 +350,24 @@ final class ConnectionHolder {
     } finally {
       this.sync.unlock();
     }
-    return (EmbedStatement)this.conn.createStatement(resultSetType,
+    return (EngineStatement)this.conn.createStatement(resultSetType,
         resultSetConcurrency, resultSetHoldability);
   }
 
-  final EmbedConnection getConnection() {
+  final EngineConnection getConnection() {
     return this.conn;
   }
 
-  final int getConnectionId() {
+  final EmbedXAConnection getXAConnection() {
+    return this.xaConn;
+  }
+
+  final long getConnectionId() {
     return this.connId;
+  }
+
+  final Properties getProperties() {
+    return this.props;
   }
 
   final ByteBuffer getToken() {
@@ -335,8 +380,7 @@ final class ConnectionHolder {
   static String getTokenAsString(ByteBuffer token) {
     if (token != null) {
       return ClientSharedUtils.toHexString(token);
-    }
-    else {
+    } else {
       return "NULL";
     }
   }
@@ -361,7 +405,11 @@ final class ConnectionHolder {
     return this.useStringForDecimal;
   }
 
-  void setStatementForReuse(EmbedStatement stmt) throws SQLException {
+  final long getStartTime() {
+    return this.startTime;
+  }
+
+  void setStatementForReuse(EngineStatement stmt) throws SQLException {
     this.sync.lock();
     try {
       setStatementForReuseNoLock(stmt);
@@ -370,61 +418,125 @@ final class ConnectionHolder {
     }
   }
 
-  private void setStatementForReuseNoLock(final EmbedStatement stmt)
+  private void setStatementForReuseNoLock(final EngineStatement stmt)
       throws SQLException {
     if (this.reusableStatement == null) {
       stmt.resetForReuse();
       this.reusableStatement = stmt;
-    }
-    else {
+    } else {
       stmt.close();
     }
   }
 
-  StatementHolder registerStatement(Statement stmt, StatementAttrs attrs,
-      int stmtId, String preparedSQL) {
+  StatementHolder getActiveStatement() {
+    return this.activeStatement;
+  }
+
+  void setActiveStatement(StatementHolder stmtHolder) {
+    this.sync.lock();
+    this.activeStatement = stmtHolder;
+    this.sync.unlock();
+  }
+
+  void clearActiveStatement(Statement stmt) {
+    if (stmt != null) {
+      this.sync.lock();
+      final StatementHolder activeStatement = this.activeStatement;
+      if (activeStatement != null && stmt == activeStatement.stmt) {
+        this.activeStatement = null;
+      }
+      this.sync.unlock();
+    }
+  }
+
+  StatementHolder newStatementHolder(Statement stmt, StatementAttrs attrs,
+      long stmtId, Object sql, boolean recordStart, String status) {
+    final long startTime = recordStart ? System.nanoTime() : 0L;
+    return new StatementHolder(stmt, attrs, stmtId, sql, startTime, status);
+  }
+
+  StatementHolder registerPreparedStatement(PreparedStatement pstmt,
+      StatementAttrs attrs, long stmtId, String sql, boolean recordStart) {
     StatementHolder stmtHolder;
     this.sync.lock();
     try {
-      stmtHolder = new StatementHolder(stmt, attrs, stmtId, preparedSQL);
-      this.activeStatements.add(stmtHolder);
+      stmtHolder = newStatementHolder(pstmt, attrs, stmtId, sql,
+          recordStart, "PREPARED");
+      this.registeredStatements.add(stmtHolder);
+      this.activeStatement = stmtHolder;
     } finally {
       this.sync.unlock();
     }
     return stmtHolder;
   }
 
-  StatementHolder registerResultSet(Statement stmt, StatementAttrs attrs,
-      int stmtId, ResultSet rs, int cursorId, String sql) {
-    StatementHolder stmtHolder;
+  Statement uniqueActiveStatement(boolean skipPrepared) throws SQLException {
+    Statement result = null;
     this.sync.lock();
     try {
-      stmtHolder = new StatementHolder(stmt, attrs, stmtId, sql);
-      stmtHolder.addResultSetNoLock(rs, cursorId);
-      this.activeStatements.add(stmtHolder);
+      StatementHolder activeStatement = this.activeStatement;
+      if (activeStatement != null) {
+        result = activeStatement.getStatement();
+        if (skipPrepared && result instanceof PreparedStatement) {
+          result = null;
+        }
+      }
+      for (StatementHolder holder : this.registeredStatements) {
+        Statement stmt = holder.getStatement();
+        if (stmt != result &&
+            !(skipPrepared && stmt instanceof PreparedStatement)) {
+          // if duplicate then throw exception
+          if (result != null) {
+            throw ThriftExceptionUtil.newSQLException(
+                SQLState.CANCEL_NO_UNIQUE_STATEMENT, null);
+          } else {
+            result = stmt;
+          }
+        }
+      }
+      return result;
     } finally {
       this.sync.unlock();
     }
+  }
+
+  ResultSetHolder registerResultSet(final StatementHolder stmtHolder,
+      ResultSet rs, long cursorId) {
+    this.sync.lock();
+    try {
+      ResultSetHolder holder = stmtHolder.addResultSetNoLock(rs, cursorId);
+      this.registeredStatements.add(stmtHolder);
+      return holder;
+    } finally {
+      this.sync.unlock();
+    }
+  }
+
+  StatementHolder registerResultSet(Statement stmt, StatementAttrs attrs,
+      long stmtId, ResultSet rs, long cursorId, String sql,
+      boolean recordStart) {
+    final StatementHolder stmtHolder = newStatementHolder(stmt, attrs, stmtId, sql,
+        recordStart, "INIT");
+    registerResultSet(stmtHolder, rs, cursorId);
     return stmtHolder;
   }
 
   void closeStatement(final StatementHolder stmtHolder,
       final SnappyDataServiceImpl service) {
-    final int stmtId = stmtHolder.getStatementId();
+    final long stmtId = stmtHolder.getStatementId();
     this.sync.lock();
     try {
       final Statement stmt;
-      final EmbedStatement estmt;
- 
+      final EngineStatement estmt;
+
       removeActiveStatementNoLock(stmtHolder);
       stmtHolder.closeAllResultSets(service);
       stmt = stmtHolder.getStatement();
       // set statement for reuse now that it is being closed on client
-      if (stmt instanceof EmbedStatement
-          && !(estmt = (EmbedStatement)stmt).isPrepared()) {
+      if (stmt instanceof EngineStatement
+          && !(estmt = (EngineStatement)stmt).isPrepared()) {
         setStatementForReuseNoLock(estmt);
-      }
-      else if (stmt != null) {
+      } else if (stmt != null) {
         stmt.close();
       }
     } catch (Exception e) {
@@ -437,7 +549,7 @@ final class ConnectionHolder {
 
   private void removeActiveStatementNoLock(
       final StatementHolder stmtHolder) {
-    final ArrayList<StatementHolder> statements = this.activeStatements;
+    final ArrayList<StatementHolder> statements = this.registeredStatements;
     int size = statements.size();
     // usually we will find the statement faster from the back
     while (--size >= 0) {
@@ -448,15 +560,23 @@ final class ConnectionHolder {
     }
   }
 
-  void close(final SnappyDataServiceImpl service) {
+  void close(final SnappyDataServiceImpl service, boolean forceClose) {
     this.sync.lock();
     try {
-      for (StatementHolder stmtHolder : this.activeStatements) {
+      for (StatementHolder stmtHolder : this.registeredStatements) {
         stmtHolder.closeAllResultSets(service);
         Statement stmt = stmtHolder.getStatement();
         if (stmt != null) {
           try {
-            stmt.close();
+            if (forceClose) {
+              if (stmt instanceof EngineStatement) {
+                // connection is going to be force closed so no need for
+                // any statement cleanup
+                ((EngineStatement)stmt).clearFinalizer();
+              }
+            } else {
+              stmt.close();
+            }
           } catch (SQLException sqle) {
             // ignore exception at this point
             service.logger.error("unexpected exception in Statement.close()",
@@ -467,20 +587,44 @@ final class ConnectionHolder {
         }
       }
 
-      if (this.reusableStatement != null) {
+      final EngineStatement reusableStatement = this.reusableStatement;
+      if (reusableStatement != null) {
         try {
-          this.reusableStatement.close();
+          if (forceClose) {
+            reusableStatement.clearFinalizer();
+          } else {
+            reusableStatement.close();
+          }
         } catch (SQLException sqle) {
           // ignore exception at this point
           service.logger.error("unexpected exception in Statement.close()",
               sqle);
         }
       }
-      try {
-        this.conn.close();
-      } catch (SQLException sqle) {
-        // force close at this point
+      if (forceClose) {
+        // enqueue distribution of close
+        final FinalizeObject finalizer = this.conn.getAndClearFinalizer();
         this.conn.forceClose();
+        if (finalizer != null) {
+          finalizer.clear();
+          finalizer.getHolder().addToPendingQueue(finalizer);
+        }
+      } else {
+        if (this.xaConn != null) {
+          try {
+            this.xaConn.close();
+          } catch (SQLException sqle) {
+            // ignore exception
+          }
+        }
+        try {
+          if (!this.conn.isClosed()) {
+            this.conn.close();
+          }
+        } catch (SQLException sqle) {
+          // force close at this point
+          this.conn.forceClose();
+        }
       }
     } finally {
       this.sync.unlock();
@@ -493,6 +637,6 @@ final class ConnectionHolder {
 
   @Override
   public final int hashCode() {
-    return this.connId;
+    return (int)(connId ^ (connId >>> 32));
   }
 }

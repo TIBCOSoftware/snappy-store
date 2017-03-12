@@ -1,8 +1,13 @@
 #!/bin/sh
 
-THRIFT_VERSION=0.9.3
-PATH=$PATH:/export/shared/software/thrift-${THRIFT_VERSION}/linux64/bin
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/export/shared/software/thrift-${THRIFT_VERSION}/linux64/lib
+if [ -z "$THRIFT_VERSION" ]; then
+  THRIFT_VERSION=0.9.3
+fi
+if [ -z "$SOFTWARE_PREFIX" ]; then
+  SOFTWARE_PREFIX=/export/shared/software
+fi
+PATH=$PATH:$SOFTWARE_PREFIX/thrift-${THRIFT_VERSION}/lin64/bin
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SOFTWARE_PREFIX/thrift-${THRIFT_VERSION}/lin64/lib
 
 export PATH LD_LIBRARY_PATH
 
@@ -11,6 +16,7 @@ thrift --gen "java:skip_async=true" snappydata.thrift && \
 mv gen-java/io/snappydata/thrift/*.java ../. && \
 rm -rf gen-java && { \
   cp ColumnValue.java.tmpl ../ColumnValue.java;
+  cp BlobChunk.java.tmpl ../BlobChunk.java;
   cp HostAddress.java.tmpl ../HostAddress.java;
   cp Row.java.tmpl ../Row.java;
   cp ServerType.java.tmpl ../ServerType.java;

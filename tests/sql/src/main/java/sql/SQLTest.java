@@ -1086,7 +1086,8 @@ public class SQLTest {
           s.execute(derbyTables[i]);
         }
       } else if (url.equals(GFEDBManager.getUrl())
-          || url.startsWith(GFEDBClientManager.getProtocol())){
+          || url.startsWith(GFEDBClientManager.getProtocol())
+          || url.startsWith(GFEDBClientManager.getDRDAProtocol())) {
 
         if (hasHdfs) {
           SQLPrms.setHdfsDDL(SQLPrms.getCreateTablesStatements(false));
@@ -1230,8 +1231,9 @@ public class SQLTest {
       for (int i = 0; i < tables.length; i++) {
         aStr.append(tables[i] + "\n");
       }
-    } else if (url.equals(GFEDBManager.getUrl())||
-        url.startsWith(GFEDBClientManager.getProtocol())){
+    } else if (url.equals(GFEDBManager.getUrl())
+        || url.startsWith(GFEDBClientManager.getProtocol())
+        || url.startsWith(GFEDBClientManager.getDRDAProtocol())) {
       for (int i = 0; i < gfeDDL.length; i++) {
         aStr.append(gfeDDL[i] + "\n");
       }

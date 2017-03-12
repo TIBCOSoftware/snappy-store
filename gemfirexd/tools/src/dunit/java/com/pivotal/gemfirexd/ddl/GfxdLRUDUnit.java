@@ -292,11 +292,11 @@ public class GfxdLRUDUnit extends DistributedSQLTestBase {
       cs.setNull(2, Types.VARCHAR);
       cs.execute();
       cs = conn.prepareCall("call sys.set_eviction_heap_percentage_sg(?, ?)");
-      cs.setInt(1, 25);
+      cs.setInt(1, 5);
       cs.setNull(2, Types.VARCHAR);
       cs.execute();
       float evictionHeapPercentage = Misc.getGemFireCache().getResourceManager().getEvictionHeapPercentage();
-      assertEquals(Float.valueOf(25), evictionHeapPercentage);
+      assertEquals(Float.valueOf(5), evictionHeapPercentage);
       VM servervm = this.serverVMs.get(0);
       servervm.invoke(GfxdLRUDUnit.class, "assertHeapPercentage", new Object[]{Float.valueOf(evictionHeapPercentage)});
       servervm.invoke(GfxdLRUDUnit.class, "setDummytestBytes");
