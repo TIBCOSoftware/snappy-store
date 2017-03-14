@@ -6419,8 +6419,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           sizeAccountedByIndex.set(sum);
         }
         totalRows = rowCount;
-        System.out.println("Index Name = " + this.getQualifiedTableName() +
-                " Index Stats" + sizeAccountedByIndex.get() + " And rowCount " + totalRows);
+       /* System.out.println("Index Name = " + this.getQualifiedTableName() +
+                " Index Stats" + sizeAccountedByIndex.get() + " And rowCount " + totalRows);*/
       }
 
       if (!isDestroy) {

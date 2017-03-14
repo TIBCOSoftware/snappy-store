@@ -4871,7 +4871,6 @@ public class DistributedRegion extends LocalRegion implements
 
   @Override
   public int calculateRegionEntryValueSize(RegionEntry re) {
-    //@TODO remove the internal region check.
     if (!this.isInternalRegion() && callback.isSnappyStore()) {
       return calcMemSize(re._getValue());
     } else {
@@ -4881,7 +4880,6 @@ public class DistributedRegion extends LocalRegion implements
 
   @Override
   public int calculateValueSize(Object val) {
-    //@TODO remove the internal region check.
     if (!this.isInternalRegion() && callback.isSnappyStore()) {
       return calcMemSize(val);
     } else {

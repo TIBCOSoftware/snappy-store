@@ -1172,9 +1172,6 @@ public interface DiskEntry extends RegionEntry {
      *  Caller must have "did" synced.
      */
     private static Object  getValueFromDisk(DiskRegionView dr, DiskId did, ByteArrayDataInput in) {
-      if(dr.getName().contains("APP_T1")){
-        int i = 1;
-      }
       Object value;
       if (dr.isBackup() && did.getKeyId() == DiskRegion.INVALID_ID) {
         // must have been destroyed
@@ -1910,26 +1907,5 @@ public interface DiskEntry extends RegionEntry {
     public final void setLastModifiedTime(long timestamp) {
       this.lastModifiedTime = timestamp;
     }
-  }
-
-  public class DiskIDDetails {
-
-    public String getRegionPath() {
-      return regionPath;
-    }
-
-    public DiskIDDetails(String regionPath, int diskIDSize){
-      this.regionPath = regionPath;
-      this.diskIDSize = diskIDSize;
-    }
-
-    public int getDiskIDSize() {
-      return diskIDSize;
-    }
-
-    private String regionPath;
-    private int diskIDSize ;
-
-
   }
 }

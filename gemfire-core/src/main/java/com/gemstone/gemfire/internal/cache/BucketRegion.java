@@ -2683,11 +2683,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //       this.debugMap.put(key, newSize);
 //     }
     this.partitionedRegion.getPrStats().incDataStoreEntryCount(1);
-/*    if(!reservedTable() && ik==0){
-      System.out.println("Getting new size "+ newSize);
-      Thread.dumpStack();
-      ik++;
-    }*/
     updateBucket2Size(0, newSize, SizeOp.CREATE);
   }
 
@@ -3182,9 +3177,4 @@ public class BucketRegion extends DistributedRegion implements Bucket {
      return ServerPingMessage.send(cache, hostingservers);
     
   }
-
-
-
-
 }
-
