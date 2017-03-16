@@ -3786,6 +3786,10 @@ RETRY_LOOP:
   throws CacheWriterException,
         TimeoutException {
     final LocalRegion owner = _getOwner();
+    if(!owner.reservedTable()){
+      LocalRegion.regionPath.set(owner.getFullPath());
+    }
+
     boolean clearOccured = false;
     if (owner == null) {
       // "fix" for bug 32440
@@ -4053,6 +4057,7 @@ RETRY_LOOP:
       owner.handleDiskAccessException(dae, true/* stop bridge servers*/);
       throw dae;
     } finally {
+      LocalRegion.regionPath.remove();
         releaseCacheModificationLock(owner, event);
         if (indexLocked) {
           indexManager.unlockForIndexGII();

@@ -6180,6 +6180,9 @@ public class LocalRegion extends AbstractRegion
   
   public void copyRecoveredEntries(RegionMap rm, boolean entriesIncompatible) {
     this.entries.copyRecoveredEntries(rm, entriesIncompatible);
+    if(entries instanceof AbstractRegionMap && !this.reservedTable()){
+      ((AbstractRegionMap)entries)._getMap().postMemAccount(getFullPath());
+    }
   }
   
   public void recordRecoveredGCVersion(VersionSource member, long gcVersion) {
@@ -14437,7 +14440,7 @@ public class LocalRegion extends AbstractRegion
         fullpath.startsWith("/_DDL_STMTS_META_REGION");
   }
 
-  protected boolean reservedTable() {
+  public boolean reservedTable() {
     return isSecret() || isUsedForMetaRegion() || isUsedForPartitionedRegionAdmin()
         || isMetaTable(this.getFullPath());
   }

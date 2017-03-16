@@ -229,6 +229,14 @@ public class CustomEntryConcurrentHashMap<K, V> extends AbstractMap<K, V>
     return compareValues ? o.hashCode() : System.identityHashCode(o);
   }
 
+  public void postMemAccount(String path){
+    if(segments != null && segments.length > 0){
+      for(Segment s : segments){
+        s.postMemAccount(path);
+      }
+    }
+  }
+
   /**
    * Returns the segment that should be used for key with given hash
    * 
@@ -890,6 +898,11 @@ RETRYLOOP:
         releaseReadLock();
       }
       return null;
+    }
+
+    final void postMemAccount(String path){
+      CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(path,
+              this.table.length * ReflectionSingleObjectSizer.REFERENCE_SIZE, null, true);
     }
 
 // End GemStone additions
