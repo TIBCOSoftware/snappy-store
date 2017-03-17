@@ -2710,7 +2710,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     this.debugMap.remove(key);
     this.partitionedRegion.getPrStats().incDataStoreEntryCount(-1);
     updateBucket2Size(oldSize, 0, SizeOp.DESTROY);
-    freePoolMemory(oldSize + indexOverhead.get() , true);
+    freePoolMemory(oldSize + indexOverhead, true);
   }
 
   @Override

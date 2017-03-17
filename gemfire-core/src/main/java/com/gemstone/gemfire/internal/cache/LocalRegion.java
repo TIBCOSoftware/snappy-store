@@ -36,6 +36,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.LongBinaryOperator;
+import java.util.function.LongUnaryOperator;
 import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -14380,23 +14382,43 @@ public class LocalRegion extends AbstractRegion
 
   public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 100; //100 KB
 
+  private LongBinaryOperator op = new LongBinaryOperator() {
+
+    @Override
+    public long applyAsLong(long prev, long delta) {
+       long newVal = prev + delta;
+      if (newVal >= MAX_VALUE_BEFORE_ACQUIRE) {
+        return newVal - MAX_VALUE_BEFORE_ACQUIRE;
+      } else {
+        return newVal;
+      }
+    }
+  };
+
   protected void delayedAcquirePoolMemory(long oldSize, long newSize, boolean withEntryOverHead,
-      boolean shouldEvict) throws LowMemoryException {
+                                          boolean shouldEvict) throws LowMemoryException {
     if (!this.reservedTable() && needAccounting()) {
-      long size = 0L;
+      long size;
       if (withEntryOverHead) {
         size = (newSize - oldSize) + Math.max(0L, entryOverHead);
       } else {
         size = (newSize - oldSize);
       }
-      long currentMemoryBeforeAcquire = memoryBeforeAcquire.addAndGet(size);
-      if (currentMemoryBeforeAcquire >= MAX_VALUE_BEFORE_ACQUIRE) {
-        memoryBeforeAcquire.addAndGet(Math.min(0L, -1 * currentMemoryBeforeAcquire));
+
+      if (MAX_VALUE_BEFORE_ACQUIRE == 1) {
         if (!callback.acquireStorageMemory(getFullPath(),
-            currentMemoryBeforeAcquire, null, shouldEvict)) {
+                (size), null, shouldEvict)) {
           throwLowMemoryException(size);
         }
-
+      } else {
+        long prevValue = memoryBeforeAcquire.getAndAccumulate(size, op);
+        long currValue = prevValue + size;
+        if (currValue >= MAX_VALUE_BEFORE_ACQUIRE) {
+          if (!callback.acquireStorageMemory(getFullPath(),
+                  MAX_VALUE_BEFORE_ACQUIRE, null, shouldEvict)) {
+            throwLowMemoryException(size);
+          }
+        }
       }
     }
   }
@@ -14448,32 +14470,37 @@ public class LocalRegion extends AbstractRegion
   }
 
   // All put/delete should take care of this value;
-  protected AtomicInteger indexOverhead = new AtomicInteger(0);
+  // A simple integer as write will be few while read threads will be many and frequent.
+  protected int indexOverhead = 0;
+
+  private Object overHeadLock = new Object();
 
   // Num bytes to be ignored by LocalRegion while region destroy
-  protected AtomicLong ignoreBytes = new AtomicLong(0L);
+  protected LongAdder ignoreBytes = new LongAdder();
 
   protected int indicesOverHead() {
     if (isUsedForPartitionedRegionBucket) {
-      return getPartitionedRegion().indexOverhead.get();
+      return getPartitionedRegion().indexOverhead;
     } else {
-      return indexOverhead.get();
+      return indexOverhead;
     }
   }
 
   public void setIndexOverhead(int val) {
-    indexOverhead.addAndGet(val);
+    synchronized (overHeadLock){
+      indexOverhead = indexOverhead + val;
+    }
   }
 
   public void incIgnoreBytes(long numBytes) {
-    ignoreBytes.addAndGet(numBytes);
+    ignoreBytes.add(numBytes);
   }
 
   protected long getIgnoreBytes() {
     if (isUsedForPartitionedRegionBucket) {
-      return getPartitionedRegion().ignoreBytes.get();
+      return getPartitionedRegion().ignoreBytes.sum();
     } else {
-      return ignoreBytes.get();
+      return ignoreBytes.sum();
     }
   }
 
