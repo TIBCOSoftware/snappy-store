@@ -122,12 +122,14 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
               final String str = this.sql.substring(startPos, beginC);
               startPos = v.endOffset + 1;
               DataValueDescriptor paramValue = pvs.getParameter(i++);
-              String paramStr = paramValue.toString();
+              String paramStr = null;
               if (paramValue instanceof SQLClob) {
                 char[] charArray = ((SQLClob)paramValue).getCharArray();
                 if (charArray != null) {
                   paramStr = String.valueOf(charArray);
                 }
+              } else {
+                paramStr = paramValue.toString();
               }
               modifiedSqlStr.append(str).append(" ").append(paramStr).append(" ");
             }
