@@ -751,6 +751,7 @@ public class LocalRegion extends AbstractRegion
     this.regionId = getIDFromPath(this.fullPath, this.regionUUID);
     this.regionLock = new ReentrantLock();
 
+
     this.initializationLatchBeforeGetInitialImage = new StoppableCountDownLatch(
         this.stopper, 1);
     this.initializationLatchAfterGetInitialImage = new StoppableCountDownLatch(
@@ -6180,9 +6181,6 @@ public class LocalRegion extends AbstractRegion
   
   public void copyRecoveredEntries(RegionMap rm, boolean entriesIncompatible) {
     this.entries.copyRecoveredEntries(rm, entriesIncompatible);
-    if(entries instanceof AbstractRegionMap && !this.reservedTable()){
-      ((AbstractRegionMap)entries)._getMap().postMemAccount(getFullPath());
-    }
   }
   
   public void recordRecoveredGCVersion(VersionSource member, long gcVersion) {
