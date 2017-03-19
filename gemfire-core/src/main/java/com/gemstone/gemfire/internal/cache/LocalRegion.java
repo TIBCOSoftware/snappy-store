@@ -14365,7 +14365,7 @@ public class LocalRegion extends AbstractRegion
   protected long calculateEntryOverhead(RegionEntry entry) {
     if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
       entryOverHead = getEntryOverhead(entry);
-      System.out.println("Entry overhead for " + getFullPath() + " = " + entryOverHead);
+      memTrace("Entry overhead for " + getFullPath() + " = " + entryOverHead);
     }
     return entryOverHead;
   }
@@ -14373,7 +14373,7 @@ public class LocalRegion extends AbstractRegion
   protected long calculateDiskIdOverhead(DiskId diskId) {
     if (!this.reservedTable() && diskIdOverHead == -1L && needAccounting()) {
       diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
-      System.out.println("diskIdOverHead = " + diskIdOverHead);
+      memTrace("diskIdOverHead = " + diskIdOverHead);
     }
     return diskIdOverHead;
   }
@@ -14501,6 +14501,13 @@ public class LocalRegion extends AbstractRegion
       return getPartitionedRegion().ignoreBytes.sum();
     } else {
       return ignoreBytes.sum();
+    }
+  }
+
+  private void memTrace(String mesage) {
+    if (java.lang.Boolean.getBoolean("snappydata.umm.memtrace")) {
+      LogWriterI18n log = getLogWriterI18n();
+      log.fine(mesage);
     }
   }
 
