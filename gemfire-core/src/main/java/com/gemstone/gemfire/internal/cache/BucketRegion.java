@@ -759,7 +759,16 @@ public class BucketRegion extends DistributedRegion implements Bucket {
             "Creating the column batch for bucket " + this.getId()
             + ", and batchID " + this.batchUUID);
       }
-      Set keysToDestroy = createColumnBatchAndPutInColumnTable();
+      Set keysToDestroy = null;
+
+      try {
+        keysToDestroy = createColumnBatchAndPutInColumnTable();
+      } catch (Exception lme) {
+        getCache().getLoggerI18n().warning(lme);
+        // Returning from here as we dont want to clean the row buffer data.
+        return false;
+      }
+
       destroyAllEntries(keysToDestroy);
       // create new batchUUID
       generateAndSetBatchIDIfNULL(true);
