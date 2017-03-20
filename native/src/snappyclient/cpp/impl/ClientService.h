@@ -198,6 +198,14 @@ namespace impl {
       return m_token.empty() ? NULL : m_token.c_str();
     }
 
+    const thrift::HostAddress& getCurrentHostAddress() const noexcept {
+      return m_currentHostAddr;
+    }
+
+    const thrift::OpenConnectionArgs& getConnectionArgs() const noexcept {
+      return m_connArgs;
+    }
+
     IsolationLevel getCurrentIsolationLevel() const noexcept {
       return m_isolationLevel;
     }

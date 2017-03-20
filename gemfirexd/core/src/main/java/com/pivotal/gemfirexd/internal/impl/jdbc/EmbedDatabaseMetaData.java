@@ -818,7 +818,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 	 * 
      */
 	public boolean supportsFullOuterJoins()  {
-		return false;
+		return true; // supported in Spark
 	}
 
     /**

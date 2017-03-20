@@ -288,6 +288,14 @@ void Connection::open(const std::string& host, int port,
   open(host, port, args);
 }
 
+const thrift::HostAddress& Connection::getCurrentHostAddress() const noexcept {
+  return checkAndGetService().getCurrentHostAddress();
+}
+
+const thrift::OpenConnectionArgs& Connection::getConnectionArgs() const noexcept {
+  return checkAndGetService().getConnectionArgs();
+}
+
 void Connection::setSendBufferSize(uint32_t sz) {
   ClientService& service = checkAndGetService();
 

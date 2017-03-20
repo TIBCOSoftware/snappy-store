@@ -84,7 +84,7 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
   protected ByteBuffer allocateBuffer(int bufferSize) {
     // use Platform.allocate which does not have the smallish limit used
     // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
-    return Platform.allocateDirectBuffer(bufferSize)
+    return UnsafeHolder.allocateDirectBuffer(bufferSize)
         // set the order to native explicitly to skip any byte order conversions
         .order(ByteOrder.nativeOrder());
   }

@@ -18,8 +18,10 @@
 package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
@@ -29,6 +31,8 @@ import com.gemstone.gemfire.internal.shared.ChannelBufferInputStream;
 import com.gemstone.gemfire.internal.shared.ChannelBufferOutputStream;
 import com.gemstone.gemfire.internal.shared.InputStreamChannel;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
+import org.apache.spark.unsafe.Platform;
+import sun.misc.Cleaner;
 
 /**
  * Holder for static sun.misc.Unsafe instance and some convenience methods. Use
@@ -42,14 +46,25 @@ public abstract class UnsafeHolder {
   private static final class Wrapper {
 
     static final sun.misc.Unsafe unsafe;
+    static final Constructor<?> directBufferConstructor;
+    static final Field directBufferCleanerField;
 
     static {
       sun.misc.Unsafe v;
+      Constructor<?> dbConstructor;
+      Field dbCleanerField;
       // try using "theUnsafe" field
       try {
         Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
         field.setAccessible(true);
         v = (sun.misc.Unsafe)field.get(null);
+
+        Class<?> cls = Class.forName("java.nio.DirectByteBuffer");
+        dbConstructor = cls.getDeclaredConstructor(
+            Long.TYPE, Integer.TYPE);
+        dbConstructor.setAccessible(true);
+        dbCleanerField = cls.getDeclaredField("cleaner");
+        dbCleanerField.setAccessible(true);
       } catch (LinkageError le) {
         throw le;
       } catch (Throwable t) {
@@ -59,6 +74,8 @@ public abstract class UnsafeHolder {
         throw new ExceptionInInitializerError("theUnsafe not found");
       }
       unsafe = v;
+      directBufferConstructor = dbConstructor;
+      directBufferCleanerField = dbCleanerField;
     }
 
     static void init() {
@@ -87,6 +104,28 @@ public abstract class UnsafeHolder {
     return hasUnsafe;
   }
 
+  public static ByteBuffer allocateDirectBuffer(int size) {
+    return allocateDirectBuffer(Platform.allocateMemory(size), size);
+  }
+
+  public static ByteBuffer allocateDirectBuffer(final long address, int size) {
+    try {
+      ByteBuffer buffer = (ByteBuffer)Wrapper.directBufferConstructor
+          .newInstance(address, size);
+      Cleaner cleaner = Cleaner.create(buffer, new Runnable() {
+        @Override
+        public void run() {
+          Platform.freeMemory(address);
+        }
+      });
+      Wrapper.directBufferCleanerField.set(buffer, cleaner);
+      return buffer;
+    } catch (Exception e) {
+      Platform.throwException(e);
+      throw new IllegalStateException("unreachable");
+    }
+  }
+
   public static long getDirectBufferAddress(Buffer buffer) {
     return ((sun.nio.ch.DirectBuffer)buffer).address();
   }
@@ -101,6 +140,7 @@ public abstract class UnsafeHolder {
     sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer)buffer).cleaner();
     if (cleaner != null) {
       cleaner.clean();
+      cleaner.clear();
     }
   }
 

@@ -60,7 +60,10 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = null;
     rc = getResultCollector(enableStreaming, rs);
-    if (this.getIsPrepStmntQuery() && this.pvs != null) {
+
+    // Removing check on getIsPrepStmntQuery, as it returns wrong flag value when running select * query (from tableau)
+    // if (this.getIsPrepStmntQuery() && this.pvs != null)
+    if (this.pvs != null) {
       final String querySql;
       if (this.pvs.getParameterCount() > 0) {
         querySql = getModifiedSql();

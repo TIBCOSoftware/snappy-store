@@ -686,6 +686,7 @@ class DRDAStatement
                   database.getConnection().getLanguageConnectionContext()
                       .setExecuteLocally(BUCKET_FLAG, null, false, null);
                 }
+		sqlStmt = trimNulls(sqlStmt);
 		// Gemstone changes END
 		return prepare(sqlStmt);
 	}
@@ -696,6 +697,16 @@ class DRDAStatement
 	}
 
 // GemStone changes BEGIN
+	private static String trimNulls(String sqlStmt) {
+	  // trim any trailing nulls
+	  int stmtEnd = sqlStmt.length();
+	  while (sqlStmt.charAt(stmtEnd - 1) == 0) stmtEnd--;
+	  if (stmtEnd < sqlStmt.length()) {
+	    sqlStmt = sqlStmt.substring(0, stmtEnd);
+	  }
+	  return sqlStmt;
+	}
+
 	private static final Set<Integer> BUCKET_FLAG = Collections
 	    .unmodifiableSet(new HashSet<Integer>(1));
 
@@ -715,7 +726,7 @@ class DRDAStatement
 
           pstmt = database.getConnection().createStatement(scrollType,
               concurType, withHoldCursor);
-          this.sqlText = sqlStmt;
+          this.sqlText = trimNulls(sqlStmt);
 
           // beetle 3849 - Need to change the cursor name to what
           // JCC thinks it will be, since there is no way in the

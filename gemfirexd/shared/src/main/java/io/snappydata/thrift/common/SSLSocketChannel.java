@@ -56,7 +56,6 @@ import javax.net.ssl.SSLHandshakeException;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
-import org.apache.spark.unsafe.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,9 +151,9 @@ public final class SSLSocketChannel
    */
   protected void startHandshake() throws IOException {
     if (this.useDirectBuffers) {
-      this.netReadBuffer = Platform.allocateDirectBuffer(netReadBufferSize());
-      this.netWriteBuffer = Platform.allocateDirectBuffer(netWriteBufferSize());
-      this.appReadBuffer = Platform.allocateDirectBuffer(applicationBufferSize());
+      this.netReadBuffer = UnsafeHolder.allocateDirectBuffer(netReadBufferSize());
+      this.netWriteBuffer = UnsafeHolder.allocateDirectBuffer(netWriteBufferSize());
+      this.appReadBuffer = UnsafeHolder.allocateDirectBuffer(applicationBufferSize());
     } else {
       this.netReadBuffer = ByteBuffer.allocate(netReadBufferSize());
       this.netWriteBuffer = ByteBuffer.allocate(netWriteBufferSize());
@@ -217,6 +216,11 @@ public final class SSLSocketChannel
         }
         netWriteBuffer.flip();
         flush(netWriteBuffer);
+      }
+      if (this.useDirectBuffers) {
+        UnsafeHolder.releaseDirectBuffer(netReadBuffer);
+        UnsafeHolder.releaseDirectBuffer(netWriteBuffer);
+        UnsafeHolder.releaseDirectBuffer(appReadBuffer);
       }
       if (this.useDirectBuffers) {
         UnsafeHolder.releaseDirectBuffer(netReadBuffer);
