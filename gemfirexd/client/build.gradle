@@ -21,7 +21,6 @@ plugins {
 
 dependencies {
   compile project(subprojectBase + 'gemfirexd-shared')
-  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 }
 
 task generatePropertiesFiles(dependsOn: 'processResources') {

@@ -79,7 +79,6 @@ dependencies {
   runtime "org.apache.derby:derby:${derbyVersion}"
   runtime "org.apache.derby:derbynet:${derbyVersion}"
   runtime "org.apache.derby:derbyclient:${derbyVersion}"
-  runtime "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 }
 
 // apply default manifest

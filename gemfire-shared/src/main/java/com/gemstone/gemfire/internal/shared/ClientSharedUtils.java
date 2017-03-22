@@ -67,6 +67,7 @@ import javax.naming.directory.Attributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.spark.unsafe.Platform;
@@ -1619,7 +1620,7 @@ public abstract class ClientSharedUtils {
     if (newLength <= buffer.capacity()) {
       return buffer;
     }
-    ByteBuffer newBuffer = useDirectBuffer ? Platform.allocateDirectBuffer(
+    ByteBuffer newBuffer = useDirectBuffer ? UnsafeHolder.allocateDirectBuffer(
         newLength) : ByteBuffer.allocate(newLength);
     newBuffer.order(buffer.order());
     buffer.flip();

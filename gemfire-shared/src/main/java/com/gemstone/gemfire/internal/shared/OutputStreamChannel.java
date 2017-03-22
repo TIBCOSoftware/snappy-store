@@ -64,7 +64,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
   /**
    * Common base method to write a given ByteBuffer source via an intermediate
-   * direct byte buffer owned by the implementation of this class.
+   * direct byte buffer owned by the implementation of this class (if required).
    */
   protected final int writeBuffered(final ByteBuffer src,
       final ByteBuffer channelBuffer) throws IOException {

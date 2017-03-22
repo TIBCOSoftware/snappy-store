@@ -39,7 +39,7 @@ allprojects {
   ext {
     scalaBinaryVersion = '2.11'
     scalaVersion = scalaBinaryVersion + '.8'
-    sparkVersion = '2.0.2'
+    snappySparkVersion = '2.0.3-2'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
     slf4jVersion = '1.7.21'
@@ -78,11 +78,11 @@ allprojects {
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
     PRODUCT_MAINT = '3'
-    PRODUCT_CLASSFIER = ''
+    PRODUCT_CLASSIFIER = ''
     PRODUCT_RELEASE_STAGE = ''
-    PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSFIER}"
+    PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"
     PRODUCT_VENDOR = 'SnappyData, Inc.'
-    COPYRIGHT = "Copyright 2016, ${PRODUCT_VENDOR} All rights reserved."
+    COPYRIGHT = "Copyright 2017, ${PRODUCT_VENDOR} All rights reserved."
 
     if (rootProject.name == 'snappy-store') {
       subprojectBase = ':'
@@ -829,6 +829,7 @@ def includeJar(def jarFile) {
 }
 
 jar.enabled = false
+install.enabled = false
 
 // pack the entire GemFireXD product tree
 task product(dependsOn: [ subprojectBase + 'gemfirexd-client:shadowJar',
