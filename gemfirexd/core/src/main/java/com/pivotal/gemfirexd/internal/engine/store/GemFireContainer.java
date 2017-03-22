@@ -6476,7 +6476,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       if (numOps >= 8
               && (numOps & (numOps - 1)) == 0) { // Power of 2
         // accounting in sync call. One of the operation will be slow.
-        // But it will lead to more resiliency.
+        // But it will lead to more resiliency. for around 5 million rows in index
+        // it takes around 500 ms.
         // @TODO will see if cost is very high will make it a async call.
         accountIndexMemory(false, false);
       }
