@@ -20,6 +20,9 @@ plugins {
 }
 
 dependencies {
+  provided "org.apache.thrift:libthrift:${thriftVersion}"
+  provided "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
+
   compile project(subprojectBase + 'gemfirexd-shared')
 }
 
@@ -72,6 +75,10 @@ shadowJar {
   dependsOn jar
   baseName = 'snappydata-client'
   classifier = ''
+  // avoid conflict with the older incompatible thrift versions
+  relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
+  // avoid conflict with upstream spark-unsafe
+  relocate 'org.apache.spark.unsafe', 'io.snappydata.org.apache.spark.unsafe'
 
   configurations = [ project.configurations.runtime, project.configurations.provided ]
 

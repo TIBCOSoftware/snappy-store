@@ -39,7 +39,7 @@ allprojects {
   ext {
     scalaBinaryVersion = '2.11'
     scalaVersion = scalaBinaryVersion + '.8'
-    snappySparkVersion = '2.0.3-2'
+    snappySparkVersion = '2.0.2.3'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
     slf4jVersion = '1.7.21'
@@ -51,6 +51,7 @@ allprojects {
     hadoopVersion = '2.7.3'
     protobufVersion = '2.6.1'
     kryoVersion = '4.0.0'
+    thriftVersion = '0.9.3'
     sunJerseyVersion = '1.19.1'
     hadoopJettyVersion = '6.1.26'
     jsr305Version = '3.0.1'
@@ -77,7 +78,7 @@ allprojects {
 
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
-    PRODUCT_MAINT = '3'
+    PRODUCT_MAINT = '4'
     PRODUCT_CLASSIFIER = ''
     PRODUCT_RELEASE_STAGE = ''
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"

@@ -3009,8 +3009,8 @@ public abstract class Converters {
   public static SQLException newTypeSetConversionException(
       String sourceType, String targetType, String column, Throwable cause) {
     return ThriftExceptionUtil.newSQLException(
-        SQLState.LANG_DATA_TYPE_SET_MISMATCH, cause, targetType,
-        sourceType, column);
+        SQLState.LANG_DATA_TYPE_SET_MISMATCH, cause, sourceType, targetType,
+        column);
   }
 
   public static SQLException newTypeSetConversionException(

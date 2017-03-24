@@ -27,6 +27,8 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
+import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLClob;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.Token;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
@@ -122,8 +124,17 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
               final int beginC = v.beginOffset;
               final String str = this.sql.substring(startPos, beginC);
               startPos = v.endOffset + 1;
-              modifiedSqlStr.append(str).append(" ").append(pvs
-                  .getParameter(i++).toString()).append(" ");
+              DataValueDescriptor paramValue = pvs.getParameter(i++);
+              String paramStr = null;
+              if (paramValue instanceof SQLClob) {
+                char[] charArray = ((SQLClob)paramValue).getCharArray();
+                if (charArray != null) {
+                  paramStr = String.valueOf(charArray);
+                }
+              } else {
+                paramStr = paramValue.toString();
+              }
+              modifiedSqlStr.append(str).append(" ").append(paramStr).append(" ");
             }
 
             final int cLen = this.sql.length();

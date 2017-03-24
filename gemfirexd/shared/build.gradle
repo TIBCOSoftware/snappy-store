@@ -16,7 +16,8 @@
  */
 
 dependencies {
-  compile 'org.apache.thrift:libthrift:0.9.3'
+  provided "org.apache.thrift:libthrift:${thriftVersion}"
+  provided "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
 
   compile project(subprojectBase + 'gemfire-shared')
 }

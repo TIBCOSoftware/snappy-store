@@ -79,6 +79,8 @@ dependencies {
   runtime "org.apache.derby:derby:${derbyVersion}"
   runtime "org.apache.derby:derbynet:${derbyVersion}"
   runtime "org.apache.derby:derbyclient:${derbyVersion}"
+  runtime "org.apache.thrift:libthrift:${thriftVersion}"
+  runtime "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
 }
 
 // apply default manifest
@@ -87,6 +89,10 @@ if (rootProject.hasProperty('enablePublish')) {
 }
 shadowJar {
   zip64 = true
+  // avoid conflict with the older incompatible thrift versions
+  relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
+  // avoid conflict with upstream spark-unsafe
+  relocate 'org.apache.spark.unsafe', 'io.snappydata.org.apache.spark.unsafe'
 
   mergeServiceFiles()
 
