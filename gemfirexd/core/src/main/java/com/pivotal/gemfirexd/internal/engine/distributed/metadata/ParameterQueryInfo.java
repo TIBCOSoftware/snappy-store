@@ -166,4 +166,8 @@ public final class ParameterQueryInfo extends AbstractQueryInfo implements
     }
     return false;
   }
+
+  public int getParamIndex(){
+    return this.paramIndex;
+  }
 }

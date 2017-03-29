@@ -353,4 +353,13 @@ public abstract class AbstractConditionQueryInfo extends AbstractQueryInfo  {
   void seedColocationMatrixData(int rows, ArrayList<TableQueryInfo> tables,
       int numPRTables) {
   }
+
+
+  Object getAllConditions(int[][] pkColumns, TableQueryInfo tqi)
+      throws StandardException
+  {
+    return null;
+  }
+  protected boolean isPartofUpdate  = false;
+
 }

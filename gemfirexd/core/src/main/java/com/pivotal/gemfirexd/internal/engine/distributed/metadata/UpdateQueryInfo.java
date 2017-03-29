@@ -24,13 +24,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.compile.Visitable;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.AndNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.FromBaseTable;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.NormalizeResultSetNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.ProjectRestrictNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.ResultColumn;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.ResultColumnList;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.UpdateNode;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.*;
 
 /**
  * The top level QueryInfo object representing an Update query. This Object
@@ -53,7 +47,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.compile.UpdateNode;
 public class UpdateQueryInfo extends DMLQueryInfo {
   
   //Create by default the number of rows to be updated as equal to the number of columns in the ResultsColumnList
-  private QueryInfo[][] updateCols = null; 
+  private QueryInfo[][] updateCols = null;
+  public String statementSQLText;
   private int currentColumnIndex = 0;
   //private ValueQueryInfo[] foreignKeyVals = null;
   //private ForeignKeyConstraintDescriptor fcd = null;
@@ -219,6 +214,7 @@ public class UpdateQueryInfo extends DMLQueryInfo {
     if (node instanceof UpdateNode) {
       final UpdateNode updNode = (UpdateNode)node;
       this.updateTargetTableNum = updNode.getTargetTableID();
+      this.statementSQLText = updNode.statementSQLText;
       if (updNode.targetVTI != null) {
         updNode.targetVTI.computeQueryInfo(this.qic);
       }
@@ -312,7 +308,7 @@ public class UpdateQueryInfo extends DMLQueryInfo {
         
       }
 
-  } 
+  }
 
   public LocalRegion getTargetRegion() {
     return this.tableQueryInfoList.get(this.updateTargetTableNum).getRegion();
@@ -326,5 +322,9 @@ public class UpdateQueryInfo extends DMLQueryInfo {
   @Override
   public boolean routeQueryToAllNodes() {
     return this.qic.isVTIDistributable();
+  }
+
+  public QueryInfo[][] getUpdatedCols(){
+    return this.updateCols;
   }
 }

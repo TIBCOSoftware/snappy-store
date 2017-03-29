@@ -160,7 +160,6 @@ public class ComparisonQueryInfo extends AbstractConditionQueryInfo {
       return null;
     }
   }
-  
   /*
    * (non-Javadoc)
    * @seeisConvertibleToGet(...)

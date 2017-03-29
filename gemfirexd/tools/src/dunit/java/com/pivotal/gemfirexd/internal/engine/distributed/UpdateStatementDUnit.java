@@ -1064,6 +1064,277 @@ public class UpdateStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
+  public void testUpdatePrimarykeyWithExtraAnds() throws Exception {
+    // Start one client and three servers
+    startServerVMs(3, 0, "SG1");
+    startClientVMs(1, 0, null);
+    // Create a schema with default server groups GemFire extension
+    clientSQLExecute(1, "create schema EMP default server groups (SG1)");
+
+    // Create the table and insert a row
+    clientSQLExecute(1, "create table EMP.TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null, "
+        + "ADDRESS varchar(1024) ,type int ) " + getOverflowSuffix());
+
+    // Insert values 1 to 8
+    for (int i = 0; i < 8; ++i) {
+      clientSQLExecute(1, "insert into EMP.TESTTABLE values (" + (i + 1)
+          + ", 'First" + (i + 1) + "', 'J 604" + (i + 1) + "'," + (i + 1)
+          + ")");
+    }
+    try {
+      TestUtil.setupConnection();
+      int n = TestUtil.jdbcConn.createStatement().executeUpdate("Update EMP.TESTTABLE set type = " +
+          "1 where ID = 2 and DESCRIPTION = 'First2'");
+      assertEquals(1, n);
+
+    } finally {
+      GemFireXDQueryObserverHolder
+          .setInstance(new GemFireXDQueryObserverAdapter());
+      clientSQLExecute(1, "Drop table EMP.TESTTABLE ");
+      clientSQLExecute(1, "Drop schema EMP restrict");
+      //invokeInEveryVM(this.getClass(), "reset");
+    }
+  }
+
+  public void testUpdatePrimarykeyWithExtraAndsPrepStmt() throws Exception {
+    // Start one client and three servers
+    startServerVMs(3, 0, "SG1");
+    startClientVMs(1, 0, null);
+    String updateQuery = "Update EMP.TESTTABLE set type = ? where ID = ? and DESCRIPTION = ?";
+    // Create a schema with default server groups GemFire extension
+    clientSQLExecute(1, "create schema EMP default server groups (SG1)");
+
+    // Create the table and insert a row
+    clientSQLExecute(1, "create table EMP.TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null, "
+        + "ADDRESS varchar(1024) ,type int ) " + getOverflowSuffix());
+
+    // Insert values 1 to 8
+    for (int i = 0; i < 8; ++i) {
+      clientSQLExecute(1, "insert into EMP.TESTTABLE values (" + (i + 1)
+          + ", 'First" + (i + 1) + "', 'J 604" + (i + 1) + "'," + (i + 1)
+          + ")");
+    }
+    try {
+      TestUtil.setupConnection();
+      EmbedPreparedStatement es = (EmbedPreparedStatement)TestUtil.jdbcConn
+          .prepareStatement(updateQuery);
+      es.setInt(1, 1);
+      es.setInt(2, 2);
+      es.setString(3, "First2");
+      int n = es.executeUpdate();
+      assertEquals(1, n);
+
+    } finally {
+      GemFireXDQueryObserverHolder
+          .setInstance(new GemFireXDQueryObserverAdapter());
+      clientSQLExecute(1, "Drop table EMP.TESTTABLE ");
+      clientSQLExecute(1, "Drop schema EMP restrict");
+      //invokeInEveryVM(this.getClass(), "reset");
+    }
+  }
+
+  public void testCASUpdatePerf() throws Exception {
+    // Start one client and three servers
+    startServerVMs(3, 0, "SG1");
+    startClientVMs(1, 0, null);
+    String updateQuery = "Update EMP.TESTTABLE set type = ? where ID = ? and DESCRIPTION = ?";
+    // Create a schema with default server groups GemFire extension
+    clientSQLExecute(1, "create schema EMP default server groups (SG1)");
+
+    // Create the table and insert a row
+    clientSQLExecute(1, "create table EMP.TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null, "
+        + "ADDRESS varchar(1024) ,type int ) " + getOverflowSuffix());
+
+
+    try {
+      TestUtil.setupConnection();
+
+      PreparedStatement ps = TestUtil.jdbcConn
+          .prepareStatement("insert into EMP.TESTTABLE values (?, ?, ?, ?)");
+      for (int i = 0; i < 10000; ++i) {
+        ps.setInt(1, i);
+        ps.setString(2, "descp");
+        ps.setString(3, "addr");
+        ps.setInt(4, i);
+        ps.executeUpdate();
+      }
+
+      EmbedPreparedStatement es = (EmbedPreparedStatement)TestUtil.jdbcConn
+          .prepareStatement(updateQuery);
+      es.setInt(1, 1);
+      es.setInt(2, 1);
+      es.setString(3, "descp");
+      long startTime = System.currentTimeMillis();
+      for(int i = 0 ; i < 100 ; i++ ){
+        int n = es.executeUpdate();
+        assertEquals(1, n);
+      }
+      long endTime = System.currentTimeMillis();
+      getLogWriter().info("UPDATE-PERF-CAS Based= " + (endTime - startTime));
+
+    } finally {
+      GemFireXDQueryObserverHolder
+          .setInstance(new GemFireXDQueryObserverAdapter());
+      clientSQLExecute(1, "Drop table EMP.TESTTABLE ");
+      clientSQLExecute(1, "Drop schema EMP restrict");
+      //invokeInEveryVM(this.getClass(), "reset");
+
+    }
+  }
+
+  public void testNonCASUpdatePerf() throws Exception {
+    System.setProperty("snappy.store.disableCASUpdate", "true");
+    // Start one client and three servers
+    startServerVMs(3, 0, "SG1");
+    startClientVMs(1, 0, null);
+    String updateQuery = "Update EMP.TESTTABLE set type = ? where ID = ? and DESCRIPTION = ?";
+    // Create a schema with default server groups GemFire extension
+    clientSQLExecute(1, "create schema EMP default server groups (SG1)");
+
+    // Create the table and insert a row
+    clientSQLExecute(1, "create table EMP.TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null, "
+        + "ADDRESS varchar(1024) ,type int ) " + getOverflowSuffix());
+
+
+    try {
+      TestUtil.setupConnection();
+
+      PreparedStatement ps = TestUtil.jdbcConn
+          .prepareStatement("insert into EMP.TESTTABLE values (?, ?, ?, ?)");
+      for (int i = 0; i < 10000; ++i) {
+        ps.setInt(1, i);
+        ps.setString(2, "descp");
+        ps.setString(3, "addr");
+        ps.setInt(4, i);
+        ps.executeUpdate();
+      }
+
+      EmbedPreparedStatement es = (EmbedPreparedStatement)TestUtil.jdbcConn
+          .prepareStatement(updateQuery);
+      es.setInt(1, 1);
+      es.setInt(2, 1);
+      es.setString(3, "descp");
+      long startTime = System.currentTimeMillis();
+      for(int i = 0 ; i < 100 ; i++ ){
+        int n = es.executeUpdate();
+        assertEquals(1, n);
+      }
+      long endTime = System.currentTimeMillis();
+      getLogWriter().info("UPDATE-PERF-Non-CAS = " + (endTime - startTime));
+      //Disable CAS Updates
+
+
+    } finally {
+      GemFireXDQueryObserverHolder
+          .setInstance(new GemFireXDQueryObserverAdapter());
+      clientSQLExecute(1, "Drop table EMP.TESTTABLE ");
+      clientSQLExecute(1, "Drop schema EMP restrict");
+      //invokeInEveryVM(this.getClass(), "reset");
+      System.clearProperty("snappy.store.disableCASUpdate");
+    }
+  }
+
+  public void testPKUpdatePerf() throws Exception {
+    System.setProperty("snappy.store.disableCASUpdate", "true");
+    // Start one client and three servers
+    startServerVMs(3, 0, "SG1");
+    startClientVMs(1, 0, null);
+    String updateQuery = "Update EMP.TESTTABLE set type = ? where ID = ?";
+    // Create a schema with default server groups GemFire extension
+    clientSQLExecute(1, "create schema EMP default server groups (SG1)");
+
+    // Create the table and insert a row
+    clientSQLExecute(1, "create table EMP.TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null, "
+        + "ADDRESS varchar(1024) ,type int ) " + getOverflowSuffix());
+
+
+    try {
+      TestUtil.setupConnection();
+
+      PreparedStatement ps = TestUtil.jdbcConn
+          .prepareStatement("insert into EMP.TESTTABLE values (?, ?, ?, ?)");
+      for (int i = 0; i < 10000; ++i) {
+        ps.setInt(1, i);
+        ps.setString(2, "descp");
+        ps.setString(3, "addr");
+        ps.setInt(4, i);
+        ps.executeUpdate();
+      }
+
+      EmbedPreparedStatement es = (EmbedPreparedStatement)TestUtil.jdbcConn
+          .prepareStatement(updateQuery);
+      es.setInt(1, 1);
+      es.setInt(2, 1);
+      long startTime = System.currentTimeMillis();
+      for(int i = 0 ; i < 100 ; i++ ){
+        int n = es.executeUpdate();
+        assertEquals(1, n);
+      }
+      long endTime = System.currentTimeMillis();
+      getLogWriter().info("UPDATE-PERF-PKBased= " + (endTime - startTime));
+      //Disable CAS Updates
+
+
+    } finally {
+      GemFireXDQueryObserverHolder
+          .setInstance(new GemFireXDQueryObserverAdapter());
+      clientSQLExecute(1, "Drop table EMP.TESTTABLE ");
+      clientSQLExecute(1, "Drop schema EMP restrict");
+      //invokeInEveryVM(this.getClass(), "reset");
+      System.clearProperty("snappy.store.disableCASUpdate");
+    }
+  }
+
+  public void testInternalQueryCompilation() throws Exception {
+    // Start one client and three servers
+    startServerVMs(3, 0, "SG1");
+    startClientVMs(1, 0, null);
+    String updateQuery = "Update EMP.TESTTABLE set type = ? where ID = ? and DESCRIPTION = ?";
+    // Create a schema with default server groups GemFire extension
+    clientSQLExecute(1, "create schema EMP default server groups (SG1)");
+
+    // Create the table and insert a row
+    clientSQLExecute(1, "create table EMP.TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null, "
+        + "ADDRESS varchar(1024) ,type int ) " + getOverflowSuffix());
+
+    // Insert values 1 to 8
+    for (int i = 0; i < 8; ++i) {
+      clientSQLExecute(1, "insert into EMP.TESTTABLE values (" + (i + 1)
+          + ", 'First" + (i + 1) + "', 'J 604" + (i + 1) + "'," + (i + 1)
+          + ")");
+    }
+    try {
+      TestUtil.setupConnection();
+      EmbedPreparedStatement es = (EmbedPreparedStatement)TestUtil.jdbcConn
+          .prepareStatement(updateQuery);
+
+      for(int i = 1 ; i<= 10 ; i++){
+        es.setInt(1, i);
+        es.setInt(2, 2);
+        es.setString(3, "First2");
+
+        int n = es.executeUpdate();
+        //assertEquals(1, n);
+      }
+
+
+
+    } finally {
+      GemFireXDQueryObserverHolder
+          .setInstance(new GemFireXDQueryObserverAdapter());
+      clientSQLExecute(1, "Drop table EMP.TESTTABLE ");
+      clientSQLExecute(1, "Drop schema EMP restrict");
+      //invokeInEveryVM(this.getClass(), "reset");
+    }
+  }
+
+
   /** ***************************************Helper *************************** */
   
   public static final void reset() {

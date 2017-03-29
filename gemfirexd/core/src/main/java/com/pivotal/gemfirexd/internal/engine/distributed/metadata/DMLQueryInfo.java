@@ -117,6 +117,8 @@ public abstract class DMLQueryInfo extends AbstractQueryInfo implements Visitor 
   private int currJunctionType = -1;
 
   private Object pk;
+
+  private Object otherKeys;
   
   private Object localIndexKey = null;
   
@@ -975,7 +977,14 @@ public abstract class DMLQueryInfo extends AbstractQueryInfo implements Visitor 
     if (this.whereClause != null) {
       if (tqi.isPrimaryKeyBased()) {
         int[][] pkColumn = tqi.getPrimaryKeyColumns();
+        //Set
+        if(this.isUpdate()){
+          this.whereClause.isPartofUpdate = true;
+        }
         this.pk = this.whereClause.isConvertibleToGet(pkColumn, tqi);
+        if(this.pk != null){
+          this.otherKeys = this.whereClause.getAllConditions(pkColumn, tqi);
+        }
         if (GemFireXDUtils.isSet(this.queryType, MARK_NOT_GET_CONVERTIBLE)) {
           this.pk = null;
           if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
@@ -1137,6 +1146,10 @@ public abstract class DMLQueryInfo extends AbstractQueryInfo implements Visitor 
   @Override
   public Object getPrimaryKey() {
     return this.pk;
+  }
+
+  public Object getOtherKeys() {
+    return this.otherKeys;
   }
   
   @Override

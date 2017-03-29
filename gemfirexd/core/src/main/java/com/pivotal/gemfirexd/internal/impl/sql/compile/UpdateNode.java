@@ -121,6 +121,9 @@ public final class UpdateNode extends DMLModStatementNode
 	protected FromTable			targetTable;
 	protected FormatableBitSet 			readColsBitSet;
 	protected boolean 			positionedUpdate;
+	public ValueNode	whereClause;
+	public FromList fromList;
+	public String statementSQLText;
 
 	/* Column name for the RowLocation in the ResultSet */
 	public static final String COLUMNNAME = "###RowLocationToUpdate";
@@ -135,10 +138,14 @@ public final class UpdateNode extends DMLModStatementNode
 
 	public void init(
 			   Object targetTableName,
-			   Object resultSet)
+			   Object resultSet,
+			   Object fromList,
+			   Object statementSQLText
+			)
 	{
 		super.init(resultSet);
 		this.targetTableName = (TableName) targetTableName;
+		this.statementSQLText = (String)statementSQLText;
 	}
 
 	/**
