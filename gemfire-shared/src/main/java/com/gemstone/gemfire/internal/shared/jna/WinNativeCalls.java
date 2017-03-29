@@ -40,7 +40,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -48,14 +47,13 @@ import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.NativeErrorException;
 import com.gemstone.gemfire.internal.shared.TCPSocketOptions;
 import com.sun.jna.LastErrorException;
-import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.ptr.IntByReference;
-import com.sun.jna.win32.StdCallLibrary;
+import com.sun.jna.win32.W32APIOptions;
 
 /**
  * Implementation of {@link NativeCalls} for Windows platforms.
@@ -91,14 +89,16 @@ final class WinNativeCalls extends NativeCalls {
   private static final class Kernel32 {
 
     static {
+      /*
       // kernel32 requires stdcall calling convention
       Map<String, Object> kernel32Options = new HashMap<>();
       kernel32Options.put(Library.OPTION_CALLING_CONVENTION,
           StdCallLibrary.STDCALL_CONVENTION);
       kernel32Options.put(Library.OPTION_FUNCTION_MAPPER,
           StdCallLibrary.FUNCTION_MAPPER);
+      */
       final NativeLibrary kernel32Lib = NativeLibrary.getInstance("kernel32",
-          kernel32Options);
+          W32APIOptions.DEFAULT_OPTIONS);
       Native.register(kernel32Lib);
     }
 
