@@ -1128,7 +1128,7 @@ public void stopMonitoring() {
     long bytesUsed = getBytesUsed();
     if (bytesUsed > this.getThresholds().getCriticalThresholdBytes()) {
       if (accountedMemory < bytesUsed) {
-        Runtime.getRuntime().gc();
+        Thread.yield();  // Give some other threads chance. May vacate some space
       }
       // check the health again
       if (getBytesUsed() > this.getThresholds().getCriticalThresholdBytes()) {
