@@ -367,4 +367,6 @@ public interface GfxdSerializable extends GfxdDSFID {
   public final static byte LEAD_NODE_CONN_OP_MSG = 123;
 
   public final static byte LEAD_NODE_CONN_OP_CTX = 124;
+
+  public final static byte LEAD_NODE_GET_STATS = 125;
 }

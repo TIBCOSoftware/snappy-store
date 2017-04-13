@@ -47,6 +47,8 @@ public interface StoreCallbacks {
 
   void performConnectorOp(Object ctx);
 
+  Object getSnappyTableStats();
+
   int getLastIndexOfRow(Object o);
 
   boolean acquireStorageMemory(String objectName, long numBytes,

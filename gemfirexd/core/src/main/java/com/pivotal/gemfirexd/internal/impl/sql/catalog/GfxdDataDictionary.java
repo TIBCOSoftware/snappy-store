@@ -1727,6 +1727,16 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+      // GET_SNAPPY_TABLE_STATS
+      String[] arg_names = new String[] { "STATS_OBJECT"};
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.BLOB)};
+      super.createSystemProcedureOrFunction("GET_SNAPPY_TABLE_STATS",
+          sysUUID, arg_names, arg_types, 1, 0, RoutineAliasInfo.READS_SQL_DATA, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
       // GET_BUCKET_TO_SERVER_MAPPING
       String[] arg_names = new String[] { "FQTN", "BKT_TO_SERVER_MAPPING" };
       TypeDescriptor[] arg_types = new TypeDescriptor[] { DataTypeDescriptor

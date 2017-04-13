@@ -66,9 +66,11 @@ import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionByExpress
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.AckResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction.QueryCancelFunctionArgs;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeGetStatsMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeSmartConnectorOpMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.SecurityUtils;
@@ -1646,6 +1648,37 @@ public class GfxdSystemProcedures extends SystemProcedures {
     try {
       msg.executeFunction();
     } catch(StandardException se) {
+      throw PublicAPI.wrapStandardException(se);
+    }
+  }
+
+  public static void GET_SNAPPY_TABLE_STATS(Blob[] statsMap) throws SQLException {
+    try {
+      if (GemFireXDUtils.TraceSysProcedures) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+            "executing GET_SNAPPY_TABLE_STATS ");
+      }
+      GfxdListResultCollector collector = new GfxdListResultCollector();
+      LeadNodeGetStatsMessage msg  = new LeadNodeGetStatsMessage(collector);
+      msg.executeFunction();
+      List result = (ArrayList)collector.getResult();
+      if (result != null) {
+        for (Object oneResult : result) {
+          Object o = oneResult;
+          ByteArrayOutputStream baos = new ByteArrayOutputStream();
+          try {
+            ObjectOutputStream os = new ObjectOutputStream(baos);
+            os.writeObject(o);
+            byte[] tableObjectBytes = baos.toByteArray();
+            statsMap[0] = new HarmonySerialBlob(tableObjectBytes);
+          } catch (IOException ioe) {
+            TransactionResourceImpl.wrapInSQLException(ioe);
+          }
+        }
+      } else {
+        statsMap[0] = null;
+      }
+    } catch (StandardException se) {
       throw PublicAPI.wrapStandardException(se);
     }
   }

@@ -17,7 +17,9 @@
 
 package com.pivotal.gemfirexd.internal.engine.ui;
 
-public class SnappyRegionStats {
+import java.io.Serializable;
+
+public class SnappyRegionStats implements Serializable {
 
   private boolean isColumnTable = false;
   private String regionName;
@@ -25,6 +27,8 @@ public class SnappyRegionStats {
   private long sizeInMemory = 0;
   private long totalSize = 0;
   private Boolean isReplicatedTable = false;
+
+  public SnappyRegionStats() {}
 
   public SnappyRegionStats(String regionName) {
     this.regionName = regionName;

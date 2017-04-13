@@ -79,6 +79,12 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public Object getSnappyTableStats() {
+      throw new UnsupportedOperationException("unexpected invocation for "
+          + toString());
+    }
+
+    @Override
     public int getLastIndexOfRow(Object o) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
