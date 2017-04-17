@@ -2467,7 +2467,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (initialDefaultSchema != newDefaultSchema) {
         result.setNewDefaultSchema(newDefaultSchema);
       }
-
       fillWarnings(result, pstmt);
       return result;
     } catch (Throwable t) {
@@ -2501,6 +2500,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     EngineConnection conn = null;
     PreparedStatement pstmt = null;
     ResultSet rs = null;
+    RowSet rowSet = null;
     // prepared statement executions do not have posDup handling since
     // client-side will need to do prepare+execute after failure so only
     // prepare needs to handle posDup
@@ -2522,7 +2522,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       rs = pstmt.executeQuery();
       stmtHolder.setStatus("FILLING RESULT SET");
-      return getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null, connId,
+      rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null, connId,
           attrs, 0, false, false, 0, connHolder, null /* already set */);
     } catch (Throwable t) {
       cleanupResultSet(rs);
@@ -2531,7 +2531,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     } finally {
       if (pstmt != null) {
         try {
-          pstmt.clearParameters();
+          if (rowSet != null && (rowSet.flags &
+              snappydataConstants.ROWSET_LAST_BATCH) != 0) {
+            pstmt.clearParameters();
+          }
         } catch (Throwable t) {
           // ignore exceptions at this point
           checkSystemFailure(t);
@@ -2543,6 +2546,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             null, null, false, null);
       }
     }
+    return rowSet;
   }
 
   /**
