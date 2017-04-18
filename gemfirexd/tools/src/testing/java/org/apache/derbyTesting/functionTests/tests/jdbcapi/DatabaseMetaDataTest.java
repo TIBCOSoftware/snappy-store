@@ -1226,7 +1226,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
         rs = getDMDTables(dmd, null, "SYS", "%", viewOnly);
         JDBC.assertEmpty(rs);
 
-        String[] allTables = {"SYNONYM","SYSTEM TABLE","TABLE","VIEW","COLUMN TABLE"};
+        String[] allTables = {"SYNONYM","SYSTEM TABLE","TABLE","VIEW","COLUMN TABLE","EXTERNAL TABLE"};
         rs = getDMDTables(dmd, null, null, null, allTables);
         checkTablesShape(rs);
         assertEquals("Different counts from getTables",
@@ -2033,7 +2033,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
 
         JDBC.assertFullResultSet(rs, new String[][]
           {
-            {"SYNONYM"},{"SYSTEM TABLE"},{"TABLE"},{"VIEW"},{"COLUMN TABLE"},
+            {"SYNONYM"},{"SYSTEM TABLE"},{"TABLE"},{"VIEW"},{"COLUMN TABLE"},{"EXTERNAL TABLE"},
           }, true);
         rs.close();
     }
