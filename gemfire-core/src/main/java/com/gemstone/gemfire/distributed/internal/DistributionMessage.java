@@ -223,7 +223,7 @@ public abstract class DistributionMessage
         // allow nested distributed functions to be executed from within the
         // execution of a function; this is required particularly for GemFireXD
         // TODO: this can later be adjusted to use a separate property
-        return containsRegionContentChange();
+        return threadOwnsResources || containsRegionContentChange();
       default:
         return threadOwnsResources || containsRegionContentChange();
     }
