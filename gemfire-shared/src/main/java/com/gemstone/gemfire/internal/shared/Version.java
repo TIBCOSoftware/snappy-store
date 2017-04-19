@@ -233,7 +233,7 @@ public final class Version implements Comparable<Version> {
   /**
    * This constant must be set to the most current version of GFE/GFXD.
    */
-  public static final Version CURRENT = GFXD_20;
+  public static final Version CURRENT = GFE_81; //GFXD_20;
   public static final Version CURRENT_GFE = GFE_81;
   public static final short CURRENT_GFE_ORDINAL = CURRENT_GFE.ordinal();
 
