@@ -14331,6 +14331,7 @@ public class LocalRegion extends AbstractRegion
 
   protected StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
   protected volatile boolean regionOverHeadAccounted = false;
+  protected volatile long regionOverHead = -1L;
   protected volatile long entryOverHead = -1L;
   protected volatile long diskIdOverHead = -1L;
 
@@ -14338,8 +14339,9 @@ public class LocalRegion extends AbstractRegion
     if (!this.reservedTable() && !regionOverHeadAccounted && needAccounting() ) {
       synchronized (this) {
         if (!regionOverHeadAccounted) {
+          this.regionOverHead = callback.getRegionOverhead(this);
           callback.acquireStorageMemory(getFullPath(),
-              callback.getRegionOverhead(this), null, true);
+                  regionOverHead, null, true);
           regionOverHeadAccounted = true;
 
         }
