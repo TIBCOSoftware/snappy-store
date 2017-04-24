@@ -254,6 +254,10 @@ namespace client {
         const uint32_t columnIndex, const char* cause);
 
     BOOST_NORETURN static void throwDataFormatError(const char* target,
+        const thrift::ColumnValue& srcValue, const uint32_t columnIndex,
+        const char* cause);
+
+    BOOST_NORETURN static void throwDataFormatError(const char* target,
         const uint32_t columnIndex, const std::exception& cause);
 
     BOOST_NORETURN static void throwDataOutsideRangeError(const char* target,

@@ -245,7 +245,7 @@ public interface Attribute {
   String GFXD_PERSIST_DD = "persist-dd";
 
   /**
-   * Read timeout for the connection, in seconds. For network server and
+   * Read timeout for the connection, in milliseconds. For network server and
    * client connections.
    */
   String READ_TIMEOUT = "read-timeout";

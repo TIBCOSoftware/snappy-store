@@ -388,7 +388,7 @@ int8_t Row::convertByte(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("TINYINT", columnNum, ex.what());
+    Utils::throwDataFormatError("TINYINT", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "TINYINT", columnNum);
 }
@@ -419,7 +419,7 @@ uint8_t Row::convertUnsignedByte(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("TINYINT", columnNum, ex.what());
+    Utils::throwDataFormatError("TINYINT", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "TINYINT", columnNum);
 }
@@ -450,7 +450,7 @@ int16_t Row::convertShort(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("SMALLINT", columnNum, ex.what());
+    Utils::throwDataFormatError("SMALLINT", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "SMALLINT", columnNum);
 }
@@ -481,7 +481,7 @@ uint16_t Row::convertUnsignedShort(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("SMALLINT", columnNum, ex.what());
+    Utils::throwDataFormatError("SMALLINT", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "SMALLINT", columnNum);
 }
@@ -512,7 +512,7 @@ int32_t Row::convertInt(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("INTEGER", columnNum, ex.what());
+    Utils::throwDataFormatError("INTEGER", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "INTEGER", columnNum);
 }
@@ -543,7 +543,7 @@ uint32_t Row::convertUnsignedInt(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("INTEGER", columnNum, ex.what());
+    Utils::throwDataFormatError("INTEGER", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "INTEGER", columnNum);
 }
@@ -574,7 +574,7 @@ int64_t Row::convertInt64(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("BIGINT", columnNum, ex.what());
+    Utils::throwDataFormatError("BIGINT", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "BIGINT", columnNum);
 }
@@ -605,7 +605,7 @@ uint64_t Row::convertUnsignedInt64(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("BIGINT", columnNum, ex.what());
+    Utils::throwDataFormatError("BIGINT", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "BIGINT", columnNum);
 }
@@ -637,7 +637,7 @@ float Row::convertFloat(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("FLOAT", columnNum, ex.what());
+    Utils::throwDataFormatError("FLOAT", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "FLOAT", columnNum);
 }
@@ -668,7 +668,7 @@ double Row::convertDouble(const thrift::ColumnValue& cv,
         break;
     }
   } catch (const std::exception& ex) {
-    Utils::throwDataFormatError("DOUBLE", columnNum, ex.what());
+    Utils::throwDataFormatError("DOUBLE", cv, columnNum, ex.what());
   }
   throw GET_DATACONVERSION_ERROR(cv, "DOUBLE", columnNum);
 }

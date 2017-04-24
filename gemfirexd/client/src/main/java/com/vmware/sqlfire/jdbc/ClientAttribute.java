@@ -51,7 +51,7 @@ public interface ClientAttribute {
   String PASSWORD = com.vmware.sqlfire.Attribute.PASSWORD_ATTR;
 
   /**
-   * Read timeout for the connection, in seconds. Only for thin client
+   * Read timeout for the connection, in milliseconds. Only for thin client
    * connections.
    */
   String READ_TIMEOUT = "read-timeout";

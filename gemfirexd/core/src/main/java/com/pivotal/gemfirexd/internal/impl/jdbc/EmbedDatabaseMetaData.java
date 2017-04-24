@@ -1794,11 +1794,13 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		/* Original code
 		final int numberOfTableTypesInDerby = 4;
 		*/
-		final int numberOfTableTypesInDerby = 5;
+		final int numberOfTableTypesInDerby = 6;
 		//GemStone changes END
 
 		if (types == null)  {// null means all types 
-			types = new String[] {"TABLE","VIEW","SYNONYM","SYSTEM TABLE"/*GemStone changes BEGIN*/, "COLUMN TABLE"/*GemStone changes END*/};
+			types = new String[] {"TABLE","VIEW","SYNONYM","SYSTEM TABLE"
+			/* GemStone changes BEGIN */, "COLUMN TABLE",
+			"EXTERNAL TABLE" /* GemStone changes END */};
 		}
 		String[] typeParams = new String[numberOfTableTypesInDerby];
 		for (int i=0; i < numberOfTableTypesInDerby;i++)
@@ -1818,6 +1820,12 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			else if ("COLUMN TABLE".equals(types[i]) ||
 			    "COLUMN_TABLE".equals(types[i])) // In case we treat it like SYSTEM_TABLE
 			    typeParams[4] = "C";
+			else if ("EXTERNAL TABLE".equals(types[i]) ||
+			    "STREAM TABLE".equals(types[i]) ||
+			    "SAMPLE TABLE".equals(types[i]) ||
+			    "TOPK TABLE".equals(types[i])) {
+			    typeParams[5] = "E";
+			}
 			//GemStone changes END
 			// If user puts in other types we simply ignore.
 			}
@@ -1830,6 +1838,9 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			else
 				s.setString(i+4,typeParams[i]);	
 					
+		// add schema/table again for hive tables
+		s.setString(numberOfTableTypesInDerby + 4, swapNull(schemaPattern));
+		s.setString(numberOfTableTypesInDerby + 5, swapNull(tableNamePattern));
 		return s.executeQuery();
 	}
 
@@ -2001,7 +2012,11 @@ public class EmbedDatabaseMetaData extends ConnectionChild
                 s.setString(6, swapNull(schemaPattern));
                 s.setString(7, swapNull(tableNamePattern));
                 s.setString(8, swapNull(columnNamePattern));
-                //GemStone changes END
+                // for hive external tables
+                s.setString(9, swapNull(schemaPattern));
+                s.setString(10, swapNull(tableNamePattern));
+                s.setString(11, swapNull(columnNamePattern));
+		// GemStone changes END
 		return s.executeQuery();
 	}
 
@@ -3522,6 +3537,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
         PreparedStatement s = getPreparedQuery("getSchemas");
         s.setString(1, swapNull(catalog));
         s.setString(2, swapNull(schemaPattern));
+        s.setString(3, swapNull(schemaPattern));
         return s.executeQuery();
     }
 
