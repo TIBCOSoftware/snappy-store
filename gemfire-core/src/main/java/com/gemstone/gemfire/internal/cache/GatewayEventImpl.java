@@ -22,11 +22,10 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.InternalGemFireError;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SerializationException;
 import com.gemstone.gemfire.cache.CacheEvent;
-import com.gemstone.gemfire.cache.CacheFactory;
 import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.util.GatewayEvent;
@@ -34,11 +33,9 @@ import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.cache.wan.GatewayQueueEvent;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl.NewValueImporter;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl.SerializedCacheValueImpl;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerHelper;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.shared.Version;
 
 /**
@@ -331,7 +328,7 @@ public final class GatewayEventImpl implements GatewayEvent, GatewayQueueEvent, 
       final LocalRegion r = getRegion();
       if (r == null) {
         // log a warning
-        final LogWriter logger = CacheFactory.getAnyInstance().getLogger();
+        final LogWriter logger = GemFireCacheImpl.getExisting().getLogger();
         if (logger.warningEnabled()) {
           logger.warning("GatewayEventImpl.initializeKey: region "
               + this._regionName + " not found while initializing key "
@@ -848,7 +845,7 @@ public final class GatewayEventImpl implements GatewayEvent, GatewayQueueEvent, 
     // The region will be null mostly for the other node where the gateway event
     // is serialized
     return this._region != null ? this._region
-        : (this._region = (LocalRegion)CacheFactory.getAnyInstance().getRegion(
+        : (this._region = (LocalRegion)GemFireCacheImpl.getExisting().getRegion(
             this._regionName));
   }
 

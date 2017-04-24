@@ -437,8 +437,8 @@ std::string Utils::toString(const std::exception& stde) {
   return str;
 }
 
-void Utils::throwDataFormatError(const char* target, const uint32_t columnIndex,
-    const char* cause) {
+void Utils::throwDataFormatError(const char* target,
+    const uint32_t columnIndex, const char* cause) {
   std::ostringstream reason;
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
@@ -450,8 +450,23 @@ void Utils::throwDataFormatError(const char* target, const uint32_t columnIndex,
       reason.str().c_str());
 }
 
-void Utils::throwDataFormatError(const char* target, const uint32_t columnIndex,
-    const std::exception& cause) {
+void Utils::throwDataFormatError(const char* target,
+    const thrift::ColumnValue& srcValue, const uint32_t columnIndex,
+    const char* cause) {
+  std::ostringstream reason;
+  reason << " for value '" << srcValue << '\'';
+  if (columnIndex > 0) {
+    reason << " at column " << columnIndex;
+  }
+  if (cause != NULL) {
+    reason << ": " << cause;
+  }
+  throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_FORMAT_EXCEPTION_MSG, target,
+      reason.str().c_str());
+}
+
+void Utils::throwDataFormatError(const char* target,
+    const uint32_t columnIndex, const std::exception& cause) {
   std::ostringstream reason;
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;

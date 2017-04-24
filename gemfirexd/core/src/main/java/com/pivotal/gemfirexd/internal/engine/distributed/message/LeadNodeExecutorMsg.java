@@ -20,10 +20,7 @@ package com.pivotal.gemfirexd.internal.engine.distributed.message;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.Serializable;
 import java.sql.SQLException;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 import com.gemstone.gemfire.DataSerializer;
@@ -31,17 +28,13 @@ import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.distributed.DistributedMember;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
-import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -81,25 +74,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
 
   @Override
   public Set<DistributedMember> getMembers() {
-    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
-    InternalDistributedSystem ids = Misc.getDistributedSystem();
-    if (ids.isLoner()) {
-      return Collections.<DistributedMember>singleton(
-          ids.getDistributedMember());
-    }
-    Set<DistributedMember> allMembers = ids.getAllOtherMembers();
-    for (DistributedMember m : allMembers) {
-      GfxdDistributionAdvisor.GfxdProfile profile = advisor
-          .getProfile((InternalDistributedMember)m);
-      if (profile != null && profile.hasSparkURL()) {
-        Set<DistributedMember> s = new HashSet<DistributedMember>();
-        s.add(m);
-        return Collections.unmodifiableSet(s);
-      }
-    }
-    throw new NoDataStoreAvailableException(LocalizedStrings
-        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
-        .toLocalizedString("SnappyData Lead Node"));
+    return Misc.getLeadNode();
   }
 
   @Override
@@ -148,7 +123,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     }
   }
 
-  private Exception getExceptionToSendToServer(Exception ex) {
+  public static Exception getExceptionToSendToServer(Exception ex) {
     // Catch all exceptions and convert so can be caught at XD side
     // Check if the exception can be serialized or not
     boolean wrapExcepton = false;

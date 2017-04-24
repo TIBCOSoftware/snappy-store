@@ -45,6 +45,8 @@ public interface StoreCallbacks {
 
   void registerRelationDestroyForHiveStore();
 
+  void performConnectorOp(Object ctx);
+
   int getLastIndexOfRow(Object o);
 
   boolean acquireStorageMemory(String objectName, long numBytes,

@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.DataSerializer;
@@ -1364,6 +1365,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
      */
     private String sparkDriverUrl;
 
+    private AtomicInteger relationDestroyVersion;
+
     /** for deserialization */
     public GfxdProfile() {
       this.initialized = true;
@@ -1378,6 +1381,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       boolean hasURL = sparkDriverUrl != null && !sparkDriverUrl.equals("");
       setHasSparkURL(hasURL);
       initFlags();
+      relationDestroyVersion = new AtomicInteger(0);
     }
 
     private void initFlags() {
@@ -1430,6 +1434,10 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     public final boolean hasSparkURL() {
       return (this.flags & F_HAS_SPARK_DRIVERURL) != 0;
     }
+
+    public final void setRelationDestroyVersion(int value){ relationDestroyVersion.set(value); }
+
+    public final int getRelationDestroyVersion() { return relationDestroyVersion.get(); }
 
     public final void setInitialized(boolean initialized) {
       this.initialized = initialized;
@@ -1531,6 +1539,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if (hasSparkURL()) {
         DataSerializer.writeString(sparkDriverUrl, out);
       }
+      DataSerializer.writeInteger(relationDestroyVersion.get(), out);
     }
 
     @Override
@@ -1562,6 +1571,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if (hasSparkURL()) {
         this.sparkDriverUrl = DataSerializer.readString(in);
       }
+      relationDestroyVersion = new AtomicInteger(DataSerializer.readInteger(in));
     }
 
     @Override

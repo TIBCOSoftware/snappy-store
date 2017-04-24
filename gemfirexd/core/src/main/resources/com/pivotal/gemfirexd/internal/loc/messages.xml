@@ -4546,6 +4546,10 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
                 <name>XCL56.S</name>
                 <text>The statement has been cancelled due to a user request.</text>
             </msg>
+            <msg>
+                <name>XCL57</name>
+                <text>Table schema changed(due to DROP/CREATE/ALTER operation). Please retry the query</text>
+            </msg>
 <!--  GemStone changes END -->
 
         </family>

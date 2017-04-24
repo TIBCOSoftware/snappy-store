@@ -84,7 +84,7 @@ void ConnectionProperty::staticInitialize() {
   char singleHopMaxConnHelp[256];
 
   ::snprintf(readTimeoutHelp, sizeof(readTimeoutHelp) - 1,
-      "Timeout in seconds to wait for connection creation or reply "
+      "Timeout in milliseconds to wait for connection creation or reply "
           "from server (default is %d)",
       ClientAttribute::DEFAULT_LOGIN_TIMEOUT);
   ::snprintf(keepAliveIdleHelp, sizeof(keepAliveIdleHelp) - 1,

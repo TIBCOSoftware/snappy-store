@@ -75,6 +75,10 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public void performConnectorOp(Object ctx) {
+    }
+
+    @Override
     public int getLastIndexOfRow(Object o) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());

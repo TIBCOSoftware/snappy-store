@@ -60,6 +60,7 @@ import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
@@ -221,6 +222,28 @@ public abstract class Misc {
     else {
       return getDistributedSystem().getDistributedMember();
     }
+  }
+
+  public static Set<DistributedMember> getLeadNode() {
+    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
+    InternalDistributedSystem ids = Misc.getDistributedSystem();
+    if (ids.isLoner()) {
+      return Collections.<DistributedMember>singleton(
+          ids.getDistributedMember());
+    }
+    Set<DistributedMember> allMembers = ids.getAllOtherMembers();
+    for (DistributedMember m : allMembers) {
+      GfxdDistributionAdvisor.GfxdProfile profile = advisor
+          .getProfile((InternalDistributedMember)m);
+      if (profile != null && profile.hasSparkURL()) {
+        Set<DistributedMember> s = new HashSet<DistributedMember>();
+        s.add(m);
+        return Collections.unmodifiableSet(s);
+      }
+    }
+    throw new NoDataStoreAvailableException(LocalizedStrings
+        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
+        .toLocalizedString("SnappyData Lead Node"));
   }
 
   /**
