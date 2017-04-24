@@ -1326,7 +1326,7 @@ public class DistributedRegion extends LocalRegion implements
       boolean recoverFromDisk, PersistentMemberID persistentId) throws TimeoutException
   {
     LogWriterI18n logger = getSystem().getLogWriter().convertToLogWriterI18n();
-    if (logger.infoEnabled()) {
+    if (logger.infoEnabled() && !LocalRegion.isMetaTable(getFullPath())) {
       logger.info(LocalizedStrings.DistributedRegion_INITIALIZING_REGION_0, this.getName());
     }
   
