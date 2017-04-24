@@ -40,7 +40,11 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
 
   public static String ID = "SnappyRegionStatsCollectorFunction";
 
-  public static final ObjectSizer sizer = ObjectSizer.getInstance(false);
+  public static final ObjectSizer sizer = ObjectSizer.getInstance(true);
+
+  static {
+    sizer.setForInternalUse(true);
+  }
 
   @Override
   public void init(Properties props) {
@@ -237,6 +241,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
 
     List<GemFireContainer> indexes = (idxMgr != null ? idxMgr.getAllIndexes()
         : Collections.<GemFireContainer> emptyList());
+
     try {
       sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes,
           retEstimates, null);

@@ -1490,7 +1490,9 @@ public class DistributedRegion extends LocalRegion implements
       else {
         if(!isDestroyed()) {
           if(recoverFromDisk) {
-            logger.info(LocalizedStrings.DistributedRegion_INITIALIZED_FROM_DISK, new Object[] {this.getFullPath(), persistentId, getPersistentID()});
+            if (!LocalRegion.isMetaTable(getFullPath())) {
+              logger.info(LocalizedStrings.DistributedRegion_INITIALIZED_FROM_DISK, new Object[]{this.getFullPath(), persistentId, getPersistentID()});
+            }
             if(persistentId != null) {
               RegionLogger.logRecovery(this.getFullPath(), persistentId,
                   getDistributionManager().getDistributionManagerId());
@@ -1503,7 +1505,9 @@ public class DistributedRegion extends LocalRegion implements
               RegionLogger.logPersistence(this.getFullPath(),
                   getDistributionManager().getDistributionManagerId(),
                   getPersistentID());
-              logger.info(LocalizedStrings.DistributedRegion_NEW_PERSISTENT_REGION_CREATED, new Object[] {this.getFullPath(), getPersistentID()});
+              if (!LocalRegion.isMetaTable(getFullPath())) {
+                logger.info(LocalizedStrings.DistributedRegion_NEW_PERSISTENT_REGION_CREATED, new Object[]{this.getFullPath(), getPersistentID()});
+              }
             }
           }
           

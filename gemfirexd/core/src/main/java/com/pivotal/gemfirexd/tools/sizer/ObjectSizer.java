@@ -248,6 +248,10 @@ public class ObjectSizer {
 
   }
 
+  public void setForInternalUse(boolean isForInternalUse) {
+    this.isForInternalUse = isForInternalUse;
+  }
+
   public void setQueryHints(FormatableHashtable queryHints) {
     if (queryHints == null) {
       return;
