@@ -77,6 +77,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
 
   protected static final String HEAP_SIZE = "heap-size";
   protected static final String OFF_HEAP_SIZE = "off-heap-size";
+  
   //There attributes are no longer supported. They get populated in deprecatedAttributes map.
   protected static final String INITIAL_HEAP = "initial-heap";
   protected static final String MAX_HEAP = "max-heap";
