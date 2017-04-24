@@ -14348,21 +14348,22 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  private long getEntryOverhead(RegionEntry entry){
+
+  private long getEntryOverhead(RegionEntry entry) {
     long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
     Object key = entry.getRawKey();
     if (key != null) {
-      entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(key);
-    }else{
+      entryOverhead += CachedDeserializableFactory.calcMemSize(entry);
+    } else {
       // first key.
       Object firstKey = this.getRegionMap().keySet().iterator().next();
-      if(firstKey != null){
+      if (firstKey != null) {
         entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(firstKey);
       }
     }
     if (entry instanceof DiskEntry) {
-      DiskId diskId = ((DiskEntry)entry).getDiskId();
-      if(diskId != null){
+      DiskId diskId = ((DiskEntry) entry).getDiskId();
+      if (diskId != null) {
         entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(diskId);
       }
     }
@@ -14371,8 +14372,8 @@ public class LocalRegion extends AbstractRegion
 
   protected long calculateEntryOverhead(RegionEntry entry) {
     if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
-      synchronized (this){
-        if(entryOverHead == -1L){
+      synchronized (this) {
+        if (entryOverHead == -1L) {
           entryOverHead = getEntryOverhead(entry);
           memTrace("Entry overhead for " + getFullPath() + " = " + entryOverHead);
         }

@@ -77,8 +77,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
 
   protected static final String HEAP_SIZE = "heap-size";
   protected static final String OFF_HEAP_SIZE = "off-heap-size";
-  protected static final String MEMORY_SIZE = "memory-size";
-  
+
   //There attributes are no longer supported. They get populated in deprecatedAttributes map.
   protected static final String INITIAL_HEAP = "initial-heap";
   protected static final String MAX_HEAP = "max-heap";
@@ -494,10 +493,6 @@ public class GfxdServerLauncher extends CacheServerLauncher {
             "UTIL_GFXD_ExpectedBoolean", WAIT_FOR_SYNC, value));
       }
       this.waitForData = "true".equalsIgnoreCase(value);
-    }
-    else if (MEMORY_SIZE.equals(key)) {
-      props.setProperty(DistributionConfig.MEMORY_SIZE_NAME, value);
-      this.memorySize = value;
     }
     else {
       super.processStartOption(key, value, m, vmArgs, envArgs, props);
