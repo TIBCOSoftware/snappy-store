@@ -2559,7 +2559,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
 
     if (!this.reservedTable() && needAccounting()) {
-      long ignoreBytes = this.isDestroyed() ? getIgnoreBytes() :
+      long ignoreBytes = (this.isDestroyed || this.isDestroyingDiskRegion) ? getIgnoreBytes() :
               getIgnoreBytes() + regionOverHead;
       callback.dropStorageMemory(getFullPath(), ignoreBytes);
     }
