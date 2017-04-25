@@ -44,6 +44,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.WanProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.DiagProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.HdfsProcedures;
+import com.pivotal.gemfirexd.internal.engine.diag.HiveTablesVTI;
 import com.pivotal.gemfirexd.internal.engine.diag.JSONProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.SortedCSVProcedures;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdShutdownAllRequest;
@@ -2006,8 +2007,6 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
   public static final String DIAG_QUERYSTATS_TABLENAME = "QUERYSTATS";
 
-  public static final String DIAG_LOCK_TABLENAME = "LOCKTABLE";
-
   public static final String DIAG_MEMORYANALYTICS_TABLENAME = "MEMORYANALYTICS";
   
   public static final String DIAG_STATEMENT_PLANS = "STATEMENTPLANS";
@@ -2017,7 +2016,9 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
   public static final String INDEX_INFO_TABLENAME = "INDEXES";
 
   public static final String SESSIONS_TABLENAME = "SESSIONS";
-  
+
+  public static final String HIVETABLES_TABLENAME = "HIVETABLES";
+
   private static final String[][] VTI_TABLE_CLASSES = {
       { DIAG_MEMBERS_TABLENAME,
           "com.pivotal.gemfirexd.internal.engine.diag.DistributedMembers" },
@@ -2037,6 +2038,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           "com.pivotal.gemfirexd.internal.engine.IndexInfo" },
       { SESSIONS_TABLENAME,
           "com.pivotal.gemfirexd.internal.engine.diag.SessionsVTI" },
+      { HIVETABLES_TABLENAME, HiveTablesVTI.class.getName() },
   };
 
   private final HashMap<String, TableDescriptor> diagVTIMap =
