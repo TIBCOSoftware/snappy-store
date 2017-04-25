@@ -14353,12 +14353,12 @@ public class LocalRegion extends AbstractRegion
     long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
     Object key = entry.getRawKey();
     if (key != null) {
-      entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(key);
+      entryOverhead += CachedDeserializableFactory.calcMemSize(key);
     } else {
       // first key.
       Object firstKey = this.getRegionMap().keySet().iterator().next();
       if (firstKey != null) {
-        entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(firstKey);
+        entryOverhead += CachedDeserializableFactory.calcMemSize(firstKey);
       }
     }
     if (entry instanceof DiskEntry) {
