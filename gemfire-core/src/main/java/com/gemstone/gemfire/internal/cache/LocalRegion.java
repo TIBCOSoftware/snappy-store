@@ -14353,7 +14353,7 @@ public class LocalRegion extends AbstractRegion
     long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
     Object key = entry.getRawKey();
     if (key != null) {
-      entryOverhead += CachedDeserializableFactory.calcMemSize(entry);
+      entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(key);
     } else {
       // first key.
       Object firstKey = this.getRegionMap().keySet().iterator().next();
