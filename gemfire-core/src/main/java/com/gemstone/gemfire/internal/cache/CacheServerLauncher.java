@@ -109,6 +109,7 @@ public class CacheServerLauncher  {
   protected String maxHeapSize;
   protected String initialHeapSize;
   protected String offHeapSize;
+  protected String memorySize;
   protected String maxPermGenSize;
   protected boolean useThriftServerDefault =
       ClientSharedUtils.isThriftDefault();
@@ -354,7 +355,7 @@ public class CacheServerLauncher  {
   public static final String EVICTION_HEAP_PERCENTAGE =
       "eviction-heap-percentage";
   public static final String CRITICAL_OFF_HEAP_PERCENTAGE =
-      "critical-off-heap-percentage";
+        "critical-off-heap-percentage";
   public static final String EVICTION_OFF_HEAP_PERCENTAGE =
       "eviction-off-heap-percentage";
   protected static final String LOCK_MEMORY = "lock-memory";

@@ -105,19 +105,10 @@ public abstract class CallbackFactoryProvider {
       return false;
     }
 
-    @Override
-    public long getRegionOverhead(LocalRegion region) {
-      return 0;
-    }
 
     @Override
     public void resetMemoryManager() {
 
-    }
-
-    @Override
-    public long getNumBytesForEviction() {
-      return 0;
     }
 
     @Override

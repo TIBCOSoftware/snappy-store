@@ -304,6 +304,8 @@ public class DistributionConfigImpl
   
   /** Whether pages should be locked into memory or allowed to swap to disk */
   private boolean lockMemory = DEFAULT_LOCK_MEMORY;
+
+  private String memorySize = DEFAULT_MEMORY_SIZE;
   
   //////////////////////  Constructors  //////////////////////
 
@@ -2160,5 +2162,20 @@ public class DistributionConfigImpl
   
   protected void checkOffHeapMemorySize(String value) {
     super.checkOffHeapMemorySize(value);
+  }
+
+  @Override
+  public String getMemorySize() {
+    return this.memorySize;
+  }
+
+  @Override
+  public void setMemorySize(String value) {
+    checkMemorySize(value);
+    this.memorySize = value;
+  }
+
+  protected void checkMemorySize(String value) {
+    super.checkMemorySize(value);
   }
 }
