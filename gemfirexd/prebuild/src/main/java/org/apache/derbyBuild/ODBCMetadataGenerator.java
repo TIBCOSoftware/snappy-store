@@ -37,6 +37,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package org.apache.derbyBuild;
 
@@ -387,6 +405,7 @@ public class ODBCMetadataGenerator {
 		// use by subsequent operations.
 		ArrayList colDefs = new ArrayList();
 	      // GemStone changes BEGIN
+                int unionIndex = 0;
                 // Handle UNION in jdbc queries.
 	        pos = -1;
                 do {
@@ -396,7 +415,8 @@ public class ODBCMetadataGenerator {
                   // In some cases, we need to add "helper" columns to the
                   // subquery so that we can use them in calculations for
                   // the outer query.
-                  addHelperColsToSubquery(queryName, queryText, pos);
+                  addHelperColsToSubquery(queryName, queryText, pos, unionIndex);
+                  unionIndex++;
             
                 } while ( (pos = queryText.indexOf("UNION", pos)) > 0);
 	      /*(original code)
@@ -894,12 +914,12 @@ public class ODBCMetadataGenerator {
 	 * 	should be inserted.
 	 */
 	private void addHelperColsToSubquery(String queryName,
-		StringBuilder subqueryText, int insertPos)
+		StringBuilder subqueryText, int insertPos, int unionIndex)
 	{
 
 		if (queryName.equals("getColumns")) {
 			subqueryText.insert(insertPos,
-				getFragment("GET_COLS_HELPER_COLS"));
+				getFragment(unionIndex < 2 ? "GET_COLS_HELPER_COLS" : "GET_COLS_HELPER_COLS2"));
 		}
 		else if (queryName.startsWith("getBestRowIdentifier")) {
 			subqueryText.insert(insertPos,

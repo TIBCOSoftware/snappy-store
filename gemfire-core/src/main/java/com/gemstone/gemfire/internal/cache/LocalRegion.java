@@ -14335,11 +14335,12 @@ public class LocalRegion extends AbstractRegion
   protected volatile long diskIdOverHead = -1L;
 
   protected void accountRegionOverhead() {// Not throwing LowMemoryException while region creation
-    if (!this.reservedTable() && !regionOverHeadAccounted && needAccounting() ) {
+    if (!this.reservedTable() && !regionOverHeadAccounted && needAccounting()) {
       synchronized (this) {
         if (!regionOverHeadAccounted) {
           callback.acquireStorageMemory(getFullPath(),
-              callback.getRegionOverhead(this), null, true);
+                  ReflectionSingleObjectSizer.INSTANCE.sizeof(this),
+                  null, true);
           regionOverHeadAccounted = true;
 
         }
@@ -14347,15 +14348,22 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  private long getEntryOverhead(RegionEntry entry){
+
+  private long getEntryOverhead(RegionEntry entry) {
     long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
     Object key = entry.getRawKey();
     if (key != null) {
-      entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(key);
+      entryOverhead += CachedDeserializableFactory.calcMemSize(key);
+    } else {
+      // first key.
+      Object firstKey = this.getRegionMap().keySet().iterator().next();
+      if (firstKey != null) {
+        entryOverhead += CachedDeserializableFactory.calcMemSize(firstKey);
+      }
     }
     if (entry instanceof DiskEntry) {
-      DiskId diskId = ((DiskEntry)entry).getDiskId();
-      if(diskId != null){
+      DiskId diskId = ((DiskEntry) entry).getDiskId();
+      if (diskId != null) {
         entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(diskId);
       }
     }
@@ -14364,8 +14372,12 @@ public class LocalRegion extends AbstractRegion
 
   protected long calculateEntryOverhead(RegionEntry entry) {
     if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
-      entryOverHead = getEntryOverhead(entry);
-      memTrace("Entry overhead for " + getFullPath() + " = " + entryOverHead);
+      synchronized (this) {
+        if (entryOverHead == -1L) {
+          entryOverHead = getEntryOverhead(entry);
+          memTrace("Entry overhead for " + getFullPath() + " = " + entryOverHead);
+        }
+      }
     }
     return entryOverHead;
   }
