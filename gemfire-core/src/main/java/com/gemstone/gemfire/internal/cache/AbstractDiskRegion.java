@@ -1002,7 +1002,7 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
     //TODO - RVV - I'm not sure about this recordGCVersion method. It seems
     //like it's not doing the right thing if the current member is the member
     //we just recovered.
-    this.versionVector.recordGCVersion(member, gcVersion);
+    this.versionVector.recordGCVersion(member, gcVersion, null);
     
   }
   public void recordRecoveredVersonHolder(VersionSource member,
@@ -1011,7 +1011,7 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
   }
   
   public void recordRecoveredVersionTag(VersionTag tag) {
-    this.versionVector.recordVersion(tag.getMemberID(), tag.getRegionVersion());
+    this.versionVector.recordVersion(tag.getMemberID(), tag.getRegionVersion(), null);
   }
   
   /**

@@ -55,6 +55,8 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of client service that wraps a {@link SnappyDataService.Client}
@@ -80,6 +82,7 @@ public final class ClientService extends ReentrantLock implements LobService {
   final boolean useDirectBuffers;
   final int lobChunkSize;
   final Set<String> serverGroups;
+  private final Logger logger = LoggerFactory.getLogger(getClass().getName());
   volatile int isolationLevel = Converters
       .getJdbcIsolation(snappydataConstants.DEFAULT_TRANSACTION_ISOLATION);
 
@@ -624,6 +627,13 @@ public final class ClientService extends ReentrantLock implements LobService {
       Set<HostAddress> failedServers, boolean tryFailover,
       boolean ignoreNodeFailure, boolean createNewConnection,
       String op) throws SnappyException {
+    if (SanityManager.TraceClientHA) {
+      logger.info("ClientService@" + System.identityHashCode(this) +
+              " received exception for " + op + ". Failed servers=" +
+              failedServers + " tryFailover=" + tryFailover +
+              " ignoreNodeFailure=" + ignoreNodeFailure +
+              " createNewConn=" + createNewConnection, t);
+    }
     final HostConnection source = this.currentHostConnection;
     final HostAddress sourceAddr = this.currentHostAddress;
     if (this.isClosed && createNewConnection) {
@@ -1479,10 +1489,10 @@ public final class ClientService extends ReentrantLock implements LobService {
             source.connId, source.token, ns, false, null);
       }
     } catch (Throwable t) {
-      // no failover for transactions yet
-      handleException(t, null, false, false, true, "commitTransaction");
-      // never reached
-      throw new AssertionError("unexpectedly reached end");
+      // at isolation level NONE failover to new server and return since
+      // it will be a no-op on the new server-side connection
+      handleException(t, null, this.isolationLevel == Connection.TRANSACTION_NONE,
+            false, true, "commitTransaction");
     } finally {
       super.unlock();
     }
@@ -1510,10 +1520,10 @@ public final class ClientService extends ReentrantLock implements LobService {
             source.connId, source.token, ns, false, null);
       }
     } catch (Throwable t) {
-      // no failover for transactions yet
-      handleException(t, null, false, false, true, "rollbackTransaction");
-      // never reached
-      throw new AssertionError("unexpectedly reached end");
+      // at isolation level NONE failover to new server and return since
+      // it will be a no-op on the new server-side connection
+      handleException(t, null, this.isolationLevel == Connection.TRANSACTION_NONE,
+            false, true, "rollbackTransaction");
     } finally {
       super.unlock();
     }

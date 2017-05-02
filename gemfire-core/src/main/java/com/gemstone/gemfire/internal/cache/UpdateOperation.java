@@ -82,7 +82,7 @@ public class UpdateOperation extends AbstractUpdateOperation
       return mssgwithContxt;
     }
     else {
-      return new UpdateMessage();
+      return new UpdateMessage(ev.getTXState());
     }
   }
 
@@ -166,12 +166,16 @@ public class UpdateOperation extends AbstractUpdateOperation
     private long tailKey = 0L;
     private UUID batchUUID = BucketRegion.zeroUUID;
 
-    public UpdateMessage() {
+    public UpdateMessage(){}
+
+    public UpdateMessage(TXStateInterface tx) {
+      super(tx);
     }
     /**  
      * copy constructor
      */
     public UpdateMessage(UpdateMessage upMsg) {
+      super(upMsg.getTXState());
       this.appliedOperation = upMsg.appliedOperation;
       this.callbackArg = upMsg.callbackArg;
       this.deserializationPolicy = upMsg.deserializationPolicy;

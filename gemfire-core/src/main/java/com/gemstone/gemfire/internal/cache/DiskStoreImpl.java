@@ -546,7 +546,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     final ThreadGroup deleteThreadGroup = LogWriterImpl.createThreadGroup("Oplog Delete Thread Group", this.logger);
 
     final ThreadFactory deleteThreadFactory = GemfireCacheHelper.CreateThreadFactory(deleteThreadGroup, "Oplog Delete Task");
-    this.delayedWritePool = new ThreadPoolExecutor(1, 1, 10, TimeUnit.SECONDS,
+    this.delayedWritePool = new ThreadPoolExecutor(1, 5, 10, TimeUnit.SECONDS,
                  new LinkedBlockingQueue(MAX_PENDING_TASKS),
                  deleteThreadFactory, new ThreadPoolExecutor.CallerRunsPolicy());
     this.delayedWritePool.allowCoreThreadTimeOut(true);
@@ -5108,7 +5108,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     // If the GC version is less than what we have on disk, go ahead
     // and record it.
     if (memoryGCVersion <= diskVersion) {
-      diskRVV.recordGCVersion(member, memoryGCVersion);
+      diskRVV.recordGCVersion(member, memoryGCVersion, null);
     }
 
   }

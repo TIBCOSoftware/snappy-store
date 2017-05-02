@@ -929,10 +929,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           && event.getRegion().isUsedForPartitionedRegionBucket()
           && event.getRegion().getPartitionedRegion().isHDFSRegion();
 
+      // this happens for eviction/expiration on PR
       if (removeEntry || forceRemoveEntry) {
         boolean isThisTombstone = isTombstone();
         if(inTokenMode && !event.getOperation().isEviction()) {
-          setValue(region, Token.DESTROYED);  
+          setValue(region, Token.DESTROYED);
         } else {
 //          if (event.getRegion().getLogWriterI18n().fineEnabled()) {
 //            event.getRegion().getLogWriterI18n().fine("ARE.destroy calling removePhase1");
@@ -2075,10 +2076,10 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       if (region.getVersionVector() != null) {
         if (isRemoteVersionSource) {
           tag.setRegionVersion(region.getVersionVector().getNextRemoteVersion(
-              mbr));
+              mbr, event));
         }
         else {
-          tag.setRegionVersion(region.getVersionVector().getNextVersion());
+          tag.setRegionVersion(region.getVersionVector().getNextVersion(event));
         }
       }
       if (withDelta) {
@@ -2265,7 +2266,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         if (who == null) {
           who = originator;
         }
-        r.getVersionVector().recordVersion(who, tag);
+        r.getVersionVector().recordVersion(who, tag, (EntryEventImpl)cacheEvent);
       }
 
       assert !tag.isFromOtherMember() || tag.getMemberID() != null : "remote tag is missing memberID";

@@ -56,18 +56,12 @@ import java.util.concurrent.TimeUnit;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.EntryDestroyedException;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.execute.FunctionContext;
 import com.gemstone.gemfire.cache.execute.RegionFunctionContext;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.TXEntryState;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXState;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.execute.
     InternalRegionFunctionContext;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
@@ -205,11 +199,15 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
   private TXId txId;
 
+  private boolean snashotTxStarted;
+
   private LockingPolicy lockPolicy;
 
   private LockMode readLockMode;
 
   private TXState localTXState;
+
+  private TXStateInterface localSnapshotTXState;
 
   private Object lockContext;
 
@@ -378,8 +376,10 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     }
 
     this.txState = this.gfContainer.getActiveTXState(this.tran);
-    final boolean restoreBatching;
+
+    boolean restoreBatching;
     if (this.txState != null) {
+      // TODO: Suranjan take snapshot, each time we open a scan controller.
       this.txId = this.txState.getTransactionId();
       this.lockPolicy = this.txState.getLockingPolicy();
       if (this.forUpdate != 0) {
@@ -408,11 +408,42 @@ public class MemHeapScanController implements MemScanController, RowCountable,
       }
     }
     else {
-      this.txId = null;
-      this.readLockMode = null;
-      this.localTXState = null;
-      this.lockContext = null;
-      restoreBatching = true;
+      // Start snapshot tx only for read operations.but not for read_only mode
+      boolean forReadOnly = (this.openMode & GfxdConstants
+          .SCAN_OPENMODE_FOR_READONLY_LOCK) != 0;
+      if (region.getConcurrencyChecksEnabled() &&
+          (region.getCache().getCacheTransactionManager().getTXState() == null)
+          && (this.forUpdate == 0)
+          && !forReadOnly) {
+
+        if (GemFireXDUtils.TraceQuery) {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+              "MemHeapScanController scanning table: " + this.regionName
+                  + ", openMode=" + openMode + " starting the gemfire snapshot tx.");
+        }
+        // We can begin each time as we have to clear below as we don't know when commit will take place.
+        region.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+        if (GemFireCacheImpl.getInstance().getRowScanTestHook() != null) {
+            GemFireCacheImpl.getInstance().notifyScanTestHook();
+            GemFireCacheImpl.getInstance().waitOnRowScanTestHook();
+        }
+        this.txState = region.getCache().getCacheTransactionManager().getTXState();
+        this.localTXState = this.txState.getTXStateForRead();
+        this.snashotTxStarted = true;
+        this.txId = this.txState.getTransactionId();
+        this.lockPolicy = this.txState.getLockingPolicy();
+        this.readLockMode = this.lockPolicy.getReadLockMode();
+        this.lockContext = null;
+        restoreBatching = true;
+      }
+      else {
+        this.txId = null;
+        this.readLockMode = null;
+        this.localTXState = null;
+        this.lockContext = null;
+        restoreBatching = true;
+      }
+
     }
     // if the restoreBatching flag has already been set in previous open, then
     // don't reset to true due to a reopen
@@ -528,6 +559,24 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     }
     else {
       this.templateCompactExecRow = null;
+    }
+
+    if (snashotTxStarted) {
+      // clear the txState so that other thread local is cleared.
+      TXManagerImpl.getOrCreateTXContext().clearTXState();
+      // gemfire tx shouldn't be cleared in case of row buffer scan
+      if (!(this.getGemFireContainer().isRowBuffer() && lcc.isSkipConstraintChecks())) {
+        TXManagerImpl.snapshotTxState.set(null);
+        this.localSnapshotTXState = this.txState;
+      }
+      this.txState = null;
+      this.localTXState = null;
+      this.txId = null;
+      this.lockPolicy = null;
+      this.readLockMode = null;
+      this.lockContext = null;
+      restoreBatching = true;
+      snashotTxStarted = false;
     }
   }
 
@@ -983,6 +1032,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     if (entryIterator instanceof CloseableIterator) {
       ((CloseableIterator<?>)entryIterator).close();
     }
+
     return false;
   }
 
@@ -1048,6 +1098,11 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     this.lcc = null;
     this.txId = null;
     this.txState = null;
+    //TODO: Suranjan if the tx has been started for snapshot then clean it from hostedTxState too.
+    if (this.localSnapshotTXState != null)
+      this.localSnapshotTXState.commit(null);
+
+    this.localSnapshotTXState = null;
     this.readLockMode = null;
     this.localTXState = null;
     this.lockContext = null;

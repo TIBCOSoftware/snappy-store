@@ -1342,7 +1342,7 @@ public final class FabricDatabase implements ModuleControl,
                 localRegionSize = getRegionSizeByIterating(region, dp);
                 if (indexSize != localRegionSize) {
                   logger.error("checkRecoveredIndex: for table: " + region.getName() + " " +
-                      "number of local entries = " + localRegionSize + " and number of " +
+                      "number of local entries (after getRegionSizeByIterating) = " + localRegionSize + " and number of " +
                       "index entries in the index: " + c.getName() + " = " + c.getIndexSize());
                   dumpIndexAndRegion(region, dp, c, logger);
                   throw new IllegalStateException("Table data and indexes are not reconciling." +
@@ -1387,8 +1387,8 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
     } else {
-      DiskRegion diskReg = region.getDiskRegion();
-      RegionMap rmap = diskReg.getRecoveredEntryMap();
+      //DiskRegion diskReg = region.getDiskRegion();
+      RegionMap rmap = region.getRegionMap();
       if (rmap != null) {
         Collection<RegionEntry> res = rmap.regionEntriesInVM();
         for (RegionEntry re : res) {

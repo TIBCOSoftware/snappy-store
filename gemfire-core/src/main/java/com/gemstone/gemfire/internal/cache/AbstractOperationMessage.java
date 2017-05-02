@@ -32,6 +32,7 @@ import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ReplyMessage;
 import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
+import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
@@ -195,10 +196,18 @@ public abstract class AbstractOperationMessage extends DistributionMessage
       }
     }
     if (this.txId != null) {
+      final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      if (cache != null) {
+        LogWriterI18n logger = cache.getLoggerI18n();
+        if (logger.fineEnabled()) {
+          logger.fine(" The operation tx id " + this.txId +
+              " locking policy " + getLockingPolicy() + " txState " + getTXState());
+        }
+      }
       try {
         basicProcess(dm);
       } finally {
-        if (requireFinishTX() && finishTXProxyRead()) {
+        if (requireFinishTX() && finishTXProxyRead() && this.lockPolicy != LockingPolicy.SNAPSHOT) {
           // in case there is nothing in the TXStateProxy then get rid of it
           // so that commit/rollback will not be required for this node;
           // this is now a requirement since commit/rollback targets only the

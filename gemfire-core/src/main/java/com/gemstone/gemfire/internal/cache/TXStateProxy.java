@@ -597,7 +597,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     if (flags == null) {
       this.lockPolicy = LockingPolicy.fromIsolationLevel(isolationLevel, false);
       this.enableBatching = ENABLE_BATCHING;
-      this.syncCommits = false;
+      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT)?  true: false;
     }
     else {
       this.lockPolicy = LockingPolicy.fromIsolationLevel(isolationLevel,
@@ -608,7 +608,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       else {
         this.enableBatching = ENABLE_BATCHING;
       }
-      this.syncCommits = flags.contains(TransactionFlag.SYNC_COMMITS);
+      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) ? true :
+          flags.contains(TransactionFlag.SYNC_COMMITS);
     }
     this.inconsistentThr = null;
 
@@ -1674,6 +1675,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       throws EntryNotFoundException {
     checkTXState();
     final LocalRegion r = event.getLocalRegion();
+
     if (r.getPartitionAttributes() != null) {
       final PartitionedRegion pr = (PartitionedRegion)r;
       final ProxyBucketRegion pbr = PartitionedRegionHelper
@@ -1841,6 +1843,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         allowTombstones, allowReadFromHDFS);
   }
 
+  // primary key based read operations come here..
   public final Object getLocally(Object key, Object callbackArg, int bucketId,
       LocalRegion localRegion, boolean doNotLockEntry, boolean localExecution,
       TXStateInterface lockState, EntryEventImpl clientEvent,
@@ -1930,6 +1933,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     return getEntry(null, key, callbackArg, localRegion, true, false, false);
   }
 
+  // TODO: Suranjan: should snapshot apply to these operations
   private Region.Entry<?, ?> getEntry(KeyInfo keyInfo, Object key,
       Object callbackArg, final LocalRegion region, final boolean access,
       final boolean forIterator, final boolean allowTombstones) {
@@ -2167,7 +2171,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
    * otherwise.
    */
   public final boolean isDirty() {
-    return this.isDirty;
+    // we don't have write ops in snapshot isolation with isolation level NONE
+    return this.isDirty /*&& (getLockingPolicy() != LockingPolicy.SNAPSHOT)*/;
   }
 
   /**
@@ -2747,6 +2752,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         "getValueForIterator", false);
   }
 
+  //TODO: Suranjan find out if snapshot is enabled for these operations.
   private final Object findObject(final KeyInfo keyInfo, final LocalRegion r,
       boolean isCreate, boolean generateCallbacks, final Object value,
       final boolean updateStats, final boolean disableCopyOnRead,
@@ -2882,8 +2888,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       boolean ifOld, Object expectedOldValue, boolean requireOldValue,
       boolean cacheWrite, long lastModified, boolean overwriteDestroyed) {
     checkTXState();
-    final LocalRegion r = event.getLocalRegion();
 
+    final LocalRegion r = event.getLocalRegion();
     // create the flags for performOp()
     int flags = 0;
     if (ifNew) flags |= IF_NEW;
@@ -2998,6 +3004,11 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     else {
       addAffectedRegion(r);
     }
+    if (lockPolicy == LockingPolicy.SNAPSHOT) {
+      event.setTXState(this);
+      return performOp.operateOnSharedDataView(event, expectedOldValue, cacheWrite, lastModified, flags);
+    }
+
     try {
       try {
         // in case of a local operation flush the pending ops else the batched
@@ -3240,6 +3251,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   }
 
+
   private final TXState createTXState(boolean checkTX) {
     final TXState localState;
     this.lock.lock();
@@ -3293,7 +3305,17 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   }
 
+  final public boolean isClosed() {
+    final State state = this.state.get();
+    if (state == State.CLOSED) {
+      return true;
+    }
+    return false;
+  }
+
   final void checkTXState() throws TransactionException {
+    final LogWriterI18n logger = getTxMgr().getLogger();
+
     final State state = this.state.get();
     if (state == State.OPEN || state == State.COMMIT_PHASE2_STARTED) {
       return;
@@ -3790,6 +3812,11 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     // update operations; add cacheWrite flag support for proper writer
     // invocation like in other ops; also support for NORMAL/PRELOADED regions?
     markDirty();
+
+    if (isSnapshot()) {
+      region.getSharedDataView().postPutAll(putAllOp, successfulPuts, region);
+      return;
+    }
     if (region.getPartitionAttributes() != null) {
       // use PutAllPRMessage that already handles transactions
       region.postPutAllSend(putAllOp, this, successfulPuts);
@@ -4215,10 +4242,29 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
      */
     Map<InternalDistributedMember, ReplyException> getResponseExceptions(
         P response);
+
+    boolean operateOnSharedDataView(EntryEventImpl event, Object expectedOldValue,
+        boolean cacheWrite, long lastModified, int flags);
   }
 
   private static final PerformOp<PutMessage.PutResponse> performPRPut
    = new PerformOp<PutMessage.PutResponse>() {
+
+    public final boolean operateOnSharedDataView(EntryEventImpl event,
+        Object expectedOldValue, boolean cacheWrite, long lastModified,
+        int flags) {
+      final LocalRegion r = event.getLocalRegion();
+      if (LOG_FINE) {
+        final LogWriterI18n logger = r.getLogWriterI18n();
+        logger.info(LocalizedStrings.DEBUG, "putEntry Region " + r.getFullPath()
+            + ", event: " + (LOG_FINEST ? event.toString()
+            : event.shortToString()) + " for " + event.getTXState().getTransactionId().toString()
+            +", sending it back to region for snapshot isolation.");
+      }
+      return r.getSharedDataView().putEntry(event, (flags & IF_NEW) != 0,
+          (flags & IF_OLD) != 0, expectedOldValue, (flags & REQUIRED_OLD_VAL) != 0,
+          cacheWrite, lastModified, (flags & OVERWRITE_DESTROYED) != 0);
+    }
 
     public final PutMessage preparePreferredNode(
         final InternalDistributedSystem sys,
@@ -4294,6 +4340,22 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   private static final PerformOp<RemotePutMessage.RemotePutResponse> performDRPut
    = new PerformOp<RemotePutMessage.RemotePutResponse>() {
+
+    public final boolean operateOnSharedDataView(EntryEventImpl event,
+        Object expectedOldValue, boolean cacheWrite, long lastModified,
+        int flags) {
+      final LocalRegion r = event.getLocalRegion();
+      if (LOG_FINE) {
+        final LogWriterI18n logger = r.getLogWriterI18n();
+        logger.info(LocalizedStrings.DEBUG, "putEntry Region " + r.getFullPath()
+            + ", event: " + (LOG_FINEST ? event.toString()
+            : event.shortToString()) + " for " + event.getTXState().getTransactionId().toString()
+            +", sending it back to region for snapshot isolation.");
+      }
+      return r.getSharedDataView().putEntry(event, (flags & IF_NEW) != 0,
+          (flags & IF_OLD) != 0, expectedOldValue, (flags & REQUIRED_OLD_VAL) != 0,
+          cacheWrite, lastModified, (flags & OVERWRITE_DESTROYED) != 0);
+    }
 
     public final RemotePutMessage preparePreferredNode(
         final InternalDistributedSystem sys,
@@ -4373,6 +4435,21 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   private static final PerformOp<PartitionResponse> performPRDestroy
    = new PerformOp<PartitionResponse>() {
 
+    public final boolean operateOnSharedDataView(EntryEventImpl event,
+        Object expectedOldValue, boolean cacheWrite, long lastModified,
+        int flags) {
+      final LocalRegion r = event.getLocalRegion();
+      final LogWriterI18n logger = r.getLogWriterI18n();
+      if(LOG_FINE) {
+        logger.info(LocalizedStrings.DEBUG, "destroyExistingEntry Region " + r.getFullPath()
+            + ", event: " + (LOG_FINEST ? event.toString()
+            : event.shortToString()) + " for " + event.getTXState().getTransactionId().toString()
+            + ", sending it back to region for snapshot isolation.");
+      }
+      r.getSharedDataView().destroyExistingEntry(event, cacheWrite, expectedOldValue);
+      return true;
+    }
+
     public final DirectReplyMessage preparePreferredNode(
         final InternalDistributedSystem sys,
         final InternalDistributedMember preferredNode, LocalRegion r,
@@ -4422,6 +4499,21 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   private static final PerformOp<RemoteOperationResponse> performDRDestroy
    = new PerformOp<RemoteOperationResponse>() {
+
+    public final boolean operateOnSharedDataView(EntryEventImpl event,
+        Object expectedOldValue, boolean cacheWrite, long lastModified,
+        int flags) {
+      final LocalRegion r = event.getLocalRegion();
+      final LogWriterI18n logger = r.getLogWriterI18n();
+      if (LOG_FINE) {
+        logger.info(LocalizedStrings.DEBUG, "destroyExistingEntry Region " + r.getFullPath()
+            + ", event: " + (LOG_FINEST ? event.toString()
+            : event.shortToString()) + " for " + event.getTXState().getTransactionId().toString()
+            + ", sending it back to region for snapshot isolation.");
+      }
+      r.getSharedDataView().destroyExistingEntry(event, cacheWrite, expectedOldValue);
+      return true;
+    }
 
     public final DirectReplyMessage preparePreferredNode(
         final InternalDistributedSystem sys,
@@ -4475,6 +4567,22 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   private static final PerformOp<InvalidateMessage.InvalidateResponse>
    performPRInvalidate = new PerformOp<InvalidateMessage.InvalidateResponse>() {
 
+    public final boolean operateOnSharedDataView(EntryEventImpl event,
+        Object expectedOldValue, boolean cacheWrite, long lastModified,
+        int flags) {
+      final LocalRegion r = event.getLocalRegion();
+      if (LOG_FINE) {
+        final LogWriterI18n logger = r.getLogWriterI18n();
+        logger.info(LocalizedStrings.DEBUG, "invalidateExistingEntry Region " + r.getFullPath()
+            + ", event: " + (LOG_FINEST ? event.toString()
+            : event.shortToString()) + " for " + event.getTXState().getTransactionId().toString()
+            +", sending it back to region for snapshot isolation.");
+      }
+      r.getSharedDataView().invalidateExistingEntry(event,
+          (flags &INVOKE_CALLBACKS) !=0, (flags & FORCE_NEW_ENTRY)!=0);
+      return true;
+    }
+
     public final DirectReplyMessage preparePreferredNode(
         final InternalDistributedSystem sys,
         final InternalDistributedMember preferredNode, LocalRegion r,
@@ -4523,6 +4631,22 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   private static final PerformOp<RemoteInvalidateMessage.InvalidateResponse>
    performDRInvalidate = new PerformOp<RemoteInvalidateMessage.InvalidateResponse>() {
+
+    public final boolean operateOnSharedDataView(EntryEventImpl event,
+        Object expectedOldValue, boolean cacheWrite, long lastModified,
+        int flags) {
+      final LocalRegion r = event.getLocalRegion();
+      if (LOG_FINE) {
+        final LogWriterI18n logger = r.getLogWriterI18n();
+        logger.info(LocalizedStrings.DEBUG, "invalidateExistingEntry Region " + r.getFullPath()
+            + ", event: " + (LOG_FINEST ? event.toString()
+            : event.shortToString()) + " for " + event.getTXState().getTransactionId().toString()
+            +", sending it back to region for snapshot isolation.");
+      }
+      r.getSharedDataView().invalidateExistingEntry(event,
+          (flags &INVOKE_CALLBACKS) !=0, (flags & FORCE_NEW_ENTRY)!=0);
+      return true;
+    }
 
     public final DirectReplyMessage preparePreferredNode(
         final InternalDistributedSystem sys,
@@ -4577,8 +4701,18 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   public Iterator<?> getLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
       LocalRegion currRegion, boolean fetchRemote) {
-    throw new IllegalStateException("TXStateProxy.getLocalEntriesIterator: "
-        + "this method is intended to be called only for PRs and no txns");
+    // We need to support this.
+    final TXState localState = getTXStateForRead();
+    if (localState != null) {
+      //TODO: should tx fetch remote
+      return localState.getLocalEntriesIterator(bucketSet, primaryOnly,
+          forUpdate, includeValues, currRegion, fetchRemote);
+    }
+    return currRegion.getSharedDataView().getLocalEntriesIterator(bucketSet,
+        primaryOnly, forUpdate, includeValues, currRegion, fetchRemote);
+
+//    throw new IllegalStateException("TXStateProxy.getLocalEntriesIterator: "
+//        + "this method is intended to be called only for PRs and no txns");
   }
 
   /**
@@ -4642,5 +4776,15 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   public void rollback(int savepoint) {
     final DM dm = this.txManager.getDM();
     TXRollBackToSavepointMsg.send(dm.getSystem(), dm, this, savepoint);
+  }
+
+  public boolean isSnapshot() {
+    return getLockingPolicy() == LockingPolicy.SNAPSHOT;
+  }
+
+  @Override
+  public void recordVersionForSnapshot(Object member, long version, Region region) {
+    final TXState localState = getTXStateForRead();
+    localState.recordVersionForSnapshot(member, version, region);
   }
 }

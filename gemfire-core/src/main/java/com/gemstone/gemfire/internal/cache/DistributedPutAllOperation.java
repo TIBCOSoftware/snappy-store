@@ -956,7 +956,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   protected CacheOperationMessage createMessage()
  {
     EntryEventImpl event = getEvent();
-    PutAllMessage msg = new PutAllMessage();
+    PutAllMessage msg = new PutAllMessage(event.getTXState());
     msg.eventId = event.getEventId();
     msg.context = event.getContext();
     msg.lastModified = event.getEntryLastModified();
@@ -1144,6 +1144,11 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   public static class PutAllMessage extends AbstractUpdateMessage
    {
 
+     public PutAllMessage(){}
+     public PutAllMessage(TXStateInterface tx) {
+       super(tx);
+     }
+
     protected PutAllEntryData[] putAllData;
 
     protected int putAllDataSize;
@@ -1232,7 +1237,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       } finally {
         if (ev.getVersionTag() != null && !ev.getVersionTag().isRecorded()) {
           if (rgn.getVersionVector() != null) {
-            rgn.getVersionVector().recordVersion(getSender(), ev.getVersionTag());
+            rgn.getVersionVector().recordVersion(getSender(), ev.getVersionTag(), ev);
           }
         }
         ev.release();
@@ -1312,43 +1317,60 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     }
 
      @Override
-     protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn) {
-       for (int i = 0; i < putAllDataSize; ++i) {
-         if (putAllData[i].versionTag != null) {
-           checkVersionTag(rgn, putAllData[i].versionTag);
-         }
-       }
+    protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn)
+    {
+      for (int i = 0; i < putAllDataSize; ++i) {
+        if (putAllData[i].versionTag != null) {
+          checkVersionTag(rgn, putAllData[i].versionTag);
+        }
+      }
+      
+      final TXStateInterface tx = ev.getTXState(rgn);
+      TXManagerImpl txMgr = null;
+      TXManagerImpl.TXContext context = null;
+      if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+        txMgr = rgn.getCache().getTxManager();
+        context = txMgr.masqueradeAs(this, false,
+            true);
+        ev.setTXState(getTXState());
+      }
+      ev.setTXState(tx);
+      try {
+        rgn.syncPutAll(tx, new Runnable() {
+          public void run() {
+            UMMMemoryTracker memoryTracker = null;
+            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()) {
+              memoryTracker = new UMMMemoryTracker(
+                      Thread.currentThread().getId(), putAllDataSize);
+            }
+            try {
+              final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
+              for (int i = 0; i < putAllDataSize; ++i) {
+                if (rgn.getLogWriterI18n().finerEnabled()) {
+                  rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
+                }
+                putAllData[i].setSender(sender);
+                doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified(), memoryTracker);
+              }
+            } finally {
+              if (memoryTracker != null) {
+                long unusedMemory = memoryTracker.freeMemory();
+                if (unusedMemory > 0) {
+                  CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
+                          memoryTracker.getFirstAllocationObject(), unusedMemory);
+                }
+              }
+            }
 
-       final TXStateInterface tx = ev.getTXState(rgn);
-       rgn.syncPutAll(tx, new Runnable() {
-         public void run() {
-           UMMMemoryTracker memoryTracker = null;
-           if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()) {
-             memoryTracker = new UMMMemoryTracker(
-                 Thread.currentThread().getId(), putAllDataSize);
-           }
-           try {
-             final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
-             for (int i = 0; i < putAllDataSize; ++i) {
-               if (rgn.getLogWriterI18n().finerEnabled()) {
-                 rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
-               }
-               putAllData[i].setSender(sender);
-               doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified(), memoryTracker);
-             }
-           } finally {
-             if (memoryTracker != null) {
-               long unusedMemory = memoryTracker.freeMemory();
-               if (unusedMemory > 0) {
-                 CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
-                     memoryTracker.getFirstAllocationObject(), unusedMemory);
-               }
-             }
-           }
-
-         }
-       }, ev.getEventId());
-     }
+          }
+        }, ev.getEventId());
+      }
+      finally {
+        if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+          txMgr.unmasquerade(context, true);
+        }
+      }
+    }
 
     public int getDSFID() {
       return PUT_ALL_MESSAGE;

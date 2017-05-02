@@ -164,6 +164,8 @@ public class CopyOnWriteHashMap<K,V> extends AbstractMap<K, V> {
     return clone;
   }
   
-  
+  public Map<K,V> getInnerMap() {
+    return map;
+  }
 
 }

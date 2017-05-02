@@ -241,7 +241,7 @@ public class EntriesSet extends AbstractSet<Object> {
             if (myTX != null) {
               // TX may need to lookup the local state for any updates
               result = myTX.getLocalEntry(this.currRgn, this.currRgn,
-                  -1 /* not used */, (AbstractRegionEntry)keyInfo.getKey());
+                  -1 /* not used */, (AbstractRegionEntry)keyInfo.getKey(), this.forUpdate);
               // null result indicates that entry has been deleted in TX
               if (result != null) {
                 return result;

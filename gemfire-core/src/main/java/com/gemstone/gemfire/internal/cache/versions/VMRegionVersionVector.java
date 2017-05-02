@@ -62,6 +62,11 @@ public class VMRegionVersionVector extends RegionVersionVector<InternalDistribut
   }
 
   @Override
+  public boolean isDiskVersionVector() {
+    return false;
+  }
+
+  @Override
   protected void writeMember(InternalDistributedMember member, DataOutput out) throws IOException {
     member.writeEssentialData(out);
     

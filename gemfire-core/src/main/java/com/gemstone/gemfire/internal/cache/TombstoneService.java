@@ -369,7 +369,7 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
     
     //Record the GC versions now, so that we can persist them
     for(Map.Entry<VersionSource, Long> entry : regionGCVersions.entrySet()) {
-      r.getVersionVector().recordGCVersion(entry.getKey(), entry.getValue());
+      r.getVersionVector().recordGCVersion(entry.getKey(), entry.getValue(), null);
     }
     
     //Remove any exceptions from the RVV that are older than the GC version
@@ -723,7 +723,7 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
         //We need to do this so that we can persist the GC RVV before
         //we start removing entries from the map.
         for (Tombstone t: expired) {
-          t.region.getVersionVector().recordGCVersion(t.getMemberID(), t.getRegionVersion());
+          t.region.getVersionVector().recordGCVersion(t.getMemberID(), t.getRegionVersion(), null);
           regionsAffected.add((DistributedRegion)t.region);
         }
         

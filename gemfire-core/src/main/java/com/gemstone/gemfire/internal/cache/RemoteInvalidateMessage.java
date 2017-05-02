@@ -126,7 +126,7 @@ public final class RemoteInvalidateMessage extends RemoteDestroyMessage {
           event.setVersionTag(versionTag);
           final RegionVersionVector rvv = event.getRegion().getVersionVector();
           if (rvv != null) {
-            rvv.recordVersion(versionTag.getMemberID(), versionTag);
+            rvv.recordVersion(versionTag.getMemberID(), versionTag, event);
           }
         }
         event.setInhibitDistribution(true);

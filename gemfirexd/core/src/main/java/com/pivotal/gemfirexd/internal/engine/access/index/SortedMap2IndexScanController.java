@@ -517,8 +517,9 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
         // this TX may have local state for this entry
         dataRegion = this.baseRegion.getDataRegionForRead(rl.getKey(), null,
             bucketId, Operation.GET_ENTRY);
+        // TODO: Suranjan For index scan snapshot we can start snapshot tx and use that.
         rl = (RowLocation)localTXState.getLocalEntry(this.baseRegion,
-            dataRegion, bucketId, (AbstractRegionEntry)rl);
+            dataRegion, bucketId, (AbstractRegionEntry)rl, this.forUpdate != 0);
         if (rl == null) {
           this.currentRowLocation = null;
           ret = false;

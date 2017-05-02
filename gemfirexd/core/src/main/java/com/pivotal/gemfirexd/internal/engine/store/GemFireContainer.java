@@ -4993,6 +4993,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     return this.regionAttributes.getDataPolicy().withPartitioning();
   }
 
+  public final boolean isRowBuffer() {
+    return isPartitioned() && ((PartitionedRegion)this.region).needsBatching();
+  }
+
   public final boolean isOffHeap() {
     final LocalRegion region = this.region;
     if (region != null) {

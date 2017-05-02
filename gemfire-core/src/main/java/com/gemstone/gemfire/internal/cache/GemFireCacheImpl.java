@@ -32,42 +32,18 @@ import java.io.Reader;
 import java.io.StringBufferInputStream;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.naming.Context;
 
@@ -195,6 +171,9 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientProxy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientHealthMonitor;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
+import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
+import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
+import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
 import com.gemstone.gemfire.internal.cache.wan.GatewayReceiverFactoryImpl;
@@ -208,6 +187,7 @@ import com.gemstone.gemfire.internal.cache.xmlcache.PropertyResolver;
 import com.gemstone.gemfire.internal.concurrent.AI;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.concurrent.CM;
+import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jndi.JNDIInvoker;
 import com.gemstone.gemfire.internal.jta.TransactionManagerImpl;
@@ -475,6 +455,13 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   private TombstoneService tombstoneService;
 
+  private Map<Region,RegionVersionVector> snapshotRVV = new ConcurrentHashMap<Region,RegionVersionVector>();
+
+  private final ReentrantReadWriteLock snapshotLock = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock lockForSnapshotRvv = new ReentrantReadWriteLock();
+
+  private volatile RvvSnapshotTestHook testHook;
+  private volatile RowScanTestHook rowScanTestHook;
   /**
    * DistributedLockService for PartitionedRegions. Remains null until the first PartitionedRegion is created. Destroyed
    * by GemFireCache when closing the cache. Protected by synchronization on this GemFireCache.
@@ -524,6 +511,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   private volatile boolean isShutDownAll = false;
 
+  private transient final ReentrantReadWriteLock rvvSnapshotLock = new ReentrantReadWriteLock();
   /**
    * Set of members that are not yet ready. Currently used by GemFireXD during
    * initial DDL replay to indicate that the member should not be chosen for
@@ -569,8 +557,215 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   private String vmIdRegionPath;
 
-  private long memorySize;
+  //TODO:Suranjan This has to be replcaed with better approach. guava cache or WeakHashMap.
+  protected final Map<String, Map<Object, BlockingQueue<RegionEntry>
+    /*RegionEntry*/>>  oldEntryMap;
+  
+  private ScheduledExecutorService oldEntryMapCleanerService;
 
+  /**
+   * Time interval after which oldentries cleaner thread run
+   */
+  public static long OLD_ENTRIES_CLEANER_TIME_INTERVAL = Long.getLong("gemfire" +
+      ".snapshot-oldentries-cleaner-time-interval", 60000);
+
+
+  /**
+   * Test only method
+   *
+   * @param oldEntriesCleanerTimeInterval
+   */
+  public void setOldEntriesCleanerTimeIntervalAndRestart(long
+      oldEntriesCleanerTimeInterval) {
+    OLD_ENTRIES_CLEANER_TIME_INTERVAL = oldEntriesCleanerTimeInterval;
+    if (oldEntryMapCleanerService != null) {
+      oldEntryMapCleanerService.shutdownNow();
+      oldEntryMapCleanerService = Executors.newScheduledThreadPool(1);
+      oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0,
+          OLD_ENTRIES_CLEANER_TIME_INTERVAL,
+          TimeUnit.MILLISECONDS);
+    }
+  }
+
+  // For each entry this should be in sync
+  public void removeRegionFromOldEntryMap(String regionPath) {
+    oldEntryMap.remove(regionPath);
+
+  }
+
+  // For each entry this should be in sync
+  public void addOldEntry(RegionEntry oldRe, String regionPath) {
+    if(getLoggerI18n().fineEnabled()) {
+      getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + regionPath + " adding " +
+          oldRe + " to oldEntrMap");
+    }
+
+    Map<Object, BlockingQueue<RegionEntry>> snapshot = this.oldEntryMap.get(regionPath);
+    if (snapshot != null) {
+      enqueueOldEntry(oldRe, snapshot);
+    } else {
+      synchronized (this.oldEntryMap) {
+        snapshot = this.oldEntryMap.get(regionPath);
+        if (snapshot == null) {
+          BlockingQueue<RegionEntry> oldEntryqueue = new LinkedBlockingDeque<RegionEntry>();
+          snapshot = new ConcurrentHashMap<Object, BlockingQueue<RegionEntry>>();
+          oldEntryqueue.add(oldRe);
+          snapshot.put(oldRe.getKeyCopy(), oldEntryqueue);
+          this.oldEntryMap.put(regionPath, snapshot);
+        } else {
+          enqueueOldEntry(oldRe, snapshot);
+        }
+      }
+    }
+
+    for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+      if (txProxy.getLocalTXState() != null) {
+        txProxy.getLocalTXState().addRegionEntryReference(oldRe);
+      }
+    }
+    if (getLoggerI18n().fineEnabled()) {
+      getLoggerI18n().info(LocalizedStrings.DEBUG, "For key  " + oldRe.getKeyCopy() + " " +
+          "the entries are " + snapshot.get(oldRe.getKeyCopy()));
+    }
+  }
+
+  // for one entry it will always be called in a lock so assuming no sync
+  private void enqueueOldEntry(RegionEntry oldRe, Map<Object, BlockingQueue<RegionEntry>> snapshot) {
+    BlockingQueue<RegionEntry> oldEntryqueue = snapshot.get(oldRe.getKeyCopy());
+    if (oldEntryqueue == null) {
+      oldEntryqueue = new LinkedBlockingDeque<RegionEntry>();
+      oldEntryqueue.add(oldRe);
+      snapshot.put(oldRe.getKeyCopy(), oldEntryqueue);
+    } else {
+      oldEntryqueue.add(oldRe);
+    }
+  }
+
+  final Object readOldEntry(Region region, final Object entryKey,
+      final Map<String, Map<VersionSource, RegionVersionHolder>> snapshot, final boolean
+      checkValid, RegionEntry re, TXState txState) {
+    String regionPath = region.getFullPath();
+    if (re.getVersionStamp().getEntryVersion() <= 1) {
+      RegionEntry oldRegionEntry = NonLocalRegionEntry.newEntry(re.getKeyCopy(), Token.TOMBSTONE,
+          (LocalRegion)region, re.getVersionStamp().asVersionTag());
+      //TODO: In some cases, persistence, GII old Entry may not be present
+      //RegionEntry oldRegionEntry = oldEntryMap.get(regionPath).get(entryKey).iterator().next().get();
+      //assert oldRegionEntry.isTombstone();
+      return oldRegionEntry;
+    } else {
+      List<RegionEntry> oldEntries = new ArrayList<>();
+      Map<Object, BlockingQueue<RegionEntry>> regionMap = oldEntryMap.get(regionPath);
+      if (regionMap == null) {
+        if (getLoggerI18n().fineEnabled()) {
+          getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
+              "are entries present in the region" +
+              " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
+              ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + "against the key " + entryKey +
+              " the entry in region is " + re + " with version " + re.getVersionStamp().asVersionTag());
+        }
+        return null;
+      }
+
+      BlockingQueue<RegionEntry> entries = regionMap.get(entryKey);
+      if (entries == null) {
+        if (getLoggerI18n().fineEnabled()) {
+        getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
+            "are entries present in the region" +
+            " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
+            ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + " the entries are " + entries + " against the key " + entryKey +
+        " the entry in region is " + re + " with version " + re.getVersionStamp().asVersionTag());
+        }
+        return null;
+      }
+      for (RegionEntry value : entries) {
+        if (txState.checkEntryVersion(region, value)) {
+          oldEntries.add(value);
+        }
+      }
+
+      RegionEntry max = NonLocalRegionEntry.newEntry(re.getKeyCopy(), Token.TOMBSTONE,
+          (LocalRegion)region, null);
+      for (RegionEntry entry : oldEntries) {
+        if (null == max) {
+          max = entry;
+        } else if (max.getVersionStamp().getEntryVersion() <= entry.getVersionStamp()
+            .getEntryVersion()) {
+          max = entry;
+        }
+      }
+      if (getLoggerI18n().fineEnabled()) {
+        getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region +
+            " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
+            ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + " the entries are " + entries +
+            "against the key " + entryKey +
+            " the entry in region is " + re + " with version " + re.getVersionStamp().asVersionTag() +
+            " the oldEntries are " + oldEntries + " returning : " + max);
+      }
+      return max;
+    }
+  }
+
+  public Map getOldEntriesForRegion(String regionName) {
+    return oldEntryMap.get(regionName);
+  }
+
+  class OldEntriesCleanerThread implements Runnable {
+    // Keep each entry alive for atleast 5 mins.
+    long expiryTime = 5 * 60 * 1000;
+
+    public void run() {
+
+      try {
+        if (!oldEntryMap.isEmpty()) {
+          for (Map<Object, BlockingQueue<RegionEntry>> regionEntryMap : oldEntryMap.values()) {
+            for (BlockingQueue<RegionEntry> oldEntriesQueue : regionEntryMap.values()) {
+              for (RegionEntry re : oldEntriesQueue) {
+                boolean entryFoundInTxState = false;
+                for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+                  TXState txState = txProxy.getLocalTXState();
+                  if (txState != null && txState.containsRegionEntryReference(re) && !txState
+                      .isCommitted()) {
+                    entryFoundInTxState = true;
+                    break;
+                  }
+                }
+                long now = System.currentTimeMillis();
+                if (!entryFoundInTxState && (((NonLocalRegionEntry)re).getCreationTime() + expiryTime) < now) {
+                  if (getLoggerI18n().fineEnabled()) {
+                    getLoggerI18n().info(LocalizedStrings.DEBUG,
+                        "OldEntriesCleanerThread : Removing the entry " + re + " entry creation time : " +
+                            ((NonLocalRegionEntry)re).getCreationTime() + " now " + now);
+                  }
+                  oldEntriesQueue.remove(re);
+                }
+              }
+            }
+          }
+        }
+
+        for (Map<Object, BlockingQueue<RegionEntry>> regionEntryMap : oldEntryMap.values()) {
+          for (Entry<Object, BlockingQueue<RegionEntry>> entry : regionEntryMap.entrySet()) {
+            if (entry.getValue().size() == 0) {
+              regionEntryMap.remove(entry.getKey());
+              if (getLoggerI18n().fineEnabled()) {
+                getLoggerI18n().info(LocalizedStrings.DEBUG,
+                    "OldEntriesCleanerThread : Removing the map against the key " + entry.getKey());
+              }
+            }
+          }
+        }
+      }
+      catch (Exception e) {
+        if (getLoggerI18n().warningEnabled()) {
+          getLoggerI18n().info(LocalizedStrings.DEBUG,
+              "OldEntriesCleanerThread : Error occured while cleaning the oldentries map.Actual " +
+                  "Exception:", e);
+        }
+      }
+    }
+  }
+
+  private long memorySize;
   /**
    * disables automatic eviction configuration for HDFS regions
    */
@@ -792,6 +987,24 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
       // clear any old TXState
       this.txMgr.clearTXState();
+
+      //this.oldEntryMap = new CustomEntryConcurrentHashMap<>();
+      this.oldEntryMap = new ConcurrentHashMap<String, Map<Object, BlockingQueue<RegionEntry>>>();
+
+      final LogWriterImpl.LoggingThreadGroup threadGroup = LogWriterImpl.createThreadGroup("OldEntry GC Thread Group",
+          this.system.getLogWriterI18n());
+      ThreadFactory oldEntryGCtf = new ThreadFactory() {
+        public Thread newThread(Runnable command) {
+          Thread thread = new Thread(threadGroup, command,
+              "OldEntry GC Thread");
+          thread.setDaemon(true);
+          return thread;
+        }
+      };
+
+      oldEntryMapCleanerService = Executors.newScheduledThreadPool(1, oldEntryGCtf);
+      oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0, OLD_ENTRIES_CLEANER_TIME_INTERVAL,
+          TimeUnit.MILLISECONDS);
 
       this.creationDate = new Date();
 
@@ -1185,6 +1398,147 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    */
   public DiskStoreFactory createDiskStoreFactory(DiskStoreAttributes attrs) {
     return new DiskStoreFactoryImpl(this, attrs);
+  }
+
+  // this snapshot is different from snapshot for export.
+  // however this can be used for that purpose.
+  public boolean snaphshotEnabled() {
+    return true;
+  }
+
+
+  // currently it will wait for a long time
+  // we can have differnt ds or read write locks to avoid waiting of read operations.
+  //TODO: As an optimizations we can change the ds and maintain it at cache level and punish writes.
+  //return snapshotRVV;
+  public Map getSnapshotRVV() {
+    try {
+      // Wait for all the regions to get initialized before taking snapshot.
+      lockForSnapshotRvv.readLock().lock();
+      Map<String, Map> snapshot = new HashMap();
+      for (LocalRegion region : getApplicationRegions()) {
+        if (region.getPartitionAttributes() != null && ((PartitionedRegion)region).isDataStore()
+            && ((PartitionedRegion)region).concurrencyChecksEnabled) {
+          region.waitForData();
+          for (BucketRegion br : ((PartitionedRegion)region).getDataStore().getAllLocalBucketRegions()) {
+            // if null then create the rvv for that bucket.!
+            // For Initialization case, so that we have all the data before snapshot.
+            br.waitForData();
+            snapshot.put(br.getFullPath(), br.getVersionVector().getSnapShotOfMemberVersion());
+          }
+        } else if (region.getVersionVector() != null) {
+          // if null then create the rvv for that region.!
+          // For Initialization case, so that we have all the data before snapshot.
+          region.waitForData();
+          snapshot.put(region.getFullPath(), region.getVersionVector().getSnapShotOfMemberVersion());
+        }
+      }
+      return snapshot;
+    } finally {
+      lockForSnapshotRvv.readLock().unlock();
+
+    }
+  }
+
+  public void acquireWriteLockOnSnapshotRvv() {
+    lockForSnapshotRvv.writeLock().lock();
+  }
+
+  public interface RvvSnapshotTestHook {
+
+    public abstract void notifyTestLock();
+    public abstract void notifyOperationLock();
+    public abstract void waitOnTestLock();
+    public abstract void waitOnOperationLock();
+  }
+
+
+  public  RvvSnapshotTestHook getRvvSnapshotTestHook() {
+    return this.testHook;
+  }
+
+  public void setRvvSnapshotTestHook(RvvSnapshotTestHook hook) {
+    this.testHook = hook;
+  }
+
+  public void notifyRvvTestHook() {
+    if(null !=this.testHook) {
+      this.testHook.notifyTestLock();
+    }
+  }
+
+  public void notifyRvvSnapshotTestHook() {
+    if (null != this.testHook) {
+      this.testHook.notifyOperationLock();
+    }
+  }
+
+  public void waitOnRvvTestHook() {
+    if (null != this.testHook) {
+      this.testHook.waitOnTestLock();
+    }
+  }
+
+  public void waitOnRvvSnapshotTestHook() {
+    if (null != this.testHook) {
+      this.testHook.waitOnOperationLock();
+    }
+  }
+
+
+
+
+  public interface RowScanTestHook {
+
+    public abstract void notifyTestLock();
+    public abstract void notifyOperationLock();
+    public abstract void waitOnTestLock();
+    public abstract void waitOnOperationLock();
+  }
+
+
+  public  RowScanTestHook getRowScanTestHook() {
+    return this.rowScanTestHook;
+  }
+
+  public void setRowScanTestHook(RowScanTestHook hook) {
+    this.rowScanTestHook = hook;
+  }
+
+  public void notifyScanTestHook() {
+    if(null !=this.rowScanTestHook) {
+      this.rowScanTestHook.notifyTestLock();
+    }
+  }
+
+  public void notifyRowScanTestHook() {
+    if (null != this.rowScanTestHook) {
+      this.rowScanTestHook.notifyOperationLock();
+    }
+  }
+
+  public void waitOnScanTestHook() {
+    if (null != this.rowScanTestHook) {
+      this.rowScanTestHook.waitOnTestLock();
+    }
+  }
+
+  public void waitOnRowScanTestHook() {
+    if (null != this.testHook) {
+      this.testHook.waitOnOperationLock();
+    }
+  }
+
+  public void releaseWriteLockOnSnapshotRvv() {
+    lockForSnapshotRvv.writeLock().unlock();
+  }
+
+  public void lockForSnapshot() {
+    this.snapshotLock.writeLock().lock();
+  }
+
+  public void releaseSnapshotLocks() {
+    this.snapshotLock.writeLock().unlock();
   }
 
   protected final class Stopper extends CancelCriterion {
@@ -1738,7 +2092,11 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       if (isClosed()) {
         return;
       }
-      
+
+      if (oldEntryMapCleanerService != null) {
+        oldEntryMapCleanerService.shutdownNow();
+      }
+
       /**
        * First close the ManagementService as it uses a lot of infra which will be closed by cache.close()
        **/
@@ -5498,6 +5856,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     public NonLocalRegionEntry newNonLocalRegionEntry(RegionEntry re,
         LocalRegion region, boolean allowTombstones);
 
+    public NonLocalRegionEntry newNonLocalRegionEntry(RegionEntry re,
+        LocalRegion region, boolean allowTombstones, boolean faultInValue);
     /**
      * Create an instance of {@link NonLocalRegionEntryWithStats} for GemFireXD.
      */

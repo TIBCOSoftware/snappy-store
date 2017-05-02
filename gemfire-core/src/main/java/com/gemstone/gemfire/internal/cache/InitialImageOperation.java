@@ -781,7 +781,7 @@ public class InitialImageOperation  {
               needsSync = new HashSet<VersionSource>();
             }
             needsSync.add(tag.getMemberID());
-            rvv.recordVersion(tag.getMemberID(),  tag.getRegionVersion());
+            rvv.recordVersion(tag.getMemberID(),  tag.getRegionVersion(), null);
           }
         }
         if (needsSync != null) {
@@ -1100,7 +1100,7 @@ public class InitialImageOperation  {
                   }
                   boolean record;
                   if (this.region.getVersionVector() != null) {
-                    this.region.getVersionVector().recordVersion(tag.getMemberID(), tag);
+                    this.region.getVersionVector().recordVersion(tag.getMemberID(), tag, null);
                     record = true;
                   } else {
                     // bug #50992
@@ -1157,7 +1157,7 @@ public class InitialImageOperation  {
                   +lastModified+",tmpValue="+tmpValue+",wasRecovered="+wasRecovered+",tag="+tag);
             }
             if (this.region.getVersionVector() != null) {
-              this.region.getVersionVector().recordVersion(tag.getMemberID(), tag);
+              this.region.getVersionVector().recordVersion(tag.getMemberID(), tag, null);
             }
             this.entries.initialImagePut(entry.key, lastModified, tmpValue,
                 wasRecovered, false, tag, sender, this.isSynchronizing);
@@ -1374,7 +1374,7 @@ public class InitialImageOperation  {
         if (!remoteRVV.contains(id, stamp.getRegionVersion())) {
           // found an unfinished operation
           keys.add(mapEntry.getKeyCopy());
-          remoteRVV.recordVersion(id, stamp.getRegionVersion());
+          remoteRVV.recordVersion(id, stamp.getRegionVersion(), null);
           
           if (count<10) {
             if (TRACE_GII) {
@@ -1409,7 +1409,7 @@ public class InitialImageOperation  {
     //that are concurrent updates. We want to keep those updates. However
     //it might also reflect things that we recovered from disk that we are going
     //to remove. We'll need to remove those from the RVV somehow.
-    region.getVersionVector().recordVersions(rvv);
+    region.getVersionVector().recordVersions(rvv, null);
     if(region.getDataPolicy().withPersistence()) {
       region.getDiskRegion().writeRVV(region, false);
       region.getDiskRegion().writeRVVGC(region);

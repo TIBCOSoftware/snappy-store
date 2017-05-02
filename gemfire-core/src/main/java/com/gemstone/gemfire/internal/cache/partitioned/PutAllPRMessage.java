@@ -407,7 +407,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     InternalDistributedMember myId = r.getDistributionManager().getDistributionManagerId();
     final TXStateInterface txi = getTXState(r);
     final TXState tx = txi != null ? txi.getTXStateForWrite() : null;
-    final InternalDataView view = r.getDataView(tx);
+    final InternalDataView view = (tx != null && tx.isSnapshot()) ? r.getSharedDataView() : r.getDataView(tx);
     boolean lockedForPrimary = false;
     UMMMemoryTracker memoryTracker = null;
     try {
@@ -417,7 +417,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
       bucketRegion = ds.getInitializedBucketForId(null, bucketId);
 
       this.versions = new VersionedObjectList(
-          tx == null ? this.putAllPRDataSize : 1, true, bucketRegion
+          (tx == null || tx.isSnapshot()) ? this.putAllPRDataSize : 1, true, bucketRegion
               .getAttributes().getConcurrencyChecksEnabled());
 
       // create a base event and a DPAO for PutAllMessage distributed btw redundant buckets
@@ -481,7 +481,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           bucketRegion.recordPutAllStart(membershipID);
         }
         // no need to lock keys for transactions
-        if (tx == null) {
+        if (tx == null || tx.isSnapshot()) {
           bucketRegion.waitUntilLocked(keys);
         }
 
@@ -497,7 +497,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
             .isPrimary();
         // final boolean hasRedundancy = bucketRegion.getRedundancyLevel() > 0;
         try {
-          if (tx == null) {
+          if (tx == null || tx.isSnapshot()) {
             bucketRegion.doLockForPrimary(false);
             lockedForPrimary = true;
           } else {
@@ -532,7 +532,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
               // make sure a local update inserts a cache de-serializable
               ev.makeSerializedNewValue();
 //            ev.setLocalFilterInfo(r.getFilterProfile().getLocalFilterRouting(ev));
-              if (tx == null)
+              if (tx == null || tx.isSnapshot())
                 ev.setEntryLastModified(lastModified);
               // ev will be added into dpao in putLocally()
               // oldValue and real operation will be modified into ev in putLocally()
@@ -541,7 +541,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
 
               boolean didPut;
               try {
-                if (tx != null) {
+                if (tx != null && !tx.isSnapshot()) {
                   didPut = tx.putEntryOnRemote(ev, false, false, null, false,
                       cacheWrite, lastModified, true);
               /*
@@ -597,7 +597,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
                 fre.setHash(ev.getKey().hashCode());
                 throw fre;
               } else {
-                if (tx == null) {
+                if (tx == null || tx.isSnapshot()) {
                   this.versions.addKeyAndVersion(putAllPRData[i].getKey(),
                       ev.getVersionTag());
                 }
@@ -627,8 +627,14 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
             // So we have to manually set useFakeEventId for this DPAO
             dpao.setUseFakeEventId(true);
             r.checkReadiness();
-            bucketRegion.getDataView(tx).postPutAll(dpao, this.versions,
-                bucketRegion);
+            if (tx != null && tx.isSnapshot()) {
+              bucketRegion.getSharedDataView().postPutAll(dpao, this.versions,
+                  bucketRegion);
+            } else {
+              bucketRegion.getDataView(tx).postPutAll(dpao, this.versions,
+                  bucketRegion);
+            }
+
           /*
           if (tx != null && hasRedundancy) {
             tx.flushPendingOps(null);
@@ -642,7 +648,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           }
         }
         if (partialKeys.hasFailure()) {
-          if (tx == null) {
+          if (tx == null || tx.isSnapshot()) {
             partialKeys.addKeysAndVersions(this.versions);
           }
           if (logFineEnabled) {
@@ -663,7 +669,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
             }
           }
           // no need to lock keys for transactions
-          if (tx == null) {
+          if (tx == null || tx.isSnapshot()) {
             bucketRegion.removeAndNotifyKeys(keys);
           }
         //bucketRegion.columnBatchFlushLock.readLock().unlock();

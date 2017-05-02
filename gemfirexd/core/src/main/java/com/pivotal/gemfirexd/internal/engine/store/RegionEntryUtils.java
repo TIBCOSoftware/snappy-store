@@ -226,6 +226,7 @@ public final class RegionEntryUtils {
   public static Object getValueWithoutFaultIn(
       final GemFireContainer baseContainer, final int bucketId,
       final RegionEntry entry) {
+
     assert bucketId != -1 : "The bucket ID should not be -1: " + baseContainer;
     // need BucketRegion only if overflow to get value
     final PartitionedRegion pr = (PartitionedRegion) baseContainer.getRegion();
@@ -1432,6 +1433,12 @@ public final class RegionEntryUtils {
     }
 
     @Override
+    public NonLocalRegionEntry newNonLocalRegionEntry(RegionEntry re, LocalRegion region,
+        boolean allowTombstones, boolean faultInValue) {
+      return new NonLocalRowLocationRegionEntry(re, region, allowTombstones, faultInValue);
+    }
+
+        @Override
     public final NonLocalRegionEntry newNonLocalRegionEntry(final Object key,
         final Object value, final LocalRegion region,
         final VersionTag<?> versionTag) {

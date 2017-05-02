@@ -62,6 +62,7 @@ import java.util.concurrent.Executor;
 
 // GemStone changes BEGIN
 import com.gemstone.gemfire.SystemFailure;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -2782,6 +2783,10 @@ public abstract class EmbedConnection implements EngineConnection
 		case java.sql.Connection.TRANSACTION_NONE:
 		  iLevel = ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
 		  break;
+		case IsolationLevel.NO_JDBC_LEVEL:
+			iLevel = ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
+			break;
+
 // GemStone changes END
 		default:
 			throw newSQLException(SQLState.UNIMPLEMENTED_ISOLATION_LEVEL,

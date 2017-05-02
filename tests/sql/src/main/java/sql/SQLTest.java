@@ -333,7 +333,7 @@ public class SQLTest {
   public static int dumpThreadsInterval = (int) TestConfig.tab().longAt(SQLPrms.dumpThreadsInterval, 10000);
   public static int dumpThreadsTotalTime = (int) TestConfig.tab().longAt(SQLPrms.dumpThreadsTotalTime, 600); //maxResultWaitSec
   //public static boolean enableConcurrencyCheck = isHATest ? true : (random.nextBoolean() && testUniqueKeys? false: true);
-  public static boolean enableConcurrencyCheck = false; //Not covered in this 1.0 cheetah release, and removed from docs
+  public static boolean enableConcurrencyCheck = true; //Not covered in this 1.0 cheetah release, and removed from docs
   public static String ENABLECONCURRENCYCHECKS = " ENABLE CONCURRENCY CHECKS ";
   private static boolean isTicket51584Fixed = false;
   public static boolean reproduceTicket51628 = false;
