@@ -29,6 +29,7 @@ import java.sql.Types;
 import java.util.*;
 import javax.annotation.Nonnull;
 
+import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
 import com.gemstone.gemfire.cache.Region;
@@ -65,6 +66,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProc
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionByExpressionResolver;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.AckResultCollector;
+import com.pivotal.gemfirexd.internal.engine.distributed.ByteArrayDataOutput;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
@@ -1665,12 +1667,10 @@ public class GfxdSystemProcedures extends SystemProcedures {
       if (result != null) {
         for (Object oneResult : result) {
           Object o = oneResult;
-          ByteArrayOutputStream baos = new ByteArrayOutputStream();
           try {
-            ObjectOutputStream os = new ObjectOutputStream(baos);
-            os.writeObject(o);
-            byte[] tableObjectBytes = baos.toByteArray();
-            statsMap[0] = new HarmonySerialBlob(tableObjectBytes);
+          ByteArrayDataOutput bdos = new ByteArrayDataOutput();
+          DataSerializer.writeObject(o, bdos);
+          statsMap[0] = new HarmonySerialBlob(bdos.toByteArray());
           } catch (IOException ioe) {
             TransactionResourceImpl.wrapInSQLException(ioe);
           }

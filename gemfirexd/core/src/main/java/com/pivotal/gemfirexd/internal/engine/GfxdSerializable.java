@@ -250,6 +250,10 @@ public interface GfxdSerializable extends GfxdDSFID {
   public final static byte CONTAINS_UNIQUEKEY_BULK_EXECUTOR_MSG = 54;
 
   public final static byte MEMBER_STATISTICS_MESSAGE = 55;
+
+  public final static byte LEAD_NODE_CONN_OP_MSG = 56;
+
+  public final static byte LEAD_NODE_GET_STATS = 57;
     
   /**
    * Marker to indicate that tests can use an ID >= this. Note whenever adding a
@@ -364,9 +368,8 @@ public interface GfxdSerializable extends GfxdDSFID {
 
   public final static byte SNAPPY_REGION_STATS_RESULT = 122;
 
-  public final static byte LEAD_NODE_CONN_OP_MSG = 123;
+  public final static byte LEAD_NODE_CONN_OP_CTX = 123;
 
-  public final static byte LEAD_NODE_CONN_OP_CTX = 124;
+  public final static byte SNAPPY_REGION_STATS = 124;
 
-  public final static byte LEAD_NODE_GET_STATS = 125;
 }
