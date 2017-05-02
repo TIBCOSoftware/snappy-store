@@ -746,28 +746,28 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // ColumnBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    boolean success = false;
-    try {
-      boolean doFlush = false;
-      if (forceFlush) {
-        doFlush = getRegionSize() >= getPartitionedRegion()
-                .getColumnMinDeltaRows();
+    boolean success = true;
+    boolean doFlush = false;
+    if (forceFlush) {
+      doFlush = getRegionSize() >= getPartitionedRegion()
+              .getColumnMinDeltaRows();
+    }
+    if (!doFlush) {
+      doFlush = checkForColumnBatchCreation();
+    }
+    // we may have to use region.size so that no state
+    // has to be maintained
+    // one more check for size to make sure that concurrent call doesn't succeed.
+    // anyway batchUUID will be null in that case.
+    if (this.batchUUID != null && doFlush && getBucketAdvisor().isPrimary()) {
+      // need to flush the region
+      if (getCache().getLoggerI18n().fineEnabled()) {
+        getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
+                "Creating the column batch for bucket " + this.getId()
+                + ", and batchID " + this.batchUUID);
       }
-      if (!doFlush) {
-        doFlush = checkForColumnBatchCreation();
-      }
-      // we may have to use region.size so that no state
-      // has to be maintained
-      // one more check for size to make sure that concurrent call doesn't succeed.
-      // anyway batchUUID will be null in that case.
-      if (this.batchUUID != null && doFlush && getBucketAdvisor().isPrimary()) {
-        // need to flush the region
-        if (getCache().getLoggerI18n().fineEnabled()) {
-          getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
-                  "Creating the column batch for bucket " + this.getId()
-                  + ", and batchID " + this.batchUUID);
-        }
-        getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      try {
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
                   "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
@@ -784,7 +784,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         Set keysToDestroy = createColumnBatchAndPutInColumnTable();
 
 
-        if(getCache().getCacheTransactionManager().testRollBack) {
+        if (getCache().getCacheTransactionManager().testRollBack) {
           throw new Exception("Test Dummy Exception");
         }
         destroyAllEntries(keysToDestroy);
@@ -800,20 +800,19 @@ public class BucketRegion extends DistributedRegion implements Bucket {
           getCache().notifyRvvTestHook();
         }
         success = true;
-      } else {
+      } catch (Exception lme) {
+        getCache().getLoggerI18n().warning(lme);
+        // Returning from here as we dont want to clean the row buffer data.
         success = false;
-      }
-    }  catch (Exception lme) {
-      getCache().getLoggerI18n().warning(lme);
-      // Returning from here as we dont want to clean the row buffer data.
-     success = false;
-    } finally {
-      if(success) {
-        getCache().getCacheTransactionManager().commit();
-      } else {
-        getCache().getCacheTransactionManager().rollback();
+      } finally {
+        if (success) {
+          getCache().getCacheTransactionManager().commit();
+        } else {
+          getCache().getCacheTransactionManager().rollback();
+        }
       }
     }
+
     return success;
   }
 

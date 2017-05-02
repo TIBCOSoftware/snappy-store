@@ -68,7 +68,7 @@ import com.gemstone.gemfire.internal.util.concurrent.CopyOnWriteHashMap;
  */
 public abstract class RegionVersionVector<T extends VersionSource<?>> implements DataSerializableFixedID, MembershipListener {
   
-  public static boolean DEBUG = true;//Boolean.getBoolean("gemfire.VersionVector.VERBOSE");
+  public static boolean DEBUG = Boolean.getBoolean("gemfire.VersionVector.VERBOSE");
   
   
   
