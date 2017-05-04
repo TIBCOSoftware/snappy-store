@@ -717,24 +717,26 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
       try {
         if (!oldEntryMap.isEmpty()) {
-          for (Map<Object, BlockingQueue<RegionEntry>> regionEntryMap : oldEntryMap.values()) {
+          for (Entry<String,Map<Object, BlockingQueue<RegionEntry>>> entry : oldEntryMap.entrySet()) {
+            Map<Object, BlockingQueue<RegionEntry>> regionEntryMap = entry.getValue();
+            Region region = getRegion(entry.getKey());
             for (BlockingQueue<RegionEntry> oldEntriesQueue : regionEntryMap.values()) {
               for (RegionEntry re : oldEntriesQueue) {
                 boolean entryFoundInTxState = false;
                 for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
                   TXState txState = txProxy.getLocalTXState();
-                  if (txState != null && txState.containsRegionEntryReference(re) && !txState
-                      .isCommitted()) {
+                  if (txState != null && txState.checkEntryVersion(region, re) && !txState
+                      .isCommitted() && re.isUpdateInProgress()) {
                     entryFoundInTxState = true;
                     break;
                   }
                 }
                 long now = System.currentTimeMillis();
-                if (!entryFoundInTxState && (((NonLocalRegionEntry)re).getCreationTime() + expiryTime) < now) {
+                if (!entryFoundInTxState) {
                   if (getLoggerI18n().fineEnabled()) {
                     getLoggerI18n().info(LocalizedStrings.DEBUG,
-                        "OldEntriesCleanerThread : Removing the entry " + re + " entry creation time : " +
-                            ((NonLocalRegionEntry)re).getCreationTime() + " now " + now);
+                        "OldEntriesCleanerThread : Removing the entry " + re + " entry update in progress : " +
+                            ((NonLocalRegionEntry)re).isUpdateInProgress());
                   }
                   oldEntriesQueue.remove(re);
                 }
