@@ -1533,17 +1533,17 @@ public final class FabricDatabase implements ModuleControl,
       // This is because hive meta store table replay generates hundreds of
       // line of logs which are of no use. Once the hive meta tables are
       // done, restore the logging level.
-      if (Misc.isSnappyHiveMetaTable(currentSchema))
+      if (previousLevel == Integer.MAX_VALUE &&
+          Misc.isSnappyHiveMetaTable(currentSchema))
       {
         GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
         previousLevel = bridgeLogger.getLevel();
         bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
-      } else {
-        if (previousLevel != Integer.MAX_VALUE &&
+      } else if (previousLevel != Integer.MAX_VALUE &&
             Misc.isSnappyHiveMetaTable(lastCurrentSchema)) {
           GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
            bridgeLogger.setLevel(previousLevel);
-        }
+          previousLevel = Integer.MAX_VALUE;
       }
       // set the default schema masquerading as the user
       // temporarily for this DDL
