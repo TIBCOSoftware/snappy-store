@@ -136,7 +136,7 @@ public abstract class NativeCalls {
     FileDescriptor fd = null;
     // in some cases (for SSL) the Socket can be a wrapper one
     try {
-      f = getAnyField(sock.getClass(), "self");
+      f = ClientSharedUtils.getAnyField(sock.getClass(), "self");
       if (f != null) {
         f.setAccessible(true);
         final Object self = f.get(sock);
@@ -166,10 +166,10 @@ public abstract class NativeCalls {
       if (fd == null) {
         try {
           // package private Socket.getImpl() to get SocketImpl
-          m = getAnyMethod(sock.getClass(), "getImpl");
+          m = ClientSharedUtils.getAnyMethod(sock.getClass(), "getImpl", null);
         } catch (Exception ex) {
           try {
-            m = getAnyMethod(sock.getClass(), "getPlainSocketImpl");
+            m = ClientSharedUtils.getAnyMethod(sock.getClass(), "getPlainSocketImpl", null);
           } catch (Exception e) {
             // try forcing the InputStream route
             m = null;
@@ -189,7 +189,7 @@ public abstract class NativeCalls {
           final SocketImpl sockImpl = (SocketImpl)m.invoke(sock);
           if (sockImpl != null) {
             try {
-              m = getAnyMethod(sockImpl.getClass(), "getFileDescriptor");
+              m = ClientSharedUtils.getAnyMethod(sockImpl.getClass(), "getFileDescriptor", null);
               if (m != null) {
                 m.setAccessible(true);
                 fd = (FileDescriptor)m.invoke(sockImpl);
@@ -202,7 +202,7 @@ public abstract class NativeCalls {
       }
       if (fd != null) {
         // get the kernel descriptor using reflection
-        f = getAnyField(fd.getClass(), "fd");
+        f = ClientSharedUtils.getAnyField(fd.getClass(), "fd");
         if (f != null) {
           f.setAccessible(true);
           obj = f.get(fd);
@@ -218,43 +218,6 @@ public abstract class NativeCalls {
       throw re;
     } catch (Exception ex) {
       throw new UnsupportedOperationException(ex);
-    }
-  }
-
-  protected static Method getAnyMethod(Class<?> c, String name,
-      Class<?>... parameterTypes) throws NoSuchMethodException,
-      SecurityException {
-    NoSuchMethodException firstEx = null;
-    for (;;) {
-      try {
-        return c.getDeclaredMethod(name, parameterTypes);
-      } catch (NoSuchMethodException nsme) {
-        if (firstEx == null) {
-          firstEx = nsme;
-        }
-        if ((c = c.getSuperclass()) == null) {
-          throw firstEx;
-        }
-        // else continue searching in superClass
-      }
-    }
-  }
-
-  protected static Field getAnyField(Class<?> c, String name)
-      throws NoSuchFieldException, SecurityException {
-    NoSuchFieldException firstEx = null;
-    for (;;) {
-      try {
-        return c.getDeclaredField(name);
-      } catch (NoSuchFieldException nsfe) {
-        if (firstEx == null) {
-          firstEx = nsfe;
-        }
-        if ((c = c.getSuperclass()) == null) {
-          throw firstEx;
-        }
-        // else continue searching in superClass
-      }
     }
   }
 

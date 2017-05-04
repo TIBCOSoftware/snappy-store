@@ -44,6 +44,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectStreamClass;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -403,6 +404,49 @@ public abstract class ClientSharedUtils {
     return lh;
   }
 
+  public static Method getAnyMethod(Class<?> c, String name, Class<?> returnType,
+       Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
+    NoSuchMethodException firstEx = null;
+    Method method = null;
+    for (;;) {
+      try {
+        method =  c.getDeclaredMethod(name, parameterTypes);
+
+        if (returnType == null ||
+           (returnType != null && method.getReturnType().equals(returnType))) {
+          return method;
+        } else {
+          throw new NoSuchMethodException();
+        }
+      } catch (NoSuchMethodException nsme) {
+        if (firstEx == null) {
+          firstEx = nsme;
+        }
+        if ((c = c.getSuperclass()) == null) {
+          throw firstEx;
+        }
+        // else continue searching in superClass
+      }
+    }
+  }
+
+  public static Field getAnyField(Class<?> c, String name)
+          throws NoSuchFieldException, SecurityException {
+    NoSuchFieldException firstEx = null;
+    for (;;) {
+      try {
+        return c.getDeclaredField(name);
+      } catch (NoSuchFieldException nsfe) {
+        if (firstEx == null) {
+          firstEx = nsfe;
+        }
+        if ((c = c.getSuperclass()) == null) {
+          throw firstEx;
+        }
+        // else continue searching in superClass
+      }
+    }
+  }
   /**
    * This method uses JNDI to look up an address in DNS and return its name.
    * 
