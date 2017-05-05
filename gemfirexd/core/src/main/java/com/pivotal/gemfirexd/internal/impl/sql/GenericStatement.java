@@ -913,6 +913,7 @@ public class GenericStatement
             (messgId.equals(SQLState.NOT_COLOCATED_WITH) ||
                 messgId.equals(SQLState.COLOCATION_CRITERIA_UNSATISFIED) ||
                 messgId.equals(SQLState.REPLICATED_PR_CORRELATED_UNSUPPORTED) ||
+                messgId.equals(SQLState.SUBQUERY_MORE_THAN_1_NESTING_NOT_SUPPORTED) ||
                 messgId.equals(SQLState.NOT_IMPLEMENTED))) {
             if (observer != null) {
               observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
