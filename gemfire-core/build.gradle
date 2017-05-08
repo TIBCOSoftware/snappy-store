@@ -79,6 +79,7 @@ dependencies {
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
   provided "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
 
+  compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.21'
   compile group: 'org.apache.hbase', name: 'hbase-protocol', version: hbaseVersion
   compile(group: 'org.apache.hbase', name: 'hbase-common', version: hbaseVersion) {
     exclude(group: 'org.apache.hbase', module: 'hbase-annotations')

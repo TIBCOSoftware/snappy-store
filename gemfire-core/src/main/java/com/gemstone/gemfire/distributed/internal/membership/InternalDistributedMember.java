@@ -16,6 +16,8 @@
  */
 package com.gemstone.gemfire.distributed.internal.membership;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -66,6 +68,7 @@ import java.util.Set;
  *
  * TODO fix this.
  */
+@DefaultSerializer(JavaSerializer.class)
 public final class InternalDistributedMember
  implements DistributedMember,
     Externalizable, DataSerializableFixedID, ProfileId,
