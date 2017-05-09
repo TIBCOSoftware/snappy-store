@@ -683,6 +683,10 @@ recompileOutOfDatePlan:
 		return paramTypeDescriptors;
 	}
 
+  public void setParameterTypes(DataTypeDescriptor[] paramTypes)	{
+    paramTypeDescriptors = paramTypes;
+  }
+
 	public String getSource() {
 		return (sourceTxt != null) ?
 			sourceTxt :

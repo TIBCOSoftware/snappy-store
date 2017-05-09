@@ -24,42 +24,90 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdQueryResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdQueryStreamingResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
+import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeExecutorMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.TableQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
+import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.NoPutResultSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.TemporaryRowHolder;
+import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericParameterValueSet;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericParameter;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.BaseActivation;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 
+import java.io.IOException;
 import java.sql.SQLException;
+import java.sql.Types;
+import java.util.Arrays;
 import java.util.List;
+import java.util.StringTokenizer;
 import java.util.Vector;
+
+import static java.sql.Types.*;
 
 /**
  * Activation implementation for getting results from lead node.
  */
 public class SnappyActivation extends BaseActivation {
 
-  volatile AbstractGemFireResultSet currentRS = null;
   private String sql;
   boolean returnRows;
+  boolean isPrepStmt;
 
-  public SnappyActivation(LanguageConnectionContext lcc, ExecPreparedStatement eps, boolean returnRows) {
+  public SnappyActivation(LanguageConnectionContext lcc, ExecPreparedStatement eps, 
+      boolean returnRows,  boolean isPrepStmt) {
     super(lcc);
     sql = eps.getSource();
     this.preStmt = eps;
     this.returnRows = returnRows;
     this.connectionID = lcc.getConnectionId();
+    this.isPrepStmt = isPrepStmt;
+  }
+
+  public void initialize_pvs() throws StandardException {
+    // Also see ParamConstants.getSQLType()
+    // Index 0: Number of parameter
+    // Index 1 - 1st parameter: DataTYpe
+    // Index 2 - 1st parameter: precision
+    // Index 3 - 1st parameter: scale
+    // Index 4 - 1st parameter: nullable
+    // ...and so on
+    int[] preparedResult = prepare();
+    assert preparedResult != null;
+    assert preparedResult.length > 0;
+
+    int numberOfParameters = preparedResult[0];
+    DataTypeDescriptor[] types = new DataTypeDescriptor[numberOfParameters];
+    for (int i = 0; i < numberOfParameters; i++) {
+      int index = i * 4 + 1;
+      SnappyResultHolder.getNewNullDVD(preparedResult[index], i, types,
+          preparedResult[index + 1], preparedResult[index + 2], preparedResult[index + 2] == 1);
+    }
+
+    boolean hasReturnParameter = false;
+    pvs = (GenericParameterValueSet)lcc
+        .getLanguageFactory()
+        .newParameterValueSet(
+            lcc.getLanguageConnectionFactory().getClassFactory()
+                .getClassInspector(), numberOfParameters, hasReturnParameter);
+    pvs.initialize(types);
+    if (preStmt instanceof GenericPreparedStatement) {
+      GenericPreparedStatement gps = (GenericPreparedStatement)preStmt;
+      gps.setParameterTypes(types);
+    }
   }
 
   @Override
@@ -73,9 +121,34 @@ public class SnappyActivation extends BaseActivation {
 
   }
 
+  public final int[] prepare() throws StandardException {
+    try {
+      SnappyPrepareResultSet rs = createPreapreResultSet(0);
+      if (GemFireXDUtils.TraceQuery) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+            "SnappyActivation.prepare: Created SnappySelectResultSet: " + rs);
+      }
+      prepareWithResultSet(rs);
+      int[] typeNames = rs.makePrepareResult();
+      if (GemFireXDUtils.TraceQuery) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+            "SnappyActivation.prepare: Done." +
+                " Prepared-result: " + Arrays.toString(typeNames));
+      }
+      return typeNames;
+    } catch (GemFireXDRuntimeException gfxdrtex) {
+      StandardException cause = getCause(gfxdrtex);
+      if (cause != null) {
+        throw cause;
+      }
+      throw gfxdrtex;
+    } catch (IOException ioex) {
+      throw StandardException.newException(ioex.getMessage(), (Throwable)ioex);
+    }
+  }
+
   public final ResultSet execute() throws StandardException {
     try {
-      this.currentRS = null;
       SnappySelectResultSet rs = createResultSet(0);
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -84,7 +157,6 @@ public class SnappyActivation extends BaseActivation {
       rs.open();
       this.resultSet = rs;
       executeWithResultSet(rs);
-      this.currentRS = rs;
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
             "SnappyActivation.execute: Done");
@@ -115,12 +187,27 @@ public class SnappyActivation extends BaseActivation {
     return new SnappySelectResultSet(this, this.returnRows);
   }
 
+  protected SnappyPrepareResultSet createPreapreResultSet(int resultsetNumber)
+      throws StandardException {
+    return new SnappyPrepareResultSet(this);
+  }
+
   protected void executeWithResultSet(SnappySelectResultSet rs)
       throws StandardException {
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = null;
     rc = getResultCollector(enableStreaming, rs);
-    executeOnLeadNode(rs, rc, sql, enableStreaming, this.getConnectionID(), this.lcc.getCurrentSchemaName());
+    executeOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
+        .getCurrentSchemaName(), this.pvs, this.isPrepStmt);
+  }
+
+  protected void prepareWithResultSet(SnappyPrepareResultSet rs)
+      throws StandardException {
+    boolean enableStreaming = this.lcc.streamingEnabled();
+    GfxdResultCollector<Object> rc = null;
+    rc = getPrepareResultCollector(rs);
+    prepareOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
+        .getCurrentSchemaName(), this.pvs);
   }
 
   protected GfxdResultCollector<Object> getResultCollector(
@@ -132,6 +219,14 @@ public class SnappyActivation extends BaseActivation {
     } else {
       rc = new GfxdQueryResultCollector();
     }
+    rs.setupRC(rc);
+    return rc;
+  }
+
+  protected GfxdResultCollector<Object> getPrepareResultCollector(
+      final SnappyPrepareResultSet rs)
+      throws StandardException {
+    final GfxdResultCollector<Object> rc = new GfxdQueryResultCollector();
     rs.setupRC(rc);
     return rc;
   }
@@ -224,17 +319,35 @@ public class SnappyActivation extends BaseActivation {
   }
 
   public static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc, String sql,
-      boolean enableStreaming, long connId, String schema)
+      boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
+      boolean isPreparedStatement)
       throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
-    LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc);
+    LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
+        isPreparedStatement, false);
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
     } catch (SQLException se) {
       throw Misc.processFunctionException(
           "SnappyActivation::execute", se, null, null);
+    }
+  }
+
+  public static void prepareOnLeadNode(SnappyPrepareResultSet rs, GfxdResultCollector<Object> rc, String sql,
+      boolean enableStreaming, long connId, String schema, ParameterValueSet pvs)
+      throws StandardException {
+    // TODO: KN probably username, statement id and connId to be sent in
+    // execution and of course tx id when transaction will be supported.
+    LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
+    LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
+        true, true);
+    try {
+      msg.executeFunction(enableStreaming, false, rs, true);
+    } catch (SQLException se) {
+      throw Misc.processFunctionException(
+          "SnappyActivation::prepareOnLeadNode", se, null, null);
     }
   }
 

@@ -1415,7 +1415,8 @@ public abstract class Converters {
     @Override
     public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setObject(columnPosition - 1, x, SnappyType.VARCHAR);
+      java.sql.Date date = java.sql.Date.valueOf(x);
+      row.setDateTime(columnPosition - 1, date);
     }
     @Override
     public void setObject(OptimizedElementArray row, int columnPosition, Object o)
@@ -1502,7 +1503,8 @@ public abstract class Converters {
     @Override
     public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setObject(columnPosition - 1, x, SnappyType.VARCHAR);
+      java.sql.Time dtime = java.sql.Time.valueOf(x);
+      row.setTimestamp(columnPosition - 1, dtime);
     }
     @Override
     public void setObject(OptimizedElementArray row, int columnPosition, Object o)
@@ -1599,7 +1601,8 @@ public abstract class Converters {
     @Override
     public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setObject(columnPosition - 1, x, SnappyType.VARCHAR);
+      java.sql.Timestamp timestamp = java.sql.Timestamp.valueOf(x);
+      row.setTimestamp(columnPosition - 1, timestamp);
     }
     @Override
     public void setObject(OptimizedElementArray row, int columnPosition, Object o)

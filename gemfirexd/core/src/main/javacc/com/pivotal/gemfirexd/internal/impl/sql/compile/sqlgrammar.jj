@@ -3156,7 +3156,7 @@ TOKEN :
 
 TOKEN :
 {	/* Identifiers */
-	<IDENTIFIER: ( <LETTER> ) (<LETTER> | "_" | <DIGIT>)* >
+	<IDENTIFIER: (<UNDERSCORE>)* ( <LETTER> ) (<LETTER> | <UNDERSCORE> | <DIGIT>)* >
 }
 
 TOKEN: {	<K: "K" >	 }

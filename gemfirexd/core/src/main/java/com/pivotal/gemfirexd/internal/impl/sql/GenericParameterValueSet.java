@@ -83,7 +83,7 @@ public final class GenericParameterValueSet implements ParameterValueSet
 	 *			this is NOT the same thing as an output parameter -- return
 	 *			output parameters are special cases of output parameters.
 	 */
-	GenericParameterValueSet(ClassInspector ci, int numParms, boolean hasReturnOutputParam)
+	public GenericParameterValueSet(ClassInspector ci, int numParms, boolean hasReturnOutputParam)
 	{
 		this.ci = ci;
 		this.hasReturnOutputParam = hasReturnOutputParam;
