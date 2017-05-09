@@ -725,8 +725,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                 boolean entryFoundInTxState = false;
                 for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
                   TXState txState = txProxy.getLocalTXState();
-                  if (re.isUpdateInProgress() || (txState != null && txState.checkEntryVersion(region, re) &&
-                          !txState.isCommitted())) {
+                  if (re.isUpdateInProgress() || (txState != null && !txState.isCommitted() && txState.checkEntryVersion
+                          (region, re))) {
                     entryFoundInTxState = true;
                     break;
                   }
