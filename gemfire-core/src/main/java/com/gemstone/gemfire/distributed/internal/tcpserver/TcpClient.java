@@ -93,7 +93,7 @@ public class TcpClient {
   public static Object requestToServer(InetAddress addr, int port, Object request, int timeout) throws IOException, ClassNotFoundException {
     return requestToServer(addr, port, request, timeout, true);
   }
-  
+
   public static Object requestToServer(InetAddress addr, int port, Object request, int timeout, boolean replyExpected) throws IOException, ClassNotFoundException {
     IpAddress ipAddr;
     if (addr == null) {

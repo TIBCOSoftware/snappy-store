@@ -96,7 +96,7 @@ public class CreateCQOp {
     }
     @Override  
     protected Message createResponseMessage() {
-      return new ChunkedMessage(1, Version.CURRENT);
+      return new ChunkedMessage(1, Version.CURRENT_GFE);
     }
     @Override  
     protected Object processResponse(Message m) throws Exception {

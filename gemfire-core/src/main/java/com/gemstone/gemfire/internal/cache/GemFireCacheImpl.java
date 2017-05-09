@@ -312,7 +312,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    * True if this cache is being created by a ClientCacheFactory.
    */
   private final boolean isClient;
-  private PoolFactory clientpf;
+  protected PoolFactory clientpf;
   /**
    * It is not final to allow cache.xml parsing to set it.
    */
@@ -920,7 +920,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   /**
    * Creates a new instance of GemFireCache and populates it according to the <code>cache.xml</code>, if appropriate.
    */
-  private GemFireCacheImpl(boolean isClient, PoolFactory pf, DistributedSystem system, CacheConfig cacheConfig) {
+  protected GemFireCacheImpl(boolean isClient, PoolFactory pf, DistributedSystem system, CacheConfig cacheConfig) {
     this.isClient = isClient;
     this.clientpf = pf;
     this.cacheConfig = cacheConfig; // do early for bug 43213
@@ -1166,7 +1166,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    *
    * @return the initialized instance of the cache
    */
-  private GemFireCacheImpl init() {
+  protected GemFireCacheImpl init() {
     ClassPathLoader.setLatestToDefault();
         
     SystemMemberCacheEventProcessor.send(this, Operation.CACHE_CREATE);
@@ -2910,13 +2910,16 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     return defpf;
   }
 
+  protected void checkValidityForPool() {
+    if (!isClient()) {
+      throw new UnsupportedOperationException();
+    }
+  }
   /**
    * Used to set the default pool on a new GemFireCache.
    */
   public void determineDefaultPool() {
-    if (!isClient()) {
-      throw new UnsupportedOperationException();
-    }
+    this.checkValidityForPool();
     Pool pool = null;
     // create the pool if it does not already exist
     if (this.clientpf == null) {
@@ -5320,6 +5323,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         throw new IllegalStateException("unhandled enum " + pra);
       }
     }
+
+
   }
 
   public static void initializeClientRegionShortcuts(Cache c) {

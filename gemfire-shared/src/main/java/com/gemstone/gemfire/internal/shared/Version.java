@@ -72,7 +72,7 @@ public final class Version implements Comparable<Version> {
 
   private static final Method getGFEClientCommands;
 
-  public static final int NUM_OF_VERSIONS = 32;
+  public static final int NUM_OF_VERSIONS = 36;
 
   private static final Version[] VALUES = new Version[NUM_OF_VERSIONS];
 
@@ -226,10 +226,16 @@ public final class Version implements Comparable<Version> {
   public static final Version GFXD_20 = new Version("GFXD", "2.0",
       (byte)2, (byte)0, (byte)0, (byte)0, GFXD_20_ORDINAL, GFE_75);
 
+  private static final byte GFE_81_ORDINAL = 35;
+
+  public static final Version GFE_81 = new Version("GFE", "8.1", (byte)8,
+          (byte)1, (byte)0, (byte)0, GFE_81_ORDINAL);
   /**
    * This constant must be set to the most current version of GFE/GFXD.
    */
   public static final Version CURRENT = GFXD_20;
+  public static final Version CURRENT_GFE = GFE_81;
+  public static final short CURRENT_GFE_ORDINAL = CURRENT_GFE.ordinal();
 
   /**
    * A lot of versioning code needs access to the current version's ordinal
