@@ -168,7 +168,7 @@ public class TestThrift {
         params.setInt(2, rowNum);
 
         sr = conn.executePrepared(pstmt.statementId, params,
-            Collections.<Integer, OutputParameter>emptyMap(), null, token);
+            Collections.emptyMap(), null, token);
 
         // below will also work as well returning a RowSet directly
         // rs = conn.executePreparedQuery(pstmt.statementId, params, null, token);

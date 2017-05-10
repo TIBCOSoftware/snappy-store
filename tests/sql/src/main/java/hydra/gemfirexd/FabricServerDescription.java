@@ -1209,7 +1209,7 @@ implements Serializable {
       Long key = FabricServerPrms.conserveSockets;
       Boolean bool = tab.getBoolean(key, tab.getWild(key, index, null));
       if (bool == null) {
-        bool = DistributionConfig.DEFAULT_CONSERVE_SOCKETS;
+        bool = Boolean.TRUE;
       }
       fsd.setConserveSockets(bool);
     }

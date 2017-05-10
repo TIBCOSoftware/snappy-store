@@ -137,8 +137,7 @@ public class OplogIndexReader {
       final RandomAccessFile raf = new RandomAccessFile(fileName, "r");
       final FileChannel channel = raf.getChannel();
       final ChannelBufferUnsafeDataInputStream in =
-          new ChannelBufferUnsafeDataInputStream(channel,
-              128 * 1024);
+          new ChannelBufferUnsafeDataInputStream(channel, 32 * 1024, false);
       boolean endOfFile = false;
 
       String currentIndexID;

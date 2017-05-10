@@ -38,8 +38,8 @@ public final class ChannelBufferUnsafeFramedInputStream extends
   }
 
   public ChannelBufferUnsafeFramedInputStream(ReadableByteChannel channel,
-      int bufferSize) throws IOException {
-    super(channel, bufferSize);
+      int bufferSize, boolean useUnsafeAllocation) throws IOException {
+    super(channel, bufferSize, useUnsafeAllocation);
     this.maxFrameBufferSize = this.buffer.capacity() - 4 /* size of int */;
   }
 

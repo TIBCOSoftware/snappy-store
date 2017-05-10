@@ -22,13 +22,11 @@ import java.util.concurrent.ConcurrentMap;
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskPosition;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation.Entry;
@@ -333,7 +331,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
     }
     @Override
     public boolean fillInValue(LocalRegion r, Entry entry,
-        ByteArrayDataInput in, DM mgr, Version targetVersion) {
+        DM mgr, Version targetVersion) {
       // TODO Auto-generated method stub
       return false;
     }
@@ -461,6 +459,10 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
     @Override
     public boolean isInvalidOrRemoved() {
       // TODO Auto-generated method stub
+      return false;
+    }
+    @Override
+    public boolean isOffHeap() {
       return false;
     }
     @Override

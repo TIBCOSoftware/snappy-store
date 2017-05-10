@@ -1425,7 +1425,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
   public static final String CONSERVE_SOCKETS_NAME = "conserve-sockets";
 
   /** The default value of the "conserveSockets" property */
-  public static final boolean DEFAULT_CONSERVE_SOCKETS = true;
+  public static final boolean DEFAULT_CONSERVE_SOCKETS = false;
 
   /**
    * Returns the value of the <a

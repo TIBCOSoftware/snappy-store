@@ -41,6 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.EnumMap;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.pivotal.gemfirexd.Attribute;
@@ -48,7 +49,6 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.TransactionAttribute;
-import org.apache.thrift.TBaseHelper;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -136,21 +136,7 @@ public abstract class ThriftUtils {
   }
 
   public static byte[] toBytes(ByteBuffer buffer) {
-    final int bufferSize = buffer.remaining();
-    return toBytes(buffer, bufferSize, bufferSize);
-  }
-
-  public static byte[] toBytes(ByteBuffer buffer, int bufferSize, int length) {
-    if (length >= bufferSize && TBaseHelper.wrapsFullArray(buffer)) {
-      return buffer.array();
-    } else {
-      final int numBytes = Math.min(bufferSize, length);
-      final byte[] bytes = new byte[numBytes];
-      final int initPosition = buffer.position();
-      buffer.get(bytes, 0, numBytes);
-      buffer.position(initPosition);
-      return bytes;
-    }
+    return ClientSharedUtils.toBytes(buffer);
   }
 
   public static ByteBuffer readByteBuffer(TNonblockingTransport transport,
@@ -224,7 +210,8 @@ public abstract class ThriftUtils {
             ? TTransportException.END_OF_FILE : TTransportException.UNKNOWN);
       }
     } else {
-      final byte[] bytes = toBytes(buffer, buffer.remaining(), length);
+      final byte[] bytes = ClientSharedUtils.toBytes(
+          buffer, buffer.remaining(), length);
       transport.write(bytes, 0, length);
     }
   }

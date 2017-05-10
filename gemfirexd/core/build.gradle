@@ -32,6 +32,9 @@ dependencies {
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
   compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
+  compile "org.apache.thrift:libthrift:${thriftVersion}"
+  compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
+  compile "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
 
   provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
@@ -45,9 +48,6 @@ dependencies {
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
-  provided "org.apache.thrift:libthrift:${thriftVersion}"
-  provided "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
-  provided "com.esotericsoftware:kryo-shaded:${kryoVersion}"
 }
 
 // move javacc output directory to a place where IDEA can easily register
@@ -246,10 +246,6 @@ shadowJar {
   zip64 = true
   baseName = 'snappydata-store'
   classifier = ''
-  // avoid conflict with the older incompatible thrift versions
-  relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
-  // avoid conflict with upstream spark-unsafe
-  relocate 'org.apache.spark.unsafe', 'io.snappydata.org.apache.spark.unsafe'
 
   mergeServiceFiles()
 }

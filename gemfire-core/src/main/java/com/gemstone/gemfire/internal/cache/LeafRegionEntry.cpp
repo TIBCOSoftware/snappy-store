@@ -597,6 +597,11 @@ public class LEAF_CLASS extends PARENT_CLASS
   // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

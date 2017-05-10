@@ -255,7 +255,7 @@ public interface Attribute {
    * sockets. This is the idle time after which a TCP KeepAlive probe is sent
    * over the socket to determine if the other side is alive or not.
    */
-  String KEEPALIVE_IDLE = "keepalive-idle";
+  String KEEPALIVE_IDLE = SystemProperties.KEEPALIVE_IDLE;
 
   /**
    * TCP KeepAlive INTERVAL timeout in seconds for the network server and client
@@ -267,7 +267,7 @@ public interface Attribute {
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
    */
-  String KEEPALIVE_INTVL = "keepalive-interval";
+  String KEEPALIVE_INTVL = SystemProperties.KEEPALIVE_INTVL;
 
   /**
    * TCP KeepAlive COUNT for the network server and client sockets. This is the
@@ -278,7 +278,7 @@ public interface Attribute {
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
    */
-  String KEEPALIVE_CNT = "keepalive-count";
+  String KEEPALIVE_CNT = SystemProperties.KEEPALIVE_CNT;
 
   /**
    * Input buffer size to use for client-server sockets.

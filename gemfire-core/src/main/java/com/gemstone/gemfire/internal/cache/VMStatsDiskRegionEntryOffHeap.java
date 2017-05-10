@@ -172,6 +172,10 @@ public class VMStatsDiskRegionEntryOffHeap extends VMStatsDiskRegionEntry
   private final static AtomicLongFieldUpdater<VMStatsDiskRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMStatsDiskRegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

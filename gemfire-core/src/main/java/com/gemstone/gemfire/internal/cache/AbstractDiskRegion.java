@@ -585,7 +585,7 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
         while (it.hasNext()) {
           Map.Entry<Object, Object> me = it.next();
           RegionEntry oldRe = (RegionEntry)me.getValue();
-          if (oldRe instanceof OffHeapRegionEntry) {
+          if (oldRe != null && oldRe.isOffHeap()) {
             ((OffHeapRegionEntry) oldRe).release();
           } else {
             // no need to keep iterating; they are all either off heap or on heap.

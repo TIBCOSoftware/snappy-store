@@ -33,6 +33,41 @@ import java.util.logging.Logger;
  */
 public final class SystemProperties {
 
+  /**
+   * TCP KeepAlive IDLE timeout in seconds for the network server and client
+   * sockets. This is the idle time after which a TCP KeepAlive probe is sent
+   * over the socket to determine if the other side is alive or not.
+   */
+  public static final String KEEPALIVE_IDLE = "keepalive-idle";
+
+  /**
+   * TCP KeepAlive INTERVAL timeout in seconds for the network server and client
+   * sockets. This is the time interval between successive TCP KeepAlive probes
+   * if there is no response to the previous probe ({@link #KEEPALIVE_IDLE}) to
+   * determine if the other side is alive or not.
+   * <p>
+   * Note that this may not be supported by all platforms (e.g. Solaris), in
+   * which case this will be ignored and an info-level message logged that the
+   * option could not be enabled on the socket.
+   */
+  public static final String KEEPALIVE_INTVL = "keepalive-interval";
+
+  /**
+   * TCP KeepAlive COUNT for the network server and client sockets. This is the
+   * number of TCP KeepAlive probes sent before declaring the other side to be
+   * dead.
+   * <p>
+   * Note that this may not be supported by all platforms (e.g. Solaris), in
+   * which case this will be ignored and an info-level message logged that the
+   * option could not be enabled on the socket.
+   */
+  public static final String KEEPALIVE_CNT = "keepalive-count";
+
+  // these are the defaults for the per-socket TCP keepalive parameters
+  public static final int DEFAULT_KEEPALIVE_IDLE = 20;
+  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
+  public static final int DEFAULT_KEEPALIVE_CNT = 10;
+
   public static final String DEFAULT_PROPERTY_NAME_PREFIX = "gemfire.";
   public static final String DEFAULT_GFXDCLIENT_PROPERTY_NAME_PREFIX =
       "gemfirexd.client.";

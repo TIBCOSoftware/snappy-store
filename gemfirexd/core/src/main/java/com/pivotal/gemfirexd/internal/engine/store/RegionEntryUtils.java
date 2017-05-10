@@ -992,7 +992,7 @@ public final class RegionEntryUtils {
           if (keyClass == CompactCompositeRegionKey.class) {
             return key;
           }
-          else if (entry instanceof OffHeapRegionEntry) {
+          else if (entry.isOffHeap()) {
             return new CompactCompositeRegionKey((OffHeapRegionEntry)entry,
                 tableInfo);
           }

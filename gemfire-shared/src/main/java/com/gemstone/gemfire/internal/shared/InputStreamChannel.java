@@ -227,8 +227,8 @@ public abstract class InputStreamChannel extends InputStream implements
    */
   protected int readIntoBuffer(ByteBuffer buffer) throws IOException {
     long parkNanos = 0;
-    int readBytes;
-    while ((readBytes = this.channel.read(buffer)) == 0) {
+    int numBytes;
+    while ((numBytes = this.channel.read(buffer)) == 0) {
       if (!buffer.hasRemaining()) {
         break;
       }
@@ -242,7 +242,10 @@ public abstract class InputStreamChannel extends InputStream implements
         throw new SocketTimeoutException("Connection read timed out.");
       }
     }
-    return readBytes;
+    if (numBytes > 0) {
+      this.bytesRead += numBytes;
+    }
+    return numBytes;
   }
 
   /**

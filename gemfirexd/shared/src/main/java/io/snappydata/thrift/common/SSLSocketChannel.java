@@ -151,9 +151,9 @@ public final class SSLSocketChannel
    */
   protected void startHandshake() throws IOException {
     if (this.useDirectBuffers) {
-      this.netReadBuffer = UnsafeHolder.allocateDirectBuffer(netReadBufferSize());
-      this.netWriteBuffer = UnsafeHolder.allocateDirectBuffer(netWriteBufferSize());
-      this.appReadBuffer = UnsafeHolder.allocateDirectBuffer(applicationBufferSize());
+      this.netReadBuffer = ByteBuffer.allocateDirect(netReadBufferSize());
+      this.netWriteBuffer = ByteBuffer.allocateDirect(netWriteBufferSize());
+      this.appReadBuffer = ByteBuffer.allocateDirect(applicationBufferSize());
     } else {
       this.netReadBuffer = ByteBuffer.allocate(netReadBufferSize());
       this.netWriteBuffer = ByteBuffer.allocate(netWriteBufferSize());
@@ -218,14 +218,15 @@ public final class SSLSocketChannel
         flush(netWriteBuffer);
       }
       if (this.useDirectBuffers) {
-        UnsafeHolder.releaseDirectBuffer(netReadBuffer);
-        UnsafeHolder.releaseDirectBuffer(netWriteBuffer);
-        UnsafeHolder.releaseDirectBuffer(appReadBuffer);
-      }
-      if (this.useDirectBuffers) {
-        UnsafeHolder.releaseDirectBuffer(netReadBuffer);
-        UnsafeHolder.releaseDirectBuffer(netWriteBuffer);
-        UnsafeHolder.releaseDirectBuffer(appReadBuffer);
+        ByteBuffer buffer = this.netReadBuffer;
+        this.netReadBuffer = null;
+        UnsafeHolder.releaseDirectBuffer(buffer);
+        buffer = this.netWriteBuffer;
+        this.netWriteBuffer = null;
+        UnsafeHolder.releaseDirectBuffer(buffer);
+        buffer = this.appReadBuffer;
+        this.appReadBuffer = null;
+        UnsafeHolder.releaseDirectBuffer(buffer);
       }
     } catch (IOException ie) {
       log.warn("Failed to send SSL Close message.", ie);

@@ -1000,7 +1000,7 @@ public class InitialImageOperation  {
                   // writing to disk if the incoming value is same as recovered
                   tmplEntry.clearForReuse((byte)0);
                   final DM dm = this.region.getDistributionManager();
-                  if (re.fillInValue(this.region, tmplEntry, in, dm, null)) {
+                  if (re.fillInValue(this.region, tmplEntry, dm, null)) {
                     try {
                       if (tmplEntry.value != null) {
                         final byte[] valueInCache;

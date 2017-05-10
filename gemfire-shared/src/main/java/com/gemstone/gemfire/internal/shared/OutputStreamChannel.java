@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.shared;
 
@@ -81,7 +99,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
       } else {
         // flush directly if there is nothing in the channel buffer
         if (flushBuffer && channelBuffer.position() == 0) {
-          return numWritten + writeBufferNonBlocking(src);
+          return numWritten + writeBufferNonBlocking(src, this.channel);
         }
         // copy src to buffer and flush
         if (remaining > 0) {
@@ -104,7 +122,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
         if (!flushBufferNonBlockingBase(channelBuffer)) {
           return numWritten;
         } else if (flushBuffer) {
-          return numWritten + writeBufferNonBlocking(src);
+          return numWritten + writeBufferNonBlocking(src, this.channel);
         }
         // for non-direct buffers use channel buffer for best performance
         // so loop back and try again
@@ -113,18 +131,13 @@ public abstract class OutputStreamChannel extends OutputStream implements
     return numWritten;
   }
 
-  protected boolean flushBufferNonBlocking(final ByteBuffer buffer,
-      boolean isChannelBuffer) throws IOException {
-    return flushBufferNonBlockingBase(buffer);
-  }
-
   protected final boolean flushBufferNonBlockingBase(final ByteBuffer buffer)
       throws IOException {
     buffer.flip();
 
     final boolean flushed;
     try {
-      writeBufferNonBlocking(buffer);
+      writeBufferNonBlocking(buffer, this.channel);
     } finally {
       // if we failed to write the full buffer then compact the remaining bytes
       // to the start so we can start filling it again
@@ -140,20 +153,18 @@ public abstract class OutputStreamChannel extends OutputStream implements
     return flushed;
   }
 
-  protected int writeBuffer(final ByteBuffer buffer) throws IOException {
+  protected int writeBuffer(final ByteBuffer buffer,
+      final WritableByteChannel channel) throws IOException {
     long parkNanos = 0;
     int numWritten;
-    while ((numWritten = this.channel.write(buffer)) == 0) {
-      if (!buffer.hasRemaining()) {
-        break;
-      }
+    while ((numWritten = channel.write(buffer)) == 0) {
       // at this point we are out of the selector thread and don't want to
-      // create unlimited size buffers upfront in selector, so will use simple
-      // signalling between selector and this thread to proceed
+      // create unlimited size buffers upfront in selector, so will use
+      // simple signalling between selector and this thread to proceed
       this.parkedThread = Thread.currentThread();
       LockSupport.parkNanos(PARK_NANOS);
       this.parkedThread = null;
-      if ((parkNanos += PARK_NANOS) > PARK_NANOS_MAX) {
+      if ((parkNanos += PARK_NANOS) > getParkNanosMax()) {
         throw new SocketTimeoutException("Connection write timed out.");
       }
     }
@@ -163,8 +174,13 @@ public abstract class OutputStreamChannel extends OutputStream implements
     return numWritten;
   }
 
-  protected int writeBufferNonBlocking(ByteBuffer buffer) throws IOException {
-    int numWritten = this.channel.write(buffer);
+  protected long getParkNanosMax() {
+    return PARK_NANOS_MAX;
+  }
+
+  protected int writeBufferNonBlocking(final ByteBuffer buffer,
+      final WritableByteChannel channel) throws IOException {
+    int numWritten = channel.write(buffer);
     if (numWritten > 0) {
       this.bytesWritten += numWritten;
     }

@@ -1220,7 +1220,7 @@ implements Serializable {
       gfd.setArchiveDiskSpaceLimit( new Integer( archiveDiskSpaceLimit ) );
 
       // conserveSockets
-      boolean conserveSockets = tab.booleanAtWild( GemFirePrms.conserveSockets, i, Boolean.valueOf(DistributionConfig.DEFAULT_CONSERVE_SOCKETS) );
+      boolean conserveSockets = tab.booleanAtWild( GemFirePrms.conserveSockets, i, Boolean.TRUE);
       gfd.setConserveSockets( Boolean.valueOf(conserveSockets) );
 
       // deltaPropagation
