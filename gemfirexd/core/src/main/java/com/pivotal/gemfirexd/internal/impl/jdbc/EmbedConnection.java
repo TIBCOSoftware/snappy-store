@@ -1990,7 +1990,7 @@ public abstract class EmbedConnection implements EngineConnection
 			  final GemFireXDQueryObserver observer =
 			      GemFireXDQueryObserverHolder.getInstance();
 			  if (observer != null) {
-			    CallableStatement ps = observer.afterQueryPrepareFailure(
+			    CallableStatement ps = (CallableStatement)observer.afterQueryPrepareFailure(
 			        this, sql, resultSetType, resultSetConcurrency,
 			        resultSetHoldability, Statement.NO_GENERATED_KEYS,
 			        null, null, sqle);
