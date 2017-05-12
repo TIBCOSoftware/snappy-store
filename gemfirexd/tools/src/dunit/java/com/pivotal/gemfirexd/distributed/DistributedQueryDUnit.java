@@ -1038,7 +1038,8 @@ public class DistributedQueryDUnit extends DistributedSQLTestBase {
     serverExecute(1, r);
   }
 
-  public void testCorrelatedSubQueryOnPR_PR_UNSUPPORTED() throws Exception {
+  // SNAP-1544 is filed to enable this test
+  public void DISABLEDtestCorrelatedSubQueryOnPR_PR_UNSUPPORTED() throws Exception {
     startVMs(1, 4);
     int clientPort = startNetworkServer(1, null, null);
     final int derbyPort = AvailablePort
