@@ -153,8 +153,7 @@ implements Serializable {
           hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
           ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
-      classPath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() +
-          ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+      classPath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() +
           hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
           hd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
 

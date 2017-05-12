@@ -1384,10 +1384,9 @@ implements Serializable {
             + mhd.getFileSep() + "snappydata-store-" +
             ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib");
-        classPath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() +
-            ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
-            hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
-            hd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
+        classPath.add(VmDescription.getSnappyJarPath(mhd.getGemFireHome() +
+            mhd.getFileSep() + ".." + mhd.getFileSep() + ".." + mhd.getFileSep() + ".." +
+            mhd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
       }
       // set classpath at last
       Vector expandedClassPath = EnvHelper.expandEnvVars(classPath, mhd);
