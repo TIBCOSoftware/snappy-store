@@ -706,7 +706,7 @@ public interface DiskEntry extends RegionEntry {
         while (buffer.hasRemaining()) {
           if (channel.write(buffer) == 0) {
             // wait for a while before retrying
-            LockSupport.parkNanos(100L);
+            LockSupport.parkNanos(50L);
           }
         }
         // rewind for further reads

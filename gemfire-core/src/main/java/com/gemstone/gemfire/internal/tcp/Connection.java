@@ -1289,7 +1289,7 @@ public final class Connection implements Runnable {
         // disable Nagle since we are already buffering and a flush
         // at this layer will always be followed by a read (either on this
         //   channel or some other with ReplyProcessor21)
-        channel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+        socket.setTcpNoDelay(true);
         ClientSharedUtils.setKeepAliveOptionsServer(socket, null);
         // Non-blocking mode to write only as much as possible in one round.
         // MsgChannelStreamer will move to writing to other servers,
@@ -1303,7 +1303,7 @@ public final class Connection implements Runnable {
             if (start == 0L && connectTimeNanos > 0) {
               start = System.nanoTime();
             }
-            LockSupport.parkNanos(channel, 100L);
+            LockSupport.parkNanos(50L);
             if (connectTimeNanos > 0 &&
                 (System.nanoTime() - start) > connectTimeNanos) {
               throw new ConnectException(LocalizedStrings
@@ -3441,7 +3441,7 @@ public final class Connection implements Runnable {
           }
           if (amtWritten == 0) {
             // wait for a bit before retrying
-            LockSupport.parkNanos(100L);
+            LockSupport.parkNanos(50L);
           }
         } while (buffer.remaining() > 0);
       } // synchronized
@@ -4168,7 +4168,9 @@ public final class Connection implements Runnable {
     // take a snapshot of uniqueId to detect reconnect attempts; see bug 37592
     SocketChannel channel;
     try {
-      channel = getSocket().getChannel();
+      Socket socket = getSocket();
+      channel = socket.getChannel();
+      socket.setTcpNoDelay(true);
       channel.configureBlocking(true);
     } catch (ClosedChannelException e) {
       // bug 37693: the channel was asynchronously closed.  Our work
