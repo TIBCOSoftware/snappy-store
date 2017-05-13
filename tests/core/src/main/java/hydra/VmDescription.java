@@ -24,9 +24,10 @@ import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.Serializable;
 import java.util.*;
+
+import util.TestException;
 
 /**
  *
@@ -166,11 +167,12 @@ implements Serializable {
       List<File> files = (List<File>) FileUtils.listFiles(baseDir, filter, TrueFileFilter.INSTANCE);
       Log.getLogWriter().info("Jar file found: " + Arrays.asList(files));
       for (File file1 : files) {
-        if (!file1.getAbsolutePath().contains("/work/") || !file1.getAbsolutePath().contains("/scala-2.10/"))
+        if (file1.getAbsolutePath().contains("/dtests/"))
           snappyJar = file1.getAbsolutePath();
       }
     } catch (Exception e) {
-      Log.getLogWriter().info("Unable to find " + jarName + " jar at " + jarPath + " location.");
+      String msg = "Unable to find " + jarName + " jar at " + jarPath + " location.";
+      throw new TestException(msg, e);
     }
     return snappyJar;
   }
@@ -187,7 +189,8 @@ implements Serializable {
         jarFiles.add(file1.getAbsolutePath());
       }
     } catch (Exception e) {
-      Log.getLogWriter().info("Unable to find " + jarPath + " location.");
+      String msg = "Unable to find " + jarPath + " location.";
+      throw new TestException(msg, e);
     }
     SnappyJarsList = StringUtils.join(jarFiles, ":");
     return SnappyJarsList;
