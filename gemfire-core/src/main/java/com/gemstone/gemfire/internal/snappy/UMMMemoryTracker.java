@@ -1,6 +1,28 @@
+/*
+ * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 package com.gemstone.gemfire.internal.snappy;
 
-
+/**
+ * This class is used for bulk inserts on row tables/ row buffer.
+ * Using this class UMM can make an initial estimate of how much memory will be needed
+ * in a putAll operation. This estimation is done during first row insertion.
+ * For subsequent puts UMM is not referred , instead this tracker is used to allocate memory.
+ * At the end of operation all unused mmemory is released to UMM.
+ */
 public class UMMMemoryTracker {
 
 
@@ -74,7 +96,4 @@ public class UMMMemoryTracker {
   public void setFirstAllocationObject(String firstAllocationObject) {
     this.firstAllocationObject = firstAllocationObject;
   }
-
-
-
 }

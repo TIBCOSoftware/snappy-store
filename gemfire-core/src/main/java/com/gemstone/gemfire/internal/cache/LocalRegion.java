@@ -14400,7 +14400,7 @@ public class LocalRegion extends AbstractRegion
 
   private AtomicLong memoryBeforeAcquire = new AtomicLong(0L);
 
-  public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 100; //100 KB
+  public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 10; //10 KB
 
   private LongBinaryOperator op = new LongBinaryOperator() {
 
@@ -14425,7 +14425,7 @@ public class LocalRegion extends AbstractRegion
         size = (newSize - oldSize);
       }
 
-      if (MAX_VALUE_BEFORE_ACQUIRE == 1) {
+      if (MAX_VALUE_BEFORE_ACQUIRE == 1 || size > MAX_VALUE_BEFORE_ACQUIRE) {
         if (!callback.acquireStorageMemory(getFullPath(),
                 (size), null, shouldEvict)) {
           throwLowMemoryException(size);
