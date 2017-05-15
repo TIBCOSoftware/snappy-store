@@ -11758,7 +11758,8 @@ public class LocalRegion extends AbstractRegion
           }
         };
         try {
-          if (callback.isSnappyStore()) {
+          if (callback.isSnappyStore()
+                  && !this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
             memoryTracker = new UMMMemoryTracker(
                 Thread.currentThread().getId(), putAllSize);
             putAllOp.getEvent().setBufferedMemoryTracker(memoryTracker);
