@@ -506,7 +506,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           }
 
           if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
-                  && !r.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)){
+                  && !r.isInternalRegion()){
             // Setting thread local buffer to 0 here.
             // UMM will provide an initial estimation based on the first row
             memoryTracker = new UMMMemoryTracker(

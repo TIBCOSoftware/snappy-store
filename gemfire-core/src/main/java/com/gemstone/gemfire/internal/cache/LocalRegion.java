@@ -11759,7 +11759,7 @@ public class LocalRegion extends AbstractRegion
         };
         try {
           if (callback.isSnappyStore()
-                  && !this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+                  && !this.isInternalRegion()) {
             memoryTracker = new UMMMemoryTracker(
                 Thread.currentThread().getId(), putAllSize);
             putAllOp.getEvent().setBufferedMemoryTracker(memoryTracker);
@@ -14530,6 +14530,10 @@ public class LocalRegion extends AbstractRegion
       LogWriterI18n log = getLogWriterI18n();
       log.fine(mesage);
     }
+  }
+
+  public boolean isInternalColumnTable() {
+    return this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
   }
 
 }
