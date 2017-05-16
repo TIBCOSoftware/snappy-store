@@ -24,9 +24,10 @@ import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.Serializable;
 import java.util.*;
+
+import util.TestException;
 
 /**
  *
@@ -158,43 +159,42 @@ implements Serializable {
     return map;
   }
 
-    protected static String getSnappyJarPath(String jarPath, final String jarName) {
-        String snappyJar = null;
-        try {
-            File parent = new File(jarPath);
-            File[] files = parent.listFiles(new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                    if (name.startsWith(jarName))
-                        return true;
-                    else return false;
-                }
-            });
-            File snappyJarFile = files[0];
-            snappyJar = snappyJarFile.getAbsolutePath();
-        } catch (Exception e) {
-            Log.getLogWriter().info("Unable to find " + jarName + " jar at " + jarPath + " location.");
-        }
-        return snappyJar;
+  protected static String getSnappyJarPath(String jarPath, final String jarName) {
+    String snappyJar = null;
+    File baseDir = new File(jarPath);
+    try {
+      IOFileFilter filter = new WildcardFileFilter(jarName);
+      List<File> files = (List<File>) FileUtils.listFiles(baseDir, filter, TrueFileFilter.INSTANCE);
+      Log.getLogWriter().info("Jar file found: " + Arrays.asList(files));
+      for (File file1 : files) {
+        if (file1.getAbsolutePath().contains("/dtests/"))
+          snappyJar = file1.getAbsolutePath();
+      }
+    } catch (Exception e) {
+      String msg = "Unable to find " + jarName + " jar at " + jarPath + " location.";
+      throw new TestException(msg, e);
     }
+    return snappyJar;
+  }
 
-    protected static String getAllSnappyJars(String jarPath) {
-        ArrayList<String> jarFiles = new ArrayList<>();
-        String SnappyJarsList = null;
-        File baseDir = new File(jarPath);
-        try {
-            IOFileFilter filter = new WildcardFileFilter("*.jar");
-            List<File> files = (List<File>) FileUtils.listFiles(baseDir, filter, TrueFileFilter.INSTANCE);
-            Log.getLogWriter().info("Jar files found: " + Arrays.asList(files));
-            for (File file1 : files) {
-                jarFiles.add(file1.getAbsolutePath());
-            }
-        } catch (Exception e) {
-            Log.getLogWriter().info("Unable to find " + jarPath + " location.");
-        }
-        SnappyJarsList = StringUtils.join(jarFiles, ":");
-        return SnappyJarsList;
+  protected static String getAllSnappyJars(String jarPath) {
+    ArrayList<String> jarFiles = new ArrayList<>();
+    String SnappyJarsList = null;
+    File baseDir = new File(jarPath);
+    try {
+      IOFileFilter filter = new WildcardFileFilter("*.jar");
+      List<File> files = (List<File>) FileUtils.listFiles(baseDir, filter, TrueFileFilter.INSTANCE);
+      Log.getLogWriter().info("Jar files found: " + Arrays.asList(files));
+      for (File file1 : files) {
+        jarFiles.add(file1.getAbsolutePath());
+      }
+    } catch (Exception e) {
+      String msg = "Unable to find " + jarPath + " location.";
+      throw new TestException(msg, e);
     }
+    SnappyJarsList = StringUtils.join(jarFiles, ":");
+    return SnappyJarsList;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   ////    CONFIGURATION                                                     ////
@@ -270,16 +270,19 @@ implements Serializable {
         }
 
         // classPath -- product jars
-        if (hd.getGemFireHome() != null) {
-            //classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "lib", "snappydata-assembly"));
-            classPath.add(VmDescription.getAllSnappyJars(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "jars"));
-        }
+      if (hd.getGemFireHome() != null) {
+        classPath.add(VmDescription.getAllSnappyJars(hd.getGemFireHome() +
+            hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "jars"));
+      }
 
         // classPath -- test jars
-        classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
-                ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
-        classPath.add(getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-                "build-artifacts" + hd.getFileSep() + "scala-2.11" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
+      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+          ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
+
+      classPath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() +
+          hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
 
         // classPath -- set at last
         vmd.setClassPath(EnvHelper.asPath(classPath, hd));

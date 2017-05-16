@@ -818,7 +818,7 @@ public final class FabricDatabase implements ModuleControl,
     lcc.setIsConnectionForRemoteDDL(false);
     lcc.setSkipLocks(true);
     lcc.setQueryRouting(false);
-    tc.resetActiveTXState();
+    tc.resetActiveTXState(false);
     // for admin VM types do not compile here
     final GemFireStore.VMKind vmKind = this.memStore.getMyVMKind();
     final boolean skipSPSPrecompile = SKIP_SPS_PRECOMPILE;

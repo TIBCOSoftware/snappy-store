@@ -188,7 +188,7 @@ public final class DirectByteBufferDataOutput
     if (buffer.limit() - position >= required) return;
 
     final int newCapacity = Math.max((int)Math.min(
-        (long)buffer.capacity() << 1L, Integer.MAX_VALUE), position + required);
+        ((long)buffer.capacity() * 3L) >>> 1L, Integer.MAX_VALUE), position + required);
     buffer.flip();
     // use the efficient C realloc() call that avoids copying if possible
     ByteBuffer newBuffer = UnsafeHolder.reallocateDirectBuffer(
