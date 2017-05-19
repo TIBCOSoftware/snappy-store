@@ -594,6 +594,9 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   }
 
+  public long getOldEntryRemovalPerid() {
+    return OLD_ENTRIES_CLEANER_TIME_INTERVAL;
+  }
   // For each entry this should be in sync
   public void addOldEntry(RegionEntry oldRe, LocalRegion region, int oldSize) {
 
@@ -603,7 +606,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     if (!region.reservedTable() && region.needAccounting()) {
       region.calculateEntryOverhead(oldRe);
       LocalRegion.regionPath.set(region.getFullPath());
-      region.acquirePoolMemory(oldSize, 0, false, null, true);
+      region.acquirePoolMemory(0, oldSize, false, null, true);
     }
 
     if(getLoggerI18n().fineEnabled()) {
@@ -722,10 +725,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   class OldEntriesCleanerThread implements Runnable {
     // Keep each entry alive for atleast 5 mins.
-    long expiryTime = 5 * 60 * 1000;
-
     public void run() {
-
       try {
         if (!oldEntryMap.isEmpty()) {
           for (Entry<String,Map<Object, BlockingQueue<RegionEntry>>> entry : oldEntryMap.entrySet()) {
