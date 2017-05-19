@@ -794,9 +794,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         // create new batchUUID
         generateAndSetBatchIDIfNULL(true);
 
-        if (null != getCache().getRvvSnapshotTestHook()) {
-          getCache().notifyRvvTestHook();
-        }
         success = true;
       } catch (Exception lme) {
         getCache().getLoggerI18n().warning(lme);
@@ -806,6 +803,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         if (getCache().snapshotEnabled()) {
           if (success) {
             getCache().getCacheTransactionManager().commit();
+            if (null != getCache().getRvvSnapshotTestHook()) {
+              getCache().notifyRvvTestHook();
+            }
           } else {
             getCache().getCacheTransactionManager().rollback();
           }

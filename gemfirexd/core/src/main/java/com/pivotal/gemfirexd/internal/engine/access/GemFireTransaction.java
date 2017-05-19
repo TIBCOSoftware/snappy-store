@@ -2450,8 +2450,12 @@ public final class GemFireTransaction extends RawTransaction implements
         if (lcc != null && !lcc.isConnectionForRemote()
             // also don't rollback when no connection ID i.e. nested connection
             && this.connectionID.longValue() >= 0) {
-          this.txManager.rollback(tx, this.connectionID, false);
-          setTXState(null);
+          // In case, the tx is started by gemfire layer for snapshot, it should be rollbacked by gemfire layer.
+          TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
+          if (tx != gfTx) {
+            this.txManager.rollback(tx, this.connectionID, false);
+            setTXState(null);
+          }
         }
       }
 
