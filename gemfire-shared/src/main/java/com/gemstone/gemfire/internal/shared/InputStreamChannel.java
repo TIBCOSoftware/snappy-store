@@ -43,7 +43,7 @@ public abstract class InputStreamChannel extends InputStream implements
    * nanos to park reader thread to wait for reading data in non-blocking mode
    * (will be explicitly signalled by selector if data is received)
    */
-  protected static final long PARK_NANOS = 200L;
+  protected static final long PARK_NANOS = 50L;
   protected static final long PARK_NANOS_MAX = 15000000000L;
 
   protected InputStreamChannel(ReadableByteChannel channel) {
@@ -236,7 +236,7 @@ public abstract class InputStreamChannel extends InputStream implements
       // create unlimited size buffers upfront in selector, so will use simple
       // signalling between selector and this thread to proceed
       this.parkedThread = Thread.currentThread();
-      LockSupport.parkNanos(this, PARK_NANOS);
+      LockSupport.parkNanos(PARK_NANOS);
       this.parkedThread = null;
       if ((parkNanos += PARK_NANOS) > PARK_NANOS_MAX) {
         throw new SocketTimeoutException("Connection read timed out.");

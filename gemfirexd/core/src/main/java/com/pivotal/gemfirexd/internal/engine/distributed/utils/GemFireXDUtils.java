@@ -862,7 +862,7 @@ public final class GemFireXDUtils {
     // reset the TXState in GemFireTransaction
     final GemFireTransaction tran = (GemFireTransaction)lcc
         .getTransactionExecute();
-    tran.resetActiveTXState();
+    tran.resetActiveTXState(true);
     return conn;
   }
 
@@ -874,7 +874,7 @@ public final class GemFireXDUtils {
     }
     LanguageConnectionContext lcc = conn.getLanguageConnectionContext();
     GemFireTransaction tran = (GemFireTransaction)lcc.getTransactionExecute();
-    tran.resetActiveTXState();
+    tran.resetActiveTXState(true);
     return conn;
   }
 

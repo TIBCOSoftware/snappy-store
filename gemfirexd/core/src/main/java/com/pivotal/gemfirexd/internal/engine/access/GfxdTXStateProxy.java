@@ -132,8 +132,13 @@ public final class GfxdTXStateProxy extends TXStateProxy {
     }
     while (true) {
       if (GemFireXDUtils.TraceTran | GemFireXDUtils.TraceQuery) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
-            "addGemFireTransaction: in loop tran = " + tran + " trans = " + this.trans);
+        this.lock.lock();
+        try {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+              "addGemFireTransaction: in loop tran = " + tran + " trans = " + this.trans);
+        } finally {
+          this.lock.unlock();
+        }
       }
       final Object trans = this.trans;
       if (trans == tran) {

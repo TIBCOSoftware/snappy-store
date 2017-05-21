@@ -377,7 +377,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
     this.txState = this.gfContainer.getActiveTXState(this.tran);
 
-    boolean restoreBatching;
+    boolean restoreBatching = false;
     if (this.txState != null) {
       // TODO: Suranjan take snapshot, each time we open a scan controller.
       this.txId = this.txState.getTransactionId();
@@ -407,11 +407,12 @@ public class MemHeapScanController implements MemScanController, RowCountable,
         restoreBatching = this.localTXState.getProxy().remoteBatching(true);
       }
     }
-    else {
+    else if (Misc.getGemFireCache().snapshotEnabled()) {
       // Start snapshot tx only for read operations.but not for read_only mode
       boolean forReadOnly = (this.openMode & GfxdConstants
           .SCAN_OPENMODE_FOR_READONLY_LOCK) != 0;
       if (region.getConcurrencyChecksEnabled() &&
+          region.getCache().snapshotEnabled() &&
           (region.getCache().getCacheTransactionManager().getTXState() == null)
           && (this.forUpdate == 0)
           && !forReadOnly) {
@@ -423,9 +424,9 @@ public class MemHeapScanController implements MemScanController, RowCountable,
         }
         // We can begin each time as we have to clear below as we don't know when commit will take place.
         region.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
-        if (GemFireCacheImpl.getInstance().getRowScanTestHook() != null) {
-            GemFireCacheImpl.getInstance().notifyScanTestHook();
-            GemFireCacheImpl.getInstance().waitOnRowScanTestHook();
+        if (region.getCache().getRowScanTestHook() != null) {
+          region.getCache().notifyScanTestHook();
+          region.getCache().waitOnRowScanTestHook();
         }
         this.txState = region.getCache().getCacheTransactionManager().getTXState();
         this.localTXState = this.txState.getTXStateForRead();
@@ -436,15 +437,14 @@ public class MemHeapScanController implements MemScanController, RowCountable,
         this.lockContext = null;
         restoreBatching = true;
       }
-      else {
-        this.txId = null;
-        this.readLockMode = null;
-        this.localTXState = null;
-        this.lockContext = null;
-        restoreBatching = true;
-      }
-
+    } else {
+      this.txId = null;
+      this.readLockMode = null;
+      this.localTXState = null;
+      this.lockContext = null;
+      restoreBatching = true;
     }
+
     // if the restoreBatching flag has already been set in previous open, then
     // don't reset to true due to a reopen
     if (!restoreBatching && this.restoreBatching) {
@@ -566,6 +566,11 @@ public class MemHeapScanController implements MemScanController, RowCountable,
       TXManagerImpl.getOrCreateTXContext().clearTXState();
       // gemfire tx shouldn't be cleared in case of row buffer scan
       if (!(this.getGemFireContainer().isRowBuffer() && lcc.isSkipConstraintChecks())) {
+        if (GemFireXDUtils.TraceQuery) {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+              "MemHeapScanController::positionAtInitScan bucketSet: " + " lcc.isSkipConstraintChecks " + lcc.isSkipConstraintChecks() +
+          " " + "Setting snapshotTxStae to NULL.");
+        }
         TXManagerImpl.snapshotTxState.set(null);
         this.localSnapshotTXState = this.txState;
       }
@@ -1095,12 +1100,20 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     // help the garbage collector; also required since this scan may be
     // reopened/reinitialized
     this.activation = null;
+    //TODO: Suranjan if the tx has been started for snapshot then clean it from hostedTxState too.
+    // For smart connector use lcc attr to see if it needs to be committed later.
+    if (this.localSnapshotTXState != null) {
+      if (GemFireXDUtils.TraceQuery ) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+            "MemHeapScanController::closeScan : " +
+                " " + "Commiting snapshotTxStae. ");
+      }
+      this.localSnapshotTXState.commit(null);
+    }
+
     this.lcc = null;
     this.txId = null;
     this.txState = null;
-    //TODO: Suranjan if the tx has been started for snapshot then clean it from hostedTxState too.
-    if (this.localSnapshotTXState != null)
-      this.localSnapshotTXState.commit(null);
 
     this.localSnapshotTXState = null;
     this.readLockMode = null;

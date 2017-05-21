@@ -1,11 +1,9 @@
 package com.gemstone.gemfire.internal.cache;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.IsolationLevel;
@@ -16,7 +14,6 @@ import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
-import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
@@ -67,7 +64,7 @@ public class SnapshotTxState implements TXStateInterface {
     this.lockPolicy = proxy.getLockingPolicy();
     // dummy head
 
-    if (getCache().snaphshotEnabled() && (lockPolicy == LockingPolicy.SNAPSHOT)) {
+    if (getCache().snapshotEnabled() && (lockPolicy == LockingPolicy.SNAPSHOT)) {
       this.snapshot = getCache().getSnapshotRVV();
     } else {
       this.snapshot = null;

@@ -233,6 +233,15 @@ public abstract class UnsafeHolder {
       cleaner.clean();
       cleaner.clear();
     }
+    releasePendingReferences();
+  }
+
+  public static void releasePendingReferences() {
+    final sun.misc.JavaLangRefAccess refAccess =
+        sun.misc.SharedSecrets.getJavaLangRefAccess();
+    // retry while helping enqueue pending Cleaner Reference objects
+    // noinspection StatementWithEmptyBody
+    while (refAccess.tryHandlePendingReference()) ;
   }
 
   public static sun.misc.Unsafe getUnsafe() {

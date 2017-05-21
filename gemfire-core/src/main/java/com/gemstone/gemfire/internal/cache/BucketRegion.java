@@ -766,15 +766,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                 "Creating the column batch for bucket " + this.getId()
                 + ", and batchID " + this.batchUUID);
       }
-      getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      if(getCache().snapshotEnabled())
+        getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
       try {
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
                   "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
                   " the current rvv is " + getVersionVector());
         }
-
-
         //Check if shutdown hook is set
         if (null != getCache().getRvvSnapshotTestHook()) {
           getCache().notifyRvvTestHook();
@@ -782,7 +781,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         }
 
         Set keysToDestroy = createColumnBatchAndPutInColumnTable();
-
 
         if (getCache().getCacheTransactionManager().testRollBack) {
           throw new Exception("Test Dummy Exception");
@@ -796,19 +794,21 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         // create new batchUUID
         generateAndSetBatchIDIfNULL(true);
 
-        if (null != getCache().getRvvSnapshotTestHook()) {
-          getCache().notifyRvvTestHook();
-        }
         success = true;
       } catch (Exception lme) {
         getCache().getLoggerI18n().warning(lme);
         // Returning from here as we dont want to clean the row buffer data.
         success = false;
       } finally {
-        if (success) {
-          getCache().getCacheTransactionManager().commit();
-        } else {
-          getCache().getCacheTransactionManager().rollback();
+        if (getCache().snapshotEnabled()) {
+          if (success) {
+            getCache().getCacheTransactionManager().commit();
+            if (null != getCache().getRvvSnapshotTestHook()) {
+              getCache().notifyRvvTestHook();
+            }
+          } else {
+            getCache().getCacheTransactionManager().rollback();
+          }
         }
       }
     }

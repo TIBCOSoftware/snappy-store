@@ -6427,8 +6427,7 @@ public final class Oplog implements CompactableOplog {
 //                        + " oplog#" + getOplogId());
 //               }
               this.stats.incOplogSeeks();
-              final ByteBuffer valueBuffer = UnsafeHolder.allocateDirectBuffer(
-                  valueLength);
+              final ByteBuffer valueBuffer = ByteBuffer.allocate(valueLength);
               while (valueBuffer.hasRemaining()) {
                 if (crfChannel.read(valueBuffer) <= 0) throw new EOFException();
               }

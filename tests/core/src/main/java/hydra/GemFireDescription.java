@@ -1381,11 +1381,12 @@ implements Serializable {
       }
       if (mhd.getGemFireHome() != null) {
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib"
-                + mhd.getFileSep() + "snappydata-store-" +
-                ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
+            + mhd.getFileSep() + "snappydata-store-" +
+            ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib");
-        classPath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-                "build-artifacts" + hd.getFileSep() + "scala-2.11" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
+        classPath.add(VmDescription.getSnappyJarPath(mhd.getGemFireHome() +
+            mhd.getFileSep() + ".." + mhd.getFileSep() + ".." + mhd.getFileSep() + ".." +
+            mhd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
       }
       // set classpath at last
       Vector expandedClassPath = EnvHelper.expandEnvVars(classPath, mhd);

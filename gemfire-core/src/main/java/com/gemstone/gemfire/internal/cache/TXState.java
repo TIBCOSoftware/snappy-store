@@ -17,7 +17,6 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,12 +65,10 @@ import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLoc
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
-import com.gemstone.gemfire.internal.cache.versions.DiskRegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
-import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
 import com.gemstone.gemfire.internal.concurrent.MapCallback;
@@ -85,7 +81,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.gemstone.gemfire.internal.util.concurrent.CopyOnWriteHashMap;
 import com.gemstone.gnu.trove.THash;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectHashingStrategy;
@@ -414,7 +409,7 @@ public final class TXState implements TXStateInterface {
 
     // We don't know the semantics for RR, so ideally there shouldn't be snapshot for it.
     // Need to disable it.
-    if (getCache().snaphshotEnabled() && this.lockPolicy == LockingPolicy.SNAPSHOT) {
+    if (getCache().snapshotEnabled() && (isSnapshot() || getCache().snapshotEnabledForTX())) {
       takeSnapshot();
     } else {
       this.snapshot = null;
@@ -1118,21 +1113,41 @@ public final class TXState implements TXStateInterface {
       }
 
       // No need to check for snapshot if we want to enable it for RC.
-      if(isSnapshot() || getLockingPolicy() == LockingPolicy.FAIL_FAST_TX) {
-        // TODO: Suranjan MVCC
-        // first take a lock at cache level so that we don't go into deadlock or sort array before
-        // This is for tx RC, for snapshot just record all the versions from the queue
-        cache.acquireWriteLockOnSnapshotRvv();
-
-        for (VersionInformation vi : queue) {
-          if (TXStateProxy.LOG_FINE) {
-            logger.info(LocalizedStrings.DEBUG, "Recording version " + vi + " from snapshot to " +
-                 "region.");
+      if (cache.snapshotEnabled()) {
+        if (isSnapshot() || cache.snapshotEnabledForTX()) {
+          // first take a lock at cache level so that we don't go into deadlock or sort array before
+          // This is for tx RC, for snapshot just record all the versions from the queue
+          cache.acquireWriteLockOnSnapshotRvv();
+          try {
+            for (VersionInformation vi : queue) {
+              if (TXStateProxy.LOG_FINE) {
+                logger.info(LocalizedStrings.DEBUG, "Recording version " + vi + " from snapshot to " +
+                    "region.");
+              }
+              ((LocalRegion)vi.region).getVersionVector().
+                  recordVersionForSnapshot((VersionSource)vi.member, vi.version, null);
+            }
+          } finally {
+            cache.releaseWriteLockOnSnapshotRvv();
           }
-          ((LocalRegion)vi.region).getVersionVector().
-              recordVersionForSnapshot((VersionSource)vi.member, vi.version, null);
+        } else {
+          // doing it for tx and non tx case.
+          // tx may not record version in snapshot so non tx reads while taking
+          // snapshot may miss it. in case of commit just copy the rvv to snapshot so that
+          // any future non tx read will get all the entries
+          cache.acquireWriteLockOnSnapshotRvv();
+          try {
+            for (TXRegionState txr : finalRegions) {
+              final LocalRegion dataRegion = txr.region;
+              final RegionVersionVector<?> rvv = dataRegion.getVersionVector();
+              if (rvv != null) {
+                rvv.reInitializeSnapshotRvv();
+              }
+            }
+          } finally {
+            cache.releaseWriteLockOnSnapshotRvv();
+          }
         }
-        cache.releaseWriteLockOnSnapshotRvv();
       }
       if (reuseEV) {
         cbEvent.release();
@@ -3750,7 +3765,7 @@ public final class TXState implements TXStateInterface {
           + checkTX);
     }
     if (checkTX) {
-      final Object key = re.getKeyCopy();
+      final Object key = re.getKey();
       if (dataRegion == null) {
         dataRegion = region.getDataRegionForRead(key, null, bucketId,
             Operation.GET_ENTRY);
@@ -3778,7 +3793,7 @@ public final class TXState implements TXStateInterface {
             // It was destroyed by the transaction so skip
             // this key and try the next one
             return null; // fix for bug 34583
-          } else if (!isWrite && (getLockingPolicy() != LockingPolicy.FAIL_FAST_RR_TX)) {
+          } else if (!isWrite && shouldGetOldEntry(dataRegion)) {
             // the re has not been modified by this tx
             // check the re version with the snapshot version and then search in oldEntry
             if (dataRegion.getVersionVector() != null && !checkEntryVersion(dataRegion, re)) {
@@ -3789,7 +3804,7 @@ public final class TXState implements TXStateInterface {
           txr.unlock();
         }
       }
-    } else if (!isWrite && (getLockingPolicy() != LockingPolicy.FAIL_FAST_RR_TX)) {
+    } else if (!isWrite && shouldGetOldEntry(dataRegion)) {
       final Object key = re.getKeyCopy();
       if (dataRegion == null) {
         dataRegion = region.getDataRegionForRead(key, null, bucketId,
@@ -3802,6 +3817,10 @@ public final class TXState implements TXStateInterface {
       }
     }
     return re;
+  }
+
+  private boolean shouldGetOldEntry(LocalRegion region) {
+    return (region.getCache().snapshotEnabled() && (isSnapshot() || region.getCache().snapshotEnabledForTX()));
   }
 
   // Writer should add old entry with tombstone with region version in the common map
@@ -3835,7 +3854,7 @@ public final class TXState implements TXStateInterface {
               "for key " + key + " re " + re + " for region " + dataRegion.getFullPath());
         }
         try {
-          //TODO: Suranjan Should we wait indefinitely?
+          //TODO: Suranjan Should we wait indefinitely? or throw warning and return the current entry.
           // As
           if (numtimes < 10) {
             Thread.sleep(10);
@@ -4059,7 +4078,7 @@ public final class TXState implements TXStateInterface {
     @Override
     public String toString() {
       final StringBuilder sb = new StringBuilder();
-      sb.append("Memmber : " + member);
+      sb.append("Member : " + member);
       sb.append(",version : " + version);
       sb.append(",region : " + region);
       return sb.toString();

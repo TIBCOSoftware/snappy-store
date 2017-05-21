@@ -49,7 +49,6 @@ import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.ha.HAContainerWrapper;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueue;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
@@ -2269,11 +2268,12 @@ RETRY_LOOP:
           cbEvent = null;
         }
 
-        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-        oldRe.setUpdateInProgress(true);
-        if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
-            .asVersionTag().getEntryVersion() > 0*/ ) {
-          owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+        if (owner.getCache().snapshotEnabledForTX()) {
+          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+            .asVersionTag().getEntryVersion() > 0*/) {
+            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+          }
         }
         txRemoveOldIndexEntry(Operation.DESTROY, re);
         boolean clearOccured = false;
@@ -2332,12 +2332,12 @@ RETRY_LOOP:
         else {
           cbEvent = null;
         }
-
-        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-        oldRe.setUpdateInProgress(true);
-        if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp()!=null && re.getVersionStamp()
+        if (owner.getCache().snapshotEnabledForTX()) {
+          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp()!=null && re.getVersionStamp()
             .asVersionTag().getEntryVersion()>0*/) {
-          owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+          }
         }
         try {
           EntryEventImpl txEvent = null;
@@ -4144,7 +4144,8 @@ RETRY_LOOP:
 
 
   private boolean shouldCopyOldEntry(LocalRegion owner, EntryEventImpl event) {
-    return owner.concurrencyChecksEnabled && !owner.isUsedForMetaRegion() ;
+    return owner.getCache().snapshotEnabled() &&
+        owner.concurrencyChecksEnabled && !owner.isUsedForMetaRegion();
   }
 
   /**
@@ -4547,12 +4548,14 @@ RETRY_LOOP:
       try {
         // Put the copy to into common place instead of all the running tx.
         // as there is a race.
-        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-        oldRe.setUpdateInProgress(true);
-        if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+        if (owner.getCache().snapshotEnabledForTX()) {
+          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
-          owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+          }
         }
+
         re.setValue(owner, re.prepareValueForCache(owner, newValue, !putOp.isCreate(), false));
         if (putOp.isCreate()) {
           isCreate = true;
