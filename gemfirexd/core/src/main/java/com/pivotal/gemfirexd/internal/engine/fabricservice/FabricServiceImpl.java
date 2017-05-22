@@ -615,7 +615,7 @@ public abstract class FabricServiceImpl implements FabricService {
       // if started from command-line then change the status in the file too
       CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
       if (launcher != null) {
-        launcher.runningForced(Misc.getDistributedSystem());
+        launcher.running(Misc.getDistributedSystem(), true);
       }
     }
     this.previousServerStatus = State.UNINITIALIZED;
