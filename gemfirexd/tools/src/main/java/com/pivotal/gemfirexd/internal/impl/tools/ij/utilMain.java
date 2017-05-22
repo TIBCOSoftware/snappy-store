@@ -42,6 +42,7 @@ package com.pivotal.gemfirexd.internal.impl.tools.ij;
                 
 
 import com.gemstone.gemfire.internal.GemFireVersion;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.iapi.services.info.ProductGenusNames;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.*;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
@@ -296,7 +297,7 @@ public class utilMain implements java.security.PrivilegedAction {
          		try {
            			ijResult result = ijParser.showConnectionsMethod(true);
  					displayResult(out,result,connEnv[currCE].getConnection(),
- 					    -1 /* GemStoneAddition */);
+ 					    -1 /* GemStoneAddition */, true);
          		} catch (SQLException ex) {
            			handleSQLException(out,ex);
          		}
@@ -438,7 +439,7 @@ public class utilMain implements java.security.PrivilegedAction {
 
 					ijResult result = ijParser.ijStatement();
 					endTime = displayResult(out,result,connEnv[currCE].getConnection(),
-					    beginTime /* GemStoneAddition */);
+					    beginTime /* GemStoneAddition */, true);
 
 					// if something went wrong, an SQLException or ijException was thrown.
 					// we can keep going to the next statement on those (see catches below).
@@ -602,7 +603,7 @@ public class utilMain implements java.security.PrivilegedAction {
   	}
 
 	private long /* GemStone change: void */ displayResult(LocalizedOutput out, ijResult result, Connection conn,
-	    long beginTime /* GemStoneAddition */) throws SQLException {
+	    long beginTime /* GemStoneAddition */, boolean displayCount /* GemStoneAddition */) throws SQLException {
 	  final StopWatch timer = SharedUtils.newTimer(beginTime);
 		// display the result, if appropriate.
 		if (result!=null) {
@@ -632,7 +633,7 @@ public class utilMain implements java.security.PrivilegedAction {
 // GemStone changes BEGIN
 				    JDBCDisplayUtil.DisplayResults(out,
 				        s, connEnv[currCE].getConnection(),
-				        reader, timer);
+				        reader, timer, displayCount);
 				    /* (original code)
 				    JDBCDisplayUtil.DisplayResults(out,s,connEnv[currCE].getConnection());
 				    */
@@ -740,8 +741,9 @@ public class utilMain implements java.security.PrivilegedAction {
 	    try {
 				int repeatCommand = numTimesToRun;
 				boolean reportRunNum = false;
-				final String c = command.trim().toLowerCase();
-				if (c.startsWith("set") || c.startsWith("elapsed")) {
+				String firstToken = ClientSharedUtils.getStatementToken(command, 0);
+				// final String c = command.trim().toLowerCase();
+				if (firstToken.equalsIgnoreCase("set") || firstToken.equalsIgnoreCase("elapsed")) {
 					repeatCommand = 1;
 				} else if (repeatCommand > 1) {
 					reportRunNum = true;
@@ -765,8 +767,16 @@ public class utilMain implements java.security.PrivilegedAction {
                         else {
                           redirected = null;
                         }
-			endTime = displayResult(redirected == null ? out : redirected,result,connEnv[currCE]
-			    .getConnection(), beginTime /* GemStoneAddition */);
+// GemStone changes BEGIN
+      boolean displayCount = false;
+      if (firstToken.equalsIgnoreCase("insert") || firstToken.equalsIgnoreCase("update")
+        || firstToken.equalsIgnoreCase("delete") || firstToken.equalsIgnoreCase("put") ) {
+        displayCount = true;
+      }
+// GemStone changes END
+			endTime = displayResult(redirected == null ? out :
+			  redirected,result,connEnv[currCE].getConnection(),
+			  beginTime /* GemStoneAddition */, displayCount /* GemStoneAddition */);
 
 			/* Print the elapsed time if appropriate */
 			if (elapsedTimeOn) {

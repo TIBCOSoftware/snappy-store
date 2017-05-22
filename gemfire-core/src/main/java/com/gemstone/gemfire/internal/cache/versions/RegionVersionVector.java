@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -36,7 +35,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.GemFireCache;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
@@ -49,13 +47,9 @@ import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
-import com.gemstone.gemfire.internal.cache.versions.RVVException.ReceivedVersionsIterator;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.CopyOnWriteHashMap;
@@ -741,13 +735,19 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   public void recordVersionForSnapshot(T member, long version, EntryEventImpl event) {
     LogWriterI18n logger = getLoggerI18n();
     T mbr = member;
-
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    if (cache != null && !cache.snapshotEnabled()) {
+      return;
+    }
     if (event != null) {
       // Here we need to record the version directly if the event is being applied from GIIed txState.
       // This breaks the atomicity?
       TXStateInterface tx = event.getTXState();
 
       if (tx != null) {
+        if (!tx.isSnapshot() && !cache.snapshotEnabledForTX()) {
+          return;
+        }
         boolean committed = false;
         if (tx instanceof TXState) {
           committed = ((TXState)tx).isCommitted();
@@ -1752,28 +1752,30 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
 
   //TODO: Suranjan Could there be a case where we are reinitializing and localVersion is getting incremented
   public void reInitializeSnapshotRvv() {
-    synchronized (this.memberToVersionSnapshot) {
-      LogWriterI18n logger = getLoggerI18n();
-      if (DEBUG && logger != null) {
-        logger.info(LocalizedStrings.DEBUG, "reInitializing the snapshot rvv, current: " +
-            this.memberToVersionSnapshot + " with : " + memberToVersion + " localVersion " + getCurrentVersion() +
-            " localException " + this.localExceptions );
-      }
-      for (Map.Entry<T, RegionVersionHolder<T>> entry : this.memberToVersion.entrySet()) {
-        RegionVersionHolder holder = entry.getValue().clone();
+    if (GemFireCacheImpl.getInstance().snapshotEnabled()) {
+      synchronized (this.memberToVersionSnapshot) {
+        LogWriterI18n logger = getLoggerI18n();
+        if (DEBUG && logger != null) {
+          logger.info(LocalizedStrings.DEBUG, "reInitializing the snapshot rvv, current: " +
+              this.memberToVersionSnapshot + " with : " + memberToVersion + " localVersion " + getCurrentVersion() +
+              " localException " + this.localExceptions);
+        }
+        for (Map.Entry<T, RegionVersionHolder<T>> entry : this.memberToVersion.entrySet()) {
+          RegionVersionHolder holder = entry.getValue().clone();
+          holder.makeReadyForRecording();
+          holder.id = entry.getValue().id;
+          this.memberToVersionSnapshot.put(entry.getKey(), holder);
+        }
+        // update the snapshot with local version too
+        RegionVersionHolder holder = localExceptions.clone();
         holder.makeReadyForRecording();
-        holder.id = entry.getValue().id;
-        this.memberToVersionSnapshot.put(entry.getKey(), holder);
-      }
-      // update the snapshot with local version too
-      RegionVersionHolder holder = localExceptions.clone();
-      holder.makeReadyForRecording();
-      holder.id = myId;
-      holder.version = getCurrentVersion();
-      this.memberToVersionSnapshot.put(myId, holder);
+        holder.id = myId;
+        holder.version = getCurrentVersion();
+        this.memberToVersionSnapshot.put(myId, holder);
 
-      if (DEBUG && logger != null) {
-        logger.info(LocalizedStrings.DEBUG, "after reInitializing the snapshot : " + this.memberToVersionSnapshot);
+        if (DEBUG && logger != null) {
+          logger.info(LocalizedStrings.DEBUG, "after reInitializing the snapshot : " + this.memberToVersionSnapshot);
+        }
       }
     }
   }
