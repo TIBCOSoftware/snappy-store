@@ -675,27 +675,20 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     System.setProperty(com.pivotal.gemfirexd.Property.PROPERTIES_FILE, PROP_FILE_NAME);
 
-    if (!ClientSharedUtils.isThriftDefault()) {
-      System.setProperty(Property.START_DRDA, "true");
-    }
-    int port;
+    int port, port2;
     while ((port = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
         <= FabricService.NETSERVER_DEFAULT_PORT);
-    if (!ClientSharedUtils.isThriftDefault()) {
-      System.setProperty(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER,
-          String.valueOf(port));
-    }
+    while ((port2 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
+        <= FabricService.NETSERVER_DEFAULT_PORT);
 
     final FabricServer fabapi = FabricServiceManager.getFabricServerInstance();
-    NetworkInterface ni2 = null;
     try {
       fabapi.start(null);
 
-      final NetworkInterface ni = fabapi.startNetworkServer(null,
-          -1, null);
-      if (ClientSharedUtils.isThriftDefault()) {
-        ni2 = fabapi.startNetworkServer(null, port, null);
-      }
+      final NetworkInterface ni = fabapi.startDRDAServer(null,
+          port, null);
+      final NetworkInterface ni2 = fabapi.startThriftServer(null,
+          port2, null);
       try {
         ni.logConnections(true);
         ni.setMaxThreads(20);
@@ -744,11 +737,17 @@ public class FabricServerTest extends TestUtil implements UnitTest {
         // NOTE: creating the 13th connection and setting trace on it. if any
         // call gets added above, connNum might have to be changed in below
         // trace(...) call.
-        String netUrl = TestUtil.getNetProtocol(localHost.getHostName(),
-            FabricService.NETSERVER_DEFAULT_PORT);
+        final String drdaPrefix = ClientSharedUtils.isThriftDefault()
+            ? "jdbc:gemfirexd:drda://" : "jdbc:gemfirexd://";
+        final String thriftPrefix = ClientSharedUtils.isThriftDefault()
+            ? "jdbc:gemfirexd://" : "jdbc:gemfirexd:thrift://";
+        final String host = localHost.getHostName();
+        final String netUrl = drdaPrefix + host + '[' + port + "]/";
+        final String netUrl2 = thriftPrefix + host + '[' + port2 + "]/";
 
         loadNetDriver();
         Connection conn = DriverManager.getConnection(netUrl);
+        Connection conn2 = DriverManager.getConnection(netUrl2);
 
         ni.trace(13, true);
 
@@ -763,37 +762,57 @@ public class FabricServerTest extends TestUtil implements UnitTest {
             throw sqle;
           }
         }
+        try {
+          conn2.createStatement().execute("");
+          fail("expected syntax error");
+        } catch (SQLException sqle) {
+          if (!"42X01".equals(sqle.getSQLState())) {
+            throw sqle;
+          }
+        }
 
         conn.close();
+        conn2.close();
         // end of 13th connection.
 
-        netUrl = TestUtil.getNetProtocol(localHost.getHostName(), port);
         Properties props = new Properties();
         // force connection to the system network server only
         props.setProperty("load-balance", "false");
         conn = DriverManager.getConnection(netUrl, getNetProperties(props));
+        conn2 = DriverManager.getConnection(netUrl2, getNetProperties(props));
         // verify that meta-data tables can be queried successfully
-        final ResultSet rs = conn.createStatement().executeQuery(
-            "select KIND, NETSERVERS from SYS.MEMBERS");
+        ResultSet rs = conn.createStatement().executeQuery(
+            "select KIND, NETSERVERS, THRIFTSERVERS from SYS.MEMBERS");
+        final String fullHost = getFullHost(localHost);
         assertTrue("expected one row in meta-data query", rs.next());
         assertEquals("datastore(normal)", rs.getString(1));
-        assertEquals(getFullHost(localHost) + '['
-            + FabricService.NETSERVER_DEFAULT_PORT + "],"
-            + getFullHost(localHost) + '[' + port + ']', rs.getString(2));
+        assertEquals(fullHost + '[' + port2 + "]," + fullHost +
+            '[' + port + ']', rs.getString(2));
+        assertEquals(fullHost + '[' + port2 + ']',
+            rs.getString(3));
         assertFalse("expected no more than one row from SYS.MEMBERS", rs.next());
+
+        rs = conn2.createStatement().executeQuery(
+            "select KIND, NETSERVERS, THRIFTSERVERS from SYS.MEMBERS");
+        assertTrue("expected one row in meta-data query", rs.next());
+        assertEquals("datastore(normal)", rs.getString(1));
+        assertEquals(fullHost + '[' + port2 + "]," + fullHost +
+            '[' + port + ']', rs.getString(2));
+        assertEquals(fullHost + '[' + port2 + ']',
+            rs.getString(3));
+        assertFalse("expected no more than one row from SYS.MEMBERS", rs.next());
+
+        conn.close();
+        conn2.close();
       } finally {
         ni.stop();
-        if (ni2 != null) {
-          ni2.stop();
-        }
+        ni2.stop();
       }
     } finally {
       f.delete();
       try {
         fabapi.stop(null);
       } finally {
-        System.clearProperty(Property.START_DRDA);
-        System.clearProperty(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER);
         DistributedSQLTestBase.deleteStrayDataDictionaryDir();
       }
     }
