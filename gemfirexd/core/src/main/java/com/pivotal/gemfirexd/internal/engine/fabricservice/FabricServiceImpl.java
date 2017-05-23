@@ -680,20 +680,9 @@ public abstract class FabricServiceImpl implements FabricService {
             .getProperty(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR);
       }
     }
+    System.out.println("SW: got port=" + port + " thrift=" + thriftServer);
     if (port <= 0) {
-      if (!thriftServer) {
-        final String portStr = (String)networkProperties
-            .remove(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER);
-        if (portStr != null) {
-          port = Integer.parseInt(portStr);
-        }
-        else {
-          port = NETSERVER_DEFAULT_PORT;
-        }
-      }
-      else {
-        port = NETSERVER_DEFAULT_PORT;
-      }
+      port = NETSERVER_DEFAULT_PORT;
     }
 
     final InetAddress listenAddress = getListenAddress(bindAddress);

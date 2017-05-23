@@ -700,7 +700,7 @@ class DRDAStatement
 	private static String trimNulls(String sqlStmt) {
 	  // trim any trailing nulls
 	  int stmtEnd = sqlStmt.length();
-	  while (sqlStmt.charAt(stmtEnd - 1) == 0) stmtEnd--;
+	  while (stmtEnd > 0 && sqlStmt.charAt(stmtEnd - 1) == 0) stmtEnd--;
 	  if (stmtEnd < sqlStmt.length()) {
 	    sqlStmt = sqlStmt.substring(0, stmtEnd);
 	  }
