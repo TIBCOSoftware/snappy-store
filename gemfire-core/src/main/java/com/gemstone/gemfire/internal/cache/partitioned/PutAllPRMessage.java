@@ -62,6 +62,7 @@ import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gnu.trove.THashMap;
 
@@ -504,8 +505,10 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
             lockedForPrimary = false;
           }
 
-          if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()) {
-            // Setting thread local buffer to 0 here. UMM will provide an initial
+          if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                  && !r.isInternalRegion()){
+            // Setting thread local buffer to 0 here.
+            // UMM will provide an initial estimation based on the first row
             memoryTracker = new UMMMemoryTracker(
                 Thread.currentThread().getId(), putAllPRDataSize);
           }

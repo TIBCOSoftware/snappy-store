@@ -46,11 +46,6 @@ import org.apache.thrift.transport.TSSLTransportFactory;
 public class SocketParameters extends
     TSSLTransportFactory.TSSLTransportParameters {
 
-  // these are the defaults for the per-socket TCP keepalive parameters
-  public static final int DEFAULT_KEEPALIVE_IDLE = 20;
-  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
-  public static final int DEFAULT_KEEPALIVE_CNT = 10;
-
   /**
    * Default input and output socket buffer size.
    */
@@ -237,12 +232,12 @@ public class SocketParameters extends
     this.outputBufferSize = props.getInteger(
         Attribute.SOCKET_OUTPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
     this.readTimeout = props.getInteger(Attribute.READ_TIMEOUT, 0);
-    this.keepAliveIdle = props.getInteger(
-        Attribute.KEEPALIVE_IDLE, DEFAULT_KEEPALIVE_IDLE);
-    this.keepAliveInterval = props.getInteger(
-        Attribute.KEEPALIVE_INTVL, DEFAULT_KEEPALIVE_INTVL);
-    this.keepAliveCount = props.getInteger(
-        Attribute.KEEPALIVE_CNT, DEFAULT_KEEPALIVE_CNT);
+    this.keepAliveIdle = props.getInteger(SystemProperties.KEEPALIVE_IDLE,
+        SystemProperties.DEFAULT_KEEPALIVE_IDLE);
+    this.keepAliveInterval = props.getInteger(SystemProperties.KEEPALIVE_INTVL,
+        SystemProperties.DEFAULT_KEEPALIVE_INTVL);
+    this.keepAliveCount = props.getInteger(SystemProperties.KEEPALIVE_CNT,
+        SystemProperties.DEFAULT_KEEPALIVE_CNT);
   }
 
   /**

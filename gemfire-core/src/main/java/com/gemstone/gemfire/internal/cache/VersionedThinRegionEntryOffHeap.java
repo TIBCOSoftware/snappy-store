@@ -161,6 +161,10 @@ public class VersionedThinRegionEntryOffHeap extends VMThinRegionEntry
   private final static AtomicLongFieldUpdater<VersionedThinRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VersionedThinRegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

@@ -21,6 +21,8 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
+
+import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.cache.KeyWithRegionContext;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -93,8 +95,12 @@ public final class RegionAndKey extends GfxdDataSerializable implements
       this.rname = DataSerializer.readString(in);
       this.key = DataSerializer.readObject(in);
       if (this.rname != null && this.key instanceof KeyWithRegionContext) {
-        LocalRegion r = (LocalRegion) Misc.getRegionForTable(this.rname, true);
-        ((KeyWithRegionContext) this.key).setRegionContext(r);
+        try {
+          LocalRegion r = (LocalRegion)Misc.getRegionForTable(this.rname, true);
+          ((KeyWithRegionContext)this.key).setRegionContext(r);
+        } catch (CancelException e) {
+          // ignore in deserialization (SNAP-1488)
+        }
       }
       this.isReplicated = in.readBoolean();
     }

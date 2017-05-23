@@ -1449,6 +1449,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     }
   }
 
+  private boolean isLast(RowSet rs) {
+    return rs == null || (rs.flags & snappydataConstants.ROWSET_LAST_BATCH) != 0;
+  }
+
   private boolean throttleIfCritical() {
     if (this.thresholdListener.isCritical()) {
       // throttle the processing and sends
@@ -2329,6 +2333,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     CallableStatement cstmt = null;
     ParameterMetaData pmd = null;
     ResultSet rs = null;
+    RowSet rowSet = null;
     // prepared statement executions do not have posDup handling since
     // client-side will need to do prepare+execute after failure so only
     // prepare needs to handle posDup
@@ -2367,7 +2372,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (resultType) { // Case : result is a ResultSet
         stmtHolder.setStatus("FILLING RESULT SET");
         rs = pstmt.getResultSet();
-        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+        rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
             connId, attrs, 0, false, false, 0, connHolder,
             null /* already set */);
         stmtResult.setResultSet(rowSet);
@@ -2381,7 +2386,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         stmtResult.setUpdateCount(pstmt.getUpdateCount());
         rs = pstmt.getGeneratedKeys();
         if (rs != null) {
-          RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+          rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
               connId, attrs, 0, false, false, 0, connHolder,
               "getGeneratedKeys");
           stmtResult.setGeneratedKeys(rowSet);
@@ -2406,7 +2411,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     } finally {
       if (pstmt != null) {
         try {
-          pstmt.clearParameters();
+          if (isLast(rowSet)) {
+            pstmt.clearParameters();
+          }
         } catch (Throwable t) {
           // ignore exceptions at this point
           checkSystemFailure(t);
@@ -2431,6 +2438,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     EngineConnection conn = null;
     PreparedStatement pstmt = null;
     ResultSet rs = null;
+    RowSet rowSet = null;
     // prepared statement executions do not have posDup handling since
     // client-side will need to do prepare+execute after failure so only
     // prepare needs to handle posDup
@@ -2458,7 +2466,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       rs = pstmt.getGeneratedKeys();
       if (rs != null) {
-        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+        rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
             connId, attrs, 0, false, false, 0, connHolder, "getGeneratedKeys");
         result.setGeneratedKeys(rowSet);
       }
@@ -2476,7 +2484,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     } finally {
       if (pstmt != null) {
         try {
-          pstmt.clearParameters();
+          if (isLast(rowSet)) {
+            pstmt.clearParameters();
+          }
         } catch (Throwable t) {
           // ignore exceptions at this point
           checkSystemFailure(t);
@@ -2524,6 +2534,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       stmtHolder.setStatus("FILLING RESULT SET");
       rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null, connId,
           attrs, 0, false, false, 0, connHolder, null /* already set */);
+      return rowSet;
     } catch (Throwable t) {
       cleanupResultSet(rs);
       checkSystemFailure(t);
@@ -2531,8 +2542,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     } finally {
       if (pstmt != null) {
         try {
-          if (rowSet != null && (rowSet.flags &
-              snappydataConstants.ROWSET_LAST_BATCH) != 0) {
+          if (isLast(rowSet)) {
             pstmt.clearParameters();
           }
         } catch (Throwable t) {
@@ -2546,7 +2556,6 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             null, null, false, null);
       }
     }
-    return rowSet;
   }
 
   /**
@@ -2559,6 +2568,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     EngineConnection conn = null;
     PreparedStatement pstmt = null;
     ResultSet rs = null;
+    RowSet rowSet = null;
     // prepared statement executions do not have posDup handling since
     // client-side will need to do prepare+execute after failure so only
     // prepare needs to handle posDup
@@ -2590,7 +2600,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       rs = pstmt.getGeneratedKeys();
       if (rs != null) {
-        RowSet rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
+        rowSet = getRowSet(pstmt, stmtHolder, rs, INVALID_ID, null,
             connId, attrs, 0, false, false, 0, connHolder, "getGeneratedKeys");
         result.setGeneratedKeys(rowSet);
       }
@@ -2604,9 +2614,12 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
     } finally {
       if (pstmt != null) {
         try {
-          pstmt.clearParameters();
+          if (isLast(rowSet)) {
+            pstmt.clearParameters();
+          }
         } catch (Throwable t) {
           // ignore exceptions at this point
+          checkSystemFailure(t);
         }
         try {
           pstmt.clearBatch();
@@ -2860,6 +2873,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
     ConnectionHolder connHolder = null;
     Statement stmt = null;
+    StatementAttrs attrs = null;
+    RowSet rowSet = null;
     try {
       StatementHolder stmtHolder = getStatementForResultSet(token,
           cursorId, "scrollCursor");
@@ -2871,9 +2886,11 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         stmtHolder.setStatus("SCROLLING CURSOR");
         stmtHolder.incrementAccessFrequency();
         connHolder.setActiveStatement(stmtHolder);
-        return getRowSet(stmt, stmtHolder, holder.resultSet, holder.rsCursorId,
-            holder, connId, stmtHolder.getStatementAttrs(), offset,
+        attrs = stmtHolder.getStatementAttrs();
+        rowSet = getRowSet(stmt, stmtHolder, holder.resultSet,
+            holder.rsCursorId, holder, connId, attrs, offset,
             offsetIsAbsolute, fetchReverse, fetchSize, connHolder, null);
+        return rowSet;
       } else {
         throw resultSetNotFoundException(cursorId, "scrollCursor");
       }
@@ -2881,6 +2898,17 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       checkSystemFailure(t);
       throw SnappyException(t);
     } finally {
+      // eagerly clear the parameters for last batch in FORWARD_ONLY cursor
+      try {
+        if (isLast(rowSet) && stmt != null &&
+            stmt.getResultSetType() == ResultSet.TYPE_FORWARD_ONLY &&
+            stmt instanceof PreparedStatement) {
+          ((PreparedStatement)stmt).clearParameters();
+        }
+      } catch (Throwable t) {
+        // ignore exceptions at this point
+        checkSystemFailure(t);
+      }
       if (connHolder != null) {
         connHolder.clearActiveStatement(stmt);
       }

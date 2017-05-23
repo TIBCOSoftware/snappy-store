@@ -73,7 +73,6 @@ import com.gemstone.gemfire.distributed.internal.locks.DLockService;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.NullDataOutputStream;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation.GIIStatus;
@@ -3326,12 +3325,10 @@ public class DistributedRegion extends LocalRegion implements
     chunkEntries = new InitialImageVersionedEntryList(
         this.concurrencyChecksEnabled, MAX_ENTRIES_PER_CHUNK);
     final boolean keyRequiresRegionContext = keyRequiresRegionContext();
-    ByteArrayDataInput in = null;
     DiskRegion dr = getDiskRegion();
     final Version targetVersion = sender.getVersionObject();
     if( dr!=null ){
       dr.setClearCountReference();
-      in = new ByteArrayDataInput();
     }
     VersionSource myId = getVersionMember();
     Set<VersionSource> foundIds = new HashSet<VersionSource>();
@@ -3414,7 +3411,7 @@ public class DistributedRegion extends LocalRegion implements
                     entry = new InitialImageOperation.Entry();
                     entry.key = key;
                     entry.setVersionTag(stamp.asVersionTag());
-                    fillRes = mapEntry.fillInValue(this, entry, in, dm, targetVersion);
+                    fillRes = mapEntry.fillInValue(this, entry, dm, targetVersion);
                     if (getLogWriterI18n().finerEnabled() || InitialImageOperation.TRACE_GII_FINER) {
                       getLogWriterI18n().convertToLogWriter().info("chunkEntries:entry="+entry+",stamp="+stamp);
                     }
@@ -3425,7 +3422,7 @@ public class DistributedRegion extends LocalRegion implements
                   if (getLogWriterI18n().finerEnabled() || InitialImageOperation.TRACE_GII_FINER) {
                     getLogWriterI18n().convertToLogWriter().info("chunkEntries:entry="+entry+",stamp=null");
                   }
-                  fillRes = mapEntry.fillInValue(this, entry, in, dm, targetVersion);
+                  fillRes = mapEntry.fillInValue(this, entry, dm, targetVersion);
                 }
               }
               catch(DiskAccessException dae) {

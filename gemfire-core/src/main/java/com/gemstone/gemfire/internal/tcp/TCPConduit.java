@@ -96,6 +96,11 @@ public class TCPConduit implements Runnable {
    */
   private static boolean USE_NIO;
 
+  /**
+   * Use the new streaming using NIO disabling chunking.
+   */
+  private static boolean USE_NIO_STREAM;
+
   /** use direct ByteBuffers instead of heap ByteBuffers for NIO operations */
   static boolean useDirectBuffers;
   
@@ -127,6 +132,7 @@ public class TCPConduit implements Runnable {
     useSSL = Boolean.getBoolean("p2p.useSSL");
     // only use nio if not SSL
     USE_NIO = !useSSL && !Boolean.getBoolean("p2p.oldIO");
+    USE_NIO_STREAM = USE_NIO && !Boolean.getBoolean("p2p.disableNIOStream");
     // only use direct buffers if we are using nio
     useDirectBuffers = USE_NIO && !Boolean.getBoolean("p2p.nodirectBuffers");
     LISTENER_CLOSE_TIMEOUT = Integer.getInteger("p2p.listenerCloseTimeout", 60000).intValue();
@@ -239,6 +245,7 @@ public class TCPConduit implements Runnable {
       throw new ConnectionException(LocalizedStrings.TCPConduit_UNABLE_TO_INITIALIZE_CONNECTION_TABLE.toLocalizedString(), io);
     }
     this.useNIO = USE_NIO;
+    /* (below issue has been fixed for Windows in later JDK6 releases)
     if (this.useNIO) {
       InetAddress addr = address;
       if (addr == null) {
@@ -259,6 +266,7 @@ public class TCPConduit implements Runnable {
         }
       }
     }
+    */
       
     startAcceptor();
   }
@@ -811,6 +819,16 @@ public class TCPConduit implements Runnable {
   }
 
   /**
+   * Return true if NIO classes with buffered streaming is being used
+   * for the server socket. This is different from "useNIO" in that it
+   * streams messages directly to sockets as well as reads in streaming
+   * manner using buffered DataOutput/Input streams rather than chunking.
+   */
+  public final boolean useNIOStream() {
+    return USE_NIO_STREAM;
+  }
+
+  /**
    * records the current outgoing message count on all thread-owned
    * ordered connections
    * @since 5.1
@@ -968,6 +986,7 @@ public class TCPConduit implements Runnable {
     for (;;) {
       stopper.checkCancelInProgress(null);
       boolean interrupted = Thread.interrupted();
+      boolean returningCon = false;
       try {
       // If this is the second time through this loop, we had
       // problems.  Tear down the connection so that it gets
@@ -1045,7 +1064,10 @@ public class TCPConduit implements Runnable {
               getLogger().fine("got an old connection for " + memberAddress
                 + ": " + conn + "@" + conn.hashCode());
             }
-            conn.closeOldConnection("closing old connection"); 
+            conn.closeOldConnection("closing old connection");
+            if (useNIOStream()) {
+              releasePooledConnection(conn);
+            }
             conn = null;
             retryForOldConnection = true;
             debugRetry = true;
@@ -1145,9 +1167,14 @@ public class TCPConduit implements Runnable {
               + " memberAddress=" + memberAddress);
       }
       }
+      returningCon = true;
       return conn;
       }
       finally {
+        // need to return unused connections to pool
+        if (!returningCon && conn != null && useNIOStream()) {
+          releasePooledConnection(conn);
+        }
         if (interrupted) {
           Thread.currentThread().interrupt();
         }
@@ -1155,6 +1182,9 @@ public class TCPConduit implements Runnable {
     } // for(;;)
   }
 
+  public final void releasePooledConnection(Connection conn) {
+    this.conTable.releasePooledConnection(conn);
+  }
 //   /**
 //    * Send a message.
 //    * @return the connection used to send the message

@@ -158,6 +158,7 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueue;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.lru.HeapEvictor;
 import com.gemstone.gemfire.internal.cache.lru.OffHeapEvictor;
 import com.gemstone.gemfire.internal.cache.partitioned.RedundancyAlreadyMetException;
@@ -278,7 +279,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    * System property to disable query monitor even if resource manager is in use
    */
   public final boolean QUERY_MONITOR_DISABLED_FOR_LOW_MEM = Boolean.getBoolean("gemfire.Cache.DISABLE_QUERY_MONITOR_FOR_LOW_MEMORY");
-  
+
+  /**
+   * System property to disable default snapshot
+   */
+  public final boolean DEFAULT_SNAPSHOT_DISABLED = Boolean.getBoolean("gemfire.Cache.DISABLE_DEFAULT_SNAPSHOT_ISOLATION");
+
+  public final boolean DEFAULT_SNAPSHOT_ENABLED_TX = Boolean.getBoolean("gemfire.Cache.DISABLE_DEFAULT_SNAPSHOT_ISOLATION_TX");
+
   /**
    * Property set to true if resource manager heap percentage is set and query monitor is required
    */
@@ -589,12 +597,16 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   // For each entry this should be in sync
   public void removeRegionFromOldEntryMap(String regionPath) {
-    oldEntryMap.remove(regionPath);
-
+    synchronized (this.oldEntryMap) {
+      oldEntryMap.remove(regionPath);
+    }
   }
 
   // For each entry this should be in sync
   public void addOldEntry(RegionEntry oldRe, String regionPath) {
+    if(!snapshotEnabled()) {
+      return;
+    }
     if(getLoggerI18n().fineEnabled()) {
       getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + regionPath + " adding " +
           oldRe + " to oldEntrMap");
@@ -1004,9 +1016,11 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         }
       };
 
-      oldEntryMapCleanerService = Executors.newScheduledThreadPool(1, oldEntryGCtf);
-      oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0, OLD_ENTRIES_CLEANER_TIME_INTERVAL,
-          TimeUnit.MILLISECONDS);
+      if (snapshotEnabled()) {
+        oldEntryMapCleanerService = Executors.newScheduledThreadPool(1, oldEntryGCtf);
+        oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0, OLD_ENTRIES_CLEANER_TIME_INTERVAL,
+            TimeUnit.MILLISECONDS);
+      }
 
       this.creationDate = new Date();
 
@@ -1404,10 +1418,15 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   // this snapshot is different from snapshot for export.
   // however this can be used for that purpose.
-  public boolean snaphshotEnabled() {
-    return true;
+  public boolean snapshotEnabled() {
+    return !DEFAULT_SNAPSHOT_DISABLED;
   }
 
+
+  public boolean snapshotEnabledForTX() {
+    // snapshot should be enabled and if LockingPolicy is RC/RR then it should not be disabled
+    return snapshotEnabled() &&  DEFAULT_SNAPSHOT_ENABLED_TX;
+  }
 
   // currently it will wait for a long time
   // we can have differnt ds or read write locks to avoid waiting of read operations.

@@ -54,7 +54,6 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
@@ -306,7 +305,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   
   public boolean fillInValue(LocalRegion region,
                              @Retained(ABSTRACT_REGION_ENTRY_FILL_IN_VALUE) InitialImageOperation.Entry dst,
-                             ByteArrayDataInput in,
                              DM mgr, Version targetVersion)
   {
     dst.setSerialized(false); // starting default value
@@ -477,9 +475,9 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   @Released
   protected void setValue(RegionEntryContext context, @Unretained Object value, boolean recentlyUsed) {
     _setValue(value);
-    if (value != null && context != null && (this instanceof OffHeapRegionEntry) 
+    if (value != null && context != null && isOffHeap()
         && context instanceof LocalRegion && ((LocalRegion)context).isThisRegionBeingClosedOrDestroyed()) {
-      ((OffHeapRegionEntry)this).release();
+      release();
       ((LocalRegion)context).checkReadiness();
     }
     if (recentlyUsed) {
@@ -852,7 +850,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
               @Released Object value = getValueOffHeapOrDiskWithoutFaultIn(region);
               try {
               _setValue(prepareValueForCache(region, value, false, false));
-              if (value != null && region != null && (this instanceof OffHeapRegionEntry) && region.isThisRegionBeingClosedOrDestroyed()) {
+              if (value != null && region != null && isOffHeap() && region.isThisRegionBeingClosedOrDestroyed()) {
                 ((OffHeapRegionEntry)this).release();
                 region.checkReadiness();
               }
@@ -1277,7 +1275,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     if (Token.isInvalidOrRemoved(v)) return false;
     if (v == Token.NOT_AVAILABLE) return false;
     if (v instanceof DiskEntry.RecoveredEntry) return false; // The disk layer has special logic that ends up storing the nested value in the RecoveredEntry off heap
-    if (!(this instanceof OffHeapRegionEntry)) return false;
+    if (!isOffHeap()) return false;
     // TODO should we check for deltas here or is that a user error?
     return true;
   }
@@ -1302,7 +1300,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           return key;
         }
         // skip this check for off-heap entry since it will be expensive
-        if (!(this instanceof OffHeapRegionEntry)) {
+        if (!isOffHeap()) {
           sysCb.entryCheckValue(_getValue());
         }
         if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -1335,7 +1333,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           return key;
         }
         // skip this check for off-heap entry since it will be expensive
-        if (!(this instanceof OffHeapRegionEntry)) {
+        if (!isOffHeap()) {
           sysCb.entryCheckValue(_getValue());
         }
         if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -1818,7 +1816,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         // indicates retry
       }
       // skip this check for off-heap entry since it will be expensive
-      if (!(this instanceof OffHeapRegionEntry)) {
+      if (!isOffHeap()) {
         sysCb.entryCheckValue(_getValue());
       }
       if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -1858,7 +1856,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         OffHeapHelper.releaseWithNoTracking(val);
       }
       // skip this check for off-heap entry since it will be expensive
-      if (!(this instanceof OffHeapRegionEntry)) {
+      if (!isOffHeap()) {
         sysCb.entryCheckValue(_getValue());
       }
       if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -2747,7 +2745,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           return size;
         }
         // skip this check for off-heap entry since it will be expensive
-        if (!(this instanceof OffHeapRegionEntry)) {
+        if (!isOffHeap()) {
           sysCb.entryCheckValue(_getValue());
         }
         if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -3057,7 +3055,12 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   public boolean isInvalidOrRemoved() {
     return Token.isInvalidOrRemoved(getValueAsToken());
   }
-  
+
+  @Override
+  public boolean isOffHeap() {
+    return false;
+  }
+
   /**
    * This is only retained in off-heap subclasses.  However, it's marked as
    * Retained here so that callers are aware that the value may be retained.

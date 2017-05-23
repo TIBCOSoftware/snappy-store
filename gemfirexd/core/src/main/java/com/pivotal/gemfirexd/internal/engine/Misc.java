@@ -17,8 +17,11 @@
 
 package com.pivotal.gemfirexd.internal.engine;
 
-import java.io.*;
-import java.sql.Array;
+import java.io.CharArrayWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Serializable;
+import java.io.StringWriter;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -52,7 +55,13 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LocalLogWriter;
-import com.gemstone.gemfire.internal.cache.*;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
+import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
+import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -375,34 +384,19 @@ public abstract class Misc {
     return null;
   }
 
-  public static <K, V> void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
-    if (reservoirRegion != null){
+  public static void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
+    if (reservoirRegion != null) {
       reservoirRegion.destroyRegion(null);
     }
   }
 
   public static PartitionedRegion.PRLocalScanIterator
-  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, int segi, int segn) {
-    if (reservoirRegion != null) {
-      Set<Integer> localPrimaryBucketSet = reservoirRegion
-          .getDataStore().getAllLocalPrimaryBucketIds();
-      Set<Integer> bucketSet = new HashSet<Integer>();
-      for (Integer i : localPrimaryBucketSet) {
-        if (i % segn == segi) {
-          bucketSet.add(i);
-        }
-      }
-      // fetchFromRemote = false; if bucket is moved out, that should be included on remote node
-      return getLocalBucketsIteratorForSampleTable(reservoirRegion, bucketSet, false);
-    }
-    return null;
-  }
-
-  public static PartitionedRegion.PRLocalScanIterator
-  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, Set<Integer> bucketSet, Boolean fetchFromRemote) {
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion,
+      Set<Integer> bucketSet, boolean fetchFromRemote) {
     if (reservoirRegion != null && bucketSet != null) {
       if (bucketSet.size() > 0) {
-        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, fetchFromRemote);
+        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet,
+            true, false, true, null, fetchFromRemote);
       }
     }
     return null;

@@ -194,6 +194,10 @@ public class VersionedLocalRowLocationThinRegionEntryOffHeap extends RowLocation
   private final static AtomicLongFieldUpdater<VersionedLocalRowLocationThinRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VersionedLocalRowLocationThinRegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

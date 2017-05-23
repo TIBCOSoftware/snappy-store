@@ -45,6 +45,7 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -72,6 +73,7 @@ import java.io.ObjectInput;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
@@ -212,7 +214,9 @@ abstract class SQLBinary
 	{
 		if (theValue instanceof BufferedBlob) {
 			try {
-				dataValue = ThriftUtils.toBytes(((BufferedBlob)theValue).getAsBuffer());
+				ByteBuffer buffer = ((BufferedBlob)theValue).getAsBuffer();
+				dataValue = ThriftUtils.toBytes(buffer);
+				UnsafeHolder.releaseIfDirectBuffer(buffer);
 				_blobValue = null;
 			} catch (SQLException sqle) {
 				throw Misc.wrapSQLException(sqle, sqle);

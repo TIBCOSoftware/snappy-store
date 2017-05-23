@@ -33,7 +33,6 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.FactoryStatics;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
@@ -284,7 +283,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
 
   public boolean fillInValue(LocalRegion r,
-      InitialImageOperation.Entry entry, ByteArrayDataInput in, DM mgr, Version targetVersion) {
+      InitialImageOperation.Entry entry, DM mgr, Version targetVersion) {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
@@ -704,6 +703,11 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   @Override
   public boolean isDestroyedOrRemovedButNotTombstone() {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+  }
+
+  @Override
+  public boolean isOffHeap() {
+    return false;
   }
 
   @Override

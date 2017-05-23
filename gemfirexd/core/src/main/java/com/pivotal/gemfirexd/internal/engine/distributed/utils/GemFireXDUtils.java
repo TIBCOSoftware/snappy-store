@@ -862,7 +862,7 @@ public final class GemFireXDUtils {
     // reset the TXState in GemFireTransaction
     final GemFireTransaction tran = (GemFireTransaction)lcc
         .getTransactionExecute();
-    tran.resetActiveTXState();
+    tran.resetActiveTXState(true);
     return conn;
   }
 
@@ -874,7 +874,7 @@ public final class GemFireXDUtils {
     }
     LanguageConnectionContext lcc = conn.getLanguageConnectionContext();
     GemFireTransaction tran = (GemFireTransaction)lcc.getTransactionExecute();
-    tran.resetActiveTXState();
+    tran.resetActiveTXState(true);
     return conn;
   }
 
@@ -1429,7 +1429,7 @@ public final class GemFireXDUtils {
     lockPolicy.releaseLock(entry, mode, txId, false, dataRegion);
     //}
     if(dataRegion.getEnableOffHeapMemory() && entryRemoved) {
-      if (entry instanceof OffHeapRegionEntry) {
+      if (entry.isOffHeap()) {
         ((OffHeapRegionEntry)entry).release();
       }
     }
@@ -1477,7 +1477,7 @@ public final class GemFireXDUtils {
   /** write to DataOutput compressing high and low integers of given long */
   public static void writeCompressedHighLow(final DataOutput out, final long val)
       throws IOException {
-    final long low = (val & 0xffffffff);
+    final long low = (val & 0xffffffffL);
     final long high = (val >>> 32);
     InternalDataSerializer.writeUnsignedVL(low, out);
     InternalDataSerializer.writeUnsignedVL(high, out);

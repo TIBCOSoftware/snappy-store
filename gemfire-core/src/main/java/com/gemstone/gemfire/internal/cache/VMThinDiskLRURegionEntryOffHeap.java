@@ -183,6 +183,10 @@ public class VMThinDiskLRURegionEntryOffHeap extends VMThinDiskLRURegionEntry
   private final static AtomicLongFieldUpdater<VMThinDiskLRURegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMThinDiskLRURegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

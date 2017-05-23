@@ -43,14 +43,12 @@ import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.DiskInitFile.DiskRegionFlag;
 import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.ha.HAContainerWrapper;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueue;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
@@ -498,7 +496,7 @@ abstract class AbstractRegionMap implements RegionMap {
 
   public final RegionEntry putEntryIfAbsent(Object key, RegionEntry re) {
     RegionEntry value = (RegionEntry)_getMap().putIfAbsent(key, re);
-    if (value == null && (re instanceof OffHeapRegionEntry)
+    if (value == null && re.isOffHeap()
         && _isOwnerALocalRegion() && _getOwner().isThisRegionBeingClosedOrDestroyed()) {
       // prevent orphan during concurrent destroy (#48068)
       if (_getMap().remove(key, re)) {
@@ -1000,7 +998,7 @@ abstract class AbstractRegionMap implements RegionMap {
            * throw an exception.
            */
           else {
-            if (newRe instanceof OffHeapRegionEntry) {
+            if (newRe.isOffHeap()) {
               ((OffHeapRegionEntry) newRe).release();
             }
 
@@ -2270,11 +2268,12 @@ RETRY_LOOP:
           cbEvent = null;
         }
 
-        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-        oldRe.setUpdateInProgress(true);
-        if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
-            .asVersionTag().getEntryVersion() > 0*/ ) {
-          owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+        if (owner.getCache().snapshotEnabledForTX()) {
+          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+            .asVersionTag().getEntryVersion() > 0*/) {
+            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+          }
         }
         txRemoveOldIndexEntry(Operation.DESTROY, re);
         boolean clearOccured = false;
@@ -2333,12 +2332,12 @@ RETRY_LOOP:
         else {
           cbEvent = null;
         }
-
-        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-        oldRe.setUpdateInProgress(true);
-        if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp()!=null && re.getVersionStamp()
+        if (owner.getCache().snapshotEnabledForTX()) {
+          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp()!=null && re.getVersionStamp()
             .asVersionTag().getEntryVersion()>0*/) {
-          owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+          }
         }
         try {
           EntryEventImpl txEvent = null;
@@ -3329,7 +3328,7 @@ RETRY_LOOP:
     retVal = getEntryFactory().createEntry((RegionEntryContext) ownerRegion, key, value);
     RegionEntry oldRe = putEntryIfAbsent(key, retVal);
     if (oldRe != null) {
-      if (retVal instanceof OffHeapRegionEntry) {
+      if (retVal.isOffHeap()) {
         ((OffHeapRegionEntry) retVal).release();
       }
       return oldRe;
@@ -4145,7 +4144,8 @@ RETRY_LOOP:
 
 
   private boolean shouldCopyOldEntry(LocalRegion owner, EntryEventImpl event) {
-    return owner.concurrencyChecksEnabled && !owner.isUsedForMetaRegion() ;
+    return owner.getCache().snapshotEnabled() &&
+        owner.concurrencyChecksEnabled && !owner.isUsedForMetaRegion();
   }
 
   /**
@@ -4548,12 +4548,14 @@ RETRY_LOOP:
       try {
         // Put the copy to into common place instead of all the running tx.
         // as there is a race.
-        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-        oldRe.setUpdateInProgress(true);
-        if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+        if (owner.getCache().snapshotEnabledForTX()) {
+          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
-          owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+          }
         }
+
         re.setValue(owner, re.prepareValueForCache(owner, newValue, !putOp.isCreate(), false));
         if (putOp.isCreate()) {
           isCreate = true;
@@ -4682,11 +4684,10 @@ RETRY_LOOP:
   private boolean checkIfEqualValue(LocalRegion region, RegionEntry re, InitialImageOperation.Entry tmplEntry,
       Object tmpValue) {
     final DM dm = region.getDistributionManager();
-    final ByteArrayDataInput in = new ByteArrayDataInput();
     final HeapDataOutputStream out = new HeapDataOutputStream(
         Version.CURRENT);
 
-    if (re.fillInValue(region, tmplEntry, in, dm, null)) {
+    if (re.fillInValue(region, tmplEntry, dm, null)) {
       try {
         if (tmplEntry.value != null) {
           final byte[] valueInCache;

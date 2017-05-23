@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
@@ -87,6 +105,7 @@ import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.UUID;
 
 /**
@@ -1979,7 +1998,7 @@ public class EntryEventImpl extends KeyInfo implements
       success = true;
     }
     } finally {
-      if (!success && reentry instanceof OffHeapRegionEntry && v instanceof Chunk) {
+      if (!success && reentry.isOffHeap() && v instanceof Chunk) {
         OffHeapRegionEntryHelper.releaseEntry((OffHeapRegionEntry)reentry, (Chunk)v);
       }
       LocalRegion.regionPath.remove();
@@ -2348,6 +2367,22 @@ public class EntryEventImpl extends KeyInfo implements
     }
   }
 
+  public static Object deserializeBuffer(ByteBuffer buffer, Version version) {
+    if (buffer == null) return null;
+    try {
+      return BlobHelper.deserializeBuffer(buffer, version);
+    } catch (IOException e) {
+      throw new SerializationException(LocalizedStrings
+          .EntryEventImpl_AN_IOEXCEPTION_WAS_THROWN_WHILE_DESERIALIZING
+          .toLocalizedString(), e);
+    } catch (ClassNotFoundException e) {
+      // fix for bug 43602
+      throw new SerializationException(LocalizedStrings
+          .EntryEventImpl_A_CLASSNOTFOUNDEXCEPTION_WAS_THROWN_WHILE_TRYING_TO_DESERIALIZE_CACHED_VALUE
+          .toLocalizedString(), e);
+    }
+  }
+
   /**
    * Serialize an object into a <code>byte[]</code>
    *
@@ -2373,6 +2408,27 @@ public class EntryEventImpl extends KeyInfo implements
     }
     catch (IOException e) {
       throw new SerializationException(LocalizedStrings.EntryEventImpl_AN_IOEXCEPTION_WAS_THROWN_WHILE_SERIALIZING.toLocalizedString(), e);
+    }
+  }
+
+  /**
+   * Serialize an object into a direct <code>ByteBuffer</code>.
+   *
+   * @throws IllegalArgumentException If <code>obj</code> should not be serialized
+   */
+  public static ByteBuffer serializeDirect(Object obj, Version version) {
+    if (obj == null || obj == Token.NOT_AVAILABLE
+        || Token.isInvalidOrRemoved(obj)) {
+      throw new IllegalArgumentException(LocalizedStrings
+          .EntryEventImpl_MUST_NOT_SERIALIZE_0_IN_THIS_CONTEXT
+          .toLocalizedString(obj));
+    }
+    try {
+      return BlobHelper.serializeToDirectBuffer(obj, version);
+    } catch (IOException e) {
+      throw new SerializationException(LocalizedStrings
+          .EntryEventImpl_AN_IOEXCEPTION_WAS_THROWN_WHILE_SERIALIZING
+          .toLocalizedString(), e);
     }
   }
 

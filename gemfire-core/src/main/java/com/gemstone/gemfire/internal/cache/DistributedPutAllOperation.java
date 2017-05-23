@@ -61,6 +61,7 @@ import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
@@ -1339,7 +1340,8 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         rgn.syncPutAll(tx, new Runnable() {
           public void run() {
             UMMMemoryTracker memoryTracker = null;
-            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()) {
+            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                    && !rgn.isInternalColumnTable()) {
               memoryTracker = new UMMMemoryTracker(
                       Thread.currentThread().getId(), putAllDataSize);
             }

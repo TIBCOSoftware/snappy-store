@@ -992,7 +992,7 @@ public class ObjectSizer {
           continue;
         }
 
-        if (!this.isForInternalUse) {
+        if (!this.isForInternalUse && this.traceOutput) {
           SanityManager.DEBUG_PRINT("TRACE", logPrefix
               + "Estimating Index Entry Size/Value Size for " + index);
         }

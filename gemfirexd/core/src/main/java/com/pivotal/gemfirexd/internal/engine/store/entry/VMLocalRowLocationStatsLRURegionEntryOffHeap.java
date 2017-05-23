@@ -218,6 +218,10 @@ public class VMLocalRowLocationStatsLRURegionEntryOffHeap extends RowLocationSta
   private final static AtomicLongFieldUpdater<VMLocalRowLocationStatsLRURegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMLocalRowLocationStatsLRURegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

@@ -362,6 +362,10 @@ public class VersionedLocalRowLocationStatsDiskLRURegionEntryOffHeap extends Row
   private final static AtomicLongFieldUpdater<VersionedLocalRowLocationStatsDiskLRURegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VersionedLocalRowLocationStatsDiskLRURegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

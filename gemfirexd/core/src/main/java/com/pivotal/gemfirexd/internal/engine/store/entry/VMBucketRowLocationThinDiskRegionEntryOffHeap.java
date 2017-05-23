@@ -146,6 +146,10 @@ public class VMBucketRowLocationThinDiskRegionEntryOffHeap extends RowLocationTh
   private final static AtomicLongFieldUpdater<VMBucketRowLocationThinDiskRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMBucketRowLocationThinDiskRegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

@@ -11758,7 +11758,8 @@ public class LocalRegion extends AbstractRegion
           }
         };
         try {
-          if (callback.isSnappyStore()) {
+          if (callback.isSnappyStore()
+                  && !this.isInternalRegion()) {
             memoryTracker = new UMMMemoryTracker(
                 Thread.currentThread().getId(), putAllSize);
             putAllOp.getEvent().setBufferedMemoryTracker(memoryTracker);
@@ -14400,7 +14401,7 @@ public class LocalRegion extends AbstractRegion
 
   private AtomicLong memoryBeforeAcquire = new AtomicLong(0L);
 
-  public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 100; //100 KB
+  public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 10; //10 KB
 
   private LongBinaryOperator op = new LongBinaryOperator() {
 
@@ -14425,7 +14426,7 @@ public class LocalRegion extends AbstractRegion
         size = (newSize - oldSize);
       }
 
-      if (MAX_VALUE_BEFORE_ACQUIRE == 1) {
+      if (MAX_VALUE_BEFORE_ACQUIRE == 1 || size > MAX_VALUE_BEFORE_ACQUIRE) {
         if (!callback.acquireStorageMemory(getFullPath(),
                 (size), null, shouldEvict)) {
           throwLowMemoryException(size);
@@ -14529,6 +14530,10 @@ public class LocalRegion extends AbstractRegion
       LogWriterI18n log = getLogWriterI18n();
       log.fine(mesage);
     }
+  }
+
+  public boolean isInternalColumnTable() {
+    return this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
   }
 
 }

@@ -139,21 +139,23 @@ implements Serializable {
       }
       if (hd.getGemFireHome() != null) {
         classPath.add(hd.getGemFireHome() + hd.getFileSep() + "lib"
-                + hd.getFileSep() + "snappydata-store-" +
-                ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
-        //classPath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "lib", "snappydata-assembly"));
-        classPath.add(VmDescription.getAllSnappyJars(hd.getGemFireHome() + hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "jars"));
+            + hd.getFileSep() + "snappydata-store-" +
+            ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
+        classPath.add(VmDescription.getAllSnappyJars(hd.getGemFireHome() + hd.getFileSep() +
+            ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "jars"));
       }
 
       //Needed to run DUnit on multiple hosts
       classPath.add(hd.getTestDir() + hd.getFileSep() + "junit.jar");
 
       //Needed to run hydra tests on multiple hosts
-      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
-              ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
+      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+          ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
-      classPath.add(VmDescription.getSnappyJarPath(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "dtests" + hd.getFileSep() +
-              "build-artifacts" + hd.getFileSep() + "scala-2.11" + hd.getFileSep() + "libs", "snappydata-store-scala-tests"));
+      classPath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() +
+          hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
 
       had.setClassPath(EnvHelper.asPath(classPath, hd));
 

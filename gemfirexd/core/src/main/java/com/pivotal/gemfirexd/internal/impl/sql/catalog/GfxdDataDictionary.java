@@ -1630,6 +1630,39 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+      {
+        String[] argNames = new String[]{"txId"};
+        TypeDescriptor[] argTypes = new TypeDescriptor[]{
+            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
+        super.createSystemProcedureOrFunction("COMMIT_SNAPSHOT_TXID", sysUUID,
+            argNames,argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
+            tc, GFXD_SYS_PROC_CLASSNAME, true);
+      }
+      {
+        String[] argNames = new String[] { "txId"};
+        TypeDescriptor[] argTypes = new TypeDescriptor[] {
+            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
+        super.createSystemProcedureOrFunction("USE_SNAPSHOT_TXID", sysUUID,
+            argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
+            newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
+      }
+
+      String[] arg_names = new String[] { "txId"};
+      TypeDescriptor[] arg_types = new TypeDescriptor[] { DataTypeDescriptor
+          .getCatalogType(Types.VARCHAR)};
+      super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID", sysUUID,
+          arg_names, arg_types, 1, 0, RoutineAliasInfo.READS_SQL_DATA, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+
+      /*{
+        super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID", sysUUID,
+            null, null, 0, 0, RoutineAliasInfo.NO_SQL,
+            DataTypeDescriptor.getCatalogType(Types.VARCHAR), newlyCreatedRoutines, tc,
+            GFXD_SYS_PROC_CLASSNAME, true);
+      }*/
+    }
+
+    {
       // GET_TABLE_METADATA
       String[] arg_names = new String[] { "TABLE_NAME",
           "TABLE_OBJECT", "BUCKET_COUNT", "PARTITIONING_COLUMNS",
@@ -1758,6 +1791,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           arg_names, arg_types, 1, 0, RoutineAliasInfo.READS_SQL_DATA, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
+
 
     TypeDescriptor varchar32672Type = DataTypeDescriptor.getCatalogType(
         Types.VARCHAR, 32672);
@@ -1922,6 +1956,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           DataTypeDescriptor.getCatalogType(Types.BOOLEAN), newlyCreatedRoutines, tc,
           GFXD_SYS_PROC_CLASSNAME, false);
     }
+
     {
       super.createSystemProcedureOrFunction("GET_NATIVE_NANOTIMER_TYPE",
           sysUUID, null, null, 0, 0, RoutineAliasInfo.CONTAINS_SQL,

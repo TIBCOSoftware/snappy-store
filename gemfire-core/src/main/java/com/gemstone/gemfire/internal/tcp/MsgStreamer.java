@@ -85,7 +85,7 @@ public class MsgStreamer extends OutputStream implements
    * Called to free up resources used by this streamer after the streamer has
    * produced its message.
    */
-  protected final void release() {
+  public final void release() {
     MsgIdGenerator.release(this.msgId);
     this.buffer.clear();
     this.overflowBuf = null;
@@ -167,7 +167,7 @@ public class MsgStreamer extends OutputStream implements
       else {
         // if there is a versioned stream created, then split remaining
         // connections to unversioned stream
-        final ArrayList<MsgStreamer> streamers = new ArrayList<MsgStreamer>(
+        final ArrayList<BaseMsgStreamer> streamers = new ArrayList<>(
             versionToConnMap.size() + 1);
         final int sendBufferSize = firstCon.getSendBufferSize();
         if (numCons > numVersioned) {

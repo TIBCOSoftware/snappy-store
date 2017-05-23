@@ -139,6 +139,10 @@ public final class TXId extends ExternalizableDSFID implements TransactionId,
     return "TXId[" + this.memberId + ':' + this.uniqId + ']';
   }
 
+  public final String stringFormat() {
+    return "" + this.memberId + ':' + this.uniqId;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (o instanceof TXId) {
