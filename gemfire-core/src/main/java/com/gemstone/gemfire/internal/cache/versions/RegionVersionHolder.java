@@ -511,35 +511,6 @@ public final class RegionVersionHolder<T> implements Cloneable, DataSerializable
     RegionVersionHolder<T> other = source.clone();
     other.mergeBitSet();
 
-
-/*    long actualVersion = getVersion();
-
-    if (this.contains(actualVersion)) {
-      other.recordVersion(actualVersion, null);
-    }
-    if (this.exceptions != null) {
-      for (RVVException e : this.exceptions) {
-        ReceivedVersionsIterator itr = e.receivedVersionsIterator();
-        if (isSpecialException(e, this)) {
-          long prev = e.previousVersion;
-          long next = e.nextVersion;
-
-
-        } else {
-          long prev = e.previousVersion;
-          long next = e.nextVersion;
-
-          //other.
-
-          long version = 0;
-          while (itr.hasNext()) {
-            version = itr.next();
-            other.recordVersion(version, null);
-          }
-        }
-      }
-    }*/
-
     //Get a copy of the local version and exceptions
     long myVersion = this.version;
 

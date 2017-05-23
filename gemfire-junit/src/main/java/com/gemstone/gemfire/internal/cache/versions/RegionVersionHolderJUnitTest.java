@@ -73,7 +73,7 @@ public class RegionVersionHolderJUnitTest extends TestCase {
     vh1.recordVersion(57,null);
     System.out.println("After initialize and record version after clone, vh1="+vh1);
 
-    System.out.println(vh1.contains(58));
+    assertTrue(vh1.contains(58));
   }
 
 
