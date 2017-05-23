@@ -680,7 +680,6 @@ public abstract class FabricServiceImpl implements FabricService {
             .getProperty(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR);
       }
     }
-    System.out.println("SW: got port=" + port + " thrift=" + thriftServer);
     if (port <= 0) {
       port = NETSERVER_DEFAULT_PORT;
     }
