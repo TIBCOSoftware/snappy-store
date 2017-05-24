@@ -1006,11 +1006,11 @@ public class utilMain implements java.security.PrivilegedAction {
 	  String causeClass;
 	  if (cause != t && !"SqlException".equals(
 	      (causeClass = cause.getClass().getSimpleName()))) {
-	    sb.append(SanityManager.lineSeparator);
-	    sb.append("Caused by: ").append(causeClass);
-	    sb.append(": ").append(cause.getMessage());
-	    sb.append(SanityManager.lineSeparator);
-	    sb.append("\tat ").append(cause.getStackTrace()[0]);
+	    // sb.append(SanityManager.lineSeparator);
+	    // sb.append("Caused by: ").append(causeClass);
+	    // sb.append(": ").append(cause.getMessage());
+	    // sb.append(SanityManager.lineSeparator);
+	    // sb.append("\tat ").append(cause.getStackTrace()[0]);
 	  }
 	  return sb.toString();
 	}
