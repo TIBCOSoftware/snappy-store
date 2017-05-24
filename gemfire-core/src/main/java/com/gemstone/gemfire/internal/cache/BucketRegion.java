@@ -766,8 +766,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                 "Creating the column batch for bucket " + this.getId()
                 + ", and batchID " + this.batchUUID);
       }
-      if(getCache().snapshotEnabled())
+      boolean txStarted = false;
+      if (getCache().snapshotEnabled() && getCache().getCacheTransactionManager().getTXState() == null) {
         getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+        txStarted = true;
+      }
       try {
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
@@ -800,7 +803,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         // Returning from here as we dont want to clean the row buffer data.
         success = false;
       } finally {
-        if (getCache().snapshotEnabled()) {
+        if (getCache().snapshotEnabled() && txStarted) {
           if (success) {
             getCache().getCacheTransactionManager().commit();
             if (null != getCache().getRvvSnapshotTestHook()) {
