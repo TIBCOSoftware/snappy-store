@@ -39,6 +39,44 @@ public class RegionVersionHolderJUnitTest extends TestCase {
     member = new InternalDistributedMember(InetAddress.getLocalHost(), 12345);
   }
 
+
+
+  public void testInitialized() {
+    RegionVersionHolder vh1 = new RegionVersionHolder(member);
+    vh1.recordVersion(56, null);
+    vh1.recordVersion(57, null);
+    vh1.recordVersion(58, null);
+    vh1.recordVersion(59, null);
+    vh1.recordVersion(60, null);
+    vh1 = vh1.clone();
+    System.out.println("This node init, vh1="+vh1);
+
+    RegionVersionHolder vh2 = new RegionVersionHolder(member);
+    for(int i=1;i<57;i++) {
+      vh2.recordVersion(i,null);
+    }
+    vh2 = vh2.clone();
+    System.out.println("GII node init, vh2="+vh2);
+
+    vh1.initializeFrom(vh2);
+    vh1 = vh1.clone();
+    System.out.println("After initialize, vh1="+vh1);
+
+    //vh1.recordVersion(57,null);
+    vh1.recordVersion(58,null);
+    vh1.recordVersion(59,null);
+    vh1.recordVersion(60,null);
+
+    System.out.println("After initialize and record version, vh1="+vh1);
+
+    vh1 = vh1.clone();
+    vh1.recordVersion(57,null);
+    System.out.println("After initialize and record version after clone, vh1="+vh1);
+
+    assertTrue(vh1.contains(58));
+  }
+
+
   public void test1() {
     RegionVersionHolder vh1 = new RegionVersionHolder(member);
     vh1.recordVersion(15, null);
@@ -1698,6 +1736,7 @@ public class RegionVersionHolderJUnitTest extends TestCase {
         RegionVersionHolder vh2 = buildHolder(bs2);
         
         validateExceptions(vh2);
+
         vh2.initializeFrom(vh1);
         
         assertEquals(105, vh2.version);
@@ -1713,6 +1752,7 @@ public class RegionVersionHolderJUnitTest extends TestCase {
         vh1.version = 105;
         vh1.addException(100,106);
         assertTrue(vh2.sameAs(vh1));
+        compareWithBitSet(bs2, vh2);
         validateExceptions(vh2);
       }
     } finally {

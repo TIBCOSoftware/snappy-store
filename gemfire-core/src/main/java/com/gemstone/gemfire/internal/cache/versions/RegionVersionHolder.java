@@ -219,6 +219,7 @@ public final class RegionVersionHolder<T> implements Cloneable, DataSerializable
       }
       if (e.previousVersion < missingVersion  &&  missingVersion < e.nextVersion) {
         String fine = null;
+        boolean spEx = isSpecialException(e,this);
         if (RegionVersionVector.DEBUG && logger != null) {
           fine = e.toString();
         }
@@ -234,7 +235,7 @@ public final class RegionVersionHolder<T> implements Cloneable, DataSerializable
         if (this.exceptions.isEmpty()) {
           this.exceptions = null;
         }
-       if(isSpecialException(e,this))
+       if(spEx)
           continue;
         else
           return;
@@ -427,10 +428,9 @@ public final class RegionVersionHolder<T> implements Cloneable, DataSerializable
           this.bitSet.set((int)(version-this.bitSetVersion));
         }
       }
-      if (sp != null && version > this.version) {
+      if (sp != null && version >= this.version) {
         removeSpecialException();
       }
-
       this.version = Math.max(this.version, version);
 
       // when we set this.version we need to make sure that special exception if any needs to made normal exception
@@ -444,8 +444,13 @@ public final class RegionVersionHolder<T> implements Cloneable, DataSerializable
       if (this.bitSet != null && version>=this.bitSetVersion) {
         this.bitSet.set((int)(version - this.bitSetVersion));
       }
+      sp = this.getSpecialException();
+      if (sp != null) {
+        removeSpecialException();
+      }
       this.addOlderVersion(version, logger);
     }
+
   }
 
   synchronized long getNextAndRecordVersion(LogWriterI18n logger) {
@@ -505,6 +510,7 @@ public final class RegionVersionHolder<T> implements Cloneable, DataSerializable
     
     RegionVersionHolder<T> other = source.clone();
     other.mergeBitSet();
+
     //Get a copy of the local version and exceptions
     long myVersion = this.version;
 
@@ -585,6 +591,7 @@ public final class RegionVersionHolder<T> implements Cloneable, DataSerializable
       }
       for (Iterator<RVVException> it = this.exceptions.iterator(); it.hasNext(); ) {
         RVVException e = it.next();
+
         if (e.nextVersion <= v) {
           return true ;  // there is no RVVException for this version
         }

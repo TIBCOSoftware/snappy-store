@@ -660,9 +660,9 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     if (re.getVersionStamp().getEntryVersion() <= 1) {
       RegionEntry oldRegionEntry = NonLocalRegionEntry.newEntry(re.getKeyCopy(), Token.TOMBSTONE,
           (LocalRegion)region, re.getVersionStamp().asVersionTag());
-      //TODO: In some cases, persistence, GII old Entry may not be present
-      //RegionEntry oldRegionEntry = oldEntryMap.get(regionPath).get(entryKey).iterator().next().get();
-      //assert oldRegionEntry.isTombstone();
+      if (getLoggerI18n().fineEnabled()) {
+        getLoggerI18n().info(LocalizedStrings.DEBUG, "Returning TOMBSTONE");
+      }
       return oldRegionEntry;
     } else {
       List<RegionEntry> oldEntries = new ArrayList<>();
