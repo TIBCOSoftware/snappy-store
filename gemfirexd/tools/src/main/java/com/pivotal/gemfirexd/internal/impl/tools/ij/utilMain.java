@@ -1000,17 +1000,19 @@ public class utilMain implements java.security.PrivilegedAction {
 	String getExceptionCauseForDisplay(final Throwable t,
 	    final StringBuilder sb) {
 	  Throwable cause = t;
+	  String tSimpleName = t.getClass().getSimpleName();
 	  while (cause.getCause() != null) {
 	    cause = cause.getCause();
 	  }
 	  String causeClass;
-	  if (cause != t && !"SqlException".equals(
+	  if (!"SQLException".equals(tSimpleName) &&
+				cause != t && !"SqlException".equals(
 	      (causeClass = cause.getClass().getSimpleName()))) {
-	    // sb.append(SanityManager.lineSeparator);
-	    // sb.append("Caused by: ").append(causeClass);
-	    // sb.append(": ").append(cause.getMessage());
-	    // sb.append(SanityManager.lineSeparator);
-	    // sb.append("\tat ").append(cause.getStackTrace()[0]);
+	     sb.append(SanityManager.lineSeparator);
+	     sb.append("Caused by: ").append(causeClass);
+	     sb.append(": ").append(cause.getMessage());
+	     sb.append(SanityManager.lineSeparator);
+	     sb.append("\tat ").append(cause.getStackTrace()[0]);
 	  }
 	  return sb.toString();
 	}
