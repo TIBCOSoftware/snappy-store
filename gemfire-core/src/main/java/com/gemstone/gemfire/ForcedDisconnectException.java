@@ -27,15 +27,19 @@ public class ForcedDisconnectException extends CancelException {
 private static final long serialVersionUID = 4977003259880566257L;
 
   //////////////////////  Constructors  //////////////////////
-
   /**
    * Creates a new <code>SystemConnectException</code>.
    */
   public ForcedDisconnectException(String message) {
     super(message);
+    // In case of ForcedDisconnect, dump the heap if dumpheap system property is set as true
+    HeapDumper.dumpHeap(/* live= */ true);
   }
   
   public ForcedDisconnectException(String message, Throwable cause) {
     super(message, cause);
+    // In case of ForcedDisconnect, dump the heap if dumpheap system property is set as true
+    HeapDumper.dumpHeap(/* live= */ true);
   }
+
 }
