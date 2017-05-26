@@ -91,10 +91,14 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
     memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
     memberStatsMap.put("diskStoreName", getDiskStoreName());
-    memberStatsMap.put("storagePoolUsed",getStoragePoolUsed());
-    memberStatsMap.put("storagePoolSize",getStoragePoolSize());
-    memberStatsMap.put("executionPoolUsed",getExecutionPoolUsed());
-    memberStatsMap.put("executionPoolSize",getExecutionPoolSize());
+    memberStatsMap.put("storagePoolUsed", getStoragePoolUsed());
+    memberStatsMap.put("storagePoolSize", getStoragePoolSize());
+    memberStatsMap.put("executionPoolUsed", getExecutionPoolUsed());
+    memberStatsMap.put("executionPoolSize", getExecutionPoolSize());
+    memberStatsMap.put("heapMemorySize", getHeapMemorySize());
+    memberStatsMap.put("heapMemoryUsed", getHeapMemoryUsed());
+    memberStatsMap.put("offHeapMemorySize", getOffHeapMemorySize());
+    memberStatsMap.put("offHeapMemoryUsed", getOffHeapMemoryUsed());
 
     lastResult(memberStatsMap);
   }
@@ -230,14 +234,34 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   public long getStoragePoolUsed() {
     return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getStoragePoolUsedMemory();
   }
+
   public long getStoragePoolSize() {
     return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getStoragePoolSize();
   }
+
   public long getExecutionPoolUsed() {
     return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolUsedMemory();
   }
+
   public long getExecutionPoolSize() {
     return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolSize();
+  }
+
+  public long getOffHeapMemorySize() {
+    // return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolSize();
+    return 0;
+  }
+  public long getOffHeapMemoryUsed() {
+    //return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolSize();
+    return 0;
+  }
+  public long getHeapMemorySize() {
+    //return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolSize();
+    return 0;
+  }
+  public long getHeapMemoryUsed() {
+    //return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolSize();
+    return 0;
   }
 
   private NetworkServerConnectionStats getMemberClientConnectionStats(InternalDistributedSystem system){
