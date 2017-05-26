@@ -1130,6 +1130,12 @@ public final class FabricDatabase implements ModuleControl,
                 + "having sequenceId=" + qEntry.getSequenceId());
           }
         }
+        if (previousLevel != Integer.MAX_VALUE) {
+          GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge) logger);
+          bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.info("Done hive meta-store initialization");
+          previousLevel = Integer.MAX_VALUE;
+        }
       // commenting out for snap-585
       /*}*/
 

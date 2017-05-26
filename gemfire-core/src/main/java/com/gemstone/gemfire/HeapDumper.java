@@ -16,6 +16,7 @@
  */
 package com.gemstone.gemfire;
 
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.sun.management.HotSpotDiagnosticMXBean;
 
 import javax.management.MBeanServer;
@@ -32,12 +33,24 @@ public class HeapDumper {
     // field to store the hotspot diagnostic MBean
     private static volatile HotSpotDiagnosticMXBean hotspotMBean;
 
+    private static long lastHeapDumpTime = -1;
+    private static synchronized boolean takeDump() {
+        long currentTime = System.currentTimeMillis();
+        if ((currentTime- lastHeapDumpTime) > 3000) {
+            lastHeapDumpTime = currentTime;
+            return true;
+        } else {
+            return false;
+        }
+    }
     static void dumpHeap(boolean live) {
-        boolean dump = Boolean.getBoolean("gemfire.dumpheap");
-        if (!dump) {
+        boolean dumpProperty = SystemProperties.getServerInstance().getBoolean("dumpheap", false);
+        // return if dump property is not set or lastheapdumptime is less than 3 seconds
+        if (!dumpProperty || !takeDump()) {
             return;
         }
-        String fileName = "heap" + System.currentTimeMillis() + ".bin";
+        lastHeapDumpTime = System.currentTimeMillis();
+        String fileName = "heap" + lastHeapDumpTime + ".bin";
         // initialize hotspot diagnostic MBean
         initHotspotMBean();
         try {
