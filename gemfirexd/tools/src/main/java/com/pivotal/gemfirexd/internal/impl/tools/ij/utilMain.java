@@ -1006,7 +1006,7 @@ public class utilMain implements java.security.PrivilegedAction {
 	  }
 	  String causeClass;
 	  if (!"SQLException".equals(tSimpleName) &&
-		   cause != t && !"SqlException".equals(
+	     cause != t && !"SqlException".equals(
 	      (causeClass = cause.getClass().getSimpleName()))) {
 	     sb.append(SanityManager.lineSeparator);
 	     sb.append("Caused by: ").append(causeClass);
