@@ -910,6 +910,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       event.setBatchUUID(this.batchUUID); // to make sure that lock is not nexessary
 
       if (getTXState() != null) {
+        event.setRegion(this);
         getTXState().destroyExistingEntry(event, true, null);
       } else {
         this.getPartitionedRegion().basicDestroy(event,true,null);
