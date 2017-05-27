@@ -786,7 +786,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         Set keysToDestroy = createColumnBatchAndPutInColumnTable();
 
         if (getCache().getCacheTransactionManager().testRollBack) {
-          throw new RuntimeException("Test Dummy Exception");
+          throw new Exception("Test Dummy Exception");
         }
         destroyAllEntries(keysToDestroy);
         //Check if shutdown hook is set
@@ -798,7 +798,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         generateAndSetBatchIDIfNULL(true);
 
         success = true;
-      } catch (LowMemoryException lme) {
+      } catch (Exception lme) {
         getCache().getLoggerI18n().warning(lme);
         // Returning from here as we dont want to clean the row buffer data.
         success = false;
