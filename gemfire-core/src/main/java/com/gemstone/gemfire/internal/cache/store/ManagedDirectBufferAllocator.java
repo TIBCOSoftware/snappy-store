@@ -66,7 +66,7 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
           "CACHED_DATA_FRAME_RESULTOUTPUT";
 
   public static final List<String> nonEvictingOwners = new ArrayList() {{
-    add("CACHED_DATA_FRAME_RESULTOUTPUT_OWNER");
+    add(CACHED_DATA_FRAME_RESULTOUTPUT_OWNER);
   }};
 
   public static ManagedDirectBufferAllocator instance() {

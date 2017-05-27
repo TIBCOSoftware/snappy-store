@@ -7397,6 +7397,8 @@ public final class Oplog implements CompactableOplog {
               //This region has been destroyed, stop recovering from it.
               diskRecoveryStores.remove(diskRegionId);
             } catch (LowMemoryException lme) {
+              this.logger.info(LocalizedStrings.ONE_ARG,
+                      "Oplog::recoverValuesIfNeeded: got low memory exception. Stopping the recovery" + toString());
               diskRecoveryStores.remove(diskRegionId);
             }
           }

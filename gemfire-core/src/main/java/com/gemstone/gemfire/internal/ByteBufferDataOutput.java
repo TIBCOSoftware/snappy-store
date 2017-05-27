@@ -55,7 +55,7 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
   private ByteBuffer buffer;
   private final Version version;
 
-  private String BUFFER_OWNER = "DATAOUTPUT";
+  private String bufferOwner = "DATAOUTPUT";
 
   public ByteBufferDataOutput(Version version) {
     this(INITIAL_SIZE, version);
@@ -67,21 +67,21 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
    * flag to UMM.
    */
   public ByteBufferDataOutput(int initialSize,
-                              BufferAllocator allocator,
-                              Version version,
-                              String bufferOwner) {
+      BufferAllocator allocator,
+      Version version,
+      String bufferOwner) {
     this.allocator = allocator;
     this.buffer = allocator.allocate(initialSize, bufferOwner)
-            .order(ByteOrder.BIG_ENDIAN);
+        .order(ByteOrder.BIG_ENDIAN);
     this.version = version;
-    this.BUFFER_OWNER = bufferOwner;
+    this.bufferOwner = bufferOwner;
   }
 
   public ByteBufferDataOutput(int initialSize, Version version) {
     // this uses allocations and expansion via BufferAllocator that has both
     // better efficiency for direct buffer (in expand) and applies system limits
     this.allocator = GemFireCacheImpl.getCurrentBufferAllocator();
-    this.buffer = allocator.allocate(initialSize, BUFFER_OWNER)
+    this.buffer = allocator.allocate(initialSize, bufferOwner)
         .order(ByteOrder.BIG_ENDIAN);
     this.version = version;
   }
@@ -279,7 +279,7 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
     if (buffer.limit() - position >= required) return;
 
     buffer.flip();
-    ByteBuffer newBuffer = this.allocator.expand(buffer, required, BUFFER_OWNER);
+    ByteBuffer newBuffer = this.allocator.expand(buffer, required, bufferOwner);
     // set the position of newBuffer
     newBuffer.position(position);
     this.buffer = newBuffer;
