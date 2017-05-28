@@ -7398,7 +7398,8 @@ public final class Oplog implements CompactableOplog {
               diskRecoveryStores.remove(diskRegionId);
             } catch (LowMemoryException lme) {
               this.logger.info(LocalizedStrings.ONE_ARG,
-                      "Oplog::recoverValuesIfNeeded: got low memory exception. Stopping the recovery" + toString());
+                      "Oplog::recoverValuesIfNeeded: got low memory exception." +
+                          "Stopping the recovery " + toString());
               diskRecoveryStores.remove(diskRegionId);
             }
           }
