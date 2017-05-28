@@ -627,7 +627,7 @@ subprojects {
     tasks.withType(Test).each { test ->
       test.configure {
 
-        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxPermSize=128M',
+        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError',
                    '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC',
                    '-XX:CMSInitiatingOccupancyFraction=50',
                    '-XX:+CMSClassUnloadingEnabled', '-ea']

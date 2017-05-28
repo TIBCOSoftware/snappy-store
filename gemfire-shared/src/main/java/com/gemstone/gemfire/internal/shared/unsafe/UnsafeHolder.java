@@ -68,6 +68,7 @@ public abstract class UnsafeHolder {
     static final Constructor<?> directBufferConstructor;
     static final Field cleanerField;
     static final Field cleanerRunnableField;
+    static final boolean hasReleasePendingRefs;
 
     static {
       sun.misc.Unsafe v;
@@ -116,6 +117,24 @@ public abstract class UnsafeHolder {
       directBufferConstructor = dbConstructor;
       cleanerField = cleaner;
       cleanerRunnableField = runnableField;
+      hasReleasePendingRefs = releasePendingReferences();
+    }
+
+    static boolean releasePendingReferences() {
+      try {
+        final sun.misc.JavaLangRefAccess refAccess =
+            sun.misc.SharedSecrets.getJavaLangRefAccess();
+        // retry while helping enqueue pending Cleaner Reference objects
+        // noinspection StatementWithEmptyBody
+        while (refAccess.tryHandlePendingReference()) ;
+        return true;
+      } catch (LinkageError le) {
+        // indicate problem accessing JavaLangRefAccess
+        return false;
+      } catch (Throwable ignored) {
+        // ignore if failed for some other reason
+        return true;
+      }
     }
 
     static void init() {
@@ -309,14 +328,8 @@ public abstract class UnsafeHolder {
   }
 
   public static void releasePendingReferences() {
-    try {
-      final sun.misc.JavaLangRefAccess refAccess =
-          sun.misc.SharedSecrets.getJavaLangRefAccess();
-      // retry while helping enqueue pending Cleaner Reference objects
-      // noinspection StatementWithEmptyBody
-      while (refAccess.tryHandlePendingReference()) ;
-    } catch (Throwable ignored) {
-      // ignore if JavaLangRefAccess is not present or failed for some reason
+    if (Wrapper.hasReleasePendingRefs) {
+      Wrapper.releasePendingReferences();
     }
   }
 
