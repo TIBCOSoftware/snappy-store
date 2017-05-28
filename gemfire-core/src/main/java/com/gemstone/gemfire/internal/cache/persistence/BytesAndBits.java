@@ -63,6 +63,10 @@ public class BytesAndBits {
   }
 
   public Object deserialize() {
+    if (this.data.limit() == 0) {
+      throw new IllegalStateException(
+          "Unexpected invocation to deserialize empty/token buffer");
+    }
     Object result = EntryEventImpl.deserializeBuffer(this.data, this.version);
     // if result is a SerializedDiskBuffer then ownership of data has been lost
     if (result instanceof SerializedDiskBuffer) {

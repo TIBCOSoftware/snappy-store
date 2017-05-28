@@ -100,7 +100,8 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
 
   @Override
   public ByteBuffer getBufferRetain() {
-    return retain() ? this.buffer.duplicate() : DiskEntry.Helper.NULL_BUFFER;
+    return retain() ? this.buffer.duplicate()
+        : DiskEntry.Helper.NULL_BUFFER.duplicate();
   }
 
   @Override
