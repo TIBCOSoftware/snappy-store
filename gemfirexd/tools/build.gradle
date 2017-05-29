@@ -129,10 +129,6 @@ shadowJar {
   dependsOn jar
   baseName = 'snappydata-tools'
   classifier = ''
-  // avoid conflict with the older incompatible thrift versions
-  relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
-  // avoid conflict with upstream spark-unsafe
-  relocate 'org.apache.spark.unsafe', 'io.snappydata.org.apache.spark.unsafe'
 
   mergeServiceFiles()
 }

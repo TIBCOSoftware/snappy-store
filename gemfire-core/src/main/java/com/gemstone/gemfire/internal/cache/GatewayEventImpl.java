@@ -23,7 +23,6 @@ import java.io.IOException;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.InternalGemFireError;
-import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SerializationException;
 import com.gemstone.gemfire.cache.CacheEvent;
 import com.gemstone.gemfire.cache.EntryEvent;

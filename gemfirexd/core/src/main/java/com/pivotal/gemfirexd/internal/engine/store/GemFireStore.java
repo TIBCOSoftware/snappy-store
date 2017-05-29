@@ -62,11 +62,15 @@ import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersRequest;
 import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersResponse;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
-import com.gemstone.gemfire.cache.GemFireSparkConnectorCacheFactory;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
-import com.gemstone.gemfire.distributed.internal.*;
+import com.gemstone.gemfire.distributed.internal.DM;
+import com.gemstone.gemfire.distributed.internal.DistributionAdvisee;
+import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
+import com.gemstone.gemfire.distributed.internal.DistributionConfig;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.distributed.internal.tcpserver.TcpClient;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -880,10 +884,12 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     remoteGemFireLocators = PropertyUtil.findAndGetProperty(props, DistributionConfig
                     .REMOTE_LOCATORS_NAME, DistributionConfig.GEMFIRE_PREFIX +
             DistributionConfig.REMOTE_LOCATORS_NAME);
-   /* if (remoteGemFireLocators != null) {
+   /*
+    if (remoteGemFireLocators != null) {
       props.remove(DistributionConfig.REMOTE_LOCATORS_NAME);
       props.remove(DistributionConfig.GEMFIRE_PREFIX + DistributionConfig.REMOTE_LOCATORS_NAME);
-    }*/
+    }
+    */
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,

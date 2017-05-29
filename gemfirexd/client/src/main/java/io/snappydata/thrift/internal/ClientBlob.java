@@ -52,7 +52,6 @@ import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.BufferedBlob;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
-import io.snappydata.thrift.common.ThriftUtils;
 import io.snappydata.thrift.snappydataConstants;
 
 public final class ClientBlob extends ClientLobBase implements BufferedBlob {

@@ -5364,8 +5364,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         throw new IllegalStateException("unhandled enum " + pra);
       }
     }
-
-
   }
 
   public static void initializeClientRegionShortcuts(Cache c) {

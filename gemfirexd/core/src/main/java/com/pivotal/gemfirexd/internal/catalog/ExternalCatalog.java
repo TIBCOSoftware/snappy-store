@@ -76,11 +76,6 @@ public interface ExternalCatalog {
   public List<ExternalTableMetaData> getNonStoreTables(boolean skipLocks);
 
   /**
-   * Get the metadata for all external hive tables (including all their columns).
-   */
-  public List<ExternalTableMetaData> getNonStoreTables(boolean skipLocks);
-
-  /**
    * Returns the meta data of the Hive Table
    */
   public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
