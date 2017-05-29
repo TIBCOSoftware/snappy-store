@@ -37,7 +37,6 @@ package com.gemstone.gemfire.internal.cache;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.locks.LockSupport;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DiskAccessException;
@@ -54,6 +53,8 @@ import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.persistence.BytesAndBits;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
+import com.gemstone.gemfire.internal.cache.store.WrappedBytes;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -68,7 +69,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 
@@ -161,11 +161,11 @@ public interface DiskEntry extends RegionEntry {
   public static class Helper {
 
     public static ValueWrapper wrapBytes(byte[] b) {
-      return b != null ? new ValueWrapper(true, ByteBuffer.wrap(b)) : NULL_VW;
+      return b != null ? new ValueWrapper(true, new WrappedBytes(b)) : NULL_VW;
     }
 
     public static ValueWrapper wrapBytes(byte[] b, int length) {
-      return b != null ? new ValueWrapper(true, ByteBuffer.wrap(b, 0, length))
+      return b != null ? new ValueWrapper(true, new WrappedBytes(b, 0, length))
           : NULL_VW;
     }
 
@@ -183,8 +183,7 @@ public interface DiskEntry extends RegionEntry {
       dr.acquireReadLock();
       try {
       synchronized (id) {
-        if (id == null
-            || (dr.isBackup() && id.getKeyId() == DiskRegion.INVALID_ID)
+        if ((dr.isBackup() && id.getKeyId() == DiskRegion.INVALID_ID)
             || (!entry.isValueNull() && id.needsToBeWritten() && !EntryBits.isRecoveredFromDisk(id.getUserBits()))/*fix for bug 41942*/) {
           return null;
         }
@@ -289,6 +288,24 @@ public interface DiskEntry extends RegionEntry {
         if (syncObj == did) {
           dr.releaseReadLock();
         }
+      }
+    }
+
+    public static Object getValueOnDisk(final DiskId id,
+        final DiskRegionView dr) {
+      dr.acquireReadLock();
+      try {
+        synchronized (id) {
+          final BytesAndBits bb = dr.getDiskStore().getBytesAndBitsWithoutLock(
+              dr, id, false, false);
+          if (bb != DiskStoreImpl.CLEAR_BB) {
+            return DiskStoreImpl.convertBytesAndBitsIntoObject(bb);
+          } else {
+            return Token.REMOVED_PHASE1;
+          }
+        }
+      } finally {
+        dr.releaseReadLock();
       }
     }
       
@@ -616,19 +633,19 @@ public interface DiskEntry extends RegionEntry {
     public static final ByteBuffer TOMBSTONE_BUFFER =
         ByteBuffer.wrap(TOMBSTONE_BYTES);
 
-    public static final ValueWrapper NULL_VW = new ValueWrapper(
-        true, NULL_BUFFER);
-    public static final ValueWrapper INVALID_VW = new ValueWrapper(
-        true, INVALID_BUFFER);
-    public static final ValueWrapper LOCAL_INVALID_VW = new ValueWrapper(
-        true, LOCAL_INVALID_BUFFER);
-    public static final ValueWrapper TOMBSTONE_VW = new ValueWrapper(
-        true, TOMBSTONE_BUFFER);
+    static final ValueWrapper NULL_VW = new ValueWrapper(
+        true, new WrappedBytes(ClientSharedData.ZERO_ARRAY));
+    static final ValueWrapper INVALID_VW = new ValueWrapper(
+        true, new WrappedBytes(INVALID_BYTES));
+    static final ValueWrapper LOCAL_INVALID_VW = new ValueWrapper(
+        true, new WrappedBytes(LOCAL_INVALID_BYTES));
+    static final ValueWrapper TOMBSTONE_VW = new ValueWrapper(
+        true, new WrappedBytes(TOMBSTONE_BYTES));
 
     static class ValueWrapper {
 
       public final boolean isSerializedObject;
-      private ByteBuffer buffer;
+      public SerializedDiskBuffer buffer;
 
       public static ValueWrapper create(Object value) {
         if (value == Token.INVALID) {
@@ -649,7 +666,7 @@ public interface DiskEntry extends RegionEntry {
           return TOMBSTONE_VW;
         }
         else {
-          ByteBuffer buffer;
+          SerializedDiskBuffer buffer;
           boolean isSerializedObject = true;
           if (value instanceof CachedDeserializable) {
             byte[] bytes;
@@ -670,16 +687,16 @@ public interface DiskEntry extends RegionEntry {
             } else {
               bytes = proxy.getSerializedValue();
             }
-            buffer = bytes != null ? ByteBuffer.wrap(bytes) : null;
+            buffer = bytes != null ? new WrappedBytes(bytes) : NULL_VW.buffer;
           }
           else if (value instanceof byte[]) {
             isSerializedObject = false;
-            buffer = ByteBuffer.wrap((byte[])value);
+            buffer = new WrappedBytes((byte[])value);
           }
           else {
             Assert.assertTrue(!Token.isRemovedFromDisk(value));
-            buffer = EntryEventImpl.serializeDirect(value, null);
-            if (buffer.remaining() == 0) {
+            buffer = EntryEventImpl.serializeBuffer(value, null);
+            if (buffer.size() == 0) {
               throw new IllegalStateException("serializing <" + value +
                   "> produced empty byte array");
             }
@@ -688,58 +705,39 @@ public interface DiskEntry extends RegionEntry {
         }
       }
 
-      private ValueWrapper(boolean isSerializedObject, ByteBuffer buffer) {
-        // expect buffer position to be at the start to avoid complications
-        // in dealing with non-zero position everywhere
-        if (buffer.position() != 0) {
-          throw new IllegalStateException(
-              "Expected buffer position to be 0 but is = " + buffer.position());
-        }
+      private ValueWrapper(boolean isSerializedObject, SerializedDiskBuffer buffer) {
         this.isSerializedObject = isSerializedObject;
         this.buffer = buffer;
       }
 
       public void write(OutputStreamChannel channel) throws IOException {
-        final ByteBuffer buffer = this.buffer;
-        // position is always expected to be zero
-        assert buffer.position() == 0;
-        while (buffer.hasRemaining()) {
-          if (channel.write(buffer) == 0) {
-            // wait for a while before retrying
-            LockSupport.parkNanos(50L);
-          }
-        }
-        // rewind for further reads
-        buffer.rewind();
+        this.buffer.write(channel);
       }
 
       /**
-       * Get the internal buffer of the data for temporary use.
-       * <p>
-       * USE WITH CARE ESPECIALLY NO EXPLICIT RELEASE WHICH SHOULD ONLY
-       * BE DONE USING THE {@link #release()} METHOD.
+       * Get the data as a ByteBuffer with a retain() invoked on it. Callers
+       * should normally invoked {@link #release()} when done for eager release.
        */
-      public ByteBuffer getInternalBuffer() {
-        return this.buffer;
+      public ByteBuffer getBufferRetain() {
+        return this.buffer.getBufferRetain();
       }
 
       public int size() {
-        // position is always expected to be zero
-        assert this.buffer.position() == 0;
-        return this.buffer.limit();
+        return this.buffer.size();
       }
 
       public void release() {
-        final ByteBuffer buffer = this.buffer;
-        if (buffer != null && buffer.isDirect()) {
+        final SerializedDiskBuffer buffer = this.buffer;
+        if (buffer != null && buffer.needsRelease()) {
           this.buffer = null;
-          UnsafeHolder.releaseDirectBuffer(buffer);
+          buffer.release();
         }
       }
 
       @Override
       public String toString() {
-        return Oplog.bufferToString(this.buffer);
+        final SerializedDiskBuffer buffer = this.buffer;
+        return buffer != null ? buffer.toString() : "null";
       }
     }
 
@@ -1037,22 +1035,6 @@ public interface DiskEntry extends RegionEntry {
       Object result = OffHeapHelper.copyAndReleaseIfNeeded(getValueOffHeapOrDiskWithoutFaultIn(entry, region));
       if (result instanceof CachedDeserializable) {
         result = ((CachedDeserializable)result).getDeserializedValue(null, null);
-      }
-      if (result instanceof StoredObject) {
-        ((StoredObject) result).release();
-        throw new IllegalStateException("gfxd tried to use getValueInVMOrDiskWithoutFaultIn");
-      }
-      return result;
-    }
-
-    public static Object getValueInVMOrDiskWithoutFaultIn(DiskEntry entry,
-        DiskRegionView dr, RegionEntryContext context) {
-      Object result = OffHeapHelper
-          .copyAndReleaseIfNeeded(getValueOffHeapOrDiskWithoutFaultIn(entry, dr,
-              context));
-      if (result instanceof CachedDeserializable) {
-        result = ((CachedDeserializable)result)
-            .getDeserializedValue(null, null);
       }
       if (result instanceof StoredObject) {
         ((StoredObject) result).release();
@@ -1395,9 +1377,9 @@ public interface DiskEntry extends RegionEntry {
       // stats after recovery. @TODO fix the PR region Stats.
       int recoveredValueSize = BucketRegion.calcMemSize(preparedValue);
 
-      if(!LocalRegion.isMetaTable(dr.getName())){
-        CallbackFactoryProvider.getStoreCallbacks().
-            acquireStorageMemory(dr.getName(), recoveredValueSize, null, false);
+      if (!LocalRegion.isMetaTable(dr.getName())) {
+        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
+            dr.getName(), recoveredValueSize, null, false, false);
       }
       region.updateSizeOnFaultIn(entry.getKey(), recoveredValueSize, bytesOnDisk);
       //did.setValueSerializedSize(0);
@@ -1498,6 +1480,11 @@ public interface DiskEntry extends RegionEntry {
       if (did == null) {
         ((AbstractDiskLRURegionEntry)entry).setDelayedDiskId(region);
         did = entry.getDiskId();
+        final Object oldValue;
+        if (GemFireCacheImpl.hasNewOffHeap() &&
+            (oldValue = entry._getValue()) instanceof SerializedDiskBuffer) {
+          ((SerializedDiskBuffer)oldValue).setDiskId(did, dr);
+        }
         // add DiskId overhead to change
         diskIDOverhead += region.calculateDiskIdOverhead(did);
       }

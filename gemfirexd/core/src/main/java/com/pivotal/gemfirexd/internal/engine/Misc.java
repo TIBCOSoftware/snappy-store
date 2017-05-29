@@ -63,7 +63,6 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
-import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
@@ -357,8 +356,8 @@ public abstract class Misc {
     if (childRegion == null) {
       RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
       PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
-      RegionAttributesCreation af = new RegionAttributesCreation();
-      af.setDataPolicy(DataPolicy.PARTITION);
+      AttributesFactory afact = new AttributesFactory();
+      afact.setDataPolicy(attributesBase.getDataPolicy());
       PartitionAttributesFactory paf = new PartitionAttributesFactory();
       paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
       paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
@@ -366,8 +365,8 @@ public abstract class Misc {
       PartitionResolver partResolver = createPartitionResolverForSampleTable(reservoirRegionName);
       paf.setPartitionResolver(partResolver);
       paf.setColocatedWith(regionBase.getFullPath());
-      af.setPartitionAttributes(paf.create());
-      childRegion = cache.createRegion(reservoirRegionName, af);
+      afact.setPartitionAttributes(paf.create());
+      childRegion = cache.createRegion(reservoirRegionName, afact.create());
     }
     reservoirRegionCreated = true;
     return (PartitionedRegion)childRegion;

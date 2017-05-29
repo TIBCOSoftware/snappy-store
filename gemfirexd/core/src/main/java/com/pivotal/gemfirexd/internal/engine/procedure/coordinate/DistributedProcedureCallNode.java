@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 package com.pivotal.gemfirexd.internal.engine.procedure.coordinate;
 
 import java.io.Serializable;
@@ -22,14 +40,13 @@ import java.util.ArrayList;
 import java.util.Vector;
 
 import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
 import com.pivotal.gemfirexd.internal.catalog.types.RoutineAliasInfo;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.ServerGroupsTableAttribute;
-import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.ClassName;
 import com.pivotal.gemfirexd.internal.iapi.reference.JDBC30Translation;
@@ -52,24 +69,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.IndexRowGenerator;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.ScanController;
 import com.pivotal.gemfirexd.internal.iapi.util.JBitSet;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.AndNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.CollectNodesVisitor;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.ColumnReference;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.ExpressionClassBuilder;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.FromBaseTable;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.FromList;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.FromSubquery;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.FromVTI;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.InListOperatorNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.JavaValueNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.Predicate;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.PredicateList;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.RelationalOperator;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.SelectNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.StaticMethodCallNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.SubqueryList;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.SubqueryNode;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.ValueNode;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.*;
 
 /**
  * This represents a procedure call in the coordinate node.
@@ -707,17 +707,12 @@ public class DistributedProcedureCallNode extends StaticMethodCallNode
     Region<?, ?> region = Misc.getRegionForTableByPath(td.getSchemaName() + "." + td.getName(), true);
     assert region != null: "The region is supposed not to be null!";
 
-    GfxdPartitionResolver resolver = null;
-    //get partition resolver if it exists
-    if (region instanceof PartitionedRegion) {
-      resolver = (GfxdPartitionResolver)((PartitionedRegion)region)
-          .getPartitionResolver();
-    }
-    else {
+    GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+    if (!container.isPartitioned()) {
       //replicated region
       return;
     }
-    DistributionDescriptor dd = resolver.getDistributionDescriptor();
+    DistributionDescriptor dd = container.getDistributionDescriptor();
     //partitioned by columns
     int[] partitionColumnPositions = null;
     if (dd.getPolicy() <= DistributionDescriptor.PARTITIONBYGENERATEDKEY

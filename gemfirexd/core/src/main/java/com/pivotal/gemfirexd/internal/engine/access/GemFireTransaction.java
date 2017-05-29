@@ -40,7 +40,6 @@ import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.internal.cache.Checkpoint;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
 import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
@@ -705,7 +704,7 @@ public final class GemFireTransaction extends RawTransaction implements
    *          DOCUMENT ME!
    * @param dynamic_info
    *          DOCUMENT ME!
-   * @param fc
+   * @param act
    *          DOCUMENT ME!
    * 
    * @return DOCUMENT ME!

@@ -40,7 +40,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.CancelledKeyException;
@@ -1303,7 +1302,7 @@ public final class Connection implements Runnable {
             if (start == 0L && connectTimeNanos > 0) {
               start = System.nanoTime();
             }
-            LockSupport.parkNanos(50L);
+            LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
             if (connectTimeNanos > 0 &&
                 (System.nanoTime() - start) > connectTimeNanos) {
               throw new ConnectException(LocalizedStrings
@@ -3441,7 +3440,7 @@ public final class Connection implements Runnable {
           }
           if (amtWritten == 0) {
             // wait for a bit before retrying
-            LockSupport.parkNanos(50L);
+            LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
           }
         } while (buffer.remaining() > 0);
       } // synchronized

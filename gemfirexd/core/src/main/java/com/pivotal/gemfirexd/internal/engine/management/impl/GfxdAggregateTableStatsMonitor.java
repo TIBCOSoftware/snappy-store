@@ -95,7 +95,8 @@ public class GfxdAggregateTableStatsMonitor {
       }
       
       GemFireCacheImpl cache = Misc.getGemFireCacheNoThrow();
-      if (cache != null && tableName != null && policyName!= null && cache.isClosed() == false && cache.isCacheAtShutdownAll() == false ) {        
+      if (cache != null && tableName != null && policyName!= null &&
+          !cache.isClosed() && !cache.isCacheAtShutdownAll()) {
         //reset before aggregation starts
         numberOfRows = 0;
         entrySize = 0.0;

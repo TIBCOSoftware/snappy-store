@@ -23,6 +23,7 @@ import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
@@ -36,7 +37,6 @@ import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
  * 
  * @see AndJunctionQueryInfo#mergeNonJunctionOperand(AbstractConditionQueryInfo,
  *      int)
- * @see ComparisonQueryInfo#mergeConditionToFormRangeIfPossible(AbstractConditionQueryInfo)
  * 
  * 
  * @author Asif
@@ -266,8 +266,7 @@ public class RangeQueryInfo extends AbstractConditionQueryInfo {
     if (this.region.getAttributes().getDataPolicy().withPartitioning()) {
       assert this.region instanceof PartitionedRegion;
       PartitionedRegion pr = (PartitionedRegion)this.region;
-      final GfxdPartitionResolver rslvr = (GfxdPartitionResolver)pr
-          .getPartitionResolver();
+      final GfxdPartitionResolver rslvr = GemFireXDUtils.getResolver(pr);
       String rslvrColNames[] = null;
       if (rslvr != null
           && (rslvrColNames = rslvr.getColumnNames()).length == 1

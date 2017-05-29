@@ -297,7 +297,7 @@ public class utilMain implements java.security.PrivilegedAction {
          		try {
            			ijResult result = ijParser.showConnectionsMethod(true);
  					displayResult(out,result,connEnv[currCE].getConnection(),
- 					    -1 /* GemStoneAddition */, true);
+					    -1 /* GemStoneAddition */, true);
          		} catch (SQLException ex) {
            			handleSQLException(out,ex);
          		}
@@ -603,7 +603,8 @@ public class utilMain implements java.security.PrivilegedAction {
   	}
 
 	private long /* GemStone change: void */ displayResult(LocalizedOutput out, ijResult result, Connection conn,
-	    long beginTime /* GemStoneAddition */, boolean displayCount /* GemStoneAddition */) throws SQLException {
+	    long beginTime /* GemStoneAddition */,
+	    boolean displayCount /* GemStoneAddition */) throws SQLException {
 	  final StopWatch timer = SharedUtils.newTimer(beginTime);
 		// display the result, if appropriate.
 		if (result!=null) {
@@ -1000,17 +1001,19 @@ public class utilMain implements java.security.PrivilegedAction {
 	String getExceptionCauseForDisplay(final Throwable t,
 	    final StringBuilder sb) {
 	  Throwable cause = t;
+	  String tSimpleName = t.getClass().getSimpleName();
 	  while (cause.getCause() != null) {
 	    cause = cause.getCause();
 	  }
 	  String causeClass;
-	  if (cause != t && !"SqlException".equals(
+	  if (!"SQLException".equals(tSimpleName) &&
+	     cause != t && !"SqlException".equals(
 	      (causeClass = cause.getClass().getSimpleName()))) {
-	    sb.append(SanityManager.lineSeparator);
-	    sb.append("Caused by: ").append(causeClass);
-	    sb.append(": ").append(cause.getMessage());
-	    sb.append(SanityManager.lineSeparator);
-	    sb.append("\tat ").append(cause.getStackTrace()[0]);
+	     sb.append(SanityManager.lineSeparator);
+	     sb.append("Caused by: ").append(causeClass);
+	     sb.append(": ").append(cause.getMessage());
+	     sb.append(SanityManager.lineSeparator);
+	     sb.append("\tat ").append(cause.getStackTrace()[0]);
 	  }
 	  return sb.toString();
 	}

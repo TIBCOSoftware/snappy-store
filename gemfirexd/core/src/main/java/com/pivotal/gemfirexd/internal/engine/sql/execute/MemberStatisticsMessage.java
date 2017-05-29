@@ -24,6 +24,7 @@ import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
@@ -228,16 +229,24 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   }
 
   public long getStoragePoolUsed() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getStoragePoolUsedMemory();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolUsedMemory(false) +
+        callbacks.getStoragePoolUsedMemory(true);
   }
   public long getStoragePoolSize() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getStoragePoolSize();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolSize(false) +
+        callbacks.getStoragePoolSize(true);
   }
   public long getExecutionPoolUsed() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolUsedMemory();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getExecutionPoolUsedMemory(false) +
+        callbacks.getExecutionPoolUsedMemory(true);
   }
   public long getExecutionPoolSize() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolSize();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getExecutionPoolSize(false) +
+        callbacks.getExecutionPoolSize(true);
   }
 
   private NetworkServerConnectionStats getMemberClientConnectionStats(InternalDistributedSystem system){

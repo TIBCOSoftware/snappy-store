@@ -1031,6 +1031,8 @@ public final class InsertNode extends DMLModStatementNode
 
   public Set<Object> getSHOPInformation(ResultColumnList topLevelRCL,
       GfxdPartitionResolver resolver, TableDescriptor ttd) throws StandardException {
+    if (resolver == null) return null;
+
     ResultSetNode rsn = this.resultSet;
     ResultColumnList rcl = rsn.getResultColumns();
     int numColumns = rcl.size();

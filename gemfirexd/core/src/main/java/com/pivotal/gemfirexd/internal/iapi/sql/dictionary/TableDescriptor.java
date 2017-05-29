@@ -56,6 +56,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
 import com.pivotal.gemfirexd.internal.catalog.Dependable;
 import com.pivotal.gemfirexd.internal.catalog.DependableFinder;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
@@ -1468,7 +1469,7 @@ public class TableDescriptor extends TupleDescriptor
     return this.tableType == VTI_TYPE && !this.skipRouteQueryToAllNodes;
   }
 
-  public DistributionDescriptor getDistributionDescriptorFromResolver() throws StandardException {
+  public DistributionDescriptor getDistributionDescriptorFromContainer() throws StandardException {
     
     Region<?,?> region = getRegion();
     
@@ -1486,9 +1487,8 @@ public class TableDescriptor extends TupleDescriptor
               0, null, false, new java.util.TreeSet<String>());
     }
     
-    GfxdPartitionResolver partResolver = getPartitionResolver(partAttributes);
-    assert partResolver != null: "Resolver is not expected to be null at this point.";
-    return partResolver.getDistributionDescriptor();
+    GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+    return container != null ? container.getDistributionDescriptor() : null;
   }
 
   public Region<?, ?> getRegion() {
@@ -1502,7 +1502,8 @@ public class TableDescriptor extends TupleDescriptor
     return region;
   }
   
-  public GfxdPartitionResolver getPartitionResolver(final PartitionAttributes<?, ?> pAttribs) {
+  public GfxdPartitionResolver getGfxdPartitionResolver(
+      final PartitionAttributes<?, ?> pAttribs) {
     
     final PartitionAttributes<?, ?> partAttributes ;
     if (pAttribs == null) {
@@ -1522,11 +1523,12 @@ public class TableDescriptor extends TupleDescriptor
     
     final PartitionResolver<?, ?> partResolver = partAttributes
         .getPartitionResolver();
-    
-    assert partResolver instanceof GfxdPartitionResolver: "partResolver = "
-        + partResolver + " which is expected to be non-null & instanceof GfxdPR.";
-    
-    return (GfxdPartitionResolver)partResolver;
+    if (partResolver instanceof GfxdPartitionResolver) {
+      return (GfxdPartitionResolver)partResolver;
+    } else {
+      // can be an object table with custom PartitionResolver
+      return null;
+    }
   }
 
   @Override

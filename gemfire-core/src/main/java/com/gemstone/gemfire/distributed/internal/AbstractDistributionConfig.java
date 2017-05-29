@@ -1948,6 +1948,8 @@ public abstract class AbstractDistributionConfig
       return String.class;
     } else if (attName.equalsIgnoreCase(LOCK_MEMORY_NAME)) {
       return Boolean.class;
+    } else if (attName.equalsIgnoreCase(MEMORY_SIZE_NAME)) {
+      return String.class;
     } else if (attName.startsWith(GFXD_USERDEFINED_PREFIX_NAME)) {
       return String.class;
     } else if (attName.equalsIgnoreCase(MEMORY_SIZE_NAME)) {
@@ -2298,7 +2300,7 @@ public abstract class AbstractDistributionConfig
     m.put(OFF_HEAP_MEMORY_SIZE_NAME, LocalizedStrings.AbstractDistributionConfig_OFF_HEAP_MEMORY_SIZE_0.toLocalizedString(DEFAULT_OFF_HEAP_MEMORY_SIZE));
     m.put(LOCK_MEMORY_NAME, LocalizedStrings.AbstractDistributionConfig_LOCK_MEMORY.toLocalizedString(DEFAULT_LOCK_MEMORY));
     m.put(MEMORY_SIZE_NAME, LocalizedStrings.AbstractDistributionConfig_MEMORY_SIZE.toLocalizedString(DEFAULT_MEMORY_SIZE));
-    
+
     dcAttDescriptions = Collections.unmodifiableMap(m);
    }
   }

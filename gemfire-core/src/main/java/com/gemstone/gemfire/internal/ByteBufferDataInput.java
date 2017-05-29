@@ -27,22 +27,26 @@ import javax.annotation.Nonnull;
 import com.gemstone.gemfire.internal.shared.Version;
 
 /**
- * Implements {@link DataInput} reading from given direct ByteBuffer.
+ * Implements {@link DataInput} reading from given ByteBuffer.
  * <p>
  * Note: this can be further optimized by using the Unsafe API rather than
  * going through ByteBuffer API (e.g. see ChannelBufferUnsafeDataInputStream)
  * but won't have an effect for large byte array reads (like for column data)
  */
-public final class DirectByteBufferDataInput
+public final class ByteBufferDataInput
     implements DataInput, VersionedDataStream {
 
   private final ByteBuffer buffer;
   private final Version version;
 
-  public DirectByteBufferDataInput(ByteBuffer buffer, Version version) {
+  public ByteBufferDataInput(ByteBuffer buffer, Version version) {
     buffer.order(ByteOrder.BIG_ENDIAN);
     this.buffer = buffer;
     this.version = version;
+  }
+
+  public ByteBuffer getInternalBuffer() {
+    return this.buffer;
   }
 
   @Override

@@ -3881,9 +3881,8 @@ public final class TXState implements TXStateInterface {
     final LogWriterI18n logger = ((LocalRegion)region).getLogWriterI18n();
 
     for (VersionInformation obj : this.queue) {
-      if (id == ((VersionInformation)obj).member && (version == (
-          (VersionInformation)obj).version) &&
-          region == ((VersionInformation)obj).region)
+      if (id == obj.member && (version == obj.version) &&
+          region == obj.region)
 
         if (TXStateProxy.LOG_FINE) {
           logger.info(LocalizedStrings.DEBUG, " The version found in the current tx : " + this);

@@ -57,10 +57,9 @@ public abstract class OutputStreamChannel extends OutputStream implements
   protected volatile long bytesWritten;
 
   /**
-   * nanos to park reader thread to wait for writing data in non-blocking mode
-   * (will be explicitly signalled by selector if data can be written)
+   * Maximum nanos to park reader thread to wait for writing data in
+   * non-blocking mode (if selector is present then it will explicitly signal)
    */
-  protected static final long PARK_NANOS = 50L;
   protected static final long PARK_NANOS_MAX = 15000000000L;
 
   protected OutputStreamChannel(WritableByteChannel channel) {
@@ -162,9 +161,10 @@ public abstract class OutputStreamChannel extends OutputStream implements
       // create unlimited size buffers upfront in selector, so will use
       // simple signalling between selector and this thread to proceed
       this.parkedThread = Thread.currentThread();
-      LockSupport.parkNanos(PARK_NANOS);
+      LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
       this.parkedThread = null;
-      if ((parkNanos += PARK_NANOS) > getParkNanosMax()) {
+      if ((parkNanos += ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE) >
+          getParkNanosMax()) {
         throw new SocketTimeoutException("Connection write timed out.");
       }
     }

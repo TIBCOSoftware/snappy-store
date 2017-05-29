@@ -30,7 +30,7 @@ class ReplicatedTableExecutionEngineRule extends AccumulativeExecutionEngineRule
   protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo , ExecutionRuleContext context) {
     List<GemFireContainer> containers = qInfo.getContainerList();
     for (GemFireContainer container : containers) {
-      if (container.getRegion().getDataPolicy() == DataPolicy.PARTITION) {
+      if (container.getRegion().getDataPolicy().withPartitioning()) {
         context.setExtraDecisionMakerParam(Boolean.TRUE);
       }
     }

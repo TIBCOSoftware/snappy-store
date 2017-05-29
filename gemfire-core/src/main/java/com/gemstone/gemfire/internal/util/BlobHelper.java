@@ -43,11 +43,12 @@ import com.gemstone.gemfire.distributed.internal.DMStats;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.DSCODE;
-import com.gemstone.gemfire.internal.DirectByteBufferDataInput;
-import com.gemstone.gemfire.internal.DirectByteBufferDataOutput;
+import com.gemstone.gemfire.internal.ByteBufferDataInput;
+import com.gemstone.gemfire.internal.ByteBufferDataOutput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.pdx.internal.PdxInputStream;
 
@@ -99,17 +100,20 @@ public class BlobHelper {
   }
 
   /**
-   * This method serializes the object into a direct ByteBuffer.
+   * Serialize the object as a {@link SerializedDiskBuffer} normally holding
+   * a direct ByteBuffer.
    */
-  public static ByteBuffer serializeToDirectBuffer(Object obj, Version version)
+  public static SerializedDiskBuffer serializeToBuffer(Object obj, Version version)
       throws IOException {
     final long start = startSerialization();
-    // serialize into an expanding direct ByteBuffer
-    DirectByteBufferDataOutput out = new DirectByteBufferDataOutput(version);
-    DataSerializer.writeObject(obj, out);
-    ByteBuffer result = out.getBuffer();
-    result.flip();
-    endSerialization(start, result.limit());
+    // check for the special case of pre-serialized buffers with valid refCount
+    SerializedDiskBuffer result;
+    if (!(obj instanceof SerializedDiskBuffer) ||
+        (result = ((SerializedDiskBuffer)obj).getDiskBufferRetain()) == null) {
+      // serialize into an expanding direct ByteBuffer
+      result = new ByteBufferDataOutput(version).serialize(obj);
+    }
+    endSerialization(start, result.size());
     return result;
   }
 
@@ -189,7 +193,7 @@ public class BlobHelper {
       throws IOException, ClassNotFoundException {
     Object result;
     final long start = startDeserialization();
-    final int bufferSize = buffer.limit();
+    final int bufferSize = buffer.remaining();
     // no longer support pre-SQLF 1.1 format so callback is skipped
     // here which may need to be added if row format changes in future
     if (bufferSize > 0 && buffer.get(0) == DSCODE.PDX) {
@@ -203,7 +207,7 @@ public class BlobHelper {
       // if we have a nested pdx then we want to make a copy
       // when a PdxInstance is created so that the byte[] will
       // just have the pdx bytes and not the outer objects bytes.
-      final DirectByteBufferDataInput in = new DirectByteBufferDataInput(
+      final ByteBufferDataInput in = new ByteBufferDataInput(
           buffer, version);
       result = DataSerializer.readObject(in);
     }

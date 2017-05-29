@@ -38,7 +38,6 @@ package io.snappydata.thrift.common;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.Date;
@@ -48,7 +47,6 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.SnappyType;
 
 /**
@@ -247,8 +245,7 @@ public abstract class ColumnValueConverter {
     long len = x.length();
     if (len <= Integer.MAX_VALUE) {
       if (x instanceof BufferedBlob) {
-        ByteBuffer buffer = ((BufferedBlob)x).getAsBuffer();
-        row.setObject(columnPosition - 1, new BlobChunk(buffer, true),
+        row.setObject(columnPosition - 1, ((BufferedBlob)x).getAsLastChunk(),
             SnappyType.BLOB);
       } else {
         setBytes(row, columnPosition, x.getBytes(1, (int)len));

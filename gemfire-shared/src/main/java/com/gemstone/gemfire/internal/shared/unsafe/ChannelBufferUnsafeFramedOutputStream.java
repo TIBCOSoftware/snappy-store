@@ -46,8 +46,8 @@ public final class ChannelBufferUnsafeFramedOutputStream extends
   }
 
   public ChannelBufferUnsafeFramedOutputStream(WritableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) throws IOException {
-    super(channel, bufferSize, useUnsafeAllocation);
+      int bufferSize) throws IOException {
+    super(channel, bufferSize);
     // position the buffer to skip the length of frame at the start
     this.addrPosition += 4;
     this.doWriteFrameSize = true;

@@ -111,6 +111,8 @@ public final class GemFireDistributedResultSet extends AbstractGemFireResultSet
 
   private final RowFormatter rowFormatter;
 
+  private final boolean objectStore;
+
   private DataTypeDescriptor distinctAggUnderlyingType;
 
   protected final ParameterValueSet pvs;
@@ -144,6 +146,7 @@ public final class GemFireDistributedResultSet extends AbstractGemFireResultSet
      * resultset.
      */
     this.rowFormatter = this.qInfo.getRowFormatter();
+    this.objectStore = this.qInfo.isObjectStore();
     this.gfContainers = this.qInfo.getContainerList();
     this.isForUpdate = this.qInfo.isSelectForUpdateQuery();
     if (observer != null) {
@@ -295,7 +298,7 @@ public final class GemFireDistributedResultSet extends AbstractGemFireResultSet
   }
 
   final RowFormatter getRowFormatter() {
-    assert this.rowFormatter != null || qInfo.isTableVTI();
+    assert this.rowFormatter != null || this.objectStore || qInfo.isTableVTI();
     return this.rowFormatter;
   }
 
@@ -616,7 +619,8 @@ public final class GemFireDistributedResultSet extends AbstractGemFireResultSet
           if(statisticsTimingOn) {
             statsRHs.add(next);
           }
-          this.active.setRowFormatter(getRowFormatter(sqinfo), qInfo.isTableVTI());
+          this.active.setRowFormatter(getRowFormatter(sqinfo),
+              objectStore || qInfo.isTableVTI());
           this.active
               .setDistinctAggUnderlyingType(GemFireDistributedResultSet.this
                   .getDistinctAggUnderlyingType());
@@ -694,7 +698,8 @@ public final class GemFireDistributedResultSet extends AbstractGemFireResultSet
       if(statisticsTimingOn) {
         statsRHs.add(next);
       }
-      this.active.setRowFormatter(getRowFormatter(sqinfo), qInfo.isTableVTI());
+      this.active.setRowFormatter(getRowFormatter(sqinfo),
+          objectStore || qInfo.isTableVTI());
       this.active
           .setDistinctAggUnderlyingType(GemFireDistributedResultSet.this
               .getDistinctAggUnderlyingType());
@@ -935,7 +940,8 @@ public final class GemFireDistributedResultSet extends AbstractGemFireResultSet
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_RSITER,
                 "Picking next round robin ResultHolder " + this.active);
           }
-          active.setRowFormatter(getRowFormatter(sqinfo), qInfo.isTableVTI());
+          active.setRowFormatter(getRowFormatter(sqinfo),
+              objectStore || qInfo.isTableVTI());
           active.setDistinctAggUnderlyingType(GemFireDistributedResultSet.this
               .getDistinctAggUnderlyingType());
           boolean iterOk = false;

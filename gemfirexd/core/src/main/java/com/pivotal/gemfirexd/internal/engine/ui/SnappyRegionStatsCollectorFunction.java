@@ -35,8 +35,12 @@ import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.tools.sizer.GemFireXDInstrumentation;
 import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SnappyRegionStatsCollectorFunction implements Function, Declarable {
+
+  private static final long serialVersionUID = 1966980144121152499L;
 
   public static String ID = "SnappyRegionStatsCollectorFunction";
 
@@ -126,7 +130,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           result.addRegionStat(tableStats);
         }
       }
-    } catch (CacheClosedException e) {
+    } catch (CacheClosedException ignored) {
     } finally {
       context.getResultSender().lastResult(result);
     }
@@ -202,9 +206,11 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
       }
       tableStats.setTotalSize(size);
     } else {
-      PartitionedRegionDataStore datastore = ((PartitionedRegion)lr).getDataStore();
+      PartitionedRegion pr = (PartitionedRegion)lr;
+      PartitionedRegionDataStore datastore = pr.getDataStore();
       long sizeInMemory = 0L;
       long sizeOfRegion = 0L;
+      long offHeapBytes = 0L;
       long entryOverhead = 0L;
       long entryCount = 0L;
       if (datastore != null) {
@@ -223,27 +229,27 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           sizeOfRegion += constantOverhead + br.getTotalBytes();
           entryCount += br.entryCount();
         }
+        offHeapBytes = pr.getPrStats().getOffHeapSizeInBytes();
       }
       if (entryOverhead > 0) {
         entryOverhead *= entryCount;
       }
 
-      tableStats.setSizeInMemory(sizeInMemory + entryOverhead);
-      tableStats.setTotalSize(sizeOfRegion + entryOverhead);
+      tableStats.setSizeInMemory(sizeInMemory + offHeapBytes + entryOverhead);
+      tableStats.setTotalSize(sizeOfRegion + offHeapBytes + entryOverhead);
     }
     return tableStats;
   }
 
-  public ArrayList<SnappyIndexStats> getIndexStatForContainer(GemFireContainer c){
-    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<String, Object[]>();
+  public ArrayList<SnappyIndexStats> getIndexStatForContainer(GemFireContainer c) {
+    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<>();
     final String baseTableContainerName = c.getQualifiedTableName();
     ArrayList<SnappyIndexStats> indexStats = new ArrayList<>();
     final LocalRegion reg = c.getRegion();
     final GfxdIndexManager idxMgr = (GfxdIndexManager)reg.getIndexUpdater();
 
     List<GemFireContainer> indexes = (idxMgr != null ? idxMgr.getAllIndexes()
-        : Collections.<GemFireContainer> emptyList());
-
+        : Collections.emptyList());
     try {
       sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes,
           retEstimates, null);
@@ -257,22 +263,17 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
         long rowCount = value[5];
         indexStats.add(new SnappyIndexStats(e.getKey(), rowCount, sum));
       }
-    } catch (StandardException e) {
-      e.printStackTrace();
-    } catch (IllegalAccessException e) {
-      e.printStackTrace();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+    } catch (StandardException | IllegalAccessException | InterruptedException e) {
+      Logger logger = LoggerFactory.getLogger(getClass().getName());
+      logger.warn("Unexpected exception in getIndexStatForContainer: " +
+          e.toString(), e);
     }
     return indexStats;
   }
 
-
   public Boolean isReplicatedTable(DataPolicy dataPolicy) {
-    if (dataPolicy == DataPolicy.PERSISTENT_REPLICATE || dataPolicy == DataPolicy.REPLICATE)
-      return true;
-    else
-      return false;
+    return dataPolicy == DataPolicy.PERSISTENT_REPLICATE ||
+        dataPolicy == DataPolicy.REPLICATE;
   }
 
   @Override

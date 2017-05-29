@@ -23,12 +23,15 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
 
 public abstract class CallbackFactoryProvider {
 
   // no-op implementation.
   private static StoreCallbacks storeCallbacks = new StoreCallbacks() {
+
+    @Override
+    public void registerTypes() {
+    }
 
     @Override
     public Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
@@ -92,13 +95,13 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public boolean acquireStorageMemory(String name, long numBytes,
-        UMMMemoryTracker buffer, boolean shouldEvict) {
+        UMMMemoryTracker buffer, boolean shouldEvict, boolean offHeap) {
       return true;
     }
 
     @Override
-    public void releaseStorageMemory(String objectName, long numBytes) {
-
+    public void releaseStorageMemory(String objectName,
+        long numBytes, boolean offHeap) {
     }
 
     @Override
@@ -118,23 +121,37 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public long getStoragePoolUsedMemory() {
+    public long getStoragePoolUsedMemory(boolean offHeap) {
       return 0;
     }
 
     @Override
-    public long getStoragePoolSize() {
+    public long getStoragePoolSize(boolean offHeap) {
       return 0;
     }
 
     @Override
-    public long getExecutionPoolUsedMemory() {
+    public long getExecutionPoolUsedMemory(boolean offHeap) {
       return 0;
     }
 
     @Override
-    public long getExecutionPoolSize() {
+    public long getExecutionPoolSize(boolean offHeap) {
       return 0;
+    }
+
+    @Override
+    public long getOffHeapMemory(String objectName) {
+      return 0L;
+    }
+
+    @Override
+    public boolean hasOffHeap() {
+      return false;
+    }
+
+    @Override
+    public void logMemoryStats() {
     }
   };
 
