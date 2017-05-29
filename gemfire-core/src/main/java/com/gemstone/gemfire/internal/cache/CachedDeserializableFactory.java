@@ -239,15 +239,15 @@ public class CachedDeserializableFactory {
     } else if (o instanceof Long) {
       result = Sizeable.PER_OBJECT_OVERHEAD + 8;
       addOverhead = false;
+    } else if (o instanceof Sizeable) {
+      result = ((Sizeable)o).getSizeInBytes();
+      if (!preferObject() && o instanceof CachedDeserializable) {
+        // overhead not added for CachedDeserializable
+        addOverhead = false;
+      }
     } else if (o instanceof Integer) {
       result = Sizeable.PER_OBJECT_OVERHEAD + 4;
       addOverhead = false;
-    } else if (o instanceof CachedDeserializable) {
-      // overhead never added
-      result = ((CachedDeserializable)o).getSizeInBytes();
-      addOverhead = false;
-    } else if (o instanceof Sizeable) {
-      result = ((Sizeable)o).getSizeInBytes();
     } else if (os != null) {
       result = os.sizeof(o);
     } else if (calcSerializedSize) {
@@ -293,10 +293,12 @@ public class CachedDeserializableFactory {
       result = getByteSize((byte[])o) - Sizeable.PER_OBJECT_OVERHEAD;
     } else if (o instanceof byte[][]) {
       result = getArrayOfBytesSize((byte[][])o, false);
-    } else if (o instanceof CachedDeserializable) {
-      result = ((CachedDeserializable)o).getSizeInBytes() + 4 - overhead();
     } else if (o instanceof Sizeable) {
       result = ((Sizeable)o).getSizeInBytes() + 4;
+      if (!preferObject() && o instanceof CachedDeserializable) {
+        // overhead not added for CachedDeserializable
+        result -= overhead();
+      }
     } else if (o instanceof HeapDataOutputStream) {
       result = ((HeapDataOutputStream)o).size() + 4;
     } else {

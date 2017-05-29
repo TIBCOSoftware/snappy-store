@@ -84,7 +84,6 @@ public class ColumnQueryInfo extends AbstractQueryInfo implements AbstractColumn
    * to create QueryInfo Object    
    * @param cr ColumnReference object
    * @throws StandardException
-   * @see AndNode#computeQueryInfo() 
    */
   public ColumnQueryInfo(final ColumnReference cr, QueryInfoContext qic)
       throws StandardException {
@@ -145,10 +144,9 @@ public class ColumnQueryInfo extends AbstractQueryInfo implements AbstractColumn
    * This constructor is used while generating QueryInfo object for the 
    * table
    * @param cd ColumnDescriptor Object
-   * @param tableName String
+   * @param tqi Table QueryInfo
    * @param tableNum int
    * @throws StandardException
-   * @see TableQueryInfo#TableQueryInfo(FromBaseTable)
    */
   ColumnQueryInfo(ColumnDescriptor cd, TableQueryInfo tqi, int tableNum)
       throws StandardException {
@@ -398,7 +396,7 @@ public class ColumnQueryInfo extends AbstractQueryInfo implements AbstractColumn
 
     if (policy.withPartitioning()) {
       PartitionedRegion pr = (PartitionedRegion)rgnOwningColumn;
-      GfxdPartitionResolver rslvr = (GfxdPartitionResolver)pr.getPartitionResolver();
+      GfxdPartitionResolver rslvr = GemFireXDUtils.getResolver(pr);
       ok = rslvr != null && rslvr.isUsedInPartitioning(this.actualColumnName);
     }
     return ok;

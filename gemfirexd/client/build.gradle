@@ -53,7 +53,6 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
 }
 
 compileJava {
-  dependsOn project(subprojectBase + 'gemfirexd-core').jar
   dependsOn generatePropertiesFiles
 }
 

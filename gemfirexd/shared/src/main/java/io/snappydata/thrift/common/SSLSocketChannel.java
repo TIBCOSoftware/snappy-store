@@ -55,7 +55,7 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,6 +83,8 @@ public final class SSLSocketChannel
   private ByteBuffer appReadBuffer;
   private ByteBuffer emptyBuf = ByteBuffer.allocate(0);
   private final boolean isTraceEnabled = log.isTraceEnabled();
+
+  private static final String BUFFER_OWNER = "SSLCHANNEL";
 
   public static SSLSocketChannel create(String channelId,
       SocketChannel channel, SelectionKey key, SSLEngine sslEngine,
@@ -151,9 +153,10 @@ public final class SSLSocketChannel
    */
   protected void startHandshake() throws IOException {
     if (this.useDirectBuffers) {
-      this.netReadBuffer = ByteBuffer.allocateDirect(netReadBufferSize());
-      this.netWriteBuffer = ByteBuffer.allocateDirect(netWriteBufferSize());
-      this.appReadBuffer = ByteBuffer.allocateDirect(applicationBufferSize());
+      final DirectBufferAllocator allocator = DirectBufferAllocator.instance();
+      this.netReadBuffer = allocator.allocate(netReadBufferSize(), BUFFER_OWNER);
+      this.netWriteBuffer = allocator.allocate(netWriteBufferSize(), BUFFER_OWNER);
+      this.appReadBuffer = allocator.allocate(applicationBufferSize(), BUFFER_OWNER);
     } else {
       this.netReadBuffer = ByteBuffer.allocate(netReadBufferSize());
       this.netWriteBuffer = ByteBuffer.allocate(netWriteBufferSize());
@@ -220,13 +223,14 @@ public final class SSLSocketChannel
       if (this.useDirectBuffers) {
         ByteBuffer buffer = this.netReadBuffer;
         this.netReadBuffer = null;
-        UnsafeHolder.releaseDirectBuffer(buffer);
+        final DirectBufferAllocator allocator = DirectBufferAllocator.instance();
+        allocator.release(buffer);
         buffer = this.netWriteBuffer;
         this.netWriteBuffer = null;
-        UnsafeHolder.releaseDirectBuffer(buffer);
+        allocator.release(buffer);
         buffer = this.appReadBuffer;
         this.appReadBuffer = null;
-        UnsafeHolder.releaseDirectBuffer(buffer);
+        allocator.release(buffer);
       }
     } catch (IOException ie) {
       log.warn("Failed to send SSL Close message.", ie);
@@ -317,7 +321,7 @@ public final class SSLSocketChannel
             int currentNetWriteBufferSize = netWriteBufferSize();
             netWriteBuffer.compact();
             netWriteBuffer = ClientSharedUtils.ensureCapacity(netWriteBuffer,
-                currentNetWriteBufferSize, useDirectBuffers);
+                currentNetWriteBufferSize, useDirectBuffers, BUFFER_OWNER);
             netWriteBuffer.flip();
             if (netWriteBuffer.limit() >= currentNetWriteBufferSize) {
               throw new IllegalStateException(
@@ -358,7 +362,7 @@ public final class SSLSocketChannel
             if (handshakeResult.getStatus() == Status.BUFFER_OVERFLOW) {
               int currentAppBufferSize = applicationBufferSize();
               appReadBuffer = ClientSharedUtils.ensureCapacity(appReadBuffer,
-                  currentAppBufferSize, useDirectBuffers);
+                  currentAppBufferSize, useDirectBuffers, BUFFER_OWNER);
               if (appReadBuffer.position() > currentAppBufferSize) {
                 throw new IllegalStateException(
                     "Buffer underflow when available data size (" +
@@ -370,7 +374,7 @@ public final class SSLSocketChannel
           if (handshakeResult.getStatus() == Status.BUFFER_UNDERFLOW) {
             int currentNetReadBufferSize = netReadBufferSize();
             netReadBuffer = ClientSharedUtils.ensureCapacity(netReadBuffer,
-                currentNetReadBufferSize, useDirectBuffers);
+                currentNetReadBufferSize, useDirectBuffers, BUFFER_OWNER);
             if (netReadBuffer.position() >= currentNetReadBufferSize) {
               throw new IllegalStateException(
                   "Buffer underflow when there is available data");
@@ -547,7 +551,7 @@ public final class SSLSocketChannel
     }
     if (dst.remaining() > 0) {
       netReadBuffer = ClientSharedUtils.ensureCapacity(netReadBuffer,
-          netReadBufferSize(), useDirectBuffers);
+          netReadBufferSize(), useDirectBuffers, BUFFER_OWNER);
       if (netReadBuffer.remaining() > 0) {
         int netRead = socketChannel.read(netReadBuffer);
         if (netRead == 0 && netReadBuffer.position() == 0) return netRead;
@@ -575,7 +579,7 @@ public final class SSLSocketChannel
         } else if (unwrapResult.getStatus() == Status.BUFFER_OVERFLOW) {
           int currentApplicationBufferSize = applicationBufferSize();
           appReadBuffer = ClientSharedUtils.ensureCapacity(appReadBuffer,
-              currentApplicationBufferSize, useDirectBuffers);
+              currentApplicationBufferSize, useDirectBuffers, BUFFER_OWNER);
           if (appReadBuffer.position() >= currentApplicationBufferSize) {
             throw new IllegalStateException(
                 "Buffer overflow when available data size (" +
@@ -593,7 +597,7 @@ public final class SSLSocketChannel
         } else if (unwrapResult.getStatus() == Status.BUFFER_UNDERFLOW) {
           int currentNetReadBufferSize = netReadBufferSize();
           netReadBuffer = ClientSharedUtils.ensureCapacity(netReadBuffer,
-              currentNetReadBufferSize, useDirectBuffers);
+              currentNetReadBufferSize, useDirectBuffers, BUFFER_OWNER);
           if (netReadBuffer.position() >= currentNetReadBufferSize) {
             throw new IllegalStateException(
                 "Buffer underflow when available data size (" +
@@ -690,7 +694,7 @@ public final class SSLSocketChannel
       int currentNetWriteBufferSize = netWriteBufferSize();
       netWriteBuffer.compact();
       netWriteBuffer = ClientSharedUtils.ensureCapacity(netWriteBuffer,
-          currentNetWriteBufferSize, useDirectBuffers);
+          currentNetWriteBufferSize, useDirectBuffers, BUFFER_OWNER);
       netWriteBuffer.flip();
       if (netWriteBuffer.limit() >= currentNetWriteBufferSize)
         throw new IllegalStateException(

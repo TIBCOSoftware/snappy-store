@@ -52,6 +52,7 @@ import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.common.BufferedBlob;
 
 /**
@@ -390,8 +391,8 @@ public class HarmonySerialBlob implements Blob, BufferedBlob,
     }
 // GemStone changes BEGIN
     @Override
-    public ByteBuffer getAsBuffer() throws SQLException {
-      return ByteBuffer.wrap(this.buf, 0, this.len);
+    public BlobChunk getAsLastChunk() throws SQLException {
+      return new BlobChunk(ByteBuffer.wrap(this.buf, 0, this.len), true);
     }
 
     private void checkValidation() throws SQLException {

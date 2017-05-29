@@ -26,46 +26,118 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import javax.annotation.Nonnull;
 
+import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.internal.cache.DiskEntry;
+import com.gemstone.gemfire.internal.cache.DiskId;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
+import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataOutputStream;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 
 /**
- * Implements {@link DataOutput} writing to a direct ByteBuffer
- * expanding it as required.
+ * A {@link SerializedDiskBuffer} that implements {@link DataOutput} writing
+ * to a ByteBuffer expanding it as required.
  * <p>
  * Note: this can be further optimized by using the Unsafe API rather than
  * going through ByteBuffer API (e.g. see ChannelBufferUnsafeDataOutputStream)
  * but won't have an effect for large byte array writes (like for column data)
  */
-public final class DirectByteBufferDataOutput
+public final class ByteBufferDataOutput extends SerializedDiskBuffer
     implements DataOutput, Closeable, VersionedDataStream {
 
   private static final int INITIAL_SIZE = 1024;
 
+  private final BufferAllocator allocator;
   private ByteBuffer buffer;
   private final Version version;
 
-  public DirectByteBufferDataOutput(Version version) {
+  private static final String BUFFER_OWNER = "DATAOUTPUT";
+
+  public ByteBufferDataOutput(Version version) {
     this(INITIAL_SIZE, version);
   }
 
-  public DirectByteBufferDataOutput(int initialSize, Version version) {
-    // this uses allocations and expansion via direct Unsafe API rather
-    // than ByteBuffer.allocateDirect for better efficiency esp in expansion
-    this.buffer = UnsafeHolder.allocateDirectBuffer(initialSize)
+  public ByteBufferDataOutput(int initialSize, Version version) {
+    // this uses allocations and expansion via BufferAllocator that has both
+    // better efficiency for direct buffer (in expand) and applies system limits
+    this.allocator = GemFireCacheImpl.getCurrentBufferAllocator();
+    this.buffer = allocator.allocate(initialSize, BUFFER_OWNER)
         .order(ByteOrder.BIG_ENDIAN);
     this.version = version;
+  }
+
+  /**
+   * Initialize the buffer serializing the given object to a byte buffer
+   * (with initial reference count as 1). Normally there should be only
+   * one calling thread that will {@link #release()} this when done.
+   */
+  public ByteBufferDataOutput serialize(Object obj) throws IOException {
+    this.buffer.rewind();
+    DataSerializer.writeObject(obj, this);
+    this.buffer.flip();
+    return this;
+  }
+
+  @Override
+  public ByteBuffer getBufferRetain() {
+    return retain() ? this.buffer.duplicate()
+        : DiskEntry.Helper.NULL_BUFFER.duplicate();
+  }
+
+  @Override
+  public boolean needsRelease() {
+    final ByteBuffer buffer = this.buffer;
+    return buffer != null && buffer.isDirect();
+  }
+
+  @Override
+  protected synchronized void releaseBuffer() {
+    final ByteBuffer buffer = this.buffer;
+    this.buffer = null;
+    this.allocator.release(buffer);
+  }
+
+  @Override
+  public void setDiskId(DiskId id, DiskRegionView dr) {
+  }
+
+  @Override
+  public synchronized void write(
+      OutputStreamChannel channel) throws IOException {
+    final ByteBuffer buffer = this.buffer;
+    if (buffer != null) {
+      write(channel, buffer);
+      buffer.rewind();
+    } else {
+      channel.write(DSCODE.NULL);
+    }
+  }
+
+  @Override
+  public int size() {
+    // deliberately not synchronized since size() should always be protected
+    // with a retain call if required and not lead to indeterminate results
+    // due to an unexpected intervening release
+    final ByteBuffer buffer = this.buffer;
+    if (buffer != null) {
+      return buffer.limit();
+    } else {
+      return 0;
+    }
+  }
+
+  @Override
+  public int getOffHeapSizeInBytes() {
+    return 0; // will not be stored in region
   }
 
   @Override
   public Version getVersion() {
     return this.version;
-  }
-
-  public ByteBuffer getBuffer() {
-    return this.buffer;
   }
 
   @Override
@@ -122,14 +194,12 @@ public final class DirectByteBufferDataOutput
 
   @Override
   public void writeFloat(float v) throws IOException {
-    ensureCapacity(4);
-    this.buffer.putInt(Float.floatToIntBits(v));
+    writeInt(Float.floatToIntBits(v));
   }
 
   @Override
   public void writeDouble(double v) throws IOException {
-    ensureCapacity(8);
-    this.buffer.putLong(Double.doubleToLongBits(v));
+    writeLong(Double.doubleToLongBits(v));
   }
 
   @Override
@@ -147,10 +217,11 @@ public final class DirectByteBufferDataOutput
     // write the length first
     buffer.putShort((short)utfLen);
     // now write as UTF data using unsafe API
-    final long address = UnsafeHolder.getDirectBufferAddress(buffer);
+    final Object baseObject = this.allocator.baseObject(buffer);
+    final long address = this.allocator.baseOffset(buffer);
     final int position = buffer.position();
     ChannelBufferUnsafeDataOutputStream.writeUTFSegmentNoOverflow(s, 0, strLen,
-        utfLen, null, address + position);
+        utfLen, baseObject, address + position);
     buffer.position(position + utfLen);
   }
 
@@ -182,17 +253,18 @@ public final class DirectByteBufferDataOutput
   public void close() throws IOException {
   }
 
+  @Override
+  public String toString() {
+    return ClientSharedUtils.toString(this.buffer);
+  }
+
   protected void ensureCapacity(int required) {
     final ByteBuffer buffer = this.buffer;
     final int position = buffer.position();
     if (buffer.limit() - position >= required) return;
 
-    final int newCapacity = Math.max((int)Math.min(
-        ((long)buffer.capacity() * 3L) >>> 1L, Integer.MAX_VALUE), position + required);
     buffer.flip();
-    // use the efficient C realloc() call that avoids copying if possible
-    ByteBuffer newBuffer = UnsafeHolder.reallocateDirectBuffer(
-        buffer, newCapacity);
+    ByteBuffer newBuffer = this.allocator.expand(buffer, required, BUFFER_OWNER);
     // set the position of newBuffer
     newBuffer.position(position);
     this.buffer = newBuffer;

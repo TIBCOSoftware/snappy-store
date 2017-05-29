@@ -295,7 +295,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
    * @param maxThreads
    *          the maximum number of threads allowed in the server pool
    * 
-   * @see SocketCreator#createServerSocket(int, int, InetAddress, LogWriterI18n)
+   * @see SocketCreator#createServerSocket
    * @see ClientHealthMonitor
    * @since 5.7
    */
@@ -389,13 +389,6 @@ public class AcceptorImpl extends Acceptor implements Runnable
       final int backLog = Integer.getInteger(BACKLOG_PROPERTY_NAME, DEFAULT_BACKLOG).intValue();
       
       SocketCreator sc = SocketCreator.getDefaultInstance();
-      final GemFireCacheImpl gc;
-      if (getCachedRegionHelper() != null) {
-        gc = (GemFireCacheImpl)getCachedRegionHelper().getCache();
-      }
-      else {
-        gc = null;
-      }
       final long tilt = System.currentTimeMillis() + 120 * 1000;
 
       if (isSelector()) {
@@ -439,9 +432,8 @@ public class AcceptorImpl extends Acceptor implements Runnable
               Thread.currentThread().interrupt();
             }
           }
-          if (gc != null) {
-            gc.getCancelCriterion().checkCancelInProgress(null);
-          }
+          GemFireCacheImpl.getExisting().getCancelCriterion()
+              .checkCancelInProgress(null);
         } // for
       } // isSelector 
       else { // !isSelector
@@ -474,9 +466,8 @@ public class AcceptorImpl extends Acceptor implements Runnable
               Thread.currentThread().interrupt();
             }
           }
-          if (gc != null) {
-            gc.getCancelCriterion().checkCancelInProgress(null);
-          }
+          GemFireCacheImpl.getExisting().getCancelCriterion()
+              .checkCancelInProgress(null);
         } // for
       } // !isSelector
       

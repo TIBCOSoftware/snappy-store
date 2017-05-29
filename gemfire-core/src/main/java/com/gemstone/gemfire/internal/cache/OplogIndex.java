@@ -177,7 +177,7 @@ public final class OplogIndex {
       channel.position(channel.size());
     }
     this.dos = new ChannelBufferUnsafeDataOutputStream(channel,
-        Oplog.DEFAULT_BUFFER_SIZE, false);
+        Oplog.DEFAULT_BUFFER_SIZE);
 
     final LogWriterI18n logger = this.oplog.logger;
     if (logger.infoEnabled()) {
@@ -627,7 +627,7 @@ public final class OplogIndex {
       final FileChannel channel = raf.getChannel();
       final ChannelBufferUnsafeDataInputStream in =
           new ChannelBufferUnsafeDataInputStream(channel,
-              Oplog.LARGE_BUFFER_SIZE, false);
+              Oplog.LARGE_BUFFER_SIZE);
       final OplogEntryIdMap recoveryMap = this.oplog.getInitRecoveryMap();
       final HashMap<String, IndexData> indexMap = new HashMap<>();
 

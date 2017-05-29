@@ -125,12 +125,12 @@ import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.UnsupportedGFXDVersionException;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataInputStream;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataOutputStream;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.util.IOUtils;
 import com.gemstone.gemfire.internal.util.TransformUtils;
 import com.gemstone.gemfire.pdx.internal.PdxWriterImpl;
@@ -834,8 +834,8 @@ public final class Oplog implements CompactableOplog {
                              + n + "_" + oplogId);
     this.idxkrf = new OplogIndex(this);
     try {
-      createDrf(prevOplog.drf);
-      createCrf(prevOplog.crf);
+      createDrf(prevOplog);
+      createCrf(prevOplog);
       // open krf for offline compaction
       if (getParent().isOfflineCompacting()) {
         krfFileCreate();
@@ -1284,7 +1284,7 @@ public final class Oplog implements CompactableOplog {
    * 
    * @throws IOException
    */
-  private void createCrf(OplogFile prevOlf) throws IOException
+  private void createCrf(Oplog prevOplog) throws IOException
   {
     File f = new File(this.diskFile.getPath() + CRF_FILE_EXT);
     if (logger.fineEnabled()) {
@@ -1300,7 +1300,8 @@ public final class Oplog implements CompactableOplog {
     if (this.crf.outputStream != null) {
       this.crf.outputStream.close();
     }
-    this.crf.outputStream = createOutputStream(prevOlf, this.crf);
+    this.crf.outputStream = createOutputStream(prevOplog,
+        prevOplog != null ? prevOplog.crf : null, this.crf);
 
     if (logger.infoEnabled()) {
       logger.info(LocalizedStrings.Oplog_CREATE_0_1_2,
@@ -1322,18 +1323,17 @@ public final class Oplog implements CompactableOplog {
   }
 
   private static OplogFile.FileChannelOutputStream createOutputStream(
-      final OplogFile prevOlf, final OplogFile olf) throws IOException {
-    final int bufSize = Integer.getInteger("WRITE_BUF_SIZE", 32768);
-    final OplogFile.FileChannelOutputStream outputStream;
-    if (prevOlf != null && (outputStream = prevOlf.outputStream) != null &&
-        outputStream.validBuffer()) {
-      prevOlf.outputStream = null;
-      return olf.new FileChannelOutputStream(outputStream,
-          bufSize, false /* limit new buffer allocations */);
-    } else {
-      return olf.new FileChannelOutputStream(bufSize,
-          false /* limit new buffer allocations */);
+      final Oplog prevOplog, final OplogFile prevOlf, final OplogFile olf)
+      throws IOException {
+    if (prevOlf != null) {
+      synchronized (prevOplog.crf) {
+        // release the old stream buffer
+        prevOlf.outputStream.close();
+        prevOlf.outputStream = null;
+      }
     }
+    final int bufSize = Integer.getInteger("WRITE_BUF_SIZE", 32768);
+    return olf.new FileChannelOutputStream(bufSize);
   }
 
   /**
@@ -1341,7 +1341,7 @@ public final class Oplog implements CompactableOplog {
    * 
    * @throws IOException
    */
-  private void createDrf(OplogFile prevOlf) throws IOException
+  private void createDrf(Oplog prevOplog) throws IOException
   {
     String drfFilePath = this.diskFile.getPath() + DRF_FILE_EXT;
     File f = new File(drfFilePath);
@@ -1355,7 +1355,8 @@ public final class Oplog implements CompactableOplog {
     this.drf.RAFClosed = false;
     this.drf.channel = this.drf.raf.getChannel();
     this.oplogSet.drfCreate(this.oplogId);
-    this.drf.outputStream = createOutputStream(prevOlf, this.drf);
+    this.drf.outputStream = createOutputStream(prevOplog,
+        prevOplog != null ? prevOplog.drf : null, this.drf);
     if (logger.infoEnabled()) {
       logger.info(LocalizedStrings.Oplog_CREATE_0_1_2,
                   new Object[] {toString(),
@@ -2014,7 +2015,7 @@ public final class Oplog implements CompactableOplog {
     final ByteArrayDataInput in = new ByteArrayDataInput();
     final long currentTime = getParent().getCache().cacheTimeMillis();
     dis = new ChannelBufferUnsafeDataInputStream(fis.getChannel(),
-        LARGE_BUFFER_SIZE, false);
+        LARGE_BUFFER_SIZE);
     try {
       readDiskStoreRecord(dis, f);
       readGemfireVersionRecord(dis, f);
@@ -4323,7 +4324,7 @@ public final class Oplog implements CompactableOplog {
         }
         if (this.logger.finerEnabled()) {
           this.logger
-            .finer("Oplog::basicCreate:Release dByteBuffer with data for Disk ID = "
+            .finer("Oplog::basicCreate:Release ByteBuffer with data for Disk ID = "
                    + id.toString());
         }
         // Asif: As such for any put or get operation , a synch is taken
@@ -6427,7 +6428,9 @@ public final class Oplog implements CompactableOplog {
 //                        + " oplog#" + getOplogId());
 //               }
               this.stats.incOplogSeeks();
-              final ByteBuffer valueBuffer = ByteBuffer.allocate(valueLength);
+              // should account faulted in values so use allocator here
+              final ByteBuffer valueBuffer = GemFireCacheImpl
+                  .getCurrentBufferAllocator().allocate(valueLength, "OPLOG");
               while (valueBuffer.hasRemaining()) {
                 if (crfChannel.read(valueBuffer) <= 0) throw new EOFException();
               }
@@ -6436,7 +6439,7 @@ public final class Oplog implements CompactableOplog {
                 logger.info(LocalizedStrings.DEBUG,
                     "TRACE_READS attemptGet readPosition=" + readPosition
                         + " valueLength=" + valueLength
-                        + " value=<" + bufferToString(valueBuffer) + ">"
+                        + " value=<" + ClientSharedUtils.toString(valueBuffer) + ">"
                         + " oplog#" + getOplogId());
               }
               this.stats.incOplogReads();
@@ -7619,15 +7622,8 @@ public final class Oplog implements CompactableOplog {
 
       private final long baseFileOffset;
 
-      public FileChannelOutputStream(int bufferSize,
-          boolean useUnsafeAllocation) throws IOException {
-        super(OplogFile.this.channel, bufferSize, useUnsafeAllocation);
-        this.baseFileOffset = OplogFile.this.channel.position();
-      }
-
-      public FileChannelOutputStream(FileChannelOutputStream other,
-          int bufferSize, boolean useUnsafeAllocation) throws IOException {
-        super(other, OplogFile.this.channel, bufferSize, useUnsafeAllocation);
+      public FileChannelOutputStream(int bufferSize) throws IOException {
+        super(OplogFile.this.channel, bufferSize);
         this.baseFileOffset = OplogFile.this.channel.position();
       }
 
@@ -7666,20 +7662,6 @@ public final class Oplog implements CompactableOplog {
     DataOutputStream dos;
     long lastOffset = 0;
     int keyNum = 0;
-  }
-
-  /**
-   * For write buffers only log before OpState is cleared else it can lead
-   * to a crash with direct ByteBuffers.
-   */
-  public static String bufferToString(final ByteBuffer buffer) {
-    if (buffer == null) return "null";
-    StringBuilder sb = new StringBuilder();
-    final int len = buffer.limit();
-    for (int i = 0; i < len; i++) {
-      sb.append(buffer.get(i)).append(", ");
-    }
-    return sb.toString();
   }
 
   private static String baToString(byte[] ba) {

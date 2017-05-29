@@ -210,7 +210,7 @@ public interface GfxdSerializable extends GfxdDSFID {
   byte LEAD_NODE_CONN_OP_MSG = 57;
 
   byte LEAD_NODE_GET_STATS = 58;
-    
+
   /**
    * Marker to indicate that tests can use an ID >= this. Note whenever adding a
    * new message increment this to be greater than the last one.
@@ -323,4 +323,8 @@ public interface GfxdSerializable extends GfxdDSFID {
   byte SNAPPY_REGION_STATS_RESULT = 112;
 
   byte LEAD_NODE_CONN_OP_CTX = 113;
+
+  byte COLUMN_FORMAT_KEY = 114;
+
+  byte COLUMN_FORMAT_VALUE = 115;
 }

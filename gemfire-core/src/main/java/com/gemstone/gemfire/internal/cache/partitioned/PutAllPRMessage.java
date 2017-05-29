@@ -668,7 +668,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
             long unusedMemory = memoryTracker.freeMemory();
             if (unusedMemory > 0) {
               CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
-                  memoryTracker.getFirstAllocationObject(), unusedMemory);
+                  memoryTracker.getFirstAllocationObject(), unusedMemory, false);
             }
           }
           // no need to lock keys for transactions

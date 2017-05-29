@@ -944,7 +944,7 @@ abstract class AbstractRegionMap implements RegionMap {
 
     if (newRe instanceof AbstractOplogDiskRegionEntry) {
       AbstractOplogDiskRegionEntry newDe = (AbstractOplogDiskRegionEntry)newRe;
-      newDe.setDiskId(oldRe);
+      newDe.setDiskIdForRegion(oldRe);
       _getOwner().getDiskRegion().replaceIncompatibleEntry((DiskEntry) oldRe, newDe);
     }
     _getMap().put(newRe.getKey(), newRe);

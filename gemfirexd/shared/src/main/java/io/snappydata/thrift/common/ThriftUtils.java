@@ -39,10 +39,12 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
+import java.util.concurrent.locks.LockSupport;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
@@ -127,14 +129,6 @@ public abstract class ThriftUtils {
     return new EnumMap<>(TransactionAttribute.class);
   }
 
-  public static ByteBuffer copyBuffer(ByteBuffer buffer) {
-    final int numBytes = buffer.remaining();
-    final byte[] bytes = new byte[numBytes];
-    buffer.get(bytes, 0, numBytes);
-    buffer.flip();
-    return ByteBuffer.wrap(bytes);
-  }
-
   public static byte[] toBytes(ByteBuffer buffer) {
     return ClientSharedUtils.toBytes(buffer);
   }
@@ -159,9 +153,15 @@ public abstract class ThriftUtils {
       return ByteBuffer.wrap(buffer);
     }
 
-    // use Unsafe for allocation which does not have the smallish limit used
-    // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
-    ByteBuffer buffer = UnsafeHolder.allocateDirectBuffer(length);
+    // this might be too big for ByteBuffer.allocateDirect -- see
+    // sun.misc.VM.maxDirectMemory()
+    ByteBuffer buffer;
+    try {
+      buffer = DirectBufferAllocator.instance().allocate(length, "THRIFT");
+    } catch (OutOfMemoryError | RuntimeException ignored) {
+      // fallback to heap buffer
+      buffer = ByteBuffer.allocate(length);
+    }
     buffer.limit(length);
     try {
       while (length > 0) {
@@ -199,13 +199,13 @@ public abstract class ThriftUtils {
           } else if (numWrittenBytes == 0) {
             // sleep a bit before retrying
             // TODO: this should use selector signal
-            Thread.sleep(1);
+            LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
           } else {
             throw new EOFException("Socket channel closed in write.");
           }
         }
         buffer.flip();
-      } catch (IOException | InterruptedException e) {
+      } catch (IOException e) {
         throw new TTransportException(e instanceof EOFException
             ? TTransportException.END_OF_FILE : TTransportException.UNKNOWN);
       }

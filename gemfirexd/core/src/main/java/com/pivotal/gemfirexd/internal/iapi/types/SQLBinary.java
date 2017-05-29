@@ -45,7 +45,6 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -63,8 +62,6 @@ import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
-import io.snappydata.thrift.common.BufferedBlob;
-import io.snappydata.thrift.common.ThriftUtils;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -73,7 +70,6 @@ import java.io.ObjectInput;
 import java.io.IOException;
 import java.io.InputStream;
 
-import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
@@ -212,17 +208,6 @@ abstract class SQLBinary
 
 	public final void setValue(Blob theValue) throws StandardException
 	{
-		if (theValue instanceof BufferedBlob) {
-			try {
-				ByteBuffer buffer = ((BufferedBlob)theValue).getAsBuffer();
-				dataValue = ThriftUtils.toBytes(buffer);
-				UnsafeHolder.releaseIfDirectBuffer(buffer);
-				_blobValue = null;
-			} catch (SQLException sqle) {
-				throw Misc.wrapSQLException(sqle, sqle);
-			}
-			return;
-		}
 		dataValue = null;
         _blobValue = theValue;
 		//stream = null;
@@ -738,7 +723,11 @@ abstract class SQLBinary
 		try
 		{
 			DataValueDescriptor cloneDVD = getNewNull();
-			cloneDVD.setValue(getValue());
+			if (_blobValue != null) {
+				cloneDVD.setValue(_blobValue);
+			} else {
+				cloneDVD.setValue(dataValue);
+			}
 			return cloneDVD;
 		}
 		catch (StandardException se)

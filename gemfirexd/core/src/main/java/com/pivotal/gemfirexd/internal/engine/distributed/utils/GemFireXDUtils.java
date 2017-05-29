@@ -389,6 +389,9 @@ public final class GemFireXDUtils {
       GemFireContainer container, boolean doClone) throws StandardException {
     if (container.isByteArrayStore()) {
       return new CompactCompositeRegionKey(dvd, container.getExtraTableInfo());
+    } else if (container.isObjectStore()) {
+      return container.getRowEncoder().fromRowToKey(
+          new DataValueDescriptor[] { dvd }, container);
     }
     return (doClone ? dvd.getClone() : dvd);
   }
@@ -399,6 +402,8 @@ public final class GemFireXDUtils {
     if (container.isByteArrayStore()) {
       return new CompactCompositeRegionKey(compositeKeys,
           container.getExtraTableInfo());
+    } else if (container.isObjectStore()) {
+      return container.getRowEncoder().fromRowToKey(compositeKeys, container);
     }
     else {
       if (compositeKeys.length == 1) {
@@ -998,8 +1003,21 @@ public final class GemFireXDUtils {
 
   public static GfxdPartitionResolver getResolver(AbstractRegion region) {
     PartitionAttributes<?, ?> pattrs = region.getPartitionAttributes();
-    if (pattrs != null) {
-      return (GfxdPartitionResolver)pattrs.getPartitionResolver();
+    PartitionResolver<?, ?> resolver;
+    if (pattrs != null && (resolver = pattrs.getPartitionResolver())
+        instanceof GfxdPartitionResolver) {
+      return (GfxdPartitionResolver)resolver;
+    }
+    return null;
+  }
+
+  public static InternalPartitionResolver<?, ?> getInternalResolver(
+      AbstractRegion region) {
+    PartitionAttributes<?, ?> pattrs = region.getPartitionAttributes();
+    PartitionResolver<?, ?> resolver;
+    if (pattrs != null && (resolver = pattrs.getPartitionResolver())
+        instanceof InternalPartitionResolver<?, ?>) {
+      return (InternalPartitionResolver<?, ?>)resolver;
     }
     return null;
   }
@@ -2221,14 +2239,12 @@ public final class GemFireXDUtils {
       return true;
     }
     // fallback to DistributionDescriptor
-    final GfxdPartitionResolver spr;
-    if (r.getPartitionAttributes() != null
-        && (spr = (GfxdPartitionResolver)r.getPartitionAttributes()
-            .getPartitionResolver()) != null) {
-      return spr.getDistributionDescriptor().getPersistence();
+    final GemFireContainer container = (GemFireContainer)r.getUserAttribute();
+    if (container == null) return false;
+    if (container.getDistributionDescriptor() != null) {
+      return container.getDistributionDescriptor().getPersistence();
     }
-    final TableDescriptor td = ((GemFireContainer)r.getUserAttribute())
-        .getTableDescriptor();
+    final TableDescriptor td = container.getTableDescriptor();
     try {
       DistributionDescriptor desc;
       if (td != null && (desc = td.getDistributionDescriptor()) != null) {
