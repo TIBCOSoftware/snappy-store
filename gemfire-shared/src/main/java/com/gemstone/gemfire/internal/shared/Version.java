@@ -241,12 +241,12 @@ public final class Version implements Comparable<Version> {
    */
   public static final Version CURRENT = GFXD_155;
   public static final Version CURRENT_GFE = CURRENT.getGemFireVersion();
-  public static final short CURRENT_GFE_ORDINAL = CURRENT_GFE.ordinal();
 
   /**
    * A lot of versioning code needs access to the current version's ordinal
    */
   public static final short CURRENT_ORDINAL = CURRENT.ordinal();
+  public static final short CURRENT_GFE_ORDINAL = CURRENT_GFE.ordinal();
 
   public static final short NOT_SUPPORTED_ORDINAL = 59;
 

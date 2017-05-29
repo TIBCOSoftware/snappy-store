@@ -114,7 +114,7 @@ public class FilterPostAuthorization implements AccessControl {
     obj = checkObjectAuth(obj);
     if (obj != null) {
       HeapDataOutputStream hos = new HeapDataOutputStream(
-          serializedObj.length + 32, Version.CURRENT);
+          serializedObj.length + 32, Version.CURRENT_GFE);
       try {
         DataSerializer.writeObject(obj, hos);
         return hos.toByteArray();
