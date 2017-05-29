@@ -1,3 +1,4 @@
+/* currently not running tests with offheap enabled. hence commented.
 hydra.GemFirePrms-offHeapMemorySize=350m;               // this sets off-heap memory for older tests (ignored in newer tests)
 hydra.gemfirexd.FabricServerPrms-offHeapMemorySize=350m;  // this sets off-heap memory for newer tests (ignored in older tests)
 sql.SQLPrms-isOffheap = true;                           // true means all tables are offheap (via offheap keyword on create table statement)
@@ -11,3 +12,4 @@ CLOSETASK taskClass = memscale.OffHeapHelper taskMethod = closeAllOffHeapRegions
 CLOSETASK taskClass = memscale.OffHeapHelper taskMethod = verifyOffHeapMemoryConsistencyOnce;
 ENDTASK taskClass = memscale.OffHeapMemoryLifecycleListener taskMethod = checkForErrors;
 
+*/

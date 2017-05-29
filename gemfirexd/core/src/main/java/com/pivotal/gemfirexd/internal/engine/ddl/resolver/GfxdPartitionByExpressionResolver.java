@@ -150,7 +150,7 @@ public final class GfxdPartitionByExpressionResolver extends
   }
 
   @Override
-  public void setDistributionDescriptor(DistributionDescriptor desc) {
+  public void updateDistributionDescriptor(DistributionDescriptor desc) {
     String[] descCols = desc.getPartitionColumnNames();
     if (descCols != null) {
       this.partColsOrigOrder = descCols.clone();
@@ -162,7 +162,6 @@ public final class GfxdPartitionByExpressionResolver extends
         && desc.getPolicy() != DistributionDescriptor.PARTITIONBYGENERATEDKEY) {
       desc.setPartitionColumnNames(this.partColsOrigOrder);
     }
-    this.distributionDesc = desc;
   }
 
   @Override
@@ -281,7 +280,6 @@ public final class GfxdPartitionByExpressionResolver extends
         // this is the case of partitioning by generated key column
         this.partColsOrigOrder = new String[0];
         this.partitionColumnNames = new String[0];
-        this.distributionDesc = distDescp;
 
         // check for the special case of no-PK to PK by ALTER TABLE ADD
         // CONSTRAINT in which case there will be no longer any generated column
@@ -431,7 +429,6 @@ public final class GfxdPartitionByExpressionResolver extends
     }
     distDescp.setPartitionColumnNames(this.partitionColumnNames);
     distDescp.setColumnPositions(this.columnPositionsInRow);
-    this.distributionDesc = distDescp;
     this.toStringString = makeToStringString();
     fillTypeFormatId(td);
   }
@@ -1029,10 +1026,8 @@ public final class GfxdPartitionByExpressionResolver extends
   @Override
   public void setResolverInfoInSingleHopInfoObject(SingleHopInformation info)
       throws StandardException {
-    if (this.exprCompiler != null
-        || (this.distributionDesc != null
-        && (this.distributionDesc.getPolicy() ==
-            DistributionDescriptor.PARTITIONBYGENERATEDKEY))) {
+    if (this.exprCompiler != null || this.partitionColumnNames == null ||
+        this.partitionColumnNames.length == 0) {
       // Not supporting partition by expression in the single hop
       // in the first cut of single hop implementation
       info.setResolverType(SingleHopInformation.NO_SINGLE_HOP_CASE);

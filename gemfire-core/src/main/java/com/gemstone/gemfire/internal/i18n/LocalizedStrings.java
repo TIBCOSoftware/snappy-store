@@ -2098,5 +2098,5 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId EVENT_LOGGER_FAILED_0_1_2 = new StringIdImpl(90005, "Event error logger failed to log event and error. Event: {0} , Error: {1}. Logger exception: {2}");
   public static final StringId CUSTOM_EVENT_ERROR_HANDLER_FAILED_0_1_2 = new StringIdImpl(90006, "Custom event error handler failed to handle event and error. Event: {0} , Error: {1}. Handler exception: {2}");
   public static final StringId FAILED_TO_CREATE_LOG_EVENT_0_1_2_3_4 = new StringIdImpl(90007, "Failed to create log event for batch-id: {0}, Event-id: {1}, Op: {2}, Key: {3}, Value: {4} ");
-
+  public static final StringId AbstractDistributionConfig_MEMORY_SIZE = new StringIdImpl(90008, "Total off-heap memory which server regions and various operators can occupy");
 }

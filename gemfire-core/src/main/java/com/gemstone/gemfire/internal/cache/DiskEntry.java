@@ -14,9 +14,29 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DiskAccessException;
@@ -27,13 +47,14 @@ import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl.AsyncDiskEntry;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
 import com.gemstone.gemfire.internal.cache.lru.LRUClockNode;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.persistence.BytesAndBits;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
+import com.gemstone.gemfire.internal.cache.store.WrappedBytes;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -45,7 +66,10 @@ import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
+import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 
 /**
@@ -73,6 +97,7 @@ import com.gemstone.gemfire.internal.util.BlobHelper;
  * @since 3.2
  */
 public interface DiskEntry extends RegionEntry {
+
 
   /**
    * Sets the value with a {@link RegionEntryContext}.
@@ -126,7 +151,7 @@ public interface DiskEntry extends RegionEntry {
    * Used as the entry value if it was tombstone.
    */
   public static final byte[] TOMBSTONE_BYTES = new byte[0];
-    
+
   ///////////////////////  Inner Classes  //////////////////////
 
   /**
@@ -135,6 +160,14 @@ public interface DiskEntry extends RegionEntry {
    */
   public static class Helper {
 
+    public static ValueWrapper wrapBytes(byte[] b) {
+      return b != null ? new ValueWrapper(true, new WrappedBytes(b)) : NULL_VW;
+    }
+
+    public static ValueWrapper wrapBytes(byte[] b, int length) {
+      return b != null ? new ValueWrapper(true, new WrappedBytes(b, 0, length))
+          : NULL_VW;
+    }
 
     /**
      * Testing purpose only
@@ -150,8 +183,7 @@ public interface DiskEntry extends RegionEntry {
       dr.acquireReadLock();
       try {
       synchronized (id) {
-        if (id == null
-            || (dr.isBackup() && id.getKeyId() == DiskRegion.INVALID_ID)
+        if ((dr.isBackup() && id.getKeyId() == DiskRegion.INVALID_ID)
             || (!entry.isValueNull() && id.needsToBeWritten() && !EntryBits.isRecoveredFromDisk(id.getUserBits()))/*fix for bug 41942*/) {
           return null;
         }
@@ -258,6 +290,24 @@ public interface DiskEntry extends RegionEntry {
         }
       }
     }
+
+    public static Object getValueOnDisk(final DiskId id,
+        final DiskRegionView dr) {
+      dr.acquireReadLock();
+      try {
+        synchronized (id) {
+          final BytesAndBits bb = dr.getDiskStore().getBytesAndBitsWithoutLock(
+              dr, id, false, false);
+          if (bb != DiskStoreImpl.CLEAR_BB) {
+            return DiskStoreImpl.convertBytesAndBitsIntoObject(bb);
+          } else {
+            return Token.REMOVED_PHASE1;
+          }
+        }
+      } finally {
+        dr.releaseReadLock();
+      }
+    }
       
     /**
      * Returns false if the entry is INVALID (or LOCAL_INVALID). Determines this
@@ -325,7 +375,7 @@ public interface DiskEntry extends RegionEntry {
      * @since 3.2.1
      */
     static boolean fillInValue(DiskEntry de, InitialImageOperation.Entry entry,
-                               LocalRegion lr, ByteArrayDataInput in, DM mgr,
+                               LocalRegion lr, DM mgr,
                                RegionEntryContext context, Version targetVersion) {
       LogWriterI18n logger = mgr.getLoggerI18n();
       DiskRegion dr = lr.getDiskRegion();
@@ -356,7 +406,7 @@ public interface DiskEntry extends RegionEntry {
             }
             assert did != null;
             // do recursive call to get readLock on did
-            return fillInValue(de, entry, lr, in, mgr, context, targetVersion);
+            return fillInValue(de, entry, lr, mgr, context, targetVersion);
           }
           if (logger.finerEnabled()) {
             logger.finer("DiskEntry.Helper.fillInValue, key=" + entry.key
@@ -400,19 +450,20 @@ public interface DiskEntry extends RegionEntry {
             // serialization below via a versioned CachedDeserializable
             if ((version == null && !deserializeForTarget)
                 || !CachedDeserializableFactory.preferObject()) {
-              entry.value = bb.getBytes();
+              entry.value = bb.toBytes();
               entry.setSerialized(EntryBits.isSerialized(bb.getBits()));
             }
             else if (EntryBits.isSerialized(bb.getBits())) {
-              entry.value = readSerializedValue(bb.getBytes(), version,
-                  in, true);
+              entry.value = readSerializedValue(bb, true);
               entry.setSerialized(false);
               entry.setEagerDeserialize();
             }
             else {
-              entry.value = readRawValue(bb.getBytes(), version, in);
+              entry.value = readRawValue(bb);
               entry.setSerialized(false);
             }
+            // buffer will no longer be used so clean it up eagerly
+            bb.release();
           }
           return true;
         }
@@ -572,17 +623,32 @@ public interface DiskEntry extends RegionEntry {
         incrementBucketStats(r, 1/*InVM*/, 0/*OnDisk*/, 0);
       }
     }
-    
-    private static final ValueWrapper INVALID_VW = new ValueWrapper(true, INVALID_BYTES);
-    private static final ValueWrapper LOCAL_INVALID_VW = new ValueWrapper(true, LOCAL_INVALID_BYTES);
-    private static final ValueWrapper TOMBSTONE_VW = new ValueWrapper(true, TOMBSTONE_BYTES);
-    
-    private static class ValueWrapper {
+
+    public static final ByteBuffer NULL_BUFFER =
+        ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
+    public static final ByteBuffer INVALID_BUFFER =
+        ByteBuffer.wrap(INVALID_BYTES);
+    public static final ByteBuffer LOCAL_INVALID_BUFFER =
+        ByteBuffer.wrap(LOCAL_INVALID_BYTES);
+    public static final ByteBuffer TOMBSTONE_BUFFER =
+        ByteBuffer.wrap(TOMBSTONE_BYTES);
+
+    static final ValueWrapper NULL_VW = new ValueWrapper(
+        true, new WrappedBytes(ClientSharedData.ZERO_ARRAY));
+    static final ValueWrapper INVALID_VW = new ValueWrapper(
+        true, new WrappedBytes(INVALID_BYTES));
+    static final ValueWrapper LOCAL_INVALID_VW = new ValueWrapper(
+        true, new WrappedBytes(LOCAL_INVALID_BYTES));
+    static final ValueWrapper TOMBSTONE_VW = new ValueWrapper(
+        true, new WrappedBytes(TOMBSTONE_BYTES));
+
+    static class ValueWrapper {
+
       public final boolean isSerializedObject;
-      public final byte[] bytes;
-      
+      public SerializedDiskBuffer buffer;
+
       public static ValueWrapper create(Object value) {
-       if (value == Token.INVALID) {
+        if (value == Token.INVALID) {
           // even though it is not serialized we say it is because
           // bytes will never be an empty array when it is serialized
           // so that gives us a way to specify the invalid value
@@ -600,9 +666,10 @@ public interface DiskEntry extends RegionEntry {
           return TOMBSTONE_VW;
         }
         else {
-          byte[] bytes;
+          SerializedDiskBuffer buffer;
           boolean isSerializedObject = true;
           if (value instanceof CachedDeserializable) {
+            byte[] bytes;
             CachedDeserializable proxy = (CachedDeserializable)value;
             if (proxy instanceof StoredObject) {
               StoredObject ohproxy = (StoredObject) proxy;
@@ -611,37 +678,69 @@ public interface DiskEntry extends RegionEntry {
                 bytes = ohproxy.getSerializedValue();
               } else {
                 //TODO:Asif: Speak to Darrel for cleaner way
-                if(ohproxy instanceof ByteSource) {
+                if (ohproxy instanceof ByteSource) {
                   bytes = ((ByteSource)ohproxy).getRowBytes();
-                }else {
-                  bytes = (byte[]) ohproxy.getDeserializedForReading();
+                } else {
+                  bytes = (byte[])ohproxy.getDeserializedForReading();
                 }
               }
             } else {
               bytes = proxy.getSerializedValue();
             }
+            buffer = bytes != null ? new WrappedBytes(bytes) : NULL_VW.buffer;
           }
           else if (value instanceof byte[]) {
             isSerializedObject = false;
-            bytes = (byte[])value;
+            buffer = new WrappedBytes((byte[])value);
           }
           else {
             Assert.assertTrue(!Token.isRemovedFromDisk(value));
-            bytes = EntryEventImpl.serialize(value);
-            if (bytes.length == 0) {
-              throw new IllegalStateException("serializing <" + value + "> produced empty byte array");
+            buffer = EntryEventImpl.serializeBuffer(value, null);
+            if (buffer.size() == 0) {
+              throw new IllegalStateException("serializing <" + value +
+                  "> produced empty byte array");
             }
           }
-          return new ValueWrapper(isSerializedObject, bytes);
+          return new ValueWrapper(isSerializedObject, buffer);
         }
       }
-      
-      private ValueWrapper(boolean isSerializedObject, byte[] bytes) {
+
+      private ValueWrapper(boolean isSerializedObject, SerializedDiskBuffer buffer) {
         this.isSerializedObject = isSerializedObject;
-        this.bytes = bytes;
+        this.buffer = buffer;
+      }
+
+      public void write(OutputStreamChannel channel) throws IOException {
+        this.buffer.write(channel);
+      }
+
+      /**
+       * Get the data as a ByteBuffer with a retain() invoked on it. Callers
+       * should normally invoked {@link #release()} when done for eager release.
+       */
+      public ByteBuffer getBufferRetain() {
+        return this.buffer.getBufferRetain();
+      }
+
+      public int size() {
+        return this.buffer.size();
+      }
+
+      public void release() {
+        final SerializedDiskBuffer buffer = this.buffer;
+        if (buffer != null && buffer.needsRelease()) {
+          this.buffer = null;
+          buffer.release();
+        }
+      }
+
+      @Override
+      public String toString() {
+        final SerializedDiskBuffer buffer = this.buffer;
+        return buffer != null ? buffer.toString() : "null";
       }
     }
-    
+
     /**
      * Writes the key/value object stored in the given entry to disk
      * @throws RegionClearedException
@@ -664,7 +763,7 @@ public interface DiskEntry extends RegionEntry {
       // @todo does the following unmark need to be called when an async
       // write is scheduled or is it ok for doAsyncFlush to do it?
       entry.getDiskId().unmarkForWriting();
-      region.getDiskRegion().put(entry, region, vw.bytes, vw.isSerializedObject, async);
+      region.getDiskRegion().put(entry, region, vw, async);
     }
 
     /**
@@ -944,22 +1043,6 @@ public interface DiskEntry extends RegionEntry {
       return result;
     }
 
-    public static Object getValueInVMOrDiskWithoutFaultIn(DiskEntry entry,
-        DiskRegionView dr, RegionEntryContext context) {
-      Object result = OffHeapHelper
-          .copyAndReleaseIfNeeded(getValueOffHeapOrDiskWithoutFaultIn(entry, dr,
-              context));
-      if (result instanceof CachedDeserializable) {
-        result = ((CachedDeserializable)result)
-            .getDeserializedValue(null, null);
-      }
-      if (result instanceof StoredObject) {
-        ((StoredObject) result).release();
-        throw new IllegalStateException("gfxd tried to use getValueInVMOrDiskWithoutFaultIn");
-      }
-      return result;
-    }
-
     @Retained
     public static Object getValueOffHeapOrDiskWithoutFaultIn(DiskEntry entry, LocalRegion region) {
       @Retained Object v = entry._getValueRetain(region, true); // TODO:KIRK:OK Object v = entry.getValueWithContext(region);
@@ -1128,7 +1211,7 @@ public interface DiskEntry extends RegionEntry {
     }
 
     public static void recoverValue(DiskEntry entry, long oplogId,
-        DiskRecoveryStore recoveryStore, ByteArrayDataInput in) {
+        DiskRecoveryStore recoveryStore) {
       boolean lruFaultedIn = false;
       synchronized (entry) {
         if (entry.isValueNull()) {
@@ -1142,7 +1225,7 @@ public interface DiskEntry extends RegionEntry {
               synchronized (did) {
                 // don't read if the oplog has changed.
                 if (oplogId == did.getOplogId()) {
-                  value = getValueFromDisk(dr, did, in);
+                  value = getValueFromDisk(dr, did);
                   if (value != null) {
                     setValueOnFaultIn(value, did, entry, dr, region);
                   } 
@@ -1168,7 +1251,7 @@ public interface DiskEntry extends RegionEntry {
     /**
      *  Caller must have "did" synced.
      */
-    private static Object getValueFromDisk(DiskRegionView dr, DiskId did, ByteArrayDataInput in) {
+    private static Object getValueFromDisk(DiskRegionView dr, DiskId did) {
       Object value;
       if (dr.isBackup() && did.getKeyId() == DiskRegion.INVALID_ID) {
         // must have been destroyed
@@ -1181,17 +1264,20 @@ public interface DiskEntry extends RegionEntry {
         value = dr.getRaw(did); // fix bug 40192
         if (value instanceof BytesAndBits) {
           BytesAndBits bb = (BytesAndBits)value;
-          if (EntryBits.isInvalid(bb.getBits())) {
+          final byte bits = bb.getBits();
+          if (EntryBits.isInvalid(bits)) {
             value = Token.INVALID;
-          } else if (EntryBits.isLocalInvalid(bb.getBits())) {
+          } else if (EntryBits.isLocalInvalid(bits)) {
             value = Token.LOCAL_INVALID;
-          } else if (EntryBits.isTombstone(bb.getBits())) {
+          } else if (EntryBits.isTombstone(bits)) {
             value = Token.TOMBSTONE;
-          } else if (EntryBits.isSerialized(bb.getBits())) {
-            value = readSerializedValue(bb.getBytes(), bb.getVersion(), in, false);
+          } else if (EntryBits.isSerialized(bits)) {
+            value = readSerializedValue(bb, false);
           } else {
-            value = readRawValue(bb.getBytes(), bb.getVersion(), in);
+            value = readRawValue(bb);
           }
+          // buffer will no longer be used so clean it up eagerly
+          bb.release();
         }
       }
       return value;
@@ -1255,7 +1341,7 @@ public interface DiskEntry extends RegionEntry {
       dr.acquireReadLock();
       try {
       synchronized (did) {
-        Object value = getValueFromDisk(dr, did, null);
+        Object value = getValueFromDisk(dr, did);
         if (value == null) return null;
         @Unretained Object preparedValue = setValueOnFaultIn(value, did, entry, dr, region);
         // For Gemfirexd we want to return the offheap representation.
@@ -1285,7 +1371,17 @@ public interface DiskEntry extends RegionEntry {
       // NOTE that we return this value unretained because the retain is owned by the region entry not the caller.
       @Retained Object preparedValue = entry.prepareValueForCache((RegionEntryContext) region, value,
           false, false);
-      region.updateSizeOnFaultIn(entry.getKey(), region.calculateValueSize(preparedValue), bytesOnDisk);
+
+      //Putting a workaround here. At this moment no real region is assigned for recovery.
+      //All value calculations come as zero. The below updateSizeOnFaultIn is wrong and give does not update the
+      // stats after recovery. @TODO fix the PR region Stats.
+      int recoveredValueSize = BucketRegion.calcMemSize(preparedValue);
+
+      if (!LocalRegion.isMetaTable(dr.getName())) {
+        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
+            dr.getName(), recoveredValueSize, null, false, false);
+      }
+      region.updateSizeOnFaultIn(entry.getKey(), recoveredValueSize, bytesOnDisk);
       //did.setValueSerializedSize(0);
       // I think the following assertion is true but need to run
       // a regression with it. Reenable this post 6.5
@@ -1311,18 +1407,32 @@ public interface DiskEntry extends RegionEntry {
       }
     }
 
-    static Object readRawValue(byte[] valueBytes, Version version,
-        ByteArrayDataInput in) {
+    static Object readSerializedValue(BytesAndBits value,
+        boolean forceDeserialize) {
+      if (forceDeserialize || CachedDeserializableFactory.preferObject()) {
+        // deserialize checking for product version change
+        return value.deserialize();
+      } else {
+        // TODO: upgrades: is there a case where GemFire values are internal
+        // ones that need to be upgraded transparently; probably messages
+        // being persisted (gateway events?)
+        return CachedDeserializableFactory.create(value.toBytes());
+      }
+    }
+
+    static Object readRawValue(BytesAndBits value) {
+      // no longer support pre SQLF 1.1 so no change for RowFormatter bytes
+      /*
       final StaticSystemCallbacks sysCb;
       if (version != null && (sysCb = GemFireCacheImpl.FactoryStatics
           .systemCallbacks) != null) {
         // may need to change serialized shape for GemFireXD
-        return sysCb.fromVersion(valueBytes, valueBytes.length, false, version,
-            in);
+        return sysCb.fromVersion(valueBuffer, valueBuffer.length, false, version);
+      } else {
+        return valueBuffer;
       }
-      else {
-        return valueBytes;
-      }
+      */
+      return value.toBytes();
     }
 
     public static void incrementBucketStats(Object owner,
@@ -1360,7 +1470,8 @@ public interface DiskEntry extends RegionEntry {
         }
       }
       DiskRegion dr = region.getDiskRegion();
-      final int oldSize = region.calculateRegionEntryValueSize(entry);;
+      final int oldSize = region.calculateRegionEntryValueSize(entry);
+      int diskIDOverhead =  0;
 //      dr.getOwner().getCache().getLogger().info("DEBUG: overflowing entry with key " + entry.getKey());
       //Asif:Get diskID . If it is null, it implies it is
       // overflow only mode.
@@ -1369,6 +1480,13 @@ public interface DiskEntry extends RegionEntry {
       if (did == null) {
         ((AbstractDiskLRURegionEntry)entry).setDelayedDiskId(region);
         did = entry.getDiskId();
+        final Object oldValue;
+        if (GemFireCacheImpl.hasNewOffHeap() &&
+            (oldValue = entry._getValue()) instanceof SerializedDiskBuffer) {
+          ((SerializedDiskBuffer)oldValue).setDiskId(did, dr);
+        }
+        // add DiskId overhead to change
+        diskIDOverhead += region.calculateDiskIdOverhead(did);
       }
       
       // Notify the GemFireXD IndexManager if present
@@ -1376,7 +1494,7 @@ public interface DiskEntry extends RegionEntry {
       if(indexUpdater != null && dr.isSync()) {
         indexUpdater.onOverflowToDisk(entry);
       }*/
-      
+
       int change = 0;
       boolean scheduledAsyncHere = false;
       dr.acquireReadLock();
@@ -1407,7 +1525,7 @@ public interface DiskEntry extends RegionEntry {
         // then treat it like the sync case. This fixes bug 41310
         if (scheduledAsyncHere || wasAlreadyPendingAsync) {
           // we call _setValue(null) after it is actually written to disk
-          change = entry.updateAsyncEntrySize(ccHelper);
+          change += entry.updateAsyncEntrySize(ccHelper);
           // do the stats when it is actually written to disk
         } else {
           region.updateSizeOnEvict(entry.getKey(), oldSize);
@@ -1427,6 +1545,13 @@ public interface DiskEntry extends RegionEntry {
         if (movedValueToDisk) {
           valueLength = getValueLength(did);
         }
+
+        region.freePoolMemory(oldSize, false);
+        if (diskIDOverhead > 0) {
+          //Account positive memory increase for eviction thread.
+          region.acquirePoolMemory(0, diskIDOverhead, false, null, false);
+        }
+
         incrementBucketStats(region, -1/*InVM*/, 1/*OnDisk*/, valueLength);
       }
       } finally {

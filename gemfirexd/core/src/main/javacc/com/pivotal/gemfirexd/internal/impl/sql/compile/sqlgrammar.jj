@@ -210,6 +210,7 @@ import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.cache.Scope;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
+import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import com.pivotal.gemfirexd.Constants;
@@ -519,11 +520,10 @@ public class SQLParser
     	  	}
 	      }
 	    }
-	    GfxdPartitionResolver resolver;
 	    if (!repPartPersFlags[1]) {
 	     // Create a default partitioned table when neither
 		 // REPLICATE nor partitioning has been explicitly specified
-		 resolver = new GfxdPartitionByExpressionResolver();
+		 GfxdPartitionByExpressionResolver resolver = new GfxdPartitionByExpressionResolver();
 		 TableName colocatedTable =
 		   distributionNode.getColocatedTable();
 		 if (colocatedTable != null) {
@@ -537,14 +537,15 @@ public class SQLParser
 	   else {
 		 afact.setPartitionAttributes(getPartitionAttributesFromFactory(pafact));
 		 attrs = getAttributesFromFactory(afact);
-
-		 PartitionAttributes pattrs = attrs.getPartitionAttributes();
-		 resolver = (GfxdPartitionResolver)pattrs.getPartitionResolver();
 	   }
 	 }
 
 
 	 properties.put(GfxdConstants.REGION_ATTRIBUTES_KEY, attrs);
+	 String encoderClass = distributionNode.getRowEncoderClass();
+	 if (encoderClass != null) {
+	   properties.put(GfxdConstants.TABLE_ROW_ENCODER_CLASS_KEY, encoderClass);
+	 }
 	 String schemaName = tableName.getSchemaName();
 	 if (schemaName == null || schemaName.length() == 0) {
 	   schemaName = getLanguageConnectionContext().
@@ -3010,6 +3011,7 @@ TOKEN [IGNORE_CASE] :
 |   <DECODE: "decode">
 |   <DESTROY: "destroy">
 |   <DISKDIR: "diskdir">
+|   <ENCODER: "encoder">
 |   <ENTRY: "entry">
 |   <EVICT: "evict">
 |   <EVICTACTION: "evictaction">
@@ -3045,6 +3047,7 @@ TOKEN [IGNORE_CASE] :
 |   <NVL: "nvl">
 |   <OVERFLOW: "overflow">
 |   <PARTITION: "partition">
+|   <PARTITIONER: "partitioner">
 |   <PERSISTENT: "persistent">
 |   <PROCESSOR: "processor">
 |   <RANGE: "range">
@@ -3156,7 +3159,7 @@ TOKEN :
 
 TOKEN :
 {	/* Identifiers */
-	<IDENTIFIER: ( <LETTER> ) (<LETTER> | "_" | <DIGIT>)* >
+	<IDENTIFIER: (<UNDERSCORE>)* ( <LETTER> ) (<LETTER> | <UNDERSCORE> | <DIGIT>)* >
 }
 
 TOKEN: {	<K: "K" >	 }
@@ -12175,6 +12178,8 @@ fabricTableAttribute(AttributesFactory afact,
 	(
 	regionTypeDefinition(afact, pafact, repPartPersFlags, tableName, distributionNode)
 |
+  tableEncoderDefinition(distributionNode, tableName)
+|
     serverGroupDefinition(serverGroups)
 |
     initSizeDefinition(initSize)
@@ -12227,6 +12232,18 @@ regionTypeDefinition(AttributesFactory afact,
     }
 }
 
+void tableEncoderDefinition(DistributionDefinitionNode distributionNode,
+    TableName tableName) throws StandardException :
+{
+  String encoderClassName;
+}
+{
+  <ENCODER> encoderClassName = string()
+  {
+    distributionNode.setRowEncoderClass(encoderClassName);
+  }
+}
+
 void
 replicatedDefinition(boolean[] repPartPersFlags, 
          DistributionDefinitionNode distributionNode) throws StandardException :
@@ -12251,7 +12268,7 @@ partitionClauseAndColocationDefinition(AttributesFactory afact,
 }
 {
   (
-    prslvr = partitioningClause(distributionNode, repPartPersFlags)
+    prslvr = partitioningClause(distributionNode, tableName, repPartPersFlags)
     (
       colocatedTable = otherTablesColocationDefinition(distributionNode)
       {
@@ -12270,7 +12287,7 @@ partitionClauseAndColocationDefinition(AttributesFactory afact,
                 + tableName.toString() + "'");
           }
     	  pafact.setColocatedWith(tablePath);
-          if (prslvr != null) {
+          if (prslvr instanceof GfxdPartitionResolver) {
             ((GfxdPartitionResolver)prslvr).setMasterTable(tablePath);
           }
         }
@@ -12292,10 +12309,11 @@ partitionClauseAndColocationDefinition(AttributesFactory afact,
 
 
 PartitionResolver 
-partitioningClause(DistributionDefinitionNode distributionNode, boolean[] repPartPersFlags)
-	throws StandardException :
+partitioningClause(DistributionDefinitionNode distributionNode,
+    TableName tableName, boolean[] repPartPersFlags) throws StandardException :
 {
 	PartitionResolver tmpprslvr = null;
+	String resolverClass;
 }
 {
 	<PARTITION> <BY>
@@ -12325,6 +12343,23 @@ partitioningClause(DistributionDefinitionNode distributionNode, boolean[] repPar
         }
     	repPartPersFlags[1] = true;
     	return tmpprslvr;
+    }
+|
+    <PARTITIONER> resolverClass = string()
+    {
+      if (repPartPersFlags[1]) {
+        // We already have a partition by clause, throw error
+        throw StandardException.newException(SQLState.LANG_DUPLICATE_PROPERTY,
+            "partitioning clause");
+      }
+      repPartPersFlags[1] = true;
+      try {
+        return (PartitionResolver)ClassPathLoader.getLatest().forName(
+            resolverClass).getConstructor(TableName.class).newInstance(tableName);
+      } catch (Exception e) {
+        throw StandardException.newException(
+            SQLState.UNEXPECTED_EXCEPTION_FOR_PARTITION_RESOLVER, e, tableName);
+      }
     }
 }
 
@@ -12594,6 +12629,7 @@ initSizeDefinition(InitSizeTableAttribute initSize) throws StandardException :
 {
 	<INITSIZE> val = simpleValueSpecification_int()
 	{
+		// TODO: SW: how will this work when there is no pass by reference?
 		initSize = new InitSizeTableAttribute(val);
 	}
 }
@@ -17962,6 +17998,7 @@ nonReservedKeyword()  :
 	|   tok = <DECODE>
 	|   tok = <DESTROY>
 	|   tok = <DISKDIR>
+	|   tok = <ENCODER>
 	|   tok = <ENTRY>
 	|   tok = <EVICT>
 	|   tok = <EVICTACTION>
@@ -17999,6 +18036,7 @@ nonReservedKeyword()  :
 	|   tok = <REDUNDANCY>
 	|   tok = <REPLICATE>	
 	|   tok = <PARTITION>
+	|   tok = <PARTITIONER>
 	|   tok = <PERSISTENT>
 	|   tok = <ASYNCLISTENER>
 	|   tok = <SERVER> // also for CREATE SCHEMA

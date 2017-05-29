@@ -62,4 +62,10 @@ public interface BaseMsgStreamer {
    *           on exception
    */
   public void close(LogWriterI18n logger) throws IOException;
+
+  /**
+   * Release any resources associated with this streamer.
+   * In most cases it must have been already closed.
+   */
+  public void release();
 }

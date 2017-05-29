@@ -64,9 +64,9 @@ uint32_t OutputParameter::read(::apache::thrift::protocol::TProtocol* iprot) {
     {
       case 1:
         if (ftype == ::apache::thrift::protocol::T_I32) {
-          int32_t ecast224;
-          xfer += iprot->readI32(ecast224);
-          this->type = (SnappyType::type)ecast224;
+          int32_t ecast231;
+          xfer += iprot->readI32(ecast231);
+          this->type = (SnappyType::type)ecast231;
           isset_type = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -134,30 +134,30 @@ void swap(OutputParameter &a, OutputParameter &b) noexcept {
   swap(a.__isset, b.__isset);
 }
 
-OutputParameter::OutputParameter(const OutputParameter& other225) {
-  type = other225.type;
-  scale = other225.scale;
-  typeName = other225.typeName;
-  __isset = other225.__isset;
+OutputParameter::OutputParameter(const OutputParameter& other232) {
+  type = other232.type;
+  scale = other232.scale;
+  typeName = other232.typeName;
+  __isset = other232.__isset;
 }
-OutputParameter::OutputParameter( OutputParameter&& other226) noexcept {
-  type = std::move(other226.type);
-  scale = std::move(other226.scale);
-  typeName = std::move(other226.typeName);
-  __isset = std::move(other226.__isset);
+OutputParameter::OutputParameter( OutputParameter&& other233) noexcept {
+  type = std::move(other233.type);
+  scale = std::move(other233.scale);
+  typeName = std::move(other233.typeName);
+  __isset = std::move(other233.__isset);
 }
-OutputParameter& OutputParameter::operator=(const OutputParameter& other227) {
-  type = other227.type;
-  scale = other227.scale;
-  typeName = other227.typeName;
-  __isset = other227.__isset;
+OutputParameter& OutputParameter::operator=(const OutputParameter& other234) {
+  type = other234.type;
+  scale = other234.scale;
+  typeName = other234.typeName;
+  __isset = other234.__isset;
   return *this;
 }
-OutputParameter& OutputParameter::operator=(OutputParameter&& other228) noexcept {
-  type = std::move(other228.type);
-  scale = std::move(other228.scale);
-  typeName = std::move(other228.typeName);
-  __isset = std::move(other228.__isset);
+OutputParameter& OutputParameter::operator=(OutputParameter&& other235) noexcept {
+  type = std::move(other235.type);
+  scale = std::move(other235.scale);
+  typeName = std::move(other235.typeName);
+  __isset = std::move(other235.__isset);
   return *this;
 }
 void OutputParameter::printTo(std::ostream& out) const {

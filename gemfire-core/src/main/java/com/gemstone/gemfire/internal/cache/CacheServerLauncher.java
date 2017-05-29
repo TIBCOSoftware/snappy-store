@@ -109,6 +109,7 @@ public class CacheServerLauncher  {
   protected String maxHeapSize;
   protected String initialHeapSize;
   protected String offHeapSize;
+  protected String memorySize;
   protected String maxPermGenSize;
   protected boolean useThriftServerDefault =
       ClientSharedUtils.isThriftDefault();
@@ -354,7 +355,7 @@ public class CacheServerLauncher  {
   public static final String EVICTION_HEAP_PERCENTAGE =
       "eviction-heap-percentage";
   public static final String CRITICAL_OFF_HEAP_PERCENTAGE =
-      "critical-off-heap-percentage";
+        "critical-off-heap-percentage";
   public static final String EVICTION_OFF_HEAP_PERCENTAGE =
       "eviction-off-heap-percentage";
   protected static final String LOCK_MEMORY = "lock-memory";
@@ -746,7 +747,7 @@ public class CacheServerLauncher  {
   /**
    * Sets the status of the cache server to be {@link #RUNNING}.
    */
-  public void running(final InternalDistributedSystem system) {
+  public void running(final InternalDistributedSystem system, boolean endWaiting) {
     Status stat = this.status;
     if (stat == null) {
       stat = this.status = createStatus(this.baseName, RUNNING, getProcessId());
@@ -754,6 +755,9 @@ public class CacheServerLauncher  {
     else {
       if (stat.state == WAITING) {
         stat.dsMsg = null;
+        if (endWaiting) {
+          stat.state = RUNNING;
+        }
       } else {
         stat.state = RUNNING;
       }
@@ -908,7 +912,7 @@ public class CacheServerLauncher  {
 
     startAdditionalServices(cache, options, props);
 
-    this.running(system);
+    this.running(system, false);
 
     clearLogListener();
 

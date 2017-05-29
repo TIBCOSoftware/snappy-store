@@ -92,14 +92,14 @@ uint32_t PrepareResult::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->parameterMetaData.clear();
-            uint32_t _size251;
-            ::apache::thrift::protocol::TType _etype254;
-            xfer += iprot->readListBegin(_etype254, _size251);
-            this->parameterMetaData.resize(_size251);
-            uint32_t _i255;
-            for (_i255 = 0; _i255 < _size251; ++_i255)
+            uint32_t _size258;
+            ::apache::thrift::protocol::TType _etype261;
+            xfer += iprot->readListBegin(_etype261, _size258);
+            this->parameterMetaData.resize(_size258);
+            uint32_t _i262;
+            for (_i262 = 0; _i262 < _size258; ++_i262)
             {
-              xfer += this->parameterMetaData[_i255].read(iprot);
+              xfer += this->parameterMetaData[_i262].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -112,14 +112,14 @@ uint32_t PrepareResult::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->resultSetMetaData.clear();
-            uint32_t _size256;
-            ::apache::thrift::protocol::TType _etype259;
-            xfer += iprot->readListBegin(_etype259, _size256);
-            this->resultSetMetaData.resize(_size256);
-            uint32_t _i260;
-            for (_i260 = 0; _i260 < _size256; ++_i260)
+            uint32_t _size263;
+            ::apache::thrift::protocol::TType _etype266;
+            xfer += iprot->readListBegin(_etype266, _size263);
+            this->resultSetMetaData.resize(_size263);
+            uint32_t _i267;
+            for (_i267 = 0; _i267 < _size263; ++_i267)
             {
-              xfer += this->resultSetMetaData[_i260].read(iprot);
+              xfer += this->resultSetMetaData[_i267].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -169,10 +169,10 @@ uint32_t PrepareResult::write(::apache::thrift::protocol::TProtocol* oprot) cons
   xfer += oprot->writeFieldBegin("parameterMetaData", ::apache::thrift::protocol::T_LIST, 3);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->parameterMetaData.size()));
-    std::vector<ColumnDescriptor> ::const_iterator _iter261;
-    for (_iter261 = this->parameterMetaData.begin(); _iter261 != this->parameterMetaData.end(); ++_iter261)
+    std::vector<ColumnDescriptor> ::const_iterator _iter268;
+    for (_iter268 = this->parameterMetaData.begin(); _iter268 != this->parameterMetaData.end(); ++_iter268)
     {
-      xfer += (*_iter261).write(oprot);
+      xfer += (*_iter268).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -182,10 +182,10 @@ uint32_t PrepareResult::write(::apache::thrift::protocol::TProtocol* oprot) cons
     xfer += oprot->writeFieldBegin("resultSetMetaData", ::apache::thrift::protocol::T_LIST, 4);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->resultSetMetaData.size()));
-      std::vector<ColumnDescriptor> ::const_iterator _iter262;
-      for (_iter262 = this->resultSetMetaData.begin(); _iter262 != this->resultSetMetaData.end(); ++_iter262)
+      std::vector<ColumnDescriptor> ::const_iterator _iter269;
+      for (_iter269 = this->resultSetMetaData.begin(); _iter269 != this->resultSetMetaData.end(); ++_iter269)
       {
-        xfer += (*_iter262).write(oprot);
+        xfer += (*_iter269).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -212,38 +212,38 @@ void swap(PrepareResult &a, PrepareResult &b) noexcept {
   swap(a.__isset, b.__isset);
 }
 
-PrepareResult::PrepareResult(const PrepareResult& other263) {
-  statementId = other263.statementId;
-  statementType = other263.statementType;
-  parameterMetaData = other263.parameterMetaData;
-  resultSetMetaData = other263.resultSetMetaData;
-  warnings = other263.warnings;
-  __isset = other263.__isset;
+PrepareResult::PrepareResult(const PrepareResult& other270) {
+  statementId = other270.statementId;
+  statementType = other270.statementType;
+  parameterMetaData = other270.parameterMetaData;
+  resultSetMetaData = other270.resultSetMetaData;
+  warnings = other270.warnings;
+  __isset = other270.__isset;
 }
-PrepareResult::PrepareResult( PrepareResult&& other264) noexcept {
-  statementId = std::move(other264.statementId);
-  statementType = std::move(other264.statementType);
-  parameterMetaData = std::move(other264.parameterMetaData);
-  resultSetMetaData = std::move(other264.resultSetMetaData);
-  warnings = std::move(other264.warnings);
-  __isset = std::move(other264.__isset);
+PrepareResult::PrepareResult( PrepareResult&& other271) noexcept {
+  statementId = std::move(other271.statementId);
+  statementType = std::move(other271.statementType);
+  parameterMetaData = std::move(other271.parameterMetaData);
+  resultSetMetaData = std::move(other271.resultSetMetaData);
+  warnings = std::move(other271.warnings);
+  __isset = std::move(other271.__isset);
 }
-PrepareResult& PrepareResult::operator=(const PrepareResult& other265) {
-  statementId = other265.statementId;
-  statementType = other265.statementType;
-  parameterMetaData = other265.parameterMetaData;
-  resultSetMetaData = other265.resultSetMetaData;
-  warnings = other265.warnings;
-  __isset = other265.__isset;
+PrepareResult& PrepareResult::operator=(const PrepareResult& other272) {
+  statementId = other272.statementId;
+  statementType = other272.statementType;
+  parameterMetaData = other272.parameterMetaData;
+  resultSetMetaData = other272.resultSetMetaData;
+  warnings = other272.warnings;
+  __isset = other272.__isset;
   return *this;
 }
-PrepareResult& PrepareResult::operator=(PrepareResult&& other266) noexcept {
-  statementId = std::move(other266.statementId);
-  statementType = std::move(other266.statementType);
-  parameterMetaData = std::move(other266.parameterMetaData);
-  resultSetMetaData = std::move(other266.resultSetMetaData);
-  warnings = std::move(other266.warnings);
-  __isset = std::move(other266.__isset);
+PrepareResult& PrepareResult::operator=(PrepareResult&& other273) noexcept {
+  statementId = std::move(other273.statementId);
+  statementType = std::move(other273.statementType);
+  parameterMetaData = std::move(other273.parameterMetaData);
+  resultSetMetaData = std::move(other273.resultSetMetaData);
+  warnings = std::move(other273.warnings);
+  __isset = std::move(other273.__isset);
   return *this;
 }
 void PrepareResult::printTo(std::ostream& out) const {

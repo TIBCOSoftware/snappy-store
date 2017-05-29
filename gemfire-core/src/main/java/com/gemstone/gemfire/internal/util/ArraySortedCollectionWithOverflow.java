@@ -462,15 +462,17 @@ public class ArraySortedCollectionWithOverflow extends
    * @author swale
    * @since gfxd 1.1
    */
-  protected static final class OverflowData extends
+  public static final class OverflowData extends
       ChannelBufferUnsafeDataInputStream {
 
     // used for sizing of DirectByteBuffer
     private static final ByteBuffer TMP_BUF = ByteBuffer.allocateDirect(1);
 
+    public static final long DIRECT_BUFFER_OVERHEAD =
+        ReflectionSingleObjectSizer.sizeof(TMP_BUF.getClass());
+
     public static final long BASE_CLASS_OVERHEAD = ReflectionSingleObjectSizer
-        .sizeof(OverflowData.class)
-        + ReflectionSingleObjectSizer.sizeof(TMP_BUF.getClass());
+        .sizeof(OverflowData.class) + DIRECT_BUFFER_OVERHEAD;
 
     long currentPos;
     final long endPos;

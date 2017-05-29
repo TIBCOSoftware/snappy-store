@@ -40,7 +40,6 @@ import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.cache.AbstractOperationMessage;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskPosition;
@@ -389,18 +388,19 @@ public final class GfxdTXEntryState extends TXEntryState implements
   @Override
   public final ExecRow getRow(GemFireContainer baseContainer)
       throws StandardException {
+    final RegionEntry entry = this.regionEntry;
     if (isDirty()) {
       final Object value = getNearSidePendingValue();
       // txnal entries will always be of the current schema since ALTER TABLE
       // or any other DDL will either fail with txns, or block for txns
-      return baseContainer.newExecRow(value,
+      return baseContainer.newExecRow(entry, value,
           baseContainer.getExtraTableInfo(), true);
     }
-    else if (this.regionEntry != null) {
+    else if (entry != null) {
       final Object value = this.originalVersionId;
       if (!Token.isRemoved(value)) {
-        return baseContainer.newExecRow(value,
-            (ExtraTableInfo)this.regionEntry.getContainerInfo(), true);
+        return baseContainer.newExecRow(entry, value,
+            (ExtraTableInfo)entry.getContainerInfo(), true);
       }
     }
     return null;
@@ -622,6 +622,11 @@ public final class GfxdTXEntryState extends TXEntryState implements
   @Override
   public boolean isInvalidOrRemoved() {
     return Token.isInvalidOrRemoved(super.getValueInTXOrRegion());
+  }
+
+  @Override
+  public boolean isOffHeap() {
+    return false;
   }
 
   @Override
@@ -1269,7 +1274,7 @@ public final class GfxdTXEntryState extends TXEntryState implements
 
   @Override
   public boolean fillInValue(LocalRegion r, Entry entry,
-      ByteArrayDataInput in, DM mgr, Version targetVersion) {
+      DM mgr, Version targetVersion) {
     throw new UnsupportedOperationException("unexpected invocation");
   }
 

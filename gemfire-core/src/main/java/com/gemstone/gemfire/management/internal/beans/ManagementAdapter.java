@@ -419,10 +419,11 @@ public class ManagementAdapter {
       }
       /** Bridge is responsible for extracting data from GemFire Layer **/
       RegionMBeanBridge<K, V> bridge = RegionMBeanBridge.getInstance(region);
-      
-      RegionMXBean regionMBean = new RegionMBean<K, V>(bridge);
+      String regionFullPath = region.getFullPath();
+      boolean isReservoirRegion = regionFullPath.contains("_SAMPLE_INTERNAL_");
+      RegionMXBean regionMBean = new RegionMBean<K, V>(bridge, isReservoirRegion);
       ObjectName regionMBeanName = MBeanJMXAdapter.getRegionMBeanName(cacheImpl
-          .getDistributedSystem().getDistributedMember(), region.getFullPath());
+          .getDistributedSystem().getDistributedMember(), regionFullPath);
       ObjectName changedMBeanName = service.registerInternalMBean(regionMBean,
           regionMBeanName);
       service.federate(changedMBeanName, RegionMXBean.class, true);
@@ -430,7 +431,7 @@ public class ManagementAdapter {
       Notification notification = new Notification(
           ResourceNotification.REGION_CREATED, memberSource, SequenceNumber
               .next(), System.currentTimeMillis(), ResourceNotification.REGION_CREATED_PREFIX
-              + region.getFullPath());
+              + regionFullPath);
       memberLevelNotifEmitter.sendNotification(notification);
       memberMBeanBridge.addRegion(region);
     

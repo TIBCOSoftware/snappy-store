@@ -509,6 +509,10 @@ struct StatementAttrs {
  15: optional bool                                         poolable
  16: optional bool                                         doEscapeProcessing
  17: optional map<TransactionAttribute, bool>              pendingTransactionAttrs
+ // restrict execution to given bucket IDs of a table
+ // (i.e. queries will scan only these bucketIds)
+ 18: optional set<i32>                                     bucketIds
+ 19: optional string                                       bucketIdsTable
 }
 
 union ColumnValue {

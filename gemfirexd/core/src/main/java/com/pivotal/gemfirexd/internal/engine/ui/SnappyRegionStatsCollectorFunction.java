@@ -16,13 +16,7 @@
  */
 package com.pivotal.gemfirexd.internal.engine.ui;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DataPolicy;
@@ -36,12 +30,25 @@ import com.gemstone.gemfire.management.ManagementService;
 import com.gemstone.gemfire.management.RegionMXBean;
 import com.gemstone.gemfire.management.internal.SystemManagementService;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
+import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.tools.sizer.GemFireXDInstrumentation;
+import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SnappyRegionStatsCollectorFunction implements Function, Declarable {
 
+  private static final long serialVersionUID = 1966980144121152499L;
+
   public static String ID = "SnappyRegionStatsCollectorFunction";
+
+  public static final ObjectSizer sizer = ObjectSizer.getInstance(true);
+
+  static {
+    sizer.setForInternalUse(true);
+  }
 
   @Override
   public void init(Properties props) {
@@ -61,6 +68,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
     SnappyRegionStatsCollectorResult result = new SnappyRegionStatsCollectorResult();
     Map<String, SnappyRegionStats> cachBatchStats = new HashMap<>();
     ArrayList<SnappyRegionStats> otherStats = new ArrayList<>();
+
 
     try {
       List<GemFireContainer> containers = Misc.getMemStore().getAllContainers();
@@ -82,8 +90,15 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
               }
             }
           }
+          /*
+          if(!LocalRegion.isMetaTable(r.getFullPath())){
+            result.addAllIndexStat(getIndexStatForContainer(container));
+          }
+          */
         }
       }
+
+
 
       if (Misc.reservoirRegionCreated) {
         for (SnappyRegionStats tableStats : otherStats) {
@@ -115,7 +130,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           result.addRegionStat(tableStats);
         }
       }
-    } catch (CacheClosedException e) {
+    } catch (CacheClosedException ignored) {
     } finally {
       context.getResultSender().lastResult(result);
     }
@@ -191,9 +206,11 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
       }
       tableStats.setTotalSize(size);
     } else {
-      PartitionedRegionDataStore datastore = ((PartitionedRegion)lr).getDataStore();
+      PartitionedRegion pr = (PartitionedRegion)lr;
+      PartitionedRegionDataStore datastore = pr.getDataStore();
       long sizeInMemory = 0L;
       long sizeOfRegion = 0L;
+      long offHeapBytes = 0L;
       long entryOverhead = 0L;
       long entryCount = 0L;
       if (datastore != null) {
@@ -212,23 +229,51 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           sizeOfRegion += constantOverhead + br.getTotalBytes();
           entryCount += br.entryCount();
         }
+        offHeapBytes = pr.getPrStats().getOffHeapSizeInBytes();
       }
       if (entryOverhead > 0) {
         entryOverhead *= entryCount;
       }
 
-      tableStats.setSizeInMemory(sizeInMemory + entryOverhead);
-      tableStats.setTotalSize(sizeOfRegion + entryOverhead);
+      tableStats.setSizeInMemory(sizeInMemory + offHeapBytes + entryOverhead);
+      tableStats.setTotalSize(sizeOfRegion + offHeapBytes + entryOverhead);
     }
     return tableStats;
   }
 
+  public ArrayList<SnappyIndexStats> getIndexStatForContainer(GemFireContainer c) {
+    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<>();
+    final String baseTableContainerName = c.getQualifiedTableName();
+    ArrayList<SnappyIndexStats> indexStats = new ArrayList<>();
+    final LocalRegion reg = c.getRegion();
+    final GfxdIndexManager idxMgr = (GfxdIndexManager)reg.getIndexUpdater();
+
+    List<GemFireContainer> indexes = (idxMgr != null ? idxMgr.getAllIndexes()
+        : Collections.emptyList());
+    try {
+      sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes,
+          retEstimates, null);
+      for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
+        long[] value = (long[])e.getValue()[0];
+        long sum = 0L;
+        sum += value[0]; //constantOverhead
+        sum += value[1]; //entryOverhead[0] + /entryOverhead[1]
+        sum += value[2]; //keySize
+        sum += value[3]; //valueSize
+        long rowCount = value[5];
+        indexStats.add(new SnappyIndexStats(e.getKey(), rowCount, sum));
+      }
+    } catch (StandardException | IllegalAccessException | InterruptedException e) {
+      Logger logger = LoggerFactory.getLogger(getClass().getName());
+      logger.warn("Unexpected exception in getIndexStatForContainer: " +
+          e.toString(), e);
+    }
+    return indexStats;
+  }
 
   public Boolean isReplicatedTable(DataPolicy dataPolicy) {
-    if (dataPolicy == DataPolicy.PERSISTENT_REPLICATE || dataPolicy == DataPolicy.REPLICATE)
-      return true;
-    else
-      return false;
+    return dataPolicy == DataPolicy.PERSISTENT_REPLICATE ||
+        dataPolicy == DataPolicy.REPLICATE;
   }
 
   @Override

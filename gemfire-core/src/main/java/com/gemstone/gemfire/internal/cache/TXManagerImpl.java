@@ -84,12 +84,17 @@ import javax.transaction.Transaction;
 public final class TXManagerImpl implements CacheTransactionManager,
     OrderedMembershipListener {
 
+  public boolean testRollBack = false;
   // Thread specific context container
   private static final ThreadLocal<TXContext> txContext =
     new ThreadLocal<TXContext>();
 
   private static final WeakHashMap<TXContext, Boolean> jtaContexts =
     new WeakHashMap<TXContext, Boolean>();
+
+  // This holds snapshot txState started by Gemfire layer.
+  public static ThreadLocal<TXStateInterface> snapshotTxState =
+      new ThreadLocal<TXStateInterface>();
 
   /**
    * Avoid doing the potentially expensive lock owner search in case of
@@ -961,9 +966,16 @@ public final class TXManagerImpl implements CacheTransactionManager,
     else {
       txId = TXId.newTXId(this.cache);
     }
+
     final TXStateProxy txState = this.hostedTXStates.create(txId,
         txStateProxyCreator, isolationLevel, txFlags, false);
     context.setTXState(txState);
+    // For snapshot isolation, create tx state at the beginning
+    if (txState.isSnapshot()) {
+      txState.getTXStateForRead();
+      snapshotTxState.set(txState);
+    }
+
     return txState;
   }
 
@@ -1006,6 +1018,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
     final TXId txId = TXId.newTXId(this.cache);
     final TXStateProxy txState = this.hostedTXStates.create(txId,
         txStateJTACreator, IsolationLevel.DEFAULT, null, false);
+
     context.setTXState(txState);
     return txState;
   }
@@ -1016,7 +1029,11 @@ public final class TXManagerImpl implements CacheTransactionManager,
    *
    */
   public void commit() throws TransactionException {
+
+    TXStateInterface st = getTXState();
     commit(getTXState(), null, FULL_COMMIT, null, false);
+    // set the txState set in the cache also to null
+    snapshotTxState.set(null);
   }
 
   public final TXManagerImpl.TXContext commit(
@@ -1206,6 +1223,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
     clearTXState();
     tx.rollback(callbackArg);
     noteRollbackSuccess(opStart, lifeTime, tx, isRemoteRollback);
+    snapshotTxState.set(null);
   }
 
   final void noteRollbackSuccess(final long opStart, final long lifeTime,
@@ -1468,6 +1486,10 @@ public final class TXManagerImpl implements CacheTransactionManager,
       return null;
     }
     return context.getTXState();
+  }
+
+  public static TXStateInterface getCurrentSnapshotTXState() {
+    return snapshotTxState.get();
   }
 
   public static TXId getCurrentTXId() {
@@ -2268,5 +2290,6 @@ public final class TXManagerImpl implements CacheTransactionManager,
     public LogWriterI18n getLoggerI18n() {
       return GemFireCacheImpl.getExisting().getLoggerI18n();
     }
+
   }
 }

@@ -223,6 +223,10 @@ public class VersionedBucketRowLocationThinDiskRegionEntryOffHeap extends RowLoc
   private final static AtomicLongFieldUpdater<VersionedBucketRowLocationThinDiskRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VersionedBucketRowLocationThinDiskRegionEntryOffHeap.class, "ohAddress");
   @Override
+  public boolean isOffHeap() {
+    return true;
+  }
+  @Override
   public Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }

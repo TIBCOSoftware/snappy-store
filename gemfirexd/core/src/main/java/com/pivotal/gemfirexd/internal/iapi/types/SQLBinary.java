@@ -62,8 +62,6 @@ import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
-import io.snappydata.thrift.common.BufferedBlob;
-import io.snappydata.thrift.common.ThriftUtils;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -210,15 +208,6 @@ abstract class SQLBinary
 
 	public final void setValue(Blob theValue) throws StandardException
 	{
-		if (theValue instanceof BufferedBlob) {
-			try {
-				dataValue = ThriftUtils.toBytes(((BufferedBlob)theValue).getAsBuffer());
-				_blobValue = null;
-			} catch (SQLException sqle) {
-				throw Misc.wrapSQLException(sqle, sqle);
-			}
-			return;
-		}
 		dataValue = null;
         _blobValue = theValue;
 		//stream = null;
@@ -734,7 +723,11 @@ abstract class SQLBinary
 		try
 		{
 			DataValueDescriptor cloneDVD = getNewNull();
-			cloneDVD.setValue(getValue());
+			if (_blobValue != null) {
+				cloneDVD.setValue(_blobValue);
+			} else {
+				cloneDVD.setValue(dataValue);
+			}
 			return cloneDVD;
 		}
 		catch (StandardException se)

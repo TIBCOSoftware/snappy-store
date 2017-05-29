@@ -114,9 +114,9 @@ uint32_t ColumnDescriptor::read(::apache::thrift::protocol::TProtocol* iprot) {
     {
       case 1:
         if (ftype == ::apache::thrift::protocol::T_I32) {
-          int32_t ecast202;
-          xfer += iprot->readI32(ecast202);
-          this->type = (SnappyType::type)ecast202;
+          int32_t ecast209;
+          xfer += iprot->readI32(ecast209);
+          this->type = (SnappyType::type)ecast209;
           isset_type = true;
         } else {
           xfer += iprot->skip(ftype);
@@ -206,16 +206,16 @@ uint32_t ColumnDescriptor::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->elementTypes.clear();
-            uint32_t _size203;
-            ::apache::thrift::protocol::TType _etype206;
-            xfer += iprot->readListBegin(_etype206, _size203);
-            this->elementTypes.resize(_size203);
-            uint32_t _i207;
-            for (_i207 = 0; _i207 < _size203; ++_i207)
+            uint32_t _size210;
+            ::apache::thrift::protocol::TType _etype213;
+            xfer += iprot->readListBegin(_etype213, _size210);
+            this->elementTypes.resize(_size210);
+            uint32_t _i214;
+            for (_i214 = 0; _i214 < _size210; ++_i214)
             {
-              int32_t ecast208;
-              xfer += iprot->readI32(ecast208);
-              this->elementTypes[_i207] = (SnappyType::type)ecast208;
+              int32_t ecast215;
+              xfer += iprot->readI32(ecast215);
+              this->elementTypes[_i214] = (SnappyType::type)ecast215;
             }
             xfer += iprot->readListEnd();
           }
@@ -309,10 +309,10 @@ uint32_t ColumnDescriptor::write(::apache::thrift::protocol::TProtocol* oprot) c
     xfer += oprot->writeFieldBegin("elementTypes", ::apache::thrift::protocol::T_LIST, 12);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->elementTypes.size()));
-      std::vector<SnappyType::type> ::const_iterator _iter209;
-      for (_iter209 = this->elementTypes.begin(); _iter209 != this->elementTypes.end(); ++_iter209)
+      std::vector<SnappyType::type> ::const_iterator _iter216;
+      for (_iter216 = this->elementTypes.begin(); _iter216 != this->elementTypes.end(); ++_iter216)
       {
-        xfer += oprot->writeI32((int32_t)(*_iter209));
+        xfer += oprot->writeI32((int32_t)(*_iter216));
       }
       xfer += oprot->writeListEnd();
     }
@@ -347,70 +347,70 @@ void swap(ColumnDescriptor &a, ColumnDescriptor &b) noexcept {
   swap(a.__isset, b.__isset);
 }
 
-ColumnDescriptor::ColumnDescriptor(const ColumnDescriptor& other210) {
-  type = other210.type;
-  precision = other210.precision;
-  scale = other210.scale;
-  name = other210.name;
-  fullTableName = other210.fullTableName;
-  updatable = other210.updatable;
-  definitelyUpdatable = other210.definitelyUpdatable;
-  nullable = other210.nullable;
-  autoIncrement = other210.autoIncrement;
-  parameterIn = other210.parameterIn;
-  parameterOut = other210.parameterOut;
-  elementTypes = other210.elementTypes;
-  udtTypeAndClassName = other210.udtTypeAndClassName;
-  __isset = other210.__isset;
+ColumnDescriptor::ColumnDescriptor(const ColumnDescriptor& other217) {
+  type = other217.type;
+  precision = other217.precision;
+  scale = other217.scale;
+  name = other217.name;
+  fullTableName = other217.fullTableName;
+  updatable = other217.updatable;
+  definitelyUpdatable = other217.definitelyUpdatable;
+  nullable = other217.nullable;
+  autoIncrement = other217.autoIncrement;
+  parameterIn = other217.parameterIn;
+  parameterOut = other217.parameterOut;
+  elementTypes = other217.elementTypes;
+  udtTypeAndClassName = other217.udtTypeAndClassName;
+  __isset = other217.__isset;
 }
-ColumnDescriptor::ColumnDescriptor( ColumnDescriptor&& other211) noexcept {
-  type = std::move(other211.type);
-  precision = std::move(other211.precision);
-  scale = std::move(other211.scale);
-  name = std::move(other211.name);
-  fullTableName = std::move(other211.fullTableName);
-  updatable = std::move(other211.updatable);
-  definitelyUpdatable = std::move(other211.definitelyUpdatable);
-  nullable = std::move(other211.nullable);
-  autoIncrement = std::move(other211.autoIncrement);
-  parameterIn = std::move(other211.parameterIn);
-  parameterOut = std::move(other211.parameterOut);
-  elementTypes = std::move(other211.elementTypes);
-  udtTypeAndClassName = std::move(other211.udtTypeAndClassName);
-  __isset = std::move(other211.__isset);
+ColumnDescriptor::ColumnDescriptor( ColumnDescriptor&& other218) noexcept {
+  type = std::move(other218.type);
+  precision = std::move(other218.precision);
+  scale = std::move(other218.scale);
+  name = std::move(other218.name);
+  fullTableName = std::move(other218.fullTableName);
+  updatable = std::move(other218.updatable);
+  definitelyUpdatable = std::move(other218.definitelyUpdatable);
+  nullable = std::move(other218.nullable);
+  autoIncrement = std::move(other218.autoIncrement);
+  parameterIn = std::move(other218.parameterIn);
+  parameterOut = std::move(other218.parameterOut);
+  elementTypes = std::move(other218.elementTypes);
+  udtTypeAndClassName = std::move(other218.udtTypeAndClassName);
+  __isset = std::move(other218.__isset);
 }
-ColumnDescriptor& ColumnDescriptor::operator=(const ColumnDescriptor& other212) {
-  type = other212.type;
-  precision = other212.precision;
-  scale = other212.scale;
-  name = other212.name;
-  fullTableName = other212.fullTableName;
-  updatable = other212.updatable;
-  definitelyUpdatable = other212.definitelyUpdatable;
-  nullable = other212.nullable;
-  autoIncrement = other212.autoIncrement;
-  parameterIn = other212.parameterIn;
-  parameterOut = other212.parameterOut;
-  elementTypes = other212.elementTypes;
-  udtTypeAndClassName = other212.udtTypeAndClassName;
-  __isset = other212.__isset;
+ColumnDescriptor& ColumnDescriptor::operator=(const ColumnDescriptor& other219) {
+  type = other219.type;
+  precision = other219.precision;
+  scale = other219.scale;
+  name = other219.name;
+  fullTableName = other219.fullTableName;
+  updatable = other219.updatable;
+  definitelyUpdatable = other219.definitelyUpdatable;
+  nullable = other219.nullable;
+  autoIncrement = other219.autoIncrement;
+  parameterIn = other219.parameterIn;
+  parameterOut = other219.parameterOut;
+  elementTypes = other219.elementTypes;
+  udtTypeAndClassName = other219.udtTypeAndClassName;
+  __isset = other219.__isset;
   return *this;
 }
-ColumnDescriptor& ColumnDescriptor::operator=(ColumnDescriptor&& other213) noexcept {
-  type = std::move(other213.type);
-  precision = std::move(other213.precision);
-  scale = std::move(other213.scale);
-  name = std::move(other213.name);
-  fullTableName = std::move(other213.fullTableName);
-  updatable = std::move(other213.updatable);
-  definitelyUpdatable = std::move(other213.definitelyUpdatable);
-  nullable = std::move(other213.nullable);
-  autoIncrement = std::move(other213.autoIncrement);
-  parameterIn = std::move(other213.parameterIn);
-  parameterOut = std::move(other213.parameterOut);
-  elementTypes = std::move(other213.elementTypes);
-  udtTypeAndClassName = std::move(other213.udtTypeAndClassName);
-  __isset = std::move(other213.__isset);
+ColumnDescriptor& ColumnDescriptor::operator=(ColumnDescriptor&& other220) noexcept {
+  type = std::move(other220.type);
+  precision = std::move(other220.precision);
+  scale = std::move(other220.scale);
+  name = std::move(other220.name);
+  fullTableName = std::move(other220.fullTableName);
+  updatable = std::move(other220.updatable);
+  definitelyUpdatable = std::move(other220.definitelyUpdatable);
+  nullable = std::move(other220.nullable);
+  autoIncrement = std::move(other220.autoIncrement);
+  parameterIn = std::move(other220.parameterIn);
+  parameterOut = std::move(other220.parameterOut);
+  elementTypes = std::move(other220.elementTypes);
+  udtTypeAndClassName = std::move(other220.udtTypeAndClassName);
+  __isset = std::move(other220.__isset);
   return *this;
 }
 void ColumnDescriptor::printTo(std::ostream& out) const {

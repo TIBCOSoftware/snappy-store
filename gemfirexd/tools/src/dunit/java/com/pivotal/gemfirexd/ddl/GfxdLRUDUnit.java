@@ -275,7 +275,8 @@ public class GfxdLRUDUnit extends DistributedSQLTestBase {
         "logVMHeapSizeAndCurrentHeapSize tot mem in bytes: " + totmem + " and free mem: " + freemem
             + " so used mem: " + (totmem - freemem) +" and heap max size: "+rt.maxMemory());
   }
-  
+
+  // Suranjan: MVCC destroy keeps the old value in the oldEntryMap. The test fails.
   public void testPRLRUHeapPercDestroy() throws Exception {
     try {
       // The test is valid only for transaction isolation level NONE.

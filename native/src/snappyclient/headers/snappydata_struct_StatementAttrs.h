@@ -25,7 +25,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 typedef struct _StatementAttrs__isset {
-  _StatementAttrs__isset() : resultSetType(false), updatable(false), holdCursorsOverCommit(false), requireAutoIncCols(false), autoIncColumns(false), autoIncColumnNames(false), batchSize(true), fetchReverse(false), lobChunkSize(false), maxRows(false), maxFieldSize(false), timeout(false), cursorName(false), possibleDuplicate(false), poolable(false), doEscapeProcessing(false), pendingTransactionAttrs(false) {}
+  _StatementAttrs__isset() : resultSetType(false), updatable(false), holdCursorsOverCommit(false), requireAutoIncCols(false), autoIncColumns(false), autoIncColumnNames(false), batchSize(true), fetchReverse(false), lobChunkSize(false), maxRows(false), maxFieldSize(false), timeout(false), cursorName(false), possibleDuplicate(false), poolable(false), doEscapeProcessing(false), pendingTransactionAttrs(false), bucketIds(false), bucketIdsTable(false) {}
   bool resultSetType :1;
   bool updatable :1;
   bool holdCursorsOverCommit :1;
@@ -43,6 +43,8 @@ typedef struct _StatementAttrs__isset {
   bool poolable :1;
   bool doEscapeProcessing :1;
   bool pendingTransactionAttrs :1;
+  bool bucketIds :1;
+  bool bucketIdsTable :1;
 } _StatementAttrs__isset;
 
 class StatementAttrs {
@@ -52,7 +54,7 @@ class StatementAttrs {
   StatementAttrs(StatementAttrs&&) noexcept;
   StatementAttrs& operator=(const StatementAttrs&);
   StatementAttrs& operator=(StatementAttrs&&) noexcept;
-  StatementAttrs() : resultSetType(0), updatable(0), holdCursorsOverCommit(0), requireAutoIncCols(0), batchSize(1024), fetchReverse(0), lobChunkSize(0), maxRows(0), maxFieldSize(0), timeout(0), cursorName(), possibleDuplicate(0), poolable(0), doEscapeProcessing(0) {
+  StatementAttrs() : resultSetType(0), updatable(0), holdCursorsOverCommit(0), requireAutoIncCols(0), batchSize(1024), fetchReverse(0), lobChunkSize(0), maxRows(0), maxFieldSize(0), timeout(0), cursorName(), possibleDuplicate(0), poolable(0), doEscapeProcessing(0), bucketIdsTable() {
   }
 
   virtual ~StatementAttrs() noexcept;
@@ -73,6 +75,8 @@ class StatementAttrs {
   bool poolable;
   bool doEscapeProcessing;
   std::map<TransactionAttribute::type, bool>  pendingTransactionAttrs;
+  std::set<int32_t>  bucketIds;
+  std::string bucketIdsTable;
 
   _StatementAttrs__isset __isset;
 
@@ -109,6 +113,10 @@ class StatementAttrs {
   void __set_doEscapeProcessing(const bool val);
 
   void __set_pendingTransactionAttrs(const std::map<TransactionAttribute::type, bool> & val);
+
+  void __set_bucketIds(const std::set<int32_t> & val);
+
+  void __set_bucketIdsTable(const std::string& val);
 
   bool operator == (const StatementAttrs & rhs) const
   {
@@ -179,6 +187,14 @@ class StatementAttrs {
     if (__isset.pendingTransactionAttrs != rhs.__isset.pendingTransactionAttrs)
       return false;
     else if (__isset.pendingTransactionAttrs && !(pendingTransactionAttrs == rhs.pendingTransactionAttrs))
+      return false;
+    if (__isset.bucketIds != rhs.__isset.bucketIds)
+      return false;
+    else if (__isset.bucketIds && !(bucketIds == rhs.bucketIds))
+      return false;
+    if (__isset.bucketIdsTable != rhs.__isset.bucketIdsTable)
+      return false;
+    else if (__isset.bucketIdsTable && !(bucketIdsTable == rhs.bucketIdsTable))
       return false;
     return true;
   }

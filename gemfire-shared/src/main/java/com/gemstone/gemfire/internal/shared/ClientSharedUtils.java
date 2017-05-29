@@ -42,8 +42,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectStreamClass;
+import java.lang.management.LockInfo;
+import java.lang.management.MonitorInfo;
+import java.lang.management.ThreadInfo;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -67,6 +71,7 @@ import javax.naming.directory.Attributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.spark.unsafe.Platform;
@@ -127,6 +132,12 @@ public abstract class ClientSharedUtils {
           return System.getProperty("line.separator");
         }
       });
+
+  /**
+   * The default wait to use when waiting to read/write a channel
+   * (when there is no selector to signal)
+   */
+  public static final long PARK_NANOS_FOR_READ_WRITE = 50L;
 
   public static boolean isUsingThrift(boolean defaultValue) {
     return SystemProperties.getClientInstance().getBoolean(
@@ -402,6 +413,49 @@ public abstract class ClientSharedUtils {
     return lh;
   }
 
+  public static Method getAnyMethod(Class<?> c, String name, Class<?> returnType,
+       Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
+    NoSuchMethodException firstEx = null;
+    Method method = null;
+    for (;;) {
+      try {
+        method =  c.getDeclaredMethod(name, parameterTypes);
+
+        if (returnType == null ||
+           (returnType != null && method.getReturnType().equals(returnType))) {
+          return method;
+        } else {
+          throw new NoSuchMethodException();
+        }
+      } catch (NoSuchMethodException nsme) {
+        if (firstEx == null) {
+          firstEx = nsme;
+        }
+        if ((c = c.getSuperclass()) == null) {
+          throw firstEx;
+        }
+        // else continue searching in superClass
+      }
+    }
+  }
+
+  public static Field getAnyField(Class<?> c, String name)
+          throws NoSuchFieldException, SecurityException {
+    NoSuchFieldException firstEx = null;
+    for (;;) {
+      try {
+        return c.getDeclaredField(name);
+      } catch (NoSuchFieldException nsfe) {
+        if (firstEx == null) {
+          firstEx = nsfe;
+        }
+        if ((c = c.getSuperclass()) == null) {
+          throw firstEx;
+        }
+        // else continue searching in superClass
+      }
+    }
+  }
   /**
    * This method uses JNDI to look up an address in DNS and return its name.
    * 
@@ -500,44 +554,50 @@ public abstract class ClientSharedUtils {
   }
 
   /**
+   * Set the keep-alive options on the socket from server-side properties.
+   *
+   * @see #setKeepAliveOptions
+   */
+  public static void setKeepAliveOptionsServer(Socket socket,
+      InputStream socketStream) throws SocketException {
+    final SystemProperties props = SystemProperties
+        .getServerInstance();
+    int defaultIdle = props.getInteger(SystemProperties.KEEPALIVE_IDLE,
+        SystemProperties.DEFAULT_KEEPALIVE_IDLE);
+    int defaultInterval = props.getInteger(SystemProperties.KEEPALIVE_INTVL,
+        SystemProperties.DEFAULT_KEEPALIVE_INTVL);
+    int defaultCount = props.getInteger(SystemProperties.KEEPALIVE_CNT,
+        SystemProperties.DEFAULT_KEEPALIVE_CNT);
+    ClientSharedUtils.setKeepAliveOptions(socket, socketStream,
+        defaultIdle, defaultInterval, defaultCount);
+  }
+
+  /**
    * Enable TCP KeepAlive settings for the socket. This will use the native OS
    * API to set per-socket configuration, if available, else will log warning
    * (only once) if one or more settings cannot be enabled.
-   * 
-   * @param sock
-   *          the underlying Java {@link Socket} to set the keep-alive
-   * @param sockStream
-   *          the InputStream of the socket (can be null); if non-null then it
-   *          is used to determine the underlying socket kernel handle else if
-   *          null then reflection on the socket itself is used
-   * @param keepIdle
-   *          keep-alive time between two transmissions on socket in idle
-   *          condition (in seconds)
-   * @param keepInterval
-   *          keep-alive duration between successive transmissions on socket if
-   *          no reply to packet sent after idle timeout (in seconds)
-   * @param keepCount
-   *          number of retransmissions to be sent before declaring the other
-   *          end to be dead
-   * 
-   * @throws SocketException
-   *           if the base keep-alive cannot be enabled on the socket
-   * 
-   * @see <a
-   *      href="http://tldp.org/HOWTO/html_single/TCP-Keepalive-HOWTO/#programming">
-   *      TCP Keepalive HOWTO</a>
-   * @see <a
-   *      href="http://docs.oracle.com/cd/E19082-01/819-2724/6n50b07lr/index.html">
-   *      TCP Tunable Parameters</a>
-   * @see <a
-   *      href="http://msdn.microsoft.com/en-us/library/ms741621%28VS.85%29.aspx">
-   *      WSAIoctl function</a>
-   * @see <a 
-   *      href="http://technet.microsoft.com/en-us/library/dd349797%28WS.10%29.aspx>
-   *      TCP/IP-Related Registry Entries</a>
-   * @see <a
-   *      href="http://msdn.microsoft.com/en-us/library/dd877220%28v=vs.85%29.aspx">
-   *      SIO_KEEPALIVE_VALS control code</a>
+   *
+   * @param sock         the underlying Java {@link Socket} to set the keep-alive
+   * @param sockStream   the InputStream of the socket (can be null); if non-null then it
+   *                     is used to determine the underlying socket kernel handle else if
+   *                     null then reflection on the socket itself is used
+   * @param keepIdle     keep-alive time between two transmissions on socket in idle
+   *                     condition (in seconds)
+   * @param keepInterval keep-alive duration between successive transmissions on socket if
+   *                     no reply to packet sent after idle timeout (in seconds)
+   * @param keepCount    number of retransmissions to be sent before declaring the other
+   *                     end to be dead
+   * @throws SocketException if the base keep-alive cannot be enabled on the socket
+   * @see <a href="http://tldp.org/HOWTO/html_single/TCP-Keepalive-HOWTO/#programming">
+   * TCP Keepalive HOWTO</a>
+   * @see <a href="http://docs.oracle.com/cd/E19082-01/819-2724/6n50b07lr/index.html">
+   * TCP Tunable Parameters</a>
+   * @see <a href="http://msdn.microsoft.com/en-us/library/ms741621%28VS.85%29.aspx">
+   * WSAIoctl function</a>
+   * @see <a href="http://technet.microsoft.com/en-us/library/dd349797%28WS.10%29.aspx>
+   * TCP/IP-Related Registry Entries</a>
+   * @see <a href="http://msdn.microsoft.com/en-us/library/dd877220%28v=vs.85%29.aspx">
+   * SIO_KEEPALIVE_VALS control code</a>
    */
   public static void setKeepAliveOptions(Socket sock, InputStream sockStream,
       int keepIdle, int keepInterval, int keepCount) throws SocketException {
@@ -551,19 +611,17 @@ public abstract class ClientSharedUtils {
     sock.setKeepAlive(true);
     // now the OS-specific settings using NativeCalls
     NativeCalls nc = NativeCalls.getInstance();
-    Map<TCPSocketOptions, Object> optValueMap =
-        new HashMap<TCPSocketOptions, Object>(4);
+    Map<TCPSocketOptions, Object> optValueMap = new HashMap<>(4);
     if (keepIdle >= 0) {
-      optValueMap.put(TCPSocketOptions.OPT_KEEPIDLE, Integer.valueOf(keepIdle));
+      optValueMap.put(TCPSocketOptions.OPT_KEEPIDLE, keepIdle);
     }
     if (keepInterval >= 0) {
-      optValueMap.put(TCPSocketOptions.OPT_KEEPINTVL,
-          Integer.valueOf(keepInterval));
+      optValueMap.put(TCPSocketOptions.OPT_KEEPINTVL, keepInterval);
     }
     if (keepCount >= 0) {
-      optValueMap.put(TCPSocketOptions.OPT_KEEPCNT, Integer.valueOf(keepCount));
+      optValueMap.put(TCPSocketOptions.OPT_KEEPCNT, keepCount);
     }
-    Map<TCPSocketOptions, Throwable> failed = null;
+    Map<TCPSocketOptions, Throwable> failed;
     try {
       failed = nc.setSocketOptions(sock, sockStream, optValueMap);
     } catch (UnsupportedOperationException e) {
@@ -596,8 +654,7 @@ public abstract class ClientSharedUtils {
                   // log as a warning
                   doLogWarning = 1;
                 }
-              }
-              else {
+              } else {
                 doLogWarning = 1;
               }
               break;
@@ -608,8 +665,7 @@ public abstract class ClientSharedUtils {
                   // KEEPINTVL is not critical to have so log as information
                   doLogWarning = 2;
                 }
-              }
-              else {
+              } else {
                 doLogWarning = 2;
               }
               break;
@@ -620,8 +676,7 @@ public abstract class ClientSharedUtils {
                   // KEEPCNT is not critical to have so log as information
                   doLogWarning = 2;
                 }
-              }
-              else {
+              } else {
                 doLogWarning = 2;
               }
               break;
@@ -629,8 +684,7 @@ public abstract class ClientSharedUtils {
           if (doLogWarning > 0) {
             if (doLogWarning == 1) {
               log.warning("Failed to set " + opt + " on socket: " + ex);
-            }
-            else if (doLogWarning == 2) {
+            } else {
               // just log as an information rather than warning
               if (log != DEFAULT_LOGGER) { // SNAP-255
                 log.info("Failed to set " + opt + " on socket: "
@@ -645,8 +699,7 @@ public abstract class ClientSharedUtils {
           }
         }
       }
-    }
-    else if (log != null && log.isLoggable(Level.FINE)) {
+    } else if (log != null && log.isLoggable(Level.FINE)) {
       log.fine("setKeepAliveOptions(): successful for " + sock);
     }
   }
@@ -666,6 +719,68 @@ public abstract class ClientSharedUtils {
   public static void getStackTrace(final Throwable t, StringBuilder sb,
       String lineSep) {
     t.printStackTrace(new StringPrintWriter(sb, lineSep));
+  }
+
+  public static void dumpThreadStack(final ThreadInfo tInfo,
+      final StringBuilder msg, final String lineSeparator) {
+    msg.append('"').append(tInfo.getThreadName()).append('"').append(" Id=")
+        .append(tInfo.getThreadId()).append(' ')
+        .append(tInfo.getThreadState());
+    if (tInfo.getLockName() != null) {
+      msg.append(" on ").append(tInfo.getLockName());
+    }
+    if (tInfo.getLockOwnerName() != null) {
+      msg.append(" owned by \"").append(tInfo.getLockOwnerName())
+          .append("\" Id=").append(tInfo.getLockOwnerId());
+    }
+    if (tInfo.isSuspended()) {
+      msg.append(" (suspended)");
+    }
+    if (tInfo.isInNative()) {
+      msg.append(" (in native)");
+    }
+    msg.append(lineSeparator);
+    final StackTraceElement[] stackTrace = tInfo.getStackTrace();
+    for (int index = 0; index < stackTrace.length; ++index) {
+      msg.append("\tat ").append(stackTrace[index].toString())
+          .append(lineSeparator);
+      if (index == 0 && tInfo.getLockInfo() != null) {
+        final Thread.State ts = tInfo.getThreadState();
+        switch (ts) {
+          case BLOCKED:
+            msg.append("\t-  blocked on ").append(tInfo.getLockInfo())
+                .append(lineSeparator);
+            break;
+          case WAITING:
+            msg.append("\t-  waiting on ").append(tInfo.getLockInfo())
+                .append(lineSeparator);
+            break;
+          case TIMED_WAITING:
+            msg.append("\t-  waiting on ").append(tInfo.getLockInfo())
+                .append(lineSeparator);
+            break;
+          default:
+        }
+      }
+
+      for (MonitorInfo mi : tInfo.getLockedMonitors()) {
+        if (mi.getLockedStackDepth() == index) {
+          msg.append("\t-  locked ").append(mi)
+              .append(lineSeparator);
+        }
+      }
+    }
+
+    final LockInfo[] locks = tInfo.getLockedSynchronizers();
+    if (locks.length > 0) {
+      msg.append(lineSeparator)
+          .append("\tNumber of locked synchronizers = ").append(locks.length)
+          .append(lineSeparator);
+      for (LockInfo li : locks) {
+        msg.append("\t- ").append(li).append(lineSeparator);
+      }
+    }
+    msg.append(lineSeparator);
   }
 
   public static Object[] getZeroLenObjectArray() {
@@ -1047,6 +1162,24 @@ public abstract class ClientSharedUtils {
         && byteBuffer.remaining() == byteBuffer.capacity();
   }
 
+  public static String toString(final ByteBuffer buffer) {
+    if (buffer != null) {
+      StringBuilder sb = new StringBuilder();
+      final int len = buffer.limit();
+      for (int i = 0; i < len; i++) {
+        // terminate with ... for large number of bytes
+        if (i > 128 * 1024) {
+          sb.append(" ...");
+          break;
+        }
+        sb.append(buffer.get(i)).append(", ");
+      }
+      return sb.toString();
+    } else {
+      return "null";
+    }
+  }
+
   /**
    * Convert a ByteBuffer to a string appending to given {@link StringBuilder}
    * with a hexidecimal format. The string may be converted back to a byte array
@@ -1396,6 +1529,29 @@ public abstract class ClientSharedUtils {
     }
   }
 
+  public static byte[] toBytes(ByteBuffer buffer) {
+    final int bufferSize = buffer.remaining();
+    return toBytes(buffer, bufferSize, bufferSize);
+  }
+
+  public static byte[] toBytes(ByteBuffer buffer, int bufferSize, int length) {
+    if (length >= bufferSize && wrapsFullArray(buffer)) {
+      return buffer.array();
+    } else {
+      return toBytesCopy(buffer, bufferSize, length);
+    }
+  }
+
+  public static byte[] toBytesCopy(ByteBuffer buffer, int bufferSize,
+      int length) {
+    final int numBytes = Math.min(bufferSize, length);
+    final byte[] bytes = new byte[numBytes];
+    final int initPosition = buffer.position();
+    buffer.get(bytes, 0, numBytes);
+    buffer.position(initPosition);
+    return bytes;
+  }
+
   /**
    * State constants used by the FSM inside getStatementToken.
    *
@@ -1613,18 +1769,37 @@ public abstract class ClientSharedUtils {
 
   /**
    * Allocate new ByteBuffer if capacity of given ByteBuffer has exceeded.
+   * The passed ByteBuffer may no longer be usable after this call.
    */
   public static ByteBuffer ensureCapacity(ByteBuffer buffer,
-      int newLength, boolean useDirectBuffer) {
+      int newLength, boolean useDirectBuffer, String owner) {
     if (newLength <= buffer.capacity()) {
       return buffer;
     }
-    ByteBuffer newBuffer = useDirectBuffer ? Platform.allocateDirectBuffer(
-        newLength) : ByteBuffer.allocate(newLength);
+    BufferAllocator allocator = useDirectBuffer ? DirectBufferAllocator.instance()
+        : HeapBufferAllocator.instance();
+    ByteBuffer newBuffer = allocator.allocate(newLength, owner);
     newBuffer.order(buffer.order());
     buffer.flip();
     newBuffer.put(buffer);
+    allocator.release(buffer);
     return newBuffer;
+  }
+
+  public static int getUTFLength(final String str, final int strLen) {
+    int utfLen = strLen;
+    for (int i = 0; i < strLen; i++) {
+      final char c = str.charAt(i);
+      if ((c >= 0x0001) && (c <= 0x007F)) {
+        // 1 byte for character
+        continue;
+      } else if (c > 0x07FF) {
+        utfLen += 2; // 3 bytes for character
+      } else {
+        utfLen++; // 2 bytes for character
+      }
+    }
+    return utfLen;
   }
 
   public static final ThreadLocal ALLOW_THREADCONTEXT_CLASSLOADER =

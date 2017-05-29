@@ -33,7 +33,6 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.FactoryStatics;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
@@ -43,6 +42,8 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
+import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.shared.Version;
 
 public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
@@ -64,6 +65,35 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
       this.value = Token.TOMBSTONE;
     } else {
       this.value = re.getValue(br); // OFFHEAP: copy into heap cd
+    }
+    Assert.assertTrue(this.value != Token.NOT_AVAILABLE,
+        "getEntry did not fault value in from disk");
+    this.lastModified = re.getLastModified();
+    this.isRemoved = re.isRemoved();
+    VersionStamp<?> stamp = re.getVersionStamp();
+    if (stamp != null) {
+      this.versionTag = stamp.asVersionTag();
+    }
+  }
+
+  protected NonLocalRegionEntry(RegionEntry re, LocalRegion br,
+      boolean allowTombstones, boolean faultInValue) {
+    this.key = re.getKeyCopy();
+    // client get() operations need to see tombstone values
+    if (allowTombstones && re.isTombstone()) {
+      this.value = Token.TOMBSTONE;
+    } else {
+      @Released Object v = null;
+      if (faultInValue) {
+        v = re.getValue(br);
+      } else {
+        v = re.getValueOffHeapOrDiskWithoutFaultIn(br);
+      }
+      try {
+        this.value = OffHeapHelper.getHeapForm(v);  // OFFHEAP: copy into heap cd
+      } finally {
+        OffHeapHelper.release(v);
+      }
     }
     Assert.assertTrue(this.value != Token.NOT_AVAILABLE,
         "getEntry did not fault value in from disk");
@@ -138,6 +168,17 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     }
   }
 
+  public static NonLocalRegionEntry newEntryWithoutFaultIn(RegionEntry re,
+      LocalRegion region, boolean allowTombstones) {
+    final StaticSystemCallbacks sysCb = FactoryStatics.systemCallbacks;
+    if (sysCb == null) {
+      return new NonLocalRegionEntry(re, region, allowTombstones, false);
+    }
+    else {
+      return sysCb.newNonLocalRegionEntry(re, region, allowTombstones, false);
+    }
+  }
+
   public static NonLocalRegionEntry newEntry(Object key, Object value,
       LocalRegion region, VersionTag<?> versionTag) {
     final StaticSystemCallbacks sysCb = FactoryStatics.systemCallbacks;
@@ -174,6 +215,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     throw new UnsupportedOperationException();
   }
 
+  private boolean updateInProgress = false;
   public NonLocalRegionEntry() {
     // for fromData
   }
@@ -237,11 +279,11 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
   
   public boolean isTombstone() {
-    return false;
+    return this.value == Token.TOMBSTONE;
   }
 
   public boolean fillInValue(LocalRegion r,
-      InitialImageOperation.Entry entry, ByteArrayDataInput in, DM mgr, Version targetVersion) {
+      InitialImageOperation.Entry entry, DM mgr, Version targetVersion) {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
@@ -599,16 +641,20 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public boolean isUpdateInProgress() {
-    throw new UnsupportedOperationException(LocalizedStrings
+    // In case of Snapshot we will return this only for read operations:
+    // so update in progress should be false
+    return updateInProgress;
+    /*throw new UnsupportedOperationException(LocalizedStrings
         .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
-            .toLocalizedString());
+            .toLocalizedString());*/
   }
 
   @Override
   public void setUpdateInProgress(boolean underUpdate) {
-    throw new UnsupportedOperationException(LocalizedStrings
+    /*throw new UnsupportedOperationException(LocalizedStrings
         .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
-            .toLocalizedString());
+            .toLocalizedString());*/
+    updateInProgress = underUpdate;
   }
 
   @Override
@@ -657,6 +703,11 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   @Override
   public boolean isDestroyedOrRemovedButNotTombstone() {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+  }
+
+  @Override
+  public boolean isOffHeap() {
+    return false;
   }
 
   @Override

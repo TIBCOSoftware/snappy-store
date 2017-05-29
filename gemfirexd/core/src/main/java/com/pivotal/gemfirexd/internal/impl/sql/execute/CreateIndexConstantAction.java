@@ -1210,8 +1210,9 @@ class CreateIndexConstantAction extends IndexConstantAction
       com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager
           .setIndexInitialized(cd);
     }
-    if (!"SYSSTAT".equalsIgnoreCase(this.schemaName)
-        || GemFireXDUtils.TraceConglom) {
+    if ((!("SYSSTAT".equalsIgnoreCase(this.schemaName)
+		|| Misc.isSnappyHiveMetaTable(this.schemaName))
+        || GemFireXDUtils.TraceConglom)) {
       SanityManager.DEBUG_PRINT("info:" + GfxdConstants.TRACE_CONGLOM,
           "Created index with descriptor: " + cd);
     }
@@ -1706,8 +1707,9 @@ class CreateIndexConstantAction extends IndexConstantAction
        * so the optimizer will have an accurate count.
        */
       scan.setEstimatedRowCount(rowCount);
-      if (!"SYSSTAT".equalsIgnoreCase(this.schemaName)
-          || GemFireXDUtils.TraceConglom) {
+      if (!("SYSSTAT".equalsIgnoreCase(this.schemaName)
+		  || Misc.isSnappyHiveMetaTable((this.schemaName))
+          || GemFireXDUtils.TraceConglom)) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM,
             "CreateIndex: loaded " + rowCount + " rows in index: "
                 + this.indexName);

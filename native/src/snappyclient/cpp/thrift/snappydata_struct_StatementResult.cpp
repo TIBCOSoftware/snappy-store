@@ -107,14 +107,14 @@ uint32_t StatementResult::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->batchUpdateCounts.clear();
-            uint32_t _size277;
-            ::apache::thrift::protocol::TType _etype280;
-            xfer += iprot->readListBegin(_etype280, _size277);
-            this->batchUpdateCounts.resize(_size277);
-            uint32_t _i281;
-            for (_i281 = 0; _i281 < _size277; ++_i281)
+            uint32_t _size284;
+            ::apache::thrift::protocol::TType _etype287;
+            xfer += iprot->readListBegin(_etype287, _size284);
+            this->batchUpdateCounts.resize(_size284);
+            uint32_t _i288;
+            for (_i288 = 0; _i288 < _size284; ++_i288)
             {
-              xfer += iprot->readI32(this->batchUpdateCounts[_i281]);
+              xfer += iprot->readI32(this->batchUpdateCounts[_i288]);
             }
             xfer += iprot->readListEnd();
           }
@@ -127,17 +127,17 @@ uint32_t StatementResult::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_MAP) {
           {
             this->procedureOutParams.clear();
-            uint32_t _size282;
-            ::apache::thrift::protocol::TType _ktype283;
-            ::apache::thrift::protocol::TType _vtype284;
-            xfer += iprot->readMapBegin(_ktype283, _vtype284, _size282);
-            uint32_t _i286;
-            for (_i286 = 0; _i286 < _size282; ++_i286)
+            uint32_t _size289;
+            ::apache::thrift::protocol::TType _ktype290;
+            ::apache::thrift::protocol::TType _vtype291;
+            xfer += iprot->readMapBegin(_ktype290, _vtype291, _size289);
+            uint32_t _i293;
+            for (_i293 = 0; _i293 < _size289; ++_i293)
             {
-              int32_t _key287;
-              xfer += iprot->readI32(_key287);
-              ColumnValue& _val288 = this->procedureOutParams[_key287];
-              xfer += _val288.read(iprot);
+              int32_t _key294;
+              xfer += iprot->readI32(_key294);
+              ColumnValue& _val295 = this->procedureOutParams[_key294];
+              xfer += _val295.read(iprot);
             }
             xfer += iprot->readMapEnd();
           }
@@ -208,10 +208,10 @@ uint32_t StatementResult::write(::apache::thrift::protocol::TProtocol* oprot) co
     xfer += oprot->writeFieldBegin("batchUpdateCounts", ::apache::thrift::protocol::T_LIST, 3);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->batchUpdateCounts.size()));
-      std::vector<int32_t> ::const_iterator _iter289;
-      for (_iter289 = this->batchUpdateCounts.begin(); _iter289 != this->batchUpdateCounts.end(); ++_iter289)
+      std::vector<int32_t> ::const_iterator _iter296;
+      for (_iter296 = this->batchUpdateCounts.begin(); _iter296 != this->batchUpdateCounts.end(); ++_iter296)
       {
-        xfer += oprot->writeI32((*_iter289));
+        xfer += oprot->writeI32((*_iter296));
       }
       xfer += oprot->writeListEnd();
     }
@@ -221,11 +221,11 @@ uint32_t StatementResult::write(::apache::thrift::protocol::TProtocol* oprot) co
     xfer += oprot->writeFieldBegin("procedureOutParams", ::apache::thrift::protocol::T_MAP, 4);
     {
       xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_I32, ::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->procedureOutParams.size()));
-      std::map<int32_t, ColumnValue> ::const_iterator _iter290;
-      for (_iter290 = this->procedureOutParams.begin(); _iter290 != this->procedureOutParams.end(); ++_iter290)
+      std::map<int32_t, ColumnValue> ::const_iterator _iter297;
+      for (_iter297 = this->procedureOutParams.begin(); _iter297 != this->procedureOutParams.end(); ++_iter297)
       {
-        xfer += oprot->writeI32(_iter290->first);
-        xfer += _iter290->second.write(oprot);
+        xfer += oprot->writeI32(_iter297->first);
+        xfer += _iter297->second.write(oprot);
       }
       xfer += oprot->writeMapEnd();
     }
@@ -270,50 +270,50 @@ void swap(StatementResult &a, StatementResult &b) noexcept {
   swap(a.__isset, b.__isset);
 }
 
-StatementResult::StatementResult(const StatementResult& other291) {
-  resultSet = other291.resultSet;
-  updateCount = other291.updateCount;
-  batchUpdateCounts = other291.batchUpdateCounts;
-  procedureOutParams = other291.procedureOutParams;
-  generatedKeys = other291.generatedKeys;
-  newDefaultSchema = other291.newDefaultSchema;
-  warnings = other291.warnings;
-  preparedResult = other291.preparedResult;
-  __isset = other291.__isset;
+StatementResult::StatementResult(const StatementResult& other298) {
+  resultSet = other298.resultSet;
+  updateCount = other298.updateCount;
+  batchUpdateCounts = other298.batchUpdateCounts;
+  procedureOutParams = other298.procedureOutParams;
+  generatedKeys = other298.generatedKeys;
+  newDefaultSchema = other298.newDefaultSchema;
+  warnings = other298.warnings;
+  preparedResult = other298.preparedResult;
+  __isset = other298.__isset;
 }
-StatementResult::StatementResult( StatementResult&& other292) noexcept {
-  resultSet = std::move(other292.resultSet);
-  updateCount = std::move(other292.updateCount);
-  batchUpdateCounts = std::move(other292.batchUpdateCounts);
-  procedureOutParams = std::move(other292.procedureOutParams);
-  generatedKeys = std::move(other292.generatedKeys);
-  newDefaultSchema = std::move(other292.newDefaultSchema);
-  warnings = std::move(other292.warnings);
-  preparedResult = std::move(other292.preparedResult);
-  __isset = std::move(other292.__isset);
+StatementResult::StatementResult( StatementResult&& other299) noexcept {
+  resultSet = std::move(other299.resultSet);
+  updateCount = std::move(other299.updateCount);
+  batchUpdateCounts = std::move(other299.batchUpdateCounts);
+  procedureOutParams = std::move(other299.procedureOutParams);
+  generatedKeys = std::move(other299.generatedKeys);
+  newDefaultSchema = std::move(other299.newDefaultSchema);
+  warnings = std::move(other299.warnings);
+  preparedResult = std::move(other299.preparedResult);
+  __isset = std::move(other299.__isset);
 }
-StatementResult& StatementResult::operator=(const StatementResult& other293) {
-  resultSet = other293.resultSet;
-  updateCount = other293.updateCount;
-  batchUpdateCounts = other293.batchUpdateCounts;
-  procedureOutParams = other293.procedureOutParams;
-  generatedKeys = other293.generatedKeys;
-  newDefaultSchema = other293.newDefaultSchema;
-  warnings = other293.warnings;
-  preparedResult = other293.preparedResult;
-  __isset = other293.__isset;
+StatementResult& StatementResult::operator=(const StatementResult& other300) {
+  resultSet = other300.resultSet;
+  updateCount = other300.updateCount;
+  batchUpdateCounts = other300.batchUpdateCounts;
+  procedureOutParams = other300.procedureOutParams;
+  generatedKeys = other300.generatedKeys;
+  newDefaultSchema = other300.newDefaultSchema;
+  warnings = other300.warnings;
+  preparedResult = other300.preparedResult;
+  __isset = other300.__isset;
   return *this;
 }
-StatementResult& StatementResult::operator=(StatementResult&& other294) noexcept {
-  resultSet = std::move(other294.resultSet);
-  updateCount = std::move(other294.updateCount);
-  batchUpdateCounts = std::move(other294.batchUpdateCounts);
-  procedureOutParams = std::move(other294.procedureOutParams);
-  generatedKeys = std::move(other294.generatedKeys);
-  newDefaultSchema = std::move(other294.newDefaultSchema);
-  warnings = std::move(other294.warnings);
-  preparedResult = std::move(other294.preparedResult);
-  __isset = std::move(other294.__isset);
+StatementResult& StatementResult::operator=(StatementResult&& other301) noexcept {
+  resultSet = std::move(other301.resultSet);
+  updateCount = std::move(other301.updateCount);
+  batchUpdateCounts = std::move(other301.batchUpdateCounts);
+  procedureOutParams = std::move(other301.procedureOutParams);
+  generatedKeys = std::move(other301.generatedKeys);
+  newDefaultSchema = std::move(other301.newDefaultSchema);
+  warnings = std::move(other301.warnings);
+  preparedResult = std::move(other301.preparedResult);
+  __isset = std::move(other301.__isset);
   return *this;
 }
 void StatementResult::printTo(std::ostream& out) const {

@@ -539,7 +539,7 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public final void setDate(int parameterIndex, Date x) throws SQLException {
+  public final void setDate(int parameterIndex, java.sql.Date x) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
     Converters.getConverter(getType(parameterIndex), "java.sql.Date",
@@ -550,7 +550,7 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public final void setTime(int parameterIndex, Time x) throws SQLException {
+  public final void setTime(int parameterIndex, java.sql.Time x) throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
     Converters.getConverter(getType(parameterIndex), "java.sql.Time",
@@ -561,7 +561,7 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public final void setTimestamp(int parameterIndex, Timestamp x)
+  public final void setTimestamp(int parameterIndex, java.sql.Timestamp x)
       throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
@@ -672,7 +672,7 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public final void setDate(int parameterIndex, Date x, Calendar cal)
+  public final void setDate(int parameterIndex, java.sql.Date x, Calendar cal)
       throws SQLException {
     if (cal != null && x != null) {
       long timeInMillis = x.getTime();
@@ -688,7 +688,7 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public final void setTime(int parameterIndex, Time x, Calendar cal)
+  public final void setTime(int parameterIndex, java.sql.Time x, Calendar cal)
       throws SQLException {
     if (cal != null && x != null) {
       long timeInMillis = x.getTime();
@@ -704,13 +704,13 @@ public class ClientPreparedStatement extends ClientStatement implements
    * {@inheritDoc}
    */
   @Override
-  public final void setTimestamp(int parameterIndex, Timestamp x, Calendar cal)
+  public final void setTimestamp(int parameterIndex, java.sql.Timestamp x, Calendar cal)
       throws SQLException {
     if (cal != null && x != null) {
       long timeInMillis = x.getTime();
       long timeZoneOffset = getTimeZoneOffset(timeInMillis, cal);
       if (timeZoneOffset != 0) {
-        x = new Timestamp(timeInMillis + timeZoneOffset);
+        x = new java.sql.Timestamp(timeInMillis + timeZoneOffset);
       }
     }
     setTimestamp(parameterIndex, x);

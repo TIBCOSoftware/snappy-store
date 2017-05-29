@@ -43,39 +43,32 @@ import java.io.IOException;
 import com.gemstone.gemfire.internal.DSFIDFactory;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.index.ContainsUniqueKeyExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
-import com.pivotal.gemfirexd.internal.engine.ddl.PersistIdentityStart;
+import com.pivotal.gemfirexd.internal.engine.ddl.GfxdCacheLoader.GetRowFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLFinishMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.GfxdCacheLoader.GetRowFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegion.RegionValue;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdAddListenerMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdRemoveGatewayConflictResolverMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdRemoveGatewayEventErrorHandlerMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdRemoveListenerMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdRemoveLoaderMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdRemoveWriterMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdSetGatewayConflictResolverMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdSetGatewayEventErrorHandlerMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdSetLoaderMessage;
-import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.GfxdSetWriterMessage;
+import com.pivotal.gemfirexd.internal.engine.ddl.PersistIdentityStart;
+import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.messages.*;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.BulkDBSynchronizerMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.CacheLoadedDBSynchronizerMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.GfxdCBArgForSynchPrms;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.GfxdGatewaySenderStartMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.GfxdGatewaySenderStopMessage;
-import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction.QueryCancelFunctionArgs;
-import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
-import com.pivotal.gemfirexd.internal.engine.distributed.StatementCloseExecutorMessage;
-import com.pivotal.gemfirexd.internal.engine.distributed.ReferencedKeyCheckerMessage;
-import com.pivotal.gemfirexd.internal.engine.distributed.ResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdCallbackArgument;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDumpLocalResultMessage;
+import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction.QueryCancelFunctionArgs;
+import com.pivotal.gemfirexd.internal.engine.distributed.ReferencedKeyCheckerMessage;
+import com.pivotal.gemfirexd.internal.engine.distributed.ResultHolder;
+import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction.SnappyRemoveCachedObjectsFunctionArgs;
+import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
+import com.pivotal.gemfirexd.internal.engine.distributed.StatementCloseExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.*;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.RegionAndKey;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -85,9 +78,8 @@ import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockRequestProcessor.G
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockRequestProcessor.GfxdDRWLockRequestMessage;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockRequestProcessor.GfxdDRWLockResponseMessage;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLocalLockService;
+import com.pivotal.gemfirexd.internal.engine.procedure.DistributedProcedureCallFunction.DistributedProcedureCallFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.procedure.ProcedureChunkMessage;
-import com.pivotal.gemfirexd.internal.engine.procedure.
-    DistributedProcedureCallFunction.DistributedProcedureCallFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.GemFireRegionSizeResultSet;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.IdentityValueManager;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.MemberStatisticsMessage;
@@ -99,17 +91,14 @@ import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.Serializable
 import com.pivotal.gemfirexd.internal.engine.ui.SnappyRegionStatsCollectorResult;
 import com.pivotal.gemfirexd.internal.impl.store.raw.data.GfxdJarMessage;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
+import com.pivotal.gemfirexd.internal.snappy.LeadNodeSmartConnectorOpContext;
 import com.pivotal.gemfirexd.tools.planexporter.ExecutionPlanMessage;
-import com.pivotal.gemfirexd.internal.engine.distributed.
-    SnappyRemoveCachedObjectsFunction.SnappyRemoveCachedObjectsFunctionArgs;
 
 /**
  * This acts as base class for GFXD specific DSFID types and also handles
  * registration of those types. It should normally be extended for use by GFXD
  * serializable types except when there is no choice (e.g. GfxdMessage that
- * needs to extends DistributionMessage). For such cases add a call to
- * {@link #writeGfxdHeader(GfxdSerializable, DataOutput)} at the very start of
- * {@link DataSerializableFixedID#toData(DataOutput)} implementation.
+ * needs to extends DistributionMessage).
  * 
  * @see GfxdSerializable
  * 
@@ -216,9 +205,15 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
     registerSqlSerializable(SnappyRemoveCachedObjectsFunctionArgs.class);
     registerSqlSerializable(SnappyRegionStatsCollectorResult.class);
     registerSqlSerializable(MemberStatisticsMessage.class);
+    registerSqlSerializable(LeadNodeSmartConnectorOpContext.class);
+    registerSqlSerializable(LeadNodeSmartConnectorOpMsg.class);
+    registerSqlSerializable(LeadNodeGetStatsMessage.class);
     // ProjectionRow is registered without creating an instance since it
     // requires GemFireCacheImpl instance in RawValue statics
     DSFIDFactory.registerGemFireXDClass(PROJECTION_ROW, ProjectionRow.class);
+
+    // register SnappyData specific types
+    CallbackFactoryProvider.getStoreCallbacks().registerTypes();
 
     typesRegistered = true;
     return true;
@@ -242,55 +237,29 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
       // that the class has a zero arg constructor required for deserialization
       byte gfxdId = c.newInstance().getGfxdID();
       DSFIDFactory.registerGemFireXDClass(gfxdId, c);
-    } catch (InstantiationException e) {
-      throw GemFireXDRuntimeException.newRuntimeException(null, e);
-    } catch (IllegalAccessException e) {
+    } catch (InstantiationException | IllegalAccessException e) {
       throw GemFireXDRuntimeException.newRuntimeException(null, e);
     }
   }
 
-  /**
-   * use it to avoid build dependencies.
-   * 
-   * @param classname
-   */
-  public static void registerByReflection(final String classname) {
-    try {
-      final Class<?> c = Class.forName(classname);
-      assert GfxdSerializable.class.isAssignableFrom(c);
-      @SuppressWarnings("unchecked")
-      final Class<? extends GfxdSerializable> cs =
-        (Class<? extends GfxdSerializable>)c;
-      registerSqlSerializable(cs);
-    } catch (ClassNotFoundException e) {
-      throw GemFireXDRuntimeException.newRuntimeException(null, e);
-    }
-  }
-
+  @Override
   public final int getDSFID() {
     return DataSerializableFixedID.GFXD_TYPE;
   }
 
+  @Override
   public abstract byte getGfxdID();
 
+  @Override
   public void toData(DataOutput out) throws IOException {
-    //writeGfxdHeader(this, out);
-    //toData(out);
   }
 
-  /*
-  public static void writeGfxdHeader(GfxdSerializable o, DataOutput out)
-      throws IOException {
-    // write the GFXD specific classId first
-    out.writeByte(o.getGfxdID());
-  }
-  */
-
+  @Override
   public void fromData(DataInput in) throws IOException,
       ClassNotFoundException {
-    //fromData(in);
   }
 
+  @Override
   public Version[] getSerializationVersions() {
     return null;
   }

@@ -33,6 +33,7 @@ import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
  *
  */
 public class ReflectionSingleObjectSizer implements SingleObjectSizer {
+
   public static final int REFERENCE_SIZE = SharedLibrary.getReferenceSize();
   public static final int OBJECT_SIZE = SharedLibrary.getObjectHeaderSize();
 
@@ -46,6 +47,9 @@ public class ReflectionSingleObjectSizer implements SingleObjectSizer {
     }
     unsafe = tmp;
   }
+
+  public static final ReflectionSingleObjectSizer INSTANCE =
+      new ReflectionSingleObjectSizer();
 
   public long sizeof(Object object) {
     return sizeof(object, true);

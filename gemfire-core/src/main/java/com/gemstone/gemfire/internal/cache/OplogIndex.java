@@ -310,6 +310,10 @@ public final class OplogIndex {
       return other instanceof IndexData &&
           this.index.equals(((IndexData)other).index);
     }
+
+    public SortedIndexContainer getIndex(){
+      return this.index;
+    }
   }
 
   public void writeIndexRecords(List<KRFEntry> entries,
@@ -721,7 +725,6 @@ public final class OplogIndex {
                           diskEntry, currentIndex,
                           Arrays.toString(indexKeyBytes)));
                 }
-
                 currentIndexJob.addJob(currentIndex.getIndexKey(indexKeyBytes,
                     diskEntry), diskEntry);
               } else {

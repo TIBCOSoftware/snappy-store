@@ -50,15 +50,7 @@ import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.DirectReplyMessage;
 import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.tcp.BaseMsgStreamer;
-import com.gemstone.gemfire.internal.tcp.ConnectExceptions;
-import com.gemstone.gemfire.internal.tcp.Connection;
-import com.gemstone.gemfire.internal.tcp.ConnectionException;
-import com.gemstone.gemfire.internal.tcp.ConnectionTable;
-import com.gemstone.gemfire.internal.tcp.MemberShunnedException;
-import com.gemstone.gemfire.internal.tcp.MsgStreamer;
-import com.gemstone.gemfire.internal.tcp.Stub;
-import com.gemstone.gemfire.internal.tcp.TCPConduit;
+import com.gemstone.gemfire.internal.tcp.*;
 import com.gemstone.gemfire.internal.util.Breadcrumbs;
 import com.gemstone.gemfire.internal.util.concurrent.ReentrantSemaphore;
 import com.gemstone.org.jgroups.util.StringId;
@@ -412,6 +404,8 @@ public final class DirectChannel {
     final boolean orderedMsg = msg.orderedDelivery(threadOwnsResources)
         || ((tssFlags & ConnectionTable.SHOULD_DOMINO_TSS_MASK) != 0);
 
+    ArrayList<Connection> allCons = null;
+    final boolean useNIOStream = getConduit().useNIOStream();
     try {
     do {
       interrupted = interrupted || Thread.interrupted();
@@ -427,9 +421,14 @@ public final class DirectChannel {
         retryInfo = null;
         retry = true;
       }
-      final List cons = new ArrayList(destinations.length);
+      final ArrayList<Connection> cons = new ArrayList<>(destinations.length);
       ConnectExceptions ce = getConnections(mgr, msg, destinations, orderedMsg,
             retry, ackTimeout, ackSDTimeout, threadOwnsResources, cons);
+      if (allCons == null) {
+        allCons = cons;
+      } else {
+        allCons.addAll(cons);
+      }
       if (directReply && msg.getProcessorId() > 0) { // no longer a direct-reply message?
         directReply = false;
       }
@@ -457,7 +456,7 @@ public final class DirectChannel {
       }
       else {
         // sending to just one guy
-        permissionCon = (Connection)cons.get(0);
+        permissionCon = cons.get(0);
         if (permissionCon != null) {
           try {
             permissionCon.acquireSendPermission(isReaderThread);
@@ -484,9 +483,13 @@ public final class DirectChannel {
         DMStats stats = getDMStats();
         List<?> sentCons; // used for cons we sent to this time
 
-        final BaseMsgStreamer ms = MsgStreamer.create(cons, msg, directReply,
-            stats);
+        BaseMsgStreamer ms = null;
         try {
+          if (useNIOStream) {
+            ms = MsgChannelStreamer.create(cons, msg, directReply, stats);
+          } else {
+            ms = MsgStreamer.create(cons, msg, directReply, stats);
+          }
           startTime = 0;
           if (ackTimeout > 0) {
             startTime = System.currentTimeMillis();
@@ -516,7 +519,9 @@ public final class DirectChannel {
         }
         finally {
           try {
-            ms.close(logger);
+            if (ms != null) {
+              ms.close(logger);
+            }
           } catch (IOException e) {
             throw new InternalGemFireException(
                 "Unknown error serializing message", e);
@@ -570,6 +575,11 @@ public final class DirectChannel {
       for (Iterator it=totalSentCons.iterator(); it.hasNext();) {
         Connection con = (Connection)it.next();
         con.setInUse(false, 0, 0, 0, null);
+      }
+      if (useNIOStream && allCons != null) {
+        for (Connection con : allCons) {
+          this.conduit.releasePooledConnection(con);
+        }
       }
     }
     if (failedCe != null) {
@@ -665,7 +675,8 @@ public final class DirectChannel {
         //but this is not worth doing and isShunned is not public.
         // SO the assert has been deadcoded.
         if (ce == null) ce = new ConnectExceptions();
-        ce.addFailure(destination, new MissingStubException(LocalizedStrings.DirectChannel_NO_STUB_0.toLocalizedString()));
+        ce.addFailure(destination, new MissingStubException(
+            LocalizedStrings.DirectChannel_NO_STUB_0.toLocalizedString(destination)));
       }
       else {
         try {

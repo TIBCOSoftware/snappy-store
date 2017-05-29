@@ -17,8 +17,11 @@
 
 package com.pivotal.gemfirexd.internal.engine;
 
-import java.io.*;
-import java.sql.Array;
+import java.io.CharArrayWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Serializable;
+import java.io.StringWriter;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -52,14 +55,20 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LocalLogWriter;
-import com.gemstone.gemfire.internal.cache.*;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
+import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
+import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
-import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
@@ -223,6 +232,28 @@ public abstract class Misc {
     }
   }
 
+  public static Set<DistributedMember> getLeadNode() {
+    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
+    InternalDistributedSystem ids = Misc.getDistributedSystem();
+    if (ids.isLoner()) {
+      return Collections.<DistributedMember>singleton(
+          ids.getDistributedMember());
+    }
+    Set<DistributedMember> allMembers = ids.getAllOtherMembers();
+    for (DistributedMember m : allMembers) {
+      GfxdDistributionAdvisor.GfxdProfile profile = advisor
+          .getProfile((InternalDistributedMember)m);
+      if (profile != null && profile.hasSparkURL()) {
+        Set<DistributedMember> s = new HashSet<DistributedMember>();
+        s.add(m);
+        return Collections.unmodifiableSet(s);
+      }
+    }
+    throw new NoDataStoreAvailableException(LocalizedStrings
+        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
+        .toLocalizedString("SnappyData Lead Node"));
+  }
+
   /**
    * Check if {@link GemFireCache} is closed or is in the process of closing and
    * throw {@link CacheClosedException} if so.
@@ -325,8 +356,8 @@ public abstract class Misc {
     if (childRegion == null) {
       RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
       PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
-      RegionAttributesCreation af = new RegionAttributesCreation();
-      af.setDataPolicy(DataPolicy.PARTITION);
+      AttributesFactory afact = new AttributesFactory();
+      afact.setDataPolicy(attributesBase.getDataPolicy());
       PartitionAttributesFactory paf = new PartitionAttributesFactory();
       paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
       paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
@@ -334,8 +365,8 @@ public abstract class Misc {
       PartitionResolver partResolver = createPartitionResolverForSampleTable(reservoirRegionName);
       paf.setPartitionResolver(partResolver);
       paf.setColocatedWith(regionBase.getFullPath());
-      af.setPartitionAttributes(paf.create());
-      childRegion = cache.createRegion(reservoirRegionName, af);
+      afact.setPartitionAttributes(paf.create());
+      childRegion = cache.createRegion(reservoirRegionName, afact.create());
     }
     reservoirRegionCreated = true;
     return (PartitionedRegion)childRegion;
@@ -352,34 +383,19 @@ public abstract class Misc {
     return null;
   }
 
-  public static <K, V> void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
-    if (reservoirRegion != null){
+  public static void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
+    if (reservoirRegion != null) {
       reservoirRegion.destroyRegion(null);
     }
   }
 
   public static PartitionedRegion.PRLocalScanIterator
-  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, int segi, int segn) {
-    if (reservoirRegion != null) {
-      Set<Integer> localPrimaryBucketSet = reservoirRegion
-          .getDataStore().getAllLocalPrimaryBucketIds();
-      Set<Integer> bucketSet = new HashSet<Integer>();
-      for (Integer i : localPrimaryBucketSet) {
-        if (i % segn == segi) {
-          bucketSet.add(i);
-        }
-      }
-      // fetchFromRemote = false; if bucket is moved out, that should be included on remote node
-      return getLocalBucketsIteratorForSampleTable(reservoirRegion, bucketSet, false);
-    }
-    return null;
-  }
-
-  public static PartitionedRegion.PRLocalScanIterator
-  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion, Set<Integer> bucketSet, Boolean fetchFromRemote) {
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion,
+      Set<Integer> bucketSet, boolean fetchFromRemote) {
     if (reservoirRegion != null && bucketSet != null) {
       if (bucketSet.size() > 0) {
-        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet, true, false, true, null, fetchFromRemote);
+        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet,
+            true, false, true, null, fetchFromRemote);
       }
     }
     return null;
@@ -1319,5 +1335,10 @@ public abstract class Misc {
 
     return str;
   }
-  
+
+  public static String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+
+  public static boolean isSnappyHiveMetaTable(String schemaName) {
+    return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);
+  }
 }

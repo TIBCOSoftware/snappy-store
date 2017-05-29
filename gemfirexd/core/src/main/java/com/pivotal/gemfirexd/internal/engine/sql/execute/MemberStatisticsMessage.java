@@ -24,6 +24,7 @@ import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
@@ -91,6 +92,10 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
     memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
     memberStatsMap.put("diskStoreName", getDiskStoreName());
+    memberStatsMap.put("storagePoolUsed",getStoragePoolUsed());
+    memberStatsMap.put("storagePoolSize",getStoragePoolSize());
+    memberStatsMap.put("executionPoolUsed",getExecutionPoolUsed());
+    memberStatsMap.put("executionPoolSize",getExecutionPoolSize());
 
     lastResult(memberStatsMap);
   }
@@ -221,6 +226,27 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   public String getDiskStoreName() {
     return this.diskStoreName;
+  }
+
+  public long getStoragePoolUsed() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolUsedMemory(false) +
+        callbacks.getStoragePoolUsedMemory(true);
+  }
+  public long getStoragePoolSize() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolSize(false) +
+        callbacks.getStoragePoolSize(true);
+  }
+  public long getExecutionPoolUsed() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getExecutionPoolUsedMemory(false) +
+        callbacks.getExecutionPoolUsedMemory(true);
+  }
+  public long getExecutionPoolSize() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getExecutionPoolSize(false) +
+        callbacks.getExecutionPoolSize(true);
   }
 
   private NetworkServerConnectionStats getMemberClientConnectionStats(InternalDistributedSystem system){

@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
@@ -56,6 +74,7 @@ import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.partitioned.PartitionMessage;
 import com.gemstone.gemfire.internal.cache.partitioned.PutMessage;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerHelper;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgument;
@@ -77,6 +96,7 @@ import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifie
 import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.ENTRY_EVENT_OLD_VALUE;
 
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 import com.gemstone.gemfire.pdx.internal.PeerTypeRegistration;
@@ -86,6 +106,7 @@ import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.UUID;
 
 /**
@@ -156,6 +177,8 @@ public class EntryEventImpl extends KeyInfo implements
    * from raw byte arrays and routing object.
    */
   private transient Object contextObj = null;
+
+  private transient UMMMemoryTracker memoryTracker;
 
   /**
    * The current operation's lastModified stamp, if any.
@@ -1697,9 +1720,9 @@ public class EntryEventImpl extends KeyInfo implements
    */
   private static final boolean EVENT_OLD_VALUE = !Boolean.getBoolean("gemfire.disable-event-old-value");
 
-  final void putExistingEntry(final LocalRegion owner, RegionEntry re)
+  final void putExistingEntry(final LocalRegion owner, RegionEntry re, int olValueSize)
       throws RegionClearedException {
-    putExistingEntry(owner, re, false, null);
+    putExistingEntry(owner, re, false, null, olValueSize);
   }
 
   /**
@@ -1710,7 +1733,7 @@ public class EntryEventImpl extends KeyInfo implements
    * @throws RegionClearedException
    */
   final void putExistingEntry(final LocalRegion owner, final RegionEntry reentry,
-     boolean requireOldValue, Object oldValueForDelta) throws RegionClearedException {
+     boolean requireOldValue, Object oldValueForDelta, int olValueSize) throws RegionClearedException {
     makeUpdate();
     // only set oldValue if it hasn't already been set to something
     if (this.oldValue == null) {
@@ -1753,7 +1776,7 @@ public class EntryEventImpl extends KeyInfo implements
     }
 
     //setNewValueInRegion(null);
-    setNewValueInRegion(owner, reentry, oldValueForDelta);
+    setNewValueInRegion(owner, reentry, oldValueForDelta, olValueSize);
   }
 
   /**
@@ -1784,7 +1807,43 @@ public class EntryEventImpl extends KeyInfo implements
       basicSetOldValue(null);
     }
     makeCreate();
-    setNewValueInRegion(owner, reentry, null);
+    setNewValueInRegion(owner, reentry, null, 0);
+  }
+
+  private void acquireMemory(final LocalRegion owner,
+                             EntryEventImpl event,
+                             int oldSize,
+                             boolean isUpdate,
+                             boolean wasTombstone) {
+
+    if (isUpdate && !wasTombstone) {
+      if (this.memoryTracker != null) {
+        owner.acquirePoolMemory(oldSize,
+                event.getNewValueBucketSize(),
+                true,
+                this.memoryTracker,
+                true);
+      } else {
+        owner.delayedAcquirePoolMemory(oldSize,
+                event.getNewValueBucketSize(),
+                true,
+                true);
+      }
+    } else {
+      int indexOverhead = owner.indicesOverHead();
+      if (this.memoryTracker != null) {
+        owner.acquirePoolMemory(0,
+                event.getNewValueBucketSize() + indexOverhead,
+                true,
+                this.memoryTracker,
+                true);
+      } else {
+        owner.delayedAcquirePoolMemory(0,
+                event.getNewValueBucketSize() + indexOverhead,
+                true,
+                true);
+      }
+    }
   }
 
   public final void setRegionEntry(RegionEntry re) {
@@ -1797,7 +1856,7 @@ public class EntryEventImpl extends KeyInfo implements
 
   @Retained(ENTRY_EVENT_NEW_VALUE)
   private final void setNewValueInRegion(final LocalRegion owner,
-      final RegionEntry reentry, Object oldValueForDelta)
+      final RegionEntry reentry, Object oldValueForDelta, int oldValueSize)
       throws RegionClearedException {
 
     final LogWriterI18n logger = this.region.getCache().getLoggerI18n();
@@ -1876,6 +1935,12 @@ public class EntryEventImpl extends KeyInfo implements
     boolean calledSetValue = false;
     try {
     setNewValueBucketSize(owner, v);
+    if(!region.reservedTable() && region.needAccounting()){
+      owner.calculateEntryOverhead(reentry);
+      LocalRegion.regionPath.set(region.getFullPath());
+      acquireMemory(owner, this, oldValueSize, this.op.isUpdate(), isTombstone);
+    }
+
 
     // ezoerner:20081030 
     // last possible moment to do index maintenance with old value in
@@ -1934,9 +1999,10 @@ public class EntryEventImpl extends KeyInfo implements
       success = true;
     }
     } finally {
-      if (!success && reentry instanceof OffHeapRegionEntry && v instanceof Chunk) {
+      if (!success && reentry.isOffHeap() && v instanceof Chunk) {
         OffHeapRegionEntryHelper.releaseEntry((OffHeapRegionEntry)reentry, (Chunk)v);
-      }      
+      }
+      LocalRegion.regionPath.remove();
     }
     if (logger.finerEnabled()) {
       if (v instanceof CachedDeserializable) {
@@ -2302,6 +2368,22 @@ public class EntryEventImpl extends KeyInfo implements
     }
   }
 
+  public static Object deserializeBuffer(ByteBuffer buffer, Version version) {
+    if (buffer == null) return null;
+    try {
+      return BlobHelper.deserializeBuffer(buffer, version);
+    } catch (IOException e) {
+      throw new SerializationException(LocalizedStrings
+          .EntryEventImpl_AN_IOEXCEPTION_WAS_THROWN_WHILE_DESERIALIZING
+          .toLocalizedString(), e);
+    } catch (ClassNotFoundException e) {
+      // fix for bug 43602
+      throw new SerializationException(LocalizedStrings
+          .EntryEventImpl_A_CLASSNOTFOUNDEXCEPTION_WAS_THROWN_WHILE_TRYING_TO_DESERIALIZE_CACHED_VALUE
+          .toLocalizedString(), e);
+    }
+  }
+
   /**
    * Serialize an object into a <code>byte[]</code>
    *
@@ -2327,6 +2409,30 @@ public class EntryEventImpl extends KeyInfo implements
     }
     catch (IOException e) {
       throw new SerializationException(LocalizedStrings.EntryEventImpl_AN_IOEXCEPTION_WAS_THROWN_WHILE_SERIALIZING.toLocalizedString(), e);
+    }
+  }
+
+  /**
+   * Serialize an object into a direct <code>ByteBuffer</code>.
+   * If the object is itself a <code>SerializedDiskBuffer</code> then it would
+   * have been retained once on return so caller can safely release the
+   * result exactly once.
+   *
+   * @throws IllegalArgumentException If <code>obj</code> should not be serialized
+   */
+  public static SerializedDiskBuffer serializeBuffer(Object obj, Version version) {
+    if (obj == null || obj == Token.NOT_AVAILABLE
+        || Token.isInvalidOrRemoved(obj)) {
+      throw new IllegalArgumentException(LocalizedStrings
+          .EntryEventImpl_MUST_NOT_SERIALIZE_0_IN_THIS_CONTEXT
+          .toLocalizedString(obj));
+    }
+    try {
+      return BlobHelper.serializeToBuffer(obj, version);
+    } catch (IOException e) {
+      throw new SerializationException(LocalizedStrings
+          .EntryEventImpl_AN_IOEXCEPTION_WAS_THROWN_WHILE_SERIALIZING
+          .toLocalizedString(), e);
     }
   }
 
@@ -2928,6 +3034,14 @@ public class EntryEventImpl extends KeyInfo implements
 
   public final Object getContextObject() {
     return this.contextObj;
+  }
+
+  public final void setBufferedMemoryTracker(UMMMemoryTracker memoryTracker) {
+    this.memoryTracker = memoryTracker;
+  }
+
+  public final UMMMemoryTracker getMemoryTracker(){
+    return this.memoryTracker;
   }
 
   public final void setEntryLastModified(long v) {

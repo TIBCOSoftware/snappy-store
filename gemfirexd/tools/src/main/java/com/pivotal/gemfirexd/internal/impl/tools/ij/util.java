@@ -741,7 +741,7 @@ AppUI.out.println("SIZE="+l);
 			ps.execute();
 			JDBCDisplayUtil.DisplayResults(out,ps,conn,
 			    reader /* GemStoneAddition */,
-			    timer /* GemStoneAddition */);
+			    timer /* GemStoneAddition */, true);
 
 			/*
 				5. clear the parameters

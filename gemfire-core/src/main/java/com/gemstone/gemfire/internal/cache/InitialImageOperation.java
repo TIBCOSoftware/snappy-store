@@ -481,11 +481,12 @@ public class InitialImageOperation  {
           processor.enableSevereAlertProcessing();
           m.severeAlertEnabled = true;
         }
-      
-        // do not remove the following log statement
-        this.region.getCache().getLoggerI18n().info(
-            LocalizedStrings.InitialImageOperation_REGION_0_REQUESTING_INITIAL_IMAGE_FROM_1,
-            new Object[] { this.region.getName(), recipient });
+        if (!LocalRegion.isMetaTable(this.region.getFullPath())) {
+          // do not remove the following log statement
+          this.region.getCache().getLoggerI18n().info(
+                  LocalizedStrings.InitialImageOperation_REGION_0_REQUESTING_INITIAL_IMAGE_FROM_1,
+                  new Object[]{this.region.getName(), recipient});
+        }
 
         dm.putOutgoing(m);
         this.region.cache.getCancelCriterion().checkCancelInProgress(null);
@@ -557,17 +558,20 @@ public class InitialImageOperation  {
           if (this.region.getLogWriterI18n().infoEnabled()) {
             if (this.gotImage) {
               // TODO add localizedString
-              this.region.getLogWriterI18n().info(LocalizedStrings.DEBUG,
-                  this.region.getName() + " is done getting image from "
-                      + recipient + ". isDeltaGII is " + this.isDeltaGII
-                      + " rvv is " + this.region.getVersionVector());
+              if (!LocalRegion.isMetaTable(this.region.getFullPath())) {
+                this.region.getLogWriterI18n().info(LocalizedStrings.DEBUG,
+                        this.region.getName() + " is done getting image from "
+                        + recipient + ". isDeltaGII is " + this.isDeltaGII
+                        + " rvv is " + this.region.getVersionVector());
+              }
             } else {
               // TODO add localizedString
               this.region.getLogWriterI18n().info(LocalizedStrings.DEBUG, this.region.getName() + " failed to get image from " + recipient);
             }
           }
           if (this.region.dataPolicy.withPersistence()
-              && this.region.getLogWriterI18n().infoEnabled()) {
+              && this.region.getLogWriterI18n().infoEnabled()
+              && !LocalRegion.isMetaTable(this.region.getFullPath())) {
             this.region.getLogWriterI18n().info(
                     LocalizedStrings.InitialImageOperation_REGION_0_INITIALIZED_PERSISTENT_REGION_WITH_ID_1_FROM_2,
                     new Object[] {this.region.getName(),
@@ -781,7 +785,7 @@ public class InitialImageOperation  {
               needsSync = new HashSet<VersionSource>();
             }
             needsSync.add(tag.getMemberID());
-            rvv.recordVersion(tag.getMemberID(),  tag.getRegionVersion());
+            rvv.recordVersion(tag.getMemberID(),  tag.getRegionVersion(), null);
           }
         }
         if (needsSync != null) {
@@ -1000,7 +1004,7 @@ public class InitialImageOperation  {
                   // writing to disk if the incoming value is same as recovered
                   tmplEntry.clearForReuse((byte)0);
                   final DM dm = this.region.getDistributionManager();
-                  if (re.fillInValue(this.region, tmplEntry, in, dm, null)) {
+                  if (re.fillInValue(this.region, tmplEntry, dm, null)) {
                     try {
                       if (tmplEntry.value != null) {
                         final byte[] valueInCache;
@@ -1100,7 +1104,7 @@ public class InitialImageOperation  {
                   }
                   boolean record;
                   if (this.region.getVersionVector() != null) {
-                    this.region.getVersionVector().recordVersion(tag.getMemberID(), tag);
+                    this.region.getVersionVector().recordVersion(tag.getMemberID(), tag, null);
                     record = true;
                   } else {
                     // bug #50992
@@ -1157,7 +1161,7 @@ public class InitialImageOperation  {
                   +lastModified+",tmpValue="+tmpValue+",wasRecovered="+wasRecovered+",tag="+tag);
             }
             if (this.region.getVersionVector() != null) {
-              this.region.getVersionVector().recordVersion(tag.getMemberID(), tag);
+              this.region.getVersionVector().recordVersion(tag.getMemberID(), tag, null);
             }
             this.entries.initialImagePut(entry.key, lastModified, tmpValue,
                 wasRecovered, false, tag, sender, this.isSynchronizing);
@@ -1374,7 +1378,7 @@ public class InitialImageOperation  {
         if (!remoteRVV.contains(id, stamp.getRegionVersion())) {
           // found an unfinished operation
           keys.add(mapEntry.getKeyCopy());
-          remoteRVV.recordVersion(id, stamp.getRegionVersion());
+          remoteRVV.recordVersion(id, stamp.getRegionVersion(), null);
           
           if (count<10) {
             if (TRACE_GII) {
@@ -1409,7 +1413,7 @@ public class InitialImageOperation  {
     //that are concurrent updates. We want to keep those updates. However
     //it might also reflect things that we recovered from disk that we are going
     //to remove. We'll need to remove those from the RVV somehow.
-    region.getVersionVector().recordVersions(rvv);
+    region.getVersionVector().recordVersions(rvv, null);
     if(region.getDataPolicy().withPersistence()) {
       region.getDiskRegion().writeRVV(region, false);
       region.getDiskRegion().writeRVVGC(region);

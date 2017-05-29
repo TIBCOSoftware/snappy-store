@@ -20,7 +20,6 @@ package com.gemstone.gemfire.internal.concurrent.unsafe;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
-
 import sun.misc.Unsafe;
 
 /**
@@ -47,7 +46,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public boolean compareAndSet(T obj, int expect, int update) {
-    return unsafe.compareAndSwapInt(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapInt(obj, offset, expect, update);
   }
 
   /**
@@ -56,7 +55,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
   @Override
   public boolean weakCompareAndSet(T obj, int expect, int update) {
     // same as strong version
-    return unsafe.compareAndSwapInt(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapInt(obj, offset, expect, update);
   }
 
   /**
@@ -64,7 +63,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public void set(T obj, int newValue) {
-    unsafe.putIntVolatile(obj, this.offset, newValue);
+    unsafe.putIntVolatile(obj, offset, newValue);
   }
 
   /**
@@ -72,7 +71,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public void lazySet(T obj, int newValue) {
-    unsafe.putOrderedInt(obj, this.offset, newValue);
+    unsafe.putOrderedInt(obj, offset, newValue);
   }
 
   /**
@@ -80,7 +79,15 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public int get(T obj) {
-    return unsafe.getIntVolatile(obj, this.offset);
+    return unsafe.getIntVolatile(obj, offset);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndSet(T obj, int newValue) {
+    return unsafe.getAndSetInt(obj, offset, newValue);
   }
 
   /**
@@ -88,11 +95,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public final int getAndAdd(T obj, int delta) {
-    int v;
-    do {
-      v = unsafe.getIntVolatile(obj, this.offset);
-    } while (!unsafe.compareAndSwapInt(obj, this.offset, v, v + delta));
-    return v;
+    return unsafe.getAndAddInt(obj, offset, delta);
   }
 
   /**

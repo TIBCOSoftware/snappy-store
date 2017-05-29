@@ -19,8 +19,12 @@ package com.pivotal.gemfirexd.internal.engine.distributed;
 
 import java.io.DataOutput;
 import java.io.UTFDataFormatException;
+import javax.annotation.Nonnull;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataOutputStream;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * An expanding byte[] based DataOutputStream. Best used as intermediate buffer
@@ -146,12 +150,12 @@ public final class ByteArrayDataOutput extends ByteArrayOutput implements
   }
 
   @Override
-  public final void writeBytes(final String str) {
+  public final void writeBytes(@Nonnull final String str) {
     writeBytes(str, str.length());
   }
 
   @Override
-  public final void writeChars(final String str) {
+  public final void writeChars(@Nonnull final String str) {
     final int strlen = str.length();
     int pos = ensureCapacity((strlen << 1), this.bufferPos);
 
@@ -164,161 +168,20 @@ public final class ByteArrayDataOutput extends ByteArrayOutput implements
     this.bufferPos = pos;
   }
 
-  public static final int getUTFLength(final char[] str, final int strlen) {
-    int utflen = strlen;
-    for (char c : str) {
-      if ((c >= 0x0001) && (c <= 0x007F)) {
-        // 1 byte for character
-        continue;
-      }
-      else if (c > 0x07FF) {
-        utflen += 2; // 3 bytes for character
-      }
-      else {
-        utflen++; // 2 bytes for character
-      }
-    }
-    return utflen;
-  }
-
-  public static final int getUTFLength(final String str, final int strlen) {
-    int utflen = strlen;
-    for (int i = 0; i < strlen; i++) {
-      final char c = str.charAt(i);
-      if ((c >= 0x0001) && (c <= 0x007F)) {
-        // 1 byte for character
-        continue;
-      }
-      else if (c > 0x07FF) {
-        utflen += 2; // 3 bytes for character
-      }
-      else {
-        utflen++; // 2 bytes for character
-      }
-    }
-    return utflen;
-  }
-
-  /** assumes strlen == str.length */
-  final void writeUTFNoLength(final char[] str, final int strlen,
-      final int utflen) {
-    if (strlen == utflen) {
-      // quick path for ASCII string
-      writeBytes(str, strlen);
-    }
-    else {
-      int pos = ensureCapacity(utflen, this.bufferPos);
-
-      final byte[] buffer = this.buffer;
-      for (char c : str) {
-        if ((c >= 0x0001) && (c <= 0x007F)) {
-          buffer[pos++] = (byte)(c & 0xFF);
-        }
-        else if (c > 0x07FF) {
-          buffer[pos++] = (byte)(0xE0 | ((c >> 12) & 0x0F));
-          buffer[pos++] = (byte)(0x80 | ((c >> 6) & 0x3F));
-          buffer[pos++] = (byte)(0x80 | ((c >> 0) & 0x3F));
-        }
-        else {
-          buffer[pos++] = (byte)(0xC0 | ((c >> 6) & 0x1F));
-          buffer[pos++] = (byte)(0x80 | ((c >> 0) & 0x3F));
-        }
-      }
-      this.bufferPos = pos;
-    }
-  }
-
-  public final void writeUTFNoLength(final String str, final int strlen,
-      final int utflen) {
-    if (strlen == utflen) {
-      // quick path for ASCII string
-      writeBytes(str, strlen);
-    }
-    else {
-      int pos = ensureCapacity(utflen, this.bufferPos);
-
-      final byte[] buffer = this.buffer;
-      for (int i = 0; i < strlen; i++) {
-        final char c = str.charAt(i);
-        if ((c >= 0x0001) && (c <= 0x007F)) {
-          buffer[pos++] = (byte)(c & 0xFF);
-        }
-        else if (c > 0x07FF) {
-          buffer[pos++] = (byte)(0xE0 | ((c >> 12) & 0x0F));
-          buffer[pos++] = (byte)(0x80 | ((c >> 6) & 0x3F));
-          buffer[pos++] = (byte)(0x80 | ((c >> 0) & 0x3F));
-        }
-        else {
-          buffer[pos++] = (byte)(0xC0 | ((c >> 6) & 0x1F));
-          buffer[pos++] = (byte)(0x80 | ((c >> 0) & 0x3F));
-        }
-      }
-      this.bufferPos = pos;
-    }
-  }
-
-  public static final int getUTFLength(final String str) {
-    final int strlen = str.length();
-    final char[] chars = ResolverUtils.getInternalCharsOnly(str, strlen);
-    if (chars != null) {
-      return getUTFLength(chars, strlen);
-    }
-    else {
-      return getUTFLength(str, strlen);
-    }
-  }
-
-  public final void writeUTFNoLength(final String str, final int utflen) {
-    final int strlen = str.length();
-    final char[] chars = ResolverUtils.getInternalCharsOnly(str, strlen);
-    if (chars != null) {
-      writeUTFNoLength(chars, strlen, utflen);
-    }
-    else {
-      writeUTFNoLength(str, strlen, utflen);
-    }
-  }
-
-  public final void writeUTFNoLength(final String str) {
-    final int strlen = str.length();
-    final char[] chars = ResolverUtils.getInternalCharsOnly(str, strlen);
-    if (chars != null) {
-      final int utflen = getUTFLength(chars, strlen);
-      writeUTFNoLength(chars, strlen, utflen);
-    }
-    else {
-      final int utflen = getUTFLength(str, strlen);
-      writeUTFNoLength(str, strlen, utflen);
-    }
-  }
-
   @Override
-  public final void writeUTF(final String str) throws UTFDataFormatException {
-    final int strlen = str.length();
-    final char[] chars = ResolverUtils.getInternalCharsOnly(str, strlen);
-    if (chars != null) {
-      final int utflen = getUTFLength(chars, strlen);
-
-      if (utflen <= 65535) {
-        writeShort(utflen);
-        writeUTFNoLength(chars, strlen, utflen);
-      }
-      else {
-        throw new UTFDataFormatException("ByteArrayDataOutput#writeUTF: "
-            + "encoded string too long: " + utflen + " bytes");
-      }
-    }
-    else {
-      final int utflen = getUTFLength(str, strlen);
-
-      if (utflen <= 65535) {
-        writeShort(utflen);
-        writeUTFNoLength(str, strlen, utflen);
-      }
-      else {
-        throw new UTFDataFormatException("ByteArrayDataOutput#writeUTF: "
-            + "encoded string too long: " + utflen + " bytes");
-      }
+  public final void writeUTF(@Nonnull final String str)
+      throws UTFDataFormatException {
+    final int strLen = str.length();
+    final int utfLen = ClientSharedUtils.getUTFLength(str, strLen);
+    if (utfLen <= 65535) {
+      ensureCapacity(2 + utfLen, this.bufferPos);
+      writeShort(utfLen);
+      ChannelBufferUnsafeDataOutputStream.writeUTFSegmentNoOverflow(str, 0,
+          strLen, utfLen, this.buffer, Platform.BYTE_ARRAY_OFFSET + bufferPos);
+      this.bufferPos += utfLen;
+    } else {
+      throw new UTFDataFormatException("ByteArrayDataOutput#writeUTF: "
+          + "encoded string too long: " + utfLen + " bytes");
     }
   }
 }

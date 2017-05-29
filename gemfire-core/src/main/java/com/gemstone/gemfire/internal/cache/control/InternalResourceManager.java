@@ -49,6 +49,7 @@ import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor.ResourceManag
 import com.gemstone.gemfire.internal.cache.partitioned.LoadProbe;
 import com.gemstone.gemfire.internal.cache.partitioned.SizedBasedLoadProbe;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 
 /**
  * Implementation of ResourceManager with additional internal-only methods.
@@ -322,6 +323,9 @@ public class InternalResourceManager implements ResourceManager {
       RegionFilter filter = new FilterByPath(this.includedRegions, this.excludedRegions);
       RebalanceOperationImpl op = new RebalanceOperationImpl(InternalResourceManager.this.cache, false,filter);
       op.start();
+      // needed for Snappy Spark Smart connector as we cache buckets to server
+      // mapping for tables
+      CallbackFactoryProvider.getStoreCallbacks().registerRelationDestroyForHiveStore();
       return op;
     }
 

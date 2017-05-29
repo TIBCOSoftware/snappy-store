@@ -487,7 +487,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Date getDate(int columnIndex) throws SQLException {
+  public final java.sql.Date getDate(int columnIndex) throws SQLException {
     return getDate(columnIndex, null);
   }
 
@@ -495,7 +495,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Time getTime(int columnIndex) throws SQLException {
+  public final java.sql.Time getTime(int columnIndex) throws SQLException {
     return getTime(columnIndex, null);
   }
 
@@ -503,7 +503,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Timestamp getTimestamp(int columnIndex) throws SQLException {
+  public final java.sql.Timestamp getTimestamp(int columnIndex) throws SQLException {
     return getTimestamp(columnIndex, null);
   }
 
@@ -511,7 +511,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Date getDate(int columnIndex, Calendar cal)
+  public final java.sql.Date getDate(int columnIndex, Calendar cal)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
     return getDate(columnIndex, cal, getSnappyType(columnIndex,
@@ -522,7 +522,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Time getTime(int columnIndex, Calendar cal)
+  public final java.sql.Time getTime(int columnIndex, Calendar cal)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
     return getTime(columnIndex, cal, getSnappyType(columnIndex,
@@ -533,7 +533,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Timestamp getTimestamp(int columnIndex, Calendar cal)
+  public final java.sql.Timestamp getTimestamp(int columnIndex, Calendar cal)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
     return getTimestamp(columnIndex, cal, getSnappyType(columnIndex,
@@ -796,7 +796,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Date getDate(String columnLabel) throws SQLException {
+  public final java.sql.Date getDate(String columnLabel) throws SQLException {
     return getDate(getColumnIndex(columnLabel));
   }
 
@@ -804,7 +804,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Time getTime(String columnLabel) throws SQLException {
+  public final java.sql.Time getTime(String columnLabel) throws SQLException {
     return getTime(getColumnIndex(columnLabel));
   }
 
@@ -812,7 +812,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Timestamp getTimestamp(String columnLabel) throws SQLException {
+  public final java.sql.Timestamp getTimestamp(String columnLabel) throws SQLException {
     return getTimestamp(getColumnIndex(columnLabel));
   }
 
@@ -820,7 +820,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Date getDate(String columnLabel, Calendar cal)
+  public final java.sql.Date getDate(String columnLabel, Calendar cal)
       throws SQLException {
     return getDate(getColumnIndex(columnLabel), cal);
   }
@@ -829,7 +829,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Time getTime(String columnLabel, Calendar cal)
+  public final java.sql.Time getTime(String columnLabel, Calendar cal)
       throws SQLException {
     return getTime(getColumnIndex(columnLabel), cal);
   }
@@ -838,7 +838,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final Timestamp getTimestamp(String columnLabel, Calendar cal)
+  public final java.sql.Timestamp getTimestamp(String columnLabel, Calendar cal)
       throws SQLException {
     return getTimestamp(getColumnIndex(columnLabel), cal);
   }
@@ -1560,7 +1560,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final void updateDate(int columnIndex, Date x) throws SQLException {
+  public final void updateDate(int columnIndex, java.sql.Date x) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
 
     initRowUpdate("updateDate");
@@ -1579,7 +1579,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final void updateTime(int columnIndex, Time x) throws SQLException {
+  public final void updateTime(int columnIndex, java.sql.Time x) throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
 
     initRowUpdate("updateTime");
@@ -1598,7 +1598,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final void updateTimestamp(int columnIndex, Timestamp x)
+  public final void updateTimestamp(int columnIndex, java.sql.Timestamp x)
       throws SQLException {
     final Row currentRow = checkValidColumn(columnIndex);
 
@@ -1772,7 +1772,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final void updateDate(String columnLabel, Date x)
+  public final void updateDate(String columnLabel, java.sql.Date x)
       throws SQLException {
     updateDate(getColumnIndex(columnLabel), x);
   }
@@ -1781,7 +1781,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final void updateTime(String columnLabel, Time x)
+  public final void updateTime(String columnLabel, java.sql.Time x)
       throws SQLException {
     updateTime(getColumnIndex(columnLabel), x);
   }
@@ -1790,7 +1790,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public final void updateTimestamp(String columnLabel, Timestamp x)
+  public final void updateTimestamp(String columnLabel, java.sql.Timestamp x)
       throws SQLException {
     updateTimestamp(getColumnIndex(columnLabel), x);
   }

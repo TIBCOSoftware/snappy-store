@@ -23,6 +23,7 @@ plugins {
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
   compile project(subprojectBase + 'gemfirexd-shared')
+  compile project(subprojectBase + 'gemfirexd-client')
   provided project(subprojectBase + 'gemfirexd-prebuild')
 
   provided files("${System.getProperty('java.home')}/../lib/tools.jar")
@@ -32,6 +33,9 @@ dependencies {
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
   compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
+  compile "org.apache.thrift:libthrift:${thriftVersion}"
+  compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
+  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
@@ -45,9 +49,6 @@ dependencies {
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
-  provided "org.apache.thrift:libthrift:${thriftVersion}"
-  provided "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
-  provided "com.esotericsoftware:kryo-shaded:${kryoVersion}"
 }
 
 // move javacc output directory to a place where IDEA can easily register
@@ -177,7 +178,7 @@ task doSplit(dependsOn: buildMessages) {
 }
 
 task odbcMeta {
-  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources'
+  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources', "${subprojectBase}gemfirexd-prebuild:jar"
   def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
   outputs.files "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir

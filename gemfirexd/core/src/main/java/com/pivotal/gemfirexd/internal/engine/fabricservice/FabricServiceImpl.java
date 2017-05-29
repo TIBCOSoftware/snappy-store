@@ -612,6 +612,11 @@ public abstract class FabricServiceImpl implements FabricService {
     }
     if (this.previousServerStatus == State.RUNNING) {
       this.serverstatus = State.RUNNING;
+      // if started from command-line then change the status in the file too
+      CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+      if (launcher != null) {
+        launcher.running(Misc.getDistributedSystem(), true);
+      }
     }
     this.previousServerStatus = State.UNINITIALIZED;
   }
@@ -681,19 +686,7 @@ public abstract class FabricServiceImpl implements FabricService {
       }
     }
     if (port <= 0) {
-      if (!thriftServer) {
-        final String portStr = (String)networkProperties
-            .remove(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER);
-        if (portStr != null) {
-          port = Integer.parseInt(portStr);
-        }
-        else {
-          port = NETSERVER_DEFAULT_PORT;
-        }
-      }
-      else {
-        port = NETSERVER_DEFAULT_PORT;
-      }
+      port = NETSERVER_DEFAULT_PORT;
     }
 
     final InetAddress listenAddress = getListenAddress(bindAddress);

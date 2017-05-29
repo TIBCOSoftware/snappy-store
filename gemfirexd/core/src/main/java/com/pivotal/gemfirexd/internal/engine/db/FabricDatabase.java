@@ -57,6 +57,8 @@ import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.ClassPathLoader;
+import com.gemstone.gemfire.internal.GFToSlf4jBridge;
+import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
@@ -816,7 +818,7 @@ public final class FabricDatabase implements ModuleControl,
     lcc.setIsConnectionForRemoteDDL(false);
     lcc.setSkipLocks(true);
     lcc.setQueryRouting(false);
-    tc.resetActiveTXState();
+    tc.resetActiveTXState(false);
     // for admin VM types do not compile here
     final GemFireStore.VMKind vmKind = this.memStore.getMyVMKind();
     final boolean skipSPSPrecompile = SKIP_SPS_PRECOMPILE;
@@ -1128,6 +1130,12 @@ public final class FabricDatabase implements ModuleControl,
                 + "having sequenceId=" + qEntry.getSequenceId());
           }
         }
+        if (previousLevel != Integer.MAX_VALUE) {
+          GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge) logger);
+          bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.info("Done hive meta-store initialization");
+          previousLevel = Integer.MAX_VALUE;
+        }
       // commenting out for snap-585
       /*}*/
 
@@ -1217,12 +1225,14 @@ public final class FabricDatabase implements ModuleControl,
       }
 
       for (GemFireContainer container : uninitializedContainers) {
-        if (logger.infoEnabled()) {
+        if (logger.infoEnabled() &&
+            !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
           logger.info("FabricDatabase: start initializing container: "
               + container);
         }
         container.initializeRegion();
-        if (logger.infoEnabled()) {
+        if (logger.infoEnabled() &&
+            !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
           logger.info("FabricDatabase: end initializing container: "
               + container);
         }
@@ -1342,7 +1352,7 @@ public final class FabricDatabase implements ModuleControl,
                 localRegionSize = getRegionSizeByIterating(region, dp);
                 if (indexSize != localRegionSize) {
                   logger.error("checkRecoveredIndex: for table: " + region.getName() + " " +
-                      "number of local entries = " + localRegionSize + " and number of " +
+                      "number of local entries (after getRegionSizeByIterating) = " + localRegionSize + " and number of " +
                       "index entries in the index: " + c.getName() + " = " + c.getIndexSize());
                   dumpIndexAndRegion(region, dp, c, logger);
                   throw new IllegalStateException("Table data and indexes are not reconciling." +
@@ -1387,8 +1397,8 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
     } else {
-      DiskRegion diskReg = region.getDiskRegion();
-      RegionMap rmap = diskReg.getRecoveredEntryMap();
+      //DiskRegion diskReg = region.getDiskRegion();
+      RegionMap rmap = region.getRegionMap();
       if (rmap != null) {
         Collection<RegionEntry> res = rmap.regionEntriesInVM();
         for (RegionEntry re : res) {
@@ -1511,6 +1521,7 @@ public final class FabricDatabase implements ModuleControl,
     AuthenticationServiceBase.cleanupOnError(this, memStore,
         pf);
   }
+  int previousLevel = Integer.MAX_VALUE;
 
   public String executeDDL(final DDLConflatable conflatable,
       final Statement stmt, final boolean skipRegionInitialization,
@@ -1523,6 +1534,25 @@ public final class FabricDatabase implements ModuleControl,
       currentSchema = SchemaDescriptor.STD_DEFAULT_SCHEMA_NAME;
     }
     if (!lastCurrentSchema.equals(currentSchema)) {
+      // If the ddl replay for the hive meta tables is in progress
+      // whatever may be the logging level, just log the warning messages.
+      // This is because hive meta store table replay generates hundreds of
+      // line of logs which are of no use. Once the hive meta tables are
+      // done, restore the logging level.
+      if (previousLevel == Integer.MAX_VALUE &&
+          Misc.isSnappyHiveMetaTable(currentSchema))
+      {
+        GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
+        bridgeLogger.info("Starting hive meta-store initialization");
+        previousLevel = bridgeLogger.getLevel();
+        bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
+      } else if (previousLevel != Integer.MAX_VALUE &&
+            Misc.isSnappyHiveMetaTable(lastCurrentSchema)) {
+          GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
+          bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.info("Done hive meta-store initialization");
+          previousLevel = Integer.MAX_VALUE;
+      }
       // set the default schema masquerading as the user
       // temporarily for this DDL
       SanityManager.DEBUG_PRINT("info:" + GfxdConstants.TRACE_DDLREPLAY,

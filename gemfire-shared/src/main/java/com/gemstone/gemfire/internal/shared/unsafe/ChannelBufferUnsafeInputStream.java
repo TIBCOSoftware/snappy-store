@@ -14,13 +14,33 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
+import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferInputStream;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -42,7 +62,7 @@ import org.apache.spark.unsafe.Platform;
  */
 public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
 
-  protected final ByteBuffer buffer;
+  protected ByteBuffer buffer;
   protected final long baseAddress;
   /**
    * Actual buffer position (+baseAddress) accounting is done by this. Buffer
@@ -52,20 +72,19 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
   protected long addrPosition;
   protected long addrLimit;
 
-  public ChannelBufferUnsafeInputStream(ReadableByteChannel channel)
-      throws IOException {
+  public ChannelBufferUnsafeInputStream(ReadableByteChannel channel) {
     this(channel, ChannelBufferInputStream.DEFAULT_BUFFER_SIZE);
   }
 
   public ChannelBufferUnsafeInputStream(ReadableByteChannel channel,
-      int bufferSize) throws IOException {
+      int bufferSize) {
     super(channel);
     if (bufferSize <= 0) {
       throw new IllegalArgumentException("invalid bufferSize=" + bufferSize);
     }
     this.buffer = allocateBuffer(bufferSize);
-    // flip to force refill on first use
-    this.buffer.flip();
+    // force refill on first use
+    this.buffer.position(bufferSize);
 
     try {
       this.baseAddress = UnsafeHolder.getDirectBufferAddress(this.buffer);
@@ -82,11 +101,12 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
   }
 
   protected ByteBuffer allocateBuffer(int bufferSize) {
-    // use Platform.allocate which does not have the smallish limit used
-    // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
-    return Platform.allocateDirectBuffer(bufferSize)
-        // set the order to native explicitly to skip any byte order conversions
-        .order(ByteOrder.nativeOrder());
+    // use allocator which will restrict total allocated size
+    ByteBuffer buffer = DirectBufferAllocator.instance().allocate(
+        bufferSize, "CHANNELINPUT");
+    // set the order to native explicitly to skip any byte order conversions
+    buffer.order(ByteOrder.nativeOrder());
+    return buffer;
   }
 
   /**
@@ -155,8 +175,18 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
    * {@inheritDoc}
    */
   @Override
-  public final int read(byte[] buf) throws IOException {
+  public final int read(@Nonnull byte[] buf) throws IOException {
     return read_(buf, 0, buf.length);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int read(@Nonnull byte[] buf,
+      int off, int len) throws IOException {
+    UnsafeHolder.checkBounds(buf.length, off, len);
+    return read_(buf, off, len);
   }
 
   /**
@@ -171,6 +201,10 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
     // Avoiding the complication since the benefit will be very small
     // in any case (and reflection cost may well offset that).
     // We can use unsafe for a small perf benefit for heap byte buffers.
+
+    if (!isOpen()) {
+      throw new ClosedChannelException();
+    }
 
     // adjust this buffer position first
     this.buffer.position((int)(this.addrPosition - this.baseAddress));
@@ -187,14 +221,6 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
    * {@inheritDoc}
    */
   @Override
-  public final int read(byte[] buf, int off, int len) throws IOException {
-    UnsafeHolder.checkBounds(buf.length, off, len);
-    return read_(buf, off, len);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
   public final int readInt() throws IOException {
     long addrPos = this.addrPosition;
     if ((this.addrLimit - addrPos) < 4) {
@@ -213,7 +239,7 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
    * {@inheritDoc}
    */
   @Override
-  public final int available() throws IOException {
+  public final int available() {
     return (int)(this.addrLimit - this.addrPosition);
   }
 
@@ -242,9 +268,12 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
    * {@inheritDoc}
    */
   @Override
-  public void close() throws IOException {
-    this.buffer.clear();
-    this.addrPosition = this.addrLimit = 0;
-    UnsafeHolder.releaseDirectBuffer(this.buffer);
+  public void close() {
+    final ByteBuffer buffer = this.buffer;
+    if (buffer != null) {
+      this.addrPosition = this.addrLimit = 0;
+      this.buffer = null;
+      DirectBufferAllocator.instance().release(buffer);
+    }
   }
 }

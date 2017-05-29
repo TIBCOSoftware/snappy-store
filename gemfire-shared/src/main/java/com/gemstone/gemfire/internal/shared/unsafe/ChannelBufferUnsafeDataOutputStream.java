@@ -21,6 +21,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.UTFDataFormatException;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
+import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import org.apache.spark.unsafe.Platform;
@@ -33,20 +35,19 @@ import org.apache.spark.unsafe.Platform;
  * The implementation is not thread-safe by design. This particular class can be
  * used as an efficient, buffered DataOutput implementation for file channels,
  * socket channels and other similar.
- * 
+ *
  * @author swale
  * @since gfxd 1.0
  */
 public class ChannelBufferUnsafeDataOutputStream extends
     ChannelBufferUnsafeOutputStream implements DataOutput {
 
-  public ChannelBufferUnsafeDataOutputStream(WritableByteChannel channel)
-      throws IOException {
+  public ChannelBufferUnsafeDataOutputStream(WritableByteChannel channel) {
     super(channel);
   }
 
   public ChannelBufferUnsafeDataOutputStream(WritableByteChannel channel,
-      int bufferSize) throws IOException {
+      int bufferSize) {
     super(channel, bufferSize);
   }
 
@@ -133,32 +134,9 @@ public class ChannelBufferUnsafeDataOutputStream extends
    * {@inheritDoc}
    */
   @Override
-  public final void writeBytes(String s) throws IOException {
-    int off = 0;
-    int len = s.length();
-    while (len > 0) {
-      long addrPos = this.addrPosition;
-      final int remaining = (int)(this.addrLimit - addrPos);
-      if (len <= remaining) {
-        final int end = (off + len);
-        while (off < end) {
-          Platform.putByte(null, addrPos, (byte)(s.charAt(off) & 0xff));
-          addrPos++;
-          off++;
-        }
-        this.addrPosition = addrPos;
-        return;
-      } else {
-        final int end = (off + remaining);
-        while (off < end) {
-          Platform.putByte(null, addrPos, (byte)(s.charAt(off) & 0xff));
-          addrPos++;
-          off++;
-        }
-        this.addrPosition = addrPos;
-        flushBufferBlocking(this.buffer);
-        len -= remaining;
-      }
+  public final void writeBytes(@Nonnull String s) throws IOException {
+    if (s.length() > 0) {
+      write(s.getBytes(StandardCharsets.US_ASCII));
     }
   }
 
@@ -166,7 +144,7 @@ public class ChannelBufferUnsafeDataOutputStream extends
    * {@inheritDoc}
    */
   @Override
-  public final void writeChars(String s) throws IOException {
+  public final void writeChars(@Nonnull String s) throws IOException {
     int off = 0;
     int len = s.length();
     while (len > 0) {
@@ -197,21 +175,21 @@ public class ChannelBufferUnsafeDataOutputStream extends
    * {@inheritDoc}
    */
   @Override
-  public final void writeUTF(String str) throws IOException {
-    int strlen = str.length();
-    if (strlen > 65535) {
-      throw new UTFDataFormatException("encoded string too long: " + strlen);
+  public final void writeUTF(@Nonnull String str) throws IOException {
+    int strLen = str.length();
+    if (strLen > 65535) {
+      throw new UTFDataFormatException("encoded string too long: " + strLen);
     }
 
     // first check the optimistic case where worst case of 2 for length + 3 for
     // each char fits into remaining space in buffer
     long addrPos = this.addrPosition;
     long remaining = this.addrLimit - addrPos;
-    if (remaining >= ((strlen * 3) + 2)) {
+    if (remaining >= ((strLen * 3) + 2)) {
       // write the UTF string skipping the length, then write length at the last
       addrPos += 2;
-      final long finalAddrPos = writeUTFSegmentNoOverflow(str, 0, strlen,
-          addrPos, UnsafeHolder.getUnsafe());
+      final long finalAddrPos = writeUTFSegmentNoOverflow(str, 0, strLen,
+          -1, null, addrPos);
       long utflen = (finalAddrPos - addrPos);
       if (utflen <= 65535) {
         putShort(addrPos - 2, (int)utflen);
@@ -228,46 +206,33 @@ public class ChannelBufferUnsafeDataOutputStream extends
     // otherwise first calculate the UTF encoded length, write it in buffer
     // (which may need to be flushed at any point), then break string into worst
     // case segments for writing to buffer and flushing if end of buffer reached
-    int utflen = 0;
-    int c;
-    for (int index = 0; index < strlen; index++) {
-      c = str.charAt(index);
-      if ((c >= 0x0001) && (c <= 0x007F)) {
-        utflen++;
-      }
-      else if (c > 0x07FF) {
-        utflen += 3;
-      }
-      else {
-        utflen += 2;
-      }
-    }
-    if (utflen > 65535) {
-      throw new UTFDataFormatException("encoded string too long: " + utflen
+    int utfLen = ClientSharedUtils.getUTFLength(str, strLen);
+    if (utfLen > 65535) {
+      throw new UTFDataFormatException("encoded string too long: " + utfLen
           + " bytes");
     }
     // write the length first
     if (remaining > 2) {
-      addrPos = putShort(addrPos, utflen);
+      addrPos = putShort(addrPos, utfLen);
       remaining -= 2;
     }
     else {
       flushBufferBlocking(this.buffer);
-      addrPos = putShort(this.addrPosition, utflen);
+      addrPos = putShort(this.addrPosition, utfLen);
       remaining = this.addrLimit - addrPos;
     }
 
-    // next break string into segments assuming worst case, flushing buffer as
-    // required after each segment write
+    // next break string into segments assuming worst case of 3 bytes per char,
+    // flushing buffer as required after each segment write
     int offset = 0;
-    while (strlen > 0) {
-      int writeLen = (int)(remaining / 3);
+    while (strLen > 0) {
+      int writeLen = Math.min(strLen, (int)(remaining / 3));
       if (writeLen >= 3) {
         // write the UTF segment and update the number of remaining characters,
         // offset, remaining buffer size etc
         long newAddrPos = writeUTFSegmentNoOverflow(str, offset, writeLen,
-            addrPos, UnsafeHolder.getUnsafe());
-        strlen -= writeLen;
+            -1, null, addrPos);
+        strLen -= writeLen;
         offset += writeLen;
         remaining -= (newAddrPos - addrPos);
         addrPos = newAddrPos;
@@ -280,25 +245,32 @@ public class ChannelBufferUnsafeDataOutputStream extends
         remaining = this.addrLimit - (addrPos = this.addrPosition);
       }
     }
+    this.addrPosition = addrPos;
   }
 
-  private static long writeUTFSegmentNoOverflow(String str, int offset,
-      int length, long addrPos, final sun.misc.Unsafe unsafe)
-      throws IOException {
+  public static long writeUTFSegmentNoOverflow(String str, int offset,
+      int length, final int utfLen, final Object target, long addrPos) {
     final int end = (offset + length);
-    while (offset < end) {
-      int c = str.charAt(offset);
-      if ((c >= 0x0001) && (c <= 0x007F)) {
-        unsafe.putByte(addrPos++, (byte)c);
-      } else if (c > 0x07FF) {
-        unsafe.putByte(addrPos++, (byte)(0xE0 | ((c >> 12) & 0x0F)));
-        unsafe.putByte(addrPos++, (byte)(0x80 | ((c >> 6) & 0x3F)));
-        unsafe.putByte(addrPos++, (byte)(0x80 | (c & 0x3F)));
-      } else {
-        unsafe.putByte(addrPos++, (byte)(0xC0 | ((c >> 6) & 0x1F)));
-        unsafe.putByte(addrPos++, (byte)(0x80 | (c & 0x3F)));
+    // fast path for ASCII strings
+    if (length == utfLen) {
+      while (offset < end) {
+        final char c = str.charAt(offset++);
+        Platform.putByte(target, addrPos++, (byte)c);
       }
-      offset++;
+      return addrPos;
+    }
+    while (offset < end) {
+      final char c = str.charAt(offset++);
+      if ((c >= 0x0001) && (c <= 0x007F)) {
+        Platform.putByte(target, addrPos++, (byte)c);
+      } else if (c > 0x07FF) {
+        Platform.putByte(target, addrPos++, (byte)(0xE0 | ((c >> 12) & 0x0F)));
+        Platform.putByte(target, addrPos++, (byte)(0x80 | ((c >> 6) & 0x3F)));
+        Platform.putByte(target, addrPos++, (byte)(0x80 | (c & 0x3F)));
+      } else {
+        Platform.putByte(target, addrPos++, (byte)(0xC0 | ((c >> 6) & 0x1F)));
+        Platform.putByte(target, addrPos++, (byte)(0x80 | (c & 0x3F)));
+      }
     }
     return addrPos;
   }

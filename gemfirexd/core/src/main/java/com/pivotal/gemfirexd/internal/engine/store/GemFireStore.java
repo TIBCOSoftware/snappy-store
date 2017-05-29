@@ -72,6 +72,7 @@ import com.gemstone.gemfire.distributed.internal.tcpserver.TcpClient;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ClassPathLoader;
+import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.GemFireLevel;
 import com.gemstone.gemfire.internal.HostStatSampler.StatsSamplerCallback;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -2436,7 +2437,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   // The first access of this will instantiate the snappy catalog
 	public void initExternalCatalog() {
+    GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)Misc.getI18NLogWriter());
+    int previousLevel = bridgeLogger.getLevel();
     try {
+      // just log the warning messages, during hive client initialization
+      // as it generates hundreds of line of logs which are of no use.
+      // Once the initialization is done, restore the logging level.
+      bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
+
       if (this.externalCatalog == null) {
         synchronized (this) {
           if (this.externalCatalog == null) {
@@ -2459,6 +2467,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       }
     } catch(Throwable ex) {
       throw new RuntimeException(ex);
+    } finally {
+      bridgeLogger.setLevel(previousLevel);
     }
 	}
 

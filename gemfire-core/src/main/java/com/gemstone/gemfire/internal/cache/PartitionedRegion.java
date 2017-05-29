@@ -148,6 +148,7 @@ import com.gemstone.gemfire.internal.cache.execute.PartitionedRegionFunctionResu
 import com.gemstone.gemfire.internal.cache.execute.RegionFunctionContextImpl;
 import com.gemstone.gemfire.internal.cache.execute.ServerToClientFunctionResultSender;
 import com.gemstone.gemfire.internal.cache.ha.ThreadIdentifier;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.lru.HeapEvictor;
 import com.gemstone.gemfire.internal.cache.lru.LRUStatistics;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
@@ -203,6 +204,7 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
 import com.gemstone.gemfire.internal.cache.versions.ConcurrentCacheModificationException;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
+import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
@@ -2707,6 +2709,7 @@ public class PartitionedRegion extends LocalRegion implements
     Set<InternalDistributedMember> currentTargets = null;
     if(txProxy == null) {
       currentTarget = getNodeForBucketWrite(bucketId.intValue(), null);
+      addAffectedRegionForSnapshotIsolation(prMsg, bucketId);
     }
     else {
       currentTargets = getAllBucketOwners(bucketId, txProxy, null, null);
@@ -2725,6 +2728,14 @@ public class PartitionedRegion extends LocalRegion implements
     // event.freeOffHeapResources called by sendOrWaitForRespWithRetry.
   }
 
+  private void addAffectedRegionForSnapshotIsolation(PutAllPRMessage prMsg, int bucketId) {
+    if (prMsg.getTXState() != null && prMsg.getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+      final RegionAdvisor ra = getRegionAdvisor();
+      ProxyBucketRegion pbr = ra.getProxyBucketArray()[bucketId];
+      ((TXStateProxy)prMsg.getTXState()).addAffectedRegion(pbr);
+    }
+  }
+
   private PutAllPRMessage.PutAllResponse sendOrWaitForRespWithRetry(
       InternalDistributedMember currentTarget,
       Set<InternalDistributedMember> currentTargets, final Integer bucketId,
@@ -2733,6 +2744,7 @@ public class PartitionedRegion extends LocalRegion implements
     try {
     final boolean isResponseCall = response != null;
     RetryTimeKeeper retryTime = null;
+
     long timeOut = 0;
     int count = 0;
     for (;;) {
@@ -2792,6 +2804,7 @@ public class PartitionedRegion extends LocalRegion implements
 
         if (txProxy == null) {
           currentTarget = waitForNodeOrCreateBucket(retryTime, event, bucketId);
+          addAffectedRegionForSnapshotIsolation(prMsg, bucketId);
         }
         else {
           currentTargets = getAllBucketOwners(bucketId, txProxy, retryTime, event);
@@ -2883,6 +2896,7 @@ public class PartitionedRegion extends LocalRegion implements
           lastTarget = currentTarget;
           currentTarget = getNodeForBucketWrite(bucketId.intValue(), retryTime);
           currTarget = currentTarget;
+          addAffectedRegionForSnapshotIsolation(prMsg, bucketId);
         }
         else {
           lastTarget = currentTargets;
@@ -2921,6 +2935,7 @@ public class PartitionedRegion extends LocalRegion implements
         
         if (txProxy == null) {
           currentTarget = getNodeForBucketWrite(bucketId.intValue(), retryTime);
+          addAffectedRegionForSnapshotIsolation(prMsg, bucketId);
         }
         else {
           currentTargets = getAllBucketOwners(bucketId, txProxy, retryTime,
@@ -6714,7 +6729,18 @@ public class PartitionedRegion extends LocalRegion implements
     if (context != null
         && (bucketSet = context.getLocalBucketSet(this)) != null) {
       return new PRLocalScanIterator(bucketSet, txState, forUpdate,
-          includeValues, false);
+          includeValues, true);
+    }
+    return new PRLocalScanIterator(primaryOnly, txState, forUpdate,
+        includeValues);
+  }
+
+  public final Iterator<?> localEntriesIterator(
+      Set bucketSet, final boolean primaryOnly,
+      final boolean forUpdate, boolean includeValues, final TXState txState) {
+    if (bucketSet  != null) {
+      return new PRLocalScanIterator(bucketSet, txState, forUpdate,
+          includeValues, true);
     }
     return new PRLocalScanIterator(primaryOnly, txState, forUpdate,
         includeValues);
@@ -7062,6 +7088,7 @@ public class PartitionedRegion extends LocalRegion implements
     private final boolean includeValues;
 
     private Iterator<RegionEntry> bucketEntriesIter;
+    private boolean remoteEntryFetched;
 
     private Object currentEntry;
 
@@ -7078,6 +7105,8 @@ public class PartitionedRegion extends LocalRegion implements
     private final StaticSystemCallbacks cb;
 
     private final boolean fetchRemoteEntries;
+
+    private boolean commitOnClose;
 
     public PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
         final boolean forUpdate, final boolean includeValues) {
@@ -7117,6 +7146,7 @@ public class PartitionedRegion extends LocalRegion implements
         }
       }
       this.fetchRemoteEntries = false;
+      this.remoteEntryFetched = false;
       this.bucketIdsIter = iter;
       this.numEntries = numEntries;
       this.txState = tx;
@@ -7124,6 +7154,7 @@ public class PartitionedRegion extends LocalRegion implements
       this.includeValues = includeValues;
       this.diskIteratorInitialized = false;
       this.cb = GemFireCacheImpl.getInternalProductCallbacks();
+
     }
 
     public PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
@@ -7156,6 +7187,7 @@ public class PartitionedRegion extends LocalRegion implements
         }
       }
       this.fetchRemoteEntries = fetchRemote;
+      this.remoteEntryFetched = false;
       this.bucketIdsIter = iter;
       this.txState = tx;
       this.forUpdate = forUpdate;
@@ -7189,7 +7221,8 @@ public class PartitionedRegion extends LocalRegion implements
         ((HDFSIterator) bucketEntriesIter).close();
       }
     }
-    
+
+    // For snapshot isolation, Get the iterator on the txRegionstate maps entry iterator too
     public boolean hasNext() {
       if (this.moveNext) {
         for (;;) {
@@ -7204,7 +7237,10 @@ public class PartitionedRegion extends LocalRegion implements
               }
               // KN: If DiskIterator has been initialized then we need to change
               // the current bucket id and the current bucket region accordingly
-              // as otherwise there will be a mismatch
+              // as otherwise there will be a mismatch.
+              // The keepDiskMap flag aggregates overflowed entries across
+              // BucketRegions and so this diskIterator is a single one across
+              // entire PR (local buckets) so this needs to be set explicitly.
               if (this.diskIteratorInitialized
                   && !(val instanceof NonLocalRegionEntry)) {
                 setCurrRegionAndBucketId(val);
@@ -7212,15 +7248,19 @@ public class PartitionedRegion extends LocalRegion implements
             }
             //TODO: Suranjan How will it work for tx? There will be no BucketRegion for NonLocalRegionEntry
             // Ideally for tx there shouldn't be a case of iterator fetching remote entry
-            if (this.txState != null) {
+            // For snapshot make sure that it returns either the old entry or new entry depending on the
+            // version in snapshot
+            if (this.txState != null && !remoteEntryFetched) {
               this.currentEntry = this.txState.getLocalEntry(
                   PartitionedRegion.this, this.currentBucketRegion,
-                  -1 /* not used */, (AbstractRegionEntry)val);
+                  -1 /* not used */, (AbstractRegionEntry)val, this.forUpdate);
             }
             else {
               this.currentEntry = val;
             }
-            if (this.currentEntry != null) {
+            // For snapshot Isolation do the check here.
+            // get the snapshot information from TxState.TxRegionState.
+            if (this.currentEntry != null /*&& !checkIfCorrectVersion(this.currentEntry)*/) {
               this.moveNext = false;
               return true;
             }
@@ -7240,6 +7280,11 @@ public class PartitionedRegion extends LocalRegion implements
               // no more buckets need to be visited
               this.bucketEntriesIter = null;
               this.moveNext = false;
+              if (commitOnClose) {
+                getCache().getCacheTransactionManager().masqueradeAs(this.txState);
+                getCache().getCacheTransactionManager().commit();
+                commitOnClose = false;
+              }
               return false;
             }
             final int bucketId = this.bucketIdsIter.next().intValue();
@@ -7268,6 +7313,7 @@ public class PartitionedRegion extends LocalRegion implements
                     + PartitionedRegion.this.toString());
               }
               setLocalBucketEntryIterator(br, bucketId);
+              this.remoteEntryFetched = false;
             } else {
               if (logger.fineEnabled()) {
                 logger.fine("PRLocalScanIterator#hasNext: bucket not "
@@ -7275,10 +7321,16 @@ public class PartitionedRegion extends LocalRegion implements
                     + PartitionedRegion.this.toString() + ". Fetching from remote node");
               }
               setRemoteBucketEntriesIterator(bucketId);
+              this.remoteEntryFetched = true;
             }
             break;
           }
         }
+      }
+      if (this.currentEntry == null && commitOnClose) {
+        getCache().getCacheTransactionManager().masqueradeAs(this.txState);
+        getCache().getCacheTransactionManager().commit();
+        commitOnClose = false;
       }
       return (this.currentEntry != null);
     }
@@ -7327,7 +7379,6 @@ public class PartitionedRegion extends LocalRegion implements
     }
 
     private Set<RegionEntry> getBucketEntries(final int bucketId) {
-      Integer buck = Integer.valueOf(bucketId);
       final int retryAttempts = calcRetry();
       Set<RegionEntry> entries = null;
       int count = 0;
@@ -7380,11 +7431,14 @@ public class PartitionedRegion extends LocalRegion implements
             snoozer = new RetryTimeKeeper(retryTimeout);
           }
           InternalDistributedMember oldNode = nod;
-          nod = getNodeForBucketRead(buck.intValue());
+          nod = getNodeForBucketRead(bucketId);
           if (nod != null && nod.equals(oldNode)) {
             if (snoozer.overMaximum()) {
               checkReadiness();
-              throw new TimeoutException(LocalizedStrings.PartitionedRegion_ATTEMPT_TO_ACQUIRE_PRIMARY_NODE_FOR_READ_ON_BUCKET_0_TIMED_OUT_IN_1_MS.toLocalizedString(new Object[]{getBucketName(buck.intValue()), Integer.valueOf(snoozer.getRetryTime())}));
+              throw new TimeoutException(LocalizedStrings
+                  .PartitionedRegion_ATTEMPT_TO_ACQUIRE_PRIMARY_NODE_FOR_READ_ON_BUCKET_0_TIMED_OUT_IN_1_MS
+                  .toLocalizedString(new Object[]{getBucketName(bucketId),
+                      snoozer.getRetryTime()}));
             }
             snoozer.waitToRetryNode();
           }

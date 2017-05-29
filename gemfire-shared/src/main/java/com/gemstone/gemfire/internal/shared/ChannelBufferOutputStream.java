@@ -20,6 +20,7 @@ package com.gemstone.gemfire.internal.shared;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
+import javax.annotation.Nonnull;
 
 /**
  * OutputStream for use by buffered write abstractions over channel using direct
@@ -69,7 +70,8 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
    * {@inheritDoc}
    */
   @Override
-  public final void write(byte[] b, int off, int len) throws IOException {
+  public final void write(@Nonnull byte[] b,
+      int off, int len) throws IOException {
     if (len == 1) {
       write(b[off]);
       return;
@@ -106,7 +108,7 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
    */
   @Override
   public void flush() throws IOException {
-    if (this.buffer.hasRemaining()) {
+    if (this.buffer.position() > 0) {
       flushBufferBlocking(this.buffer);
     }
   }
@@ -123,7 +125,7 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
    */
   @Override
   public void close() throws IOException {
-    flushBufferBlocking(this.buffer);
+    flush();
   }
 
   protected void flushBufferBlocking(final ByteBuffer buffer)
@@ -131,13 +133,12 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
     buffer.flip();
     try {
       do {
-        writeBuffer(buffer);
+        writeBuffer(buffer, this.channel);
       } while (buffer.hasRemaining());
     } finally {
       if (buffer.hasRemaining()) {
         buffer.compact();
-      }
-      else {
+      } else {
         buffer.clear();
       }
     }

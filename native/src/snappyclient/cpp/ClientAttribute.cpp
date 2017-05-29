@@ -1,4 +1,37 @@
-/** Generated file. DO NOT EDIT */
+/*
+ * Copyright (c) 2010-2015 Pivotal Software, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 #include "ClientAttribute.h"
 
@@ -40,6 +73,11 @@ const std::string ClientAttribute::LOG_FILE_STAMP = ClientAttribute::addToHashSe
 const std::string ClientAttribute::SECURITY_MECHANISM = ClientAttribute::addToHashSet("security-mechanism");
 const std::string ClientAttribute::SSL = ClientAttribute::addToHashSet("ssl");
 const std::string ClientAttribute::SSL_PROPERTIES = ClientAttribute::addToHashSet("ssl-properties");
-const std::string ClientAttribute::THRIFT_USE_BINARY_PROTOCOL = ClientAttribute::addToHashSet("binary-protocol");
+const std::string ClientAttribute::ROUTE_QUERY =
+    ClientAttribute::addToHashSet("route-query");
+const std::string ClientAttribute::THRIFT_USE_BINARY_PROTOCOL =
+    ClientAttribute::addToHashSet("binary-protocol");
+const std::string ClientAttribute::THRIFT_USE_FRAMED_TRANSPORT =
+    ClientAttribute::addToHashSet("framed-transport");
 
 } } }

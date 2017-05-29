@@ -39,7 +39,7 @@ allprojects {
   ext {
     scalaBinaryVersion = '2.11'
     scalaVersion = scalaBinaryVersion + '.8'
-    snappySparkVersion = '2.0.2.3'
+    sparkVersion = '2.0.0'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
     slf4jVersion = '1.7.21'
@@ -256,7 +256,7 @@ task cleanReports << {
 
 def parallelTests(def proj, def testClasses, def testObj, def prefix, def splitSize, def parallelism) {
   proj.task("${prefix}Parallel") {
-    dependsOn proj.testClasses, "${subprojectBase}product"
+    dependsOn proj.testClasses, "${subprojectBase}storeProduct"
     def ntestClasses = testClasses.size()
     def testClassesGroups = testClasses.collate(splitSize)
     def ntestClassesGroups = testClassesGroups.size()
@@ -458,10 +458,10 @@ subprojects {
   }
 
   test {
-    dependsOn "${subprojectBase}product"
+    dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = (2 * Runtime.getRuntime().availableProcessors())
-    minHeapSize = '768m'
-    maxHeapSize = '768m'
+    minHeapSize = '1g'
+    maxHeapSize = '1g'
 
     def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
@@ -524,10 +524,10 @@ subprojects {
   junit.dependsOn junitParallel, junitReport
 
   task dunitTest(type:Test, overwrite: true) {
-    dependsOn "${subprojectBase}product"
+    dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
-    minHeapSize = '1g'
-    maxHeapSize = '1g'
+    minHeapSize = '2g'
+    maxHeapSize = '2g'
 
     def single = System.getProperty('dunit.single')
     if (single == null || single.length() == 0) {
@@ -565,10 +565,10 @@ subprojects {
   dunit.dependsOn dunitParallel, dunitReport
 
   task wanTest(type:Test) {
-    dependsOn "${subprojectBase}product"
+    dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = (int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1)
-    minHeapSize = '512m'
-    maxHeapSize = '512m'
+    minHeapSize = '1g'
+    maxHeapSize = '1g'
 
     def single = System.getProperty('wan.single')
     if (single == null || single.length() == 0) {
@@ -603,7 +603,7 @@ subprojects {
   wan.dependsOn wanParallel, wanReport
 
   task integrationTest(type:Test) {
-    dependsOn "${subprojectBase}product"
+    dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = (2 * Runtime.getRuntime().availableProcessors())
 
     include '**/*Test.class'
@@ -833,7 +833,7 @@ jar.enabled = false
 install.enabled = false
 
 // pack the entire GemFireXD product tree
-task product(dependsOn: [ subprojectBase + 'gemfirexd-client:shadowJar',
+task storeProduct(dependsOn: [ subprojectBase + 'gemfirexd-client:shadowJar',
     subprojectBase + 'gemfirexd-core:shadowJar',
     subprojectBase + 'gemfirexd-tools:shadowJar' ]) << {
 
@@ -982,7 +982,7 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:shadowJar',
   }
 }
 if (rootProject.hasProperty('docs')) {
-  product.dependsOn subprojectBase + 'gemfirexd-shared:javadoc',
+  storeProduct.dependsOn subprojectBase + 'gemfirexd-shared:javadoc',
                     subprojectBase + 'gemfirexd-core:javadoc'
 }
 
@@ -990,7 +990,7 @@ task cleanAll {
   dependsOn clean, subprojects.clean
 }
 task buildAll {
-  dependsOn subprojects.assemble, subprojects.testClasses, product
+  dependsOn subprojects.assemble, subprojects.testClasses, storeProduct
   mustRunAfter cleanAll
 }
 check.mustRunAfter buildAll

@@ -14,13 +14,33 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
+import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferOutputStream;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -36,7 +56,7 @@ import org.apache.spark.unsafe.Platform;
  * NOTE: THIS CLASS IS NOT THREAD-SAFE BY DESIGN. IF IT IS USED CONCURRENTLY
  * BY MULTIPLE THREADS THEN BAD THINGS CAN HAPPEN DUE TO UNSAFE MEMORY WRITES.
  * <p>
- * Note that the close() method of this class does not closing the underlying
+ * Note that the close() method of this class does not close the underlying
  * channel.
  *
  * @author swale
@@ -44,7 +64,7 @@ import org.apache.spark.unsafe.Platform;
  */
 public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
 
-  protected final ByteBuffer buffer;
+  protected ByteBuffer buffer;
   protected final long baseAddress;
   /**
    * Actual buffer position (+baseAddress) accounting is done by this. Buffer
@@ -61,29 +81,24 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    */
   protected static final int MIN_BUFFER_SIZE = 10;
 
-  public ChannelBufferUnsafeOutputStream(WritableByteChannel channel)
-      throws IOException {
+  public ChannelBufferUnsafeOutputStream(WritableByteChannel channel) {
     this(channel, ChannelBufferOutputStream.DEFAULT_BUFFER_SIZE);
   }
 
   public ChannelBufferUnsafeOutputStream(WritableByteChannel channel,
-      int bufferSize) throws IOException {
+      int bufferSize) {
     super(channel);
-    // expect minimum bufferSize of 10 bytes
-    if (bufferSize < MIN_BUFFER_SIZE) {
-      throw new IllegalArgumentException(
-          "ChannelBufferUnsafeDataOutputStream: buffersize=" + bufferSize
-              + " too small (minimum " + MIN_BUFFER_SIZE + ')');
-    }
-    this.buffer = allocateBuffer(bufferSize);
+    this.baseAddress = allocateBuffer(bufferSize);
+    resetBufferPositions();
+  }
 
-    try {
-      this.baseAddress = UnsafeHolder.getDirectBufferAddress(this.buffer);
-      resetBufferPositions();
-    } catch (Exception e) {
-      throw ClientSharedUtils.newRuntimeException(
-          "failed in creating an 'unsafe' buffered channel stream", e);
-    }
+  /**
+   * Get handle to the underlying ByteBuffer. ONLY TO BE USED BY TESTS.
+   */
+  public ByteBuffer getInternalBuffer() {
+    // set the current position
+    this.buffer.position(position());
+    return this.buffer;
   }
 
   protected final void resetBufferPositions() {
@@ -91,19 +106,27 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     this.addrLimit = this.baseAddress + this.buffer.limit();
   }
 
-  protected ByteBuffer allocateBuffer(int bufferSize) {
-    // use Platform.allocate which does not have the smallish limit used
-    // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
-    return Platform.allocateDirectBuffer(bufferSize)
-        // set the order to native explicitly to skip any byte order conversions
-        .order(ByteOrder.nativeOrder());
-  }
-
-  protected final void putByte(byte b) throws IOException {
-    if (this.addrPosition >= this.addrLimit) {
-      flushBufferBlocking(this.buffer);
+  protected long allocateBuffer(int bufferSize) {
+    // expect minimum bufferSize of 10 bytes
+    if (bufferSize < MIN_BUFFER_SIZE) {
+      throw new IllegalArgumentException(
+          "ChannelBufferUnsafeDataOutputStream: buffersize=" + bufferSize
+              + " too small (minimum " + MIN_BUFFER_SIZE + ')');
     }
-    Platform.putByte(null, this.addrPosition++, b);
+    // use allocator which will restrict total allocated size
+    final ByteBuffer buffer = DirectBufferAllocator.instance().allocate(
+        bufferSize, "CHANNELOUTPUT");
+    // set the order to native explicitly to skip any byte order conversions
+    buffer.order(ByteOrder.nativeOrder());
+    this.buffer = buffer;
+
+    try {
+      return UnsafeHolder.getDirectBufferAddress(buffer);
+    } catch (Exception e) {
+      releaseBuffer();
+      throw ClientSharedUtils.newRuntimeException(
+          "failed in creating an 'unsafe' buffered channel stream", e);
+    }
   }
 
   /**
@@ -128,8 +151,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
             null, addrPos, len);
         this.addrPosition += len;
         return;
-      }
-      else {
+      } else {
         // copy b to buffer and flush
         if (remaining > 0) {
           Platform.copyMemory(b, Platform.BYTE_ARRAY_OFFSET + off,
@@ -147,15 +169,23 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    * {@inheritDoc}
    */
   @Override
-  public final void write(byte[] b) throws IOException {
+  public final void write(@Nonnull byte[] b) throws IOException {
     write_(b, 0, b.length);
+  }
+
+  protected final void putByte(byte b) throws IOException {
+    if (this.addrPosition >= this.addrLimit) {
+      flushBufferBlocking(this.buffer);
+    }
+    Platform.putByte(null, this.addrPosition++, b);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public final void write(byte[] b, int off, int len) throws IOException {
+  public final void write(@Nonnull byte[] b,
+      int off, int len) throws IOException {
     UnsafeHolder.checkBounds(b.length, off, len);
     write_(b, off, len);
   }
@@ -172,6 +202,10 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     // byte buffer. Avoiding the complication since the benefit will be
     // very small in any case (and reflection cost may well offset that).
 
+    if (!isOpen()) {
+      throw new ClosedChannelException();
+    }
+
     // adjust this buffer position first
     this.buffer.position((int)(this.addrPosition - this.baseAddress));
     // now we are actually set to just call base class method
@@ -183,13 +217,19 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     }
   }
 
+  public final int position() {
+    return (int)(this.addrPosition - this.baseAddress);
+  }
+
   /**
    * {@inheritDoc}
    */
   @Override
   public void flush() throws IOException {
-    if (this.addrPosition > this.baseAddress) {
-      flushBufferBlocking(this.buffer);
+    final ByteBuffer buffer;
+    if (this.addrPosition > this.baseAddress &&
+        (buffer = this.buffer) != null) {
+      flushBufferBlocking(buffer);
     }
   }
 
@@ -206,42 +246,48 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    */
   @Override
   public void close() throws IOException {
-    flushBufferBlocking(this.buffer);
+    flush();
     this.addrPosition = this.addrLimit = 0;
-    UnsafeHolder.releaseDirectBuffer(this.buffer);
+    releaseBuffer();
+  }
+
+  public final boolean validBuffer() {
+    return this.addrLimit != 0;
+  }
+
+  protected final void releaseBuffer() {
+    final ByteBuffer buffer = this.buffer;
+    if (buffer != null) {
+      this.buffer = null;
+      DirectBufferAllocator.instance().release(buffer);
+    }
+  }
+
+  /**
+   * Close the underlying channel in addition to flushing/clearing the buffer.
+   */
+  public void closeChannel() throws IOException {
+    flush();
+    this.addrPosition = this.addrLimit = 0;
+    this.channel.close();
+    releaseBuffer();
   }
 
   protected void flushBufferBlocking(final ByteBuffer buffer)
       throws IOException {
-    buffer.position((int)(this.addrPosition - this.baseAddress));
+    buffer.position(position());
     buffer.flip();
     try {
       do {
-        writeBuffer(buffer);
+        writeBuffer(buffer, this.channel);
       } while (buffer.hasRemaining());
     } finally {
       if (buffer.hasRemaining()) {
         buffer.compact();
-      }
-      else {
+      } else {
         buffer.clear();
       }
       resetBufferPositions();
-    }
-  }
-
-  @Override
-  protected boolean flushBufferNonBlocking(final ByteBuffer buffer,
-      boolean isChannelBuffer) throws IOException {
-    if (isChannelBuffer) {
-      try {
-        return super.flushBufferNonBlocking(buffer, true);
-      } finally {
-        resetBufferPositions();
-      }
-    }
-    else {
-      return super.flushBufferNonBlocking(buffer, false);
     }
   }
 }

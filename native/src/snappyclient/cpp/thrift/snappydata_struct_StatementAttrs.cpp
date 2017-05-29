@@ -112,6 +112,16 @@ void StatementAttrs::__set_pendingTransactionAttrs(const std::map<TransactionAtt
 __isset.pendingTransactionAttrs = true;
 }
 
+void StatementAttrs::__set_bucketIds(const std::set<int32_t> & val) {
+  this->bucketIds = val;
+__isset.bucketIds = true;
+}
+
+void StatementAttrs::__set_bucketIdsTable(const std::string& val) {
+  this->bucketIdsTable = val;
+__isset.bucketIdsTable = true;
+}
+
 uint32_t StatementAttrs::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   uint32_t xfer = 0;
@@ -309,6 +319,35 @@ uint32_t StatementAttrs::read(::apache::thrift::protocol::TProtocol* iprot) {
           xfer += iprot->skip(ftype);
         }
         break;
+      case 18:
+        if (ftype == ::apache::thrift::protocol::T_SET) {
+          {
+            this->bucketIds.clear();
+            uint32_t _size171;
+            ::apache::thrift::protocol::TType _etype174;
+            xfer += iprot->readSetBegin(_etype174, _size171);
+            uint32_t _i175;
+            for (_i175 = 0; _i175 < _size171; ++_i175)
+            {
+              int32_t _elem176;
+              xfer += iprot->readI32(_elem176);
+              this->bucketIds.insert(_elem176);
+            }
+            xfer += iprot->readSetEnd();
+          }
+          this->__isset.bucketIds = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 19:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readString(this->bucketIdsTable);
+          this->__isset.bucketIdsTable = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
       default:
         xfer += iprot->skip(ftype);
         break;
@@ -349,10 +388,10 @@ uint32_t StatementAttrs::write(::apache::thrift::protocol::TProtocol* oprot) con
     xfer += oprot->writeFieldBegin("autoIncColumns", ::apache::thrift::protocol::T_LIST, 5);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->autoIncColumns.size()));
-      std::vector<int32_t> ::const_iterator _iter171;
-      for (_iter171 = this->autoIncColumns.begin(); _iter171 != this->autoIncColumns.end(); ++_iter171)
+      std::vector<int32_t> ::const_iterator _iter177;
+      for (_iter177 = this->autoIncColumns.begin(); _iter177 != this->autoIncColumns.end(); ++_iter177)
       {
-        xfer += oprot->writeI32((*_iter171));
+        xfer += oprot->writeI32((*_iter177));
       }
       xfer += oprot->writeListEnd();
     }
@@ -362,10 +401,10 @@ uint32_t StatementAttrs::write(::apache::thrift::protocol::TProtocol* oprot) con
     xfer += oprot->writeFieldBegin("autoIncColumnNames", ::apache::thrift::protocol::T_LIST, 6);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->autoIncColumnNames.size()));
-      std::vector<std::string> ::const_iterator _iter172;
-      for (_iter172 = this->autoIncColumnNames.begin(); _iter172 != this->autoIncColumnNames.end(); ++_iter172)
+      std::vector<std::string> ::const_iterator _iter178;
+      for (_iter178 = this->autoIncColumnNames.begin(); _iter178 != this->autoIncColumnNames.end(); ++_iter178)
       {
-        xfer += oprot->writeString((*_iter172));
+        xfer += oprot->writeString((*_iter178));
       }
       xfer += oprot->writeListEnd();
     }
@@ -425,14 +464,32 @@ uint32_t StatementAttrs::write(::apache::thrift::protocol::TProtocol* oprot) con
     xfer += oprot->writeFieldBegin("pendingTransactionAttrs", ::apache::thrift::protocol::T_MAP, 17);
     {
       xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_I32, ::apache::thrift::protocol::T_BOOL, static_cast<uint32_t>(this->pendingTransactionAttrs.size()));
-      std::map<TransactionAttribute::type, bool> ::const_iterator _iter173;
-      for (_iter173 = this->pendingTransactionAttrs.begin(); _iter173 != this->pendingTransactionAttrs.end(); ++_iter173)
+      std::map<TransactionAttribute::type, bool> ::const_iterator _iter179;
+      for (_iter179 = this->pendingTransactionAttrs.begin(); _iter179 != this->pendingTransactionAttrs.end(); ++_iter179)
       {
-        xfer += oprot->writeI32((int32_t)_iter173->first);
-        xfer += oprot->writeBool(_iter173->second);
+        xfer += oprot->writeI32((int32_t)_iter179->first);
+        xfer += oprot->writeBool(_iter179->second);
       }
       xfer += oprot->writeMapEnd();
     }
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.bucketIds) {
+    xfer += oprot->writeFieldBegin("bucketIds", ::apache::thrift::protocol::T_SET, 18);
+    {
+      xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->bucketIds.size()));
+      std::set<int32_t> ::const_iterator _iter180;
+      for (_iter180 = this->bucketIds.begin(); _iter180 != this->bucketIds.end(); ++_iter180)
+      {
+        xfer += oprot->writeI32((*_iter180));
+      }
+      xfer += oprot->writeSetEnd();
+    }
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.bucketIdsTable) {
+    xfer += oprot->writeFieldBegin("bucketIdsTable", ::apache::thrift::protocol::T_STRING, 19);
+    xfer += oprot->writeString(this->bucketIdsTable);
     xfer += oprot->writeFieldEnd();
   }
   xfer += oprot->writeFieldStop();
@@ -460,89 +517,99 @@ void swap(StatementAttrs &a, StatementAttrs &b) noexcept {
   swap(a.poolable, b.poolable);
   swap(a.doEscapeProcessing, b.doEscapeProcessing);
   swap(a.pendingTransactionAttrs, b.pendingTransactionAttrs);
+  swap(a.bucketIds, b.bucketIds);
+  swap(a.bucketIdsTable, b.bucketIdsTable);
   swap(a.__isset, b.__isset);
 }
 
-StatementAttrs::StatementAttrs(const StatementAttrs& other174) {
-  resultSetType = other174.resultSetType;
-  updatable = other174.updatable;
-  holdCursorsOverCommit = other174.holdCursorsOverCommit;
-  requireAutoIncCols = other174.requireAutoIncCols;
-  autoIncColumns = other174.autoIncColumns;
-  autoIncColumnNames = other174.autoIncColumnNames;
-  batchSize = other174.batchSize;
-  fetchReverse = other174.fetchReverse;
-  lobChunkSize = other174.lobChunkSize;
-  maxRows = other174.maxRows;
-  maxFieldSize = other174.maxFieldSize;
-  timeout = other174.timeout;
-  cursorName = other174.cursorName;
-  possibleDuplicate = other174.possibleDuplicate;
-  poolable = other174.poolable;
-  doEscapeProcessing = other174.doEscapeProcessing;
-  pendingTransactionAttrs = other174.pendingTransactionAttrs;
-  __isset = other174.__isset;
+StatementAttrs::StatementAttrs(const StatementAttrs& other181) {
+  resultSetType = other181.resultSetType;
+  updatable = other181.updatable;
+  holdCursorsOverCommit = other181.holdCursorsOverCommit;
+  requireAutoIncCols = other181.requireAutoIncCols;
+  autoIncColumns = other181.autoIncColumns;
+  autoIncColumnNames = other181.autoIncColumnNames;
+  batchSize = other181.batchSize;
+  fetchReverse = other181.fetchReverse;
+  lobChunkSize = other181.lobChunkSize;
+  maxRows = other181.maxRows;
+  maxFieldSize = other181.maxFieldSize;
+  timeout = other181.timeout;
+  cursorName = other181.cursorName;
+  possibleDuplicate = other181.possibleDuplicate;
+  poolable = other181.poolable;
+  doEscapeProcessing = other181.doEscapeProcessing;
+  pendingTransactionAttrs = other181.pendingTransactionAttrs;
+  bucketIds = other181.bucketIds;
+  bucketIdsTable = other181.bucketIdsTable;
+  __isset = other181.__isset;
 }
-StatementAttrs::StatementAttrs( StatementAttrs&& other175) noexcept {
-  resultSetType = std::move(other175.resultSetType);
-  updatable = std::move(other175.updatable);
-  holdCursorsOverCommit = std::move(other175.holdCursorsOverCommit);
-  requireAutoIncCols = std::move(other175.requireAutoIncCols);
-  autoIncColumns = std::move(other175.autoIncColumns);
-  autoIncColumnNames = std::move(other175.autoIncColumnNames);
-  batchSize = std::move(other175.batchSize);
-  fetchReverse = std::move(other175.fetchReverse);
-  lobChunkSize = std::move(other175.lobChunkSize);
-  maxRows = std::move(other175.maxRows);
-  maxFieldSize = std::move(other175.maxFieldSize);
-  timeout = std::move(other175.timeout);
-  cursorName = std::move(other175.cursorName);
-  possibleDuplicate = std::move(other175.possibleDuplicate);
-  poolable = std::move(other175.poolable);
-  doEscapeProcessing = std::move(other175.doEscapeProcessing);
-  pendingTransactionAttrs = std::move(other175.pendingTransactionAttrs);
-  __isset = std::move(other175.__isset);
+StatementAttrs::StatementAttrs( StatementAttrs&& other182) noexcept {
+  resultSetType = std::move(other182.resultSetType);
+  updatable = std::move(other182.updatable);
+  holdCursorsOverCommit = std::move(other182.holdCursorsOverCommit);
+  requireAutoIncCols = std::move(other182.requireAutoIncCols);
+  autoIncColumns = std::move(other182.autoIncColumns);
+  autoIncColumnNames = std::move(other182.autoIncColumnNames);
+  batchSize = std::move(other182.batchSize);
+  fetchReverse = std::move(other182.fetchReverse);
+  lobChunkSize = std::move(other182.lobChunkSize);
+  maxRows = std::move(other182.maxRows);
+  maxFieldSize = std::move(other182.maxFieldSize);
+  timeout = std::move(other182.timeout);
+  cursorName = std::move(other182.cursorName);
+  possibleDuplicate = std::move(other182.possibleDuplicate);
+  poolable = std::move(other182.poolable);
+  doEscapeProcessing = std::move(other182.doEscapeProcessing);
+  pendingTransactionAttrs = std::move(other182.pendingTransactionAttrs);
+  bucketIds = std::move(other182.bucketIds);
+  bucketIdsTable = std::move(other182.bucketIdsTable);
+  __isset = std::move(other182.__isset);
 }
-StatementAttrs& StatementAttrs::operator=(const StatementAttrs& other176) {
-  resultSetType = other176.resultSetType;
-  updatable = other176.updatable;
-  holdCursorsOverCommit = other176.holdCursorsOverCommit;
-  requireAutoIncCols = other176.requireAutoIncCols;
-  autoIncColumns = other176.autoIncColumns;
-  autoIncColumnNames = other176.autoIncColumnNames;
-  batchSize = other176.batchSize;
-  fetchReverse = other176.fetchReverse;
-  lobChunkSize = other176.lobChunkSize;
-  maxRows = other176.maxRows;
-  maxFieldSize = other176.maxFieldSize;
-  timeout = other176.timeout;
-  cursorName = other176.cursorName;
-  possibleDuplicate = other176.possibleDuplicate;
-  poolable = other176.poolable;
-  doEscapeProcessing = other176.doEscapeProcessing;
-  pendingTransactionAttrs = other176.pendingTransactionAttrs;
-  __isset = other176.__isset;
+StatementAttrs& StatementAttrs::operator=(const StatementAttrs& other183) {
+  resultSetType = other183.resultSetType;
+  updatable = other183.updatable;
+  holdCursorsOverCommit = other183.holdCursorsOverCommit;
+  requireAutoIncCols = other183.requireAutoIncCols;
+  autoIncColumns = other183.autoIncColumns;
+  autoIncColumnNames = other183.autoIncColumnNames;
+  batchSize = other183.batchSize;
+  fetchReverse = other183.fetchReverse;
+  lobChunkSize = other183.lobChunkSize;
+  maxRows = other183.maxRows;
+  maxFieldSize = other183.maxFieldSize;
+  timeout = other183.timeout;
+  cursorName = other183.cursorName;
+  possibleDuplicate = other183.possibleDuplicate;
+  poolable = other183.poolable;
+  doEscapeProcessing = other183.doEscapeProcessing;
+  pendingTransactionAttrs = other183.pendingTransactionAttrs;
+  bucketIds = other183.bucketIds;
+  bucketIdsTable = other183.bucketIdsTable;
+  __isset = other183.__isset;
   return *this;
 }
-StatementAttrs& StatementAttrs::operator=(StatementAttrs&& other177) noexcept {
-  resultSetType = std::move(other177.resultSetType);
-  updatable = std::move(other177.updatable);
-  holdCursorsOverCommit = std::move(other177.holdCursorsOverCommit);
-  requireAutoIncCols = std::move(other177.requireAutoIncCols);
-  autoIncColumns = std::move(other177.autoIncColumns);
-  autoIncColumnNames = std::move(other177.autoIncColumnNames);
-  batchSize = std::move(other177.batchSize);
-  fetchReverse = std::move(other177.fetchReverse);
-  lobChunkSize = std::move(other177.lobChunkSize);
-  maxRows = std::move(other177.maxRows);
-  maxFieldSize = std::move(other177.maxFieldSize);
-  timeout = std::move(other177.timeout);
-  cursorName = std::move(other177.cursorName);
-  possibleDuplicate = std::move(other177.possibleDuplicate);
-  poolable = std::move(other177.poolable);
-  doEscapeProcessing = std::move(other177.doEscapeProcessing);
-  pendingTransactionAttrs = std::move(other177.pendingTransactionAttrs);
-  __isset = std::move(other177.__isset);
+StatementAttrs& StatementAttrs::operator=(StatementAttrs&& other184) noexcept {
+  resultSetType = std::move(other184.resultSetType);
+  updatable = std::move(other184.updatable);
+  holdCursorsOverCommit = std::move(other184.holdCursorsOverCommit);
+  requireAutoIncCols = std::move(other184.requireAutoIncCols);
+  autoIncColumns = std::move(other184.autoIncColumns);
+  autoIncColumnNames = std::move(other184.autoIncColumnNames);
+  batchSize = std::move(other184.batchSize);
+  fetchReverse = std::move(other184.fetchReverse);
+  lobChunkSize = std::move(other184.lobChunkSize);
+  maxRows = std::move(other184.maxRows);
+  maxFieldSize = std::move(other184.maxFieldSize);
+  timeout = std::move(other184.timeout);
+  cursorName = std::move(other184.cursorName);
+  possibleDuplicate = std::move(other184.possibleDuplicate);
+  poolable = std::move(other184.poolable);
+  doEscapeProcessing = std::move(other184.doEscapeProcessing);
+  pendingTransactionAttrs = std::move(other184.pendingTransactionAttrs);
+  bucketIds = std::move(other184.bucketIds);
+  bucketIdsTable = std::move(other184.bucketIdsTable);
+  __isset = std::move(other184.__isset);
   return *this;
 }
 void StatementAttrs::printTo(std::ostream& out) const {
@@ -565,6 +632,8 @@ void StatementAttrs::printTo(std::ostream& out) const {
   out << ", " << "poolable="; (__isset.poolable ? (out << to_string(poolable)) : (out << "<null>"));
   out << ", " << "doEscapeProcessing="; (__isset.doEscapeProcessing ? (out << to_string(doEscapeProcessing)) : (out << "<null>"));
   out << ", " << "pendingTransactionAttrs="; (__isset.pendingTransactionAttrs ? (out << to_string(pendingTransactionAttrs)) : (out << "<null>"));
+  out << ", " << "bucketIds="; (__isset.bucketIds ? (out << to_string(bucketIds)) : (out << "<null>"));
+  out << ", " << "bucketIdsTable="; (__isset.bucketIdsTable ? (out << to_string(bucketIdsTable)) : (out << "<null>"));
   out << ")";
 }
 

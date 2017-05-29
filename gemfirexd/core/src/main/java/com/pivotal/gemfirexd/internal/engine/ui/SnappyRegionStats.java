@@ -17,7 +17,14 @@
 
 package com.pivotal.gemfirexd.internal.engine.ui;
 
-public class SnappyRegionStats {
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+import com.gemstone.gemfire.DataSerializable;
+import com.gemstone.gemfire.DataSerializer;
+
+public class SnappyRegionStats implements DataSerializable {
 
   private boolean isColumnTable = false;
   private String regionName;
@@ -25,6 +32,8 @@ public class SnappyRegionStats {
   private long sizeInMemory = 0;
   private long totalSize = 0;
   private Boolean isReplicatedTable = false;
+
+  public SnappyRegionStats() {}
 
   public SnappyRegionStats(String regionName) {
     this.regionName = regionName;
@@ -104,5 +113,25 @@ public class SnappyRegionStats {
     combinedStats.setColumnTable(this.isColumnTable || stats.isColumnTable);
     combinedStats.setReplicatedTable(this.isReplicatedTable());
     return combinedStats;
+  }
+
+  @Override
+  public void toData(final DataOutput out) throws IOException {
+    DataSerializer.writeString(regionName, out);
+    out.writeLong(totalSize);
+    out.writeLong(sizeInMemory);
+    out.writeLong(rowCount);
+    out.writeBoolean(isColumnTable);
+    out.writeBoolean(isReplicatedTable);
+  }
+
+  @Override
+  public void fromData(DataInput in) throws IOException, ClassNotFoundException {
+    this.regionName = DataSerializer.readString(in);
+    this.totalSize = in.readLong();
+    this.sizeInMemory = in.readLong();
+    this.rowCount = in.readLong();
+    this.isColumnTable = in.readBoolean();
+    this.isReplicatedTable = in.readBoolean();
   }
 }

@@ -111,14 +111,14 @@ uint32_t RowSet::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->rows.clear();
-            uint32_t _size229;
-            ::apache::thrift::protocol::TType _etype232;
-            xfer += iprot->readListBegin(_etype232, _size229);
-            this->rows.resize(_size229);
-            uint32_t _i233;
-            for (_i233 = 0; _i233 < _size229; ++_i233)
+            uint32_t _size236;
+            ::apache::thrift::protocol::TType _etype239;
+            xfer += iprot->readListBegin(_etype239, _size236);
+            this->rows.resize(_size236);
+            uint32_t _i240;
+            for (_i240 = 0; _i240 < _size236; ++_i240)
             {
-              xfer += this->rows[_i233].read(iprot);
+              xfer += this->rows[_i240].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -187,14 +187,14 @@ uint32_t RowSet::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->metadata.clear();
-            uint32_t _size234;
-            ::apache::thrift::protocol::TType _etype237;
-            xfer += iprot->readListBegin(_etype237, _size234);
-            this->metadata.resize(_size234);
-            uint32_t _i238;
-            for (_i238 = 0; _i238 < _size234; ++_i238)
+            uint32_t _size241;
+            ::apache::thrift::protocol::TType _etype244;
+            xfer += iprot->readListBegin(_etype244, _size241);
+            this->metadata.resize(_size241);
+            uint32_t _i245;
+            for (_i245 = 0; _i245 < _size241; ++_i245)
             {
-              xfer += this->metadata[_i238].read(iprot);
+              xfer += this->metadata[_i245].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -223,14 +223,14 @@ uint32_t RowSet::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->rowIdsForUpdateOrDelete.clear();
-            uint32_t _size239;
-            ::apache::thrift::protocol::TType _etype242;
-            xfer += iprot->readListBegin(_etype242, _size239);
-            this->rowIdsForUpdateOrDelete.resize(_size239);
-            uint32_t _i243;
-            for (_i243 = 0; _i243 < _size239; ++_i243)
+            uint32_t _size246;
+            ::apache::thrift::protocol::TType _etype249;
+            xfer += iprot->readListBegin(_etype249, _size246);
+            this->rowIdsForUpdateOrDelete.resize(_size246);
+            uint32_t _i250;
+            for (_i250 = 0; _i250 < _size246; ++_i250)
             {
-              xfer += iprot->readI64(this->rowIdsForUpdateOrDelete[_i243]);
+              xfer += iprot->readI64(this->rowIdsForUpdateOrDelete[_i250]);
             }
             xfer += iprot->readListEnd();
           }
@@ -268,10 +268,10 @@ uint32_t RowSet::write(::apache::thrift::protocol::TProtocol* oprot) const {
   xfer += oprot->writeFieldBegin("rows", ::apache::thrift::protocol::T_LIST, 1);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->rows.size()));
-    std::vector<Row> ::const_iterator _iter244;
-    for (_iter244 = this->rows.begin(); _iter244 != this->rows.end(); ++_iter244)
+    std::vector<Row> ::const_iterator _iter251;
+    for (_iter251 = this->rows.begin(); _iter251 != this->rows.end(); ++_iter251)
     {
-      xfer += (*_iter244).write(oprot);
+      xfer += (*_iter251).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -312,10 +312,10 @@ uint32_t RowSet::write(::apache::thrift::protocol::TProtocol* oprot) const {
     xfer += oprot->writeFieldBegin("metadata", ::apache::thrift::protocol::T_LIST, 9);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->metadata.size()));
-      std::vector<ColumnDescriptor> ::const_iterator _iter245;
-      for (_iter245 = this->metadata.begin(); _iter245 != this->metadata.end(); ++_iter245)
+      std::vector<ColumnDescriptor> ::const_iterator _iter252;
+      for (_iter252 = this->metadata.begin(); _iter252 != this->metadata.end(); ++_iter252)
       {
-        xfer += (*_iter245).write(oprot);
+        xfer += (*_iter252).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -335,10 +335,10 @@ uint32_t RowSet::write(::apache::thrift::protocol::TProtocol* oprot) const {
     xfer += oprot->writeFieldBegin("rowIdsForUpdateOrDelete", ::apache::thrift::protocol::T_LIST, 12);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I64, static_cast<uint32_t>(this->rowIdsForUpdateOrDelete.size()));
-      std::vector<int64_t> ::const_iterator _iter246;
-      for (_iter246 = this->rowIdsForUpdateOrDelete.begin(); _iter246 != this->rowIdsForUpdateOrDelete.end(); ++_iter246)
+      std::vector<int64_t> ::const_iterator _iter253;
+      for (_iter253 = this->rowIdsForUpdateOrDelete.begin(); _iter253 != this->rowIdsForUpdateOrDelete.end(); ++_iter253)
       {
-        xfer += oprot->writeI64((*_iter246));
+        xfer += oprot->writeI64((*_iter253));
       }
       xfer += oprot->writeListEnd();
     }
@@ -367,66 +367,66 @@ void swap(RowSet &a, RowSet &b) noexcept {
   swap(a.__isset, b.__isset);
 }
 
-RowSet::RowSet(const RowSet& other247) {
-  rows = other247.rows;
-  flags = other247.flags;
-  cursorId = other247.cursorId;
-  statementId = other247.statementId;
-  connId = other247.connId;
-  token = other247.token;
-  source = other247.source;
-  offset = other247.offset;
-  metadata = other247.metadata;
-  cursorName = other247.cursorName;
-  warnings = other247.warnings;
-  rowIdsForUpdateOrDelete = other247.rowIdsForUpdateOrDelete;
-  __isset = other247.__isset;
+RowSet::RowSet(const RowSet& other254) {
+  rows = other254.rows;
+  flags = other254.flags;
+  cursorId = other254.cursorId;
+  statementId = other254.statementId;
+  connId = other254.connId;
+  token = other254.token;
+  source = other254.source;
+  offset = other254.offset;
+  metadata = other254.metadata;
+  cursorName = other254.cursorName;
+  warnings = other254.warnings;
+  rowIdsForUpdateOrDelete = other254.rowIdsForUpdateOrDelete;
+  __isset = other254.__isset;
 }
-RowSet::RowSet( RowSet&& other248) noexcept {
-  rows = std::move(other248.rows);
-  flags = std::move(other248.flags);
-  cursorId = std::move(other248.cursorId);
-  statementId = std::move(other248.statementId);
-  connId = std::move(other248.connId);
-  token = std::move(other248.token);
-  source = std::move(other248.source);
-  offset = std::move(other248.offset);
-  metadata = std::move(other248.metadata);
-  cursorName = std::move(other248.cursorName);
-  warnings = std::move(other248.warnings);
-  rowIdsForUpdateOrDelete = std::move(other248.rowIdsForUpdateOrDelete);
-  __isset = std::move(other248.__isset);
+RowSet::RowSet( RowSet&& other255) noexcept {
+  rows = std::move(other255.rows);
+  flags = std::move(other255.flags);
+  cursorId = std::move(other255.cursorId);
+  statementId = std::move(other255.statementId);
+  connId = std::move(other255.connId);
+  token = std::move(other255.token);
+  source = std::move(other255.source);
+  offset = std::move(other255.offset);
+  metadata = std::move(other255.metadata);
+  cursorName = std::move(other255.cursorName);
+  warnings = std::move(other255.warnings);
+  rowIdsForUpdateOrDelete = std::move(other255.rowIdsForUpdateOrDelete);
+  __isset = std::move(other255.__isset);
 }
-RowSet& RowSet::operator=(const RowSet& other249) {
-  rows = other249.rows;
-  flags = other249.flags;
-  cursorId = other249.cursorId;
-  statementId = other249.statementId;
-  connId = other249.connId;
-  token = other249.token;
-  source = other249.source;
-  offset = other249.offset;
-  metadata = other249.metadata;
-  cursorName = other249.cursorName;
-  warnings = other249.warnings;
-  rowIdsForUpdateOrDelete = other249.rowIdsForUpdateOrDelete;
-  __isset = other249.__isset;
+RowSet& RowSet::operator=(const RowSet& other256) {
+  rows = other256.rows;
+  flags = other256.flags;
+  cursorId = other256.cursorId;
+  statementId = other256.statementId;
+  connId = other256.connId;
+  token = other256.token;
+  source = other256.source;
+  offset = other256.offset;
+  metadata = other256.metadata;
+  cursorName = other256.cursorName;
+  warnings = other256.warnings;
+  rowIdsForUpdateOrDelete = other256.rowIdsForUpdateOrDelete;
+  __isset = other256.__isset;
   return *this;
 }
-RowSet& RowSet::operator=(RowSet&& other250) noexcept {
-  rows = std::move(other250.rows);
-  flags = std::move(other250.flags);
-  cursorId = std::move(other250.cursorId);
-  statementId = std::move(other250.statementId);
-  connId = std::move(other250.connId);
-  token = std::move(other250.token);
-  source = std::move(other250.source);
-  offset = std::move(other250.offset);
-  metadata = std::move(other250.metadata);
-  cursorName = std::move(other250.cursorName);
-  warnings = std::move(other250.warnings);
-  rowIdsForUpdateOrDelete = std::move(other250.rowIdsForUpdateOrDelete);
-  __isset = std::move(other250.__isset);
+RowSet& RowSet::operator=(RowSet&& other257) noexcept {
+  rows = std::move(other257.rows);
+  flags = std::move(other257.flags);
+  cursorId = std::move(other257.cursorId);
+  statementId = std::move(other257.statementId);
+  connId = std::move(other257.connId);
+  token = std::move(other257.token);
+  source = std::move(other257.source);
+  offset = std::move(other257.offset);
+  metadata = std::move(other257.metadata);
+  cursorName = std::move(other257.cursorName);
+  warnings = std::move(other257.warnings);
+  rowIdsForUpdateOrDelete = std::move(other257.rowIdsForUpdateOrDelete);
+  __isset = std::move(other257.__isset);
   return *this;
 }
 void RowSet::printTo(std::ostream& out) const {

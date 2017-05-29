@@ -352,4 +352,5 @@ public interface CacheTransactionManager {
      * @since 6.5
      */
     public TransactionWriter getWriter();
+
 }

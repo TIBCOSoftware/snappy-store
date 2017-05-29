@@ -704,7 +704,7 @@ public final class GemFireTransaction extends RawTransaction implements
    *          DOCUMENT ME!
    * @param dynamic_info
    *          DOCUMENT ME!
-   * @param fc
+   * @param act
    *          DOCUMENT ME!
    * 
    * @return DOCUMENT ME!
@@ -1008,7 +1008,8 @@ public final class GemFireTransaction extends RawTransaction implements
     if (container != null) {
       if (GemFireXDUtils.TraceConglom
           || (container.isApplicationTableOrGlobalIndex() && !"SYSSTAT"
-              .equalsIgnoreCase(container.getSchemaName()))) {
+              .equalsIgnoreCase(container.getSchemaName())
+          && !Misc.isSnappyHiveMetaTable((container.getSchemaName())))) {
         SanityManager.DEBUG_PRINT("info:" + GfxdConstants.TRACE_CONGLOM,
             "GemFireTransaction TX " + (GemFireXDUtils.TraceConglom ? toString()
                 : Long.toString(this.myId)) + ": created conglomerate with id "
@@ -2244,6 +2245,8 @@ public final class GemFireTransaction extends RawTransaction implements
     // but don't release the locks yet since it must be done after GFE commit
     waitForPendingRC();
 
+    // don't commit the transaction started by gemfire.
+
     if (tx != null) {
       // should never happen on remote node
       final LanguageConnectionContext lcc = getLanguageConnectionContext();
@@ -2253,8 +2256,11 @@ public final class GemFireTransaction extends RawTransaction implements
                 "unexpected commit on remote node or from function execution"));
       }
       try {
-        context = this.txManager.commit(tx, this.connectionID, commitPhase,
-            context, false);
+        TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
+        if (tx != gfTx) {
+          context = this.txManager.commit(tx, this.connectionID, commitPhase,
+              context, false);
+        }
         if (commitPhase != TXManagerImpl.PHASE_ONE_COMMIT) {
           postComplete(commitflag, true);
           setTXState(null);
@@ -2443,8 +2449,12 @@ public final class GemFireTransaction extends RawTransaction implements
         if (lcc != null && !lcc.isConnectionForRemote()
             // also don't rollback when no connection ID i.e. nested connection
             && this.connectionID.longValue() >= 0) {
-          this.txManager.rollback(tx, this.connectionID, false);
-          setTXState(null);
+          // In case, the tx is started by gemfire layer for snapshot, it should be rollbacked by gemfire layer.
+          TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
+          if (tx != gfTx) {
+            this.txManager.rollback(tx, this.connectionID, false);
+            setTXState(null);
+          }
         }
       }
 
@@ -2884,6 +2894,13 @@ public final class GemFireTransaction extends RawTransaction implements
   @Override
   public void beginTransaction(final IsolationLevel isolationLevel)
       throws StandardException {
+    if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery
+        || GemFireXDUtils.TraceNCJ) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+          "GemFireTransaction: beginTransaction: "
+              + " requested isolation "
+              + isolationLevel);
+    }
     beginTransaction(isolationLevel, null);
   }
 
@@ -2894,11 +2911,15 @@ public final class GemFireTransaction extends RawTransaction implements
       final TXId txId) throws StandardException {
     if (this.txManager != null) {
       final TXStateInterface tx = this.txState;
-      if (tx != null && tx != TXStateProxy.TX_NOT_SET) {
+      final TXStateInterface gemfireTx = TXManagerImpl.snapshotTxState.get();
+
+      if (tx != null && tx != TXStateProxy.TX_NOT_SET && gemfireTx != tx) {
         this.txManager.commit(tx, this.connectionID, TXManagerImpl.FULL_COMMIT,
             null, false);
       }
-      if (isolationLevel != IsolationLevel.NONE) {
+      // now start tx for every operation.
+      if (isolationLevel != IsolationLevel.NONE /*|| isSnapshotEnabled()*/) {
+
         // clear old GemFire TXState in thread-local, if any
         final TXManagerImpl.TXContext context = TXManagerImpl
             .getOrCreateTXContext();
@@ -2914,13 +2935,14 @@ public final class GemFireTransaction extends RawTransaction implements
           txFlags = null;
           cm = getContextManager();
         }
+
         final TXStateInterface newTX;
-        final boolean beginTxn = txId == null;
+        final boolean beginTxn = (txId == null);
+
         if (beginTxn) {
           newTX = this.txManager
               .beginTX(context, isolationLevel, txFlags, txId);
-        }
-        else {
+        } else {
           newTX = this.txManager.resumeTX(context, isolationLevel, txFlags,
               txId);
         }
@@ -2940,8 +2962,32 @@ public final class GemFireTransaction extends RawTransaction implements
                   + ", to transaction: " + toString() + " requested isolation "
                   + isolationLevel);
         }
-      }
-      else {
+      } else if (gemfireTx != null/*TXStateProxy.TX_NOT_SET*/) {
+        final LanguageConnectionContext lcc = getLanguageConnectionContext();
+        final ContextManager cm;
+        if (lcc != null) {
+          cm = lcc.getContextManager();
+        } else {
+          cm = getContextManager();
+        }
+        setTXState(gemfireTx);
+        getTransactionManager().masqueradeAs(gemfireTx);
+        //Don't setthe TXId in EmbedConnection finalizer the commit must be called
+        // explicitely.
+        /*final EmbedConnection conn = EmbedConnectionContext
+            .getEmbedConnection(cm);
+        if (conn != null) {
+          conn.setTXIdForFinalizer(gemfireTx.getTransactionId());
+        }*/
+        if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery
+            || GemFireXDUtils.TraceNCJ) {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+              "GemFireTransaction: beginTransaction: "
+                  + "gemfire TX state being assigned: " + gemfireTx
+                  + ", to transaction: " + toString() + " requested isolation "
+                  + gemfireTx.getIsolationLevel());
+        }
+      } else {
         if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery
             || GemFireXDUtils.TraceNCJ) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
@@ -3371,19 +3417,25 @@ public final class GemFireTransaction extends RawTransaction implements
 
   private final TXStateInterface getActiveTXState(final TXStateInterface myTX) {
     final IsolationLevel isolationLevel = this.isolationLevel;
+    final TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
     if (isolationLevel != IsolationLevel.NONE) {
       if (myTX != null && myTX != TXStateProxy.TX_NOT_SET) {
         return myTX;
       }
     }
-    else if (myTX == null) {
+    else if (myTX == null && gfTx == null) {
       return null;
     }
 
     final TXStateInterface tx = getTXState(myTX);
-    if (tx != null || isolationLevel == IsolationLevel.NONE) {
+    if (tx != null) {
       return tx;
     }
+    if (isolationLevel == IsolationLevel.NONE &&
+        gfTx == null) {
+      return tx;
+    }
+
     // never start a new transaction at this point on a remote node
     final LanguageConnectionContext lcc = getLanguageConnectionContext();
     if (lcc == null || lcc.isConnectionForRemote()) {
@@ -3468,7 +3520,7 @@ public final class GemFireTransaction extends RawTransaction implements
 
   @Override
   public final boolean isTransactional() {
-    return this.isolationLevel != IsolationLevel.NONE;
+    return (this.isolationLevel != IsolationLevel.NONE);
   }
 
   public final TXStateInterface getSuspendedTXState() {
@@ -3550,6 +3602,7 @@ public final class GemFireTransaction extends RawTransaction implements
               + " clearing cached GFE transaction = " + clearGFETX
               + " with thread-local TX " + TXManagerImpl.getCurrentTXState());
     }
+
     setTXState(null);
     if (clearGFETX) {
       TXManagerImpl.getOrCreateTXContext().clearTXState();
@@ -3560,7 +3613,7 @@ public final class GemFireTransaction extends RawTransaction implements
     setActiveState();
   }
 
-  public final void resetActiveTXState() {
+  public final void resetActiveTXState(final boolean clearIsolationLevel) {
     assert this.txManager != null: "unexpected null TXManagerImpl";
 
     if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery) {
@@ -3570,6 +3623,9 @@ public final class GemFireTransaction extends RawTransaction implements
               + TXManagerImpl.getCurrentTXState());
     }
     setTXState(TXStateProxy.TX_NOT_SET);
+    if (clearIsolationLevel) {
+      this.isolationLevel = IsolationLevel.NONE;
+    }
     // force a volatile write
     setActiveState();
   }

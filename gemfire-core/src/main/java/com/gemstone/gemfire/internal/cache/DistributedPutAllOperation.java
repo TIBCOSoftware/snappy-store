@@ -31,7 +31,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.Operation;
@@ -60,6 +59,9 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 
@@ -954,7 +956,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   protected CacheOperationMessage createMessage()
  {
     EntryEventImpl event = getEvent();
-    PutAllMessage msg = new PutAllMessage();
+    PutAllMessage msg = new PutAllMessage(event.getTXState());
     msg.eventId = event.getEventId();
     msg.context = event.getContext();
     msg.lastModified = event.getEntryLastModified();
@@ -1142,6 +1144,11 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   public static class PutAllMessage extends AbstractUpdateMessage
    {
 
+     public PutAllMessage(){}
+     public PutAllMessage(TXStateInterface tx) {
+       super(tx);
+     }
+
     protected PutAllEntryData[] putAllData;
 
     protected int putAllDataSize;
@@ -1212,7 +1219,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
      */
     protected final void doEntryPut(PutAllEntryData entry,
         DistributedRegion rgn, boolean requiresRegionContext,
-        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML, long lastModifiedTime) {
+        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML, long lastModifiedTime, UMMMemoryTracker memoryTracker) {
       EntryEventImpl ev = PutAllMessage.createEntryEvent(entry, getSender(),
           this.context, rgn, requiresRegionContext, this.possibleDuplicate,
           this.needsRouting, this.callbackArg, true, skipCallbacks,
@@ -1221,6 +1228,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         ev.setEntryLastModified(lastModifiedTime);
       ev.setFetchFromHDFS(fetchFromHDFS);
       ev.setPutDML(isPutDML);
+      ev.setBufferedMemoryTracker(memoryTracker);
 //      rgn.getLogWriterI18n().info(LocalizedStrings.DEBUG, "PutAllOp.doEntryPut sender=" + getSender() +
 //          " event="+ev);
       // we don't need to set old value here, because the msg is from remote. local old value will get from next step
@@ -1229,7 +1237,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       } finally {
         if (ev.getVersionTag() != null && !ev.getVersionTag().isRecorded()) {
           if (rgn.getVersionVector() != null) {
-            rgn.getVersionVector().recordVersion(getSender(), ev.getVersionTag());
+            rgn.getVersionVector().recordVersion(getSender(), ev.getVersionTag(), ev);
           }
         }
         ev.release();
@@ -1308,7 +1316,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
     }
 
-     @Override
+    @Override
     protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn)
     {
       for (int i = 0; i < putAllDataSize; ++i) {
@@ -1318,19 +1326,52 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
       
       final TXStateInterface tx = ev.getTXState(rgn);
-
-      rgn.syncPutAll(tx, new Runnable() {
-        public void run() {
-          final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
-          for (int i = 0; i < putAllDataSize; ++i) {
-            if (rgn.getLogWriterI18n().finerEnabled()) {
-              rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
+      TXManagerImpl txMgr = null;
+      TXManagerImpl.TXContext context = null;
+      if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+        txMgr = rgn.getCache().getTxManager();
+        context = txMgr.masqueradeAs(this, false,
+            true);
+        ev.setTXState(getTXState());
+      }
+      ev.setTXState(tx);
+      try {
+        rgn.syncPutAll(tx, new Runnable() {
+          public void run() {
+            UMMMemoryTracker memoryTracker = null;
+            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                    && !rgn.isInternalColumnTable()) {
+              memoryTracker = new UMMMemoryTracker(
+                      Thread.currentThread().getId(), putAllDataSize);
             }
-            putAllData[i].setSender(sender);
-            doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified());
+            try {
+              final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
+              for (int i = 0; i < putAllDataSize; ++i) {
+                if (rgn.getLogWriterI18n().finerEnabled()) {
+                  rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
+                }
+                putAllData[i].setSender(sender);
+                doEntryPut(putAllData[i], rgn, requiresRegionContext, tx,
+                    fetchFromHDFS, isPutDML, ev.getEntryLastModified(), memoryTracker);
+              }
+            } finally {
+              if (memoryTracker != null) {
+                long unusedMemory = memoryTracker.freeMemory();
+                if (unusedMemory > 0) {
+                  CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
+                          memoryTracker.getFirstAllocationObject(), unusedMemory, false);
+                }
+              }
+            }
+
           }
+        }, ev.getEventId());
+      }
+      finally {
+        if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+          txMgr.unmasquerade(context, true);
         }
-      }, ev.getEventId());
+      }
     }
 
     public int getDSFID() {

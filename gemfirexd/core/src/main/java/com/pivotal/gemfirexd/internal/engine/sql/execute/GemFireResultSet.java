@@ -726,9 +726,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
         this.gfContainer.getSchemaName(), this.gfContainer.getTableName(),
         gfKey);
     final DistributedSystem sys = region.getSystem();
-    GfxdPartitionResolver gfxdPart = (GfxdPartitionResolver)gfContainer
-        .getRegionAttributes().getPartitionAttributes().getPartitionResolver();
-    DistributionDescriptor dd = gfxdPart.getDistributionDescriptor();
+    DistributionDescriptor dd = gfContainer.getDistributionDescriptor();
     Set<String> serverGroups = dd.getServerGroups();
     ServerGroupUtils.GetServerGroupMembers members = new ServerGroupUtils
         .GetServerGroupMembers(serverGroups, true);

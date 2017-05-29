@@ -27,6 +27,8 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
+import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLClob;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.Token;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
@@ -61,32 +63,20 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
     GfxdResultCollector<Object> rc = null;
     rc = getResultCollector(enableStreaming, rs);
 
-    // Removing check on getIsPrepStmntQuery, as it returns wrong flag value when running select * query (from tableau)
-    // if (this.getIsPrepStmntQuery() && this.pvs != null)
     if (this.pvs != null) {
-      final String querySql;
-      if (this.pvs.getParameterCount() > 0) {
-        querySql = getModifiedSql();
-        if (GemFireXDUtils.TraceQuery) {
-          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-              "PrepStatementSnappyActivation.executeWithResultSet: " +
-              "modified-sql=" + querySql);
-        }
-      } else {
-        if (GemFireXDUtils.TraceQuery) {
-          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-              "PrepStatementSnappyActivation.executeWithResultSet: " +
-              "No dynamic parameters for sql=" + this.sql);
-        }
-        querySql = this.sql;
+      if (GemFireXDUtils.TraceQuery) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+            "PrepStatementSnappyActivation.executeWithResultSet: " +
+                "No dynamic parameters for sql=" + this.sql);
       }
       SnappyActivation.executeOnLeadNode((SnappySelectResultSet)rs, rc,
-          querySql, enableStreaming, this.getConnectionID(), lcc.getCurrentSchemaName());
+          this.sql, enableStreaming, this.getConnectionID(), lcc.getCurrentSchemaName(),
+          this.pvs, true);
     } else {
       throw StandardException.newException(
           SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
           "Not a prepared statement. Sql=" + this.sql + " ,isPrepStmt=" +
-          this.getIsPrepStmntQuery() + " ,pvs=" + this.pvs);
+              this.getIsPrepStmntQuery() + " ,pvs=" + this.pvs);
     }
   }
 
@@ -98,64 +88,5 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
 
   public void setResultDescription(GenericResultDescription resultDescription) {
     this.resultDescription = resultDescription;
-  }
-
-  private String getModifiedSql() throws StandardException {
-    String errorMsg = "";
-    if (this.preStmt instanceof GenericPreparedStatement) {
-      GenericPreparedStatement gps = (GenericPreparedStatement)this.preStmt;
-      List<Token> tokenList = gps.getDynamicTokenList();
-      if (tokenList != null) {
-        final StringBuilder modifiedSqlStr = new StringBuilder(this.sql.length());
-        if (tokenList.size() != 0) {
-          if (tokenList.size() == this.pvs.getParameterCount()) {
-            if (GemFireXDUtils.TraceQuery) {
-              SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-                  "PrepStatementSnappyActivation.getModifiedSql. Got sql=" + sql
-                      + " ,#tokens=" + tokenList.size() + " ,#params"
-                      + this.pvs.getParameterCount() + " ,pvs=" + this.pvs
-                      + " ,tokens=" + tokenList);
-            }
-            int startPos = 0;
-            int i = 0;
-            for (final Token v : tokenList) {
-              final int beginC = v.beginOffset;
-              final String str = this.sql.substring(startPos, beginC);
-              startPos = v.endOffset + 1;
-              modifiedSqlStr.append(str).append(" ").append(pvs
-                  .getParameter(i++).toString()).append(" ");
-            }
-
-            final int cLen = this.sql.length();
-            if (startPos < cLen) {
-              final String str = this.sql.substring(startPos, cLen);
-              modifiedSqlStr.append(str);
-            }
-            return modifiedSqlStr.toString();
-          } else {
-            errorMsg = "For SQL: " + sql + " ,Unequal: #tokens=" +
-                tokenList.size() + " ,#params=" + this.pvs.getParameterCount() +
-                " ,tokens=" + tokenList + " ,params=" + this.pvs;
-          }
-        } else {
-          errorMsg = "For SQL: " + sql + " , 0 tokens." + " #params" +
-              this.pvs.getParameterCount() + " ,params=" + this.pvs;
-        }
-      } else {
-        errorMsg = "For SQL: " + sql + " , Null token list." + " #params" +
-            this.pvs.getParameterCount() + " ,params=" + this.pvs;
-      }
-    } else {
-      errorMsg = "Not GenericPreparedStatement SQL: " + sql + " ,but " +
-          this.preStmt.getClass().getSimpleName();
-    }
-    if (GemFireXDUtils.TraceQuery) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-          "PrepStatementSnappyActivation.getModifiedSql. Error. sql=" + sql
-              + " ,pvs=" + this.pvs
-              + " ,error=" + errorMsg);
-    }
-    throw StandardException.newException(
-        SQLState.LANG_UNEXPECTED_USER_EXCEPTION, errorMsg);
   }
 }

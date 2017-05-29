@@ -132,6 +132,8 @@ public interface GfxdConstants {
    */
   final String REGION_INITSIZE_KEY = "GEMFIRE_REGION_INITSIZE";
 
+  String TABLE_ROW_ENCODER_CLASS_KEY = "TABLE_ROW_ENCODER_CLASS";
+
   /**
    * this string is used to pass the DistributionDescriptor between the
    * CreateTableNode and CreateTableConstantAction. It could be better just
@@ -488,6 +490,7 @@ public interface GfxdConstants {
           Attribute.THRIFT_USE_SSL,
           Attribute.THRIFT_SSL_PROPERTIES,
           Attribute.PREFER_NETSERVER_IP_ADDRESS,
+          Attribute.HOSTNAME_FOR_CLIENTS,
           Attribute.QUERY_HDFS,
           Attribute.NCJ_BATCH_SIZE,
           Attribute.NCJ_CACHE_SIZE,

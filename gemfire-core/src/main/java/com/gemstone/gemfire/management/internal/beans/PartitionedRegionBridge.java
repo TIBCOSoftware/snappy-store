@@ -22,6 +22,7 @@ import java.util.Set;
 import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
@@ -342,7 +343,7 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
   public long getRowsInReservoir() {
     if (parRegion.isDataStore()) {
       int numLocalEntries = 0;
-      Iterator itr = parRegion.localEntriesIterator(null, true, false, true, null);
+      Iterator itr = parRegion.localEntriesIterator((InternalRegionFunctionContext)null, true, false, true, null);
       while (itr.hasNext()) {
         RegionEntry re = (RegionEntry)itr.next();
         Sizeable value = (Sizeable)re._getValue();

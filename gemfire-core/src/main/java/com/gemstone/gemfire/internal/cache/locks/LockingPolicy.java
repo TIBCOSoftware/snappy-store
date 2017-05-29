@@ -461,6 +461,75 @@ public enum LockingPolicy {
       return lockObj.hasExclusiveLock(owner, context);
     }
   },
+  /**
+   * Defines a snapshot locking policy. i.e. no lock.
+   * we can add lock later for write to detect write write conflict.
+   * read can start tx
+   * This is default lock policy for Transaction isolation level NONE.
+   */
+  SNAPSHOT {
+
+    @Override
+    public LockMode getReadLockMode() {
+      return null;
+    }
+
+    @Override
+    public LockMode getWriteLockMode() {
+      return null;
+    }
+
+    @Override
+    public LockMode getReadOnlyLockMode() {
+      return null;
+    }
+
+    @Override
+    public boolean readCanStartTX() {
+      return true;
+    }
+
+    @Override
+    public boolean readOnlyCanStartTX() {
+      return true;
+    }
+
+    @Override
+    public final void acquireLock(ExclusiveSharedLockObject lockObj,
+        LockMode mode, int flags, Object lockOwner, Object context,
+        AbstractOperationMessage msg) throws ConflictException,
+        LockTimeoutException {
+      // TODO: Suranjan Ideally no request should come in this mode.
+      // put an assert here!
+      acquireLockFailFast(lockObj, mode, flags, lockOwner, context, msg);
+    }
+
+    @Override
+    public final long getTimeout(Object lockObj, LockMode newMode,
+        LockMode currentMode, int flags, final long msecs) {
+      return msecs;
+    }
+
+    @Override
+    public final IsolationLevel getIsolationLevel() {
+      return IsolationLevel.SNAPSHOT;
+    }
+
+    @Override
+    public final boolean isFailFast() {
+      return true;
+    }
+
+    @Override
+    public final Object lockForRead(final ExclusiveSharedLockObject lockObj,
+        LockMode mode, Object lockOwner, final Object context,
+        final int iContext, AbstractOperationMessage msg,
+        boolean allowTombstones, ReadEntryUnderLock reader) {
+      // TODO: Suranjan try to see if we can add versioning information here and read
+      return reader.readEntry(lockObj, context, iContext, allowTombstones);
+    }
+  },
+  ;
   ;
 
   /**

@@ -44,8 +44,7 @@ import com.gemstone.gnu.trove.TObjectProcedure;
  *          the type of elements maintained by this set
  */
 @SuppressWarnings("serial")
-public class ConcurrentTHashSet<T> extends THashParameters implements
-    Set<T>, TObjectHashingStrategy {
+public class ConcurrentTHashSet<T> extends THashParameters implements Set<T> {
 
   public static final int DEFAULT_CONCURRENCY = 16;
 
@@ -94,7 +93,7 @@ public class ConcurrentTHashSet<T> extends THashParameters implements
     this.segments = new ConcurrentTHashSegment[concurrency];
     this.numSegments = concurrency;
     for (int index = 0; index < concurrency; index++) {
-      this.segments[index] = new ConcurrentTHashSegment<T>(segSize, this,
+      this.segments[index] = new ConcurrentTHashSegment<>(segSize, this,
           this.totalSize);
     }
   }

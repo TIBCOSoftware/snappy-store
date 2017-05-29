@@ -81,6 +81,10 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.dataTypes = other.dataTypes;
   }
 
+  public ByteArrayDataInput getByteArrayDataInput() {
+    return dis;
+  }
+
   public void setHasMetadata() {
     this.hasMetadata = true;
   }
@@ -201,11 +205,15 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   }
 
   private DataValueDescriptor getNewNullDVD(
-    int storeType, int colNum, DataTypeDescriptor[] dtds, int precision, int scale) {
+      int storeType, int colNum, DataTypeDescriptor[] dtds, int precision, int scale) {
+    return getNewNullDVD(storeType, colNum, dtds, precision, scale, nullability[colNum]);
+  }
+
+  public static DataValueDescriptor getNewNullDVD(
+    int storeType, int colNum, DataTypeDescriptor[] dtds, int precision, int scale, boolean nullable) {
     DataValueDescriptor dvd;
     int jdbcTypeId;
     DataTypeDescriptor dtd;
-    boolean nullable = nullability[colNum];
     switch(storeType) {
       case StoredFormatIds.SQL_TIMESTAMP_ID :
         dvd = new SQLTimestamp();

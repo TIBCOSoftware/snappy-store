@@ -54,7 +54,6 @@ import com.pivotal.gemfirexd.internal.client.net.TxID;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.jdbc.ClientAttribute;
-import io.snappydata.thrift.common.SocketParameters;
 
 public abstract class Connection implements java.sql.Connection,
         ConnectionCallbackInterface {
@@ -464,13 +463,13 @@ public abstract class Connection implements java.sql.Connection,
 
     public int keepAliveIdle_ = SystemProperties.getClientInstance()
         .getInteger(ClientAttribute.KEEPALIVE_IDLE,
-            SocketParameters.DEFAULT_KEEPALIVE_IDLE);
+            SystemProperties.DEFAULT_KEEPALIVE_IDLE);
     public int keepAliveIntvl_ = SystemProperties.getClientInstance()
         .getInteger(ClientAttribute.KEEPALIVE_INTVL,
-            SocketParameters.DEFAULT_KEEPALIVE_INTVL);
+            SystemProperties.DEFAULT_KEEPALIVE_INTVL);
     public int keepAliveCnt_ = SystemProperties.getClientInstance()
         .getInteger(ClientAttribute.KEEPALIVE_CNT,
-            SocketParameters.DEFAULT_KEEPALIVE_CNT);
+            SystemProperties.DEFAULT_KEEPALIVE_CNT);
 
     /**
      * Maximum timeout in seconds for read before failover in case nothing is

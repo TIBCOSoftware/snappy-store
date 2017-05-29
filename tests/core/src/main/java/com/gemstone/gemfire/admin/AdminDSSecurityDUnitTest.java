@@ -1237,6 +1237,21 @@ public class AdminDSSecurityDUnitTest extends AdminDUnitTestCase {
         }
 
         @Override
+        public boolean isMemorySizeModifiable() {
+          return false;
+        }
+
+        @Override
+        public String getMemorySize() {
+          return null;
+        }
+
+        @Override
+        public void setMemorySize(String value) {
+
+        }
+
+        @Override
         public boolean isOffHeapMemorySizeModifiable() {
           return false;
         }

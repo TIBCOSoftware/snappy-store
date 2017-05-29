@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.*;
@@ -120,7 +121,13 @@ public class ClientStatement extends ClientFetchColumnValue implements
     final StatementAttrs attrs = this.attrs;
     return attrs.__isset_bitfield == 0 && attrs.autoIncColumnNames == null
         && attrs.autoIncColumns == null && attrs.cursorName == null
-        && attrs.pendingTransactionAttrs == null ? null : attrs;
+        && attrs.pendingTransactionAttrs == null && attrs.bucketIds == null
+        ? null : attrs;
+  }
+
+  public final void setLocalExecutionBucketIds(Set<Integer> bucketIds,
+      String tableName) {
+    this.attrs.setBucketIds(bucketIds).setBucketIdsTable(tableName);
   }
 
   final void clearPendingTransactionAttrs() {

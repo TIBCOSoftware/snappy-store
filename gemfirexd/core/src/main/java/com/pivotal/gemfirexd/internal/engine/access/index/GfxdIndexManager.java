@@ -19,14 +19,7 @@ package com.pivotal.gemfirexd.internal.engine.access.index;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
@@ -64,7 +57,6 @@ import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
@@ -216,6 +208,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   private InternalDistributedMember thisNodeMemberId;
 
   private MembershipManager membershipManager;
+
 
   public enum Index{
     LOCAL,
@@ -1542,7 +1535,12 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
                 // snapshot
                 // the value in the key.
                 if (!updatedValue) {
-                  foundKey.snapshotKeyFromValue();
+                  byte[] value = foundKey.snapshotKeyFromValue();
+                  if(value != null){
+                    indexContainer.accountSnapshotEntry(value.length);
+                  }
+
+
                 }
               }
             } finally {
@@ -4956,6 +4954,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         Misc.checkIfCacheClosing(null);
       }
       indexRecoveryJob.endJobs();
+      indexContainer.accountMemoryForIndex(numEntries, true);
       return numEntries;
     } catch (IOException ioe) {
       // check for node shutdown
@@ -4976,6 +4975,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   public long loadLocalIndexRecords(GemFireContainer indexContainer)
       throws StandardException {
     final LocalRegion region = this.container.getRegion();
+    // Compute the size of index step wise , with power of two
+
     final SortedIndexRecoveryJob indexRecoveryJob = new SortedIndexRecoveryJob(
         region.getCache(), null, region.getCancelCriterion(), indexContainer);
     try {
@@ -4988,6 +4989,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       Iterator<?> entryIterator = this.container.getEntrySetIterator(null,
           false, 0, true);
       while (entryIterator.hasNext()) {
+        indexContainer.accountMemoryForIndex(numEntries, false);
         RegionEntry entry = (RegionEntry)entryIterator.next();
         @Released
         final Object val = ((RowLocation)entry)
@@ -5015,6 +5017,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         numEntries++;
       }
       indexRecoveryJob.endJobs();
+      indexContainer.accountMemoryForIndex(numEntries, true);
+      List<GemFireContainer> indexes = getAllIndexes();
       return numEntries;
     } catch (CancelException ce) {
       throw ce;

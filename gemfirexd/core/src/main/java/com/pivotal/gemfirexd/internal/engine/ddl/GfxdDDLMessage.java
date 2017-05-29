@@ -274,8 +274,10 @@ public final class GfxdDDLMessage extends GfxdMessage implements
       }
       return;
     }
-    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, this.toString()
-        + " Starting execution");
+    if (!Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, this.toString()
+          + " Starting execution");
+    }
     GfxdConnectionWrapper wrapper = null;
     final String ddlStatement = ddl.getValueToConflate();
     boolean success = false;

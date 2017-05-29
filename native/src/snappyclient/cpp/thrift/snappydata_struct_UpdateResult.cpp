@@ -84,14 +84,14 @@ uint32_t UpdateResult::read(::apache::thrift::protocol::TProtocol* iprot) {
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->batchUpdateCounts.clear();
-            uint32_t _size267;
-            ::apache::thrift::protocol::TType _etype270;
-            xfer += iprot->readListBegin(_etype270, _size267);
-            this->batchUpdateCounts.resize(_size267);
-            uint32_t _i271;
-            for (_i271 = 0; _i271 < _size267; ++_i271)
+            uint32_t _size274;
+            ::apache::thrift::protocol::TType _etype277;
+            xfer += iprot->readListBegin(_etype277, _size274);
+            this->batchUpdateCounts.resize(_size274);
+            uint32_t _i278;
+            for (_i278 = 0; _i278 < _size274; ++_i278)
             {
-              xfer += iprot->readI32(this->batchUpdateCounts[_i271]);
+              xfer += iprot->readI32(this->batchUpdateCounts[_i278]);
             }
             xfer += iprot->readListEnd();
           }
@@ -149,10 +149,10 @@ uint32_t UpdateResult::write(::apache::thrift::protocol::TProtocol* oprot) const
     xfer += oprot->writeFieldBegin("batchUpdateCounts", ::apache::thrift::protocol::T_LIST, 2);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->batchUpdateCounts.size()));
-      std::vector<int32_t> ::const_iterator _iter272;
-      for (_iter272 = this->batchUpdateCounts.begin(); _iter272 != this->batchUpdateCounts.end(); ++_iter272)
+      std::vector<int32_t> ::const_iterator _iter279;
+      for (_iter279 = this->batchUpdateCounts.begin(); _iter279 != this->batchUpdateCounts.end(); ++_iter279)
       {
-        xfer += oprot->writeI32((*_iter272));
+        xfer += oprot->writeI32((*_iter279));
       }
       xfer += oprot->writeListEnd();
     }
@@ -189,38 +189,38 @@ void swap(UpdateResult &a, UpdateResult &b) noexcept {
   swap(a.__isset, b.__isset);
 }
 
-UpdateResult::UpdateResult(const UpdateResult& other273) {
-  updateCount = other273.updateCount;
-  batchUpdateCounts = other273.batchUpdateCounts;
-  generatedKeys = other273.generatedKeys;
-  newDefaultSchema = other273.newDefaultSchema;
-  warnings = other273.warnings;
-  __isset = other273.__isset;
+UpdateResult::UpdateResult(const UpdateResult& other280) {
+  updateCount = other280.updateCount;
+  batchUpdateCounts = other280.batchUpdateCounts;
+  generatedKeys = other280.generatedKeys;
+  newDefaultSchema = other280.newDefaultSchema;
+  warnings = other280.warnings;
+  __isset = other280.__isset;
 }
-UpdateResult::UpdateResult( UpdateResult&& other274) noexcept {
-  updateCount = std::move(other274.updateCount);
-  batchUpdateCounts = std::move(other274.batchUpdateCounts);
-  generatedKeys = std::move(other274.generatedKeys);
-  newDefaultSchema = std::move(other274.newDefaultSchema);
-  warnings = std::move(other274.warnings);
-  __isset = std::move(other274.__isset);
+UpdateResult::UpdateResult( UpdateResult&& other281) noexcept {
+  updateCount = std::move(other281.updateCount);
+  batchUpdateCounts = std::move(other281.batchUpdateCounts);
+  generatedKeys = std::move(other281.generatedKeys);
+  newDefaultSchema = std::move(other281.newDefaultSchema);
+  warnings = std::move(other281.warnings);
+  __isset = std::move(other281.__isset);
 }
-UpdateResult& UpdateResult::operator=(const UpdateResult& other275) {
-  updateCount = other275.updateCount;
-  batchUpdateCounts = other275.batchUpdateCounts;
-  generatedKeys = other275.generatedKeys;
-  newDefaultSchema = other275.newDefaultSchema;
-  warnings = other275.warnings;
-  __isset = other275.__isset;
+UpdateResult& UpdateResult::operator=(const UpdateResult& other282) {
+  updateCount = other282.updateCount;
+  batchUpdateCounts = other282.batchUpdateCounts;
+  generatedKeys = other282.generatedKeys;
+  newDefaultSchema = other282.newDefaultSchema;
+  warnings = other282.warnings;
+  __isset = other282.__isset;
   return *this;
 }
-UpdateResult& UpdateResult::operator=(UpdateResult&& other276) noexcept {
-  updateCount = std::move(other276.updateCount);
-  batchUpdateCounts = std::move(other276.batchUpdateCounts);
-  generatedKeys = std::move(other276.generatedKeys);
-  newDefaultSchema = std::move(other276.newDefaultSchema);
-  warnings = std::move(other276.warnings);
-  __isset = std::move(other276.__isset);
+UpdateResult& UpdateResult::operator=(UpdateResult&& other283) noexcept {
+  updateCount = std::move(other283.updateCount);
+  batchUpdateCounts = std::move(other283.batchUpdateCounts);
+  generatedKeys = std::move(other283.generatedKeys);
+  newDefaultSchema = std::move(other283.newDefaultSchema);
+  warnings = std::move(other283.warnings);
+  __isset = std::move(other283.__isset);
   return *this;
 }
 void UpdateResult::printTo(std::ostream& out) const {

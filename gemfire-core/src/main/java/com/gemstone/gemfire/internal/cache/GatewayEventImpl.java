@@ -31,6 +31,8 @@ import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.util.GatewayEvent;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.cache.wan.GatewayQueueEvent;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl.NewValueImporter;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
@@ -328,9 +330,10 @@ public final class GatewayEventImpl implements GatewayEvent, GatewayQueueEvent, 
       final LocalRegion r = getRegion();
       if (r == null) {
         // log a warning
-        final LogWriter logger = GemFireCacheImpl.getExisting().getLogger();
-        if (logger.warningEnabled()) {
-          logger.warning("GatewayEventImpl.initializeKey: region "
+        final LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
+        if (logger != null && logger.warningEnabled()) {
+          logger.warning(LocalizedStrings.DEBUG,
+              "GatewayEventImpl.initializeKey: region "
               + this._regionName + " not found while initializing key "
               + this._key);
         }
@@ -844,9 +847,10 @@ public final class GatewayEventImpl implements GatewayEvent, GatewayQueueEvent, 
   public LocalRegion getRegion() {
     // The region will be null mostly for the other node where the gateway event
     // is serialized
+    final GemFireCacheImpl cache;
     return this._region != null ? this._region
-        : (this._region = (LocalRegion)GemFireCacheImpl.getExisting().getRegion(
-            this._regionName));
+        : (this._region = ((cache = GemFireCacheImpl.getInstance()) != null
+        ? (LocalRegion)cache.getRegion(this._regionName) : null));
   }
 
   public int getBucketId() {

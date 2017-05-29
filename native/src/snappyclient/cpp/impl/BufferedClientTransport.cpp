@@ -33,8 +33,9 @@
  * LICENSE file.
  */
 
+#include "BufferedClientTransport.h"
+
 #include "common/Base.h"
-#include "BufferedSocketTransport.h"
 
 extern "C" {
 #ifdef _WINDOWS
@@ -48,7 +49,7 @@ extern "C" {
 
 using namespace io::snappydata::client::impl;
 
-BufferedSocketTransport::BufferedSocketTransport(
+BufferedClientTransport::BufferedClientTransport(
     const boost::shared_ptr<TSocket>& socket, uint32_t rsz, uint32_t wsz,
     bool writeFramed) : TBufferedTransport(socket, rsz, wsz),
         m_writeFramed(writeFramed), m_doWriteFrameSize(true) {
@@ -56,7 +57,7 @@ BufferedSocketTransport::BufferedSocketTransport(
   this->open();
 }
 
-void BufferedSocketTransport::initStart() {
+void BufferedClientTransport::initStart() {
   if (m_writeFramed) {
     // position the buffer to skip the length of frame at the start
     wBase_ = wBuf_.get() + sizeof(uint32_t);
@@ -65,7 +66,7 @@ void BufferedSocketTransport::initStart() {
   }
 }
 
-void BufferedSocketTransport::writeFrameSize() {
+void BufferedClientTransport::writeFrameSize() {
   if (m_writeFramed) {
     uint32_t sz;
 
@@ -77,7 +78,7 @@ void BufferedSocketTransport::writeFrameSize() {
   }
 }
 
-void BufferedSocketTransport::writeSlow(const uint8_t* buf, uint32_t len) {
+void BufferedClientTransport::writeSlow(const uint8_t* buf, uint32_t len) {
   // modified from Thrift TBufferedTransport::writeSlow
 
   uint32_t have_bytes = static_cast<uint32_t>(wBase_ - wBuf_.get());
@@ -137,9 +138,9 @@ void BufferedSocketTransport::writeSlow(const uint8_t* buf, uint32_t len) {
 
 namespace _snappy_impl {
   struct PositionInit {
-    BufferedSocketTransport& m_trans;
+    BufferedClientTransport& m_trans;
 
-    PositionInit(BufferedSocketTransport& trans) : m_trans(trans) {
+    PositionInit(BufferedClientTransport& trans) : m_trans(trans) {
     }
 
     ~PositionInit() {
@@ -153,7 +154,7 @@ namespace _snappy_impl {
   };
 }
 
-void BufferedSocketTransport::flush() {
+void BufferedClientTransport::flush() {
   _snappy_impl::PositionInit posInit(*this);
 
   if (m_doWriteFrameSize) {
@@ -165,7 +166,7 @@ void BufferedSocketTransport::flush() {
   }
 }
 
-void BufferedSocketTransport::setReceiveBufferSize(uint32_t rsz) {
+void BufferedClientTransport::setReceiveBufferSize(uint32_t rsz) {
   if (rsz != rBufSize_) {
     this->flush();
     m_doWriteFrameSize = true;
@@ -177,7 +178,7 @@ void BufferedSocketTransport::setReceiveBufferSize(uint32_t rsz) {
   }
 }
 
-void BufferedSocketTransport::setSendBufferSize(uint32_t wsz) {
+void BufferedClientTransport::setSendBufferSize(uint32_t wsz) {
   if (wsz != wBufSize_) {
     this->flush();
     m_doWriteFrameSize = true;
@@ -189,14 +190,14 @@ void BufferedSocketTransport::setSendBufferSize(uint32_t wsz) {
   }
 }
 
-uint32_t BufferedSocketTransport::getReceiveBufferSize() const noexcept {
+uint32_t BufferedClientTransport::getReceiveBufferSize() noexcept {
   return rBufSize_;
 }
 
-uint32_t BufferedSocketTransport::getSendBufferSize() const noexcept {
+uint32_t BufferedClientTransport::getSendBufferSize() noexcept {
   return wBufSize_;
 }
 
-TSocket* BufferedSocketTransport::getSocket() const noexcept {
+TSocket* BufferedClientTransport::getSocket() noexcept {
   return static_cast<TSocket*>(transport_.get());
 }

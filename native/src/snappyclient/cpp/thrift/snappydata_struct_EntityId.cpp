@@ -153,30 +153,30 @@ void swap(EntityId &a, EntityId &b) noexcept {
   swap(a.token, b.token);
 }
 
-EntityId::EntityId(const EntityId& other295) {
-  id = other295.id;
-  type = other295.type;
-  connId = other295.connId;
-  token = other295.token;
+EntityId::EntityId(const EntityId& other302) {
+  id = other302.id;
+  type = other302.type;
+  connId = other302.connId;
+  token = other302.token;
 }
-EntityId::EntityId( EntityId&& other296) noexcept {
-  id = std::move(other296.id);
-  type = std::move(other296.type);
-  connId = std::move(other296.connId);
-  token = std::move(other296.token);
+EntityId::EntityId( EntityId&& other303) noexcept {
+  id = std::move(other303.id);
+  type = std::move(other303.type);
+  connId = std::move(other303.connId);
+  token = std::move(other303.token);
 }
-EntityId& EntityId::operator=(const EntityId& other297) {
-  id = other297.id;
-  type = other297.type;
-  connId = other297.connId;
-  token = other297.token;
+EntityId& EntityId::operator=(const EntityId& other304) {
+  id = other304.id;
+  type = other304.type;
+  connId = other304.connId;
+  token = other304.token;
   return *this;
 }
-EntityId& EntityId::operator=(EntityId&& other298) noexcept {
-  id = std::move(other298.id);
-  type = std::move(other298.type);
-  connId = std::move(other298.connId);
-  token = std::move(other298.token);
+EntityId& EntityId::operator=(EntityId&& other305) noexcept {
+  id = std::move(other305.id);
+  type = std::move(other305.type);
+  connId = std::move(other305.connId);
+  token = std::move(other305.token);
   return *this;
 }
 void EntityId::printTo(std::ostream& out) const {
