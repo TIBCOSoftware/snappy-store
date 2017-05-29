@@ -1,5 +1,6 @@
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
@@ -79,6 +80,8 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("id", memberId);
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
+    memberStatsMap.put("userDir", getUserDir());
+    memberStatsMap.put("processId", getProcessId());
     memberStatsMap.put("locator", isLocator());
     memberStatsMap.put("dataServer", isDataServer());
     memberStatsMap.put("activeLead", isActiveLead(ids.getDistributedMember()));
@@ -156,6 +159,15 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     } catch (UnknownHostException ex) {
       return ManagementConstants.DEFAULT_HOST_NAME;
     }
+  }
+
+  private String getUserDir(){
+    return System.getProperty("user.dir");
+  }
+
+  private String getProcessId(){
+    String[] processDetails = ManagementFactory.getRuntimeMXBean().getName().split("@");
+    return processDetails[0];
   }
 
   /**
