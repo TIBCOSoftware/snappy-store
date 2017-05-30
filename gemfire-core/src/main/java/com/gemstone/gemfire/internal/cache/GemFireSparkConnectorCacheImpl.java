@@ -1,5 +1,7 @@
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.Map;
+
 import com.gemstone.gemfire.cache.AttributesFactory;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.client.ClientRegionShortcut;
@@ -13,14 +15,21 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
  */
 public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
 
-  public GemFireSparkConnectorCacheImpl(PoolFactory pf, DistributedSystem system, CacheConfig cacheConfig) {
+  public static final String gfeGridPropPrefix = "gemfire-grid";
+  private Map<String, String> gfeGridMappings = null;
+
+  public GemFireSparkConnectorCacheImpl(PoolFactory pf, Map<String, String> gfeGridMappings,
+      DistributedSystem system, CacheConfig cacheConfig) {
     super(false, pf, system, cacheConfig);
+    this.gfeGridMappings = gfeGridMappings;
   }
 
-  public static GemFireCacheImpl create(PoolFactory pf, DistributedSystem system,
-      CacheConfig cacheConfig) {
-    return new GemFireSparkConnectorCacheImpl(pf, system, cacheConfig).init();
+  public static GemFireCacheImpl create(PoolFactory pf, Map<String, String> gfeGridMappings,
+      DistributedSystem system, CacheConfig cacheConfig) {
+
+    return new GemFireSparkConnectorCacheImpl(pf, gfeGridMappings, system, cacheConfig).init();
   }
+
 
   @Override
   protected GemFireCacheImpl init() {
@@ -29,7 +38,9 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
     //re assign the clientPf which would otherwise be nullified by the super call
     this.clientpf = temp;
 
-    this.determineDefaultPool();
+    if (temp != null) {
+      this.determineDefaultPool();
+    }
     AttributesFactory af = new AttributesFactory();
     af.setDataPolicy(DataPolicy.EMPTY);
     UserSpecifiedRegionAttributes ra = (UserSpecifiedRegionAttributes)af.create();

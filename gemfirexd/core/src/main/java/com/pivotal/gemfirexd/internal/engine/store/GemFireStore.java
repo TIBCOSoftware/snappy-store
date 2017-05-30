@@ -57,7 +57,6 @@ import com.gemstone.gemfire.admin.jmx.AgentConfig;
 import com.gemstone.gemfire.admin.jmx.AgentFactory;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.client.PoolFactory;
-import com.gemstone.gemfire.cache.client.PoolManager;
 import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersRequest;
 import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersResponse;
 import com.gemstone.gemfire.cache.execute.FunctionService;
@@ -884,12 +883,17 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     remoteGemFireLocators = PropertyUtil.findAndGetProperty(props, DistributionConfig
                     .REMOTE_LOCATORS_NAME, DistributionConfig.GEMFIRE_PREFIX +
             DistributionConfig.REMOTE_LOCATORS_NAME);
-   /*
-    if (remoteGemFireLocators != null) {
-      props.remove(DistributionConfig.REMOTE_LOCATORS_NAME);
-      props.remove(DistributionConfig.GEMFIRE_PREFIX + DistributionConfig.REMOTE_LOCATORS_NAME);
+
+    Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(props,
+        GemFireSparkConnectorCacheImpl.gfeGridPropPrefix);
+
+    if (remoteGemFireLocators == null) {
+      remoteGemFireLocators = gfeGridMappings.remove(GemFireSparkConnectorCacheImpl.gfeGridPropPrefix);
     }
-    */
+    for (String key : gfeGridMappings.keySet()) {
+      props.remove(key);
+      finalGFXDBootProps.remove(key);
+    }
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,
@@ -1081,26 +1085,17 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
       try {
         CacheFactory c = null;
-        PoolFactory pf = null;
-        if(remoteGemFireLocators != null) {
-          pf = PoolManager.createFactory();
-          pf.setReadTimeout(30000);
-          this.configurePool(pf, remoteGemFireLocators);
-          c = new GemFireSparkConnectorCacheFactory(dsProps);
+        if (remoteGemFireLocators != null || !gfeGridMappings.isEmpty()) {
+          c = new GemFireSparkConnectorCacheFactory(dsProps, remoteGemFireLocators, gfeGridMappings);
         } else {
           c = new CacheFactory(dsProps);
         }
-
         if (this.persistingDD) {
           c.setPdxPersistent(true);
           c.setPdxDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
         }
-        if (pf != null) {
-          this.gemFireCache = (GemFireCacheImpl) ((GemFireSparkConnectorCacheFactory)c).create(pf);
-        } else {
-          this.gemFireCache = (GemFireCacheImpl)c.create();
-        }
 
+        this.gemFireCache = (GemFireCacheImpl)c.create();
         this.gemFireCache.getLogger().info(
             "GemFire Cache successfully created.");
       } catch (CacheExistsException ex) {
@@ -1363,86 +1358,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
-  private void configurePool(PoolFactory pf, String remoteLocators) {
-    StringTokenizer remoteLocatorsTokenizer = new StringTokenizer(remoteLocators, ",");
-    DistributionLocatorId[] locators = new DistributionLocatorId[remoteLocatorsTokenizer
-            .countTokens()];
-    int i = 0;
-    while (remoteLocatorsTokenizer.hasMoreTokens()) {
-      locators[i] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
-    }
-    List<ServerLocation> servers = new ArrayList<ServerLocation>();
-    for(DistributionLocatorId locator : locators) {
-      try {
-
-        InetSocketAddress addr = new InetSocketAddress(locator.getHost(), locator.getPort());
-        GetAllServersRequest req = new GetAllServersRequest("");
-        Object res = TcpClient.requestToServer(addr.getAddress(), addr.getPort(), req, 2000);
-        if (res != null) {
-          servers.addAll((List<ServerLocation>) ((GetAllServersResponse) res).getServers());
-        }
-      }catch(Exception e) {
-        System.out.println("Unable to get remote gfe servers from locator = " + locator);
-      }
-    }
-
-    List<ServerLocation> prefServers = null;
-    if (servers.size() > 0) {
-      String sparkIp = System.getenv("SPARK_LOCAL_IP");
-      String hostName = null;
-      try {
-        hostName = sparkIp != null ? InetAddress.getByName(sparkIp).getCanonicalHostName() :
-                InetAddress.getLocalHost().getCanonicalHostName();
-      } catch ( Exception e) {
-        hostName = "";
-      }
-      int spacing = servers.size() / 3;
-      if (spacing != 0) {
-        prefServers = new ArrayList<ServerLocation>();
-        ServerLocation localServer = null;
-        for(int j = 0 ; j < servers.size(); ++j) {
-          ServerLocation sl = servers.get(j);
-          if (localServer == null && sl.getHostName().equals(hostName)) {
-            localServer = sl;
-          } else {
-            if (j + 1 % spacing == 0) {
-              prefServers.add(servers.get(j));
-            }
-          }
-        }
-        if(localServer != null) {
-          if(prefServers.size() < 3) {
-            prefServers.add(0, localServer);
-          } else {
-            prefServers.set(0, localServer);
-          }
-        }
-      } else {
-        // bring local server if any to start position
-        int localServerIndex = -1;
-        for(int j = 0 ; j < servers.size(); ++j) {
-          ServerLocation sl = servers.get(j);
-          if (localServerIndex == -1 && sl.getHostName().equals(hostName)) {
-            localServerIndex = j;
-            break;
-          }
-        }
-        if (localServerIndex != -1) {
-          ServerLocation local = servers.remove(localServerIndex);
-          servers.add(0, local);
-        }
-        prefServers = servers;
-      }
-
-      for (ServerLocation srvr: prefServers ) {
-        pf.addServer(srvr.getHostName(), srvr.getPort());
-      }
-    } else {
-      for(DistributionLocatorId locator : locators) {
-        pf.addLocator(locator.getBindAddress(), locator.getPort());
-      }
-    }
-  }
 
 
   /**
