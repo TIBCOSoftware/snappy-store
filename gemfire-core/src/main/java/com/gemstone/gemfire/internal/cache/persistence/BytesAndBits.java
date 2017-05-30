@@ -19,10 +19,10 @@ package com.gemstone.gemfire.internal.cache.persistence;
 import java.nio.ByteBuffer;
 
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.Oplog;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 
 /**
  * Used to fetch a record's raw bytes and user bits.
@@ -63,9 +63,18 @@ public class BytesAndBits {
   }
 
   public Object deserialize() {
+    if (this.data.limit() == 0) {
+      throw new IllegalStateException(
+          "Unexpected invocation to deserialize empty/token buffer");
+    }
     Object result = EntryEventImpl.deserializeBuffer(this.data, this.version);
-    // rewind back to original position for further reads if required
-    this.data.rewind();
+    // if result is a SerializedDiskBuffer then ownership of data has been lost
+    if (result instanceof SerializedDiskBuffer) {
+      this.data = null;
+    } else {
+      // rewind back to original position for further reads if required
+      this.data.rewind();
+    }
     return result;
   }
 
@@ -77,12 +86,12 @@ public class BytesAndBits {
     final ByteBuffer data = this.data;
     if (data != null && data.isDirect()) {
       this.data = null;
-      UnsafeHolder.releaseDirectBuffer(data);
+      DirectBufferAllocator.instance().release(data);
     }
   }
 
   @Override
   public String toString() {
-    return Oplog.bufferToString(this.data);
+    return ClientSharedUtils.toString(this.data);
   }
 }

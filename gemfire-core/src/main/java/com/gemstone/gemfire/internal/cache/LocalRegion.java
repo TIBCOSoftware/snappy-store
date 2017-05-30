@@ -37,7 +37,6 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongBinaryOperator;
-import java.util.function.LongUnaryOperator;
 import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -11770,7 +11769,7 @@ public class LocalRegion extends AbstractRegion
             long unusedMemory = memoryTracker.freeMemory();
             if (unusedMemory > 0) {
               callback.releaseStorageMemory(
-                  memoryTracker.getFirstAllocationObject(), unusedMemory);
+                  memoryTracker.getFirstAllocationObject(), unusedMemory, false);
             }
           }
         }
@@ -14350,7 +14349,7 @@ public class LocalRegion extends AbstractRegion
         if (!regionOverHeadAccounted) {
           this.regionOverHead = ReflectionSingleObjectSizer.INSTANCE.sizeof(this);
           callback.acquireStorageMemory(getFullPath(),
-                  regionOverHead, null, true);
+                  regionOverHead, null, true, false);
           regionOverHeadAccounted = true;
         }
       }
@@ -14428,7 +14427,7 @@ public class LocalRegion extends AbstractRegion
 
       if (MAX_VALUE_BEFORE_ACQUIRE == 1 || size > MAX_VALUE_BEFORE_ACQUIRE) {
         if (!callback.acquireStorageMemory(getFullPath(),
-                (size), null, shouldEvict)) {
+                (size), null, shouldEvict, false)) {
           throwLowMemoryException(size);
         }
       } else {
@@ -14436,7 +14435,7 @@ public class LocalRegion extends AbstractRegion
         long currValue = prevValue + size;
         if (currValue >= MAX_VALUE_BEFORE_ACQUIRE) {
           if (!callback.acquireStorageMemory(getFullPath(),
-                  MAX_VALUE_BEFORE_ACQUIRE, null, shouldEvict)) {
+                  MAX_VALUE_BEFORE_ACQUIRE, null, shouldEvict, false)) {
             throwLowMemoryException(size);
           }
         }
@@ -14454,7 +14453,7 @@ public class LocalRegion extends AbstractRegion
         size = (newSize - oldSize);
       }
       if (!callback.acquireStorageMemory(getFullPath(),
-          size, buffer, shouldEvict)) {
+          size, buffer, shouldEvict, false)) {
         throwLowMemoryException(size);
       }
     }
@@ -14468,9 +14467,10 @@ public class LocalRegion extends AbstractRegion
   public void freePoolMemory(long oldSize, boolean withEntryOverHead) {
     if (!this.reservedTable() && needAccounting()) {
       if (withEntryOverHead) {
-        callback.releaseStorageMemory(getFullPath(), oldSize + Math.max(0L, entryOverHead));
+        callback.releaseStorageMemory(getFullPath(),
+            oldSize + Math.max(0L, entryOverHead), false);
       } else {
-        callback.releaseStorageMemory(getFullPath(), oldSize);
+        callback.releaseStorageMemory(getFullPath(), oldSize, false);
       }
     }
   }

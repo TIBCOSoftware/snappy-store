@@ -91,10 +91,8 @@ public final class ClientService extends ReentrantLock implements LobService {
   /**
    * If true then use <code>TFramedTransport</code> for the thrift client,
    * else the default is to use non-framed transport.
-   * <p>
-   * Internal property just for testing and deliberately not public.
    */
-  static final String THRIFT_USE_FRAMED_TRANSPORT = "framed-transport";
+  public static final String THRIFT_USE_FRAMED_TRANSPORT = "framed-transport";
 
   /**
    * Stores tri-state for TransactionAttributes:

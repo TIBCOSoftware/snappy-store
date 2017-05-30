@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import javax.annotation.Generated;
 
+import com.gemstone.gemfire.internal.shared.ByteBufferReference;
 import io.snappydata.thrift.common.TProtocolDirectBinary;
 import io.snappydata.thrift.common.ThriftUtils;
 import org.apache.thrift.EncodingUtils;
@@ -42,6 +43,43 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   public long lobId; // optional
   public long offset; // optional
   public long totalLength; // optional
+
+  /**
+   * Transient field to explicitly release reference to ByteBuffer after write.
+   */
+  private transient ByteBufferReference chunkReference;
+
+  public BlobChunk(ByteBufferReference reference, boolean last) {
+    this();
+    this.chunkReference = reference;
+    this.last = last;
+    setLastIsSet(true);
+  }
+
+  public int size() {
+    final ByteBufferReference reference = this.chunkReference;
+    if (reference != null) {
+      return reference.size();
+    } else {
+      return this.chunk.remaining();
+    }
+  }
+
+  public ByteBuffer getBufferRetain() {
+    final ByteBufferReference reference = this.chunkReference;
+    if (reference != null) {
+      return reference.getBufferRetain();
+    } else {
+      return this.chunk;
+    }
+  }
+
+  public void releaseBuffer() {
+    final ByteBufferReference reference = this.chunkReference;
+    if (reference != null && reference.needsRelease()) {
+      reference.release();
+    }
+  }
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -156,7 +194,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   public BlobChunk(BlobChunk other) {
     __isset_bitfield = other.__isset_bitfield;
     if (other.isSetChunk()) {
-      this.chunk = ThriftUtils.copyBuffer(other.chunk);
+      this.chunk = ByteBuffer.wrap(other.getChunk());
     }
     this.last = other.last;
     this.lobId = other.lobId;
@@ -182,11 +220,11 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   }
 
   public byte[] getChunk() {
-    ByteBuffer chunk = this.chunk;
-    if (chunk == null) return null;
+    ByteBuffer chunk = getBufferRetain();
     if (!TBaseHelper.wrapsFullArray(chunk)) {
       // replace with byte array wrapper
       this.chunk = chunk = ByteBuffer.wrap(ThriftUtils.toBytes(chunk));
+      releaseBuffer();
     }
     return chunk.array();
   }
@@ -197,7 +235,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   }
 
   public BlobChunk setChunk(ByteBuffer chunk) {
-    this.chunk = ThriftUtils.copyBuffer(chunk);
+    this.chunk = ByteBuffer.wrap(ThriftUtils.toBytes(chunk));
     return this;
   }
 
@@ -207,7 +245,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
 
   /** Returns true if field chunk is set (has been assigned a value) and false otherwise */
   public boolean isSetChunk() {
-    return this.chunk != null;
+    return this.chunk != null || this.chunkReference != null;
   }
 
   public void setChunkIsSet(boolean value) {
@@ -408,12 +446,14 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     if (that == null)
       return false;
 
-    boolean this_present_chunk = true && this.isSetChunk();
-    boolean that_present_chunk = true && that.isSetChunk();
+    final ByteBuffer thisChunk = getBufferRetain();
+    final ByteBuffer thatChunk = that.getBufferRetain();
+    boolean this_present_chunk = thisChunk != null;
+    boolean that_present_chunk = thatChunk != null;
     if (this_present_chunk || that_present_chunk) {
       if (!(this_present_chunk && that_present_chunk))
         return false;
-      if (!this.chunk.equals(that.chunk))
+      if (!thisChunk.equals(thatChunk))
         return false;
     }
 
@@ -460,7 +500,8 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   public int hashCode() {
     List<Object> list = new ArrayList<Object>();
 
-    boolean present_chunk = true && (isSetChunk());
+    ByteBuffer chunk = getBufferRetain();
+    boolean present_chunk = chunk != null;
     list.add(present_chunk);
     if (present_chunk)
       list.add(chunk);
@@ -485,7 +526,9 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     if (present_totalLength)
       list.add(totalLength);
 
-    return list.hashCode();
+    int hash = list.hashCode();
+    releaseBuffer();
+    return hash;
   }
 
   @Override
@@ -496,12 +539,14 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
 
     int lastComparison = 0;
 
-    lastComparison = Boolean.valueOf(isSetChunk()).compareTo(other.isSetChunk());
+    ByteBuffer thisChunk = getBufferRetain();
+    ByteBuffer otherChunk = other.getBufferRetain();
+    lastComparison = Boolean.valueOf(thisChunk != null).compareTo(otherChunk != null);
     if (lastComparison != 0) {
       return lastComparison;
     }
-    if (isSetChunk()) {
-      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.chunk, other.chunk);
+    if (thisChunk != null) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(thisChunk, otherChunk);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -567,7 +612,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     boolean first = true;
 
     sb.append("chunk:");
-    if (this.chunk == null) {
+    if (!isSetChunk()) {
       sb.append("null");
     } else {
       // change to on-heap buffer if required
@@ -603,7 +648,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
 
   public void validate() throws org.apache.thrift.TException {
     // check for required fields
-    if (chunk == null) {
+    if (!isSetChunk()) {
       throw new org.apache.thrift.protocol.TProtocolException("Required field 'chunk' was not present! Struct: " + toString());
     }
     // alas, we cannot check 'last' because it's a primitive and you chose the non-beans generator.
@@ -708,10 +753,15 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
       struct.validate();
 
       oprot.writeStructBegin(STRUCT_DESC);
-      if (struct.chunk != null) {
-        oprot.writeFieldBegin(CHUNK_FIELD_DESC);
-        oprot.writeBinary(struct.chunk);
-        oprot.writeFieldEnd();
+      final ByteBuffer chunk = struct.getBufferRetain();
+      if (chunk != null) {
+        try {
+          oprot.writeFieldBegin(CHUNK_FIELD_DESC);
+          oprot.writeBinary(chunk);
+          oprot.writeFieldEnd();
+        } finally {
+          struct.releaseBuffer();
+        }
       }
       oprot.writeFieldBegin(LAST_FIELD_DESC);
       oprot.writeBool(struct.last);
@@ -748,7 +798,12 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     @Override
     public void write(org.apache.thrift.protocol.TProtocol prot, BlobChunk struct) throws org.apache.thrift.TException {
       TTupleProtocol oprot = (TTupleProtocol) prot;
-      oprot.writeBinary(struct.chunk);
+      final ByteBuffer chunk = struct.getBufferRetain();
+      try {
+        oprot.writeBinary(chunk);
+      } finally {
+        struct.releaseBuffer();
+      }
       oprot.writeBool(struct.last);
       BitSet optionals = new BitSet();
       if (struct.isSetLobId()) {

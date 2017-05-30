@@ -42,6 +42,7 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallback
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
+import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
@@ -388,7 +389,7 @@ public final class RegionEntryUtils {
     final Object value = getValueOrOffHeapEntry(getDataRegion(region, entry),
         (RowLocation)entry);
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, true);
+      return baseContainer.newExecRow(entry, value, tableInfo, true);
     }
     return null;
   }
@@ -403,7 +404,7 @@ public final class RegionEntryUtils {
     final Object value = getValueOrOffHeapEntry(getBucketRegion(pr, bucketId),
         (RowLocation)entry);
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, true);
+      return baseContainer.newExecRow(entry, value, tableInfo, true);
     }
     return null;
   }
@@ -414,7 +415,7 @@ public final class RegionEntryUtils {
     final Object value = getValueWithoutFaultInOrOffHeapEntry(
         getDataRegion(region, entry), (RowLocation)entry);
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, false);
+      return baseContainer.newExecRow(entry, value, tableInfo, false);
     }
     return null;
   }
@@ -429,7 +430,7 @@ public final class RegionEntryUtils {
         getBucketRegion(pr, bucketId), (RowLocation)entry);
 
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, false);
+      return baseContainer.newExecRow(entry, value, tableInfo, false);
     }
     return null;
   }
@@ -1054,7 +1055,9 @@ public final class RegionEntryUtils {
           return (Long.SIZE / 8) + ReflectionSingleObjectSizer.OBJECT_SIZE;
         } else if (keyClass == CompositeRegionKey.class) {
           return (int)((CompositeRegionKey)key).estimateMemoryUsage();
-        } 
+        } else if (Sizeable.class.isAssignableFrom(keyClass)) {
+          return ((Sizeable)key).getSizeInBytes();
+        }
         else if (keyClass == DataValueDescriptor[].class) {
           DataValueDescriptor[] arr = (DataValueDescriptor[])key;
           int memoryUsage = 2 * ReflectionSingleObjectSizer.OBJECT_SIZE;

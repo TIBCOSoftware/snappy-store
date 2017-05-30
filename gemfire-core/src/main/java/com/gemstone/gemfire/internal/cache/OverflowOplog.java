@@ -57,6 +57,8 @@ import com.gemstone.gemfire.internal.cache.Oplog.OplogDiskEntry;
 import com.gemstone.gemfire.internal.cache.persistence.BytesAndBits;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 
 /**
  * An oplog used for overflow-only regions.
@@ -274,7 +276,8 @@ class OverflowOplog implements CompactableOplog {
       result = previous.consumeWriteBuf();
     }
     if (result == null) {
-      result = ByteBuffer.allocateDirect(Integer.getInteger("WRITE_BUF_SIZE", 32768));
+      result = DirectBufferAllocator.instance().allocate(
+          Integer.getInteger("WRITE_BUF_SIZE", 32768), "OVERFLOWOPLOG");
     }
     return result;
   }
@@ -1025,7 +1028,7 @@ class OverflowOplog implements CompactableOplog {
             logger.info(LocalizedStrings.DEBUG,
                 "TRACE_READS Overflow attemptGet readPosition=" + readPosition
                     + " valueLength=" + valueLength
-                    + " value=<" + Oplog.bufferToString(valueBuffer) + ">"
+                    + " value=<" + ClientSharedUtils.toString(valueBuffer) + ">"
                     + " oplog#" + getOplogId());
           }
           this.stats.incOplogReads();
@@ -1070,7 +1073,7 @@ class OverflowOplog implements CompactableOplog {
         logger.info(LocalizedStrings.DEBUG,
             "TRACE_READS attemptWriteBufferGet readPosition=" + readPosition
                 + " valueLength=" + valueLength
-                + " value=<" + Oplog.bufferToString(valueBuffer) + ">"
+                + " value=<" + ClientSharedUtils.toString(valueBuffer) + ">"
                 + " oplog#" + getOplogId());
       }
       bb = new BytesAndBits(valueBuffer, userBits);
@@ -1402,15 +1405,12 @@ class OverflowOplog implements CompactableOplog {
     public void clear() {
       if (this.value != null) {
         this.value.release();
-        this.value = null;
       }
+      this.value = null;
     }
 
     private void write(ByteBuffer buffer, final int byteLength) throws IOException {
-      if (buffer.position() != 0) {
-        throw new IllegalStateException(
-            "Expected buffer to be at 0 position but = " + buffer.position());
-      }
+      final int position = buffer.position();
       ByteBuffer bb = getOLF().writeBuf;
       int bytesThisTime;
       while ((bytesThisTime = buffer.remaining()) > 0) {
@@ -1439,7 +1439,8 @@ class OverflowOplog implements CompactableOplog {
         }
       }
       // rewind the incoming buffer back to the start
-      buffer.rewind();
+      if (position == 0) buffer.rewind();
+      else buffer.position(position);
     }
 
     public void initialize(DiskEntry.Helper.ValueWrapper value,
@@ -1458,7 +1459,11 @@ class OverflowOplog implements CompactableOplog {
     public long write() throws IOException {
       int valueLength = 0;
       if (this.needsValue && (valueLength = this.value.size()) > 0) {
-        write(this.value.getInternalBuffer(), valueLength);
+        try {
+          write(this.value.getBufferRetain(), valueLength);
+        } finally {
+          this.value.release();
+        }
       }
       return valueLength;
     }

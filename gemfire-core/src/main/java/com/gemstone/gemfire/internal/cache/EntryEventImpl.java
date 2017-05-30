@@ -74,6 +74,7 @@ import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.partitioned.PartitionMessage;
 import com.gemstone.gemfire.internal.cache.partitioned.PutMessage;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerHelper;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgument;
@@ -2413,10 +2414,13 @@ public class EntryEventImpl extends KeyInfo implements
 
   /**
    * Serialize an object into a direct <code>ByteBuffer</code>.
+   * If the object is itself a <code>SerializedDiskBuffer</code> then it would
+   * have been retained once on return so caller can safely release the
+   * result exactly once.
    *
    * @throws IllegalArgumentException If <code>obj</code> should not be serialized
    */
-  public static ByteBuffer serializeDirect(Object obj, Version version) {
+  public static SerializedDiskBuffer serializeBuffer(Object obj, Version version) {
     if (obj == null || obj == Token.NOT_AVAILABLE
         || Token.isInvalidOrRemoved(obj)) {
       throw new IllegalArgumentException(LocalizedStrings
@@ -2424,7 +2428,7 @@ public class EntryEventImpl extends KeyInfo implements
           .toLocalizedString(obj));
     }
     try {
-      return BlobHelper.serializeToDirectBuffer(obj, version);
+      return BlobHelper.serializeToBuffer(obj, version);
     } catch (IOException e) {
       throw new SerializationException(LocalizedStrings
           .EntryEventImpl_AN_IOEXCEPTION_WAS_THROWN_WHILE_SERIALIZING

@@ -31,7 +31,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.Operation;
@@ -1317,7 +1316,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
     }
 
-     @Override
+    @Override
     protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn)
     {
       for (int i = 0; i < putAllDataSize; ++i) {
@@ -1352,14 +1351,15 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
                   rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
                 }
                 putAllData[i].setSender(sender);
-                doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified(), memoryTracker);
+                doEntryPut(putAllData[i], rgn, requiresRegionContext, tx,
+                    fetchFromHDFS, isPutDML, ev.getEntryLastModified(), memoryTracker);
               }
             } finally {
               if (memoryTracker != null) {
                 long unusedMemory = memoryTracker.freeMemory();
                 if (unusedMemory > 0) {
                   CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
-                          memoryTracker.getFirstAllocationObject(), unusedMemory);
+                          memoryTracker.getFirstAllocationObject(), unusedMemory, false);
                 }
               }
             }

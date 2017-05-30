@@ -23,6 +23,7 @@ import java.util.Iterator;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
@@ -84,6 +85,11 @@ public abstract class CallbackFactoryProvider {
 
   public static ClusterCallbacks getClusterCallbacks() {
     return clusterCallbacks;
+  }
+
+  public static StoreCallbacks getStoreCallbacks() {
+    return com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider
+        .getStoreCallbacks();
   }
 
   public static void setClusterCallbacks(ClusterCallbacks cb) {

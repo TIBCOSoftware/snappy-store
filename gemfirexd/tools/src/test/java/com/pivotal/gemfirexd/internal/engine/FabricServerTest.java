@@ -678,8 +678,6 @@ public class FabricServerTest extends TestUtil implements UnitTest {
     int port, port2;
     while ((port = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
         <= FabricService.NETSERVER_DEFAULT_PORT);
-    while ((port2 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
-        <= FabricService.NETSERVER_DEFAULT_PORT);
 
     final FabricServer fabapi = FabricServiceManager.getFabricServerInstance();
     try {
@@ -687,6 +685,9 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
       final NetworkInterface ni = fabapi.startDRDAServer(null,
           port, null);
+
+      while ((port2 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET))
+          <= FabricService.NETSERVER_DEFAULT_PORT);
       final NetworkInterface ni2 = fabapi.startThriftServer(null,
           port2, null);
       try {

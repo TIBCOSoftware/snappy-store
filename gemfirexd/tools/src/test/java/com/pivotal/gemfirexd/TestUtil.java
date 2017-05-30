@@ -35,6 +35,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import com.gemstone.gemfire.GemFireTestCase;
+import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
@@ -1539,11 +1540,10 @@ public class TestUtil extends TestCase {
   }
 
   public static void checkServerGroups(String tableName, String... serverGroups) {
-    PartitionAttributesImpl pattrs = getPartitionAttributes(tableName);
-    GfxdPartitionResolver resolver = (GfxdPartitionResolver)pattrs
-        .getPartitionResolver();
-    SortedSet<String> actualServerGroups = resolver.getDistributionDescriptor()
-        .getServerGroups();
+    Region<?, ?> region = Misc.getRegionForTable(StringUtil
+        .SQLToUpperCase(tableName), true);
+    SortedSet<String> actualServerGroups = ((GemFireContainer)region.getUserAttribute())
+        .getDistributionDescriptor().getServerGroups();
     if (serverGroups == null) {
       assertTrue("expected target server groups to be null",
           actualServerGroups == null || actualServerGroups.size() == 0);
@@ -1558,11 +1558,13 @@ public class TestUtil extends TestCase {
 
   public static GfxdPartitionResolver checkColocation(String tableName,
       String targetSchema, String targetTable) {
-    PartitionAttributesImpl pattrs = getPartitionAttributes(tableName);
+    Region<?, ?> region = Misc.getRegionForTable(StringUtil
+        .SQLToUpperCase(tableName), true);
+    GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+    PartitionAttributes<?, ?> pattrs = container.getRegionAttributes()
+        .getPartitionAttributes();
     // first check using DistributionDescriptor
-    GfxdPartitionResolver resolver = (GfxdPartitionResolver)pattrs
-        .getPartitionResolver();
-    DistributionDescriptor dd = resolver.getDistributionDescriptor();
+    DistributionDescriptor dd = container.getDistributionDescriptor();
     String targetRegionPath = null;
     if (targetTable != null && targetTable.length() > 0) {
       targetTable = Misc.getFullTableName(
@@ -1575,7 +1577,7 @@ public class TestUtil extends TestCase {
     // then using region attributes
     assertEquals("Failure in checking colocation of regions: ",
         targetRegionPath, pattrs.getColocatedWith());
-    return resolver;
+    return (GfxdPartitionResolver)pattrs.getPartitionResolver();
   }
   /**
    * Utility class to store a column name and value pair using for creating a

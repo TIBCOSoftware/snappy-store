@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.engine.store;
 
@@ -25,8 +43,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -40,13 +56,13 @@ import com.gemstone.gemfire.cache.wan.GatewaySender;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.SizeEntry;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException.PutAllPartialResult;
-import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
@@ -263,6 +279,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   private ExtraTableInfo tableInfo;
 
+  private DistributionDescriptor distributionDesc;
+
+  /**
+   * RowEncoder for object tables.
+   */
+  private final RowEncoder encoder;
+
   boolean hasLobs;
 
   /** the current version of the schema of this table */
@@ -418,6 +441,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         }
       }
       this.globalIndexMap = null;
+      this.encoder = null;
       return;
     }
 
@@ -428,6 +452,19 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
     assert rootRegion != null: "Schema '" + schemaName + "' not found";
     this.properties = properties;
+    String rowEncoderClass = properties.getProperty(
+        GfxdConstants.TABLE_ROW_ENCODER_CLASS_KEY);
+    if (rowEncoderClass != null) {
+      try {
+        this.encoder = (RowEncoder)ClassPathLoader.getLatest()
+            .forName(rowEncoderClass).newInstance();
+      } catch (Exception e) {
+        throw StandardException.newException(
+            SQLState.UNEXPECTED_EXCEPTION_FOR_ROW_ENCODER, e, qualifiedName);
+      }
+    } else {
+      this.encoder = null;
+    }
     this.regionAttributes = (RegionAttributes<?, ?>)properties
         .get(GfxdConstants.REGION_ATTRIBUTES_KEY);
     this.indexInfo = null;
@@ -750,8 +787,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     refreshCachedInfo(td, distributionDesc, activation);
     // set the index maintenance listener
     if (!getSchemaName().equalsIgnoreCase(GfxdConstants.SYSTEM_SCHEMA_NAME)) {
-      indexManager = GfxdIndexManager.newIndexManager(dd, td, this,
-          lcc.getDatabase(), hasFk);
+      if (!isObjectStore()) {
+        indexManager = GfxdIndexManager.newIndexManager(dd, td, this,
+            lcc.getDatabase(), hasFk);
+      }
       initialize(this.properties, indexManager, tran, cdl);
     }
     this.properties = null;
@@ -761,6 +800,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public void refreshCachedInfo(TableDescriptor td,
       DistributionDescriptor distributionDesc, Activation activation)
       throws StandardException {
+    setDistributionDescriptor(distributionDesc);
     if (distributionDesc != null) {
       final RegionAttributes<?, ?> rattr = getRegionAttributes();
       final CacheLoader<?, ?> ldr = rattr.getCacheLoader();
@@ -771,10 +811,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       if (pattrs != null) {
         final PartitionResolver<?, ?> pr = rattr.getPartitionAttributes()
             .getPartitionResolver();
-        if (pr != null && pr instanceof GfxdPartitionResolver) {
+        if (pr instanceof GfxdPartitionResolver) {
           final GfxdPartitionResolver spr = (GfxdPartitionResolver)pr;
           spr.setTableDetails(td, this);
-          spr.setDistributionDescriptor(distributionDesc);
+          spr.updateDistributionDescriptor(distributionDesc);
           spr.setColumnInfo(td, activation);
         }
       }
@@ -784,6 +824,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public void setIndexInitialized() {
     this.isIndexInitialized = true;
+  }
+
+  public void setDistributionDescriptor(DistributionDescriptor desc) {
+    this.distributionDesc = desc;
+  }
+
+  public final DistributionDescriptor getDistributionDescriptor() {
+    return this.distributionDesc;
   }
 
   private static void prepareContainerName(long containerId, Properties props,
@@ -1155,7 +1203,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.singleSchema = null;
     ExtraTableInfo.newExtraTableInfo(dd, td, lcc.getContextManager(),
         this.schemaVersion, this, true);
-    this.tableInfo.initRowFormatter(this);
+    if (isByteArrayStore()) {
+      this.tableInfo.initRowFormatter(this);
+    }
   }
 
   /**
@@ -2489,6 +2539,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           regionKey = cKey;
         }
         val = getPrimaryKeyBytesAndValue(row, rf, cKey, primaryKeyColumns);
+      } else if (isObjectStore()) {
+        Map.Entry<RegionKey, Object> entry = this.encoder.fromRow(row, this);
+        regionKey = entry.getKey();
+        val = entry.getValue();
       }
       else {
         // clone the row since this row will get reused by derby
@@ -3300,8 +3354,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       final StringBuilder insertString = new StringBuilder(
           "GemFireContainer: inserting multiple rows [");
       for (int i = 0; i < rows.size(); i++) {
-        insertString.append('(').append(newExecRow(rows.get(i), this.tableInfo, false))
-            .append(") ");
+        insertString.append('(').append(newExecRow(null, rows.get(i),
+            this.tableInfo, false)).append(") ");
       }
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM_UPDATE,
           insertString.append("] [").append(tx).append("] in container: ")
@@ -3377,16 +3431,22 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             // storing in serialized form
             // [sumedh] row has already been cloned for putAll case
             final DataValueDescriptor[] row = (DataValueDescriptor[])val;
-            for (int i = 0; i < row.length; i++) {
-              // also invoke setRegionContext() here that will turn DVD into
-              // its final shape to avoid any state changes during reads that
-              // have potential race conditions
-              row[i].setRegionContext(this.region);
+            if (isObjectStore()) {
+              Map.Entry<RegionKey, Object> entry = this.encoder.fromRow(row, this);
+              regionKey = entry.getKey();
+              val = entry.getValue();
+            } else {
+              for (int i = 0; i < row.length; i++) {
+                // also invoke setRegionContext() here that will turn DVD into
+                // its final shape to avoid any state changes during reads that
+                // have potential race conditions
+                row[i].setRegionContext(this.region);
+              }
+              if ((regionKey = getGeneratedKey(primaryKeyColumns)) == null) {
+                regionKey = getPrimaryKeyDVDs(primaryKeyColumns, row);
+              }
+              val = row;
             }
-            if ((regionKey = getGeneratedKey(primaryKeyColumns)) == null) {
-              regionKey = getPrimaryKeyDVDs(primaryKeyColumns, row);
-            }
-            val = row;
             final Object routingObject = GemFireXDUtils
                 .getRoutingObjectFromGlobalIndex(this.region, regionKey, val);
             // marking skipListener as false.
@@ -4204,9 +4264,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   private Object getRoutingObject(LocalRegion r, Object key, Object value) {
-    GfxdPartitionResolver pr = (GfxdPartitionResolver)r
+    InternalPartitionResolver<?, ?> pr = (InternalPartitionResolver<?, ?>)r
         .getPartitionAttributes().getPartitionResolver();
-    return pr.getRoutingObject(key, value, r);
+    return pr.getRoutingObject(key, value, null, r);
   }
 
   public VersionedObjectList doPutAllOfAllDeltas(MultipleKeyValueHolder mkvh,
@@ -4897,18 +4957,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   /**
-   * Get a new template row with null DVDs for DVD[] storage.
-   */
-  public ExecRow newNullTemplateRow() {
-    if (isByteArrayStore()) {
-      return this.templateRow.getNewNullRow();
-    }
-    else {
-      return new ValueRow(this.templateRow.nColumns());
-    }
-  }
-
-  /**
    * Get a new template row with given valid columns and having given
    * RowFormatter for byte array store.
    */
@@ -4980,10 +5028,19 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     return (this.containerFlags & BYTEARRAY_STORE) != 0;
   }
 
+  public final boolean isObjectStore() {
+    return this.encoder != null;
+  }
+
+  public final RowEncoder getRowEncoder() {
+    return this.encoder;
+  }
+
   private final boolean isCandidateForByteArrayStore() {
     return !GfxdConstants.SYSTEM_SCHEMA_NAME.equals(this.schemaName)
         // TODO: SW: why for session schema??
-        && !GfxdConstants.SESSION_SCHEMA_NAME.equals(this.schemaName);
+        && !GfxdConstants.SESSION_SCHEMA_NAME.equals(this.schemaName)
+        && !isObjectStore();
   }
 
   /**
@@ -5128,8 +5185,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    * 
    * @return either an AbstractCompactExecRow or a ValueRow
    */
-  public final ExecRow newExecRow(final Object rawStoreRow,
-      final ExtraTableInfo tableInfo, boolean faultIn) {
+  public final ExecRow newExecRow(final RegionEntry entry,
+      final Object rawStoreRow, final ExtraTableInfo tableInfo,
+      boolean faultIn) {
     if (rawStoreRow != null) {
       if (isByteArrayStore()) {
         Class<?> rawStoreRowClass = rawStoreRow.getClass();
@@ -5151,6 +5209,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           throw new AssertionError("Unexpected raw store data . Object is "
               + rawStoreRow);
         }
+      } else if (isObjectStore()) {
+        return this.encoder.toRow(entry, rawStoreRow, this);
       }
       else {
         assert rawStoreRow instanceof DataValueDescriptor[]:
@@ -5425,8 +5485,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         dataPolicy = attrs.getDataPolicy().toString();
         if (pattrs != null) {
           pattrsStr = pattrs.getStringForGFXD();
-          resolverStr = ((GfxdPartitionResolver)pattrs.getPartitionResolver())
-              .getDDLString();
+          resolverStr = ((InternalPartitionResolver<?, ?>)pattrs
+              .getPartitionResolver()).getDDLString();
         }
         expirationAttrs = attrs.getRegionIdleTimeout();
         if (expirationAttrs != null && expirationAttrs.getTimeout() != 0) {
@@ -6399,9 +6459,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
     LocalRegion baseRegion = getBaseRegion();
     final String baseTableContainerName = baseRegion.getFullPath();
-    List<GemFireContainer> indexes = new ArrayList();
+    List<GemFireContainer> indexes = new ArrayList<>();
     indexes.add(this);
-    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap();
+    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<>();
     long sum = 0L;
     long totalOverhead = 0L;
     try {
@@ -6417,8 +6477,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (askMemoryManager) {
           // Only acquire memory while initial index creation. Rest all index accounting will be done by
           // region put/delete
-          baseRegion.acquirePoolMemory(0, sum - intialAccounting
-                  , false, null, false);
+          baseRegion.acquirePoolMemory(0, sum - intialAccounting,
+              false, null, false);
           intialAccounting = sum;
           sizeAccountedByIndex.set(sum);
         }
@@ -6431,12 +6491,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         adjustAccountedMemory(totalOverhead);
         currenrOverhead = (int) totalOverhead;
       }
-    } catch (StandardException e) {
-      e.printStackTrace();
-    } catch (IllegalAccessException e) {
-      e.printStackTrace();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+    } catch (StandardException | IllegalAccessException e) {
+      throw new GemFireXDRuntimeException(e);
+    } catch (InterruptedException ie) {
+      Misc.checkIfCacheClosing(ie);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -6446,8 +6505,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     if (doAccounting()) {
       long memoryToBeFreed = currenrOverhead * totalRows;
       // Free all memory by index + (index overhead * row count)
-      getBaseRegion().freePoolMemory(memoryToBeFreed + sizeAccountedByIndex.get()
-              , false);
+      getBaseRegion().freePoolMemory(memoryToBeFreed + sizeAccountedByIndex.get(), false);
       if (!baseRegion.isDestroyed) {
         baseRegion.setIndexOverhead(-1 * currenrOverhead);
         // mark (index overhead * row count) as ignore bytes in local region , which will be ignored by
@@ -6460,8 +6518,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public void accountSnapshotEntry(int numBytes) {
     LocalRegion baseRegion = getBaseRegion();
     if (doAccounting()) {
-      getBaseRegion().acquirePoolMemory(0, numBytes
-              , false, null, false);
+      getBaseRegion().acquirePoolMemory(0, numBytes,
+          false, null, false);
       sizeAccountedByIndex.addAndGet(numBytes);
     }
   }

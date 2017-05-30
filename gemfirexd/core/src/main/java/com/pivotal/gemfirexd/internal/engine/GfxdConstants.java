@@ -132,6 +132,8 @@ public interface GfxdConstants {
    */
   final String REGION_INITSIZE_KEY = "GEMFIRE_REGION_INITSIZE";
 
+  String TABLE_ROW_ENCODER_CLASS_KEY = "TABLE_ROW_ENCODER_CLASS";
+
   /**
    * this string is used to pass the DistributionDescriptor between the
    * CreateTableNode and CreateTableConstantAction. It could be better just

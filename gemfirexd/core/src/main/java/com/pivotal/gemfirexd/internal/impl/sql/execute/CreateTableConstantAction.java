@@ -705,7 +705,7 @@ class CreateTableConstantAction extends DDLConstantAction
 
 
     if (!("SYSSTAT".equalsIgnoreCase(this.schemaName)
-				|| Misc.isSnappyHiveMetaTable((this.schemaName))
+		|| Misc.isSnappyHiveMetaTable((this.schemaName))
         || GemFireXDUtils.TraceConglom)) {
       SanityManager.DEBUG_PRINT(
           "info:" + GfxdConstants.TRACE_CONGLOM,

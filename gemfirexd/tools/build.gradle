@@ -38,11 +38,11 @@ dependencies {
   compile "jline:jline:${jlineVersion}"
   compile "org.apache.thrift:libthrift:${thriftVersion}"
   compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
-  compile "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
+  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   // use dunit support from snappydata
   if (subprojectBase == ':') {
-    testCompile 'io.snappydata:dunit:1.0.4-3'
+    testCompile 'io.snappydata:dunit:1.0.3.3'
   } else {
     testCompile project(':dunit')
   }

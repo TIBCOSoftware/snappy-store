@@ -1161,8 +1161,7 @@ public class GenericStatement
                                           Activation a = (Activation)ac.newInstance(
                                               lcc, false, preparedStmt);
                                           if (isPreparedStatement()) {
-                                            GfxdPartitionResolver resolver = (GfxdPartitionResolver)((PartitionedRegion)lr)
-                                                .getPartitionResolver();
+                                            GfxdPartitionResolver resolver = GemFireXDUtils.getResolver(lr);
                                             Set<Object> robjs = ((InsertNode)qt).getSingleHopInformation(
                                                 (GenericParameterValueSet)a.getParameterValueSet(),
                                                 preparedStmt, resolver, ttd);

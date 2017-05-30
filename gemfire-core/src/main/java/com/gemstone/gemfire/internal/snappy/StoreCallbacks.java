@@ -22,11 +22,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
 
 public interface StoreCallbacks {
 
+  String SHADOW_SCHEMA_NAME = "SNAPPYSYS_INTERNAL";
+
   String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
+
+  void registerTypes();
 
   Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
       int bucketID);
@@ -51,10 +54,24 @@ public interface StoreCallbacks {
 
   int getLastIndexOfRow(Object o);
 
+  /**
+   * Heap allocation calls will happen when creating region entries (and other
+   *   places as required) and clearing them. Off-heap allocations and release
+   * will be controlled by BufferAllocator. Reason being that it can track
+   * the precise amount of memory still allocated (e.g. chunks removed from
+   *   region still in use by iterators), can trigger a JVM reference collection
+   * if memory is reaching threshold and can integrate with Spark off-heap
+   * allocations which do not use UnsafeHolder.
+   *
+   * Bottom-line is that GemFire code that needs to use off-heap need not worry
+   * about explicit calls to this layer and GemFireCacheImpl.getBufferAllocator
+   * will do the accounting (so GemFire code should *never* be invoking
+   *   store/release calls with offHeap=true).
+   */
   boolean acquireStorageMemory(String objectName, long numBytes,
-      UMMMemoryTracker buffer, boolean shouldEvict);
+      UMMMemoryTracker buffer, boolean shouldEvict, boolean offHeap);
 
-  void releaseStorageMemory(String objectName, long numBytes);
+  void releaseStorageMemory(String objectName, long numBytes, boolean offHeap);
 
   void dropStorageMemory(String objectName, long ignoreBytes);
 
@@ -62,8 +79,23 @@ public interface StoreCallbacks {
 
   void resetMemoryManager();
 
-  long getStoragePoolUsedMemory();
-  long getStoragePoolSize();
-  long getExecutionPoolUsedMemory();
-  long getExecutionPoolSize();
+  long getStoragePoolUsedMemory(boolean offHeap);
+  long getStoragePoolSize(boolean offHeap);
+  long getExecutionPoolUsedMemory(boolean offHeap);
+  long getExecutionPoolSize(boolean offHeap);
+
+  /**
+   * Get the number of bytes used for off-heap storage for given object name.
+   */
+  long getOffHeapMemory(String objectName);
+
+  /**
+   * Returns true if system has off-heap configuration.
+   */
+  boolean hasOffHeap();
+
+  /**
+   * Log the used memory breakdown as maintained by the MemoryManager.
+   */
+  void logMemoryStats();
 }
