@@ -4349,7 +4349,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
   @Override
   public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
+      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline, boolean createNewConnection) {
     EmbedConnection conn = null;
     GemFireContainer gfc = null;
     LanguageConnectionContext lcc = null;
@@ -4357,11 +4357,19 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     boolean tableLockAcquired = false;
     boolean giiLockAcquired = false;
     LogWriter logger = Misc.getCacheLogWriterNoThrow();
+    boolean newConnCreated = false;
     try {
       final List<GemFireContainer> indexes = this.indexContainers;
-      conn = GemFireXDUtils.getTSSConnection(false, true, false);
+      if (!createNewConnection) {
+        conn = GemFireXDUtils.getTSSConnection(false, true, false);
+      }
+      else {
+        conn = GemFireXDUtils.createNewInternalConnection(false);
+        newConnCreated = true;
+      }
       lcc = conn.getLanguageConnectionContext();
       tc = (GemFireTransaction)lcc.getTransactionExecute();
+
       gfc = (GemFireContainer)region.getUserAttribute();
       // need to take the read lock on container before reading indexes
       gfc.open(tc, ContainerHandle.MODE_READONLY);
@@ -4444,6 +4452,14 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       }
       if (tableLockAcquired) {
         gfc.closeForEndTransaction(tc, false);
+      }
+      if (newConnCreated) {
+        try {
+          conn.close();
+        }
+        catch(Throwable t) {
+          // The connection was created here itself
+        }
       }
     }
     return giiLockAcquired;
