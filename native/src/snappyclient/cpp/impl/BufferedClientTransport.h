@@ -33,13 +33,15 @@
  * LICENSE file.
  */
 
-#ifndef BUFFEREDSOCKETTRANSPORT_H_
-#define BUFFEREDSOCKETTRANSPORT_H_
+#ifndef BUFFEREDCLIENTTRANSPORT_H_
+#define BUFFEREDCLIENTTRANSPORT_H_
 
 #include <boost/shared_ptr.hpp>
 
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TBufferTransports.h>
+
+#include "ClientTransport.h"
 
 using namespace apache::thrift::transport;
 
@@ -48,19 +50,20 @@ namespace snappydata {
 namespace client {
 namespace impl {
 
-  class BufferedSocketTransport;
+  class BufferedClientTransport;
 
   /**
    * This exposes a few protected members and enables writing "frames"
    * without the overhead of having to create buffer for entire message
    * just writing size of first buffer as expected by SnappyData selectors.
    */
-  class BufferedSocketTransport : public TBufferedTransport {
+  class BufferedClientTransport : public TBufferedTransport,
+      public ClientTransport {
   public:
-    BufferedSocketTransport(const boost::shared_ptr<TSocket>& socket,
+    BufferedClientTransport(const boost::shared_ptr<TSocket>& socket,
         uint32_t rsz, uint32_t wsz, bool writeFramed);
 
-    virtual ~BufferedSocketTransport() {
+    virtual ~BufferedClientTransport() {
     }
 
     void initStart();
@@ -71,15 +74,23 @@ namespace impl {
 
     virtual void flush();
 
+    bool isTransportOpen() {
+      return isOpen();
+    }
+
+    void closeTransport() {
+      close();
+    }
+
     void setReceiveBufferSize(uint32_t rsz);
 
     void setSendBufferSize(uint32_t wsz);
 
-    uint32_t getReceiveBufferSize() const noexcept;
+    uint32_t getReceiveBufferSize() noexcept;
 
-    uint32_t getSendBufferSize() const noexcept;
+    uint32_t getSendBufferSize() noexcept;
 
-    TSocket* getSocket() const noexcept;
+    TSocket* getSocket() noexcept;
 
   private:
     const bool m_writeFramed;
@@ -91,4 +102,4 @@ namespace impl {
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* BUFFEREDSOCKETTRANSPORT_H_ */
+#endif /* BUFFEREDCLIENTTRANSPORT_H_ */
