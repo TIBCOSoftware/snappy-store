@@ -62,11 +62,11 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
   public static final String DIRECT_STORE_OBJECT_OWNER =
       "SNAPPYDATA_DIRECT_STORE_OBJECTS";
 
-  public static final String CACHED_DATA_FRAME_RESULTOUTPUT_OWNER =
-          "CACHED_DATA_FRAME_RESULTOUTPUT";
+  public static final String DIRECT_STORE_DATA_FRAME_OUTPUT =
+      "DIRECT_STORE_DATA_FRAME_OUTPUT";
 
-  public static final List<String> nonEvictingOwners = new ArrayList() {{
-    add(CACHED_DATA_FRAME_RESULTOUTPUT_OWNER);
+  public static final List<String> nonEvictingOwners = new ArrayList<String>() {{
+    add(DIRECT_STORE_DATA_FRAME_OUTPUT);
   }};
 
   public static ManagedDirectBufferAllocator instance() {
