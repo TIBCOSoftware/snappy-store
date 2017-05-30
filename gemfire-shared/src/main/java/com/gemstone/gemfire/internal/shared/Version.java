@@ -72,7 +72,7 @@ public final class Version implements Comparable<Version> {
 
   private static final Method getGFEClientCommands;
 
-  public static final int NUM_OF_VERSIONS = 37;
+  public static final int NUM_OF_VERSIONS = 33;
 
   private static final Version[] VALUES = new Version[NUM_OF_VERSIONS];
 
@@ -171,7 +171,13 @@ public final class Version implements Comparable<Version> {
   public static final Version GFE_7099 = new Version("GFE", "7.0.99", (byte)7,
       (byte)0, (byte)99, (byte)0, GFE_7099_ORDINAL);
 
-  private static final byte SQLF_11_ORDINAL = 22;
+  /** match the ordinal with Pivotal GemFire 7.1 for compatibility */
+  private static final byte GFE_71_ORDINAL = 22;
+
+  public static final Version GFE_71 = new Version("GFE", "7.1", (byte)7,
+      (byte)1, (byte)0, (byte)0, GFE_71_ORDINAL);
+
+  private static final byte SQLF_11_ORDINAL = 23;
 
   /**
    * SQLFire 1.1 has a separate version since it has changed the RowFormatter
@@ -180,11 +186,6 @@ public final class Version implements Comparable<Version> {
    */
   public static final Version SQLF_11 = new Version("SQLF", "1.1", (byte)1,
       (byte)1, (byte)0, (byte)0, SQLF_11_ORDINAL, GFE_7099);
-
-  private static final byte GFE_71_ORDINAL = 23;
-
-  public static final Version GFE_71 = new Version("GFE", "7.1", (byte)7,
-      (byte)1, (byte)0, (byte)0, GFE_71_ORDINAL);
 
   private static final byte GFE_75_ORDINAL = 24;
 
@@ -226,15 +227,11 @@ public final class Version implements Comparable<Version> {
   public static final Version GFXD_20 = new Version("GFXD", "2.0",
       (byte)2, (byte)0, (byte)0, (byte)0, GFXD_20_ORDINAL, GFE_75);
 
-  private static final byte GFE_81_ORDINAL = 35;
+  private static final byte GFXD_155_ORDINAL = 32;
 
-  public static final Version GFE_81 = new Version("GFE", "8.1", (byte)8,
-          (byte)1, (byte)0, (byte)0, GFE_81_ORDINAL);
-
-  private static final byte GFXD_155_ORDINAL = 36;
-
+  /** GemFire version is at 7.1 for compatibility with external clusters. */
   public static final Version GFXD_155 = new Version("GFXD", "1.5.5",
-      (byte)1, (byte)5, (byte)5, (byte)0, GFXD_155_ORDINAL, GFE_81);
+      (byte)1, (byte)5, (byte)5, (byte)0, GFXD_155_ORDINAL, GFE_71);
 
   /**
    * This constant must be set to the most current version of GFE/GFXD.
