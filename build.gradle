@@ -39,7 +39,7 @@ allprojects {
   ext {
     scalaBinaryVersion = '2.11'
     scalaVersion = scalaBinaryVersion + '.8'
-    snappySparkVersion = '2.0.2.3'
+    sparkVersion = '2.0.0'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
     slf4jVersion = '1.7.21'
@@ -78,7 +78,7 @@ allprojects {
 
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
-    PRODUCT_MAINT = '4'
+    PRODUCT_MAINT = '5'
     PRODUCT_CLASSIFIER = ''
     PRODUCT_RELEASE_STAGE = ''
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"
@@ -627,7 +627,7 @@ subprojects {
     tasks.withType(Test).each { test ->
       test.configure {
 
-        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxPermSize=128M',
+        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError',
                    '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC',
                    '-XX:CMSInitiatingOccupancyFraction=50',
                    '-XX:+CMSClassUnloadingEnabled', '-ea']

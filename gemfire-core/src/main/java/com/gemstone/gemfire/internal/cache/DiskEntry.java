@@ -37,10 +37,14 @@ package com.gemstone.gemfire.internal.cache;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Set;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DiskAccessException;
+import com.gemstone.gemfire.cache.LowMemoryException;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
+import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
@@ -1378,9 +1382,15 @@ public interface DiskEntry extends RegionEntry {
       int recoveredValueSize = BucketRegion.calcMemSize(preparedValue);
 
       if (!LocalRegion.isMetaTable(dr.getName())) {
-        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
-            dr.getName(), recoveredValueSize, null, false, false);
+        boolean acquired = CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
+                dr.getName(), recoveredValueSize, null, true, false);
+
+        if (!acquired) {
+          Set<DistributedMember> sm = Collections.singleton(GemFireCacheImpl.getExisting().getMyId());
+          throw new LowMemoryException("Could not obtain memory of size " + recoveredValueSize, sm);
+        }
       }
+
       region.updateSizeOnFaultIn(entry.getKey(), recoveredValueSize, bytesOnDisk);
       //did.setValueSerializedSize(0);
       // I think the following assertion is true but need to run

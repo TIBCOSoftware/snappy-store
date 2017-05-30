@@ -78,14 +78,7 @@ import java.util.regex.Pattern;
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.SerializationException;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.EntryDestroyedException;
-import com.gemstone.gemfire.cache.EntryEvent;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.TimeoutException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.distributed.OplogCancelledException;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -7402,6 +7395,11 @@ public final class Oplog implements CompactableOplog {
                   diskRecoveryStore);
             } catch(RegionDestroyedException e) {
               //This region has been destroyed, stop recovering from it.
+              diskRecoveryStores.remove(diskRegionId);
+            } catch (LowMemoryException lme) {
+              this.logger.info(LocalizedStrings.ONE_ARG,
+                      "Oplog::recoverValuesIfNeeded: got low memory exception." +
+                          "Stopping the recovery " + toString());
               diskRecoveryStores.remove(diskRegionId);
             }
           }

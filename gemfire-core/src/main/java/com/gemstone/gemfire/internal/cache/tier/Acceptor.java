@@ -83,7 +83,7 @@ public abstract class Acceptor
    * The GFE version of the server.
    * @since 5.7
    */
-  public static final Version VERSION = Version.CURRENT;
+  public static final Version VERSION = Version.CURRENT_GFE;
 
   /**
    * Listens for a client to connect and establishes a connection to that

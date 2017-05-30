@@ -45,12 +45,12 @@
 #include <boost/algorithm/string.hpp>
 
 #include "impl/ClientService.h"
-#include "impl/BufferedSocketTransport.h"
 #include "impl/InternalUtils.h"
 
 #include "PreparedStatement.h"
 #include "ParametersBatch.h"
 #include "ClientAttribute.h"
+#include "impl/ClientTransport.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -186,10 +186,24 @@ void ConnectionProperty::staticInitialize() {
           "through thin driver will not be supported. The driver will "
           "not ask for statementUUID from the server.(default false)", NO_YES,
       F_IS_BOOLEAN);
+  addProperty_(ClientAttribute::ROUTE_QUERY,
+      "A connection level property. Whether to route queries to lead node. "
+      "Default behaviour is to route column table or complex queries to lead "
+      "node to be executed by SnappyData engine. Setting this to false will "
+      "force using the Store engine only which does not support a bunch of "
+      "features like column tables, non-collocated joins etc (default true)",
+      YES_NO, F_IS_BOOLEAN);
   addProperty_(ClientAttribute::THRIFT_USE_BINARY_PROTOCOL,
       "A connection level property. Use binary protocol instead of compact "
           "protocol for client-server communication. Requires servers with "
           "with binary protocol running in the cluster.(default false)",
+      NO_YES, F_IS_BOOLEAN);
+  addProperty_(ClientAttribute::THRIFT_USE_FRAMED_TRANSPORT,
+      "A connection level property. Use framed transport instead of normal "
+          "transport for client-server communication. Unlike other settings, "
+          "requires all servers to be configured running in framed transport. "
+          "Framed transport is a less efficient path and not recommended to "
+          "be used unless there are specialized needs (default false)",
       NO_YES, F_IS_BOOLEAN);
   addProperty_(ClientAttribute::SERVER_GROUPS,
       "A connection level property. Restrict connection to servers in the "

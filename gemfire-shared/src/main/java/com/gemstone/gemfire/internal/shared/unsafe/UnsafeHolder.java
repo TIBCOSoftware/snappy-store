@@ -38,6 +38,7 @@ package com.gemstone.gemfire.internal.shared.unsafe;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
@@ -68,6 +69,8 @@ public abstract class UnsafeHolder {
     static final Constructor<?> directBufferConstructor;
     static final Field cleanerField;
     static final Field cleanerRunnableField;
+    static final Object javaLangRefAccess;
+    static final Method handlePendingRefs;
 
     static {
       sun.misc.Unsafe v;
@@ -116,6 +119,22 @@ public abstract class UnsafeHolder {
       directBufferConstructor = dbConstructor;
       cleanerField = cleaner;
       cleanerRunnableField = runnableField;
+
+      Method m;
+      Object langRefAccess;
+      try {
+        m = sun.misc.SharedSecrets.class.getMethod("getJavaLangRefAccess");
+        m.setAccessible(true);
+        langRefAccess = m.invoke(null);
+        m = langRefAccess.getClass().getMethod("tryHandlePendingReference");
+        m.setAccessible(true);
+        m.invoke(langRefAccess);
+      } catch (Throwable ignored) {
+        langRefAccess = null;
+        m = null;
+      }
+      javaLangRefAccess = langRefAccess;
+      handlePendingRefs = m;
     }
 
     static void init() {
@@ -309,14 +328,22 @@ public abstract class UnsafeHolder {
   }
 
   public static void releasePendingReferences() {
-    try {
-      final sun.misc.JavaLangRefAccess refAccess =
-          sun.misc.SharedSecrets.getJavaLangRefAccess();
-      // retry while helping enqueue pending Cleaner Reference objects
-      // noinspection StatementWithEmptyBody
-      while (refAccess.tryHandlePendingReference()) ;
-    } catch (Throwable ignored) {
-      // ignore if JavaLangRefAccess is not present or failed for some reason
+    // commented code intended to be invoked by reflection for platforms
+    // that may not have the requisite classes (e.g. Mac default JDK)
+    /*
+    final sun.misc.JavaLangRefAccess refAccess =
+        sun.misc.SharedSecrets.getJavaLangRefAccess();
+    while (refAccess.tryHandlePendingReference()) ;
+    */
+    final Method handlePendingRefs = Wrapper.handlePendingRefs;
+    if (handlePendingRefs != null) {
+      try {
+        // retry while helping enqueue pending Cleaner Reference objects
+        // noinspection StatementWithEmptyBody
+        while ((Boolean)handlePendingRefs.invoke(Wrapper.javaLangRefAccess)) ;
+      } catch (Exception ignored) {
+        // ignore any exceptions in releasing pending references
+      }
     }
   }
 

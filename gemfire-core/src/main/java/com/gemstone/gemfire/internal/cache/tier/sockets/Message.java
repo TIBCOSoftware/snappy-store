@@ -325,7 +325,7 @@ public class Message  {
     } else {
       HeapDataOutputStream hdos;
       Version v = destVersion;
-      if (destVersion.equals(Version.CURRENT)){
+      if (destVersion.equals(Version.CURRENT_GFE)){
         v = null;
       }
       hdos = new HeapDataOutputStream(chunkSize, v);

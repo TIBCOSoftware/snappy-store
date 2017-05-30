@@ -632,15 +632,6 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     }
 
     final ArrayList<String> vmArgs = new ArrayList<String>();
-    
-    // increase the default perm gen size
-    if (this.maxPermGenSize == null 
-        && jvmVendor != null 
-        && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
-      this.maxPermGenSize = MAX_PERM_SIZE + MAX_PERM_DEFAULT;
-      vmArgs.add(this.maxPermGenSize);
-    }
-
     // If either the max heap or initial heap is null, set the one that is null
     // equal to the one that isn't.
     if (this.maxHeapSize == null) {

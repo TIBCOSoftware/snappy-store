@@ -75,7 +75,7 @@ public final class ClientPingMessageImpl implements ClientMessage {
   }
   
   protected Message getGFEMessage() throws IOException {
-    Message message = new Message(0, Version.CURRENT);
+    Message message = new Message(0, Version.CURRENT_GFE);
     message.setMessageType(MessageType.SERVER_TO_CLIENT_PING);
     message.setLogger(this.logger);
     message.setTransactionId(0);

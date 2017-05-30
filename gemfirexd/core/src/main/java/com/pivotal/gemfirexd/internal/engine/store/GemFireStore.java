@@ -39,6 +39,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serializable;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,6 +56,10 @@ import com.gemstone.gemfire.admin.jmx.Agent;
 import com.gemstone.gemfire.admin.jmx.AgentConfig;
 import com.gemstone.gemfire.admin.jmx.AgentFactory;
 import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.client.PoolFactory;
+import com.gemstone.gemfire.cache.client.PoolManager;
+import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersRequest;
+import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersResponse;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -64,7 +70,9 @@ import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.distributed.internal.tcpserver.TcpClient;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ClassPathLoader;
@@ -73,6 +81,7 @@ import com.gemstone.gemfire.internal.GemFireLevel;
 import com.gemstone.gemfire.internal.HostStatSampler.StatsSamplerCallback;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
+import com.gemstone.gemfire.internal.admin.remote.DistributionLocatorId;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -753,7 +762,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
-
+    String remoteGemFireLocators = null;
     // install the GemFireXD specific thread dump signal (URG) handler
     try {
       SigThreadDumpHandler.install();
@@ -872,6 +881,15 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         Attribute.SERVER_GROUPS, GfxdConstants.GFXD_SERVER_GROUPS);
     isLocator = PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
         GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
+    remoteGemFireLocators = PropertyUtil.findAndGetProperty(props, DistributionConfig
+                    .REMOTE_LOCATORS_NAME, DistributionConfig.GEMFIRE_PREFIX +
+            DistributionConfig.REMOTE_LOCATORS_NAME);
+   /*
+    if (remoteGemFireLocators != null) {
+      props.remove(DistributionConfig.REMOTE_LOCATORS_NAME);
+      props.remove(DistributionConfig.GEMFIRE_PREFIX + DistributionConfig.REMOTE_LOCATORS_NAME);
+    }
+    */
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,
@@ -1062,12 +1080,27 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       }
 
       try {
-        CacheFactory c = new CacheFactory(dsProps);
+        CacheFactory c = null;
+        PoolFactory pf = null;
+        if(remoteGemFireLocators != null) {
+          pf = PoolManager.createFactory();
+          pf.setReadTimeout(30000);
+          this.configurePool(pf, remoteGemFireLocators);
+          c = new GemFireSparkConnectorCacheFactory(dsProps);
+        } else {
+          c = new CacheFactory(dsProps);
+        }
+
         if (this.persistingDD) {
           c.setPdxPersistent(true);
           c.setPdxDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
         }
-        this.gemFireCache = (GemFireCacheImpl) c.create();
+        if (pf != null) {
+          this.gemFireCache = (GemFireCacheImpl) ((GemFireSparkConnectorCacheFactory)c).create(pf);
+        } else {
+          this.gemFireCache = (GemFireCacheImpl)c.create();
+        }
+
         this.gemFireCache.getLogger().info(
             "GemFire Cache successfully created.");
       } catch (CacheExistsException ex) {
@@ -1329,6 +1362,88 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           == ContainerHandle.MODE_OPEN_FOR_LOCK_ONLY);
     }
   }
+
+  private void configurePool(PoolFactory pf, String remoteLocators) {
+    StringTokenizer remoteLocatorsTokenizer = new StringTokenizer(remoteLocators, ",");
+    DistributionLocatorId[] locators = new DistributionLocatorId[remoteLocatorsTokenizer
+            .countTokens()];
+    int i = 0;
+    while (remoteLocatorsTokenizer.hasMoreTokens()) {
+      locators[i] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
+    }
+    List<ServerLocation> servers = new ArrayList<ServerLocation>();
+    for(DistributionLocatorId locator : locators) {
+      try {
+
+        InetSocketAddress addr = new InetSocketAddress(locator.getHost(), locator.getPort());
+        GetAllServersRequest req = new GetAllServersRequest("");
+        Object res = TcpClient.requestToServer(addr.getAddress(), addr.getPort(), req, 2000);
+        if (res != null) {
+          servers.addAll((List<ServerLocation>) ((GetAllServersResponse) res).getServers());
+        }
+      }catch(Exception e) {
+        System.out.println("Unable to get remote gfe servers from locator = " + locator);
+      }
+    }
+
+    List<ServerLocation> prefServers = null;
+    if (servers.size() > 0) {
+      String sparkIp = System.getenv("SPARK_LOCAL_IP");
+      String hostName = null;
+      try {
+        hostName = sparkIp != null ? InetAddress.getByName(sparkIp).getCanonicalHostName() :
+                InetAddress.getLocalHost().getCanonicalHostName();
+      } catch ( Exception e) {
+        hostName = "";
+      }
+      int spacing = servers.size() / 3;
+      if (spacing != 0) {
+        prefServers = new ArrayList<ServerLocation>();
+        ServerLocation localServer = null;
+        for(int j = 0 ; j < servers.size(); ++j) {
+          ServerLocation sl = servers.get(j);
+          if (localServer == null && sl.getHostName().equals(hostName)) {
+            localServer = sl;
+          } else {
+            if (j + 1 % spacing == 0) {
+              prefServers.add(servers.get(j));
+            }
+          }
+        }
+        if(localServer != null) {
+          if(prefServers.size() < 3) {
+            prefServers.add(0, localServer);
+          } else {
+            prefServers.set(0, localServer);
+          }
+        }
+      } else {
+        // bring local server if any to start position
+        int localServerIndex = -1;
+        for(int j = 0 ; j < servers.size(); ++j) {
+          ServerLocation sl = servers.get(j);
+          if (localServerIndex == -1 && sl.getHostName().equals(hostName)) {
+            localServerIndex = j;
+            break;
+          }
+        }
+        if (localServerIndex != -1) {
+          ServerLocation local = servers.remove(localServerIndex);
+          servers.add(0, local);
+        }
+        prefServers = servers;
+      }
+
+      for (ServerLocation srvr: prefServers ) {
+        pf.addServer(srvr.getHostName(), srvr.getPort());
+      }
+    } else {
+      for(DistributionLocatorId locator : locators) {
+        pf.addLocator(locator.getBindAddress(), locator.getPort());
+      }
+    }
+  }
+
 
   /**
    * Start executor if any of the accessor is a driver.

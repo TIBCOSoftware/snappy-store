@@ -18,7 +18,9 @@ package com.gemstone.gemfire.internal.cache.store;
 
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -59,6 +61,13 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
    */
   public static final String DIRECT_STORE_OBJECT_OWNER =
       "SNAPPYDATA_DIRECT_STORE_OBJECTS";
+
+  public static final String DIRECT_STORE_DATA_FRAME_OUTPUT =
+      "DIRECT_STORE_DATA_FRAME_OUTPUT";
+
+  public static final List<String> nonEvictingOwners = new ArrayList<String>() {{
+    add(DIRECT_STORE_DATA_FRAME_OUTPUT);
+  }};
 
   public static ManagedDirectBufferAllocator instance() {
     return instance;

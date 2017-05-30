@@ -55,17 +55,33 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
   private ByteBuffer buffer;
   private final Version version;
 
-  private static final String BUFFER_OWNER = "DATAOUTPUT";
+  private String bufferOwner = "DATAOUTPUT";
 
   public ByteBufferDataOutput(Version version) {
     this(INITIAL_SIZE, version);
+  }
+
+  /**
+   * This constructor can be used to give non-default buffer owner.
+   * Kind of hack, to avoid large scale refactoring to pass shoulEvict
+   * flag to UMM.
+   */
+  public ByteBufferDataOutput(int initialSize,
+      BufferAllocator allocator,
+      Version version,
+      String bufferOwner) {
+    this.allocator = allocator;
+    this.buffer = allocator.allocate(initialSize, bufferOwner)
+        .order(ByteOrder.BIG_ENDIAN);
+    this.version = version;
+    this.bufferOwner = bufferOwner;
   }
 
   public ByteBufferDataOutput(int initialSize, Version version) {
     // this uses allocations and expansion via BufferAllocator that has both
     // better efficiency for direct buffer (in expand) and applies system limits
     this.allocator = GemFireCacheImpl.getCurrentBufferAllocator();
-    this.buffer = allocator.allocate(initialSize, BUFFER_OWNER)
+    this.buffer = allocator.allocate(initialSize, bufferOwner)
         .order(ByteOrder.BIG_ENDIAN);
     this.version = version;
   }
@@ -84,7 +100,8 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
 
   @Override
   public ByteBuffer getBufferRetain() {
-    return retain() ? this.buffer.duplicate() : DiskEntry.Helper.NULL_BUFFER;
+    return retain() ? this.buffer.duplicate()
+        : DiskEntry.Helper.NULL_BUFFER.duplicate();
   }
 
   @Override
@@ -263,7 +280,7 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
     if (buffer.limit() - position >= required) return;
 
     buffer.flip();
-    ByteBuffer newBuffer = this.allocator.expand(buffer, required, BUFFER_OWNER);
+    ByteBuffer newBuffer = this.allocator.expand(buffer, required, bufferOwner);
     // set the position of newBuffer
     newBuffer.position(position);
     this.buffer = newBuffer;
