@@ -180,8 +180,8 @@ public final class ClientProxyMembershipID
     if (system != sys) {
       // DS already exists... make sure it's for current DS connection
 
-      systemMemberId = new InternalDistributedMember((InternalDistributedMember)sys.getDistributedMember(),
-          Version.CURRENT_GFE_ORDINAL);
+      systemMemberId = ((InternalDistributedMember)sys.getDistributedMember()).
+          withOrdinal(Version.CURRENT_GFE_ORDINAL);
       try {
         HeapDataOutputStream hdos = new HeapDataOutputStream(256, Version.CURRENT_GFE);
         DataSerializer.writeObject(systemMemberId, hdos);

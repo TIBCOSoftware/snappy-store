@@ -196,20 +196,7 @@ public final class InternalDistributedMember
 //    checkHostName();
   }
 
-  public InternalDistributedMember(InternalDistributedMember member, short ordinalToUse ) {
-    this.vmKind = member.vmKind;
-    this.ipAddr = member.getNetMember();
-    this.hostName = member.hostName;
-    this.isPartial = member.isPartial;
-    this.dcPort = member.dcPort;
-    this.vmPid = member.vmPid;
-    this.groups = member.groups;
-    this.name = member.name;
-    this.uniqueTag = member.uniqueTag;
-    this.vmViewId = member.vmViewId;
-    this.durableClientAttributes = member.durableClientAttributes;
-    this.version = ordinalToUse;
-  }
+
 
   // Used only by Externalization
   public InternalDistributedMember() {
@@ -388,6 +375,27 @@ public final class InternalDistributedMember
     if (isCurrentHost) {
       defaultToCurrentHost();
     }
+  }
+
+
+  public InternalDistributedMember withOrdinal(short ordinalToUse ) {
+    InternalDistributedMember copy = new InternalDistributedMember();
+    copy.vmKind = this.vmKind;
+    copy.ipAddr = this.getNetMember();
+    copy.hostName = this.hostName;
+    copy.isPartial = this.isPartial;
+    copy.dcPort = this.dcPort;
+    copy.vmPid = this.vmPid;
+    copy.groups = this.groups;
+    copy.name = this.name;
+    copy.uniqueTag = this.uniqueTag;
+    copy.vmViewId = this.vmViewId;
+    copy.durableClientAttributes = this.durableClientAttributes;
+    copy.version = ordinalToUse;
+    copy.versionObj = Version.fromOrdinalOrCurrent(copy.version);
+    copy.cachedToString = null;
+    copy.essentialData = null;
+    return copy;
   }
 
   /**
