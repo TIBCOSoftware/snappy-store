@@ -61,7 +61,7 @@ namespace snappydata {
 namespace client {
 namespace impl {
 
-  class BufferedSocketTransport;
+  class ClientTransport;
   class ControlConnection;
 
   class SnappyDataClient : public thrift::SnappyDataServiceClient {
@@ -93,10 +93,11 @@ namespace impl {
     const thrift::OpenConnectionArgs m_connArgs;
     bool m_loadBalance;
     thrift::ServerType::type m_reqdServerType;
+    bool m_useFramedTransport;
     //const SSLSocketParameters m_sslParams;
     std::set<std::string> m_serverGroups;
 
-    boost::shared_ptr<BufferedSocketTransport> m_transport;
+    boost::shared_ptr<ClientTransport> m_transport;
     SnappyDataClient m_client;
 
     thrift::HostAddress m_currentHostAddr;
@@ -129,8 +130,9 @@ namespace impl {
     static protocol::TProtocol* createProtocol(
         thrift::HostAddress& hostAddr,
         const thrift::ServerType::type serverType,
+        const bool useFramedTransport,
         //const SSLSocketParameters& sslParams,
-        boost::shared_ptr<BufferedSocketTransport>& returnTransport);
+        boost::shared_ptr<ClientTransport>& returnTransport);
 
   protected:
     virtual void checkConnection(const char* op);
@@ -189,7 +191,7 @@ namespace impl {
       return m_isOpen;
     }
 
-    inline const boost::shared_ptr<BufferedSocketTransport>& getTransport()
+    inline const boost::shared_ptr<ClientTransport>& getTransport()
         const noexcept {
       return m_transport;
     }

@@ -183,7 +183,7 @@ public final class MemHeapCostController extends MemHeapScanController
           if (isPrimaryKeyGetAll) {
             remote_cost_multiplier += SINGLE_REMOTE_TABLE_GETALL_COST;
             final GfxdPartitionResolver resolver = td
-                .getPartitionResolver(null);
+                .getGfxdPartitionResolver(null);
             assert resolver != null: "Remote fetch shouldn't happen for non-partitioned table"
                 + td;
             if (resolver.requiresGlobalIndex()) {

@@ -39,6 +39,7 @@ import com.gemstone.gemfire.internal.cache.lru.LRUStatistics;
 import com.gemstone.gemfire.internal.cache.lru.MemLRUCapacityController;
 import com.gemstone.gemfire.internal.cache.lru.NewLIFOClockHand;
 import com.gemstone.gemfire.internal.cache.lru.NewLRUClockHand;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -503,7 +504,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           	  if(!region.getBucketAdvisor().isPrimary()){       	
               try {
                 bytesEvicted = ((AbstractLRURegionMap)region.entries)
-                    .centralizedLruUpdateCallback();
+                    .centralizedLruUpdateCallback(false);
                 if (bytesEvicted == 0) {
                   iter.remove();
                 } else {
@@ -644,9 +645,15 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     
     return monitorStateIsEviction && this.sizeInVM() > 0;
   }
-  
-  public final int centralizedLruUpdateCallback() {
-    int evictedBytes = 0;
+
+  /**
+   * Evict an entry as per LRU and return a long value having heap bytes
+   * evicted in the LSB integer, and the (new SerializedDiskBuffer) off-heap
+   * evicted bytes in the MSB integer if "includeOffHeapBytes" is true.
+   */
+  public final long centralizedLruUpdateCallback(boolean includeOffHeapBytes) {
+    long evictedBytes = 0;
+    int offHeapSize = 0;
     if (getCallbackDisabled()) {
       return evictedBytes;
     }
@@ -659,11 +666,26 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     }
     LRUStatistics stats = _getLruList().stats();
     try {
-      while (mustEvict() && evictedBytes == 0) {
+      while (mustEvict() && (evictedBytes == 0 ||
+          (includeOffHeapBytes && offHeapSize == 0))) {
         LRUEntry removalEntry = (LRUEntry)_getLruList().getLRUEntry();
         if (removalEntry != null) {
-          evictedBytes = evictEntry(removalEntry, stats);
-          if (evictedBytes != 0) {
+          // get the handle to off-heap entry before eviction
+          SerializedDiskBuffer buffer = null;
+          if (includeOffHeapBytes && !removalEntry.isOffHeap()) {
+            // add off-heap size to the MSB of evictedBytes
+            Object value = removalEntry._getValue();
+            if (value instanceof SerializedDiskBuffer) {
+              buffer = (SerializedDiskBuffer)value;
+            }
+          }
+          int evicted = evictEntry(removalEntry, stats);
+          evictedBytes += evicted;
+          if (evicted != 0) {
+            // check if off-heap entry was evicted
+            if (buffer != null && buffer.refCount() <= 0) {
+              offHeapSize += buffer.getOffHeapSizeInBytes();
+            }
             Object owner = _getOwnerObject();
             if (owner instanceof BucketRegion) {
               ((BucketRegion)owner).incEvictions(1);
@@ -688,9 +710,10 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     }
     if (debug)
       debugLogging("callback complete");
-    // If in transaction context (either local or message)
-    // reset the tx thread local
-    return evictedBytes;
+    // Return the heap evicted bytes and (SerializedDiskBuffer) off-heap
+    // evicted bytes ORed. If "includeOffHeapBytes" parameter is false
+    // then latter is zero.
+    return (evictedBytes | (((long)offHeapSize) << 32L));
   }
   
  

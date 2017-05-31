@@ -121,7 +121,7 @@ public class OffHeapStorage implements OffHeapMemoryStats {
   }
 
   public static long parseOffHeapMemorySize(String value) {
-    if (value == null || value.equals("")) {
+    if (value == null || value.length() == 0) {
       return 0;
     }
     final long parsed = parseLongWithUnits(value, 0L, 1024*1024);

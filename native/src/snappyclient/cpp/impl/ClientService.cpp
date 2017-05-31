@@ -64,7 +64,8 @@
 #include "LogWriter.h"
 #include "Utils.h"
 
-#include "BufferedSocketTransport.h"
+#include "BufferedClientTransport.h"
+#include "FramedClientTransport.h"
 #include "DNSCacheService.h"
 #include "InternalLogger.h"
 #include "InternalUtils.h"
@@ -338,7 +339,8 @@ ClientService::ClientService(const std::string& host, const int port,
     thrift::OpenConnectionArgs& connArgs) :
     // default for load-balance is true
     m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(true),
-    m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP), m_serverGroups(),
+    m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
+    m_useFramedTransport(false), m_serverGroups(),
     m_transport(), m_client(createDummyProtocol()),
     m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
     m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
@@ -378,6 +380,7 @@ ClientService::ClientService(const std::string& host, const int port,
     // now check for the protocol details like SSL etc
     // and reqd snappyServerType
     bool binaryProtocol = false;
+    bool framedTransport = false;
     bool useSSL = false;
     //SSLSocketParameters sslParams = null;
     std::map<std::string, std::string>::iterator propValue;
@@ -386,6 +389,11 @@ ClientService::ClientService(const std::string& host, const int port,
     if ((propValue = props.find(ClientAttribute::THRIFT_USE_BINARY_PROTOCOL))
         != props.end()) {
       binaryProtocol = boost::iequals(propValue->second, "true");
+      props.erase(propValue);
+    }
+    if ((propValue = props.find(ClientAttribute::THRIFT_USE_FRAMED_TRANSPORT))
+        != props.end()) {
+      framedTransport = boost::iequals(propValue->second, "true");
       props.erase(propValue);
     }
     if ((propValue = props.find(ClientAttribute::SSL)) != props.end()) {
@@ -400,6 +408,7 @@ ClientService::ClientService(const std::string& host, const int port,
       props.erase(propValue);
     }
     m_reqdServerType = getServerType(true, binaryProtocol, useSSL);
+    m_useFramedTransport = framedTransport;
   }
 
   std::set<thrift::HostAddress> failedServers;
@@ -438,8 +447,8 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
       // first close any existing transport
       destroyTransport();
 
-      boost::shared_ptr<protocol::TProtocol> protocol(
-          createProtocol(hostAddr, m_reqdServerType, m_transport));
+      boost::shared_ptr<protocol::TProtocol> protocol(createProtocol(
+          hostAddr, m_reqdServerType, m_useFramedTransport, m_transport));
       m_client.resetProtocols(protocol, protocol);
 
       thrift::ConnectionProperties connProps;
@@ -489,10 +498,10 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
 void ClientService::destroyTransport() noexcept {
   // destructor should *never* throw an exception
   try {
-    BufferedSocketTransport* transport = m_transport.get();
+    ClientTransport* transport = m_transport.get();
     if (transport != NULL) {
-      if (transport->isOpen()) {
-        transport->close();
+      if (transport->isTransportOpen()) {
+        transport->closeTransport();
       }
       m_transport = NULL;
     }
@@ -552,8 +561,8 @@ protocol::TProtocol* ClientService::createDummyProtocol() {
 
 protocol::TProtocol* ClientService::createProtocol(
     thrift::HostAddress& hostAddr, const thrift::ServerType::type serverType,
-    //const SSLSocketParameters& sslParams,
-    boost::shared_ptr<BufferedSocketTransport>& returnTransport) {
+    bool useFramedTransport,//const SSLSocketParameters& sslParams,
+    boost::shared_ptr<ClientTransport>& returnTransport) {
   bool useBinaryProtocol;
   bool useSSL;
   switch (serverType) {
@@ -598,23 +607,30 @@ protocol::TProtocol* ClientService::createProtocol(
   // to work
   DNSCacheService::instance().resolve(hostAddr);
 
+  boost::shared_ptr<TSocket> socket;
   if (useSSL) {
     TSSLSocketFactory sslSocketFactory;
     sslSocketFactory.authenticate(false);
-    boost::shared_ptr<TSocket> sslSocket = sslSocketFactory.createSocket(
-        hostAddr.hostName, hostAddr.port);
-    returnTransport.reset(
-        new BufferedSocketTransport(sslSocket, rsz, wsz, false));
+    socket = sslSocketFactory.createSocket(hostAddr.hostName, hostAddr.port);
   } else {
-    boost::shared_ptr<TSocket> socket(
-        new TSocket(hostAddr.hostName, hostAddr.port));
-    returnTransport.reset(
-        new BufferedSocketTransport(socket, rsz, wsz, false));
+    socket.reset(new TSocket(hostAddr.hostName, hostAddr.port));
+  }
+
+  BufferedClientTransport* bufferedTransport = new BufferedClientTransport(
+      socket, rsz, wsz, false);
+  // setup framed transport if configured
+  if (useFramedTransport) {
+    returnTransport.reset(new FramedClientTransport(
+        boost::shared_ptr<BufferedClientTransport>(bufferedTransport), wsz));
+  } else {
+    returnTransport.reset(bufferedTransport);
   }
   if (useBinaryProtocol) {
-    return new protocol::TBinaryProtocol(returnTransport);
+    return new protocol::TBinaryProtocol(
+        boost::dynamic_pointer_cast<TTransport>(returnTransport));
   } else {
-    return new protocol::TCompactProtocol(returnTransport);
+    return new protocol::TCompactProtocol(
+        boost::dynamic_pointer_cast<TTransport>(returnTransport));
   }
 }
 
@@ -1513,11 +1529,11 @@ void ClientService::close() {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
-    BufferedSocketTransport* transport = m_transport.get();
+    ClientTransport* transport = m_transport.get();
     if (transport != NULL) {
       m_client.closeConnection(m_connId, true, m_token);
-      if (transport->isOpen()) {
-        transport->close();
+      if (transport->isTransportOpen()) {
+        transport->closeTransport();
       }
       m_transport = NULL;
     }

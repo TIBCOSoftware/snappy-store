@@ -21,8 +21,11 @@ import java.util.List;
 
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
+import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 class ReplicatedTableExecutionEngineRule extends AccumulativeExecutionEngineRule {
 
@@ -30,7 +33,8 @@ class ReplicatedTableExecutionEngineRule extends AccumulativeExecutionEngineRule
   protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo , ExecutionRuleContext context) {
     List<GemFireContainer> containers = qInfo.getContainerList();
     for (GemFireContainer container : containers) {
-      if (container.getRegion().getDataPolicy() == DataPolicy.PARTITION) {
+      context.setTableType(container);
+      if (container.getRegion().getDataPolicy().withPartitioning()) {
         context.setExtraDecisionMakerParam(Boolean.TRUE);
       }
     }
@@ -40,7 +44,9 @@ class ReplicatedTableExecutionEngineRule extends AccumulativeExecutionEngineRule
 
   @Override
   ExecutionEngine applyAccumulativeRuleAndGetEngine(ExecutionRuleContext context) {
-      if (context.getExtraDecisionMakerParam() == null) return ExecutionEngine.STORE;
+       if (context.getExtraDecisionMakerParam() == null && !context.canRoute()) {
+        return ExecutionEngine.STORE;
+      }
       else return ExecutionEngine.NOT_DECIDED;
   }
 }

@@ -17,22 +17,7 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.Reader;
-import java.io.StringBufferInputStream;
-import java.io.StringWriter;
-import java.io.Writer;
-import java.lang.ref.WeakReference;
+import java.io.*;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URL;
@@ -44,42 +29,11 @@ import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import javax.naming.Context;
 
-import com.gemstone.gemfire.CancelCriterion;
-import com.gemstone.gemfire.CancelException;
-import com.gemstone.gemfire.ForcedDisconnectException;
-import com.gemstone.gemfire.GemFireCacheException;
-import com.gemstone.gemfire.GemFireConfigException;
-import com.gemstone.gemfire.InternalGemFireError;
-import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.SystemFailure;
+import com.gemstone.gemfire.*;
 import com.gemstone.gemfire.admin.internal.SystemMemberCacheEventProcessor;
-import com.gemstone.gemfire.cache.AttributesFactory;
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.CacheExistsException;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.CacheXmlException;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.Declarable;
-import com.gemstone.gemfire.cache.DiskStoreFactory;
-import com.gemstone.gemfire.cache.DynamicRegionFactory;
-import com.gemstone.gemfire.cache.EvictionAction;
-import com.gemstone.gemfire.cache.EvictionAttributes;
-import com.gemstone.gemfire.cache.GatewayException;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.PartitionAttributesFactory;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.RegionExistsException;
-import com.gemstone.gemfire.cache.RegionFactory;
-import com.gemstone.gemfire.cache.RegionService;
-import com.gemstone.gemfire.cache.RegionShortcut;
-import com.gemstone.gemfire.cache.Scope;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueueFactory;
@@ -124,32 +78,13 @@ import com.gemstone.gemfire.distributed.DistributedLockService;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.DistributedSystemDisconnectedException;
-import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.distributed.internal.DistributionAdvisee;
-import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
+import com.gemstone.gemfire.distributed.internal.*;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
-import com.gemstone.gemfire.distributed.internal.DistributionConfig;
-import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.InternalLocator;
-import com.gemstone.gemfire.distributed.internal.PooledExecutorWithDMStats;
-import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
-import com.gemstone.gemfire.distributed.internal.ResourceEvent;
-import com.gemstone.gemfire.distributed.internal.ResourceEventsListener;
-import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.locks.DLockService;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
-import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
-import com.gemstone.gemfire.internal.ClassPathLoader;
-import com.gemstone.gemfire.internal.HeapDataOutputStream;
+import com.gemstone.gemfire.internal.*;
 import com.gemstone.gemfire.internal.HostStatSampler.StatsSamplerCallback;
-import com.gemstone.gemfire.internal.JarDeployer;
-import com.gemstone.gemfire.internal.LogWriterImpl;
-import com.gemstone.gemfire.internal.SocketCreator;
-import com.gemstone.gemfire.internal.SystemTimer;
 import com.gemstone.gemfire.internal.cache.BucketRegion.RawValueFactory;
 import com.gemstone.gemfire.internal.cache.DiskInitFile.DiskRegionFlag;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
@@ -158,7 +93,6 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueue;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.lru.HeapEvictor;
 import com.gemstone.gemfire.internal.cache.lru.OffHeapEvictor;
 import com.gemstone.gemfire.internal.cache.partitioned.RedundancyAlreadyMetException;
@@ -167,6 +101,7 @@ import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberManager;
 import com.gemstone.gemfire.internal.cache.persistence.query.TemporaryResultSetFactory;
 import com.gemstone.gemfire.internal.cache.snapshot.CacheSnapshotServiceImpl;
+import com.gemstone.gemfire.internal.cache.store.ManagedDirectBufferAllocator;
 import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientProxy;
@@ -188,18 +123,20 @@ import com.gemstone.gemfire.internal.cache.xmlcache.PropertyResolver;
 import com.gemstone.gemfire.internal.concurrent.AI;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.concurrent.CM;
-import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jndi.JNDIInvoker;
 import com.gemstone.gemfire.internal.jta.TransactionManagerImpl;
 import com.gemstone.gemfire.internal.offheap.MemoryAllocator;
 import com.gemstone.gemfire.internal.offheap.OffHeapStorage;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.ChunkType;
+import com.gemstone.gemfire.internal.shared.BufferAllocator;
+import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
-import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
@@ -499,6 +436,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   
   private final Object offHeapEvictorLock = new Object();
 
+  private final BufferAllocator bufferAllocator;
+
   private ResourceEventsListener listener;
 
   /**
@@ -758,7 +697,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                   if (getLoggerI18n().fineEnabled()) {
                     getLoggerI18n().info(LocalizedStrings.DEBUG,
                         "OldEntriesCleanerThread : Removing the entry " + re + " entry update in progress : " +
-                            ((NonLocalRegionEntry)re).isUpdateInProgress());
+                            re.isUpdateInProgress());
                   }
                   oldEntriesQueue.remove(re);
                   // free the allocated memory
@@ -1081,7 +1020,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       if(null != getOffHeapStore()) {
         getResourceManager().addResourceListener(ResourceType.OFFHEAP_MEMORY, getOffHeapEvictor());
       }
-      
+
       recordedEventSweeper = EventTracker.startTrackerServices(this);
       tombstoneService = TombstoneService.initialize(this);
 
@@ -1094,6 +1033,24 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
       GemFireCacheImpl.instance = this;
       GemFireCacheImpl.pdxInstance = this;
+
+      // set the buffer allocator for the cache (off-heap or heap)
+      long memorySize = OffHeapStorage.parseOffHeapMemorySize(
+          getSystem().getConfig().getMemorySize());
+      if (memorySize == 0) {
+        // check in callbacks
+        StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+        memorySize = callbacks.getExecutionPoolSize(true) +
+            callbacks.getStoragePoolSize(true);
+      }
+      this.memorySize = memorySize;
+      if (memorySize > 0) {
+        this.bufferAllocator = ManagedDirectBufferAllocator.instance().initialize();
+      } else {
+        // the allocation sizes will be initialized from the heap size
+        this.bufferAllocator = HeapBufferAllocator.instance();
+      }
+
       TypeRegistry.init();
       basicSetPdxSerializer(this.cacheConfig.getPdxSerializer());
       TypeRegistry.open();
@@ -1134,9 +1091,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
               PropertyResolver.NO_SYSTEM_PROPERTIES_OVERRIDE, null);
         }
       }
-
-      this.memorySize =
-              OffHeapStorage.parseOffHeapMemorySize(getDistributedSystem().getConfig().getMemorySize());
     } // synchronized
   }
 
@@ -2143,9 +2097,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
 
       isClosing = true;
-      // Added to reset the memory manager to handle cases where only cache is closed.
-      // Right now mostly in DUNITs
-      CallbackFactoryProvider.getStoreCallbacks().resetMemoryManager();
 
       if (systemFailureCause != null) {
         this.forcedDisconnect = systemFailureCause instanceof ForcedDisconnectException;
@@ -2447,7 +2398,13 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       TypeRegistry.close();
       // do this late to prevent 43412
       TypeRegistry.setPdxSerializer(null);
-      
+
+      this.bufferAllocator.close();
+
+      // Added to reset the memory manager to handle cases where only cache is closed.
+      // Right now mostly in DUNITs
+      CallbackFactoryProvider.getStoreCallbacks().resetMemoryManager();
+
       for (Iterator iter = cacheLifecycleListeners.iterator(); iter.hasNext();) {
         CacheLifecycleListener listener = (CacheLifecycleListener) iter.next();
         listener.cacheClosed(this);
@@ -6332,7 +6289,30 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   public final MemoryAllocator getOffHeapStore() {
     return this.getSystem().getOffHeapStore();
   }
-  
+
+  /**
+   * All ByteBuffer allocations, particularly for off-heap, must use this
+   * or {@link #getCurrentBufferAllocator()}.
+   */
+  public final BufferAllocator getBufferAllocator() {
+    return this.bufferAllocator;
+  }
+
+  /**
+   * All ByteBuffer allocations, particularly for off-heap, must use this
+   * or {@link #getBufferAllocator()}.
+   */
+  public static BufferAllocator getCurrentBufferAllocator() {
+    final GemFireCacheImpl instance = getInstance();
+    if (instance != null) {
+      return instance.bufferAllocator;
+    } else {
+      // use the allocator as per the setting in StoreCallbacks
+      return CallbackFactoryProvider.getStoreCallbacks().hasOffHeap()
+          ? DirectBufferAllocator.instance() : HeapBufferAllocator.instance();
+    }
+  }
+
   public void setSkipFKChecksForGatewayEvents(boolean flag) {
     this.skipFKChecksForGatewayEvents = flag;
   }
@@ -6367,5 +6347,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   public long getMemorySize(){
     return this.memorySize;
+  }
+
+  public static boolean hasNewOffHeap() {
+    final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    return cache != null && cache.memorySize > 0L;
   }
 }

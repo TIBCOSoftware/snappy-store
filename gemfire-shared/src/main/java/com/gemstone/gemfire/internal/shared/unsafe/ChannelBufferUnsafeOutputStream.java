@@ -82,30 +82,13 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
   protected static final int MIN_BUFFER_SIZE = 10;
 
   public ChannelBufferUnsafeOutputStream(WritableByteChannel channel) {
-    this(channel, ChannelBufferOutputStream.DEFAULT_BUFFER_SIZE, false);
+    this(channel, ChannelBufferOutputStream.DEFAULT_BUFFER_SIZE);
   }
 
   public ChannelBufferUnsafeOutputStream(WritableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) {
+      int bufferSize) {
     super(channel);
-    this.baseAddress = allocateBuffer(bufferSize, useUnsafeAllocation);
-    resetBufferPositions();
-  }
-
-  public ChannelBufferUnsafeOutputStream(
-      ChannelBufferUnsafeOutputStream other, WritableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) throws IOException {
-    super(channel);
-    final ByteBuffer buffer = other.buffer;
-    if (buffer != null) {
-      other.flush();
-      other.buffer = null;
-      buffer.clear();
-      this.buffer = buffer;
-      this.baseAddress = other.baseAddress;
-    } else {
-      this.baseAddress = allocateBuffer(bufferSize, useUnsafeAllocation);
-    }
+    this.baseAddress = allocateBuffer(bufferSize);
     resetBufferPositions();
   }
 
@@ -123,19 +106,16 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     this.addrLimit = this.baseAddress + this.buffer.limit();
   }
 
-  protected long allocateBuffer(int bufferSize,
-      boolean useUnsafeAllocation) {
+  protected long allocateBuffer(int bufferSize) {
     // expect minimum bufferSize of 10 bytes
     if (bufferSize < MIN_BUFFER_SIZE) {
       throw new IllegalArgumentException(
           "ChannelBufferUnsafeDataOutputStream: buffersize=" + bufferSize
               + " too small (minimum " + MIN_BUFFER_SIZE + ')');
     }
-    final ByteBuffer buffer = useUnsafeAllocation
-        // use Platform.allocate which does not have the smallish limit used
-        // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
-        ? UnsafeHolder.allocateDirectBuffer(bufferSize)
-        : ByteBuffer.allocateDirect(bufferSize);
+    // use allocator which will restrict total allocated size
+    final ByteBuffer buffer = DirectBufferAllocator.instance().allocate(
+        bufferSize, "CHANNELOUTPUT");
     // set the order to native explicitly to skip any byte order conversions
     buffer.order(ByteOrder.nativeOrder());
     this.buffer = buffer;
@@ -279,7 +259,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     final ByteBuffer buffer = this.buffer;
     if (buffer != null) {
       this.buffer = null;
-      UnsafeHolder.releaseDirectBuffer(buffer);
+      DirectBufferAllocator.instance().release(buffer);
     }
   }
 

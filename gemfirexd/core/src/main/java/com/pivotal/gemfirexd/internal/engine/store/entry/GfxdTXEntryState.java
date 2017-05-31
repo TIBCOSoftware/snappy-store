@@ -388,18 +388,19 @@ public final class GfxdTXEntryState extends TXEntryState implements
   @Override
   public final ExecRow getRow(GemFireContainer baseContainer)
       throws StandardException {
+    final RegionEntry entry = this.regionEntry;
     if (isDirty()) {
       final Object value = getNearSidePendingValue();
       // txnal entries will always be of the current schema since ALTER TABLE
       // or any other DDL will either fail with txns, or block for txns
-      return baseContainer.newExecRow(value,
+      return baseContainer.newExecRow(entry, value,
           baseContainer.getExtraTableInfo(), true);
     }
-    else if (this.regionEntry != null) {
+    else if (entry != null) {
       final Object value = this.originalVersionId;
       if (!Token.isRemoved(value)) {
-        return baseContainer.newExecRow(value,
-            (ExtraTableInfo)this.regionEntry.getContainerInfo(), true);
+        return baseContainer.newExecRow(entry, value,
+            (ExtraTableInfo)entry.getContainerInfo(), true);
       }
     }
     return null;

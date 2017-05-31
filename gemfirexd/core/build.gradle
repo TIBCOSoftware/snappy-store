@@ -23,6 +23,7 @@ plugins {
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
   compile project(subprojectBase + 'gemfirexd-shared')
+  compile project(subprojectBase + 'gemfirexd-client')
   provided project(subprojectBase + 'gemfirexd-prebuild')
 
   provided files("${System.getProperty('java.home')}/../lib/tools.jar")
@@ -34,7 +35,7 @@ dependencies {
   compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
   compile "org.apache.thrift:libthrift:${thriftVersion}"
   compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
-  compile "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
+  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
@@ -177,7 +178,7 @@ task doSplit(dependsOn: buildMessages) {
 }
 
 task odbcMeta {
-  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources'
+  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources', "${subprojectBase}gemfirexd-prebuild:jar"
   def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
   outputs.files "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir

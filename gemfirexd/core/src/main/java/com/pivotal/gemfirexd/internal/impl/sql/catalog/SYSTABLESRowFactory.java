@@ -459,7 +459,7 @@ public static final int		SYSTABLES_COLUMN_COUNT = 20;
 // GemStone changes BEGIN
     col = row.getColumn(SYSTABLES_SERVERGROUPS);
     final DistributionDescriptor distribDesc = tabDesc
-        .getDistributionDescriptorFromResolver();
+        .getDistributionDescriptorFromContainer();
     if (distribDesc != null) {
       distribDesc.setServerGroups(ServerGroupUtils.getServerGroups(col
           .toString()));

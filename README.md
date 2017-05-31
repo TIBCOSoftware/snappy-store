@@ -113,7 +113,7 @@ Command-line properties:
 
 If the build works fine, then import into Intellij:
   * Update Intellij to the latest version just to be sure. Double check that Gradle plugin is enabled in File->Settings->Plugins.
-  * Select import project, then point to the GemFireXD directory. Use external Gradle import. Add -XX:MaxPermSize=350m to VM options in global Gradle settings. Select defaults, next, next ... finish. Ignore "Gradle location is unknown warning". Ensure that a JDK7 installation has been selected.
+  * Select import project, then point to the GemFireXD directory. Use external Gradle import. Select defaults, next, next ... finish. Ignore "Gradle location is unknown warning". Ensure that a JDK7 installation has been selected.
   * Once import finishes, go to File->Settings->Editor->Code Style->Java. Set the scheme as "Project". Then OK to apply and close it. Next copy codeStyleSettings.xml to .idea directory created by Intellij and then File->Synchronize just to be sure. Check that settings are now applied in File->Settings->Editor->Code Style->Java which should show TabSize, Indent as 2 and continuation indent as 4.
   * If the Gradle tab is not visible immediately, then select it from window list popup at the left-bottom corner of IDE. If you click on that window list icon, then the tabs will appear permanently.
   * Generate GemFireXD required sources by expanding :gemfirexd->Tasks->other. Right click on "generateSources" and run it. The Run item may not be available if indexing is still in progress, so wait for it to finish. This step has to be done only first time, or if ./gradlew clean has been run, or you have made changes to javacc source files.

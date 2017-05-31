@@ -1130,6 +1130,12 @@ public final class FabricDatabase implements ModuleControl,
                 + "having sequenceId=" + qEntry.getSequenceId());
           }
         }
+        if (previousLevel != Integer.MAX_VALUE) {
+          GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge) logger);
+          bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.info("Done hive meta-store initialization");
+          previousLevel = Integer.MAX_VALUE;
+        }
       // commenting out for snap-585
       /*}*/
 
@@ -1537,12 +1543,14 @@ public final class FabricDatabase implements ModuleControl,
           Misc.isSnappyHiveMetaTable(currentSchema))
       {
         GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
+        bridgeLogger.info("Starting hive meta-store initialization");
         previousLevel = bridgeLogger.getLevel();
         bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
       } else if (previousLevel != Integer.MAX_VALUE &&
             Misc.isSnappyHiveMetaTable(lastCurrentSchema)) {
           GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
-           bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.info("Done hive meta-store initialization");
           previousLevel = Integer.MAX_VALUE;
       }
       // set the default schema masquerading as the user

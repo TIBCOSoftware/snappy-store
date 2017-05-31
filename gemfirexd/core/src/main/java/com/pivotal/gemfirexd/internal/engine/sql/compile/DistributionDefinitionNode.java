@@ -93,6 +93,8 @@ public class DistributionDefinitionNode extends TableElementNode {
 
   SortedSet<String> serverGroups;
 
+  private String rowEncoderClass;
+
   // status flags for canColocate method
   private static final int SUCCESS = 0;
 
@@ -154,6 +156,10 @@ public class DistributionDefinitionNode extends TableElementNode {
     this.customHashing = customHashing;
   }
 
+  public void setRowEncoderClass(String encoderClass) {
+    this.rowEncoderClass = encoderClass;
+  }
+
   public void addColumnReference(ColumnReference cr) {
     if (this.columns == null) {
       this.columns = new ArrayList<ColumnReference>();
@@ -175,6 +181,10 @@ public class DistributionDefinitionNode extends TableElementNode {
 
   public final boolean getCustomHashing() {
     return this.customHashing;
+  }
+
+  public String getRowEncoderClass() {
+    return this.rowEncoderClass;
   }
 
   public void setTableProperties(Properties props) {
@@ -311,10 +321,11 @@ public class DistributionDefinitionNode extends TableElementNode {
       throws StandardException {
     PartitionAttributesImpl pattrs = getPartitionAttributes(refTable
         .getFullTableNameAsRegionPath());
-    if (pattrs != null) {
+    if (pattrs != null &&
+        pattrs.getPartitionResolver() instanceof GfxdPartitionResolver) {
       GfxdPartitionResolver spr = (GfxdPartitionResolver)pattrs
           .getPartitionResolver();
-      if (spr != null && spr.isPartitioningKeyThePrimaryKey()) {
+      if (spr.isPartitioningKeyThePrimaryKey()) {
         String[] partitionColNames = spr.getColumnNames();
         String[] refColNames = fkeyConstraint.getReferencedColumnNames();
         if (refColNames == null || refColNames.length == 0) {
@@ -338,7 +349,7 @@ public class DistributionDefinitionNode extends TableElementNode {
       throws StandardException {
     GfxdPartitionResolver refRslvr = (GfxdPartitionResolver)refAttrs
         .getPartitionResolver();
-    this.policy = refRslvr.getDistributionDescriptor().getPolicy();
+    this.policy = refTD.getDistributionDescriptor().getPolicy();
     GfxdPartitionResolver rslvr = refRslvr.cloneForColocation(colNames,
         refColNames, refRslvr.getMasterTable(false /* immediate master*/));
     thisAttr.setPartitionResolver(rslvr);
@@ -536,8 +547,9 @@ public class DistributionDefinitionNode extends TableElementNode {
       if (pattrs.getRedundantCopies() == colocatePAttrs.getRedundantCopies()) {
         if (GemFireXDUtils.setEquals(this.serverGroups,
             checkDesc.getServerGroups())) {
-          if (checkRslvrs && pattrs.getPartitionResolver() != null
-              && colocatePAttrs.getPartitionResolver() != null) {
+          if (checkRslvrs &&
+              pattrs.getPartitionResolver() instanceof GfxdPartitionResolver &&
+              colocatePAttrs.getPartitionResolver() instanceof GfxdPartitionResolver) {
             GfxdPartitionResolver rslvr1 = (GfxdPartitionResolver)pattrs
                 .getPartitionResolver();
             GfxdPartitionResolver rslvr2 = (GfxdPartitionResolver)colocatePAttrs

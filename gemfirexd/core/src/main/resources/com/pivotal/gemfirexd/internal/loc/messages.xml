@@ -3853,6 +3853,16 @@ Guide.
                 <text>Locking skipped due to skip-locks connection attribute for: {0}</text>
                 <arg>value</arg>
            </msg>
+            <msg>
+                <name>X0Z36.S</name>
+                <text>Exception occurred in creating custom partition resolver for '{0}'.</text>
+                <arg>name</arg>
+            </msg>
+            <msg>
+                <name>X0Z37.S</name>
+                <text>Exception occurred in creating row encoder for '{0}'.</text>
+                <arg>name</arg>
+            </msg>
 <!-- GemStone changes END -->
         </family>
 

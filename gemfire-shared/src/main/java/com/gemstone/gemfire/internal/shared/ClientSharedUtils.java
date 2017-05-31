@@ -71,6 +71,7 @@ import javax.naming.directory.Attributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.spark.unsafe.Platform;
@@ -131,6 +132,12 @@ public abstract class ClientSharedUtils {
           return System.getProperty("line.separator");
         }
       });
+
+  /**
+   * The default wait to use when waiting to read/write a channel
+   * (when there is no selector to signal)
+   */
+  public static final long PARK_NANOS_FOR_READ_WRITE = 50L;
 
   public static boolean isUsingThrift(boolean defaultValue) {
     return SystemProperties.getClientInstance().getBoolean(
@@ -1155,6 +1162,24 @@ public abstract class ClientSharedUtils {
         && byteBuffer.remaining() == byteBuffer.capacity();
   }
 
+  public static String toString(final ByteBuffer buffer) {
+    if (buffer != null) {
+      StringBuilder sb = new StringBuilder();
+      final int len = buffer.limit();
+      for (int i = 0; i < len; i++) {
+        // terminate with ... for large number of bytes
+        if (i > 128 * 1024) {
+          sb.append(" ...");
+          break;
+        }
+        sb.append(buffer.get(i)).append(", ");
+      }
+      return sb.toString();
+    } else {
+      return "null";
+    }
+  }
+
   /**
    * Convert a ByteBuffer to a string appending to given {@link StringBuilder}
    * with a hexidecimal format. The string may be converted back to a byte array
@@ -1510,17 +1535,21 @@ public abstract class ClientSharedUtils {
   }
 
   public static byte[] toBytes(ByteBuffer buffer, int bufferSize, int length) {
-    if (length >= bufferSize && buffer.hasArray() && buffer.position() == 0 &&
-        buffer.arrayOffset() == 0 && buffer.remaining() == buffer.capacity()) {
+    if (length >= bufferSize && wrapsFullArray(buffer)) {
       return buffer.array();
     } else {
-      final int numBytes = Math.min(bufferSize, length);
-      final byte[] bytes = new byte[numBytes];
-      final int initPosition = buffer.position();
-      buffer.get(bytes, 0, numBytes);
-      buffer.position(initPosition);
-      return bytes;
+      return toBytesCopy(buffer, bufferSize, length);
     }
+  }
+
+  public static byte[] toBytesCopy(ByteBuffer buffer, int bufferSize,
+      int length) {
+    final int numBytes = Math.min(bufferSize, length);
+    final byte[] bytes = new byte[numBytes];
+    final int initPosition = buffer.position();
+    buffer.get(bytes, 0, numBytes);
+    buffer.position(initPosition);
+    return bytes;
   }
 
   /**
@@ -1740,17 +1769,20 @@ public abstract class ClientSharedUtils {
 
   /**
    * Allocate new ByteBuffer if capacity of given ByteBuffer has exceeded.
+   * The passed ByteBuffer may no longer be usable after this call.
    */
   public static ByteBuffer ensureCapacity(ByteBuffer buffer,
-      int newLength, boolean useDirectBuffer) {
+      int newLength, boolean useDirectBuffer, String owner) {
     if (newLength <= buffer.capacity()) {
       return buffer;
     }
-    ByteBuffer newBuffer = useDirectBuffer ? ByteBuffer.allocateDirect(
-        newLength) : ByteBuffer.allocate(newLength);
+    BufferAllocator allocator = useDirectBuffer ? DirectBufferAllocator.instance()
+        : HeapBufferAllocator.instance();
+    ByteBuffer newBuffer = allocator.allocate(newLength, owner);
     newBuffer.order(buffer.order());
     buffer.flip();
     newBuffer.put(buffer);
+    allocator.release(buffer);
     return newBuffer;
   }
 
