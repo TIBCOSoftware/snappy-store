@@ -2267,12 +2267,13 @@ RETRY_LOOP:
         else {
           cbEvent = null;
         }
-
-        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-        oldRe.setUpdateInProgress(true);
-        if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
-            .asVersionTag().getEntryVersion() > 0*/ ) {
-          owner.getCache().addOldEntry(oldRe, owner, oldSize);
+        if (owner.getCache().snapshotEnabledForTX()) {
+          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          oldRe.setUpdateInProgress(true);
+          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+            .asVersionTag().getEntryVersion() > 0*/) {
+            owner.getCache().addOldEntry(oldRe, owner, oldSize);
+          }
         }
         txRemoveOldIndexEntry(Operation.DESTROY, re);
         boolean clearOccured = false;
