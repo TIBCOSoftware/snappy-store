@@ -196,6 +196,20 @@ public final class InternalDistributedMember
 //    checkHostName();
   }
 
+  public InternalDistributedMember(InternalDistributedMember member, short ordinalToUse ) {
+    this.vmKind = member.vmKind;
+    this.ipAddr = member.getNetMember();
+    this.hostName = member.hostName;
+    this.isPartial = member.isPartial;
+    this.dcPort = member.dcPort;
+    this.vmPid = member.vmPid;
+    this.groups = member.groups;
+    this.name = member.name;
+    this.uniqueTag = member.uniqueTag;
+    this.vmViewId = member.vmViewId;
+    this.durableClientAttributes = member.durableClientAttributes;
+    this.version = ordinalToUse;
+  }
 
   // Used only by Externalization
   public InternalDistributedMember() {
