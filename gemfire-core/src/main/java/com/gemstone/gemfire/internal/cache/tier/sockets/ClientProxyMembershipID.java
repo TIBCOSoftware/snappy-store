@@ -181,7 +181,7 @@ public final class ClientProxyMembershipID
       // DS already exists... make sure it's for current DS connection
       systemMemberId = sys.getDistributedMember();
       try {
-        HeapDataOutputStream hdos = new HeapDataOutputStream(256, Version.CURRENT);
+        HeapDataOutputStream hdos = new HeapDataOutputStream(256, Version.CURRENT_GFE);
         DataSerializer.writeObject(systemMemberId, hdos);
         client_side_identity = hdos.toByteArray();
       }
@@ -460,7 +460,7 @@ public final class ClientProxyMembershipID
 //          new Exception("stack trace")
 //          );
 //    }
-    HeapDataOutputStream hdos = new HeapDataOutputStream(256, Version.CURRENT);
+    HeapDataOutputStream hdos = new HeapDataOutputStream(256, Version.CURRENT_GFE);
     try {
       DataSerializer.writeObject(idm, hdos);
     } catch (IOException e) {

@@ -118,7 +118,7 @@ public class AuthenticateUserOp {
           tmpSecurityProperties, server, false, sys.getLogWriter(), sys
               .getSecurityLogWriter());
       getMessage().setEarlyAck(Message.MESSAGE_HAS_SECURE_PART);
-      HeapDataOutputStream heapdos = new HeapDataOutputStream(Version.CURRENT);
+      HeapDataOutputStream heapdos = new HeapDataOutputStream(Version.CURRENT_GFE);
       try {
         DataSerializer.writeProperties(credentials, heapdos);
         credentialBytes = ((ConnectionImpl)con).getHandShake()
@@ -145,7 +145,7 @@ public class AuthenticateUserOp {
 
     @Override
     protected void sendMessage(Connection cnx) throws Exception {
-      HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT);
+      HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT_GFE);
       byte[] secureBytes = null;
       hdos.writeLong(cnx.getConnectionID());
       if (this.securityProperties != null) {
@@ -160,7 +160,7 @@ public class AuthenticateUserOp {
         Properties credentials = HandShake.getCredentials(authInitMethod,
             this.securityProperties, server, false, sys.getLogWriter(), sys
                 .getSecurityLogWriter());
-        HeapDataOutputStream heapdos = new HeapDataOutputStream(Version.CURRENT);
+        HeapDataOutputStream heapdos = new HeapDataOutputStream(Version.CURRENT_GFE);
         try {
           DataSerializer.writeProperties(credentials, heapdos);
           credentialBytes = ((ConnectionImpl)cnx).getHandShake().encryptBytes(

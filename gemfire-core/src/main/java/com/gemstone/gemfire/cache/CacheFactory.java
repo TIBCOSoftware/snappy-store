@@ -19,6 +19,7 @@ package com.gemstone.gemfire.cache;
 
 import java.util.Properties;
 
+import com.gemstone.gemfire.cache.client.PoolFactory;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.GemFireVersion;
@@ -82,9 +83,9 @@ Applications that need to explicitly control the individual region attributes ca
  */
 public class CacheFactory {
 
-  private final Properties dsProps;
+  protected final Properties dsProps;
   
-  private final CacheConfig cacheConfig =  new CacheConfig();
+  protected final CacheConfig cacheConfig =  new CacheConfig();
        
   /**
    * Creates a default cache factory.
@@ -227,6 +228,7 @@ public class CacheFactory {
       return create(ds, true, cacheConfig);
     }
   }
+
 
   /**
    * Gets the instance of {@link Cache} produced by an

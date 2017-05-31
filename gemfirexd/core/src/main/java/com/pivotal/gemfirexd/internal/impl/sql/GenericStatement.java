@@ -98,6 +98,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.compile.*;
 import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineArbiter;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
+import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -600,7 +601,7 @@ public class GenericStatement
 					}
 					qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
 				}
-				catch (StandardException ex) {
+				catch (StandardException | AssertFailure ex) {
           //wait till the query hint is examined before throwing exceptions or
           if (routeQuery) {
             if (STREAMING_DDL_PREFIX.matcher(source).matches()) {
@@ -684,7 +685,7 @@ public class GenericStatement
 					try {
 						qt.bindStatement();
 					}
-					catch(StandardException ex) {
+					catch(StandardException | AssertFailure ex) {
 						if (routeQuery) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
@@ -753,7 +754,7 @@ public class GenericStatement
 						qt.optimizeStatement();
 
 					}
-					catch(StandardException ex) {
+					catch(StandardException | AssertFailure ex) {
 						if (routeQuery) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
