@@ -774,8 +774,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       try {
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
-                  "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
-                  " the current rvv is " + getVersionVector());
+              "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
+              " the current rvv is " + getVersionVector());
         }
         //Check if shutdown hook is set
         if (null != getCache().getRvvSnapshotTestHook()) {
@@ -786,7 +786,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         Set keysToDestroy = createColumnBatchAndPutInColumnTable();
 
         if (getCache().getCacheTransactionManager().testRollBack) {
-          throw new Exception("Test Dummy Exception");
+          success = false;
+          getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, " RishiDebug1 ");
+          throw new RuntimeException("Test Dummy Exception");
         }
         destroyAllEntries(keysToDestroy);
         //Check if shutdown hook is set
@@ -798,11 +800,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         generateAndSetBatchIDIfNULL(true);
 
         success = true;
-      } catch (Exception lme) {
-        getCache().getLoggerI18n().warning(lme);
-        // Returning from here as we dont want to clean the row buffer data.
-        success = false;
       } finally {
+        getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, " RishiDebug2 " + txStarted);
         if (getCache().snapshotEnabled() && txStarted) {
           if (success) {
             getCache().getCacheTransactionManager().commit();
@@ -810,6 +809,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
               getCache().notifyRvvTestHook();
             }
           } else {
+            getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, " RishiDebug3 ");
             getCache().getCacheTransactionManager().rollback();
           }
         }
