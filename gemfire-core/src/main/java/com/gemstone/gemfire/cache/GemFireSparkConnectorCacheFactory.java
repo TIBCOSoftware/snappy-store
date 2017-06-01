@@ -23,19 +23,17 @@ import com.gemstone.gemfire.internal.cache.GemFireSparkConnectorCacheImpl;
 public class GemFireSparkConnectorCacheFactory extends CacheFactory {
 
   private final Map<String, String> gfeGridMappings;
-  private final String remoteGemFireLocators;
+
 
   public GemFireSparkConnectorCacheFactory() {
     super();
     this.gfeGridMappings = null;
-    this.remoteGemFireLocators = null;
   }
 
-  public GemFireSparkConnectorCacheFactory(Properties props, String remoteGemfireLocators,
-      Map<String, String> gfeGridMappings) {
+  public GemFireSparkConnectorCacheFactory(Properties props, Map<String, String> gfeGridMappings) {
     super(props);
     this.gfeGridMappings = gfeGridMappings;
-    this.remoteGemFireLocators = remoteGemfireLocators;
+
   }
 
 
@@ -53,9 +51,9 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
         ds = DistributedSystem.connect(this.dsProps);
       }
       PoolFactory defaultPF = null;
-
-      if (remoteGemFireLocators != null) {
-        defaultPF = this.createAndConfigurePoolFactory(remoteGemFireLocators);
+       String defaultGrid =  gfeGridMappings.remove(GemFireSparkConnectorCacheImpl.gfeGridPropPrefix);
+      if (defaultGrid != null) {
+        defaultPF = this.createAndConfigurePoolFactory(defaultGrid);
       }
       Cache cache = GemFireSparkConnectorCacheImpl.create(defaultPF, gfeGridMappings, ds, cacheConfig);
 

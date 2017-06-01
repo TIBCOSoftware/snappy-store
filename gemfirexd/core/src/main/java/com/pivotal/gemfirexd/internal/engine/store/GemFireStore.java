@@ -761,7 +761,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
-    String remoteGemFireLocators = null;
+    String defaultGrid = null;
     // install the GemFireXD specific thread dump signal (URG) handler
     try {
       SigThreadDumpHandler.install();
@@ -880,16 +880,12 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         Attribute.SERVER_GROUPS, GfxdConstants.GFXD_SERVER_GROUPS);
     isLocator = PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
         GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
-    remoteGemFireLocators = PropertyUtil.findAndGetProperty(props, DistributionConfig
-                    .REMOTE_LOCATORS_NAME, DistributionConfig.GEMFIRE_PREFIX +
-            DistributionConfig.REMOTE_LOCATORS_NAME);
+
 
     Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(props,
         GemFireSparkConnectorCacheImpl.gfeGridPropPrefix);
 
-    if (remoteGemFireLocators == null) {
-      remoteGemFireLocators = gfeGridMappings.remove(GemFireSparkConnectorCacheImpl.gfeGridPropPrefix);
-    }
+
     for (String key : gfeGridMappings.keySet()) {
       props.remove(key);
       finalGFXDBootProps.remove(key);
@@ -1085,8 +1081,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
       try {
         CacheFactory c = null;
-        if (remoteGemFireLocators != null || !gfeGridMappings.isEmpty()) {
-          c = new GemFireSparkConnectorCacheFactory(dsProps, remoteGemFireLocators, gfeGridMappings);
+        if (!gfeGridMappings.isEmpty()) {
+          c = new GemFireSparkConnectorCacheFactory(dsProps, gfeGridMappings);
         } else {
           c = new CacheFactory(dsProps);
         }

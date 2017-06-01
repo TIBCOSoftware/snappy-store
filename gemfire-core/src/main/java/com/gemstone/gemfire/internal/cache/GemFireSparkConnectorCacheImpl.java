@@ -35,16 +35,21 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
   protected GemFireCacheImpl init() {
     PoolFactory temp = this.clientpf;
     super.init();
+    //check if default pool has already been created
+    boolean defaultPoolIdentified = this.getDefaultPool() != null;
     //re assign the clientPf which would otherwise be nullified by the super call
     this.clientpf = temp;
 
-    if (temp != null) {
+    if (temp != null && !defaultPoolIdentified) {
       this.determineDefaultPool();
+      defaultPoolIdentified = true;
+    } else if (temp != null && defaultPoolIdentified ) {
+      throw new IllegalStateException("Default grid could not spawn default pool");
     }
     AttributesFactory af = new AttributesFactory();
     af.setDataPolicy(DataPolicy.EMPTY);
     UserSpecifiedRegionAttributes ra = (UserSpecifiedRegionAttributes)af.create();
-    ra.requiresPoolName = true;
+    ra.requiresPoolName = !defaultPoolIdentified;
     this.setRegionAttributes(ClientRegionShortcut.PROXY.toString(), ra);
     this.clientpf = null;
     return this;
