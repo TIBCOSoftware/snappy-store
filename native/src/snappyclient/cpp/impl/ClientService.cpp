@@ -616,6 +616,7 @@ protocol::TProtocol* ClientService::createProtocol(
     socket.reset(new TSocket(hostAddr.hostName, hostAddr.port));
   }
 
+  // socket->setKeepAlive(false);
   BufferedClientTransport* bufferedTransport = new BufferedClientTransport(
       socket, rsz, wsz, false);
   // setup framed transport if configured

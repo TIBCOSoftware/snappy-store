@@ -108,7 +108,8 @@ public class FilterPreAuthorization implements AccessControl {
           return true;
         }
       }
-      HeapDataOutputStream hos = new HeapDataOutputStream(valLength + 32, Version.CURRENT);
+      HeapDataOutputStream hos = new HeapDataOutputStream(valLength + 32,
+          Version.CURRENT_GFE);
       try {
         InternalDataSerializer.writeUserDataSerializableHeader(
             ObjectWithAuthz.CLASSID, hos);
@@ -154,7 +155,8 @@ public class FilterPreAuthorization implements AccessControl {
           valLength = serializedValue.length;
           lastByte = serializedValue[valLength - 1];
         }
-        HeapDataOutputStream hos = new HeapDataOutputStream(valLength + 32, Version.CURRENT);
+        HeapDataOutputStream hos = new HeapDataOutputStream(valLength + 32,
+            Version.CURRENT_GFE);
         try {
           InternalDataSerializer.writeUserDataSerializableHeader(
               ObjectWithAuthz.CLASSID, hos);

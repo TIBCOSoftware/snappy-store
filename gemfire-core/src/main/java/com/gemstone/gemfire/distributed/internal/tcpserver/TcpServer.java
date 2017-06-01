@@ -340,11 +340,11 @@ public class TcpServer {
           }
 
           int gossipVersion = input.readInt();
-          short versionOrdinal = Version.CURRENT_ORDINAL;
+          short versionOrdinal;
           // Create a versioned stream to remember sender's GemFire version
           if (gossipVersion <= getCurrentGossipVersion()
               && GOSSIP_TO_GEMFIRE_VERSION_MAP.containsKey(gossipVersion)) {
-            versionOrdinal = (short) GOSSIP_TO_GEMFIRE_VERSION_MAP
+            versionOrdinal = GOSSIP_TO_GEMFIRE_VERSION_MAP
                 .get(gossipVersion);
             if (gossipVersion < getCurrentGossipVersion()) {
               if (log.isTraceEnabled()) {
@@ -401,7 +401,7 @@ public class TcpServer {
           startTime = DistributionStats.getStatTime();
           if (response != null) {
             DataOutputStream output = new DataOutputStream(sock.getOutputStream());
-            if (versionOrdinal != Version.CURRENT_ORDINAL) {
+            if (versionOrdinal != Version.CURRENT_GFE_ORDINAL) {
               output = new VersionedDataOutputStream(output,
                   Version.fromOrdinal(versionOrdinal, false));
             }
@@ -543,7 +543,7 @@ public class TcpServer {
 
   protected /*GemStone Addition */ Object handleVersionRequest(Object request) {
     VersionResponse response = new VersionResponse();
-    response.setVersionOrdinal(Version.CURRENT_ORDINAL);
+    response.setVersionOrdinal(Version.CURRENT_GFE_ORDINAL);
     return response;
   }
 
@@ -559,7 +559,7 @@ public class TcpServer {
     short closest = -1;
     int closestGV = getCurrentGossipVersion();
 
-    if (ordinal < Version.CURRENT_ORDINAL) {
+    if (ordinal < Version.CURRENT_GFE_ORDINAL) {
       Iterator<Map.Entry<Integer, Short>> itr = TcpServer.
         GOSSIP_TO_GEMFIRE_VERSION_MAP.entrySet().iterator();
       while (itr.hasNext()) {
