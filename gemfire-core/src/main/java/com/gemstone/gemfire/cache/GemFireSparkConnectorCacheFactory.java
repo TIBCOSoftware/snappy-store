@@ -80,7 +80,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
         .countTokens()];
     int i = 0;
     while (remoteLocatorsTokenizer.hasMoreTokens()) {
-      locators[i] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
+      locators[i++] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
     }
     List<ServerLocation> servers = new ArrayList<ServerLocation>();
     for (DistributionLocatorId locator : locators) {
