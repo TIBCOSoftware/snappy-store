@@ -59,6 +59,7 @@ compileJava {
 archivesBaseName = 'snappydata-store-client'
 
 jar {
+  dependsOn ':gemfirexd-core:doSplit'
   baseName = 'snappydata-store-client'
   manifest {
     attributes = getManifest('gemfirexdclient', '*',
@@ -71,7 +72,7 @@ jar {
 }
 
 shadowJar {
-  dependsOn jar
+  dependsOn ':gemfirexd-core:doSplit', jar
   baseName = 'snappydata-client'
   classifier = ''
   // avoid conflict with the older incompatible thrift versions
