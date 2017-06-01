@@ -738,6 +738,9 @@ public class LocalRegion extends AbstractRegion
     Assert.assertTrue(regionName != null, "regionName must not be null");
     this.sharedDataView = buildDataView();
     this.regionName = regionName;
+    if (regionName.toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+      this.isInternalColumnTable = true;
+    }
     this.parentRegion = parentRegion;
     this.fullPath = calcFullPath(regionName, parentRegion);
     final GemFireCacheImpl.StaticSystemCallbacks sysCb =
@@ -14532,8 +14535,6 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  public boolean isInternalColumnTable() {
-    return this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
-  }
+  public boolean isInternalColumnTable = false;
 
 }

@@ -1340,7 +1340,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
           public void run() {
             UMMMemoryTracker memoryTracker = null;
             if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
-                    && !rgn.isInternalColumnTable()) {
+                    && !rgn.isInternalColumnTable) {
               memoryTracker = new UMMMemoryTracker(
                       Thread.currentThread().getId(), putAllDataSize);
             }
