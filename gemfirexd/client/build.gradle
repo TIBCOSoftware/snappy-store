@@ -59,6 +59,7 @@ compileJava {
 archivesBaseName = 'snappydata-store-client'
 
 jar {
+  dependsOn subprojectBase + 'gemfirexd-core:doSplit'
   baseName = 'snappydata-store-client'
   manifest {
     attributes = getManifest('gemfirexdclient', '*',
