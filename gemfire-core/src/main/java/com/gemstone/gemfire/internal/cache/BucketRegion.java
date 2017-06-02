@@ -746,7 +746,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // ColumnBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    boolean success = true;
+    boolean success = false;
     boolean doFlush = false;
     if (forceFlush) {
       doFlush = getRegionSize() >= getPartitionedRegion()
@@ -786,8 +786,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         Set keysToDestroy = createColumnBatchAndPutInColumnTable();
 
         if (getCache().getCacheTransactionManager().testRollBack) {
-          success = false;
-          getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, " RishiDebug1 ");
           throw new RuntimeException("Test Dummy Exception");
         }
         destroyAllEntries(keysToDestroy);
@@ -801,7 +799,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
         success = true;
       } finally {
-        getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, " RishiDebug2 " + txStarted);
         if (getCache().snapshotEnabled() && txStarted) {
           if (success) {
             getCache().getCacheTransactionManager().commit();
@@ -809,7 +806,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
               getCache().notifyRvvTestHook();
             }
           } else {
-            getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, " RishiDebug3 ");
             getCache().getCacheTransactionManager().rollback();
           }
         }

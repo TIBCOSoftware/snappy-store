@@ -14535,6 +14535,10 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  public boolean isInternalColumnTable = false;
+  public boolean isInternalColumnTable() {
+    return isInternalColumnTable;
+  }
+
+  private boolean isInternalColumnTable = false;
 
 }
