@@ -1363,7 +1363,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
-  private void configurePool(final PoolFactory pf, String remoteLocators) {
+  private void configurePool(PoolFactory pf, String remoteLocators) {
     StringTokenizer remoteLocatorsTokenizer = new StringTokenizer(remoteLocators, ",");
     DistributionLocatorId[] locators = new DistributionLocatorId[remoteLocatorsTokenizer
             .countTokens()];

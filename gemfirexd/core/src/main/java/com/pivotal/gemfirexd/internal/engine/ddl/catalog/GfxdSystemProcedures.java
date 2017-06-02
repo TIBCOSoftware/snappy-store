@@ -2431,7 +2431,6 @@ public class GfxdSystemProcedures extends SystemProcedures {
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     TXStateInterface txState = tc.getTransactionManager().getHostedTXState(txId1);
     tc.clearActiveTXState(false, true);
-    //tc.commit();
     // this is being done because txState is being shared across conn
     if (txState != null && txState.isInProgress()) {
       tc.getTransactionManager().masqueradeAs(txState);
@@ -2470,11 +2469,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     // tc commit will clear all the artifacts but will not commit actual txState
     // that should be committed in COMMIT procedure
-    //tc.commit();
     tc.resetActiveTXState(true);
-    //tc.resetActiveTXState(true);
     TXManagerImpl.getOrCreateTXContext().clearTXState();
-    //tc.clearActiveTXState(true, true);
     TXManagerImpl.snapshotTxState.set(null);
   }
 
