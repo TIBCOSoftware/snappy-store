@@ -231,7 +231,7 @@ public final class Version implements Comparable<Version> {
 
   private static final byte GFE_80_ORDINAL = GFXD_14_ORDINAL;
   public static final Version GFE_80 = new Version("GFE", "8.0", (byte)8,
-      (byte)0, (byte)0, (byte)0, GFE_80_ORDINAL);
+      (byte)0, (byte)0, (byte)0, GFE_80_ORDINAL, false /* overwrite */);
 
   private static final byte GFXD_155_ORDINAL = 32;
 
@@ -291,6 +291,11 @@ public final class Version implements Comparable<Version> {
   /** Creates a new instance of <code>Version</code> */
   private Version(String product, String name, byte major, byte minor,
       byte release, byte patch, byte ordinal) {
+    this(product, name, major, minor, release, patch, ordinal, true /* overwrite*/);
+  }
+  /** Creates a new instance of <code>Version</code> */
+  private Version(String product, String name, byte major, byte minor,
+      byte release, byte patch, byte ordinal, boolean overwrite) {
     this.productName = product;
     this.name = name;
     this.majorVersion = major;
@@ -301,7 +306,7 @@ public final class Version implements Comparable<Version> {
     this.methodSuffix = this.productName + "_" + this.majorVersion + "_"
         + this.minorVersion + "_" + this.release + "_" + this.patch;
     this.gemfireVersion = null;
-    if (ordinal != TOKEN_ORDINAL) {
+    if (overwrite && ordinal != TOKEN_ORDINAL) {
       VALUES[this.ordinal] = this;
     }
   }
