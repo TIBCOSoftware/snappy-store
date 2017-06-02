@@ -1369,12 +1369,19 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
             .countTokens()];
     int i = 0;
     while (remoteLocatorsTokenizer.hasMoreTokens()) {
-      locators[i] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
+      locators[i++] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
     }
+    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
+        "The locators are after creation " +
+            locators + " pf is " + pf + " size " + locators.length + " remote locators " +
+            remoteLocators);
+
+
     List<ServerLocation> servers = new ArrayList<ServerLocation>();
     for(DistributionLocatorId locator : locators) {
       try {
-
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT, "The locator is 1st instance " +
+            locator);
         InetSocketAddress addr = new InetSocketAddress(locator.getHost(), locator.getPort());
         GetAllServersRequest req = new GetAllServersRequest("");
         Object res = TcpClient.requestToServer(addr.getAddress(), addr.getPort(), req, 2000);
@@ -1438,7 +1445,13 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         pf.addServer(srvr.getHostName(), srvr.getPort());
       }
     } else {
-      for(DistributionLocatorId locator : locators) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT, "The locators are " +
+          locators + " pf is " + pf + " length " + locators.length);
+
+      for (DistributionLocatorId locator : locators) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT, "The locator is 2nd instance " +
+            locator + " pf is " + pf);
+
         pf.addLocator(locator.getBindAddress(), locator.getPort());
       }
     }
