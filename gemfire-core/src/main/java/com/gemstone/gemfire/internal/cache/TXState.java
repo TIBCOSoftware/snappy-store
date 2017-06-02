@@ -3741,9 +3741,18 @@ public final class TXState implements TXStateInterface {
    * @see InternalDataView#postPutAll(DistributedPutAllOperation,
    *      VersionedObjectList, LocalRegion)
    */
-  public void postPutAll(DistributedPutAllOperation putallOp,
+  public void postPutAll(DistributedPutAllOperation putAllOp,
       VersionedObjectList successfulPuts, LocalRegion region) {
     // nothing to be done here
+    final LogWriterI18n logger = region.getLogWriterI18n();
+    if (isSnapshot()) {
+      if (logger.fineEnabled()) {
+        logger.info(LocalizedStrings.DEBUG, "TXState: in postPutAll with tx " + this);
+      }
+      getProxy().addAffectedRegion(region);
+      region.getSharedDataView().postPutAll(putAllOp, successfulPuts, region);
+      return;
+    }
   }
 
   /**

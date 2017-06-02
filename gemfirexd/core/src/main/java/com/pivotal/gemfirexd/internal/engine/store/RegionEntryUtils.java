@@ -1542,7 +1542,7 @@ public final class RegionEntryUtils {
 
     @Override
     public boolean isSnappyStore() {
-      return Misc.getMemStore().isSnappyStore();
+      return Misc.getMemStoreBooting().isSnappyStore();
     }
 
     @Override

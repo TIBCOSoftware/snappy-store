@@ -2716,10 +2716,11 @@ public class PartitionedRegion extends LocalRegion implements
     }
     if (logger.fineEnabled()) {
       if (txProxy == null) {
-        logger.fine("PR.sendMsgByBucket:bucket "+bucketId+"'s currentTarget is " + currentTarget);
-      }
-      else {
-        logger.fine("PR.sendMsgByBucket:bucket "+bucketId+"'s currentTargets are " + currentTargets);
+        logger.fine("PR.sendMsgByBucket:bucket "+ bucketId + "'s currentTarget is "+
+                currentTarget);
+      } else {
+        logger.fine("PR.sendMsgByBucket:bucket "+bucketId+"'s currentTargets are " +
+                currentTargets);
       }
     }
 
@@ -2732,7 +2733,7 @@ public class PartitionedRegion extends LocalRegion implements
     if (prMsg.getTXState() != null && prMsg.getLockingPolicy() == LockingPolicy.SNAPSHOT) {
       final RegionAdvisor ra = getRegionAdvisor();
       ProxyBucketRegion pbr = ra.getProxyBucketArray()[bucketId];
-      ((TXStateProxy)prMsg.getTXState()).addAffectedRegion(pbr);
+      prMsg.getTXState().getProxy().addAffectedRegion(pbr);
     }
   }
 

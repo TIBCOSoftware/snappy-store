@@ -746,7 +746,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // TODO: with forceFlush, ideally we should merge with an existing
     // ColumnBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    boolean success = true;
+    boolean success = false;
     boolean doFlush = false;
     if (forceFlush) {
       doFlush = getRegionSize() >= getPartitionedRegion()
@@ -774,8 +774,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       try {
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
-                  "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
-                  " the current rvv is " + getVersionVector());
+              "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
+              " the current rvv is " + getVersionVector());
         }
         //Check if shutdown hook is set
         if (null != getCache().getRvvSnapshotTestHook()) {
@@ -786,7 +786,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         Set keysToDestroy = createColumnBatchAndPutInColumnTable();
 
         if (getCache().getCacheTransactionManager().testRollBack) {
-          throw new Exception("Test Dummy Exception");
+          throw new RuntimeException("Test Dummy Exception");
         }
         destroyAllEntries(keysToDestroy);
         //Check if shutdown hook is set
@@ -798,10 +798,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         generateAndSetBatchIDIfNULL(true);
 
         success = true;
-      } catch (Exception lme) {
-        getCache().getLoggerI18n().warning(lme);
-        // Returning from here as we dont want to clean the row buffer data.
-        success = false;
       } finally {
         if (getCache().snapshotEnabled() && txStarted) {
           if (success) {
@@ -909,8 +905,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       event.setBucketId(this.getId());
       event.setBatchUUID(this.batchUUID); // to make sure that lock is not nexessary
 
-      if (getTXState() != null) {
-        getTXState().destroyExistingEntry(event, true, null);
+      TXStateInterface txState = event.getTXState(this);
+      if (txState != null) {
+        event.setRegion(this);
+        txState.destroyExistingEntry(event, true, null);
       } else {
         this.getPartitionedRegion().basicDestroy(event,true,null);
       }
