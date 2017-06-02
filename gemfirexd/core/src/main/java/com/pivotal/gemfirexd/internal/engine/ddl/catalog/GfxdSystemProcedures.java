@@ -2432,8 +2432,14 @@ public class GfxdSystemProcedures extends SystemProcedures {
     TXStateInterface txState = tc.getTransactionManager().getHostedTXState(txId1);
     tc.clearActiveTXState(false, true);
     //tc.commit();
-    tc.getTransactionManager().masqueradeAs(txState);
-    tc.getTransactionManager().commit();
+    // this is being done because txState is being shared across conn
+    if (txState != null && !txState.isInProgress()) {
+      tc.getTransactionManager().masqueradeAs(txState);
+      tc.getTransactionManager().commit();
+    } else {
+      TXManagerImpl.snapshotTxState.set(null);
+      TXManagerImpl.getOrCreateTXContext().clearTXState();
+    }
   }
 
   public static void GET_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {
