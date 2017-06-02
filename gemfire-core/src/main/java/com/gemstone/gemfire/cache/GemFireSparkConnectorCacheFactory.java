@@ -70,7 +70,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
   }
 
 
-  private PoolFactory createAndConfigurePoolFactory(String remoteLocators
+  private PoolFactory createAndConfigurePoolFactory(String remoteLocators) {
     PoolFactory pf = PoolManager.createFactory();
     pf.setReadTimeout(30000);
 
