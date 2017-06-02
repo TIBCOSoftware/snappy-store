@@ -2267,12 +2267,12 @@ RETRY_LOOP:
         else {
           cbEvent = null;
         }
-
         if (owner.getCache().snapshotEnabledForTX()) {
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
+          oldRe.setUpdateInProgress(true);
           if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
-            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+            owner.getCache().addOldEntry(oldRe, owner, oldSize);
           }
         }
         txRemoveOldIndexEntry(Operation.DESTROY, re);
@@ -2336,8 +2336,9 @@ RETRY_LOOP:
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
           if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp()!=null && re.getVersionStamp()
             .asVersionTag().getEntryVersion()>0*/) {
-            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+            owner.getCache().addOldEntry(oldRe, owner, 0);
           }
+
         }
         try {
           EntryEventImpl txEvent = null;
@@ -3978,21 +3979,22 @@ RETRY_LOOP:
                   try {
                     RegionEntry oldRe = null;
                     try {
-
+                      final int oldSize = event.getLocalRegion().calculateRegionEntryValueSize(re);
                       if (shouldCopyOldEntry(owner, event) && re.getVersionStamp() != null && re
                           .getVersionStamp().asVersionTag().getEntryVersion() > 0) {
                         // we need to do the same for secondary as well.
                         // need to set the version information.
+
                         oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, event.getRegion(), true);
                         oldRe.setUpdateInProgress(true);
                         // need to put old entry in oldEntryMap for MVCC
-                        owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+                        owner.getCache().addOldEntry(oldRe, owner, oldSize);
 
                       }
                       if ((cacheWrite && event.getOperation().isUpdate()) // if there is a cacheWriter, type of event has already been set
                           || !re.isRemoved()
                           || replaceOnClient) {
-                        updateEntry(event, requireOldValue, oldValueForDelta, re);
+                        updateEntry(event, requireOldValue, oldValueForDelta, re, oldSize);
                       } else {
                         // create
                         createEntry(event, owner, re);
@@ -4259,8 +4261,8 @@ RETRY_LOOP:
   }
 
   protected void updateEntry(EntryEventImpl event, boolean requireOldValue,
-      Object oldValueForDelta, RegionEntry re) throws RegionClearedException {
-    final int oldSize = event.getLocalRegion().calculateRegionEntryValueSize(re);
+      Object oldValueForDelta, RegionEntry re, int oldSize) throws RegionClearedException {
+
     final boolean wasTombstone = re.isTombstone();
     processVersionTag(re, event);
     event.putExistingEntry(event.getLocalRegion(), re, requireOldValue,
@@ -4374,15 +4376,16 @@ RETRY_LOOP:
     RegionEntry oldRe = null;
     boolean retVal = false;
     try {
+      final int oldSize = _getOwner().calculateRegionEntryValueSize(re);
       if (shouldCopyOldEntry(_getOwner(), event) /*&& re.getVersionStamp() != null && re.getVersionStamp()
         .asVersionTag().getEntryVersion() > 0*/) {
         // we need to do the same for secondary as well.
         oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, event.getRegion(), true);
         oldRe.setUpdateInProgress(true);
-        _getOwner().getCache().addOldEntry(oldRe, _getOwner().getFullPath());
+        _getOwner().getCache().addOldEntry(oldRe, _getOwner(), oldSize);
       }
       processVersionTag(re, event);
-      final int oldSize = _getOwner().calculateRegionEntryValueSize(re);
+
 
       retVal = re.destroy(event.getLocalRegion(), event, inTokenMode,
               cacheWrite, expectedOldValue, createdForDestroy, removeRecoveredEntry);
@@ -4552,7 +4555,7 @@ RETRY_LOOP:
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
           if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
-            owner.getCache().addOldEntry(oldRe, owner.getFullPath());
+            owner.getCache().addOldEntry(oldRe, owner, oldSize);
           }
         }
 
