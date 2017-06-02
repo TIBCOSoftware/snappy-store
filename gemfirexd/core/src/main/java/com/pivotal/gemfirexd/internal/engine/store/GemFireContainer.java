@@ -3350,7 +3350,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       observer.insertMultipleRowsBeingInvoked(numRows);
       observer.invokeCacheCloseAtMultipleInsert();
     }
-    if (GemFireXDUtils.TraceConglomUpdate | GemFireXDUtils.TraceQuery) {
+    if (GemFireXDUtils.TraceConglomUpdate | GemFireXDUtils.TraceQuery && false) {
       final StringBuilder insertString = new StringBuilder(
           "GemFireContainer: inserting multiple rows [");
       for (int i = 0; i < rows.size(); i++) {

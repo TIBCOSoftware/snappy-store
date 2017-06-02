@@ -2141,7 +2141,7 @@ public final class GemFireTransaction extends RawTransaction implements
     if (GemFireXDUtils.TraceTranVerbose) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN_VERBOSE,
           "GemFireTransaction: commit: attempting commit of transaction: "
-              + toString());
+              + toString(), new Throwable("SK commit"));
     }
 
     final TXStateInterface tx = getTopTXState();
@@ -2899,7 +2899,7 @@ public final class GemFireTransaction extends RawTransaction implements
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
           "GemFireTransaction: beginTransaction: "
               + " requested isolation "
-              + isolationLevel);
+              + isolationLevel, new Throwable("SKSK begin transaction "));
     }
     beginTransaction(isolationLevel, null);
   }
