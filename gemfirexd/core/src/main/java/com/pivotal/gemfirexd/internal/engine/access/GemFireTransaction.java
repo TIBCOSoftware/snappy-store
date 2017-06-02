@@ -2257,7 +2257,7 @@ public final class GemFireTransaction extends RawTransaction implements
       }
       try {
         TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
-        if (tx != gfTx) {
+        if (tx != gfTx && !tx.isSnapshot()) {
           context = this.txManager.commit(tx, this.connectionID, commitPhase,
               context, false);
         }
@@ -2451,7 +2451,7 @@ public final class GemFireTransaction extends RawTransaction implements
             && this.connectionID.longValue() >= 0) {
           // In case, the tx is started by gemfire layer for snapshot, it should be rollbacked by gemfire layer.
           TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
-          if (tx != gfTx) {
+          if (tx != gfTx && !tx.isSnapshot()) {
             this.txManager.rollback(tx, this.connectionID, false);
             setTXState(null);
           }

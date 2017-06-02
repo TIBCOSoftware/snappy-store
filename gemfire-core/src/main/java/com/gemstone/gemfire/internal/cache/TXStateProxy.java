@@ -3814,6 +3814,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     markDirty();
 
     if (isSnapshot()) {
+      addAffectedRegion(region);
       region.getSharedDataView().postPutAll(putAllOp, successfulPuts, region);
       return;
     }

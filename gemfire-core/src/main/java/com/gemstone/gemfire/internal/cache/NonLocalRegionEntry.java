@@ -52,6 +52,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   protected Object key;
   protected Object value;
   private VersionTag<?> versionTag;
+  private boolean updateInProgress = false;
 
   /**
    * Create one of these in the local case so that we have a snapshot of the
@@ -215,7 +216,6 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     throw new UnsupportedOperationException();
   }
 
-  private boolean updateInProgress = false;
   public NonLocalRegionEntry() {
     // for fromData
   }
@@ -351,7 +351,8 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public Object _getValue() {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+    return value;
+    //throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
   public void setOwner(LocalRegion owner) {
