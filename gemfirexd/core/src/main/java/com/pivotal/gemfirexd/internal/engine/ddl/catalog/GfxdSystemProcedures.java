@@ -2433,12 +2433,18 @@ public class GfxdSystemProcedures extends SystemProcedures {
     tc.clearActiveTXState(false, true);
     //tc.commit();
     // this is being done because txState is being shared across conn
-    if (txState != null && !txState.isInProgress()) {
+    if (txState != null && txState.isInProgress()) {
       tc.getTransactionManager().masqueradeAs(txState);
       tc.getTransactionManager().commit();
     } else {
       TXManagerImpl.snapshotTxState.set(null);
       TXManagerImpl.getOrCreateTXContext().clearTXState();
+    }
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure COMMIT_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
   }
 
@@ -2464,7 +2470,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     // tc commit will clear all the artifacts but will not commit actual txState
     // that should be committed in COMMIT procedure
-    tc.commit();
+    //tc.commit();
     tc.resetActiveTXState(true);
     //tc.resetActiveTXState(true);
     TXManagerImpl.getOrCreateTXContext().clearTXState();
