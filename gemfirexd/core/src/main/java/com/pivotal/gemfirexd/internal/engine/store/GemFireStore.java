@@ -2502,6 +2502,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.databaseName.equalsIgnoreCase("snappydata")) {
         this.snappyStore = true;
         this.database.setdisableStatementOptimizationToGenericPlan();
+        gemFireCache.DEFAULT_SNAPSHOT_ENABLED = true;
+        gemFireCache.startOldEntryCleanerService();
       }
     }
     ClientSharedUtils.setThriftDefault(this.snappyStore);

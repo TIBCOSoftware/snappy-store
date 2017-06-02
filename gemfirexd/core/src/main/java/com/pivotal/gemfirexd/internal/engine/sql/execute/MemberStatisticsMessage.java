@@ -1,5 +1,6 @@
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
@@ -80,6 +81,8 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("id", memberId);
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
+    memberStatsMap.put("userDir", getUserDir());
+    memberStatsMap.put("processId", getProcessId());
     memberStatsMap.put("locator", isLocator());
     memberStatsMap.put("dataServer", isDataServer());
     memberStatsMap.put("activeLead", isActiveLead(ids.getDistributedMember()));
@@ -92,10 +95,14 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
     memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
     memberStatsMap.put("diskStoreName", getDiskStoreName());
-    memberStatsMap.put("storagePoolUsed",getStoragePoolUsed());
-    memberStatsMap.put("storagePoolSize",getStoragePoolSize());
-    memberStatsMap.put("executionPoolUsed",getExecutionPoolUsed());
-    memberStatsMap.put("executionPoolSize",getExecutionPoolSize());
+    memberStatsMap.put("storagePoolUsed", getStoragePoolUsed());
+    memberStatsMap.put("storagePoolSize", getStoragePoolSize());
+    memberStatsMap.put("executionPoolUsed", getExecutionPoolUsed());
+    memberStatsMap.put("executionPoolSize", getExecutionPoolSize());
+    memberStatsMap.put("heapMemorySize", getHeapMemorySize());
+    memberStatsMap.put("heapMemoryUsed", getHeapMemoryUsed());
+    memberStatsMap.put("offHeapMemorySize", getOffHeapMemorySize());
+    memberStatsMap.put("offHeapMemoryUsed", getOffHeapMemoryUsed());
 
     lastResult(memberStatsMap);
   }
@@ -153,6 +160,15 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     } catch (UnknownHostException ex) {
       return ManagementConstants.DEFAULT_HOST_NAME;
     }
+  }
+
+  private String getUserDir(){
+    return System.getProperty("user.dir");
+  }
+
+  private String getProcessId(){
+    String[] processDetails = ManagementFactory.getRuntimeMXBean().getName().split("@");
+    return processDetails[0];
   }
 
   /**
@@ -233,20 +249,43 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     return callbacks.getStoragePoolUsedMemory(false) +
         callbacks.getStoragePoolUsedMemory(true);
   }
+
   public long getStoragePoolSize() {
     StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
     return callbacks.getStoragePoolSize(false) +
         callbacks.getStoragePoolSize(true);
   }
+
   public long getExecutionPoolUsed() {
     StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
     return callbacks.getExecutionPoolUsedMemory(false) +
         callbacks.getExecutionPoolUsedMemory(true);
   }
+
   public long getExecutionPoolSize() {
     StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
     return callbacks.getExecutionPoolSize(false) +
         callbacks.getExecutionPoolSize(true);
+  }
+
+  public long getOffHeapMemorySize() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolSize(true) +  callbacks.getExecutionPoolSize(true);
+  }
+
+  public long getOffHeapMemoryUsed() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolUsedMemory(true) +  callbacks.getExecutionPoolUsedMemory(true);
+  }
+
+  public long getHeapMemorySize() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolSize(false) +  callbacks.getExecutionPoolSize(false);
+  }
+
+  public long getHeapMemoryUsed() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolUsedMemory(false) +  callbacks.getExecutionPoolUsedMemory(false);
   }
 
   private NetworkServerConnectionStats getMemberClientConnectionStats(InternalDistributedSystem system){

@@ -221,9 +221,11 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   /**
    * System property to disable default snapshot
    */
-  public final boolean DEFAULT_SNAPSHOT_DISABLED = Boolean.getBoolean("gemfire.Cache.DISABLE_DEFAULT_SNAPSHOT_ISOLATION");
+  public boolean DEFAULT_SNAPSHOT_ENABLED = SystemProperties.getServerInstance().getBoolean(
+      "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", false);
 
-  public final boolean DEFAULT_SNAPSHOT_ENABLED_TX = Boolean.getBoolean("gemfire.Cache.DISABLE_DEFAULT_SNAPSHOT_ISOLATION_TX");
+  private final boolean DEFAULT_SNAPSHOT_ENABLED_TX = SystemProperties.getServerInstance().getBoolean(
+      "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TX", false);
 
   /**
    * Property set to true if resource manager heap percentage is set and query monitor is required
@@ -674,6 +676,30 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     return oldEntryMap.get(regionName);
   }
 
+  public void startOldEntryCleanerService() {
+    getLoggerI18n().info(LocalizedStrings.DEBUG,
+        "Snapshot is enabled " + snapshotEnabled());
+
+    if (oldEntryMapCleanerService == null) {
+      final LogWriterImpl.LoggingThreadGroup threadGroup = LogWriterImpl.createThreadGroup("OldEntry GC Thread Group",
+          this.system.getLogWriterI18n());
+      ThreadFactory oldEntryGCtf = new ThreadFactory() {
+        public Thread newThread(Runnable command) {
+          Thread thread = new Thread(threadGroup, command,
+              "OldEntry GC Thread");
+          thread.setDaemon(true);
+          return thread;
+        }
+      };
+
+      getLoggerI18n().info(LocalizedStrings.DEBUG,
+          "Snapshot is enabled, starting the cleaner thread.");
+      oldEntryMapCleanerService = Executors.newScheduledThreadPool(1, oldEntryGCtf);
+      oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0, OLD_ENTRIES_CLEANER_TIME_INTERVAL,
+          TimeUnit.MILLISECONDS);
+    }
+  }
+
   class OldEntriesCleanerThread implements Runnable {
     // Keep each entry alive for atleast 5 mins.
     public void run() {
@@ -959,21 +985,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       //this.oldEntryMap = new CustomEntryConcurrentHashMap<>();
       this.oldEntryMap = new ConcurrentHashMap<String, Map<Object, BlockingQueue<RegionEntry>>>();
 
-      final LogWriterImpl.LoggingThreadGroup threadGroup = LogWriterImpl.createThreadGroup("OldEntry GC Thread Group",
-          this.system.getLogWriterI18n());
-      ThreadFactory oldEntryGCtf = new ThreadFactory() {
-        public Thread newThread(Runnable command) {
-          Thread thread = new Thread(threadGroup, command,
-              "OldEntry GC Thread");
-          thread.setDaemon(true);
-          return thread;
-        }
-      };
-
       if (snapshotEnabled()) {
-        oldEntryMapCleanerService = Executors.newScheduledThreadPool(1, oldEntryGCtf);
-        oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0, OLD_ENTRIES_CLEANER_TIME_INTERVAL,
-            TimeUnit.MILLISECONDS);
+        startOldEntryCleanerService();
       }
 
       this.creationDate = new Date();
@@ -1388,9 +1401,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   // this snapshot is different from snapshot for export.
   // however this can be used for that purpose.
   public boolean snapshotEnabled() {
-    return !DEFAULT_SNAPSHOT_DISABLED;
+    // if rowstore return false
+    // if snappy return true
+    return DEFAULT_SNAPSHOT_ENABLED;
   }
-
 
   public boolean snapshotEnabledForTX() {
     // snapshot should be enabled and if LockingPolicy is RC/RR then it should not be disabled
@@ -1514,8 +1528,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
 
   public void waitOnRowScanTestHook() {
-    if (null != this.testHook) {
-      this.testHook.waitOnOperationLock();
+    if (null != this.rowScanTestHook) {
+      this.rowScanTestHook.waitOnOperationLock();
     }
   }
 
