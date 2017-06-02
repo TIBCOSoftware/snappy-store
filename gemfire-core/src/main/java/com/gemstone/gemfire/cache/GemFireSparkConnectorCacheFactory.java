@@ -16,6 +16,7 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.tcpserver.TcpClient;
+import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.admin.remote.DistributionLocatorId;
 import com.gemstone.gemfire.internal.cache.GemFireSparkConnectorCacheImpl;
 
@@ -69,7 +70,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
   }
 
 
-  private PoolFactory createAndConfigurePoolFactory(String remoteLocators) {
+  private PoolFactory createAndConfigurePoolFactory(String remoteLocators
     PoolFactory pf = PoolManager.createFactory();
     pf.setReadTimeout(30000);
 
@@ -78,7 +79,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
         .countTokens()];
     int i = 0;
     while (remoteLocatorsTokenizer.hasMoreTokens()) {
-      locators[i++] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
+      locators[i++] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken().trim());
     }
     List<ServerLocation> servers = new ArrayList<ServerLocation>();
     for (DistributionLocatorId locator : locators) {
@@ -101,7 +102,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
       String hostName = null;
       try {
         hostName = sparkIp != null ? InetAddress.getByName(sparkIp).getCanonicalHostName() :
-            InetAddress.getLocalHost().getCanonicalHostName();
+            SocketCreator.getLocalHost().getCanonicalHostName();
       } catch (Exception e) {
         hostName = "";
       }
