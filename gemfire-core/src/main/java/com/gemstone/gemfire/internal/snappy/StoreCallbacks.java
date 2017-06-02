@@ -84,6 +84,8 @@ public interface StoreCallbacks {
   long getExecutionPoolUsedMemory(boolean offHeap);
   long getExecutionPoolSize(boolean offHeap);
 
+  boolean shouldStopRecovery();
+
   /**
    * Get the number of bytes used for off-heap storage for given object name.
    */

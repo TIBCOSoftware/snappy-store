@@ -79,6 +79,7 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.SerializationException;
 import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.OplogCancelledException;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -124,6 +125,7 @@ import com.gemstone.gemfire.internal.shared.UnsupportedGFXDVersionException;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataInputStream;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataOutputStream;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.IOUtils;
 import com.gemstone.gemfire.internal.util.TransformUtils;
 import com.gemstone.gemfire.pdx.internal.PdxWriterImpl;
@@ -7376,6 +7378,17 @@ public final class Oplog implements CompactableOplog {
           diskRecoveryStores.remove(diskRegionId);
           continue;
         }
+
+        if (CallbackFactoryProvider.getStoreCallbacks().shouldStopRecovery()) {
+          System.out.println("Oplog::recoverValuesIfNeeded: stopping recovery of " +
+              diskRegionId + "as memory consumed is 90% of maxStorageSize");
+          diskRecoveryStores.remove(diskRegionId);
+          this.logger.info(LocalizedStrings.ONE_ARG,
+              "Oplog::recoverValuesIfNeeded: stopping recovery of " +
+                  diskRegionId + "as memory consumed is 90% of maxStorageSize");
+          continue;
+        }
+
         synchronized(diskEntry) {
           //Make sure the entry hasn't been modified
           if(diskEntry.getDiskId() != null && diskEntry.getDiskId().getOplogId() == oplogId) {
