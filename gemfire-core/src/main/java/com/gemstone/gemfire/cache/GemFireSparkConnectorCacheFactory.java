@@ -60,7 +60,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
 
       for (Map.Entry<String, String> gridEntry : gfeGridMappings.entrySet()) {
         String key = gridEntry.getKey().trim();
-        String gridName = key.substring(key.indexOf('.') + 1);
+        String gridName =   key.split("\\.")[2]; //key.substring(key.indexOf('.') + 1);
         String locators = gridEntry.getValue().trim();
         PoolFactory pf = this.createAndConfigurePoolFactory(locators);
         pf.create(gridName);

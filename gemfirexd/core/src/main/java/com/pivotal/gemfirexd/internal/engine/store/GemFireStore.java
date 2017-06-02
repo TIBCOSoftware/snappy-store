@@ -761,7 +761,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
-    String defaultGrid = null;
+   
     // install the GemFireXD specific thread dump signal (URG) handler
     try {
       SigThreadDumpHandler.install();
@@ -882,14 +882,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
 
 
-    Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(props,
+    Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
         GemFireSparkConnectorCacheImpl.gfeGridPropPrefix);
-
-
-    for (String key : gfeGridMappings.keySet()) {
-      props.remove(key);
-      finalGFXDBootProps.remove(key);
-    }
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,
