@@ -141,6 +141,11 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public boolean shouldStopRecovery() {
+      return false;
+    }
+
+    @Override
     public long getOffHeapMemory(String objectName) {
       return 0L;
     }
