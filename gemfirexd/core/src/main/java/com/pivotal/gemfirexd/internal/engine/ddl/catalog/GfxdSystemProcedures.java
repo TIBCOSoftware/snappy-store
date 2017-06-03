@@ -2462,8 +2462,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
     //GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     //tc.setActiveTXState(TXManagerImpl.snapshotTxState.get(), false);
 
-    if (TXManagerImpl.snapshotTxState.get() != null) {
-      txid[0] = TXManagerImpl.snapshotTxState.get().getTransactionId().stringFormat();
+    TXStateInterface tx = TXManagerImpl.snapshotTxState.get();
+    if ( tx != null) {
+      txid[0] = tx.getTransactionId().stringFormat();
     } else {
       txid[0] = "null";
     }
