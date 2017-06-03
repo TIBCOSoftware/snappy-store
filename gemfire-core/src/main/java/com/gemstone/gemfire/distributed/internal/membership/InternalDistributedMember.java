@@ -197,6 +197,7 @@ public final class InternalDistributedMember
   }
 
 
+
   // Used only by Externalization
   public InternalDistributedMember() {
     this.groups = new String[0];
@@ -374,6 +375,27 @@ public final class InternalDistributedMember
     if (isCurrentHost) {
       defaultToCurrentHost();
     }
+  }
+
+
+  public InternalDistributedMember withOrdinal(short ordinalToUse ) {
+    InternalDistributedMember copy = new InternalDistributedMember();
+    copy.vmKind = this.vmKind;
+    copy.ipAddr = this.getNetMember();
+    copy.hostName = this.hostName;
+    copy.isPartial = this.isPartial;
+    copy.dcPort = this.dcPort;
+    copy.vmPid = this.vmPid;
+    copy.groups = this.groups;
+    copy.name = this.name;
+    copy.uniqueTag = this.uniqueTag;
+    copy.vmViewId = this.vmViewId;
+    copy.durableClientAttributes = this.durableClientAttributes;
+    copy.version = ordinalToUse;
+    copy.versionObj = Version.fromOrdinalOrCurrent(copy.version);
+    copy.cachedToString = null;
+    copy.essentialData = null;
+    return copy;
   }
 
   /**

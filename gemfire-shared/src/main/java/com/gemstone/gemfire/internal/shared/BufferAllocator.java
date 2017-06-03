@@ -26,6 +26,9 @@ import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
  */
 public abstract class BufferAllocator implements Closeable {
 
+  public static final String STORE_DATA_FRAME_OUTPUT =
+      "STORE_DATA_FRAME_OUTPUT";
+
   /**
    * Allocate a new ByteBuffer of given size.
    */
