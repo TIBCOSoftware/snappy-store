@@ -37,6 +37,11 @@ public abstract class AbstractDiskLRURegionEntry
   protected AbstractDiskLRURegionEntry(RegionEntryContext context, Object value) {
     super(context, value);
   }
+
+  @Override
+  public Object getValue() {
+    return super._getValue();
+  }
   
   /////////////////////////////////////////////////////////////
   /////////////////////////// fields //////////////////////////
