@@ -2273,7 +2273,7 @@ public class InitialImageOperation  {
             offset = 0;
             while (true) {
               batchMessage.init(txEvents, offset, chunkSizeInBytes, null, rgn,
-                  null, false);
+                  null, false, TXStateProxy.ConnectionUNINITIALIZED);
               InternalDataSerializer.invokeToData(batchMessage, hdos);
               if (rgn.isDestroyed()) {
                 return -1;

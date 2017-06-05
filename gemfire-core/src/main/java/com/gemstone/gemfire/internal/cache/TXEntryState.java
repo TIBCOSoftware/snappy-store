@@ -21,6 +21,7 @@ import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifie
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.cache.CacheWriter;
 import com.gemstone.gemfire.cache.CacheWriterException;
@@ -425,7 +426,7 @@ public class TXEntryState implements TXEntryId, Releasable {
     if (next == head) {
       return;
     }
-    final NonReentrantLock headLock = txState.headLock;
+    final ReentrantLock headLock = txState.headLock;
     headLock.lock();
     try {
       updateForCommitNoLock(txState, false);
@@ -2173,7 +2174,7 @@ public class TXEntryState implements TXEntryId, Releasable {
   }
 
   protected final void removeFromList(final TXState txState) {
-    final NonReentrantLock headLock = txState.headLock;
+    final ReentrantLock headLock = txState.headLock;
     headLock.lock();
     try {
       if (this.next != null) {

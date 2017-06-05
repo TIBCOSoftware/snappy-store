@@ -28,6 +28,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
@@ -201,7 +202,7 @@ public final class TXState implements TXStateInterface {
   /**
    * Lock for the {@link #head}.
    */
-  final NonReentrantLock headLock;
+  final ReentrantLock headLock;
 
   /**
    * Lock for the TXState during commit/rollback.
@@ -2382,7 +2383,7 @@ public final class TXState implements TXStateInterface {
   }
 
   final void removePendingOpWithLock(final Object op) {
-    final NonReentrantLock headLock = this.headLock;
+    final ReentrantLock headLock = this.headLock;
     headLock.lock();
     try {
       removePendingOp(op);

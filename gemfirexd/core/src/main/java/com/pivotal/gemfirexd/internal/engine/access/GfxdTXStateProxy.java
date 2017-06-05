@@ -20,6 +20,7 @@ package com.pivotal.gemfirexd.internal.engine.access;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -27,19 +28,10 @@ import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.TransactionFlag;
+import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
-import com.gemstone.gemfire.internal.cache.Checkpoint;
-import com.gemstone.gemfire.internal.cache.THashMapWithKeyPair;
-import com.gemstone.gemfire.internal.cache.TObjectObjectObjectProcedure;
-import com.gemstone.gemfire.internal.cache.TXEntryState;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
-import com.gemstone.gemfire.internal.cache.TXRegionState;
-import com.gemstone.gemfire.internal.cache.TXState;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.TXStateProxyFactory;
-import com.gemstone.gemfire.internal.cache.VMIdAdvisor;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -280,8 +272,7 @@ public final class GfxdTXStateProxy extends TXStateProxy {
     return null;
   }
 
-  @Override
-  public TXState.ArrayListAppend[] getTSSPendingReadLocks() {
+  private GemFireTransaction currentTransaction() {
     // try from GemFireTransaction list first
     Object trans = this.trans;
     GemFireTransaction tran = null;
@@ -314,6 +305,12 @@ public final class GfxdTXStateProxy extends TXStateProxy {
         }
       }
     }
+    return tran;
+  }
+
+  @Override
+  public TXState.ArrayListAppend[] getTSSPendingReadLocks() {
+    GemFireTransaction tran = currentTransaction();
     LanguageConnectionContext lcc = GemFireTransaction
         .getLanguageConnectionContext(tran);
     if (lcc != null) {
@@ -707,5 +704,33 @@ public final class GfxdTXStateProxy extends TXStateProxy {
 
   public Checkpoint getACheckPoint() {
     return this.regions.checkpoint(null);
+  }
+
+  protected TXBatchMessage.TXBatchResponse sendTXBatchMessage(final DM dm,
+      final InternalDistributedMember recipient,
+      final TXStateInterface tx,
+      final TXManagerImpl.TXContext context,
+      final ArrayList<Object> pendingOps,
+      final ArrayList<LocalRegion> pendingOpsRegions,
+      final List<AbstractOperationMessage> postMessages,
+      final boolean conflictWithEX) {
+    long connectionId = TXStateProxy.ConnectionUNINITIALIZED;
+    GemFireTransaction tran = currentTransaction();
+    if (tran != null) {
+      EmbedConnection conn = EmbedConnectionContext.getEmbedConnection(tran
+          .getContextManager());
+      if (conn != null) {
+        connectionId = conn.getConnectionID();
+      }
+    }
+    return TXBatchMessage.send(dm,
+        recipient,
+        tx,
+        context,
+        pendingOps,
+        pendingOpsRegions,
+        postMessages,
+        conflictWithEX,
+        connectionId);
   }
 }

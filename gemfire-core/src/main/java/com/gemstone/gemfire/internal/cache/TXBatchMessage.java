@@ -42,6 +42,7 @@ import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
+import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 
 /**
@@ -54,6 +55,7 @@ import com.gemstone.gemfire.internal.util.ArrayUtils;
  */
 public final class TXBatchMessage extends TXMessage {
 
+  public long connectionId;
   List<Object> pendingOps;
   private transient int initOffset;
   private transient int offset;
@@ -91,10 +93,11 @@ public final class TXBatchMessage extends TXMessage {
       final ArrayList<LocalRegion> pendingOpsRegions,
       final LocalRegion pendingOpsRegion,
       final List<AbstractOperationMessage> msgs,
-      final boolean conflictWithEX) {
+      final boolean conflictWithEX,
+      final long connectionId) {
     super(tx, replyProcessor);
     init(pendingOps, 0, 0, pendingOpsRegions, pendingOpsRegion, msgs,
-        conflictWithEX);
+        conflictWithEX, connectionId);
   }
 
   void init(final List<Object> pendingOps,
@@ -102,7 +105,8 @@ public final class TXBatchMessage extends TXMessage {
       final ArrayList<LocalRegion> pendingOpsRegions,
       final LocalRegion pendingOpsRegion,
       final List<AbstractOperationMessage> msgs,
-      final boolean conflictWithEX) {
+      final boolean conflictWithEX,
+      final long connectionId) {
     this.pendingOps = pendingOps;
     this.initOffset = offset;
     this.offset = 0;
@@ -111,6 +115,7 @@ public final class TXBatchMessage extends TXMessage {
     this.pendingOpsRegion = pendingOpsRegion;
     this.piggyBackedMessages = msgs;
     this.conflictWithEX = conflictWithEX;
+    this.connectionId = connectionId;
   }
 
   @Override
@@ -135,9 +140,13 @@ public final class TXBatchMessage extends TXMessage {
         .checkCancelInProgress(null);
     if (tx != null) {
       final TXState txState = tx.getTXStateForWrite();
+      Object callbackArgument = null;
+      if (connectionId != TXStateProxy.ConnectionUNINITIALIZED) {
+        callbackArgument = connectionId;
+      }
       // reusable EntryEvent
       final EntryEventImpl eventTemplate = EntryEventImpl.create(null,
-          Operation.UPDATE, null, null, null, true, null);
+          Operation.UPDATE, null, null, callbackArgument, true, null);
       eventTemplate.setTXState(txState);
       Object entry;
       TXRegionState txrs;
@@ -217,7 +226,8 @@ public final class TXBatchMessage extends TXMessage {
       final ArrayList<Object> pendingOps,
       final ArrayList<LocalRegion> pendingOpsRegions,
       final List<AbstractOperationMessage> postMessages,
-      final boolean conflictWithEX) {
+      final boolean conflictWithEX,
+      final long connectionId) {
     if (postMessages != null) {
       // all replies will also be batched up with this message's reply, so
       // should not have registered ReplyProcessors
@@ -232,7 +242,7 @@ public final class TXBatchMessage extends TXMessage {
     final TXBatchResponse response = new TXBatchResponse(dm, recipient,
         postMessages);
     final TXBatchMessage msg = new TXBatchMessage(tx, response, pendingOps,
-        pendingOpsRegions, null, postMessages, conflictWithEX);
+        pendingOpsRegions, null, postMessages, conflictWithEX, connectionId);
     msg.initPendingTXId(context, tx);
     msg.setRecipient(recipient);
     dm.putOutgoing(msg);
@@ -278,6 +288,7 @@ public final class TXBatchMessage extends TXMessage {
   public void toData(DataOutput out)
           throws IOException {
     super.toData(out);
+    writeConnectionId(out);
     // first write the piggybacked extra messages being carried, if any
     if (this.piggyBackedMessages != null) {
       final int size = this.piggyBackedMessages.size();
@@ -386,6 +397,22 @@ public final class TXBatchMessage extends TXMessage {
     out.writeByte(TXEntryState.OP_FLAG_EOF);
   }
 
+  protected final void writeConnectionId(final DataOutput out)
+      throws IOException {
+    if (Version.GFXD_155.compareTo(InternalDataSerializer
+        .getVersionForDataStream(out)) <= 0) {
+      InternalDataSerializer.writeSignedVL(this.connectionId, out);
+    }
+  }
+
+  protected final void readConnectionId(final DataInput in)
+      throws IOException {
+    if (Version.GFXD_155.compareTo(InternalDataSerializer
+        .getVersionForDataStream(in)) <= 0) {
+      this.connectionId = InternalDataSerializer.readSignedVL(in);
+    }
+  }
+
   @Override
   protected short computeCompressedShort(short flags) {
     if (this.conflictWithEX) {
@@ -404,6 +431,7 @@ public final class TXBatchMessage extends TXMessage {
   public void fromData(DataInput in)
           throws IOException, ClassNotFoundException {
     super.fromData(in);
+    readConnectionId(in);
     this.conflictWithEX = ((flags & CONFLICT_WITH_EX) != 0);
     // first read the piggybacked extra messages being carried, if any
     if ((flags & HAS_PIGGYBACKED_MESSAGES) != 0) {
