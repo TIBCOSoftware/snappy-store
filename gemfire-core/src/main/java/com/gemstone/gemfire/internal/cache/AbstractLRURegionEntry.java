@@ -41,7 +41,6 @@ public abstract class AbstractLRURegionEntry
 
   @Override
   public Object getValue() {
-    super.getValueInVM(null);
     return super._getValue();
   }
  

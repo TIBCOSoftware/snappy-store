@@ -80,5 +80,9 @@ public interface LRUClockNode {
   public void resetRefCount(NewLRUClockHand lruList);
   */
 
+  /**
+   * Get in memory value for this node.
+   * @return value of this entry
+   */
   public Object getValue();
 }
