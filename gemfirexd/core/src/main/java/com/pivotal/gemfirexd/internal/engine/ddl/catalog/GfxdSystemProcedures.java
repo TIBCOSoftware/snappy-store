@@ -1717,7 +1717,16 @@ public class GfxdSystemProcedures extends SystemProcedures {
     try {
       final GemFireContainer container = CallbackProcedures
           .getContainerForTable(schema, table);
-      CREATE_ALL_BUCKETS_INTERNAL(container.getRegion(), tableName);
+      LocalRegion region = container.getRegion();
+      if (region.getAttributes().getPartitionAttributes() != null) {
+        if (((PartitionedRegion)region).
+            getRegionAdvisor().getCreatedBucketsCount() == 0) {
+          CREATE_ALL_BUCKETS_INTERNAL(container.getRegion(), tableName);
+        }
+      } else {
+        throw Util.generateCsSQLException(SQLState.TABLE_NOT_PARTITIONED,
+            tableName, "SYS.CREATE_ALL_BUCKETS");
+      }
     } catch (StandardException se) {
       throw PublicAPI.wrapStandardException(se);
     }
