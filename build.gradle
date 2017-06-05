@@ -87,11 +87,11 @@ allprojects {
 
     if (rootProject.name == 'snappy-store') {
       subprojectBase = ':'
-      gitCmd = "git --git-dir=${rootDir}/.git --work-tree=${rootDir}"
     } else {
       subprojectBase = ':snappy-store:'
-      gitCmd = "git --git-dir=${project(':snappy-store').projectDir}/.git --work-tree=${project(':snappy-store').projectDir}"
+      // gitCmd = "git --git-dir=${project(':snappy-store').projectDir}/.git --work-tree=${project(':snappy-store').projectDir}"
     }
+    gitCmd = "git --git-dir=${rootDir}/.git --work-tree=${rootDir}"
 
     gitBranch = "${gitCmd} rev-parse --abbrev-ref HEAD".execute().text.trim()
     commitId = "${gitCmd} rev-parse HEAD".execute().text.trim()
