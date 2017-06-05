@@ -367,8 +367,8 @@ public class LRUClockTest extends junit.framework.TestCase {
     }
 
     @Override
-    public Object getValue() {
-      return null;
+    public boolean isValueNull() {
+      return false;
     }
 
     public void setInList() {

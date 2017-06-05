@@ -40,8 +40,8 @@ public abstract class AbstractLRURegionEntry
   }
 
   @Override
-  public Object getValue() {
-    return super._getValue();
+  public boolean isValueNull() {
+    return super.isValueNull();
   }
  
   /////////////////////////////////////////////////////////////

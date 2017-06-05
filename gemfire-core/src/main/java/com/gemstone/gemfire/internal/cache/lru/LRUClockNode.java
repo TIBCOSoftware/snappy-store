@@ -81,8 +81,8 @@ public interface LRUClockNode {
   */
 
   /**
-   * Get in memory value for this node.
-   * @return value of this entry
+   * Is the in-memory value for this node is null
+   * @return true or false
    */
-  public Object getValue();
+  public boolean isValueNull();
 }

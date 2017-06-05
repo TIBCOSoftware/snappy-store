@@ -253,7 +253,7 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
       // faultIn is in process
       // TODO Remove SnappyStore check after 0.9 . Added this check to
       // reduce regression cycles
-      if (snappyStore && (aNode.getValue() == null || aNode.testEvicted())) {
+      if (snappyStore && (aNode.isValueNull()|| aNode.testEvicted())) {
         if (debug) {
           logWriter
               .info(LocalizedStrings.NewLRUClockHand_DISCARDING_EVICTED_ENTRY);
@@ -486,8 +486,8 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
     }
 
     @Override
-    public Object getValue() {
-      return null;
+    public boolean isValueNull() {
+      return false; // Guard nodes can never be null
     }
   }
 }

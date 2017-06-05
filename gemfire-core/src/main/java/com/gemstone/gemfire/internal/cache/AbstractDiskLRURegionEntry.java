@@ -39,8 +39,8 @@ public abstract class AbstractDiskLRURegionEntry
   }
 
   @Override
-  public Object getValue() {
-    return super._getValue();
+  public boolean isValueNull() {
+    return super.isValueNull();
   }
   
   /////////////////////////////////////////////////////////////
