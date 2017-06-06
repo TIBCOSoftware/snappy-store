@@ -2418,7 +2418,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
       LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
       GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID());
+          "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
 
     long memberId = Long.parseLong(st.nextToken());
@@ -2429,17 +2431,30 @@ public class GfxdSystemProcedures extends SystemProcedures {
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     TXStateInterface txState = tc.getTransactionManager().getHostedTXState(txId1);
     tc.clearActiveTXState(false, true);
-    tc.getTransactionManager().masqueradeAs(txState);
-    tc.getTransactionManager().commit();
+    // this is being done because txState is being shared across conn
+    if (txState != null && txState.isInProgress()) {
+      tc.getTransactionManager().masqueradeAs(txState);
+      tc.getTransactionManager().commit();
+    } else {
+      TXManagerImpl.snapshotTxState.set(null);
+      TXManagerImpl.getOrCreateTXContext().clearTXState();
+    }
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure COMMIT_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+    }
   }
 
-  public static void GET_SNAPSHOT_TXID(String[] txid) throws SQLException {
+  public static void GET_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "in procedure GET_SNAPSHOT_TXID() SURANJAN for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
-      + " TxManager " + TXManagerImpl.getCurrentTXId());
+      + " TxManager " + TXManagerImpl.getCurrentTXId()
+      + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
 
     //Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
@@ -2447,12 +2462,16 @@ public class GfxdSystemProcedures extends SystemProcedures {
     //GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     //tc.setActiveTXState(TXManagerImpl.snapshotTxState.get(), false);
 
-    if (TXManagerImpl.snapshotTxState.get() != null) {
-      txid[0] = TXManagerImpl.snapshotTxState.get().getTransactionId().stringFormat();
+    TXStateInterface tx = TXManagerImpl.snapshotTxState.get();
+    if ( tx != null) {
+      txid[0] = tx.getTransactionId().stringFormat();
     } else {
       txid[0] = "null";
     }
-    tc.clearActiveTXState(false, true);
+    // tc commit will clear all the artifacts but will not commit actual txState
+    // that should be committed in COMMIT procedure
+    tc.resetActiveTXState(true);
+    TXManagerImpl.getOrCreateTXContext().clearTXState();
     TXManagerImpl.snapshotTxState.set(null);
   }
 
@@ -2466,11 +2485,17 @@ public class GfxdSystemProcedures extends SystemProcedures {
     TXStateInterface state = tc.getTransactionManager().getHostedTXState(txId1);
 
     if (state == null) {
+      if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure USE_SNAPSHOT_TXID() creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+              + " txId  " +txId);
+      }
       // if state is null then create txstate and use
       state =  tc.getTransactionManager().getOrCreateHostedTXState(txId1,
           com.gemstone.gemfire.internal.cache.locks.LockingPolicy.SNAPSHOT, true);
     }
     tc.getTransactionManager().masqueradeAs(state);
+    TXManagerImpl.snapshotTxState.set(state);
     tc.setActiveTXState(state, false);
     // If already then throw exception?
     if (TXManagerImpl.snapshotTxState.get() != null) {
