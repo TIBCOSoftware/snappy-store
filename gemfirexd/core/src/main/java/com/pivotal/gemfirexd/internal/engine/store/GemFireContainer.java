@@ -5565,7 +5565,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         }
 
         final DataValueDescriptor tType = dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1];
-        if (tType != null && "T".equalsIgnoreCase(tType.toString())) {
+        if (tType != null && "T".equalsIgnoreCase(tType.toString()) &&
+            !LocalRegion.isMetaTable(region.getFullPath())) {
           ExternalCatalog ec = Misc.getMemStore().getExternalCatalog();
           LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
           if (ec != null && lcc != null && lcc.isQueryRoutingEnabled() &&
