@@ -825,7 +825,11 @@ public final class ConnectionTable  {
 
   public final void releasePooledConnection(Connection conn) {
     if (conn.isPooled() && this.connectionPool != null) {
-      this.connectionPool.returnObject(new ConnKey(conn.remoteId), conn);
+      try {
+        this.connectionPool.returnObject(new ConnKey(conn.remoteId), conn);
+      } catch (RuntimeException ignored) {
+        // ignore any exception in returning to pool
+      }
     }
   }
 
