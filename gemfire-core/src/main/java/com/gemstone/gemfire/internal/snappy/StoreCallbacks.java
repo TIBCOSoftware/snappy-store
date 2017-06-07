@@ -29,6 +29,8 @@ public interface StoreCallbacks {
 
   String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
 
+  String SHADOW_SCHEMA_SEPARATOR = "____";
+
   void registerTypes();
 
   Set<Object> createColumnBatch(BucketRegion region, UUID batchID,

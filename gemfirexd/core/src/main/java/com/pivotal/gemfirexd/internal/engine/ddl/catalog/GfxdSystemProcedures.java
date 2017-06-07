@@ -2413,23 +2413,26 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   public static void COMMIT_SNAPSHOT_TXID(String txId) throws SQLException, StandardException {
-    StringTokenizer st = new StringTokenizer(txId, ":");
-    if (GemFireXDUtils.TraceExecution) {
-      LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-      GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
-              + " TxManager " + TXManagerImpl.getCurrentTXId()
-              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+    TXStateInterface txState = null;
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction) lcc.getTransactionExecute();
+
+    if (!txId.equals("null")) {
+      StringTokenizer st = new StringTokenizer(txId, ":");
+      if (GemFireXDUtils.TraceExecution) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+                + " TxManager " + TXManagerImpl.getCurrentTXId()
+                + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+      }
+
+      long memberId = Long.parseLong(st.nextToken());
+      int uniqId = Integer.parseInt(st.nextToken());
+      TXId txId1 = TXId.valueOf(memberId, uniqId);
+
+      txState = tc.getTransactionManager().getHostedTXState(txId1);
     }
 
-    long memberId = Long.parseLong(st.nextToken());
-    int uniqId = Integer.parseInt(st.nextToken());
-    TXId txId1 = TXId.valueOf(memberId, uniqId);
-
-    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-    GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
-    TXStateInterface txState = tc.getTransactionManager().getHostedTXState(txId1);
     tc.clearActiveTXState(false, true);
     // this is being done because txState is being shared across conn
     if (txState != null && txState.isInProgress()) {

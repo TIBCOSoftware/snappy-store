@@ -23,18 +23,40 @@ import com.gemstone.gemfire.internal.cache.GemFireSparkConnectorCacheImpl;
 
 public class GemFireSparkConnectorCacheFactory extends CacheFactory {
 
+  public static final String gfeGridNamePrefix = "spark.gemfire-grid";
+  public static final String gfeGridPropsPrefix = "spark.gemfire.grid.";
+  public static final String propFreeConnTimeout = "freeConnectionTimeout";
+  public static final String propLoadConditioningInterval= "loadConditioningInterval";
+  public static final String propSocketBufferSize =  "socketBufferSize";
+  public static final String propThreadLocalConnections =  "threadLocalConnections";
+  public static final String propReadTimeout =  "readTimeout";
+  public static final String propMinConnections =  "minConnections";
+  public static final String propMaxConnections =  "maxConnections";
+  public static final String propIdleTimeout =  "idleTimeout";
+  public static final String propRetryAttempts =  "retryAttempts";
+  public static final String propPingInterval =  "pingInterval";
+  public static final String propStatisticInterval =  "statisticInterval";
+  public static final String propServerGroup =  "serverGroup";
+  public static final String propPRSingleHopEnabled =  "prSingleHopEnabled";
+
+
+
+
   private final Map<String, String> gfeGridMappings;
+  private final Map<String, String> gfeGridPoolProps;
 
 
   public GemFireSparkConnectorCacheFactory() {
     super();
     this.gfeGridMappings = null;
+    this.gfeGridPoolProps = null;
   }
 
-  public GemFireSparkConnectorCacheFactory(Properties props, Map<String, String> gfeGridMappings) {
+  public GemFireSparkConnectorCacheFactory(Properties props, Map<String, String> gfeGridMappings,
+      Map<String, String> gfeGridPoolProps) {
     super(props);
     this.gfeGridMappings = gfeGridMappings;
-
+    this.gfeGridPoolProps = gfeGridPoolProps;
   }
 
 
@@ -52,7 +74,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
         ds = DistributedSystem.connect(this.dsProps);
       }
       PoolFactory defaultPF = null;
-       String defaultGrid =  gfeGridMappings.remove(GemFireSparkConnectorCacheImpl.gfeGridPropPrefix);
+       String defaultGrid =  gfeGridMappings.remove(gfeGridNamePrefix);
       if (defaultGrid != null) {
         defaultPF = this.createAndConfigurePoolFactory(defaultGrid);
       }
@@ -71,8 +93,10 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
 
 
   private PoolFactory createAndConfigurePoolFactory(String remoteLocators) {
+
     PoolFactory pf = PoolManager.createFactory();
-    pf.setReadTimeout(30000);
+
+    this.setPoolProps(pf);
 
     StringTokenizer remoteLocatorsTokenizer = new StringTokenizer(remoteLocators, ",");
     DistributionLocatorId[] locators = new DistributionLocatorId[remoteLocatorsTokenizer
@@ -153,6 +177,73 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
       }
     }
     return pf;
+  }
+
+  private void setPoolProps(PoolFactory pf) {
+    String val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propFreeConnTimeout );
+    if (val != null) {
+      pf.setFreeConnectionTimeout(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propLoadConditioningInterval );
+    if (val != null) {
+      pf.setLoadConditioningInterval(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propSocketBufferSize );
+    if (val != null) {
+      pf.setSocketBufferSize(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propThreadLocalConnections );
+    if (val != null) {
+      pf.setThreadLocalConnections(Boolean.parseBoolean(val));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propReadTimeout );
+    if (val != null) {
+      pf.setReadTimeout(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propMinConnections );
+    if (val != null) {
+      pf.setMinConnections(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propMaxConnections );
+    if (val != null) {
+      pf.setMaxConnections(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propIdleTimeout );
+    if (val != null) {
+      pf.setIdleTimeout(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propRetryAttempts );
+    if (val != null) {
+      pf.setRetryAttempts(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propPingInterval );
+    if (val != null) {
+      pf.setPingInterval(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propStatisticInterval );
+    if (val != null) {
+      pf.setStatisticInterval(Integer.parseInt(val.trim()));
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propServerGroup );
+    if (val != null) {
+      pf.setServerGroup(val.trim());
+    }
+
+    val = this.gfeGridPoolProps.get(gfeGridPropsPrefix + propPRSingleHopEnabled );
+    if (val != null) {
+      pf.setPRSingleHopEnabled(Boolean.parseBoolean(val.trim()));
+    }
   }
 
 }
