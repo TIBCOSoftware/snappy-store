@@ -1723,20 +1723,27 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
+  private static void assignBucketsToPartitions(PartitionedRegion pr) {
+    int numBuckets = pr.getTotalNumberOfBuckets();
+    for (int i = 0; i < numBuckets; i++) {
+      // this method will return quickly if the bucket already exists
+      pr.createBucket(i, 0, null);
+    }
+  }
+
   private static void CREATE_ALL_BUCKETS_INTERNAL(LocalRegion region,
       String tableName) throws SQLException {
     if (region.getAttributes().getPartitionAttributes() != null) {
       // force creation of all buckets in the region
-      // final PartitionedRegion pr = (PartitionedRegion)region;
       try {
-        PartitionRegionHelper.assignBucketsToPartitions(region);
+        assignBucketsToPartitions((PartitionedRegion)region);
         GfxdIndexManager indexManager = (GfxdIndexManager) region.getIndexUpdater();
         if (indexManager != null) {
           List<GemFireContainer> indexContainers = indexManager.getIndexContainers();
             if (indexContainers != null) {
               for (GemFireContainer indexContainer : indexContainers) {
                 if (indexContainer.isGlobalIndex()) {
-                  PartitionRegionHelper.assignBucketsToPartitions(indexContainer.getRegion());
+                  assignBucketsToPartitions((PartitionedRegion)indexContainer.getRegion());
                 }
               }
             }

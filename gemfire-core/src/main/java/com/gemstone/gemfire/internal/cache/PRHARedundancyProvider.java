@@ -129,7 +129,7 @@ public class PRHARedundancyProvider
     this.prRegion = region;
     final InternalResourceManager resourceManager = region.getGemFireCache()
     .getResourceManager();
-    recoveryExecutor = new OneTaskOnlyExecutor(resourceManager.getExecutor(),
+    recoveryExecutor = new OneTaskOnlyExecutor(resourceManager.getRecoveryExecutor(),
         new OneTaskOnlyExecutor.ConflatedTaskListener() {
           public void taskDropped() {
             InternalResourceManager.getResourceObserver().recoveryConflated(region);
@@ -1930,7 +1930,7 @@ public class PRHARedundancyProvider
       Runnable task = new CreateMissingBucketsTask(this);
       final InternalResourceManager resourceManager = this.prRegion
           .getGemFireCache().getResourceManager();
-      resourceManager.getExecutor().submit(task);
+      resourceManager.getRecoveryExecutor().submit(task);
     }
   }
   
