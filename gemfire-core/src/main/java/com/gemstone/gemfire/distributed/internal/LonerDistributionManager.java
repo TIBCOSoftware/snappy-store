@@ -285,7 +285,7 @@ public class LonerDistributionManager implements DM {
   }
 
   @Override
-  public Executor getFunctionExcecutor() {
+  public ExecutorService getFunctionExcecutor() {
     return executor;
   }
 
@@ -765,7 +765,6 @@ public class LonerDistributionManager implements DM {
 
     @Override
     public String cancelInProgress() {
-      checkFailure();
       return null;
     }
 
