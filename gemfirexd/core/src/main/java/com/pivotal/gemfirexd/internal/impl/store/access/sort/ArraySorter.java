@@ -197,7 +197,7 @@ public final class ArraySorter extends ArraySortedCollectionWithOverflow
           this.formatter = ((AbstractCompactExecRow)row).getRowFormatter();
           this.container = this.formatter.container;
           if (this.formatter.isTableFormatter()
-              && !this.formatter.container.hasSingleSchema) {
+              && this.formatter.container.singleSchema == null) {
             this.formatter = null;
           }
         }

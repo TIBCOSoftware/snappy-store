@@ -16,15 +16,7 @@
  */
 package com.pivotal.gemfirexd.internal.tools.dataextractor;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.io.StringReader;
+import java.io.*;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.Date;
@@ -39,9 +31,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
@@ -49,10 +38,11 @@ import com.pivotal.gemfirexd.internal.tools.dataextractor.domain.ServerInfo;
 import com.pivotal.gemfirexd.internal.tools.dataextractor.domain.ServerInfo.Builder;
 import com.pivotal.gemfirexd.internal.tools.dataextractor.extractor.GemFireXDDataExtractorImpl;
 import com.pivotal.gemfirexd.internal.tools.dataextractor.report.ReportGenerator;
-import com.pivotal.gemfirexd.internal.tools.dataextractor.snapshot.GFXDSnapshot;
 import com.pivotal.gemfirexd.internal.tools.dataextractor.snapshot.GFXDSnapshotExportStat;
 import com.pivotal.gemfirexd.internal.tools.dataextractor.utils.ExtractorUtils;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 public class GemFireXDDataExtractorJUnit extends JdbcTestBase{
 
@@ -88,9 +78,21 @@ public class GemFireXDDataExtractorJUnit extends JdbcTestBase{
   }
   
   private void deleteAllTestOpLogs() throws Exception {
-    FileUtils.forceDelete(oplogCopy);
-    FileUtils.forceDelete(ddCopy);
-    FileUtils.forceDelete(outputDir);
+    try {
+      FileUtils.forceDelete(oplogCopy);
+    } catch (IOException ioe) {
+      // ignore
+    }
+    try {
+      FileUtils.forceDelete(ddCopy);
+    } catch (IOException ioe) {
+      // ignore
+    }
+    try {
+      FileUtils.forceDelete(outputDir);
+    } catch (IOException ioe) {
+      // ignore
+    }
   }
   
   public void testDDLExport() throws Exception {
@@ -834,12 +836,20 @@ public class GemFireXDDataExtractorJUnit extends JdbcTestBase{
       fos.close();
       raf.close();
     }
-    FileUtils.forceDelete(file);
+    try {
+      FileUtils.forceDelete(file);
+    } catch (IOException ioe) {
+      // ignore
+    }
     corruptFile.renameTo(file);
   }
   
   private void deleteFile(File file) throws IOException {
-    FileUtils.forceDelete(file);
+    try {
+      FileUtils.forceDelete(file);
+    } catch (IOException ioe) {
+      // ignore
+    }
   }
   
 

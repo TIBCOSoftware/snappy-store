@@ -446,12 +446,12 @@ public class SqlException extends Exception implements Diagnosable {
 // GemStone changes BEGIN
     public SQLException getSQLException(final Agent agent,
         String columnName) {
-      if (this.args_ != null && this.msgid_ != null) {
+      final Object[] args = this.args_;
+      if (args != null && this.msgid_ != null) {
         if (SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE.equals(this.msgid_)
             || SQLState.LANG_FORMAT_EXCEPTION.equals(this.msgid_)) {
           // add column name to the exception message
-          final Object[] args = this.args_;
-          if (args.length == 1) {
+          if (args.length == 1 || (args.length > 1 && args[1] == null)) {
             final Object[] newArgs = new Object[2];
             if (columnName == null) {
               columnName = "unknown";
@@ -465,8 +465,7 @@ public class SqlException extends Exception implements Diagnosable {
             || SQLState.LANG_DATA_TYPE_SET_MISMATCH.equals(this.msgid_)
             || SQLState.UNSUPPORTED_ENCODING.equals(this.msgid_)) {
           // add column name to the exception message
-          final Object[] args = this.args_;
-          if (args.length == 2) {
+          if (args.length == 2 || (args.length > 2 && args[2] == null)) {
             final Object[] newArgs = new Object[3];
             if (columnName == null) {
               columnName = "unknown";
@@ -480,8 +479,7 @@ public class SqlException extends Exception implements Diagnosable {
         else if (SQLState.LANG_DATE_RANGE_EXCEPTION.equals(this.msgid_)
             || SQLState.LANG_DATE_SYNTAX_EXCEPTION.equals(this.msgid_)) {
           // add column name to the exception message
-          final Object[] args = this.args_;
-          if (args.length == 0) {
+          if (args.length == 0 || (args.length > 0 && args[0] == null)) {
             final Object[] newArgs = new Object[1];
             if (columnName == null) {
               columnName = "unknown";
@@ -729,7 +727,7 @@ class ColumnTypeConversionException extends SqlException {
         String targetType) {
         super(logWriter,
             new ClientMessageId(SQLState.LANG_DATA_TYPE_GET_MISMATCH),
-            sourceType, targetType);
+            sourceType, targetType, (String)null);
     }
 }
 

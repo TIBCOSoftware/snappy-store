@@ -406,7 +406,7 @@ public class ResourceAdvisor extends DistributionAdvisor {
    * of the members.
    * @return a mutable set of members in the critical state otherwise {@link Collections#EMPTY_SET}
    */
-  public Set<InternalDistributedMember> adviseCritialMembers() {
+  public Set<InternalDistributedMember> adviseCriticalMembers() {
     return adviseFilter(new Filter() {
       @Override
       public boolean include(Profile profile) {

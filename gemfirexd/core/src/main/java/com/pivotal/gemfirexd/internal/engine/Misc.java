@@ -20,19 +20,14 @@ package com.pivotal.gemfirexd.internal.engine;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.io.StringWriter;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Condition;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -43,28 +38,11 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.ForcedDisconnectException;
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.ConflictException;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.GemFireCache;
-import com.gemstone.gemfire.cache.IllegalTransactionStateException;
-import com.gemstone.gemfire.cache.LowMemoryException;
-import com.gemstone.gemfire.cache.PartitionedRegionStorageException;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
-import com.gemstone.gemfire.cache.TransactionStateReadOnlyException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.execute.EmptyRegionFunctionException;
 import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.cache.execute.FunctionInvocationTargetException;
@@ -81,12 +59,16 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
 import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
+import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
@@ -102,6 +84,8 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.tools.planexporter.CreateXML;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 /**
  * Some global miscellaneous stuff with an initialize method which logs some
@@ -244,8 +228,30 @@ public abstract class Misc {
       return self;
     }
     else {
-      return Misc.getDistributedSystem().getDistributedMember();
+      return getDistributedSystem().getDistributedMember();
     }
+  }
+
+  public static Set<DistributedMember> getLeadNode() {
+    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
+    InternalDistributedSystem ids = Misc.getDistributedSystem();
+    if (ids.isLoner()) {
+      return Collections.<DistributedMember>singleton(
+          ids.getDistributedMember());
+    }
+    Set<DistributedMember> allMembers = ids.getAllOtherMembers();
+    for (DistributedMember m : allMembers) {
+      GfxdDistributionAdvisor.GfxdProfile profile = advisor
+          .getProfile((InternalDistributedMember)m);
+      if (profile != null && profile.hasSparkURL()) {
+        Set<DistributedMember> s = new HashSet<DistributedMember>();
+        s.add(m);
+        return Collections.unmodifiableSet(s);
+      }
+    }
+    throw new NoDataStoreAvailableException(LocalizedStrings
+        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
+        .toLocalizedString("SnappyData Lead Node"));
   }
 
   /**
@@ -307,6 +313,92 @@ public abstract class Misc {
     if (isCancelling == null) {
       throw e;
     }
+  }
+
+  public static <K, V> PartitionResolver createPartitionResolverForSampleTable(final String reservoirRegionName) {
+    // TODO: Should this be serializable?
+    // TODO: Should this have call back from bucket movement module?
+    return new PartitionResolver() {
+
+      public String getName()
+      {
+        return "PartitionResolverForSampleTable";
+      }
+
+      public Serializable getRoutingObject(EntryOperation opDetails)
+      {
+        Object k = opDetails.getKey();
+        StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+        int v = callback.getLastIndexOfRow(k);
+        if (v != -1) {
+          return (Serializable)v;
+        } else {
+          return (Serializable)k;
+        }
+      }
+
+      public void close() {}
+    };
+  }
+
+  public static <K, V> String getReservoirRegionNameForSampleTable(String schema, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
+  }
+
+  public volatile static boolean reservoirRegionCreated = false;
+
+  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+    if (childRegion == null) {
+      RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
+      PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
+      AttributesFactory afact = new AttributesFactory();
+      afact.setDataPolicy(attributesBase.getDataPolicy());
+      PartitionAttributesFactory paf = new PartitionAttributesFactory();
+      paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
+      paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
+      paf.setLocalMaxMemory(partitionAttributesBase.getLocalMaxMemory());
+      PartitionResolver partResolver = createPartitionResolverForSampleTable(reservoirRegionName);
+      paf.setPartitionResolver(partResolver);
+      paf.setColocatedWith(regionBase.getFullPath());
+      afact.setPartitionAttributes(paf.create());
+      childRegion = cache.createRegion(reservoirRegionName, afact.create());
+    }
+    reservoirRegionCreated = true;
+    return (PartitionedRegion)childRegion;
+  }
+
+  public static <K, V> PartitionedRegion getReservoirRegionForSampleTable(String reservoirRegionName) {
+    if (reservoirRegionName != null) {
+      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+      if (childRegion != null) {
+        return (PartitionedRegion) childRegion;
+      }
+    }
+    return null;
+  }
+
+  public static void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
+    if (reservoirRegion != null) {
+      reservoirRegion.destroyRegion(null);
+    }
+  }
+
+  public static PartitionedRegion.PRLocalScanIterator
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion,
+      Set<Integer> bucketSet, boolean fetchFromRemote) {
+    if (reservoirRegion != null && bucketSet != null) {
+      if (bucketSet.size() > 0) {
+        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet,
+            true, false, true, null, fetchFromRemote);
+      }
+    }
+    return null;
   }
 
   /**
@@ -651,6 +743,26 @@ public abstract class Misc {
     return hash;
   }
 
+  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor dvd,
+      int numPartitions) {
+    StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+    if (dvd != null) {
+      return callback.getHashCodeSnappy(dvd, numPartitions);
+    } else {
+      return 0;
+    }
+  }
+
+  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor[] dvds,
+      int numPartitions) {
+    StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+    if (dvds != null) {
+      return callback.getHashCodeSnappy(dvds, numPartitions);
+    } else {
+      return 0;
+    }
+  }
+
   // added by jing for processing the exception
   public static StandardException processFunctionException(String op,
       final Throwable thr, DistributedMember member, Region<?, ?> region) {
@@ -816,8 +928,9 @@ public abstract class Misc {
           op);
     }
     else if (gfeex instanceof NoDataStoreAvailableException) {
+      String[] messageParts = gfeex.getMessage().split(": ");
       return StandardException.newException(SQLState.NO_DATASTORE_FOUND, cause,
-          op);
+          messageParts.length > 1 ? messageParts[1] : op);
     }
     else if (gfeex instanceof PartitionOfflineException) {
       return StandardException.newException(SQLState.INSUFFICIENT_DATASTORE,
@@ -1082,7 +1195,19 @@ public abstract class Misc {
     }
     return 19;
   }
-  
+
+  public static boolean parseBoolean(String s) {
+    if (s != null) {
+      if (s.length() == 1) {
+        return Integer.parseInt(s) != 0;
+      } else {
+        return Boolean.parseBoolean(s);
+      }
+    } else {
+      return false;
+    }
+  }
+
   public static TreeSet<Map.Entry<Integer, Long>> sortByValue(
       Map<Integer, Long> distribution) {
     TreeSet<Map.Entry<Integer, Long>> entriesByVal = new TreeSet<Map.Entry<Integer, Long>>(
@@ -1210,5 +1335,10 @@ public abstract class Misc {
 
     return str;
   }
-  
+
+  public static final String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+
+  public static boolean isSnappyHiveMetaTable(String schemaName) {
+    return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);
+  }
 }

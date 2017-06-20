@@ -35,6 +35,7 @@ import javax.management.NotificationEmitter;
 import javax.management.NotificationListener;
 
 import com.gemstone.gemfire.CancelException;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.query.internal.QueryMonitor;
@@ -52,6 +53,7 @@ import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.Resou
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholds.MemoryState;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor.ResourceManagerProfile;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.LogService;
 
 /**
@@ -83,20 +85,17 @@ public final class HeapMemoryMonitor implements NotificationListener,
   public static final String POLLER_INTERVAL_PROP = "gemfire.heapPollerInterval";
   
    // Internal for polling the JVM for changes in heap memory usage.
-  private static final int POLLER_INTERVAL = Integer.getInteger(POLLER_INTERVAL_PROP, 500).intValue();
-  
+  private static final int POLLER_INTERVAL =
+       Integer.getInteger(POLLER_INTERVAL_PROP, 500);
+
   // This holds a new event as it transitions from updateStateAndSendEvent(...) to fillInProfile()
   private ThreadLocal<MemoryEvent> upcomingEvent = new ThreadLocal<MemoryEvent>();
-  
+
   private ScheduledExecutorService pollerExecutor;
-  
+
   // Listener for heap memory usage as reported by the Cache stats.
   private final LocalStatListener statListener = new LocalHeapStatListener();
 
-  private volatile MemoryThresholds thresholds = new MemoryThresholds(
-      tenuredPoolMaxMemory + edenAndSurvivorPoolMaxMemory);
-  private volatile MemoryEvent mostRecentEvent = new MemoryEvent(ResourceType.HEAP_MEMORY, MemoryState.DISABLED,
-      MemoryState.DISABLED, null, 0L, true, this.thresholds);
   private volatile MemoryState currentState = MemoryState.DISABLED;
 
   //Set when startMonitoring() and stopMonitoring() are called
@@ -200,6 +199,11 @@ public final class HeapMemoryMonitor implements NotificationListener,
     }
     edenAndSurvivorPoolMaxMemory = edenAndSurvivorPoolMax;
   }
+
+  private volatile MemoryThresholds thresholds = new MemoryThresholds(
+      tenuredPoolMaxMemory + edenAndSurvivorPoolMaxMemory);
+  private volatile MemoryEvent mostRecentEvent = new MemoryEvent(ResourceType.HEAP_MEMORY, MemoryState.DISABLED,
+      MemoryState.DISABLED, null, 0L, true, this.thresholds);
 
   /**
    * Determines if the name of the memory pool MXBean provided matches a list of
@@ -386,8 +390,6 @@ public void stopMonitoring() {
       if (sampler != null) {
         sampler.removeLocalStatListener(this.statListener);
       }
-
-      this.started = false;
     }
   }
   
@@ -571,25 +573,41 @@ public void stopMonitoring() {
     updateStateAndSendEvent(getBytesUsed());
   }
 
+  private static final SystemProperties sysProps = SystemProperties
+      .getServerInstance();
+  public static boolean DELAY_MEMORY_EVENT = sysProps.getBoolean(
+      "delay_memory_event", true);
+  public static final int MAX_DELAY_COUNT = sysProps.getInteger(
+      "delay_memory_event", 5);
+
+  private long prevBytesUsed = 0;
+  private int countSinceUpsurge = 0;
+  private long upsurgeStartTime = 0;
+
   /**
    * Compare the number of bytes used to the thresholds.  If necessary, change the state
    * and send an event for the state change.
-   * 
+   *
    * Public for testing.
-   * 
+   *
    * @param bytesUsed Number of bytes of heap memory currently used.
    */
   public void updateStateAndSendEvent(long bytesUsed) {
+    boolean delayMemoryEvent = DELAY_MEMORY_EVENT &&
+        !((testBytesUsedForThresholdSet != -1) || testDisableMemoryUpdates);
     this.stats.changeTenuredHeapUsed(bytesUsed);
     synchronized (this) {
       MemoryState oldState = this.mostRecentEvent.getState();
       MemoryState newState = this.thresholds.computeNextState(oldState, bytesUsed);
       if (oldState != newState) {
         setUsageThresholdOnMXBean(bytesUsed);
-        
+
         if (!skipEventDueToToleranceLimits(oldState, newState)) {
           this.currentState = newState;
-          
+
+          if (shouldDelayMemoryEvent(delayMemoryEvent, newState, bytesUsed)) {
+            return;
+          }
           MemoryEvent event = new MemoryEvent(ResourceType.HEAP_MEMORY, oldState, newState, this.cache.getMyId(), bytesUsed, true,
               this.thresholds);
 
@@ -597,17 +615,60 @@ public void stopMonitoring() {
           processLocalEvent(event);
           updateStatsFromEvent(event);
         }
-        
-      // The state didn't change.  However, if the state isn't normal and the
-      // number of bytes used changed, then go ahead and send the event
-      // again with an updated number of bytes used.
+
+        // The state didn't change.  However, if the state isn't normal and the
+        // number of bytes used changed, then go ahead and send the event
+        // again with an updated number of bytes used.
       } else if (!oldState.isNormal() && bytesUsed != this.mostRecentEvent.getBytesUsed()) {
+        if (shouldDelayMemoryEvent(delayMemoryEvent, oldState, bytesUsed)) {
+          return;
+        }
         MemoryEvent event = new MemoryEvent(ResourceType.HEAP_MEMORY, oldState, newState, this.cache.getMyId(), bytesUsed, true,
             this.thresholds);
         this.upcomingEvent.set(event);
         processLocalEvent(event);
       }
     }
+  }
+
+  private boolean shouldDelayMemoryEvent(boolean delayMemoryEvent, MemoryState state, long bytesUsed) {
+    if (delayMemoryEvent && (state != null && state.isCritical())) {
+      // if still critical up but memory used has come down by 10% then reset the counters
+      long delta = bytesUsed - prevBytesUsed;
+      boolean isDownBy10percentOrMore = false;
+      if ( prevBytesUsed != 0 && delta < 0) {
+        long percent = (-delta/prevBytesUsed) * 100;
+        isDownBy10percentOrMore = percent > 10 ? true : false;
+      }
+      if (isDownBy10percentOrMore) {
+        // reset
+        prevBytesUsed = 0;
+        countSinceUpsurge = 0;
+        return true;
+      }
+      countSinceUpsurge++;
+      if (countSinceUpsurge == 1) {
+        upsurgeStartTime = System.currentTimeMillis();
+      }
+      long currTimeMillis = 0;
+      if ( countSinceUpsurge % 5 == 0 ) {
+        currTimeMillis = System.currentTimeMillis();
+      }
+      if ( currTimeMillis == 0 ||
+          (currTimeMillis != 0 && (currTimeMillis -  upsurgeStartTime < 5000))) { // less than five seconds
+          prevBytesUsed = bytesUsed;
+          return true;
+        } else {
+          // reset as we are going to generate a critical up memory event.
+          countSinceUpsurge = 0;
+          prevBytesUsed = 0;
+          upsurgeStartTime = 0;
+          return false;
+        }
+    }
+    prevBytesUsed = 0;
+    countSinceUpsurge = 0;
+    return false;
   }
 
   /**
@@ -910,7 +971,7 @@ public void stopMonitoring() {
       return true;
     }
 
-    return SetUtils.intersectsWith(members, this.resourceAdvisor.adviseCritialMembers());
+    return SetUtils.intersectsWith(members, this.resourceAdvisor.adviseCriticalMembers());
   }
 
   /**
@@ -928,7 +989,11 @@ public void stopMonitoring() {
     }
     return this.resourceAdvisor.isHeapCritical(member);
   }
-  
+
+  public final boolean isCriticalUp() {
+    return this.mostRecentEvent.getState().isCritical();
+  }
+
   class LocalHeapStatListener implements LocalStatListener {
     /* (non-Javadoc)
      * @see com.gemstone.gemfire.internal.LocalStatListener#statValueChanged(double)
@@ -1051,5 +1116,29 @@ public void stopMonitoring() {
    */
   public static void setTestBytesUsedForThresholdSet(final long newTestBytesUsedForThresholdSet) {
     testBytesUsedForThresholdSet = newTestBytesUsedForThresholdSet;
+  }
+
+  /**
+   * This method will check if our accounted memory is less than the JVM accounted memory, we will
+   * invoke an explicit GC. This code is experimental and we need to see how this behave in actual workload.
+   * @param accountedMemory
+   * @return whether we should allow memory request to SnappyUnifiedManager.
+   */
+  public boolean failMemoryRequest(long accountedMemory) {
+    long bytesUsed = getBytesUsed();
+    if (bytesUsed > this.getThresholds().getCriticalThresholdBytes()) {
+      if (accountedMemory < bytesUsed) {
+        Thread.yield();  // Give some other threads chance. May vacate some space
+      }
+      // check the health again
+      if (getBytesUsed() > this.getThresholds().getCriticalThresholdBytes()) {
+        updateStateAndSendEvent();
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
   }
 }

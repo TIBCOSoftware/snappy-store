@@ -52,7 +52,7 @@ import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import org.apache.derby.drda.NetworkServerControl;
-import org.apache.derby.iapi.error.ShutdownException;
+import org.apache.derby.shared.common.error.ShutdownException;
 import org.apache.derbyTesting.junit.JDBC;
 
 @SuppressWarnings("serial")
@@ -832,9 +832,8 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
       try {
         DriverManager.getConnection("jdbc:derby:;shutdown=true");
       } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
+        if (!sqle.getMessage().contains("shutdown")) {
           sqle.printStackTrace();
-          throw sqle;
         }
       }
       if (server != null) {
@@ -2308,9 +2307,8 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
       try {
         DriverManager.getConnection("jdbc:derby:;shutdown=true");
       } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
+        if (!sqle.getMessage().contains("shutdown")) {
           sqle.printStackTrace();
-          throw sqle;
         }
       }
       if (server != null) {

@@ -313,11 +313,7 @@ final public class GenericParameter
 		return registerOutPrecision;
 		
 	}
-//Gemstone changes Begin
-	public int getSQLType() {
-	    return this.registerOutType;
-	}
-	
+// GemStone changes BEGIN
 	public boolean isSet() {
 	 return this.isSet; 
 	}
@@ -340,8 +336,7 @@ final public class GenericParameter
           return this.isSet;
         }
 	
-//Gemstone changes End	
-	
+// GemStone changes END
 
 	////////////////////////////////////////////////////
 	//

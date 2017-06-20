@@ -241,7 +241,9 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
               lcc.cleanupNestedTransactionExecute();
             }
           }
-          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, logString);
+          if (!Misc.isSnappyHiveMetaTable(lcc.getCurrentSchemaName())) {
+            SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, logString);
+          }
         } finally {
           wrapper.disableOpLogger();
           lcc.setFlags(oldFlags);

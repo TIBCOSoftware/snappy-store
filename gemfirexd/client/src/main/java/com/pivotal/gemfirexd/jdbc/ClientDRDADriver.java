@@ -37,30 +37,42 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.jdbc;
 
-import java.util.Properties;
+import java.sql.SQLException;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.sql.SQLException;
 
-import com.pivotal.gemfirexd.internal.client.am.SqlException;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.client.am.ClientJDBCObjectFactory;
+import com.pivotal.gemfirexd.internal.client.am.SqlException;
 import com.pivotal.gemfirexd.internal.client.am.Utils;
 import com.pivotal.gemfirexd.internal.jdbc.ClientDataSource;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ClientExceptionUtil;
-// GemStone changes BEGIN
-/* (original code)
-import com.pivotal.gemfirexd.internal.client.net.ClientJDBCObjectFactoryImpl;
-import com.pivotal.gemfirexd.internal.shared.common.reference.Attribute;
-*/
-// GemStone changes END
 import com.pivotal.gemfirexd.internal.shared.common.reference.MessageId;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import com.pivotal.gemfirexd.thrift.internal.ClientConfiguration;
+import io.snappydata.thrift.internal.ClientConfiguration;
 
 public class ClientDRDADriver implements java.sql.Driver {
     private transient int traceFileSuffixIndex_ = 0;
@@ -179,9 +191,14 @@ public class ClientDRDADriver implements java.sql.Driver {
             String database = "";
             java.util.Properties augmentedProperties = getURLProperties(m,
                 properties);
-            augmentedProperties.put(DRDA_CONNECTION_PROTOCOL , m.group(1));
+            augmentedProperties.put(DRDA_CONNECTION_PROTOCOL, m.group(1));
 
             if (thriftProtocol) {
+              // disable query routing for gemfirexd URL
+              String protocol = m.group(1);
+              if (protocol.equalsIgnoreCase(GEMXD_PROTOCOL)) {
+                augmentedProperties.put(Attribute.ROUTE_QUERY, "false");
+              }
               return createThriftConnection(server, port[0], augmentedProperties);
             }
 // GemStone changes END
@@ -192,7 +209,7 @@ public class ClientDRDADriver implements java.sql.Driver {
             } catch (java.lang.NumberFormatException e) {
                 // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
                 throw ClientExceptionUtil.newSQLException(
-                    SQLState.TRACELEVEL_FORMAT_INVALID, e);
+                    SQLState.LOGLEVEL_FORMAT_INVALID, e, e.getMessage());
             }
 
             // Jdbc 1 connections will write driver trace info on a
@@ -209,7 +226,7 @@ public class ClientDRDADriver implements java.sql.Driver {
                             traceFileSuffixIndex_++);
 
             conn = (com.pivotal.gemfirexd.internal.client.net.NetConnection)getFactory().
-                    newNetConnection((com.pivotal.gemfirexd.internal.client.net.NetLogWriter) 
+                    newNetConnection(
                     dncLogWriter,
                     java.sql.DriverManager.getLoginTimeout(),
                     server,
@@ -286,22 +303,22 @@ public class ClientDRDADriver implements java.sql.Driver {
                         properties.getProperty(Attribute.USERNAME_ATTR, ClientDataSource.propertyDefault_user));
          */
         boolean isUserNameAttribute = false;
-        String userName = properties.getProperty(com.pivotal.gemfirexd.Attribute.USERNAME_ATTR);
+        String userName = properties.getProperty(Attribute.USERNAME_ATTR);
         if( userName == null) {
-          userName = properties.getProperty(com.pivotal.gemfirexd.Attribute.USERNAME_ALT_ATTR);
+          userName = properties.getProperty(Attribute.USERNAME_ALT_ATTR);
           if(userName != null) {
             isUserNameAttribute = true;
           }
         }
         
         driverPropertyInfo[0] = new java.sql.DriverPropertyInfo(
-            isUserNameAttribute ? com.pivotal.gemfirexd.Attribute.USERNAME_ALT_ATTR
-                : com.pivotal.gemfirexd.Attribute.USERNAME_ATTR, userName);
+            isUserNameAttribute ? Attribute.USERNAME_ALT_ATTR
+                : Attribute.USERNAME_ATTR, userName);
         // GemStone changes END
         
         driverPropertyInfo[1] =
-                new java.sql.DriverPropertyInfo(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR,
-                        properties.getProperty(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR));
+                new java.sql.DriverPropertyInfo(Attribute.PASSWORD_ATTR,
+                        properties.getProperty(Attribute.PASSWORD_ATTR));
 
         driverPropertyInfo[0].description =
             SqlException.getMessageUtil().getTextMessage(
@@ -595,16 +612,10 @@ public class ClientDRDADriver implements java.sql.Driver {
           "ClientDRDADriver.createThriftConnection not expected to be invoked");
     }
 
-    public static ClientDRDADriver getRegisteredDriver() {
-      return registeredDriver__;
-    }
-
     // JDBC 4.1 methods since jdk 1.7
     public Logger getParentLogger() {
       throw new AssertionError("should be overridden in JDBC 4.1");
     }
 // GemStone changes END
 }
-
-
 

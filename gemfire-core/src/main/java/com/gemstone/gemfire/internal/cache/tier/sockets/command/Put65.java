@@ -307,7 +307,7 @@ public class Put65 extends BaseCommand {
                 && clientVersion.compareTo(Version.GFE_651) <= 0) {
               // older clients don't know that Token is now a DSFID class, so we
               // put the token in a serialized form they can consume
-              HeapDataOutputStream str = new HeapDataOutputStream(Version.CURRENT);
+              HeapDataOutputStream str = new HeapDataOutputStream(Version.CURRENT_GFE);
               DataOutput dstr = new DataOutputStream(str);
               InternalDataSerializer.writeSerializableObject(oldValue, dstr);
               oldValue = str.toByteArray();
@@ -342,7 +342,7 @@ public class Put65 extends BaseCommand {
                     && clientVersion.compareTo(Version.GFE_651) <= 0) {
                   // older clients don't know that Token is now a DSFID class, so we
                   // put the token in a serialized form they can consume
-                  HeapDataOutputStream str = new HeapDataOutputStream(Version.CURRENT);
+                  HeapDataOutputStream str = new HeapDataOutputStream(Version.CURRENT_GFE);
                   DataOutput dstr = new DataOutputStream(str);
                   InternalDataSerializer.writeSerializableObject(oldValue, dstr);
                   oldValue = str.toByteArray();

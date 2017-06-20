@@ -132,8 +132,7 @@ public final class CrossConverters implements Converter {
         switch (targetType) {
         case Types.SMALLINT:
 // GemStone changes BEGIN
-            // changed to use Short.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newShort(source);
+            return source;
             /* (original code)
             return new Short(source);
             */
@@ -141,8 +140,7 @@ public final class CrossConverters implements Converter {
 
         case Types.INTEGER:
 // GemStone changes BEGIN
-            // changed to use Integer.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger(source);
+            return (int)source;
             /* (original code)
             return new Integer(source);
             */
@@ -150,18 +148,17 @@ public final class CrossConverters implements Converter {
 
         case Types.BIGINT:
 // GemStone changes BEGIN
-            // changed to use Long.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newLong(source);
+            return (long)source;
             /* (original code)
             return new Long(source);
             */
 // GemStone changes END
 
         case Types.REAL:
-            return new Float(source);
+            return (float)source;
 
         case Types.DOUBLE:
-            return new Double(source);
+            return (double)source;
 
         case Types.DECIMAL:
             return java.math.BigDecimal.valueOf(source);
@@ -188,8 +185,7 @@ public final class CrossConverters implements Converter {
                 throw new LossOfPrecisionConversionException(agent_.logWriter_, String.valueOf(source));
             }
 // GemStone changes BEGIN
-            // changed to use Short.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newShort((short)source);
+            return (short)source;
             /* (original code)
             return new Short((short) source);
             */
@@ -197,8 +193,7 @@ public final class CrossConverters implements Converter {
 
         case Types.INTEGER:
 // GemStone changes BEGIN
-            // changed to use Integer.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger(source);
+            return source;
             /* (original code)
             return new Integer(source);
             */
@@ -206,18 +201,17 @@ public final class CrossConverters implements Converter {
 
         case Types.BIGINT:
 // GemStone changes BEGIN
-            // changed to use Long.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newLong(source);
+            return (long)source;
             /* (original code)
             return new Long(source);
             */
 // GemStone changes END
 
         case Types.REAL:
-            return new Float(source);
+            return (float)source;
 
         case Types.DOUBLE:
-            return new Double(source);
+            return (double)source;
 
         case Types.DECIMAL:
             return java.math.BigDecimal.valueOf(source);
@@ -297,7 +291,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Short.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newShort((short)source);
+            return (short)source;
             /* (original code)
             return new Short((short) source);
             */
@@ -310,7 +304,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Integer.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger((int)source);
+            return (int)source;
             /* (original code)
             return new Integer((int) source);
             */
@@ -319,17 +313,17 @@ public final class CrossConverters implements Converter {
         case Types.BIGINT:
 // GemStone changes BEGIN
             // changed to use Long.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newLong(source);
+            return source;
             /* (original code)
             return new Long(source);
             */
 // GemStone changes END
 
         case Types.REAL:
-            return new Float(source);
+            return (float)source;
 
         case Types.DOUBLE:
-            return new Double(source);
+            return (double)source;
 
         case Types.DECIMAL:
             return java.math.BigDecimal.valueOf(source);
@@ -357,7 +351,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Short.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newShort((short)source);
+            return (short)source;
             /* (original code)
             return new Short((short) source);
             */
@@ -370,7 +364,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Integer.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger((int) source);
+            return (int)source;
             /* (original code)
             return new Integer((int) source);
             */
@@ -383,7 +377,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Short.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newLong((long)source);
+            return (long)source;
             /* (original code)
             return new Long((long) source);
             */
@@ -450,7 +444,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Short.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newShort((short)source);
+            return (short)source;
             /* (original code)
             return new Short((short) source);
             */
@@ -463,7 +457,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Integer.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger((int)source);
+            return (int)source;
             /* (original code)
             return new Integer((int) source);
             */
@@ -476,7 +470,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Integer.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newLong((long)source);
+            return (long)source;
             /* (original code)
             return new Long((long) source);
             */
@@ -531,8 +525,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Short.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newShort(
-                source.shortValue());
+            return source.shortValue();
             /* (original code)
             return new Short(source.shortValue());
             */
@@ -545,8 +538,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Integer.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger(
-                source.intValue());
+            return source.intValue();
             /* (original code)
             return new Integer(source.intValue());
             */
@@ -559,7 +551,7 @@ public final class CrossConverters implements Converter {
             }
 // GemStone changes BEGIN
             // changed to use Long.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newLong(source.longValue());
+            return source.longValue();
             /* (original code)
             return new Long(source.longValue());
             */
@@ -570,14 +562,14 @@ public final class CrossConverters implements Converter {
                     (source.compareTo(bdMaxFloatValue__) == 1 || source.compareTo(bdMinFloatValue__) == -1)) {
                 throw new LossOfPrecisionConversionException(agent_.logWriter_, String.valueOf(source));
             }
-            return new Float(source.floatValue());
+            return source.floatValue();
 
         case Types.DOUBLE:
             if (Configuration.rangeCheckCrossConverters &&
                     (source.compareTo(bdMaxDoubleValue__) == 1 || source.compareTo(bdMinDoubleValue__) == -1)) {
                 throw new LossOfPrecisionConversionException(agent_.logWriter_, String.valueOf(source));
             }
-            return new Double(source.doubleValue());
+            return source.doubleValue();
 
         case Types.DECIMAL:
             return source;
@@ -716,14 +708,14 @@ public final class CrossConverters implements Converter {
             default:
             throw new SqlException(agent_.logWriter_, 
                 new ClientMessageId (SQLState.LANG_DATA_TYPE_SET_MISMATCH),
-                "String", Types.getTypeString(targetDriverType), (String)null);
+                "String", Types.getTypeString(targetDriverType), columnName);
             }
         } catch (java.lang.NumberFormatException e) {
             throw new SqlException(agent_.logWriter_, 
                     new ClientMessageId 
                     (SQLState.LANG_FORMAT_EXCEPTION), 
                     Types.getTypeString(targetDriverType),
-                    e);                    
+                    columnName, e);
         }
     }
 
@@ -767,7 +759,7 @@ public final class CrossConverters implements Converter {
         default:
             throw new SqlException(agent_.logWriter_, 
                 new ClientMessageId (SQLState.LANG_DATA_TYPE_SET_MISMATCH),
-                "byte[]", Types.getTypeString(targetType), (String)null);
+                "byte[]", Types.getTypeString(targetType), columnName);
         }
     }
 
@@ -847,7 +839,7 @@ public final class CrossConverters implements Converter {
         default:
             throw new SqlException(agent_.logWriter_, 
                 new ClientMessageId (SQLState.LANG_DATA_TYPE_SET_MISMATCH),
-                "java.io.InputStream", Types.getTypeString(targetType), (String)null);
+                "java.io.InputStream", Types.getTypeString(targetType), columnName);
         }
     }
 
@@ -919,7 +911,7 @@ public final class CrossConverters implements Converter {
         default:
             throw new SqlException(agent_.logWriter_, 
                 new ClientMessageId (SQLState.LANG_DATA_TYPE_SET_MISMATCH),
-                "java.io.InputStream", Types.getTypeString(targetType), (String)null);
+                "java.io.InputStream", Types.getTypeString(targetType), columnName);
         }
     }
 
@@ -1010,7 +1002,7 @@ public final class CrossConverters implements Converter {
         } else {
             throw new SqlException(agent_.logWriter_, 
                 new ClientMessageId (SQLState.LANG_DATA_TYPE_SET_MISMATCH),
-                source.getClass().getName(), Types.getTypeString(targetType), (String)null);
+                source.getClass().getName(), Types.getTypeString(targetType), columnName);
         }
     }
 
@@ -1119,7 +1111,7 @@ public final class CrossConverters implements Converter {
         } catch (java.lang.NumberFormatException e) {
             throw new SqlException(agent_.logWriter_, 
             		new ClientMessageId 
-            		(SQLState.LANG_FORMAT_EXCEPTION), "byte", e);
+            		(SQLState.LANG_FORMAT_EXCEPTION), "byte", null, e);
         }
     }
 
@@ -1180,7 +1172,7 @@ public final class CrossConverters implements Converter {
             throw new SqlException(agent_.logWriter_, 
             		new ClientMessageId 
             		(SQLState.LANG_FORMAT_EXCEPTION), 
-            		"short", e);
+            		"short", null, e);
         }
     }
 
@@ -1231,7 +1223,7 @@ public final class CrossConverters implements Converter {
         } catch (java.lang.NumberFormatException e) {
             throw new SqlException(agent_.logWriter_, 
             		new ClientMessageId (SQLState.LANG_FORMAT_EXCEPTION),
-            		"int", e);
+            		"int", null, e);
         }
     }
 
@@ -1273,7 +1265,7 @@ public final class CrossConverters implements Converter {
         } catch (java.lang.NumberFormatException e) {
             throw new SqlException(agent_.logWriter_, 
             		new ClientMessageId (SQLState.LANG_FORMAT_EXCEPTION),
-        			"long", e);
+        			"long", null, e);
         }
     }
 
@@ -1306,7 +1298,7 @@ public final class CrossConverters implements Converter {
         } catch (java.lang.NumberFormatException e) {
             throw new SqlException(agent_.logWriter_, 
             		new ClientMessageId (SQLState.LANG_FORMAT_EXCEPTION),
-                    "float", e);
+                    "float", null, e);
         }
     }
 
@@ -1330,7 +1322,7 @@ public final class CrossConverters implements Converter {
         } catch (java.lang.NumberFormatException e) {
             throw new SqlException(agent_.logWriter_, 
             		new ClientMessageId (SQLState.LANG_FORMAT_EXCEPTION),
-                    "double", e);
+                    "double", null, e);
         }
     }
 
@@ -1348,7 +1340,7 @@ public final class CrossConverters implements Converter {
         } catch (java.lang.NumberFormatException e) {
             throw new SqlException(agent_.logWriter_,
             		new ClientMessageId (SQLState.LANG_FORMAT_EXCEPTION),
-                    "java.math.BigDecimal", e);
+                    "java.math.BigDecimal", null, e);
         }
     }
 
@@ -1386,7 +1378,7 @@ public final class CrossConverters implements Converter {
             return date_valueOf(source);
         } catch (java.lang.IllegalArgumentException e) { // subsumes NumberFormatException
             throw new SqlException(agent_.logWriter_, 
-            		new ClientMessageId (SQLState.LANG_DATE_SYNTAX_EXCEPTION), e);
+            		new ClientMessageId (SQLState.LANG_DATE_SYNTAX_EXCEPTION), null, e);
         }
     }
 
@@ -1405,7 +1397,7 @@ public final class CrossConverters implements Converter {
             return time_valueOf(source);
         } catch (java.lang.IllegalArgumentException e) { // subsumes NumberFormatException
             throw new SqlException(agent_.logWriter_, 
-            		new ClientMessageId (SQLState.LANG_DATE_SYNTAX_EXCEPTION), e);
+            		new ClientMessageId (SQLState.LANG_DATE_SYNTAX_EXCEPTION), null, e);
         }
     }
 
@@ -1420,7 +1412,7 @@ public final class CrossConverters implements Converter {
             return timestamp_valueOf(source);
         } catch (java.lang.IllegalArgumentException e) {  // subsumes NumberFormatException
             throw new SqlException(agent_.logWriter_, 
-            		new ClientMessageId (SQLState.LANG_DATE_SYNTAX_EXCEPTION), e);
+            		new ClientMessageId (SQLState.LANG_DATE_SYNTAX_EXCEPTION), null, e);
         }
     }
 

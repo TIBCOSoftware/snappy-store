@@ -49,6 +49,8 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLChar;
 
 import java.net.URL;
 import java.sql.Blob;
@@ -247,7 +249,7 @@ public abstract class EmbedCallableStatement extends EmbedPreparedStatement
 		checkStatus();
 
 		if (scale < 0)
-			throw newSQLException(SQLState.BAD_SCALE_VALUE, new Integer(scale));
+			throw newSQLException(SQLState.BAD_SCALE_VALUE, scale);
 		try {
 			getParms().registerOutParameter(parameterIndex-1, sqlType, scale);
 		} catch (StandardException e)
@@ -632,7 +634,7 @@ public abstract class EmbedCallableStatement extends EmbedPreparedStatement
      *
      * Get a BLOB OUT parameter.
      *
-     * @param i the first parameter is 1, the second is 2, ...
+     * @param parameterIndex the first parameter is 1, the second is 2, ...
      * @return an object representing a BLOB
      * @exception SQLException if a database-access error occurs.
      */
@@ -655,7 +657,7 @@ public abstract class EmbedCallableStatement extends EmbedPreparedStatement
      *
      * Get a CLOB OUT parameter.
      *
-     * @param i the first parameter is 1, the second is 2, ...
+     * @param parameterIndex the first parameter is 1, the second is 2, ...
      * @return an object representing a CLOB
      * @exception SQLException if a database-access error occurs.
      */
@@ -663,9 +665,28 @@ public abstract class EmbedCallableStatement extends EmbedPreparedStatement
 		checkStatus();
 		try {
 			DataValueDescriptor param = getParms().getParameterForGet(parameterIndex-1);
+// GemStone changes BEGIN
+			// explicitly wrap in Clob as in EmbedResultSet.getClob
+			if (param instanceof SQLChar) {
+			  char[] chars = ((SQLChar)param).getCharArray(true);
+			  if ((wasNull = (chars == null))) {
+			    return null;
+			  } else {
+			    return HarmonySerialClob.wrapChars(chars);
+			  }
+			} else {
+			  String str = param.getString();
+			  if ((wasNull = (str == null))) {
+			    return null;
+			  } else {
+			    return new HarmonySerialClob(str);
+			  }
+			}
+			/* (original code)
 			Clob v = (Clob) param.getObject();
 			wasNull = (v == null);
 			return v;
+			*/
 		} catch (StandardException e)
 		{
 			throw EmbedResultSet.noStateChangeException(e,

@@ -70,8 +70,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
-import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ColumnInfo;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ConstraintConstantAction;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ConstraintInfo;
@@ -374,6 +373,9 @@ public class TableElementList extends QueryTreeNodeVector
                     // in ALTER TABLE so raise error if any columns are nullable
                     checkForNullColumns(cdn, td);
                 }
+// GemStone changes BEGIN
+                checkForLOBOrUDTColumns(cdn, td);
+// GemStone changes END
             }
             else if (cdn.hasUniqueKeyConstraint())
             {
@@ -387,6 +389,9 @@ public class TableElementList extends QueryTreeNodeVector
                 {
                     checkForNullColumns(cdn, td);
                 }
+// GemStone changes BEGIN
+                checkForLOBOrUDTColumns(cdn, td);
+// GemStone changes END
             }
             else if (cdn.hasForeignKeyConstraint())
             {
@@ -1177,8 +1182,35 @@ public class TableElementList extends QueryTreeNodeVector
             {
                 throw StandardException.newException(SQLState.LANG_DB2_ADD_UNIQUE_OR_PRIMARY_KEY_ON_NULL_COLS, colName);
             }
-        }
+	}
     }
+
+// GemStone changes BEGIN
+    private void checkForLOBOrUDTColumns(ConstraintDefinitionNode cdn,
+	TableDescriptor td) throws StandardException {
+      ResultColumnList rcl = cdn.getColumnList();
+      int rclSize = rcl.size();
+      for (int index = 0; index < rclSize; index++) {
+        String colName = ((ResultColumn)rcl.elementAt(index)).getName();
+        DataTypeDescriptor dtd;
+        if (td == null) {
+          dtd = getColumnDataTypeDescriptor(colName);
+        } else {
+          dtd = getColumnDataTypeDescriptor(colName, td);
+        }
+        // don't allow LOB/UDT types as primary/unique keys
+        if (dtd != null) {
+          TypeId typeId = dtd.getTypeId();
+          if (typeId.isLOBTypeId() || typeId.isXMLTypeId() ||
+              typeId.isUserDefinedTypeId()) {
+            throw StandardException.newException(
+                SQLState.LANG_ADD_PRIMARY_KEY_OR_INDEX_ON_LOB_UDT, colName,
+                typeId.getSQLTypeName());
+          }
+        }
+      }
+    }
+// GemStone changes END
 
     private DataTypeDescriptor getColumnDataTypeDescriptor(String colName)
     {

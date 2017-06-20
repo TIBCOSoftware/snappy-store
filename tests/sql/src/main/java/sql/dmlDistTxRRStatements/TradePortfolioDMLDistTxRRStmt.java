@@ -23,20 +23,25 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import com.gemstone.gemfire.cache.query.Struct;
 
 import sql.SQLBB;
 import sql.SQLHelper;
+import sql.SQLTest;
 import sql.dmlDistTxStatements.TradePortfolioDMLDistTxStmt;
 import sql.sqlTx.ReadLockedKey;
 import sql.sqlTx.SQLDistRRTxTest;
 import sql.sqlTx.SQLDistTxTest;
+import sql.sqlTx.SQLTxBatchingFKBB;
 import sql.sqlTx.SQLTxRRReadBB;
 import sql.sqlutil.ResultSetHelper;
 import util.TestException;
+import util.TestHelper;
 
 public class TradePortfolioDMLDistTxRRStmt extends TradePortfolioDMLDistTxStmt {
   /*
@@ -54,7 +59,8 @@ public class TradePortfolioDMLDistTxRRStmt extends TradePortfolioDMLDistTxStmt {
       "select * from trade.portfolio where sid =? and cid=?"
       };
   */
-  
+
+
   protected boolean verifyConflict(HashMap<String, Integer> modifiedKeysByOp, 
       HashMap<String, Integer>modifiedKeysByThisTx, SQLException gfxdse,
       boolean getConflict) {
@@ -89,57 +95,67 @@ public class TradePortfolioDMLDistTxRRStmt extends TradePortfolioDMLDistTxStmt {
     List<Struct> noneTxGfxdList = null;
     
     if (whichQuery < 3) whichQuery = whichQuery + 3; //do not hold too many keys to block other txs
-    
-    
-    try {
-      gfxdRS = query (gConn, whichQuery, subTotal1, subTotal2, queryQty, queryAvail, sid, cid, tid);   
-      if (gfxdRS == null) {
-        if (isHATest) {
-          Log.getLogWriter().info("Testing HA and did not get GFXD result set");
-          return true;
+
+    for (int i = 0; i < 10; i++) {
+      Log.getLogWriter().info("RR: executing query " + i + "times");
+      try {
+        gfxdRS = query(gConn, whichQuery, subTotal1, subTotal2, queryQty, queryAvail, sid, cid, tid);
+        if (gfxdRS == null) {
+          if (isHATest) {
+            Log.getLogWriter().info("Testing HA and did not get GFXD result set");
+            return true;
+          } else
+            throw new TestException("Not able to get gfxd result set");
         }
-        else     
-          throw new TestException("Not able to get gfxd result set");
-      }
-    } catch (SQLException se) {
-      if (isHATest &&
-        SQLHelper.gotTXNodeFailureException(se) ) {
+      } catch (SQLException se) {
+        if (isHATest &&
+            SQLHelper.gotTXNodeFailureException(se)) {
+          SQLHelper.printSQLException(se);
+          Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
+          return false; //assume node failure exception causes the tx to rollback
+        }
+        else if (se.getSQLState().equals("X0Z02") && (i < 9)) {
+          Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+          continue;
+        }
         SQLHelper.printSQLException(se);
-        Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
-        return false; //assume node failure exception causes the tx to rollback 
+        gfxdse = se;
       }
-      
-      SQLHelper.printSQLException(se);
-      gfxdse = se;
+      try {
+        List<Struct> gfxdList = ResultSetHelper.asList(gfxdRS, false);
+        if (gfxdList == null && isHATest) {
+          Log.getLogWriter().info("Testing HA and did not get GFXD result set");
+          return true; //do not compare query results as gemfirexd does not get any
+        }
+        boolean[] success = new boolean[1];
+        success[0] = false;
+
+
+        if (whichQuery == 3) {
+          //select distinct sid from trade.portfolio where (qty >=? and subTotal >= ?) and tid =?
+          sql = "select cid, sid from trade.portfolio where (qty >=" + qty +
+              " and subTotal >=" + subTotal1 + ") and tid =" + tid;
+          while (!success[0]) {
+            noneTxGfxdList = getKeysForQuery(sql, success);
+          }
+
+          Log.getLogWriter().info("noneTxGfxdList size is " + noneTxGfxdList.size());
+          addReadLockedKeys(noneTxGfxdList);
+        } else addReadLockedKeys(gfxdList);
+
+        addQueryToDerbyTx(whichQuery, subTotal1, subTotal2,
+            queryQty, queryAvail, sid, cid, tid, gfxdList, gfxdse);
+        //only the first thread to commit the tx in this round could verify results
+        //to avoid phantom read
+        //this is handled in the SQLDistTxTest doDMLOp
+      } catch (TestException te) {
+        if (te.getMessage().contains("Conflict detected in transaction operation and it will abort") && (i <9)) {
+          Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+          continue;
+        } else throw te;
+      }
+      break;
     }
-    
-    List<Struct> gfxdList = ResultSetHelper.asList(gfxdRS, false);
-    if (gfxdList == null && isHATest) {
-      Log.getLogWriter().info("Testing HA and did not get GFXD result set");
-      return true; //do not compare query results as gemfirexd does not get any
-    }    
-    boolean[] success = new boolean[1];
-    success[0] = false;
-    
-    
-    if (whichQuery == 3) { 
-      //select distinct sid from trade.portfolio where (qty >=? and subTotal >= ?) and tid =?
-      sql = "select cid, sid from trade.portfolio where (qty >=" +qty +
-        " and subTotal >=" + subTotal1 + ") and tid =" + tid;  
-      while (!success[0]) { 
-        noneTxGfxdList = getKeysForQuery(sql, success);
-      } 
-      
-      Log.getLogWriter().info("noneTxGfxdList size is " + noneTxGfxdList.size());
-      addReadLockedKeys(noneTxGfxdList);
-    } else addReadLockedKeys(gfxdList);
-    
-    addQueryToDerbyTx(whichQuery, subTotal1, subTotal2, 
-        queryQty, queryAvail, sid, cid, tid, gfxdList, gfxdse);
-    //only the first thread to commit the tx in this round could verify results
-    //to avoid phantom read
-    //this is handled in the SQLDistTxTest doDMLOp
-    
     return true;
   }  
   

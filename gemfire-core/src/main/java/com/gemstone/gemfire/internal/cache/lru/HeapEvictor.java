@@ -44,9 +44,12 @@ import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.ResourceType;
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
+import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.concurrent.AB;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectLongHashMap;
 
@@ -352,11 +355,18 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
   protected volatile int numFastLoops;
   private long previousBytesUsed;
   private final Object evictionLock = new Object();
+  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
   @Override
   public void onEvent(final MemoryEvent event) {
     if (DISABLE_HEAP_EVICTIOR_THREAD_POOL) {
       return;
     }
+
+    //Disable centralized eviction for snappydata. Critical_UP eviction will be still there.
+    if(callback.isSnappyStore() && event.getState() == MemoryThresholds.MemoryState.EVICTION){
+      return;
+    }
+
     
     // Do we care about eviction events and did the eviction event originate
     // in this VM ...
@@ -370,6 +380,9 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
             logWriter.fine("Updating eviction in response to memory event: " + event + ". previousBytesUsed=" + previousBytesUsed);
           }
 
+          if(callback.isSnappyStore()){
+            logWriter.info("CRITICAL_UP event received by HeapEvictor thread. Total bytes used now is " + event.getBytesUsed());
+          }
           // We lock here to make sure that the thread that was previously
           // started and running eviction loops is in a state where it's okay
           // to update the number of fast loops to perform.

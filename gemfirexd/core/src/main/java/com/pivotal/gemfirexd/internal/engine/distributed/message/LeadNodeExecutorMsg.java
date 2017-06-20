@@ -17,29 +17,49 @@
 
 package com.pivotal.gemfirexd.internal.engine.distributed.message;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.cache.DiskAccessException;
+import com.gemstone.gemfire.cache.RegionDestroyedException;
+import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.distributed.DistributedMember;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.ReplyException;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.internal.ByteArrayDataInput;
+import com.gemstone.gemfire.internal.HeapDataOutputStream;
+import com.gemstone.gemfire.internal.InternalDataSerializer;
+import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
+import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
+import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
+import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLDecimal;
+import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericParameterValueSet;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 import com.pivotal.gemfirexd.internal.snappy.SparkSQLExecute;
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Route query to Snappy Spark Lead node.
@@ -50,12 +70,27 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   private String sql;
   private LeadNodeExecutionContext ctx;
   private transient SparkSQLExecute exec;
+  private String schema;
+  protected ParameterValueSet pvs;
+  // transient members set during deserialization and used in execute
+  private transient byte[] pvsData;
+  private transient int[] pvsTypes;
 
-  public LeadNodeExecutorMsg(String sql, LeadNodeExecutionContext ctx,
-      GfxdResultCollector<Object> rc) {
-    super(rc, null, false);
+  private transient byte leadNodeFlags;
+  // possible values for leadNodeFlags
+  private static final byte IS_PREPARED_STATEMENT = 0x1;
+  private static final byte IS_PREPARED_PHASE = 0x2;
+
+  public LeadNodeExecutorMsg(String sql, String schema, LeadNodeExecutionContext ctx,
+      GfxdResultCollector<Object> rc, ParameterValueSet inpvs,
+      boolean isPreparedStatement, boolean isPreparedPhase) {
+    super(rc, null, false, true);
+    this.schema = schema;
     this.sql = sql;
     this.ctx = ctx;
+    this.pvs = inpvs;
+    if (isPreparedStatement) leadNodeFlags |= IS_PREPARED_STATEMENT;
+    if (isPreparedPhase) leadNodeFlags |= IS_PREPARED_PHASE;
   }
 
   /**
@@ -65,38 +100,26 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     super(true);
   }
 
+  public boolean isPreparedStatement() {
+    return (leadNodeFlags & IS_PREPARED_STATEMENT) != 0;
+  }
+
+  public boolean isPreparedPhase() {
+    return (leadNodeFlags & IS_PREPARED_PHASE) != 0;
+  }
+
   @Override
   public Set<DistributedMember> getMembers() {
-    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
-    InternalDistributedSystem ids = InternalDistributedSystem
-        .getConnectedInstance();
-    if (ids != null) {
-      if (ids.isLoner()) {
-        return Collections.<DistributedMember>singleton(
-            ids.getDistributedMember());
-      }
-      Set<DistributedMember> allMembers = ids.getAllOtherMembers();
-      for (DistributedMember m : allMembers) {
-        GfxdDistributionAdvisor.GfxdProfile profile = advisor
-            .getProfile((InternalDistributedMember)m);
-        if (profile != null && profile.hasSparkURL()) {
-          Set<DistributedMember> s = new HashSet<DistributedMember>();
-          s.add(m);
-          return Collections.unmodifiableSet(s);
-        }
-      }
-    }
-    return Collections.emptySet();
+    return Misc.getLeadNode();
   }
 
   @Override
   public void postExecutionCallback() {
-
   }
 
   @Override
   public boolean isHA() {
-    return false;
+    return true;
   }
 
   @Override
@@ -106,21 +129,23 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
 
   @Override
   protected void execute() throws Exception {
-    if (GemFireXDUtils.TraceQuery) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-              "LeadNodeExecutorMsg.execute: Got sql = " + sql);
-    }
     try {
+      if (isPreparedStatement() && !isPreparedPhase()) {
+        getParams();
+      }
+      if (GemFireXDUtils.TraceQuery) {
+        StringBuilder str = new StringBuilder();
+        appendFields(str);
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+            "LeadNodeExecutorMsg.execute: Got sql = " + str.toString());
+      }
       InternalDistributedMember m = this.getSenderForReply();
       final Version v = m.getVersionObject();
       exec = CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(
-          sql, ctx, v);
+          sql, schema, ctx, v, this.isPreparedStatement(), this.isPreparedPhase(), this.pvs);
       SnappyResultHolder srh = new SnappyResultHolder(exec);
 
       srh.prepareSend(this);
-      //sendresult and lastResult is called via prepareSend
-//      this.sendResult(srh);
-//      this.lastResult(srh);
       this.lastResultSent = true;
       this.endMessage();
       if (GemFireXDUtils.TraceQuery) {
@@ -128,37 +153,101 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
                 "LeadNodeExecutorMsg.execute: Sent Last result ");
       }
     } catch (Exception ex) {
-    // Catch all exceptions and convert so can be caugh at XD side
-    Throwable cause = ex;
-      while (cause != null) {
-        if (cause.getClass().getName().contains("AnalysisException")) {
-          throw StandardException.newException(
-              SQLState.LANG_UNEXPECTED_USER_EXCEPTION, cause, cause.getMessage());
-        } else if (cause.getClass().getName().contains("apache.spark.storage")) {
-          throw StandardException.newException(
-              SQLState.DATA_UNEXPECTED_EXCEPTION, cause, cause.getMessage());
-        } else if (cause.getClass().getName().contains("apache.spark.sql")) {
-          Throwable nestedCause = cause.getCause();
-          while (nestedCause != null) {
-            if (nestedCause.getClass().getName().contains("ErrorLimitExceededException")) {
-              throw StandardException.newException(
-                  SQLState.LANG_UNEXPECTED_USER_EXCEPTION, nestedCause, nestedCause.getMessage());
-            }
-            nestedCause = nestedCause.getCause();
-          }
-          throw StandardException.newException(
-              SQLState.LANG_UNEXPECTED_USER_EXCEPTION, cause, cause.getMessage());
-        }
-        cause = cause.getCause();
-      }
-      throw ex;
+      throw getExceptionToSendToServer(ex);
     }
+  }
+
+  private static class SparkExceptionWrapper extends Exception {
+    public SparkExceptionWrapper(Throwable ex) {
+      super(ex.getClass().getName() + ": " + ex.getMessage(), ex.getCause());
+      this.setStackTrace(ex.getStackTrace());
+    }
+  }
+
+  public static Exception getExceptionToSendToServer(Exception ex) {
+    // Catch all exceptions and convert so can be caught at XD side
+    // Check if the exception can be serialized or not
+    boolean wrapExcepton = false;
+    HeapDataOutputStream hdos = null;
+    try {
+      hdos = new HeapDataOutputStream();
+      DataSerializer.writeObject(ex, hdos);
+    } catch (Exception e) {
+      wrapExcepton = true;
+    } finally {
+      if (hdos != null) {
+        hdos.close();
+      }
+    }
+
+    Throwable cause = ex;
+    while (cause != null) {
+      if (cause.getClass().getName().contains("AnalysisException")) {
+        return StandardException.newException(
+            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
+      } else if (cause.getClass().getName().contains("apache.spark.storage")) {
+        return StandardException.newException(
+            SQLState.DATA_UNEXPECTED_EXCEPTION,
+            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
+      } else if (cause.getClass().getName().contains("apache.spark.sql")) {
+        Throwable nestedCause = cause.getCause();
+        while (nestedCause != null) {
+          if (nestedCause.getClass().getName().contains("ErrorLimitExceededException")) {
+            return StandardException.newException(
+                SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+                (!wrapExcepton ? nestedCause : new SparkExceptionWrapper(nestedCause)), nestedCause.getMessage());
+          }
+          nestedCause = nestedCause.getCause();
+        }
+        return StandardException.newException(
+            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
+      }
+      cause = cause.getCause();
+    }
+    return ex;
+  }
+
+  @Override
+  protected void executeFunction(boolean enableStreaming)
+      throws StandardException, SQLException {
+    try {
+      super.executeFunction(enableStreaming);
+    } catch (RuntimeException re) {
+      throw handleLeadNodeException(re);
+    }
+  }
+
+  public static RuntimeException handleLeadNodeException(
+      RuntimeException re) {
+    Throwable cause = re;
+    if (re instanceof GemFireXDRuntimeException ||
+        re instanceof FunctionException ||
+        re instanceof FunctionExecutionException ||
+        re instanceof ReplyException) {
+      cause = re.getCause();
+    }
+    if (cause instanceof RegionDestroyedException) {
+      RegionDestroyedException rde = (RegionDestroyedException)cause;
+      // don't mark as remote so that no retry is done (SNAP-961)
+      // a top-level exception can only have been from lead node itself
+      if (rde.isRemote()) rde.setNotRemote();
+    }
+    if (cause instanceof DiskAccessException) {
+      DiskAccessException dae = (DiskAccessException)cause;
+      // don't mark as remote so that no retry is done (SNAP-961)
+      // a top-level exception can only have been from lead node itself
+      if (dae.isRemote()) dae.setNotRemote();
+    }
+    return re;
   }
 
   @Override
   protected LeadNodeExecutorMsg clone() {
-    final LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(this.sql, this.ctx,
-        (GfxdResultCollector<Object>)this.userCollector);
+    final LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(this.sql, this.schema, this.ctx,
+        (GfxdResultCollector<Object>)this.userCollector, this.pvs,
+        this.isPreparedStatement(), this.isPreparedPhase());
     msg.exec = this.exec;
     return msg;
   }
@@ -172,13 +261,114 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     super.fromData(in);
     this.sql = DataSerializer.readString(in);
+    this.schema = DataSerializer.readString(in);
     this.ctx = DataSerializer.readObject(in);
+
+    this.leadNodeFlags = DataSerializer.readByte(in);
+    if (isPreparedStatement() && !isPreparedPhase()) {
+      try {
+        this.pvsTypes = DataSerializer.readIntArray(in);
+        this.pvsData = DataSerializer.readByteArray(in);
+      } catch (RuntimeException ex) {
+        throw ex;
+      }
+    }
   }
 
   @Override
   public void toData(final DataOutput out) throws IOException {
     super.toData(out);
     DataSerializer.writeString(this.sql, out);
+    DataSerializer.writeString(this.schema , out);
     DataSerializer.writeObject(ctx, out);
+
+    DataSerializer.writeByte(this.leadNodeFlags, out);
+    if (isPreparedStatement() && !isPreparedPhase()) {
+      int paramCount = this.pvs != null ? this.pvs.getParameterCount() : 0;
+      final int numEightColGroups = BitSetSet.udiv8(paramCount);
+      final int numPartialCols = BitSetSet.umod8(paramCount);
+      try {
+        // Write Types
+        // TODO: See SparkSQLPreapreImpl
+        if (this.pvsTypes == null) {
+          this.pvsTypes = new int[paramCount * 3 + 1];
+          this.pvsTypes[0] = paramCount;
+          for (int i = 0; i < paramCount; i ++) {
+            DataValueDescriptor dvd = this.pvs.getParameter(i);
+            this.pvsTypes[i * 3 + 1] = dvd.getTypeFormatId();
+            if (dvd instanceof SQLDecimal) {
+              this.pvsTypes[i * 3 + 2] = ((SQLDecimal)dvd).getDecimalValuePrecision();
+              this.pvsTypes[i * 3 + 3] = ((SQLDecimal)dvd).getDecimalValueScale();
+            } else {
+              this.pvsTypes[i * 3 + 2] = -1;
+              this.pvsTypes[i * 3 + 3] = -1;
+            }
+          }
+        }
+        DataSerializer.writeIntArray(this.pvsTypes, out);
+
+        // Write Data
+        final HeapDataOutputStream hdos;
+        if (paramCount > 0) {
+          hdos = new HeapDataOutputStream();
+          DVDIOUtil.writeParameterValueSet(this.pvs, numEightColGroups,
+              numPartialCols, hdos);
+          InternalDataSerializer.writeArrayLength(hdos.size(), out);
+          hdos.sendTo(out);
+        } else {
+          InternalDataSerializer.writeArrayLength(-1, out);
+        }
+      } catch (StandardException ex) {
+        throw GemFireXDRuntimeException.newRuntimeException(
+            "unexpected exception in writing parameters", ex);
+      }
+    }
+  }
+
+  public void appendFields(final StringBuilder sb) {
+    sb.append("sql: " + sql);
+    sb.append(" ;schema: " + schema);
+    sb.append(" ;isPreparedStatement=").append(this.isPreparedStatement());
+    sb.append(" ;isPreparedPhase=").append(this.isPreparedPhase());
+    sb.append(" ;pvs=").append(this.pvs);
+    sb.append(" ;pvsData=").append(Arrays.toString(this.pvsData));
+  }
+
+  private void readStatementPVS(final ByteArrayDataInput in)
+      throws IOException, SQLException, ClassNotFoundException,
+      StandardException {
+    // TODO See initialize_pvs()
+    int numberOfParameters = this.pvsTypes[0];
+    DataTypeDescriptor[] types = new DataTypeDescriptor[numberOfParameters];
+    for(int i = 0; i < numberOfParameters; i++) {
+      int index = i * 3 + 1;
+      SnappyResultHolder.getNewNullDVD(this.pvsTypes[index], i, types,
+          this.pvsTypes[index + 1], this.pvsTypes[index + 2], true);
+    }
+    this.pvs = new GenericParameterValueSet(null, numberOfParameters, false/*return parameter*/);
+    this.pvs.initialize(types);
+
+    final int paramCount = this.pvs.getParameterCount();
+    final int numEightColGroups = BitSetSet.udiv8(paramCount);
+    final int numPartialCols = BitSetSet.umod8(paramCount);
+    DVDIOUtil.readParameterValueSet(this.pvs, in, numEightColGroups,
+        numPartialCols);
+  }
+
+  public ParameterValueSet getParams() throws Exception {
+    if (this.pvsData != null) {
+      ByteArrayDataInput dis = new ByteArrayDataInput();
+      dis.initialize(this.pvsData, null);
+      readStatementPVS(dis);
+    }
+
+    return this.pvs;
+  }
+
+  @Override
+  public void reset() {
+    super.reset();
+    this.pvsData = null;
+    this.pvs = null;
   }
 }

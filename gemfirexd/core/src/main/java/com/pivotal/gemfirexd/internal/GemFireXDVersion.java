@@ -17,17 +17,17 @@
 
 package com.pivotal.gemfirexd.internal;
 
-import java.io.File;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.net.URL;
-import java.util.StringTokenizer;
-
 import com.gemstone.gemfire.internal.GemFireVersion;
 import com.gemstone.gemfire.internal.SharedLibrary;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
+
+import java.io.File;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.util.StringTokenizer;
 
 /**
  * This class provides build and version information about GemFireXD.
@@ -54,7 +54,7 @@ public class GemFireXDVersion {
     }
   }
 
-  private static native String _getNativeVersion();
+  public static native String _getNativeVersion();
 
   public static void loadProperties() {
     GemFireVersion.getInstance(GemFireXDVersion.class,
@@ -75,6 +75,11 @@ public class GemFireXDVersion {
   public static String getGemFireXDVersion() {
     loadProperties();
     return GemFireVersion.getProductVersion();
+  }
+
+  public static String getGemFireXDReleaseStage() {
+    loadProperties();
+    return GemFireVersion.getProductReleaseStage();
   }
 
   /**

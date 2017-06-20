@@ -719,7 +719,7 @@ public interface DataSerializableFixedID extends SerializationVersions {
   public static final short CLIENT_DATASERIALIZER_MESSAGE=2002;
   
   //2003..2099 unused
-  
+  public static final short BUCKET_COUNT_LOAD_PROBE = 2099;
   public static final short PERSISTENT_MEMBERSHIP_VIEW_REQUEST =2100;
   public static final short PERSISTENT_MEMBERSHIP_VIEW_REPLY = 2101;
   public static final short PERSISTENT_STATE_QUERY_REQUEST = 2102;

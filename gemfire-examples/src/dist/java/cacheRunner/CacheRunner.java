@@ -79,7 +79,7 @@ import java.util.concurrent.locks.Lock;
 
 /**
  * This class is a command-line application that allows the user to
- * exercise GemFire's {@link com.gemstone.gemfire.cache cache
+ * exercise GemFire's {@link com.gemstone.gemfire.cache.Cache
  * API}. The example allows the user to specify a <A
  * HREF="{@docRoot}/../cacheRunner/cache.xml">cache.xml</A>
  * file that specifies a parent region with certain properties and

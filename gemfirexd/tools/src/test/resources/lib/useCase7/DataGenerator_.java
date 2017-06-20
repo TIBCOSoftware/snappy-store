@@ -14,7 +14,26 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-//package cacheperf.comparisons.gemfirexd.useCase1.datagen;
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
+//package cacheperf.comparisons.gemfirexd.useCase7.datagen;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -766,7 +785,11 @@ public class DataGenerator_ {
     }
     try {
       if (args.length > 1) {
-        url = "jdbc:gemfirexd://" + args[1];
+        if (args[1].startsWith("jdbc:")) {
+          url = args[1];
+        } else {
+          url = "jdbc:gemfirexd://" + args[1];
+        }
         System.out.println("url=" + url);
       }
       final Connection conn = getConnection();
@@ -895,6 +918,11 @@ public class DataGenerator_ {
         if ((schemaIndex = fullTableName.indexOf('.')) >= 0) {
           schemaName = fullTableName.substring(0, schemaIndex);
           tableName = fullTableName.substring(schemaIndex + 1);
+        } else {
+          System.out.println("");
+          System.out.println("ERROR: FullTableName should be mentioned with schema name. Input=" + fullTableName);
+          System.out.println("");
+          System.exit(2);
         }
 
         if (args.length > 2) {
@@ -1144,15 +1172,19 @@ public class DataGenerator_ {
       }
       case java.sql.Types.BIGINT:
       case java.sql.Types.INTEGER:
-      case java.sql.Types.SMALLINT: {
         if (primaryKey == null || !primaryKey.contains(colName)) {
           value = String.valueOf((int)(Math.random() * rowCount[tableIndex]));
-        }
-        else {
+        } else {
           value = String.valueOf(i + 1);
         }
         break;
-      }
+      case java.sql.Types.SMALLINT:
+        if (primaryKey == null || !primaryKey.contains(colName)) {
+          value = String.valueOf((int)(Math.random() * (rowCount[tableIndex] % Short.MAX_VALUE)));
+        } else {
+          value = String.valueOf(i + 1);
+        }
+        break;
       case java.sql.Types.DOUBLE: {
         value = String.valueOf(Math.random() * rowCount[tableIndex]);
         break;
@@ -1199,6 +1231,10 @@ public class DataGenerator_ {
     return "yyyy-MM-dd";
   }
 
+  protected String getBaseDate() {
+    return "2012-01-01";
+  }
+
   protected String getBaseTime() {
     return "2012-01-01 01:01:00";
   }
@@ -1239,10 +1275,10 @@ public class DataGenerator_ {
 
   protected String generateDate(Date baseDate) {
 
-    final SimpleDateFormat formatterTimestamp = new SimpleDateFormat(
-        getFormatterTimestamp());
+    final SimpleDateFormat formatterDate = new SimpleDateFormat(
+        getFormatterDate());
     try {
-      baseDate = formatterTimestamp.parse(getBaseTime());
+      baseDate = formatterDate.parse(getBaseDate());
     } catch (ParseException e) {
       e.printStackTrace();
       System.exit(2);
@@ -1253,7 +1289,7 @@ public class DataGenerator_ {
     long newTime = baseDate.getTime() + (long)addOn;
     Date newDate = new Date(newTime);
 
-    return formatterTimestamp.format(newDate);
+    return formatterDate.format(newDate);
   }
 
   protected String generateTimestamp(Date baseDate) {

@@ -19,21 +19,18 @@ package com.gemstone.gemfire.internal.cache;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import com.gemstone.gemfire.CancelException;
-import com.gemstone.gemfire.CopyHelper;
-import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.DeltaSerializationException;
-import com.gemstone.gemfire.GemFireIOException;
-import com.gemstone.gemfire.InternalGemFireError;
-import com.gemstone.gemfire.InvalidDeltaException;
-import com.gemstone.gemfire.SystemFailure;
+import com.gemstone.gemfire.*;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.hdfs.HDFSIOException;
 import com.gemstone.gemfire.cache.hdfs.internal.AbstractBucketRegionQueue;
@@ -56,19 +53,12 @@ import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
-import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
-import com.gemstone.gemfire.internal.cache.partitioned.DestroyMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.InvalidateMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.LockObject;
-import com.gemstone.gemfire.internal.cache.partitioned.PRTombstoneMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.PartitionMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.PutAllPRMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.PutMessage;
+import com.gemstone.gemfire.internal.cache.partitioned.*;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientTombstoneMessage;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientUpdateMessage;
-import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
@@ -81,9 +71,9 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
-import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantLock;
 
 /**
  * The storage used for a Partitioned Region.
@@ -113,7 +103,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private static final ThreadLocal<BucketRegionIndexCleaner> bucketRegionIndexCleaner = 
       new ThreadLocal<BucketRegionIndexCleaner>() ;
 
-  
+
   /**
    * Contains size in bytes of the values stored
    * in theRealMap. Sizes are tallied during put and remove operations.
@@ -263,9 +253,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private volatile AtomicLong5 eventSeqNum = null;
 
+  static final UUID zeroUUID = new UUID(0, 0);
+
   private volatile UUID batchUUID = null;
 
-  public ReentrantReadWriteLock putAllLock = new ReentrantReadWriteLock();
+  public final ReentrantReadWriteLock columnBatchFlushLock =
+      new ReentrantReadWriteLock();
 
   public final AtomicLong5 getEventSeqNum() {
     return eventSeqNum;
@@ -642,8 +635,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       setBatchUUID(event);
     }
 
-    return getDataView(event).putEntry(event, ifNew, ifOld, null, false,
-        cacheWrite, lastModified, overwriteDestroyed);
+    if (event.getTXState() != null && event.getTXState().isSnapshot()) {
+      return getSharedDataView().putEntry(event, ifNew, ifOld, null, false,
+          cacheWrite, lastModified, overwriteDestroyed);
+    } else {
+      return getDataView(event).putEntry(event, ifNew, ifOld, null, false,
+          cacheWrite, lastModified, overwriteDestroyed);
+    }
   }
 
   // Entry (Put/Create) rules
@@ -675,6 +673,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       }
       setBatchUUID(event);
     }
+    boolean success = false;
     try {
       if (this.partitionedRegion.isLocalParallelWanEnabled()) {
         handleWANEvent(event);
@@ -688,6 +687,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //          getCache().getLoggerI18n().info(LocalizedStrings.DEBUG,
 //              "BR.virtualPut: oldEntry returned = " + oldEntry + " so basic put returned: " + (oldEntry != null));
 //        }
+        success = true;
         return oldEntry != null;
       }
       if (event.getDeltaBytes() != null && event.getRawNewValue() == null) {
@@ -707,55 +707,112 @@ public class BucketRegion extends DistributedRegion implements Bucket {
             "BR.virtualPut: this cache has already seen this event " + event);
       }
       distributeUpdateOperation(event, lastModified);
+      success = true;
       return true;
     } finally {
       if (locked) {
         endLocalWrite(event);
-        //create and insert cached batch
-        if (getPartitionedRegion().needsBatching()
-            && this.size() >= GemFireCacheImpl.getColumnBatchSize()) {
-          createAndInsertCachedBatch(false);
+        // create and insert column batch
+        if (success && checkForColumnBatchCreation()) {
+          createAndInsertColumnBatch(false);
         }
       }
     }
   }
 
-  public final boolean createAndInsertCachedBatch(boolean forceFlush) {
-    final ReentrantReadWriteLock.WriteLock sync = putAllLock.writeLock();
+  public final boolean checkForColumnBatchCreation() {
+    final PartitionedRegion pr = getPartitionedRegion();
+    return pr.needsBatching()
+        && (getRegionSize() >= pr.getColumnMaxDeltaRows()
+        || getTotalBytes() >= pr.getColumnBatchSize());
+  }
+
+  public final boolean createAndInsertColumnBatch(boolean forceFlush) {
+    // do nothing if a flush is already in progress
+    if (this.columnBatchFlushLock.isWriteLocked()) {
+      return false;
+    }
+    final ReentrantReadWriteLock.WriteLock sync =
+        this.columnBatchFlushLock.writeLock();
     sync.lock();
     try {
-      return internalCreateAndInsertCachedBatch(forceFlush);
+      return internalCreateAndInsertColumnBatch(forceFlush);
     } finally {
       sync.unlock();
     }
   }
 
-  private boolean internalCreateAndInsertCachedBatch(boolean forceFlush) {
+  private boolean internalCreateAndInsertColumnBatch(boolean forceFlush) {
     // TODO: with forceFlush, ideally we should merge with an existing
-    // CachedBatch if the current size to be flushed is small like < 1000
+    // ColumnBatch if the current size to be flushed is small like < 1000
     // (and split if total size has become too large)
-    final int batchSize = !forceFlush ? GemFireCacheImpl.getColumnBatchSize()
-        : GemFireCacheImpl.getColumnMinBatchSize();
+    boolean success = false;
+    boolean doFlush = false;
+    if (forceFlush) {
+      doFlush = getRegionSize() >= getPartitionedRegion()
+              .getColumnMinDeltaRows();
+    }
+    if (!doFlush) {
+      doFlush = checkForColumnBatchCreation();
+    }
     // we may have to use region.size so that no state
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.
     // anyway batchUUID will be null in that case.
-    if (this.batchUUID != null && this.getBucketAdvisor().isPrimary() &&
-        getRegionSize() >= batchSize) {
+    if (this.batchUUID != null && doFlush && getBucketAdvisor().isPrimary()) {
       // need to flush the region
       if (getCache().getLoggerI18n().fineEnabled()) {
-        getCache().getLoggerI18n().fine("createAndInsertCachedBatch: " +
-            "Creating the cached batch for bucket " + this.getId()
-            + ", and batchID " + this.batchUUID);
+        getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
+                "Creating the column batch for bucket " + this.getId()
+                + ", and batchID " + this.batchUUID);
       }
-      Set keysToDestroy = createCachedBatchAndPutInColumnTable();
-      destroyAllEntries(keysToDestroy);
-      // create new batchUUID
-      this.batchUUID = null;
-      return true;
-    } else {
-      return false;
+      boolean txStarted = false;
+      if (getCache().snapshotEnabled() && getCache().getCacheTransactionManager().getTXState() == null) {
+        getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+        txStarted = true;
+      }
+      try {
+        if (getCache().getLoggerI18n().fineEnabled()) {
+          getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
+              "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
+              " the current rvv is " + getVersionVector());
+        }
+        //Check if shutdown hook is set
+        if (null != getCache().getRvvSnapshotTestHook()) {
+          getCache().notifyRvvTestHook();
+          getCache().waitOnRvvSnapshotTestHook();
+        }
+
+        Set keysToDestroy = createColumnBatchAndPutInColumnTable();
+
+        if (getCache().getCacheTransactionManager().testRollBack) {
+          throw new RuntimeException("Test Dummy Exception");
+        }
+        destroyAllEntries(keysToDestroy);
+        //Check if shutdown hook is set
+        if (null != getCache().getRvvSnapshotTestHook()) {
+          getCache().notifyRvvTestHook();
+          getCache().waitOnRvvSnapshotTestHook();
+        }
+        // create new batchUUID
+        generateAndSetBatchIDIfNULL(true);
+
+        success = true;
+      } finally {
+        if (getCache().snapshotEnabled() && txStarted) {
+          if (success) {
+            getCache().getCacheTransactionManager().commit();
+            if (null != getCache().getRvvSnapshotTestHook()) {
+              getCache().notifyRvvTestHook();
+            }
+          } else {
+            getCache().getCacheTransactionManager().rollback();
+          }
+        }
+      }
     }
+
+    return success;
   }
 
   //TODO: Suranjan. it will change for tx operations, setting of batchID will be from commitPhase1
@@ -764,11 +821,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // has to be maintained
     //TODO: Suranjan Will using region.size in synchronized be slower? or should maintain atomic variable per bucket?
     // PUTALL
+    boolean resetBatchId = false;
     if (getBucketAdvisor().isPrimary()) {
+      UUID batchUUIDToUse;
       if (event.getPutAllOperation() != null) { //isPutAll op
-        generateAndSetBatchIDIfNULL();
-      } else if (this.size() >= GemFireCacheImpl.getColumnBatchSize()) {// loose check on size..not very strict
-        generateAndSetBatchIDIfNULL();
+        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
+        // loose check on size, not very strict
+      } else if (size() >= getPartitionedRegion().getColumnMaxDeltaRows()) {
+        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache()
               .getLoggerI18n()
@@ -776,9 +836,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                   + "(NON PUTALL operation) as " + this.batchUUID);
         }
       } else {
-        generateAndSetBatchIDIfNULL();
+        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
       }
-      event.setBatchUUID(this.batchUUID);
+      event.setBatchUUID(batchUUIDToUse);
     } else {
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
@@ -791,9 +851,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  private synchronized void generateAndSetBatchIDIfNULL() {
-    if (this.batchUUID == null || this.batchUUID.equals(new UUID(0, 0))) {
-      this.batchUUID = UUID.randomUUID();
+  private synchronized UUID generateAndSetBatchIDIfNULL(boolean resetBatchId) {
+    if (resetBatchId) {
+      this.batchUUID = null;
+      return this.batchUUID;
+    }
+    final UUID buid = this.batchUUID;
+    if (buid == null || buid.equals(zeroUUID)) {
+      this.batchUUID = partitionedRegion.newJavaUUID();
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
             .getLoggerI18n()
@@ -809,12 +874,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
       }
     }
+    return this.batchUUID;
   }
 
-  private Set createCachedBatchAndPutInColumnTable() {
+  private Set createColumnBatchAndPutInColumnTable() {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    Set keysToDestroy = callback.createCachedBatch(this, this.batchUUID, this.getId());
-    return keysToDestroy;
+    return callback.createColumnBatch(this, this.batchUUID, this.getId());
   }
 
   // TODO: Suranjan Not optimized way to destroy all entries, as changes at level of RVV required.
@@ -824,12 +889,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   // This destroy is under a lock which makes sure that there is no put into the region
   // No need to take the lock on key
   private void destroyAllEntries(Set keysToDestroy) {
-
     for(Object key : keysToDestroy) {
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
             .getLoggerI18n()
-            .fine("Destroying the entries after creating CachedBatch " + key +
+            .fine("Destroying the entries after creating ColumnBatch " + key +
                 " batchid " + this.batchUUID + " total size " + this.size() +
                 " keysToDestroy size " + keysToDestroy.size());
       }
@@ -841,9 +905,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       event.setBucketId(this.getId());
       event.setBatchUUID(this.batchUUID); // to make sure that lock is not nexessary
 
-
-      if (getTXState() != null) {
-        getTXState().destroyExistingEntry(event, true, null);
+      TXStateInterface txState = event.getTXState(this);
+      if (txState != null) {
+        event.setRegion(this);
+        txState.destroyExistingEntry(event, true, null);
       } else {
         this.getPartitionedRegion().basicDestroy(event,true,null);
       }
@@ -885,8 +950,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                     + this.eventSeqNum.get() + ". was it a tx operation? " + event.hasTX());
           }  
         }
-        
-        
       } else {
         // Can there be a race here? Like one thread has done put in primary but
         // its update comes later
@@ -2529,6 +2592,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     }
     long oldMemValue;
 
+
+    if (!this.reservedTable() && needAccounting()) {
+      long ignoreBytes = (this.isDestroyed || this.isDestroyingDiskRegion) ? getIgnoreBytes() :
+              getIgnoreBytes() + regionOverHead;
+      callback.dropStorageMemory(getFullPath(), ignoreBytes);
+    }
     if(this.isDestroyed || this.isDestroyingDiskRegion) {
       //If this region is destroyed, mark the stat as destroyed.
       oldMemValue = this.bytesInMemory.getAndSet(BUCKET_DESTROYED);
@@ -2571,6 +2640,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   public int calculateRegionEntryValueSize(RegionEntry re) {
     return calcMemSize(re._getValue()); // OFFHEAP _getValue ok
   }
+
 
   @Override
   void updateSizeOnPut(Object key, int oldSize, int newSize) {
@@ -2633,7 +2703,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     return this.createCount.get() - this.removeCount.get() - this.invalidateCount.get()
 //       - (this.evictCount.get() - this.faultInCount.get());
 //   }
-  
+
   @Override
   void updateSizeOnCreate(Object key, int newSize) {
 //     if (cache.getLogger().infoEnabled()) {
@@ -2687,6 +2757,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 //     this.debugMap.remove(key);
     this.partitionedRegion.getPrStats().incDataStoreEntryCount(-1);
     updateBucket2Size(oldSize, 0, SizeOp.DESTROY);
+    freePoolMemory(oldSize + indexOverhead, true);
   }
 
   @Override
@@ -2769,7 +2840,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     closeCacheCallback(getCacheWriter());
     closeCacheCallback(getEvictionController());
   }
-  
+
+  public long getSizeInMemory() {
+    return Math.max(this.bytesInMemory.get(), 0L);
+  }
+
   public long getTotalBytes() {
     long result = this.bytesInMemory.get();
     if(result == BUCKET_DESTROYED) {
@@ -3149,5 +3224,5 @@ public class BucketRegion extends DistributedRegion implements Bucket {
      return ServerPingMessage.send(cache, hostingservers);
     
   }
-}
 
+}

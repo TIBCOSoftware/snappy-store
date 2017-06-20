@@ -61,7 +61,8 @@ public class SortedBuffer<T> extends AbstractSortedReader {
     
     this.tag = tag;
     
-    buffer = new ConcurrentSkipListMap<byte[], byte[]>(config.getComparator());
+    buffer = new ConcurrentSkipListMap<byte[], byte[]>(
+        config.getComparator().toBytesComparator());
     stats = new BufferStats();
     metadata = new EnumMap<Metadata, byte[]>(Metadata.class);
     
@@ -245,7 +246,7 @@ public class SortedBuffer<T> extends AbstractSortedReader {
 
   @Override
   public SerializedComparator getComparator() {
-    return (SerializedComparator) buffer.comparator();
+    return ((BytesComparator)buffer.comparator()).getSerializedComparator();
   }
 
   @Override

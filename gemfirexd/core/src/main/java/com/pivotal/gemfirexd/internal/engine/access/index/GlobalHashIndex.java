@@ -285,7 +285,7 @@ class GlobalIndexCustomEvictionCriteria implements EvictionCriteria<Object, Obje
     }
 
     if (re != null) {
-      if (re.hasAnyLock()) {
+      if (ev.getTXState() == null && re.hasAnyLock()) {
         return false;
       }
       if (re.isMarkedForEviction()) {
@@ -299,5 +299,4 @@ class GlobalIndexCustomEvictionCriteria implements EvictionCriteria<Object, Obje
   public boolean isEquivalent(EvictionCriteria<Object, Object> other) {
     return false;
   }
-
 }

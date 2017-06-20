@@ -167,10 +167,10 @@ public class LangScripts_LOBDUnit extends DistributedSQLTestBase {
 	      { "create table e(a string(204K))", null },
 	      // Create index (not allowed)
 	      { "create index ia on a(a)", "X0X67" },
-	      { "create index ib on b(a)", null },
+	      { "create index ib on b(a)", "42832" },
 	      { "create index ic on c(a)", "42Y55" },
-	      { "create index id on d(a)", null },
-	      { "create index ie on e(a)", null },
+	      { "create index id on d(a)", "42832" },
+	      { "create index ie on e(a)", "42832" },
 	      { "drop table a", null },
 	      { "drop table c", "42Y55" },
 	      { "drop table d", null },

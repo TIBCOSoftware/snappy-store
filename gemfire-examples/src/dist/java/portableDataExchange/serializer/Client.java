@@ -31,7 +31,7 @@ import com.gemstone.gemfire.pdx.ReflectionBasedAutoSerializer;
 /**
  * A sample gemfire client that writes and queries PositionPdx objects on a 
  * server.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.6

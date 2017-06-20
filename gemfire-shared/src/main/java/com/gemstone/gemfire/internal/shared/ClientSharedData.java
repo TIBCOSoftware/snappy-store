@@ -17,18 +17,20 @@
 
 package com.gemstone.gemfire.internal.shared;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.GregorianCalendar;
+import java.util.Locale;
+import java.util.TimeZone;
 
-/**
- * @author kneeraj
- * 
- */
 public final class ClientSharedData {
 
-  public static byte[] BYTES_PREFIX_CLIENT_VERSION = new byte[] { 0x7e, -0x3a,
-      0x74, -0x1f, 0x7d, -0x4d, 0x1b, 0x65 };
+  public static final Charset UTF8 = StandardCharsets.UTF_8;
 
-  public static int BYTES_PREFIX_CLIENT_VERSION_LENGTH =
+  public static final byte[] BYTES_PREFIX_CLIENT_VERSION = new byte[] {
+      0x7e, -0x3a, 0x74, -0x1f, 0x7d, -0x4d, 0x1b, 0x65 };
+
+  public static final int BYTES_PREFIX_CLIENT_VERSION_LENGTH =
       BYTES_PREFIX_CLIENT_VERSION.length;
 
   // This token delimiter value is used to separate the tokens for multiple
@@ -37,13 +39,13 @@ public final class ClientSharedData {
    * <code>SQLERRMC_MESSAGE_DELIMITER</code> When message argument tokes are
    * sent, this value separates the tokens for mulitiple error messages
    */
-  public static String SQLERRMC_MESSAGE_DELIMITER = new String(new char[] {
+  public static final String SQLERRMC_MESSAGE_DELIMITER = new String(new char[] {
       (char)20, (char)20, (char)20 });
 
   /**
    * <code>SQLERRMC_TOKEN_DELIMITER</code> separates message argument tokens
    */
-  public static String SQLERRMC_TOKEN_DELIMITER = new String(
+  public static final String SQLERRMC_TOKEN_DELIMITER = new String(
       new char[] { (char)20 });
 
   /**
@@ -56,27 +58,30 @@ public final class ClientSharedData {
   public static final String SQLERRMC_SERVER_DELIMITER = new String(new char[] {
       (char)24, (char)24 });
 
-  public static byte CLIENT_FAILOVER_CONTEXT_WRITTEN = (byte)1;
+  public static final byte CLIENT_FAILOVER_CONTEXT_WRITTEN = (byte)1;
 
-  public static byte CLIENT_FAILOVER_CONTEXT_NOT_WRITTEN = (byte)0;
+  public static final byte CLIENT_FAILOVER_CONTEXT_NOT_WRITTEN = (byte)0;
 
-  public static byte CLIENT_TXID_WRITTEN = (byte)1;
+  public static final byte CLIENT_TXID_WRITTEN = (byte)1;
 
-  public static byte CLIENT_TXID_NOT_WRITTEN = (byte)0;
+  public static final byte CLIENT_TXID_NOT_WRITTEN = (byte)0;
+
+  public static final byte[] ZERO_ARRAY = new byte[0];
 
   private static final ThreadLocal<GregorianCalendar> DEFAULT_CALENDAR =
       new ThreadLocal<GregorianCalendar>() {
     @Override
     public GregorianCalendar initialValue() {
-      return new GregorianCalendar();
+      return new GregorianCalendar(TimeZone.getDefault(),
+          Locale.getDefault(Locale.Category.FORMAT));
     }
   };
 
-  public static final GregorianCalendar getDefaultCalendar() {
+  public static GregorianCalendar getDefaultCalendar() {
     return DEFAULT_CALENDAR.get();
   }
 
-  public static final GregorianCalendar getDefaultCleanCalendar() {
+  public static GregorianCalendar getDefaultCleanCalendar() {
     final GregorianCalendar cal = DEFAULT_CALENDAR.get();
     cal.clear();
     return cal;

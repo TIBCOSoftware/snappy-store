@@ -24,6 +24,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -44,18 +45,7 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
-import com.gemstone.gemfire.internal.cache.BucketDump;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.CachedDeserializable;
-import com.gemstone.gemfire.internal.cache.ForceReattemptException;
-import com.gemstone.gemfire.internal.cache.InitialImageOperation;
-import com.gemstone.gemfire.internal.cache.KeyWithRegionContext;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.Token;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
@@ -489,8 +479,9 @@ public final class FetchEntriesMessage extends PartitionMessage
 
     private volatile RegionVersionVector returnRVV; 
     private final HashMap<Object, Object> returnValue;
-    private final HashMap<Object, VersionTag> returnVersions = new HashMap();
+    private final HashMap<Object, VersionTag> returnVersions = new HashMap<Object,VersionTag>();
     private final Map<VersionSource,VersionSource> canonicalMembers = new ConcurrentHashMap<VersionSource,VersionSource>();
+    private final Set<RegionEntry> entries = new HashSet();
     
     /** lock used to synchronize chunk processing */
     private final Object endLock = new Object();
@@ -603,6 +594,8 @@ public final class FetchEntriesMessage extends PartitionMessage
               synchronized(returnValue) {
                 returnValue.put(key, value);
                 returnVersions.put(key, versionTag);
+                entries.add(NonLocalRegionEntry.newEntry(key, value,
+                    this.pr, versionTag));
               }
             }
             else {
@@ -687,6 +680,34 @@ public final class FetchEntriesMessage extends PartitionMessage
       }
 
       return new BucketDump(bucketId, recipient, returnRVV, returnValue, returnVersions);
+    }
+
+
+    /**
+     * @return Set the keys associated with the bucketid of the {@link FetchKeysMessage}
+     * @throws ForceReattemptException if the peer is no longer available
+     */
+    public Set<RegionEntry> waitForEntriesSet() throws ForceReattemptException {
+      try {
+        waitForRepliesUninterruptibly();
+      }
+      catch (ReplyException e) {
+        Throwable t = e.getCause();
+        if (t instanceof CancelException) {
+          getDistributionManager().getLoggerI18n().fine("FetchKeysResponse got remote cancellation; forcing reattempt.", t);
+          throw new ForceReattemptException(LocalizedStrings.FetchEntriesMessage_FETCHKEYSRESPONSE_GOT_REMOTE_CANCELLATION_FORCING_REATTEMPT.toLocalizedString(), t);
+        }
+        else if (t instanceof ForceReattemptException) {
+          // Not sure this is necessary, but it is possible for
+          // FetchEntriesMessage to marshal a ForceReattemptException, so...
+          throw new ForceReattemptException(LocalizedStrings.FetchEntriesMessage_PEER_REQUESTS_REATTEMPT.toLocalizedString(), t);
+        }
+        e.handleAsUnexpected();
+      }
+      if (!this.lastChunkReceived) {
+        throw new ForceReattemptException(LocalizedStrings.FetchEntriesMessage_NO_REPLIES_RECEIVED.toLocalizedString());
+      }
+      return entries;
     }
   }
  }

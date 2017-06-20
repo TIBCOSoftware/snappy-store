@@ -39,6 +39,216 @@ public class RegionVersionHolderJUnitTest extends TestCase {
     member = new InternalDistributedMember(InetAddress.getLocalHost(), 12345);
   }
 
+
+
+  public void testInitialized() {
+    RegionVersionHolder vh1 = new RegionVersionHolder(member);
+    vh1.recordVersion(56, null);
+    vh1.recordVersion(57, null);
+    vh1.recordVersion(58, null);
+    vh1.recordVersion(59, null);
+    vh1.recordVersion(60, null);
+    vh1 = vh1.clone();
+    System.out.println("This node init, vh1="+vh1);
+
+    RegionVersionHolder vh2 = new RegionVersionHolder(member);
+    for(int i=1;i<57;i++) {
+      vh2.recordVersion(i,null);
+    }
+    vh2 = vh2.clone();
+    System.out.println("GII node init, vh2="+vh2);
+
+    vh1.initializeFrom(vh2);
+    vh1 = vh1.clone();
+    System.out.println("After initialize, vh1="+vh1);
+
+    //vh1.recordVersion(57,null);
+    vh1.recordVersion(58,null);
+    vh1.recordVersion(59,null);
+    vh1.recordVersion(60,null);
+
+    System.out.println("After initialize and record version, vh1="+vh1);
+
+    vh1 = vh1.clone();
+    vh1.recordVersion(57,null);
+    System.out.println("After initialize and record version after clone, vh1="+vh1);
+
+    assertTrue(vh1.contains(58));
+  }
+
+
+  public void test1() {
+    RegionVersionHolder vh1 = new RegionVersionHolder(member);
+    vh1.recordVersion(15, null);
+    RegionVersionHolder vh2 = vh1.clone();
+
+    RegionVersionHolder vh3 = new RegionVersionHolder(member);
+    for (int i=1; i<=10; i++) {
+      vh3.recordVersion(i, null);
+    }
+
+    vh2.initializeFrom(vh3);
+    System.out.println("after init, vh2="+vh2);
+    System.out.println("after init, vh2="+vh2.clone());
+
+    //assertTrue(vh2.contains(11));// FAILS
+    assertTrue(vh2.contains(10));
+    assertTrue(vh2.contains(9));
+
+    RegionVersionHolder vh4 = vh2.clone();
+    vh2.recordVersion(12, null);
+    vh4.recordVersion(12, null);
+
+    vh2.recordVersion(14, null);
+    vh4.recordVersion(14, null);
+
+    System.out.println("after init, vh2="+vh2);
+    System.out.println("after init, vh2="+vh2.clone());
+    System.out.println("after init, vh4="+vh4);
+    System.out.println("after init, vh4="+vh4.clone());
+
+    vh4 = vh2.clone();
+    vh2.recordVersion(18, null);
+    vh4.recordVersion(18, null);
+    //vh2.recordVersion(11, null);
+    //assertTrue(vh2.contains(11));// FAILS
+    System.out.println("after init, vh2="+vh2);
+    System.out.println("after init, vh2="+vh2.clone());
+    System.out.println("after init, vh4="+vh4);
+    System.out.println("after init, vh4="+vh4.clone());
+  }
+
+  public void testInitialize3() {
+    RegionVersionHolder vh1 = new RegionVersionHolder(member);
+
+    for(int i=0;i<=1074; i++) {
+      vh1.recordVersion(i, null);
+    }
+
+    RegionVersionHolder vh2 = new RegionVersionHolder(member);
+    vh2.recordVersion(1075,null);
+
+    vh1.makeReadyForRecording();
+    vh2.initializeFrom(vh1.clone());
+    vh2.makeReadyForRecording();
+    vh2.recordVersion(1075,null);
+
+    System.out.println("vh1" + vh2.clone());
+
+//    vh2.recordVersion(1098, null);
+//
+//    System.out.println("vh1" + vh2.clone());
+//    System.out.println(vh2.contains(1097));
+  }
+
+
+  public void testInitialize2() {
+    RegionVersionHolder vh1 = new RegionVersionHolder(member);
+    vh1.recordVersion(1093, null);
+    vh1.recordVersion(2000, null);
+    System.out.println("vh1" + vh1);
+
+
+    RegionVersionHolder vh2 = vh1.clone();
+    System.out.println("vh2" + vh1.clone());
+
+    RegionVersionHolder vh3 = new RegionVersionHolder(member);
+    for (int i = 1; i <= 1094; i++) {
+      vh3.recordVersion(i, null);
+    }
+    System.out.println("vh3=" + vh3.clone());
+
+    vh2.initializeFrom(vh3);
+    System.out.println("after init, vh2=" + vh2.clone() + vh2.contains(2000));
+
+    vh2.recordVersion(1098, null);
+    //vh2.recordVersion(1096, null);
+
+    System.out.println("after init, vh2=" + vh2 + " " + vh2.clone() +  vh2.contains(1095) + " " + vh2.contains(1096));
+
+    vh2 = vh2.clone();
+    vh2.recordVersion(1096, null);
+
+    System.out.println("after init, vh2=" + vh2 + " " + vh2.clone());
+
+
+    vh2.recordVersion(1097, null);
+
+    System.out.println("after init, vh2=" + vh2.clone());
+
+    System.out.println(vh2.contains(1096));
+    System.out.println(vh2.contains(1097));
+
+    vh2.recordVersion(1095, null);
+
+    System.out.println("after init, vh2=" + vh2.clone());
+
+    System.out.println(vh2.contains(1096));
+    /*//assertTrue(vh2.contains(11));// FAILS
+    assertTrue(vh2.contains(10));
+    assertTrue(vh2.contains(9));
+
+    vh2.recordVersion(11, null);
+    assertTrue(vh2.contains(11));// FAILS*/
+
+  }
+
+  public void testInitialize() {
+    RegionVersionHolder vh1 = new RegionVersionHolder(member);
+    vh1.recordVersion(11, null);
+    RegionVersionHolder vh2 = vh1.clone();
+
+    RegionVersionHolder vh3 = new RegionVersionHolder(member);
+    for (int i=1; i<=10; i++) {
+      vh3.recordVersion(i, null);
+    }
+
+    vh2.initializeFrom(vh3);
+    System.out.println("after init, vh2="+vh2);
+    //assertTrue(vh2.contains(11));// FAILS
+    assertTrue(vh2.contains(10));
+    assertTrue(vh2.contains(9));
+
+    vh2.recordVersion(11, null);
+    assertTrue(vh2.contains(11));// FAILS
+
+/*    RegionVersionHolder vh1 = new RegionVersionHolder(member);
+    vh1.recordVersion(11, null);
+    System.out.println("vh1="+vh1);
+
+    RegionVersionHolder vh2 = vh1.clone();
+    System.out.println("after clone, vh2="+vh2);
+
+    {
+      RegionVersionHolder vh3 = new RegionVersionHolder(member);
+      for (int i=1; i<=10; i++) {
+        vh3.recordVersion(i, null);
+      }
+
+      // create special exception 10(3-11), bitsetVerson=3
+      vh2.initializeFrom(vh3);
+      System.out.println("after init, vh2="+vh2);
+      assertTrue(vh2.contains(10));
+      assertTrue(vh2.contains(9));
+      vh2.recordVersion(11, null);
+      assertTrue(vh2.contains(11));*/
+      /*assertEquals(10, vh2.getVersion());
+
+
+      vh3.recordVersion(8, null);
+      System.out.println(vh3.contains(8));
+      // to make bsv3,bs=[0,1]
+      vh3.recordVersion(4, null);
+      System.out.println("after record 4, vh3="+vh3);
+      assertEquals(4, vh3.getVersion());
+
+      vh3.recordVersion(7, null);
+      System.out.println("after record 7, vh3="+vh3);
+      assertEquals(7, vh3.getVersion());
+      System.out.println(vh3.contains(7));*/
+   // }
+  }
+
   public void test48066_1() {
     RegionVersionHolder vh1 = new RegionVersionHolder(member);
     for (int i=1; i<=3; i++) {
@@ -51,7 +261,7 @@ public class RegionVersionHolderJUnitTest extends TestCase {
     
     {
       RegionVersionHolder vh3 = new RegionVersionHolder(member);
-      for (int i=1; i<=10; i++) {
+      for (int i=10; i<=10; i++) {
         vh3.recordVersion(i, null);
       }
       
@@ -60,14 +270,17 @@ public class RegionVersionHolderJUnitTest extends TestCase {
       System.out.println("after init, vh3="+vh3);
       assertEquals(3, vh3.getVersion());
 
+      vh3.recordVersion(8, null);
+      System.out.println(vh3.contains(8));
       // to make bsv3,bs=[0,1]
       vh3.recordVersion(4, null);
-      System.out.println("after record 4, vh3=");
-      assertEquals(4, vh3.getVersion());
+      System.out.println("after record 4, vh3="+vh3);
+      assertEquals(8, vh3.getVersion());
 
       vh3.recordVersion(7, null);
       System.out.println("after record 7, vh3="+vh3);
-      assertEquals(7, vh3.getVersion());
+      assertEquals(8, vh3.getVersion());
+      System.out.println(vh3.contains(7));
     }
   }
   
@@ -1523,6 +1736,7 @@ public class RegionVersionHolderJUnitTest extends TestCase {
         RegionVersionHolder vh2 = buildHolder(bs2);
         
         validateExceptions(vh2);
+
         vh2.initializeFrom(vh1);
         
         assertEquals(105, vh2.version);
@@ -1538,6 +1752,7 @@ public class RegionVersionHolderJUnitTest extends TestCase {
         vh1.version = 105;
         vh1.addException(100,106);
         assertTrue(vh2.sameAs(vh1));
+        compareWithBitSet(bs2, vh2);
         validateExceptions(vh2);
       }
     } finally {

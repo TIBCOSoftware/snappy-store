@@ -1,9 +1,0 @@
-all: odbc-install32 odbc-install64
-
-odbc-install64:
-	${MSBUILD} "$(GFXDODBCSLNDIR)/GemFireXDODBCSetupInstaller.sln" /t:Clean /t:Build /p:Platform="x64" /p:Configuration=Release /p:wix="${WIX}" /nologo
-	
-odbc-install32:
-	${MSBUILD} "$(GFXDODBCSLNDIR)/GemFireXDODBCSetupInstaller.sln" /t:Clean /t:Build /p:Platform="Win32" /p:Configuration=Release /p:wix="${WIX}" /nologo
-
-.PHONY: all

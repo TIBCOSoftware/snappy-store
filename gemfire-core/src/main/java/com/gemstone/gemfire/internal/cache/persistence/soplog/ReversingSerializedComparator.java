@@ -16,6 +16,8 @@
  */
 package com.gemstone.gemfire.internal.cache.persistence.soplog;
 
+import java.nio.ByteBuffer;
+
 import com.gemstone.gemfire.internal.cache.persistence.soplog.SortedReader.SerializedComparator;
 
 /**
@@ -27,7 +29,9 @@ import com.gemstone.gemfire.internal.cache.persistence.soplog.SortedReader.Seria
  *  
  * @author bakera
  */
-public class ReversingSerializedComparator implements DelegatingSerializedComparator {
+public class ReversingSerializedComparator
+    extends DelegatingSerializedComparator {
+
   private volatile SerializedComparator delegate;
 
   @Override
@@ -40,12 +44,7 @@ public class ReversingSerializedComparator implements DelegatingSerializedCompar
   public SerializedComparator[] getComparators() {
     return new SerializedComparator[] { delegate };
   }
-  
-  @Override
-  public int compare(byte[] o1, byte[] o2) {
-    return compare(o1, 0, o1.length, o2, 0, o2.length);
-  }
-  
+
   @Override
   public int compare(byte[] b1, int o1, int l1, byte[] b2, int o2, int l2) {
     return delegate.compare(b2, o2, l2, b1, o1, l1);
@@ -63,5 +62,20 @@ public class ReversingSerializedComparator implements DelegatingSerializedCompar
     rev.delegate = sc;
     
     return rev;
+  }
+
+  @Override
+  public byte[] createCompositeKey(byte[] key1, byte[] key2) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public byte[] createCompositeKey(byte[]... keys) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ByteBuffer getKey(ByteBuffer key, int ordinal) {
+    throw new UnsupportedOperationException();
   }
 }

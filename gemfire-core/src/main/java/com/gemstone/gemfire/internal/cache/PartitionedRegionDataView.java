@@ -196,8 +196,8 @@ public final class PartitionedRegionDataView extends LocalRegionDataView {
   @Override
   public Iterator<?> getLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
-      LocalRegion currRegion) {
+      LocalRegion currRegion, boolean fetchRemote) {
     return ((PartitionedRegion)currRegion).getAppropriateLocalEntriesIterator(
-        bucketSet, primaryOnly, forUpdate, includeValues, currRegion);
+        bucketSet, primaryOnly, forUpdate, includeValues, currRegion, fetchRemote);
   }
 }

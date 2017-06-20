@@ -397,7 +397,7 @@ public class TestUtil {
 				case DB2JCC_FRAMEWORK:
 					return "com.ibm.db2.jcc.DB2";
 				case DERBY_NET_CLIENT_FRAMEWORK:
-					return "com.pivotal.gemfirexd.internal.jdbc.Client";
+					return "io.snappydata.jdbc.Client";
 				case EMBEDDED_FRAMEWORK:
 					return "com.pivotal.gemfirexd.internal.jdbc.Embedded";
 				default:
@@ -747,11 +747,11 @@ public class TestUtil {
 			// DatabaseMetaData.getJDBCMajorVersion() was not part of JDBC 2.0.
 			// Check if setSavepoint() is present to decide whether the version
 			// is > 2.0.
-			conn.getClass().getMethod("setSavepoint", null);
+			conn.getClass().getMethod("setSavepoint");
 			DatabaseMetaData meta = conn.getMetaData();
 			Method method =
-				meta.getClass().getMethod("getJDBCMajorVersion", null);
-			return ((Number) method.invoke(meta, null)).intValue();
+				meta.getClass().getMethod("getJDBCMajorVersion");
+			return ((Number) method.invoke(meta)).intValue();
 		} catch (Throwable t) {
 			// Error probably means that either setSavepoint() or
 			// getJDBCMajorVersion() is not present. Assume JDBC 2.0.
@@ -946,7 +946,7 @@ public class TestUtil {
 									IllegalArgumentException, 
 									IllegalAccessException, 
 									InvocationTargetException{
-									return m.invoke(null, null);
+									return m.invoke(null);
 								}
 							}
 						 );

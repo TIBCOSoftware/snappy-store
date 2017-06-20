@@ -1824,14 +1824,14 @@ public class SystemAdmin {
     usageMap.put("print-stacks", "print-stacks [-all-threads] [<filename>]");
   }
   // option statics
-  private static boolean debug = false;
+  protected static boolean debug = false;
   private static boolean details = false;
   private static boolean nofilter = false;
   private static boolean persec = false;
   private static boolean persample = false;
   private static boolean prunezeros = false;
   private static boolean quiet = false;
-  private static boolean help = false;
+  protected static boolean help = false;
   private static boolean monitor = false;
   private static boolean showBuckets = false;
   private static long startTime = -1;
@@ -1849,7 +1849,7 @@ public class SystemAdmin {
   private static String compressorClassNameOption = null;
   private static String statisticsEnabledOption = null;
   private static boolean remove = false;
-  private static String sysDirName = null;
+  protected static String sysDirName = null;
   private static ArrayList<File> archiveOption = new ArrayList<File>();
   private static String printStacksOption = null;
   private static String outOption = null;
@@ -2048,7 +2048,7 @@ public class SystemAdmin {
     return lines;
   }
 
-  private static String getExceptionMessage(Throwable ex) {
+  protected static String getExceptionMessage(Throwable ex) {
     String result = ex.getMessage();
     if (result == null || result.length() == 0) {
       result = ex.toString();
@@ -2214,7 +2214,6 @@ public class SystemAdmin {
         } else if (cmdLine.size() == 1 &&
                    "FULL".equalsIgnoreCase(String.valueOf(cmdLine.get(0)))) {
           GemFireVersion.print(System.out, true);
-
         } else {
           GemFireVersion.print(System.out, false);
         }

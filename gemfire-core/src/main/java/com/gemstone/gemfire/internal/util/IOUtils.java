@@ -26,6 +26,8 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
+import java.util.Random;
+import java.util.UUID;
 
 import com.gemstone.gemfire.internal.lang.ObjectUtils;
 import com.gemstone.gemfire.internal.lang.StringUtils;
@@ -311,6 +313,45 @@ public abstract class IOUtils {
     }
 
     throw new FileNotFoundException(String.format("Pathname (%1$s) could not be found!", pathname));
+  }
+
+  /** static random number generator for UUIDs */
+  private static final Random uuidRnd = new Random();
+
+  /**
+   * Generate a random UUID for file names etc. Uses non-secure version
+   * of random number generator to be more efficient given that its not
+   * critical to have this unique.
+   *
+   * Adapted from Android's java.util.UUID source.
+   */
+  public static UUID newNonSecureRandomUUID() {
+    final byte[] randomBytes = new byte[16];
+    uuidRnd.nextBytes(randomBytes);
+
+    long msb = getLong(randomBytes, 0);
+    long lsb = getLong(randomBytes, 8);
+    // Set the version field to 4.
+    msb &= ~(0xfL << 12);
+    msb |= (4L << 12);
+    // Set the variant field to 2. Note that the variant field is
+    // variable-width, so supporting other variants is not just a matter
+    // of changing the constant 2 below!
+    lsb &= ~(0x3L << 62);
+    lsb |= 2L << 62;
+    return new UUID(msb, lsb);
+  }
+
+  public static long getLong(byte[] src, int offset) {
+    int h = ((src[offset++] & 0xff) << 24) |
+        ((src[offset++] & 0xff) << 16) |
+        ((src[offset++] & 0xff) << 8) |
+        (src[offset++] & 0xff);
+    int l = ((src[offset++] & 0xff) << 24) |
+        ((src[offset++] & 0xff) << 16) |
+        ((src[offset++] & 0xff) << 8) |
+        (src[offset] & 0xff);
+    return (((long)h) << 32L) | ((long)l) & 0xffffffffL;
   }
 
   /**

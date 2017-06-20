@@ -155,7 +155,7 @@ public class ReplyMessage extends HighPriorityDistributionMessage  {
       if (sendTXChanges) {
         this.txChanges = TXChanges.fromMessage(srcMessage, txProxy);
       }
-      if (finishTXRead && srcMessage.finishTXProxyRead()) {
+      if (finishTXRead && srcMessage.finishTXProxyRead() && !txProxy.isSnapshot()) {
         // in case there is nothing in the TXStateProxy then get rid of it
         // so that commit/rollback will not be required for this node;
         // this is now a requirement since commit/rollback targets only the

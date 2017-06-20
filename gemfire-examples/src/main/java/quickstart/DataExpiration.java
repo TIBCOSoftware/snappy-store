@@ -29,7 +29,7 @@ import com.gemstone.gemfire.cache.Region;
  * eviction to remove the data and its key (destruction) or just the data
  * (invalidation). Please refer to the quickstart guide for instructions on how
  * to run this example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 4.1.1

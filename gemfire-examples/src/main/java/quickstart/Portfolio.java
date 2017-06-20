@@ -27,12 +27,12 @@ import com.gemstone.gemfire.cache.Declarable;
  * represent shares of stock (a "security").  Instances of 
  * <code>Portfolio</code> can be stored in a GemFire <code>Region</code> and 
  * their contents can be queried using the GemFire query service.
- * </p>
+ * <p>
  * This class is <code>Serializable</code> because we want it to be distributed 
  * to multiple members of a distributed system.  Because this class is 
  * <code>Declarable</code>, we can describe instances of it in a GemFire 
  * <code>cache.xml</code> file.
- * </p>
+ * <p>
  *
  * @author GemStone Systems, Inc.
  * @since 4.1.1

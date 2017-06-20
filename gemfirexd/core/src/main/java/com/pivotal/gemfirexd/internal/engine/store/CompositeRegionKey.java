@@ -70,6 +70,13 @@ public final class CompositeRegionKey implements Serializable, RegionKey {
     this.primaryKey = key;
   }
 
+  public void setPrimaryKey(DataValueDescriptor[] key) {
+    if (key == null) {
+      throw new IllegalArgumentException("key should never be null.");
+    }
+    this.primaryKey = key;
+  }
+
   @Override
   public final void setRegionContext(final LocalRegion region) {
     // invoke for each key

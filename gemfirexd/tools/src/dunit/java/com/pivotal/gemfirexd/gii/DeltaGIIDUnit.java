@@ -91,9 +91,6 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testGFXDDeltaWithDeltaGII() throws Exception {
-	  if(isTransactional) {
-		  return;
-	  }
     startVMs(0, 2);
     startVMs(1, 0);
     createDiskStore(true, 1);
@@ -150,7 +147,7 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
     psUpdate.setString(1, "AfterReceivedImageReply");
     psUpdate.setInt(2, 4);
     psUpdate.execute();
-    expected.put(4,  "AfterReceivedImageReply");
+    expected.put(4, "AfterReceivedImageReply");
     
     //unblock the GII. The GII should now finish
     unblockGII(-2, GIITestHookType.AfterReceivedImageReply);
@@ -203,9 +200,6 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testGFXDDeltaWithDeltaGII_serverExecute() throws Exception {
-	  if(isTransactional) {
-		  return;
-	  }
     startVMs(0, 2);
     startVMs(1, 0);
     createDiskStore(true, 1);
@@ -294,7 +288,348 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
     }
     
   }
-  
+
+  /**
+   * Test insufficient data store behaviour for distributed/update/delete/select
+   * and for primary key based select/update/delete
+   *
+   * @throws Exception
+   */
+  public void testGFXDDeltaWithDeltaGIINoAutoCommit() throws Exception {
+    startVMs(0, 2);
+    startVMs(1, 0);
+    createDiskStore(true, 1);
+    // Create a schema
+    clientSQLExecute(1, "create schema trade");
+
+    Map<Integer, String> expected = new HashMap<Integer, String>();
+    clientSQLExecute(1, "create table trade.customers (cid int not null, "
+        + "cust_name varchar(100), tid int, primary key (cid)) ENABLE CONCURRENCY CHECKS replicate "
+        + getSuffix());
+    Connection conn = TestUtil.getConnection();
+    conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+    conn.setAutoCommit(false);
+    PreparedStatement psInsert = conn
+        .prepareStatement("insert into trade.customers values (?,?,?)");
+    for (int i = 1; i < 5; ++i) {
+      psInsert.setInt(1, i);
+      psInsert.setString(2, "unmodified");
+      psInsert.setInt(3, i);
+      psInsert.executeUpdate();
+      expected.put(i,  "unmodified");
+    }
+    conn.commit();
+    //Stop a VM, and create some modifications
+    stopVMNums(-2);
+
+    PreparedStatement psUpdate = conn
+        .prepareStatement("update trade.customers set cust_name=? where cid=?");
+    psUpdate.setString(1, "BeforeRestart");
+    psUpdate.setInt(2, 2);
+    psUpdate.execute();
+    conn.commit();
+    expected.put(2,  "BeforeRestart");
+
+    blockGII(-2, GIITestHookType.BeforeRequestRVV);
+    blockGII(-2, GIITestHookType.AfterReceivedImageReply);
+
+    AsyncVM async2 = restartServerVMAsync(2, 0, null, null);
+
+    waitForGIICallbackStarted(-2, GIITestHookType.BeforeRequestRVV);
+
+    //Do an update before requesting the RVV. If we apply this update
+    //to the RVV On the recipient, it will cause us to fail to fetch the base
+    //value for the row
+    psUpdate.setString(1, "BeforeRequestRVV");
+    psUpdate.setInt(2, 3);
+    psUpdate.execute();
+    conn.commit();
+    expected.put(3,  "BeforeRequestRVV");
+
+    //Let the GII proceeed until after we receive the initial image reply
+    //(but before we process it)
+    unblockGII(-2, GIITestHookType.BeforeRequestRVV);
+
+    waitForGIICallbackStarted(-2, GIITestHookType.AfterReceivedImageReply);
+
+    //Do an update. If this is not applied to the RVV at some point
+    //the RVV will not match the region contents.
+    psUpdate.setString(1, "AfterReceivedImageReply");
+    psUpdate.setInt(2, 4);
+    psUpdate.execute();
+    conn.commit();
+    expected.put(4,  "AfterReceivedImageReply");
+
+    //unblock the GII. The GII should now finish
+    unblockGII(-2, GIITestHookType.AfterReceivedImageReply);
+
+    System.out.println("SKSK unblockGII AfterReceivedImageReply");
+    joinVM(false, async2);
+
+
+
+    RegionVersionVector rvv1 = getRVV(-1);
+    RegionVersionVector rvv2 = getRVV(-2);
+    if(!rvv1.logicallySameAs(rvv2)) {
+      fail("RVVS don't match. provider=" +rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
+    }
+
+    {
+      //Make sure vm2 has the correct contents.
+      //Now we want to validate the region contents and RVVs...
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+
+      assertEquals(expected,received);
+    }
+
+    stopVMNums(-1);
+
+    //Make sure vm2 has the correct contents.
+    //Now we want to validate the region contents and RVVs...
+    {
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+      assertEquals(expected,received);
+    }
+    conn.commit();
+  }
+
+  /**
+   * Test insufficient data store behaviour for distributed/update/delete/select
+   * and for primary key based select/update/delete
+   *
+   * @throws Exception
+   */
+  public void testGFXDDeleteWithDeltaGIITX() throws Exception {
+    startVMs(0, 2);
+    startVMs(1, 0);
+    createDiskStore(true, 1);
+    // Create a schema
+    clientSQLExecute(1, "create schema trade");
+
+    Map<Integer, String> expected = new HashMap<Integer, String>();
+    clientSQLExecute(1, "create table trade.customers (cid int not null, "
+        + "cust_name varchar(100), tid int, primary key (cid)) ENABLE CONCURRENCY CHECKS replicate "
+        + getSuffix());
+    Connection conn = TestUtil.getConnection();
+    conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+    conn.setAutoCommit(true);
+    PreparedStatement psInsert = conn
+        .prepareStatement("insert into trade.customers values (?,?,?)");
+    for (int i = 1; i < 5; ++i) {
+      psInsert.setInt(1, i);
+      psInsert.setString(2, "unmodified");
+      psInsert.setInt(3, i);
+      psInsert.executeUpdate();
+      expected.put(i,  "unmodified");
+    }
+    //Stop a VM, and create some modifications
+    stopVMNums(-2);
+
+    PreparedStatement psUpdate = conn
+        .prepareStatement("update trade.customers set cust_name=? where cid=?");
+    psUpdate.setString(1, "BeforeRestart");
+    psUpdate.setInt(2, 2);
+    psUpdate.execute();
+    expected.put(2,  "BeforeRestart");
+
+    blockGII(-2, GIITestHookType.BeforeRequestRVV);
+    blockGII(-2, GIITestHookType.AfterReceivedImageReply);
+
+    AsyncVM async2 = restartServerVMAsync(2, 0, null, null);
+
+    waitForGIICallbackStarted(-2, GIITestHookType.BeforeRequestRVV);
+
+    //Do an update before requesting the RVV. If we apply this update
+    //to the RVV On the recipient, it will cause us to fail to fetch the base
+    //value for the row
+    psUpdate.setString(1, "BeforeRequestRVV");
+    psUpdate.setInt(2, 3);
+    psUpdate.execute();
+
+    expected.put(3,  "BeforeRequestRVV");
+
+    //Let the GII proceeed until after we receive the initial image reply
+    //(but before we process it)
+    unblockGII(-2, GIITestHookType.BeforeRequestRVV);
+
+    waitForGIICallbackStarted(-2, GIITestHookType.AfterReceivedImageReply);
+
+    //Do a delete. If this is not applied to the RVV at some point
+    //the RVV will not match the region contents.
+
+    Statement st = conn.createStatement();
+    boolean b = st.execute("delete from trade.customers where cid = 4");
+    expected.remove(4);
+
+    //unblock the GII. The GII should now finish
+    unblockGII(-2, GIITestHookType.AfterReceivedImageReply);
+
+    joinVM(false, async2);
+
+    RegionVersionVector rvv1 = getRVV(-1);
+    RegionVersionVector rvv2 = getRVV(-2);
+    if(!rvv1.logicallySameAs(rvv2)) {
+      fail("RVVS don't match. provider=" +rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
+    }
+
+    {
+      //Make sure vm2 has the correct contents.
+      //Now we want to validate the region contents and RVVs...
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+      assertEquals(expected,received);
+    }
+
+    stopVMNums(-1);
+
+    //Make sure vm2 has the correct contents.
+    //Now we want to validate the region contents and RVVs...
+    {
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+      assertEquals(expected,received);
+    }
+  }
+
+
+
+  /**
+   * Test insufficient data store behaviour for distributed/update/delete/select
+   * and for primary key based select/update/delete
+   *
+   * @throws Exception
+   */
+  public void testGFXDDeltaWithDeltaGIITX() throws Exception {
+    startVMs(0, 2);
+    startVMs(1, 0);
+    createDiskStore(true, 1);
+    // Create a schema
+    clientSQLExecute(1, "create schema trade");
+
+    Map<Integer, String> expected = new HashMap<Integer, String>();
+    clientSQLExecute(1, "create table trade.customers (cid int not null, "
+        + "cust_name varchar(100), tid int, primary key (cid)) ENABLE CONCURRENCY CHECKS replicate "
+        + getSuffix());
+    Connection conn = TestUtil.getConnection();
+    conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+    conn.setAutoCommit(true);
+    PreparedStatement psInsert = conn
+        .prepareStatement("insert into trade.customers values (?,?,?)");
+    for (int i = 1; i < 5; ++i) {
+      psInsert.setInt(1, i);
+      psInsert.setString(2, "unmodified");
+      psInsert.setInt(3, i);
+      psInsert.executeUpdate();
+      expected.put(i,  "unmodified");
+    }
+    //Stop a VM, and create some modifications
+    stopVMNums(-2);
+
+    PreparedStatement psUpdate = conn
+        .prepareStatement("update trade.customers set cust_name=? where cid=?");
+    psUpdate.setString(1, "BeforeRestart");
+    psUpdate.setInt(2, 2);
+    psUpdate.execute();
+    expected.put(2,  "BeforeRestart");
+
+    blockGII(-2, GIITestHookType.BeforeRequestRVV);
+    blockGII(-2, GIITestHookType.AfterReceivedImageReply);
+
+    AsyncVM async2 = restartServerVMAsync(2, 0, null, null);
+
+    waitForGIICallbackStarted(-2, GIITestHookType.BeforeRequestRVV);
+
+    //Do an update before requesting the RVV. If we apply this update
+    //to the RVV On the recipient, it will cause us to fail to fetch the base
+    //value for the row
+    psUpdate.setString(1, "BeforeRequestRVV");
+    psUpdate.setInt(2, 3);
+    psUpdate.execute();
+
+    expected.put(3,  "BeforeRequestRVV");
+
+    //Let the GII proceeed until after we receive the initial image reply
+    //(but before we process it)
+    unblockGII(-2, GIITestHookType.BeforeRequestRVV);
+
+    waitForGIICallbackStarted(-2, GIITestHookType.AfterReceivedImageReply);
+
+    //Do an update. If this is not applied to the RVV at some point
+    //the RVV will not match the region contents.
+    psUpdate.setString(1, "AfterReceivedImageReply");
+    psUpdate.setInt(2, 4);
+    psUpdate.execute();
+    expected.put(4,  "AfterReceivedImageReply");
+
+    //unblock the GII. The GII should now finish
+    unblockGII(-2, GIITestHookType.AfterReceivedImageReply);
+
+    joinVM(false, async2);
+
+    RegionVersionVector rvv1 = getRVV(-1);
+    RegionVersionVector rvv2 = getRVV(-2);
+    if(!rvv1.logicallySameAs(rvv2)) {
+      fail("RVVS don't match. provider=" +rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
+    }
+
+    {
+      //Make sure vm2 has the correct contents.
+      //Now we want to validate the region contents and RVVs...
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+
+      assertEquals(expected,received);
+    }
+
+    stopVMNums(-1);
+
+    //Make sure vm2 has the correct contents.
+    //Now we want to validate the region contents and RVVs...
+    {
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+      assertEquals(expected,received);
+    }
+  }
+
   public void blockGII(int vmNum, GIITestHookType type) throws Exception {
     serverExecute(-vmNum, new BlockGII(type));
   }

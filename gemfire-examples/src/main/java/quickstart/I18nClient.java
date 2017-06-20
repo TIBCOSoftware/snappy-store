@@ -29,7 +29,7 @@ import java.util.List;
  * the contents of the server. The primary purpose is to demonstrate
  * GemFire's I18n awareness and help the user understand how to configure their
  * JVM correctly.
- * </p> 
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.0 

@@ -80,7 +80,7 @@ public interface ProcedureProcessorContext {
   /**
    * A "nested" JDBC connection that can be used by
    * the processor to execute SQL. If the SQL query string
-   * begins with the "<local>" escape sequence, then execution
+   * begins with the "&lt;local&gt;" escape sequence, then execution
    * will be restricted to local execution only.
    * This Connection is the same Connection obtained with
    * <code>DriverManager.getConnection("jdbc:default:connection");</code>

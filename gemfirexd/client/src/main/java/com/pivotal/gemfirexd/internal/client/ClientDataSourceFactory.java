@@ -94,7 +94,8 @@ public class ClientDataSourceFactory implements javax.naming.spi.ObjectFactory {
             // See if this object belongs to Derby.
             String className = ref.getClassName();
             if (className != null &&
-                    className.startsWith("com.pivotal.gemfirexd.internal.jdbc.Client")) {
+                   (className.startsWith("com.pivotal.gemfirexd.internal.jdbc.Client") ||
+                       className.startsWith("io.snappydata.jdbc.Client"))) {
                 // Create the proper data source object shell.
                 ds = Class.forName(className).newInstance();
 

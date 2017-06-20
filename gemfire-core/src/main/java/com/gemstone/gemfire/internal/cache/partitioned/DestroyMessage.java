@@ -40,19 +40,8 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.NanoTimer;
-import com.gemstone.gemfire.internal.cache.AbstractOperationMessage;
-import com.gemstone.gemfire.internal.cache.DataLocationException;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.EnumListenerEvent;
-import com.gemstone.gemfire.internal.cache.EventID;
-import com.gemstone.gemfire.internal.cache.FilterRoutingInfo;
-import com.gemstone.gemfire.internal.cache.ForceReattemptException;
-import com.gemstone.gemfire.internal.cache.KeyWithRegionContext;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.PrimaryBucketException;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
+import com.gemstone.gemfire.internal.cache.*;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.versions.DiskVersionTag;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
@@ -455,7 +444,10 @@ public class DestroyMessage extends PartitionMessageWithDirectReply {
 //          event.setOriginRemote(false);
 //        }
         event.setCausedByMessage(this);
-        r.getDataView(tx).destroyOnRemote(event, this.cacheWrite,
+        InternalDataView view = (getLockingPolicy() == LockingPolicy.SNAPSHOT) ?
+            r.getSharedDataView() : r.getDataView(tx);
+
+        view.destroyOnRemote(event, this.cacheWrite,
             this.expectedOldValue);
         if (DistributionManager.VERBOSE) {
           l.fine(getClass().getName() + " updated bucket: " + bucket

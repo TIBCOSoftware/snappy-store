@@ -88,7 +88,7 @@
       <!-- GemStone changes BEGIN -->
       <sysproperty key="ij.database" value="jdbc:gemfirexd:;mcast-port=0"/>
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <sysproperty key="gemfire.log-level" value="${logLevel}"/>
       <!-- original code
       <sysproperty key="ij.database" value="jdbc:derby:toursdb;create=true"/>
@@ -111,7 +111,7 @@
       <!-- GemStone changes BEGIN -->
       <sysproperty key="ij.database" value="jdbc:gemfirexd:;mcast-port=0"/>
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <sysproperty key="gemfire.log-level" value="config"/>
       <!-- sysproperty key="gemfire.log-level" value="${logLevel}"/ -->
       <!-- original code
@@ -130,7 +130,7 @@
       </classpath>
       <!-- GemStone changes BEGIN -->
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <sysproperty key="gemfire.log-level" value="${logLevel}"/>
       <!-- GemStone changes END -->
     </java>
@@ -144,7 +144,7 @@
       </classpath>
       <!-- GemStone changes BEGIN -->
       <!-- allow running in background that gets stuck due to jline usage of ij -->
-      <sysproperty key="jline.terminal" value="scala.tools.jline.UnsupportedTerminal"/>
+      <sysproperty key="jline.terminal" value="jline.UnsupportedTerminal"/>
       <sysproperty key="gemfire.log-level" value="${logLevel}"/>
       <!-- GemStone changes END -->
       <arg value="disconnect.sql"/>

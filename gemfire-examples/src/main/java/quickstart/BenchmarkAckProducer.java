@@ -28,7 +28,7 @@ import com.gemstone.gemfire.cache.Region;
  * puts an entry value, waits for the ACK, and compares the current timestamp
  * with the timestamp taken before the put. Please refer to the quickstart guide
  * for instructions on how to run this example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 4.1.1

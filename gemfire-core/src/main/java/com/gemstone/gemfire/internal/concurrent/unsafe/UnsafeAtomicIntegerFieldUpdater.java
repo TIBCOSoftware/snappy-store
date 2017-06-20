@@ -20,7 +20,6 @@ package com.gemstone.gemfire.internal.concurrent.unsafe;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
-
 import sun.misc.Unsafe;
 
 /**
@@ -47,7 +46,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public boolean compareAndSet(T obj, int expect, int update) {
-    return unsafe.compareAndSwapInt(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapInt(obj, offset, expect, update);
   }
 
   /**
@@ -56,7 +55,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
   @Override
   public boolean weakCompareAndSet(T obj, int expect, int update) {
     // same as strong version
-    return unsafe.compareAndSwapInt(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapInt(obj, offset, expect, update);
   }
 
   /**
@@ -64,7 +63,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public void set(T obj, int newValue) {
-    unsafe.putIntVolatile(obj, this.offset, newValue);
+    unsafe.putIntVolatile(obj, offset, newValue);
   }
 
   /**
@@ -72,7 +71,7 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public void lazySet(T obj, int newValue) {
-    unsafe.putOrderedInt(obj, this.offset, newValue);
+    unsafe.putOrderedInt(obj, offset, newValue);
   }
 
   /**
@@ -80,6 +79,62 @@ public final class UnsafeAtomicIntegerFieldUpdater<T> extends
    */
   @Override
   public int get(T obj) {
-    return unsafe.getIntVolatile(obj, this.offset);
+    return unsafe.getIntVolatile(obj, offset);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndSet(T obj, int newValue) {
+    return unsafe.getAndSetInt(obj, offset, newValue);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndAdd(T obj, int delta) {
+    return unsafe.getAndAddInt(obj, offset, delta);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int addAndGet(T obj, int delta) {
+    return getAndAdd(obj, delta) + delta;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndIncrement(T obj) {
+    return getAndAdd(obj, 1);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int getAndDecrement(T obj) {
+    return getAndAdd(obj, -1);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int incrementAndGet(T obj) {
+    return getAndAdd(obj, 1) + 1;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final int decrementAndGet(T obj) {
+    return getAndAdd(obj, -1) - 1;
   }
 }

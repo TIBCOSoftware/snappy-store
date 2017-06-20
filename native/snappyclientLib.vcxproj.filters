@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <ItemGroup Label="Filters">
+    <Filter Include="Source Files">
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup Label="Sources">
+    <ClCompile Include="build.gradle">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\ClientAttribute.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\ClientProperty.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\ColumnDescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\common\MessageBase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\common\SystemProperties.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\Connection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\DatabaseMetaData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\BufferedSocketTransport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\BufferedSocketTransport.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\ClientService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\ClientService.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\ControlConnection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\ControlConnection.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\DNSCacheService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\DNSCacheService.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalLogger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalLogger.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalUtils.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeList.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeMap.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\LogWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\messages\SQLMessage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\messages\SQLStateMessage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\Parameters.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\ParametersBatch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\PreparedStatement.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\Result.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\ResultSet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\Row.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\SQLException.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\SQLState.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\StatementAttributes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\LocatorService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\LocatorService.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\SnappyDataService.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\SnappyDataService.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_constants.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_BlobChunk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ClobChunk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ColumnDescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ColumnValue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ConnectionProperties.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_DateTime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Decimal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_EntityId.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_HostAddress.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_JSONObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_JSONValue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_OpenConnectionArgs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_OutputParameter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_PrepareResult.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Row.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_RowSet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ServiceMetaData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ServiceMetaDataArgs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyExceptionData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_StatementAttrs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_StatementResult.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Timestamp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_UpdateResult.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_types.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\types\Blob.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\types\Clob.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\types\DateTime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\types\Decimal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\types\JSON.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\types\LobBase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\types\Timestamp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\UpdatableRow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup Label="Headers">
+    <ClInclude Include="src\snappyclient\headers\ClientAttribute.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\ClientBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\ClientProperty.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\ColumnDescriptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\ColumnDescriptorBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\common\ArrayList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\common\Base.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\common\MessageBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\common\SystemProperties.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\Connection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\DatabaseMetaData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\LogWriter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\messages\SQLMessage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\messages\SQLStateMessage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\ParameterDescriptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\Parameters.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\ParametersBatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\PreparedStatement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\Result.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\ResultSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\Row.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\SnappyDataClient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_constants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_BlobChunk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ClobChunk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ColumnDescriptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ColumnValue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ConnectionProperties.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_DateTime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_Decimal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_EntityId.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_HostAddress.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_JSONObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_JSONValue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_OpenConnectionArgs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_OutputParameter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_PrepareResult.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_Row.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_RowSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ServiceMetaData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ServiceMetaDataArgs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_SnappyExceptionData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_StatementAttrs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_StatementResult.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_Timestamp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_UpdateResult.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\SQLException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\SQLState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\StatementAttributes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\types\Blob.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\types\Clob.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\types\DateTime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\types\Decimal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\types\JSON.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\types\LobBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\types\Timestamp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\Types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\UpdatableRow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\BufferedSocketTransport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\ClientService.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\ControlConnection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\DNSCacheService.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\InternalLogger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\InternalUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\MessageRegistry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\thrift\LocatorService.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\thrift\SnappyDataService.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

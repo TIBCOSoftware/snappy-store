@@ -43,7 +43,7 @@ package com.pivotal.gemfirexd.internal.impl.tools.ij;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.*;
 import com.pivotal.gemfirexd.internal.shared.common.StopWatch;
 import com.pivotal.gemfirexd.internal.tools.JDBCDisplayUtil;
-import scala.tools.jline.console.ConsoleReader;
+import jline.console.ConsoleReader;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
@@ -519,7 +519,7 @@ public final class util implements java.security.PrivilegedAction {
 	    // JDBC driver
 	    String driver = util.getSystemProperty("driver");
 	    if (driver == null) {
-		driver = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+		driver = "io.snappydata.jdbc.EmbeddedDriver";
 	    }
 	    
 	    loadDriver(driver);
@@ -741,7 +741,7 @@ AppUI.out.println("SIZE="+l);
 			ps.execute();
 			JDBCDisplayUtil.DisplayResults(out,ps,conn,
 			    reader /* GemStoneAddition */,
-			    timer /* GemStoneAddition */);
+			    timer /* GemStoneAddition */, true);
 
 			/*
 				5. clear the parameters
@@ -838,6 +838,8 @@ AppUI.out.println("SIZE="+l);
 // GemStone changes BEGIN
 		  { "jdbc:gemfirexd://", "com.pivotal.gemfirexd.jdbc.ClientDriver" },
 		  { "jdbc:gemfirexd:", "com.pivotal.gemfirexd.jdbc.EmbeddedDriver" },
+      { "jdbc:snappydata://", "io.snappydata.jdbc.ClientDriver" },
+      { "jdbc:snappydata:", "io.snappydata.jdbc.EmbeddedDriver" }
 		  /* (original derby code)
 		  { "jdbc:derby://",            "com.pivotal.gemfirexd.jdbc.ClientDriver"},
 

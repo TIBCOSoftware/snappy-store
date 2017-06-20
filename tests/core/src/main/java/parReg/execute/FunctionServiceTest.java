@@ -142,7 +142,7 @@ public class FunctionServiceTest extends ParRegColocation {
   protected static final int FUNC_WITH_CUSTOM_COLLECTOR = 2;
 
   // protected static final int FUNC_WITH_INDIVIDUAL_COLLECTOR = 3; //Currently
-  // not required to be tested after discussion with Suds and Yogesh
+  // not required to be tested after discussion with team
 
   protected static final int COLLECTOR_FIRST_OP = 1;
 

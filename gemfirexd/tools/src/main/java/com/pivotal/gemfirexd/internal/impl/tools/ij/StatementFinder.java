@@ -43,7 +43,7 @@ package com.pivotal.gemfirexd.internal.impl.tools.ij;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.LocalizedInput;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.LocalizedOutput;
 import com.pivotal.gemfirexd.tools.internal.MiscTools;
-import scala.tools.jline.console.ConsoleReader;
+import jline.console.ConsoleReader;
 
 import java.io.IOException;
 import java.io.Reader;

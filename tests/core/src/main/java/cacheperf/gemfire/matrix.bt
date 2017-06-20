@@ -1,4 +1,4 @@
-// SUDHIR'S MATRIX
+// MATRIX
 
 include $JTESTS/cacheperf/gemfire/create/create.bt
 include $JTESTS/cacheperf/gemfire/create/mirrorcreate.bt

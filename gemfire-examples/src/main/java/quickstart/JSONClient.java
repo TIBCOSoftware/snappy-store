@@ -28,7 +28,7 @@ import com.gemstone.gemfire.pdx.PdxInstance;
  * client requests and updates. This client first adds JSON Document in gemfire 
  * cache. Then it retrieves that document from cache. Then it shows how to 
  * query that document.
- * </p>
+ * <p>
  *
  * @author GemStone Systems, Inc.
  * @since 5.8

@@ -49,10 +49,10 @@ import com.gemstone.gemfire.security.NotAuthorizedException;
  * multiple users with different credentials. This client uses the valid
  * username and password. Please refer to the quickstart guide for instructions
  * on how to run this example.
- * </p>
+ * <p>
  * Add $GEMFIRE/lib/gfSecurityImpl.jar to your CLASSPATH before running this
  * example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc
  * @since 6.5

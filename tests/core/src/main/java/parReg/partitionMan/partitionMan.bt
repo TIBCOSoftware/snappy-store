@@ -1,4 +1,4 @@
-// Test variations removed March 2013 per Suds decision to not support this API in general (only support is specific to customer use case)
+// Test variations removed March 2013 per team decision to not support this API in general (only support is specific to customer use case)
 //parReg/partitionMan/createPrimBuckets.conf
 //   A=accessor accessorHosts=2 accessorVMsPerHost=1 accessorThreadsPerVM=3
 //   B=dataStore dataStoreHosts=5 dataStoreVMsPerHost=1 dataStoreThreadsPerVM=3
@@ -12,7 +12,7 @@ parReg/partitionMan/createPrimBuckets.conf
    destroyExistingRemote=false
    destroyExistingLocal=false
 
-// Test variations removed March 2013 per Suds decision to not support this API in general (only support is specific to customer use case)
+// Test variations removed March 2013 per team decision to not support this API in general (only support is specific to customer use case)
 //parReg/partitionMan/createPrimBucketsPersist.conf
 //   A=accessor accessorHosts=2 accessorVMsPerHost=1 accessorThreadsPerVM=3
 //   B=dataStore dataStoreHosts=5 dataStoreVMsPerHost=1 dataStoreThreadsPerVM=3
@@ -26,7 +26,7 @@ parReg/partitionMan/createPrimBucketsPersist.conf
    destroyExistingRemote=false
    destroyExistingLocal=false
 
-// Test variations removed March 2013 per Suds decision to not support this API in general (only support is specific to customer use case)
+// Test variations removed March 2013 per team decision to not support this API in general (only support is specific to customer use case)
 //parReg/partitionMan/createPrimBucketsWithRebalance.conf
 //   A=accessor accessorHosts=2 accessorVMsPerHost=1 accessorThreadsPerVM=3
 //   B=dataStore dataStoreHosts=6 dataStoreVMsPerHost=1 dataStoreThreadsPerVM=3

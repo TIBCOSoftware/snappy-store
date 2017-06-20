@@ -206,6 +206,10 @@ abstract class ConnectionChild {
 	SQLException newSQLException(String messageId, Object arg1, Object arg2) {
 		return localConn.newSQLException(messageId, arg1, arg2);
 	}
+	SQLException newSQLException(String messageId, Object arg1,
+	    Object arg2, Object arg3) {
+	  return Util.generateCsSQLException(messageId, arg1, arg2, arg3);
+	}
 }
 
 

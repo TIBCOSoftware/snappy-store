@@ -813,6 +813,9 @@ public interface SQLState {
 	String LANG_DB2_INVALID_COLS_SPECIFIED                             = "42802";
         String LANG_DB2_INVALID_SELECT_COL_FOR_HAVING = "42803";
 	String LANG_DB2_ADD_UNIQUE_OR_PRIMARY_KEY_ON_NULL_COLS			   = "42831";
+// GemStone changes BEGIN
+	String LANG_ADD_PRIMARY_KEY_OR_INDEX_ON_LOB_UDT = "42832";
+// GemStone changes END
 	String LANG_DB2_REPLACEMENT_ERROR								   = "42815.S.713";
 	String LANG_DB2_COALESCE_DATATYPE_MISMATCH								   = "42815.S.171";
 	String LANG_DB2_TOO_LONG_FLOATING_POINT_LITERAL			           = "42820";
@@ -1325,6 +1328,7 @@ public interface SQLState {
 	String LANG_INDEX_COLUMN_NOT_EQUAL                                 = "X0X61.S";
 	String LANG_INCONSISTENT_ROW_LOCATION                              = "X0X62.S";
 	String LANG_FILE_ERROR                                             = "X0X63.S";
+	String LANG_INCONSISTENT_GLOBAL_INDEX_KEY                          = "X0X64.S";
 	String LANG_COLUMN_NOT_ORDERABLE_DURING_EXECUTION                  = "X0X67.S";
 	String LANG_OBJECT_NOT_FOUND_DURING_EXECUTION                      = "X0X81.S";
 	String LANG_NON_KEYED_INDEX                                        = "X0X85.S";
@@ -1363,6 +1367,7 @@ public interface SQLState {
 	String LANG_ADDING_NON_NULL_COLUMN_TO_NON_EMPTY_TABLE              = "X0Y57.S";
 	String LANG_ADD_PRIMARY_KEY_FAILED1                                = "X0Y58.S";
 	String LANG_ADD_CHECK_CONSTRAINT_FAILED                            = "X0Y59.S";
+	String LANG_INDEX_ROW_COUNT_MISMATCH_PR                            = "X0Y60.S";
 	String LANG_NULL_DATA_IN_PRIMARY_KEY                 	   	   	   = "X0Y63.S";
 	String LANG_NO_COMMIT_IN_NESTED_CONNECTION                         = "X0Y66.S";
 	String LANG_NO_ROLLBACK_IN_NESTED_CONNECTION                       = "X0Y67.S";
@@ -1432,7 +1437,9 @@ public interface SQLState {
     String GFXD_FORCED_DISCONNECT_EXCEPTION = "X0Z32.S";
     String GFXD_DISK_SPACE_FULL = "X0Z33.T";
     String LOCK_SKIPPED = "X0Z34";
-    String GFXD_SERVER_STACK_INDICATOR = "X0Z35";
+    String SNAPPY_SERVER_STACK_INDICATOR = "X0Z35";
+    String UNEXPECTED_EXCEPTION_FOR_PARTITION_RESOLVER = "X0Z36.S";
+    String UNEXPECTED_EXCEPTION_FOR_ROW_ENCODER = "X0Z37.S";
 // GemStone changes END
 
 	// TEMPORARY EXECUTION RESTRICTIONS
@@ -1507,6 +1514,7 @@ public interface SQLState {
 // GemStone changes BEGIN
     String LANG_STATEMENT_CANCELLED_ON_LOW_MEMORY                         = "XCL54.T";
     String LANG_STATEMENT_CANCELLED_ON_USER_REQUEST                       = "XCL56.T";
+    String SNAPPY_RELATION_DESTROY_VERSION_MISMATCH                       = "XCL57";
 
 // GemStone changes END
     /*
@@ -1562,6 +1570,7 @@ public interface SQLState {
     String EVICTION_BY_CRITERIA_NOT_SUPPORTED_WITH_NON_HDFS_TABLE= "0A000.S.32";
     String UNKNOWN_QUEUE_TYPE = "0A000.S.33";
     String HDFS_FILEROLLOVER_NOTSUPPORTED = "0A000.S.34";
+    String CANCEL_NO_UNIQUE_STATEMENT = "0A000.S.35";
 // GemStone changes END
 	
 
@@ -1696,7 +1705,7 @@ public interface SQLState {
     String STORED_PROC_LOAD_MODULE_NOT_FOUND = "XJ210.S";
     String BATCH_CHAIN_BREAKING_EXCEPTION = "XJ211.S";
     String INVALID_ATTRIBUTE_SYNTAX = "XJ212.S";
-    String TRACELEVEL_FORMAT_INVALID = "XJ213.C";
+    String LOGLEVEL_FORMAT_INVALID = "XJ213.C";
     String IO_ERROR_UPON_LOB_FREE = "XJ214.S";
     String LOB_OBJECT_INVALID = "XJ215.S";
     String LOB_OBJECT_LENGTH_UNKNOWN_YET = "XJ216.S";

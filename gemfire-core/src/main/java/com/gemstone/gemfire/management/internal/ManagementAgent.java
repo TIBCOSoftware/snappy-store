@@ -52,6 +52,7 @@ import com.gemstone.gemfire.management.ManagementService;
 import com.gemstone.gemfire.management.ManagerMXBean;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 
 /**
  * Agent implementation that controls the JMX server end points for JMX 
@@ -203,7 +204,7 @@ public class ManagementAgent  {
           if (this.logger.infoEnabled()) {
             this.logger.info(LocalizedStrings.DEBUG, String.format(
               "Starting embedded HTTP server on port (%1$d) at bind-address (%2$s)...",
-                this.httpServer.getConnectors()[0].getPort(), bindAddress));
+                ((ServerConnector) this.httpServer.getConnectors()[0]).getPort(), bindAddress));
           }
           System.setProperty(PULSE_EMBEDDED_PROP, "true");
           

@@ -87,7 +87,7 @@ public abstract class OffHeapByteSource extends Chunk implements ByteSource {
 
   @Override
   public final byte[] getRowBytes() {
-    return getBaseRowBytes(UnsafeMemoryChunk.getUnsafeWrapper(),
+    return getBaseRowBytes(
         getBaseDataAddress() + getOffsetAdjustment(), getLength());
   }
 
@@ -253,12 +253,11 @@ public abstract class OffHeapByteSource extends Chunk implements ByteSource {
     return 0;
   }
 
-  public static byte[] getBaseRowBytes(final UnsafeWrapper unsafe,
-      final long baseAddr, final int bytesLen) {
+  public static byte[] getBaseRowBytes(final long baseAddr, final int bytesLen) {
     // If the row does not have any lobs, the offheap byte source is not
     // serialized, else it is serialized
     byte[] result = new byte[bytesLen];
-    UnsafeMemoryChunk.readUnsafeBytes(unsafe, baseAddr, result, bytesLen);
+    UnsafeMemoryChunk.readUnsafeBytes(baseAddr, result, bytesLen);
     SimpleMemoryAllocatorImpl.getAllocator().getStats().incReads();
     return result;
   }

@@ -96,7 +96,7 @@ public class HDFSRegionMapDelegate {
       // it can be locked in basicPut/destroy
       RegionEntry oldRe = backingRM.putEntryIfAbsent(key, re);
       if (oldRe != null) {
-        if (re instanceof OffHeapRegionEntry && !oldRe.equals(re)) {
+        if (re.isOffHeap() && !oldRe.equals(re)) {
           ((OffHeapRegionEntry)re).release();
         }
         return oldRe;
@@ -235,7 +235,7 @@ public class HDFSRegionMapDelegate {
       // it can be locked in basicPut/destroy
       RegionEntry oldRe = backingRM.putEntryIfAbsent(event.getKey(), re);
       if (oldRe != null) {
-        if (re instanceof OffHeapRegionEntry && !oldRe.equals(re)) {
+        if (re.isOffHeap() && !oldRe.equals(re)) {
           ((OffHeapRegionEntry) re).release();
         }
         return oldRe;
@@ -423,7 +423,7 @@ public class HDFSRegionMapDelegate {
             // it can be locked in basicPut/destroy
             RegionEntry oldRe = backingRM.putEntryIfAbsent(key, re);
             if (oldRe != null) {
-              if (re instanceof OffHeapRegionEntry && !oldRe.equals(re)) {
+              if (re.isOffHeap() && !oldRe.equals(re)) {
                 ((OffHeapRegionEntry)re).release();
               }
               return oldRe;
@@ -460,7 +460,7 @@ public class HDFSRegionMapDelegate {
             // it can be locked in basicPut/destroy
             RegionEntry oldRe = backingRM.putEntryIfAbsent(key, re);
             if (oldRe != null) {
-              if (re instanceof OffHeapRegionEntry && !oldRe.equals(re)) {
+              if (re.isOffHeap() && !oldRe.equals(re)) {
                 ((OffHeapRegionEntry)re).release();
               }
               return oldRe;

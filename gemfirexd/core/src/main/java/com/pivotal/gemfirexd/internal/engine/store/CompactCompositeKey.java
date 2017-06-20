@@ -477,15 +477,15 @@ public abstract class CompactCompositeKey extends AtomicReference<byte[]>
                 tableInfo.getRowFormatter(hvbytes).serializeColumns(hvbytes,
                     out, tableInfo.getPrimaryKeyFixedColumns(),
                     tableInfo.getPrimaryKeyVarColumns(),
-                    pkFormatter.offsetBytes, pkFormatter.offsetIsDefault,
-                    pkFormatter);
+                    pkFormatter.getNumOffsetBytes(),
+                    pkFormatter.getOffsetDefaultToken(), pkFormatter);
               }
               else {
                 tableInfo.getRowFormatter(ohvbytes).serializeColumns(ohvbytes,
                     out, tableInfo.getPrimaryKeyFixedColumns(),
                     tableInfo.getPrimaryKeyVarColumns(),
-                    pkFormatter.offsetBytes, pkFormatter.offsetIsDefault,
-                    pkFormatter);
+                    pkFormatter.getNumOffsetBytes(),
+                    pkFormatter.getOffsetDefaultToken(), pkFormatter);
               }
               return;
             }

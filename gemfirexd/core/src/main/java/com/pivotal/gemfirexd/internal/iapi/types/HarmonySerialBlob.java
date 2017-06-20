@@ -41,10 +41,10 @@
 package com.pivotal.gemfirexd.internal.iapi.types;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.SQLException;
 
@@ -52,12 +52,15 @@ import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import io.snappydata.thrift.BlobChunk;
+import io.snappydata.thrift.common.BufferedBlob;
 
 /**
  * Copied from the Harmony project's implementation of javax.sql.rowset.serial.SerialBlob
  * at subversion revision 946981.
  */
-public class HarmonySerialBlob implements Blob, Serializable, Cloneable {
+public class HarmonySerialBlob implements Blob, BufferedBlob,
+    Serializable, Cloneable {
 
     private static final long serialVersionUID = -8144641928112860441L;
 
@@ -66,7 +69,7 @@ public class HarmonySerialBlob implements Blob, Serializable, Cloneable {
 
     // required by serialized form
 // GemStone changes BEGIN
-    private long len;
+    private int len;
     /* (original code)
     private Blob blob;
 
@@ -107,7 +110,7 @@ public class HarmonySerialBlob implements Blob, Serializable, Cloneable {
         this.buf = new byte[buf.length];
         len = buf.length;
         //origLen = len;
-        System.arraycopy(buf, 0, this.buf, 0, (int) len);
+        System.arraycopy(buf, 0, this.buf, 0, len);
     }
 // GemStone changes BEGIN
     public HarmonySerialBlob(OffHeapByteSource ohbs) {
@@ -317,10 +320,14 @@ public class HarmonySerialBlob implements Blob, Serializable, Cloneable {
         // expand the buffer if required
         if (pos > (len - length + 1)) {
           final long newLen = (length + pos - 1);
+          if (newLen > Integer.MAX_VALUE) {
+            throw makeSQLException(SQLState.BLOB_LENGTH_TOO_LONG,
+                new Object[] { newLen });
+          }
           final byte[] newBuf = new byte[(int)newLen];
-          System.arraycopy(this.buf, 0, newBuf, 0, (int)this.len);
+          System.arraycopy(this.buf, 0, newBuf, 0, this.len);
           this.buf = newBuf;
-          this.len = newLen;
+          this.len = (int)newLen;
         }
 // GemStone changes END
         System.arraycopy(theBytes, offset, buf, (int) pos - 1, length);
@@ -337,8 +344,8 @@ public class HarmonySerialBlob implements Blob, Serializable, Cloneable {
       if (length < this.len) {
 // GemStone changes END
         buf = getBytes(1, (int) length);
-        len = length;
 // GemStone changes BEGIN
+        len = (int)length;
       }
 // GemStone changes END
     }
@@ -383,6 +390,10 @@ public class HarmonySerialBlob implements Blob, Serializable, Cloneable {
         return new SQLException( se.getMessage(), se.getSQLState() );
     }
 // GemStone changes BEGIN
+    @Override
+    public BlobChunk getAsLastChunk() throws SQLException {
+      return new BlobChunk(ByteBuffer.wrap(this.buf, 0, this.len), true);
+    }
 
     private void checkValidation() throws SQLException {
       if (len == -1) {

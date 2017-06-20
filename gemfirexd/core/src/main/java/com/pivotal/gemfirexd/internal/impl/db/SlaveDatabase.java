@@ -418,7 +418,7 @@ public class SlaveDatabase extends BasicDatabase {
         try {
             shutdownInitiated = true;
             String driverName = 
-                "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+                "io.snappydata.jdbc.EmbeddedDriver";
 
             Class.forName(driverName).newInstance();
 

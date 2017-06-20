@@ -16,6 +16,8 @@
  */
 package com.gemstone.gemfire.internal.cache.versions;
 
+import com.gemstone.gemfire.cache.EntryEvent;
+import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 
 import java.io.DataInput;
@@ -43,18 +45,18 @@ public class DiskRegionVersionVector extends RegionVersionVector<DiskStoreID> {
   
 
   @Override
-  public void recordVersion(DiskStoreID member, long version) {
+  public void recordVersion(DiskStoreID member, long version, EntryEventImpl event) {
     //TODO - RVV - This is a temporary check to make sure we get
     //an exception if we try to add a non disk store id to this vector
-    super.recordVersion(member, version);
+    super.recordVersion(member, version, event);
   }
 
 
   @Override
-  public void recordGCVersion(DiskStoreID mbr, long regionVersion) {
+  public void recordGCVersion(DiskStoreID mbr, long regionVersion, EntryEventImpl event) {
     //TODO - RVV - This is a temporary check to make sure we get
     //an exception if we try to add a non disk store id to this vector
-    super.recordGCVersion(mbr, regionVersion);
+    super.recordGCVersion(mbr, regionVersion, event);
   }
 
   public DiskRegionVersionVector(DiskStoreID ownerId,
@@ -74,6 +76,11 @@ public class DiskRegionVersionVector extends RegionVersionVector<DiskStoreID> {
       RegionVersionHolder<DiskStoreID> localExceptions) {
     return new DiskRegionVersionVector(ownerId, vector, version,
         gcVersions, gcVersion, singleMember, localExceptions);
+  }
+
+  @Override
+  public boolean isDiskVersionVector() {
+    return true;
   }
 
   @Override

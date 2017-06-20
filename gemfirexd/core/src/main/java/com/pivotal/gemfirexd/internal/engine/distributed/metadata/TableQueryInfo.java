@@ -14,30 +14,22 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
+
 package com.pivotal.gemfirexd.internal.engine.distributed.metadata;
 
-
 import java.util.Iterator;
+
+import com.gemstone.gemfire.internal.cache.InternalPartitionResolver;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.pivotal.gemfirexd.internal.engine.Misc;
-import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
-import com.pivotal.gemfirexd.internal.engine.access.heap.MemHeap;
-import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
-import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConglomerateDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConstraintDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConstraintDescriptorList;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ForeignKeyConstraintDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.Conglomerate;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.*;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.FromBaseTable;
 
 /**
  * This class represents a table present in the query. It wraps details about
@@ -210,8 +202,8 @@ public final class TableQueryInfo extends AbstractQueryInfo {
 
   String getMasterTableName() {
     assert this.region instanceof PartitionedRegion;
-    GfxdPartitionResolver rslvr = (GfxdPartitionResolver)((PartitionedRegion)
-        this.region).getPartitionResolver();
+    InternalPartitionResolver rslvr = (InternalPartitionResolver)
+        ((PartitionedRegion)this.region).getPartitionResolver();
     return rslvr.getMasterTable(true /* get root master*/);
   }
 
@@ -236,8 +228,8 @@ public final class TableQueryInfo extends AbstractQueryInfo {
 
   int getPartitioningColumnCount() {
     if (this.region.getDataPolicy().withPartitioning()) {
-      GfxdPartitionResolver rslvr = (GfxdPartitionResolver)((PartitionedRegion)
-          this.region).getPartitionResolver();
+      InternalPartitionResolver rslvr = (InternalPartitionResolver)
+          ((PartitionedRegion)this.region).getPartitionResolver();
       return rslvr.getPartitioningColumnsCount();
     }
     else {

@@ -17,15 +17,22 @@
 
 package com.pivotal.gemfirexd.internal.engine.ddl.catalog;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
+import javax.annotation.Nonnull;
 
+import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.control.RebalanceOperation;
 import com.gemstone.gemfire.cache.control.ResourceManager;
@@ -36,27 +43,42 @@ import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.BucketAdvisor;
+import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import com.gemstone.gemfire.internal.cache.TXId;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
+import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.auth.callback.UserAuthenticator;
 import com.pivotal.gemfirexd.internal.catalog.AliasInfo;
+import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.catalog.SystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
+import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLQueueEntry;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
+import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionByExpressionResolver;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
+import com.pivotal.gemfirexd.internal.engine.distributed.AckResultCollector;
+import com.pivotal.gemfirexd.internal.engine.distributed.ByteArrayDataOutput;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction.QueryCancelFunctionArgs;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeGetStatsMessage;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeSmartConnectorOpMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.SecurityUtils;
 import com.pivotal.gemfirexd.internal.engine.store.CustomRowsResultSet;
@@ -72,14 +94,21 @@ import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.ConnectionUtil;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.AliasDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConglomerateDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ReferencedKeyConstraintDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.StatementRoutinePermission;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
+import com.pivotal.gemfirexd.internal.iapi.store.raw.LockingPolicy;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialBlob;
+import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
 import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 import com.pivotal.gemfirexd.internal.impl.jdbc.TransactionResourceImpl;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
@@ -93,8 +122,9 @@ import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import com.pivotal.gemfirexd.internal.snappy.LeadNodeSmartConnectorOpContext;
 import com.pivotal.gemfirexd.load.Import;
-import com.pivotal.gemfirexd.thrift.ServerType;
+import io.snappydata.thrift.ServerType;
 
 /**
  * GemFireXD built-in system procedures that will get executed on every
@@ -172,12 +202,12 @@ public class GfxdSystemProcedures extends SystemProcedures {
       AuthenticationServiceBase.validateUserPassword(userID, password, !isBUILTIN);
 
       final String oldValue = GET_DATABASE_PROPERTY(userID);
-      
+
       if (oldValue != null && oldValue.length() > 0) {
         throw StandardException.newException(
             SQLState.AUTH_USER_ALREADY_DEFINED, userID);
-      }      
-      
+      }
+
       PropertyInfo.setDatabaseProperty(userID, password, true);
       cleanupOnError = true;
 
@@ -927,6 +957,44 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
+   * Get two results: a CLOB containing all the network servers available in
+   * the distributed system; other the preferred server w.r.t. load-balancing to
+   * connect to from a JDBC client as out parameter. A set of servers to be
+   * excluded from consideration can be passed as a comma-separated string (e.g.
+   * to ignore the failed server during failover).
+   *
+   * The format of network server list is:
+   *
+   * host1[port1]{kind1},host2[port2]{kind2},...
+   *
+   * i.e. comma-separated list of each network server followed by the
+   * <code>VMKind</code> of the VM in curly braces. The network servers on
+   * stand-alone locators are given preference and appear at the front. If the
+   * output column exceeds the max size of LONGVARCHAR column
+   * {@link TypeId#LONGVARCHAR_MAXWIDTH} then null is returned for this result
+   * in which case the client is supposed to get the list from the SYS.MEMBERS
+   * VTI table in a separate call.
+   *
+   * This is primarily to avoid making two calls to the servers from the clients
+   * during connection creation or failover.
+   * <p>
+   * This differs from GET_ALLSERVERS_AND_PREFSERVER in returning
+   * "allNetServers" as a CLOB rather than a LONGVARCHAR for the rare case
+   * when it exceeds 32K.
+   */
+  public static void GET_ALLSERVERS_AND_PREFSERVER2(String excludedServers,
+      String[] prefServerName, int[] prefServerPort, Clob[] allNetServers)
+      throws SQLException {
+    final String[] allServers = new String[1];
+    GET_ALLSERVERS_AND_PREFSERVER(excludedServers, prefServerName, prefServerPort, allServers);
+    if (allServers[0] != null) {
+      allNetServers[0] = new HarmonySerialClob(allServers[0]);
+    } else {
+      allNetServers[0] = null;
+    }
+  }
+
+  /**
    * Get the preferred server to which the next connection should be made. A set
    * of servers to be excluded from consideration can be passed as a
    * comma-separated string (e.g. to ignore the failed server during failover).
@@ -1284,6 +1352,345 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
+   *
+   * @param tableName input param - table for which metadata is needed
+   * @param tableObject output param - Hive matastore object for table
+   * @param bucketCount output param - 0 for replicated tables otherwise the actual count
+   * @param partColumns output param - partitioning columns
+   * @param bucketToServerMapping output param - bucket to server mapping for partitioned tables OR
+   *                              replica to server mapping for replicated table
+   * @throws SQLException
+   */
+  public static void GET_TABLE_METADATA(
+      String tableName, Blob[] tableObject,
+      int[] bucketCount,
+      String[] partColumns,
+      String[] indexColumns,
+      Clob[] bucketToServerMapping,
+      int[] relationDestroyVersion,
+      String[] pkColumns)
+      throws SQLException {
+    String schema;
+    String table;
+    int dotIndex;
+    // NULL table name is illegal
+    if (tableName == null) {
+      throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
+    }
+
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing GET_TABLE_METADATA for table " + tableName);
+    }
+
+    if ((dotIndex = tableName.indexOf('.')) >= 0) {
+      schema = tableName.substring(0, dotIndex);
+      table = tableName.substring(dotIndex + 1);
+    } else {
+      schema = Misc.getDefaultSchemaName(ConnectionUtil.getCurrentLCC());
+      table = tableName;
+    }
+
+    ExternalCatalog hiveCatalog = Misc.getMemStore().getExternalCatalog();
+    // get the hive matadata object and return as a blob
+    Object t = hiveCatalog.getTable(schema, table, true);
+    if (t != null) {
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      try {
+        ObjectOutputStream os = new ObjectOutputStream(baos);
+        os.writeObject(t);
+        byte[] tableObjectBytes = baos.toByteArray();
+        tableObject[0] = new HarmonySerialBlob(tableObjectBytes);
+      } catch (IOException ioe) {
+        TransactionResourceImpl.wrapInSQLException(ioe);
+      }
+    } else {
+      tableObject[0] = null;
+    }
+
+    // get other attributes bucket count, partitioning cols,
+    // bucket to server/replica to server mapping
+    if (tableObject[0] != null) {
+      try {
+        final GemFireContainer container = CallbackProcedures
+            .getContainerForTable(schema, table);
+        final LocalRegion region = container.getRegion();
+        if (region.getAttributes().getPartitionAttributes() != null) {
+          getPRMetaData((PartitionedRegion)region, tableName,
+              partColumns, bucketCount, bucketToServerMapping);
+        } else {
+          getRRMetaData((DistributedRegion)region, bucketToServerMapping);
+          bucketCount[0] = 0;
+        }
+        // get index columns
+        if (hiveCatalog.isRowTable(schema, table, true)) {
+          getIndexColumns(indexColumns, region);
+          getPKColumns(pkColumns, region);
+        }
+      } catch (StandardException se) {
+        // getContainerForTable can throw error for external tables
+        // (parquet / csv etc.)
+        if (se.getSQLState().equals(SQLState.LANG_TABLE_NOT_FOUND)) {
+          bucketCount[0] = 0;
+          partColumns[0] = null;
+          indexColumns[0] = null;
+          bucketToServerMapping[0] = new HarmonySerialClob(""); // to avoid NPE
+          pkColumns[0] = null;
+        } else {
+          throw PublicAPI.wrapStandardException(se);
+        }
+      }
+    }
+
+    final GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.
+        getGfxdProfile(Misc.getMyId());
+    relationDestroyVersion[0] = profile.getRelationDestroyVersion();
+
+  }
+
+  private static void getPRMetaData(final PartitionedRegion region,
+      final String tableName, final String[] partColumns,
+      final int[] bucketCount, final Clob[] bucketToServerMapping) throws SQLException {
+    bucketCount[0] = region.getTotalNumberOfBuckets();
+
+    // get partitioning columns
+    GfxdPartitionByExpressionResolver resolver =
+        (GfxdPartitionByExpressionResolver)region.getPartitionResolver();
+    StringBuffer stringBuffer = new StringBuffer();
+    for (String col : resolver.getColumnNames()) {
+      stringBuffer.append(col + ":");
+    }
+    partColumns[0] = stringBuffer.toString();
+
+    // bucket to server mapping
+    GET_BUCKET_TO_SERVER_MAPPING2(tableName, bucketToServerMapping);
+  }
+
+  private static void getRRMetaData(final DistributedRegion region,
+      final Clob[] replicaNodes) {
+    // replica to server mapping
+    Set<InternalDistributedMember> owners = new HashSet<>();
+    Set<InternalDistributedMember> replicas =
+        region.getDistributionAdvisor().adviseInitializedReplicates();
+    Map<InternalDistributedMember, String> mbrToServerMap = GemFireXDUtils
+        .getGfxdAdvisor().getAllNetServersWithMembers();
+
+    StringBuffer stringBuffer = new StringBuffer();
+    if (GemFireXDUtils.getMyVMKind().isStore()) {
+      owners.add(Misc.getGemFireCache().getMyId());
+    }
+    owners.addAll(replicas);
+    for (InternalDistributedMember node : owners) {
+      String netServer = mbrToServerMap.get(node);
+      if ( netServer != null) {
+        stringBuffer.append(netServer + ";");
+      }
+    }
+    if (stringBuffer.length() > 0) {
+      replicaNodes[0] = new HarmonySerialClob(stringBuffer.toString());
+    } else {
+      replicaNodes[0] = null;
+    }
+  }
+
+  /**
+   * Returns the index columns in string format separated by ":"
+   * in the element indexColumns[0]
+   * for example, "col1:col2:col3"
+   * @param indexColumns
+   * @param region
+   * @throws StandardException
+   */
+  public static void getIndexColumns(String[] indexColumns, LocalRegion region)
+      throws StandardException {
+    GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+    TableDescriptor td = container.getTableDescriptor();
+    String cols = null;
+    if (td != null) {
+      String[] baseColumns = td.getColumnNamesArray();
+      GfxdIndexManager im = container.getIndexManager();
+      if ((im != null) && (im.getIndexConglomerateDescriptors() != null)) {
+        Iterator<ConglomerateDescriptor> itr = im.getIndexConglomerateDescriptors().iterator();
+        while (itr.hasNext()) {
+          // first column of index has to be present in filter to be usable
+          int[] indexCols = itr.next().getIndexDescriptor().baseColumnPositions();
+          cols += baseColumns[indexCols[0] - 1] + ":";
+        }
+      }
+      // also add primary key
+      ReferencedKeyConstraintDescriptor primaryKey = td.getPrimaryKey();
+      if (primaryKey != null) {
+        // first column of primary key has to be present in filter to be usable
+        int[] pkCols = primaryKey.getKeyColumns();
+        if (pkCols != null && pkCols.length > 0) {
+          cols += baseColumns[pkCols[0] - 1];
+        }
+      }
+    }
+    indexColumns[0] = cols;
+  }
+
+  public static void getPKColumns(String[] pkColumns,
+      LocalRegion region) throws StandardException {
+    GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+    TableDescriptor td = container.getTableDescriptor();
+    String cols = null;
+    if (td != null) {
+      String[] baseColumns = td.getColumnNamesArray();
+      ReferencedKeyConstraintDescriptor primaryKey = td.getPrimaryKey();
+      if (primaryKey != null) {
+        int[] pkCols = primaryKey.getKeyColumns();
+        if (pkCols != null) {
+          for (int i = 0; i < pkCols.length; i++) {
+            cols += baseColumns[pkCols[i] - 1] + ":";
+          }
+        }
+      }
+    }
+    pkColumns[0] = cols;
+  }
+
+  public static void CREATE_SNAPPY_TABLE(
+      String tableIdentifier,
+      String provider,
+      String userSpecifiedSchema,
+      String schemaDDL,
+      Blob mode,
+      Blob options,
+      Boolean isBuiltIn)
+      throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing CREATE_SNAPPY_TABLE ");
+    }
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+        LeadNodeSmartConnectorOpContext.OpType.CREATE_TABLE,
+        tableIdentifier, provider, userSpecifiedSchema, schemaDDL,
+        mode.getBytes(1, (int)mode.length()), options.getBytes(1, (int)options.length()),
+        isBuiltIn, false, null, null, null, null, null, null);
+
+    sendConnectorOpToLead(ctx);
+  }
+
+  public static void DROP_SNAPPY_TABLE(String tableIdentifier,
+      Boolean ifExists) throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing DROP_SNAPPY_TABLE ");
+    }
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+        LeadNodeSmartConnectorOpContext.OpType.DROP_TABLE,
+        tableIdentifier, null, null, null, null, null, true, ifExists,
+        null, null, null, null, null, null);
+
+    sendConnectorOpToLead(ctx);
+  }
+
+  public static void CREATE_SNAPPY_INDEX(
+      String indexIdentifier,
+      String tableIdentifier,
+      Blob indexColumns,
+      Blob options) throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing CREATE_SNAPPY_INDEX ");
+    }
+
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+        LeadNodeSmartConnectorOpContext.OpType.CREATE_INDEX,
+        tableIdentifier, null, null, null, null,
+        options.getBytes(1, (int)options.length()), true, false,
+        indexIdentifier, indexColumns.getBytes(1, (int)indexColumns.length()), null, null, null, null);
+
+    sendConnectorOpToLead(ctx);
+
+  }
+
+  public static void DROP_SNAPPY_INDEX(String indexIdentifier,
+      Boolean ifExists) throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing DROP_SNAPPY_INDEX ");
+    }
+
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+        LeadNodeSmartConnectorOpContext.OpType.DROP_INDEX,
+        null, null, null, null, null, null, true, ifExists,
+        indexIdentifier, null, null, null, null, null);
+
+    sendConnectorOpToLead(ctx);
+  }
+
+  public static void CREATE_SNAPPY_UDF(String db, String functionName,
+      String className, String jarURI) throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing CREATE_SNAPPY_UDF ");
+    }
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+        LeadNodeSmartConnectorOpContext.OpType.CREATE_UDF,
+        null, null, null, null, null, null, true, false, null, null,
+        db, functionName, className, jarURI);
+
+    sendConnectorOpToLead(ctx);
+  }
+
+  public static void DROP_SNAPPY_UDF(String db, String functionName) throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing DROP_SNAPPY_UDF ");
+    }
+
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+        LeadNodeSmartConnectorOpContext.OpType.DROP_UDF,
+        null, null, null, null, null, null, true, false, null, null,
+        db, functionName, null, null);
+
+    sendConnectorOpToLead(ctx);
+  }
+
+  private static void sendConnectorOpToLead(LeadNodeSmartConnectorOpContext ctx)
+      throws SQLException {
+    LeadNodeSmartConnectorOpMsg msg = new LeadNodeSmartConnectorOpMsg(ctx,
+        AckResultCollector.INSTANCE);
+    try {
+      msg.executeFunction();
+    } catch(StandardException se) {
+      throw PublicAPI.wrapStandardException(se);
+    }
+  }
+
+  public static void GET_SNAPPY_TABLE_STATS(Blob[] statsMap) throws SQLException {
+    try {
+      if (GemFireXDUtils.TraceSysProcedures) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+            "executing GET_SNAPPY_TABLE_STATS ");
+      }
+      GfxdListResultCollector collector = new GfxdListResultCollector();
+      LeadNodeGetStatsMessage msg  = new LeadNodeGetStatsMessage(collector);
+      msg.executeFunction();
+      List result = (ArrayList)collector.getResult();
+      if (result != null) {
+        for (Object oneResult : result) {
+          Object o = oneResult;
+          try {
+          ByteArrayDataOutput bdos = new ByteArrayDataOutput();
+          DataSerializer.writeObject(o, bdos);
+          statsMap[0] = new HarmonySerialBlob(bdos.toByteArray());
+          } catch (IOException ioe) {
+            TransactionResourceImpl.wrapInSQLException(ioe);
+          }
+        }
+      } else {
+        statsMap[0] = null;
+      }
+    } catch (StandardException se) {
+      throw PublicAPI.wrapStandardException(se);
+    }
+  }
+
+
+  /**
    * Create all buckets in the given table.
    * 
    * @param tableName
@@ -1392,7 +1799,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     int sz = bidToAdvsrMap.size();
     int cnt = 0;
     Map<InternalDistributedMember, String> mbrToServerMap = GemFireXDUtils
-        .getGfxdAdvisor().getAllDRDAServersAndCorrespondingMemberMapping();
+        .getGfxdAdvisor().getAllNetServersWithMembers();
     for (Integer bid : bidToAdvsrMap.keySet()) {
       cnt++;
       bucketInfo.append(bid);
@@ -1434,13 +1841,41 @@ public class GfxdSystemProcedures extends SystemProcedures {
     bktToServerMapping[0] = bucketInfo.toString();
   }
 
+
+  /**
+   * Get all buckets location information network server addr wise. This
+   * updated version uses CLOBs for results so works with large number of
+   * buckets that can exceed 32K limit of VARCHARs.
+   *
+   * @param fqtn
+   *          the fully qualified table name
+   * @param bktToServerMapping
+   *          0th index will contain the information in the below format
+   *          "numbuckets:redundancy:bucketid1:primarybucketserver;
+   *          secondary1bucketserver;...|bucketid2...."
+   *          "113:2:0;pc25.pune.gemstone.com/10.112.204.14[25005]{datastore};
+   *          null;null|2;pc25.pune.gemstone.com/10.112.204.14[25005]
+   *          {datastore};null;null"
+   * @throws SQLException
+   */
+  public static void GET_BUCKET_TO_SERVER_MAPPING2(String fqtn,
+      Clob[] bktToServerMapping) throws SQLException {
+    String[] mapping = new String[1];
+    GET_BUCKET_TO_SERVER_MAPPING(fqtn, mapping);
+    if (mapping[0] != null) {
+      bktToServerMapping[0] = new HarmonySerialClob(mapping[0]);
+    } else {
+      bktToServerMapping[0] = null;
+    }
+  }
+
   /**
    * Message is published to everybody (including locators) and added to the DDL
    * queue for persistent purposes.
-   * 
+   *
    * Any new member joining will also see the execution of the procedures like
    * statistics enabling/disabling.
-   * 
+   *
    * @param args
    *          arguments of the procedure.
    * @param lastArgServerGroups
@@ -1448,7 +1883,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
    *          serverGroup where the publish will be restricted.
    * @param systemProcedure
    *          procedure method that is remotely invoked.
-   * @param persistent whether to include in the DDL queue and replay 
+   * @param persistent whether to include in the DDL queue and replay
    * @param includeLocators should this message published to locator VMs too.
    * @throws SQLException wrapping any StandardExceptions if is raised.
    */
@@ -1907,27 +2342,50 @@ public class GfxdSystemProcedures extends SystemProcedures {
           GfxdSystemProcedureMessage.SysProcMethod.dumpStacks, false, true);
     }
   }
-  
-	/**
-	 * This procedure sets the local execution mode for a particular bucket. To prevent
-     * clearing of lcc in case of thin client connections a flag BUCKET_RENTION_FOR_LOCAL_EXECUTION
-     * is set.
-	 */
 
-	public static void SET_BUCKETS_FOR_LOCAL_EXECUTION(String tableName,
-			int bucket) throws SQLException, StandardException {
-		if (tableName == null) {
-			throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
-		}
-		Set<Integer> bucketSet = new HashSet<Integer>();
-	    bucketSet.add(bucket);
-		Region region = Misc.getRegionForTable(tableName, true);
-		LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-		lcc.setExecuteLocally(bucketSet, region, false, null);
-        if (lcc instanceof GenericLanguageConnectionContext)
-            ((GenericLanguageConnectionContext) lcc).setBucketRetentionForLocalExecution(true);
-	}
-  
+  /**
+   * This procedure sets the local execution mode for a particular bucket.
+   */
+  public static void setBucketsForLocalExecution(String tableName,
+      Set<Integer> bucketSet, @Nonnull LanguageConnectionContext lcc) {
+    Region region = Misc.getRegionForTable(tableName, true);
+    lcc.setExecuteLocally(bucketSet, region, false, null);
+  }
+
+  /**
+   * This procedure sets the local execution mode for a particular bucket.
+   * To prevent clearing of lcc in case of thin client connections a flag
+   * BUCKET_RENTION_FOR_LOCAL_EXECUTION is set.
+   */
+  public static void SET_BUCKETS_FOR_LOCAL_EXECUTION(String tableName,
+      String buckets, int relationDestroyVersion)
+      throws SQLException, StandardException {
+    if (tableName == null) {
+      throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
+    }
+
+    final GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.
+        getGfxdProfile(Misc.getMyId());
+    final int actualVersion = profile.getRelationDestroyVersion();
+
+    if ((relationDestroyVersion != -1) &&
+        (actualVersion != relationDestroyVersion)) {
+      throw StandardException.newException(SQLState.SNAPPY_RELATION_DESTROY_VERSION_MISMATCH);
+    }
+
+    Region region = Misc.getRegionForTable(tableName, true);
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    Set<Integer> bucketSet = new HashSet();
+    StringTokenizer st = new StringTokenizer(buckets,",");
+    while(st.hasMoreTokens()){
+      bucketSet.add(Integer.parseInt(st.nextToken()));
+    }
+    setBucketsForLocalExecution(tableName, bucketSet, lcc);
+    if (lcc instanceof GenericLanguageConnectionContext)
+      ((GenericLanguageConnectionContext) lcc).setBucketRetentionForLocalExecution(true);
+  }
+
+
   /**
    * This procedure sets the Nanotimer type. NanoTimer are used extensively while 
    * generating the Explain plans. The timer can either be set to use 
@@ -1953,7 +2411,105 @@ public class GfxdSystemProcedures extends SystemProcedures {
     publishMessage(params, false,
         GfxdSystemProcedureMessage.SysProcMethod.setNanoTimerType, false, true);
   }
-  
+
+  public static void COMMIT_SNAPSHOT_TXID(String txId) throws SQLException, StandardException {
+    TXStateInterface txState = null;
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction) lcc.getTransactionExecute();
+
+    if (!txId.equals("null")) {
+      StringTokenizer st = new StringTokenizer(txId, ":");
+      if (GemFireXDUtils.TraceExecution) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+                + " TxManager " + TXManagerImpl.getCurrentTXId()
+                + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+      }
+
+      long memberId = Long.parseLong(st.nextToken());
+      int uniqId = Integer.parseInt(st.nextToken());
+      TXId txId1 = TXId.valueOf(memberId, uniqId);
+
+      txState = tc.getTransactionManager().getHostedTXState(txId1);
+    }
+
+    tc.clearActiveTXState(false, true);
+    // this is being done because txState is being shared across conn
+    if (txState != null && txState.isInProgress()) {
+      tc.getTransactionManager().masqueradeAs(txState);
+      tc.getTransactionManager().commit();
+    } else {
+      TXManagerImpl.snapshotTxState.set(null);
+      TXManagerImpl.getOrCreateTXContext().clearTXState();
+    }
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure COMMIT_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+    }
+  }
+
+  public static void GET_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure GET_SNAPSHOT_TXID() SURANJAN for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+      + " TxManager " + TXManagerImpl.getCurrentTXId()
+      + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+    }
+
+    //Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    //LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    //GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
+    //tc.setActiveTXState(TXManagerImpl.snapshotTxState.get(), false);
+
+    TXStateInterface tx = TXManagerImpl.snapshotTxState.get();
+    if ( tx != null) {
+      txid[0] = tx.getTransactionId().stringFormat();
+    } else {
+      txid[0] = "null";
+    }
+    // tc commit will clear all the artifacts but will not commit actual txState
+    // that should be committed in COMMIT procedure
+    tc.resetActiveTXState(true);
+    TXManagerImpl.getOrCreateTXContext().clearTXState();
+    TXManagerImpl.snapshotTxState.set(null);
+  }
+
+  public static void USE_SNAPSHOT_TXID(String txId) throws SQLException {
+    StringTokenizer st = new StringTokenizer(txId, ":");
+    long memberId = Long.parseLong(st.nextToken());
+    int uniqId = Integer.parseInt(st.nextToken());
+    TXId txId1 = TXId.valueOf(memberId, uniqId);
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
+    TXStateInterface state = tc.getTransactionManager().getHostedTXState(txId1);
+
+    if (state == null) {
+      if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure USE_SNAPSHOT_TXID() creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+              + " txId  " +txId);
+      }
+      // if state is null then create txstate and use
+      state =  tc.getTransactionManager().getOrCreateHostedTXState(txId1,
+          com.gemstone.gemfire.internal.cache.locks.LockingPolicy.SNAPSHOT, true);
+    }
+    tc.getTransactionManager().masqueradeAs(state);
+    TXManagerImpl.snapshotTxState.set(state);
+    tc.setActiveTXState(state, false);
+    // If already then throw exception?
+    if (TXManagerImpl.snapshotTxState.get() != null) {
+      if (GemFireXDUtils.TraceExecution) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "in procedure USE_SNAPSHOT_TXID(), for txid  " + txId1 + " txState : " + state + " connId" + tc.getConnectionID());
+      }
+    }
+  }
+
+
   /**
    * Get whether the NanoTimer is internally making a native call to get the nanoTime. 
    */
@@ -1966,6 +2522,40 @@ public class GfxdSystemProcedures extends SystemProcedures {
    */
   public static String GET_NATIVE_NANOTIMER_TYPE() {
     return NanoTimer.getNativeTimerType();
+  }
+
+  /**
+   * Repair Snappy catalog (Hive MetaStore and data dictionary) by removing
+   * inconsistent entries in the catalog.
+   * @throws SQLException
+   * @throws StandardException
+   */
+  public static void REPAIR_CATALOG() throws SQLException, StandardException {
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure REPAIR_CATALOG()");
+    }
+    final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
+    final Object[] params = new Object[]{1}; //dummy (unused)
+    if (isLead || Misc.getDistributedSystem().isLoner()) {
+      // in case proc invoked on lead directly
+      runCatalogConsistencyChecks();
+    } else {
+      // publish a message if not lead
+      publishMessage(params, false,
+          GfxdSystemProcedureMessage.SysProcMethod.repairCatalog, false, false);
+    }
+  }
+
+  public static void runCatalogConsistencyChecks()
+      throws SQLException, StandardException {
+    EmbedConnection conn = GemFireXDUtils.createNewInternalConnection(false);
+    try {
+      FabricDatabase.checkSnappyCatalogConsistency(conn);
+      CallbackFactoryProvider.getStoreCallbacks().registerRelationDestroyForHiveStore();
+    } finally {
+      conn.close();
+    }
   }
 
   /**
@@ -1998,20 +2588,88 @@ public class GfxdSystemProcedures extends SystemProcedures {
     long statementId = Long.parseLong(s[1]);
     long executionID = Long.parseLong(s[2]);
     
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "CANCEL_STATEMENT connectionId=" + connectionId + " statementId="
               + statementId + " executionID=" + executionID);
     }
     // send a message to cancel the query on all data nodes
     QueryCancelFunctionArgs args = QueryCancelFunction
-        .newQueryCancelFunctionArgs(statementId, executionID, 
-            connectionId);
+        .newQueryCancelFunctionArgs(statementId, connectionId);
     Set<DistributedMember> otherMembers = GfxdMessage.getAllGfxdServers();
     if (otherMembers.size() > 0) {
       FunctionService.onMembers(otherMembers).withArgs(args).execute(
           QueryCancelFunction.ID);
     }
+  }
+
+  /**
+   * Checks consistency of indexes(local and global) on the given table
+   *
+   * @param schema
+   * @param table
+   * @return returns 1 when indexes are consistent, otherwise
+   * throws exception
+   *
+   * @throws SQLException
+   * @throws StandardException
+   * @throws InterruptedException
+   */
+  public static int CHECK_TABLE_EX(String schema, String table) throws
+      SQLException, StandardException, InterruptedException {
+    if (schema == null || table == null) {
+      throw StandardException.newException(
+          SQLState.LANG_INVALID_FUNCTION_ARGUMENT, "NULL",
+          "CHECK_TABLE_EX");
+    }
+    final Object[] params;
+
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "CHECK_TABLE_EX schema:" + schema + "table: " + table);
+    }
+
+    // just add any one data store member id as 3rd param on which
+    // we will verify global index region size with base table size
+    if (GemFireXDUtils.getMyVMKind().isStore()) {
+      params = new Object[]{schema, table, Misc.getMyId()};
+    } else {
+      Set<DistributedMember> dataStores = GfxdMessage.getAllDataStores();
+      DistributedMember targetNode = dataStores.iterator().next();
+      params = new Object[]{schema, table, targetNode};
+    }
+
+    Thread thread = null;
+    final StandardException[] failure = new StandardException[1];
+    try {
+      // execute on self in a different thread as this procedure might be time
+      // consuming and then send message to other nodes in parallel to execute
+      if (GemFireXDUtils.getMyVMKind().isStore()) {
+        thread = new Thread(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              GfxdSystemProcedureMessage.SysProcMethod.
+                  checkTableEx.processMessage(params, Misc.getMyId());
+            } catch (StandardException s) {
+              failure[0] = s;
+            }
+          }
+        }, "CHECK_TABLE_EX sys proc executor");
+        thread.start();
+      }
+      // send message to other nodes
+      publishMessage(params, false,
+          GfxdSystemProcedureMessage.SysProcMethod.checkTableEx, false, false);
+    } finally {
+      if (thread != null) {
+        thread.join();
+        if (failure[0] != null) {
+          throw failure[0];
+        }
+      }
+    }
+    return 1;
   }
 
   /**
@@ -2035,7 +2693,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
 
     ldapGroup = StringUtil.SQLToUpperCase(ldapGroup);
-    if (GemFireXDUtils.TraceExecute) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "REFRESH_LDAP_GROUP ldapGroup=" + ldapGroup);
     }
@@ -2095,6 +2753,29 @@ public class GfxdSystemProcedures extends SystemProcedures {
         }
       }
     }
+  }
+
+  /**
+   * Get the schema for a column table as a JSON string (as in Spark SQL).
+   *
+   * @param schema name
+   * @param table The  name of column table.
+   * @throws SQLException if table is not found or is not a column table
+   */
+  public static void GET_COLUMN_TABLE_SCHEMA(String schema, String table,
+      Clob[] schemaAsJson) throws SQLException {
+
+    String schemaString = Misc.getMemStoreBooting().getExternalCatalog()
+        .getColumnTableSchemaAsJson(schema, table, true);
+    if (schemaString == null) {
+      throw PublicAPI.wrapStandardException(StandardException.newException(
+          SQLState.TABLE_NOT_FOUND, table));
+    }
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "GET_COLUMN_TABLE_SCHEMA table=" + table + " schema=" + schemaString);
+    }
+    schemaAsJson[0] = new HarmonySerialClob(schemaString);
   }
 
   /**

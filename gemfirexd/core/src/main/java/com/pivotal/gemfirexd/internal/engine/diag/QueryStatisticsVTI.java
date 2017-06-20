@@ -93,7 +93,7 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
   public boolean getBoolean(int columnNumber) {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.BOOLEAN) {
-      dataTypeConversion("boolean", desc.getType().getTypeName());
+      dataTypeConversion("boolean", desc);
     }
     final String columnName = desc.getName();
     Object stats = this.currentStats.get(columnName);
@@ -111,7 +111,7 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
   public int getInt(int columnNumber) {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.INTEGER) {
-      dataTypeConversion("integer", desc.getType().getTypeName());
+      dataTypeConversion("integer", desc);
     }
     final String columnName = desc.getName();
     Object stats = this.currentStats.get(columnName);
@@ -129,7 +129,7 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
   public long getLong(int columnNumber) {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.BIGINT) {
-      dataTypeConversion("long", desc.getType().getTypeName());
+      dataTypeConversion("long", desc);
     }
     final String columnName = desc.getName();
     Object stats = this.currentStats.get(columnName);

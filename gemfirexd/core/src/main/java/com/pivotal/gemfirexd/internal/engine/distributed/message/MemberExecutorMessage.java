@@ -26,8 +26,7 @@ import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.pivotal.gemfirexd.internal.engine.Misc;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.FunctionUtils.
-    GetFunctionMembers;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.FunctionUtils.GetFunctionMembers;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 
 /**
@@ -46,8 +45,9 @@ public abstract class MemberExecutorMessage<T> extends GfxdFunctionMessage<T>
 
   /** Constructor that should be invoked by child classes. */
   protected MemberExecutorMessage(ResultCollector<Object, T> collector,
-      final TXStateInterface tx, boolean timeStatsEnabled) {
-    super(collector, tx, timeStatsEnabled);
+      final TXStateInterface tx, boolean timeStatsEnabled,
+      boolean abortOnLowMemory) {
+    super(collector, tx, timeStatsEnabled, abortOnLowMemory);
   }
 
   /** Copy constructor to be invoked by child classes. */
@@ -56,7 +56,7 @@ public abstract class MemberExecutorMessage<T> extends GfxdFunctionMessage<T>
   }
 
   @Override
-  protected final void executeFunction(boolean enableStreaming)
+  protected void executeFunction(boolean enableStreaming)
       throws StandardException, SQLException {
     Set<DistributedMember> members = getMembers();
     if (members == null) {

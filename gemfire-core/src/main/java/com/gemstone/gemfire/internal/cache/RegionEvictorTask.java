@@ -83,13 +83,13 @@ public class RegionEvictorTask implements Callable<Object> {
   }
 
   public Object call() throws Exception {
-    getGemFireCache().getCachePerfStats().incEvictorJobsStarted();
-    long bytesEvicted = 0;
+    final CachePerfStats stats = getGemFireCache().getCachePerfStats();
+    stats.incEvictorJobsStarted();
+    long bytesEvicted;
     long totalBytesEvicted = 0;
+    final long start = CachePerfStats.getStatTime();
     try {
       while (true) {
-        getGemFireCache().getCachePerfStats();
-        final long start = CachePerfStats.getStatTime();
         synchronized (this.regionSet) {
           if (this.regionSet.isEmpty()) {
             lastTaskCompletionTime = System.currentTimeMillis();
@@ -101,7 +101,7 @@ public class RegionEvictorTask implements Callable<Object> {
             LocalRegion region = iter.next();
             try {
               bytesEvicted = ((AbstractLRURegionMap)region.entries)
-                  .centralizedLruUpdateCallback();
+                  .centralizedLruUpdateCallback(false);
               if (bytesEvicted == 0) {
                 iter.remove();
               }
@@ -117,17 +117,17 @@ public class RegionEvictorTask implements Callable<Object> {
               region.cache.getCancelCriterion().checkCancelInProgress(e);
               region.cache.getLoggerI18n().warning(
                   LocalizedStrings.Eviction_EVICTOR_TASK_EXCEPTION,
-                  new Object[] { e.getMessage() }, e);
-            } finally {
-              getGemFireCache().getCachePerfStats();
-              long end = CachePerfStats.getStatTime();
-              getGemFireCache().getCachePerfStats().incEvictWorkTime(end-start);
+                  new Object[]{e.getMessage()}, e);
             }
           }
         }
       }
     } finally {
-      getGemFireCache().getCachePerfStats().incEvictorJobsCompleted();
+      if (start != 0L) {
+        long end = CachePerfStats.getStatTime();
+        stats.incEvictWorkTime(end - start);
+      }
+      stats.incEvictorJobsCompleted();
     }
   }
 

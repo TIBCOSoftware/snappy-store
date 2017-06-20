@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
 package com.pivotal.gemfirexd.internal.engine.reflect;
 
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfo;
@@ -33,10 +30,13 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
  */
 public final class GemFireActivationClass implements GeneratedClass {
 
-  protected QueryInfo querynodes;
+  private final QueryInfo querynodes;
+  private final int classLoaderVersion;
 
-  public GemFireActivationClass(QueryInfo qi) {
+  public GemFireActivationClass(LanguageConnectionContext lcc, QueryInfo qi) {
     querynodes = qi;
+    this.classLoaderVersion = lcc.getLanguageConnectionFactory()
+        .getClassFactory().getClassLoaderVersion();
   }
 
   public QueryInfo getQueryInfo() {
@@ -44,7 +44,7 @@ public final class GemFireActivationClass implements GeneratedClass {
   }
 
   public int getClassLoaderVersion() {
-    return 0;
+    return this.classLoaderVersion;
   }
 
   public GeneratedMethod getMethod(String simpleName) throws StandardException {

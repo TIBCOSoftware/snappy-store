@@ -27,7 +27,7 @@ import java.util.List;
 public interface Event {
 
   /**
-   * Get the <code>Type<code/> of the event.
+   * Get the <code>Type</code> of the event.
    * 
    * @return the Type of the event.
    */
@@ -173,7 +173,7 @@ public interface Event {
    * Returns the Primary key of the manipulated row. If the table has no primary
    * key defined, then a long value uniquely identifying the row would be
    * returned. In such cases, users can correlate the row ID during creation
-   * with that during update & delete.
+   * with that during update &amp; delete.
    * 
    * @return Object[] of values of the primary key columns
    * 

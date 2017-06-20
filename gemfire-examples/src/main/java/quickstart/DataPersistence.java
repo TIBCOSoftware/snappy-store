@@ -28,7 +28,7 @@ import com.gemstone.gemfire.cache.Region;
  * provides a backup of the cached data and can be used to initialize a data
  * region at creation time. Please refer to the quickstart guide for
  * instructions on how to run this example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 4.1.1

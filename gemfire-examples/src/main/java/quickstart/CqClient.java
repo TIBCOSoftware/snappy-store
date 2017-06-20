@@ -34,7 +34,7 @@ import com.gemstone.gemfire.cache.query.QueryService;
  * client requests and updates. The client creates and executes CQ on the server
  * and waits for the events. Please refer to the quickstart guide for
  * instructions on how to run this example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 5.1

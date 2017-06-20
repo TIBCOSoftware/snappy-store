@@ -567,7 +567,6 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
         + " SECONDID int not null, THIRDID varchar(10) not null, CB CLOB, "
         + "DT BLOB, PRIMARY KEY (SECONDID, THIRDID)) PARTITION BY COLUMN (ID)";
 
-    stmt.execute(ddl);
     netStmt.execute(ddl);
 
     // create a custom DBSynchronizer
@@ -700,7 +699,6 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
         + "PARTITION BY COLUMN (ID) PERSISTENT";
 
     stmt.execute(ddl);
-    netStmt.execute(ddl);
 
     // create a custom DBSynchronizer
     stmt.execute("create asynceventlistener SECTSYNC("

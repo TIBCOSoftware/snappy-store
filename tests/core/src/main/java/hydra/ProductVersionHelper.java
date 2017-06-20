@@ -30,10 +30,12 @@ public class ProductVersionHelper {
   public static final String BUILD_DATE = "Build-Date";
   public static final String BUILD_JAVA_VERSION = "Build-Java-Version";
   public static final String BUILD_PLATFORM = "Build-Platform";
+  public static final String SNAPPYRELEASEVERSION = "Product-Version";
 
   public static Properties getInfo() {
     Properties p1 = null;
     String productVersion = "";
+    String snappyReleaseVersion = "";
     try {
       Class c = Class.forName("com.pivotal.gemfirexd.internal.iapi.services.info.ProductVersionHolder");
       p1 = (Properties)MasterController.invoke("hydra.gemfirexd.GfxdTestConfig",
@@ -41,6 +43,7 @@ public class ProductVersionHelper {
       if (p1 != null) {
         productVersion += p1.getProperty(PRODUCT_NAME) + " "
                         + p1.getProperty(PRODUCT_VERSION);
+        snappyReleaseVersion = p1.getProperty(PRODUCT_VERSION);
       }
     } catch (ClassNotFoundException e) {
     }
@@ -54,6 +57,7 @@ public class ProductVersionHelper {
         }
         productVersion += p2.getProperty(PRODUCT_NAME) + " "
                         + p2.getProperty(PRODUCT_VERSION);
+        snappyReleaseVersion = p2.getProperty(PRODUCT_VERSION);
       }
     } catch (ClassNotFoundException e) {
     }
@@ -74,6 +78,7 @@ public class ProductVersionHelper {
     Properties p = (p1 == null) ? p2 : p1;
     if (p != null) {
       p.setProperty(PRODUCT_VERSION, productVersion);
+      p.setProperty(SNAPPYRELEASEVERSION, snappyReleaseVersion);
     }
     return p;
   }

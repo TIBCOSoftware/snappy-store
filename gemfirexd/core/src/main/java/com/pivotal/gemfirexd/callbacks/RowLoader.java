@@ -35,7 +35,7 @@ public interface RowLoader {
    * @param tableName Name of the table.
    * @param primarykey The primary key as Object[] as multiple column can make up
    *            the primary key.
-   * @return The values of the columns as either a List<Object> or a
+   * @return The values of the columns as either a List&lt;Object&gt; or a
    *         {@link java.sql.ResultSet}. The order of values should be in the
    *         same order as the order of columns in the table. If a <code>
    *         ResultSet</code> is returned, then only the first row will be

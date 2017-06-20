@@ -23,6 +23,7 @@ import java.util.Set;
 
 import com.gemstone.gemfire.cache.control.ResourceManager;
 import com.gemstone.gemfire.distributed.DistributedMember;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 
 /**
  * Indicates a low memory condition either on the local or a remote {@link Cache}.
@@ -54,6 +55,7 @@ public class LowMemoryException extends ResourceException {
   public LowMemoryException(String msg, final Set<DistributedMember> criticalMembers) {
     super(msg);
     this.critMems = Collections.unmodifiableSet(criticalMembers);
+    CallbackFactoryProvider.getStoreCallbacks().logMemoryStats();
   }
 
   /**

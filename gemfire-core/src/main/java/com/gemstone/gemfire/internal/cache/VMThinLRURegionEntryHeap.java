@@ -15,33 +15,19 @@
  * LICENSE file.
  */
 
-package com.gemstone.gemfire.internal.cache;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
-
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
-import com.gemstone.gemfire.internal.cache.lru.LRUClockNode;
-import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
 /**
  * Do not modify this class. It was generated.
  * Instead modify LeafRegionEntry.cpp and then run
  * bin/generateRegionEntryClasses.sh from the directory
  * that contains your build.xml.
  */
+package com.gemstone.gemfire.internal.cache;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
+import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
+import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
+import com.gemstone.gemfire.internal.cache.lru.LRUClockNode;
+import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
 @SuppressWarnings("serial")
 public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
 {
@@ -51,11 +37,8 @@ public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
     super(context,
           value
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     this.key = key;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -68,9 +51,6 @@ public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -79,50 +59,30 @@ public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // lru code
   @Override
   public void setDelayedDiskId(LocalRegion r) {
-  // nothing needed for LRUs with no disk
   }
   public final synchronized int updateEntrySize(EnableLRU capacityController) {
-    return updateEntrySize(capacityController, _getValue()); // OFHEAP: _getValue ok w/o incing refcount because we are synced and only getting the size
+    return updateEntrySize(capacityController, _getValue());
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   public final synchronized int updateEntrySize(EnableLRU capacityController,
                                                 Object value) {
     int oldSize = getEntrySize();
     int newSize = capacityController.entrySize(getRawKey(), value);
-  //   GemFireCacheImpl.getInstance().getLoggerI18n().info("DEBUG updateEntrySize: oldSize=" + oldSize
-  //                                               + " newSize=" + newSize);
     setEntrySize(newSize);
     int delta = newSize - oldSize;
-  //   if ( debug ) log( "updateEntrySize key=" + getRawKey()
-  //                     + (_getValue() == Token.INVALID ? " invalid" :
-  //                        (_getValue() == Token.LOCAL_INVALID ? "local_invalid" :
-  //                         (_getValue()==null ? " evicted" : " valid")))
-  //                     + " oldSize=" + oldSize
-  //                     + " newSize=" + this.size );
     return delta;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private LRUClockNode nextLRU;
   private LRUClockNode prevLRU;
-  //private int refCount;
   private int size;
   public final void setNextLRUNode( LRUClockNode next ) {
     this.nextLRU = next;
@@ -142,43 +102,6 @@ public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
   protected final void setEntrySize(int size) {
     this.size = size;
   }
-  /*
-  public final synchronized int getRefCount() {
-    return this.refCount;
-  }
-  public final synchronized void incRefCount() {
-    this.refCount++;
-    // removal from the LruList is performed as part
-    // of the eviction process (getHeadEntry())
-  }
-
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  
-  public final synchronized void decRefCount(NewLRUClockHand lruList) {
-    if (this.refCount > 0) {
-      this.refCount--;
-      if (this.refCount == 0) {
-        // No more transactions, place in lru list
-        lruList.appendEntry(this);
-      }
-    }
-  }
-  public final synchronized void resetRefCount(NewLRUClockHand lruList) {
-    if (this.refCount > 0) {
-      this.refCount = 0;
-      lruList.appendEntry(this);
-    }
-  }
-  */
-//@Override
-//public StringBuilder appendFieldsToString(final StringBuilder sb) {
-//  StringBuilder result = super.appendFieldsToString(sb);
-//  result.append("; prev=").append(this.prevLRU==null?"null":"not null");
-//  result.append("; next=").append(this.nextLRU==null?"null":"not null");
-//  return result;
-//}
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -190,6 +113,21 @@ public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
   }
   private volatile Object value;
   @Override
+  public final boolean isRemoved() {
+    final Object o = this.value;
+    return (o == Token.REMOVED_PHASE1) || (o == Token.REMOVED_PHASE2) || (o == Token.TOMBSTONE);
+  }
+  @Override
+  public final boolean isDestroyedOrRemoved() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2 || o == Token.TOMBSTONE;
+  }
+  @Override
+  public final boolean isDestroyedOrRemovedButNotTombstone() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
+  }
+  @Override
   protected Object getValueField() {
     return this.value;
   }
@@ -197,7 +135,6 @@ public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
   protected void setValueField(Object v) {
     this.value = v;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VMThinLRURegionEntryHeap(context, key, value);
@@ -216,5 +153,4 @@ public class VMThinLRURegionEntryHeap extends VMThinLRURegionEntry
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }

@@ -1,18 +1,18 @@
 /*
- * Copyright (c) 2010-2015 Pivotal Software, Inc. All rights reserved.
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you
- * may not use this file except in compliance with the License. You
- * may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied. See the License for the specific language governing
- * permissions and limitations under the License. See accompanying
- * LICENSE file.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.gemstone.gemfire.internal.cache.partitioned;
 
@@ -21,47 +21,39 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-
-import junit.framework.TestCase;
+import java.util.*;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.partition.PartitionMemberInfo;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
-import com.gemstone.gemfire.distributed.internal.membership.MemberAttributes;
-import com.gemstone.gemfire.internal.LogWriterImpl;
-import com.gemstone.gemfire.internal.PureLogWriter;
-import com.gemstone.gemfire.internal.cache.partitioned.PartitionedRegionLoadModel.AddressComparor;
-import com.gemstone.gemfire.internal.cache.partitioned.PartitionedRegionLoadModel.SimulatedBucketOperator;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.BucketOperator.Completion;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.CompositeDirector;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.PartitionedRegionLoadModel;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.PartitionedRegionLoadModel.AddressComparor;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.RebalanceDirector;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.SimulatedBucketOperator;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author dsmith
  *
  */
 @SuppressWarnings("synthetic-access")
-public class PartitionedRegionLoadModelJUnitTest extends TestCase {
+public class PartitionedRegionLoadModelJUnitTest {
   private static final int MAX_MOVES = 5000;
   private static final boolean DEBUG = true;
   
-  static {
-    //bogus initialization to be able to create InternalDistributedMembers
-    MemberAttributes.setDefaults(1, 1, 1, -1, null, null, null);
-  }
-
   private MyBucketOperator bucketOperator;
-  private PureLogWriter logger;
   
+  @Before
   public void setUp() {
     this.bucketOperator = new MyBucketOperator();
-    this.logger = new PureLogWriter(LogWriterImpl.FINE_LEVEL);
   }
   
   /**
@@ -70,15 +62,16 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * copies of the low redundancy buckets to be made. 
    * @throws Exception
    */
+  @Test
   public void testRedundancySatisfaction() throws Exception {
     PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(
-        bucketOperator, 2, true, true, false, false, 4, getAddressComparor(false), logger,
-        true, Collections.<InternalDistributedMember>emptySet(), null);
+        bucketOperator, 2, 4, getAddressComparor(false),
+        Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,0}, new int[] {1,1,1,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,1,0,1}, new int[] {0,0,0,1});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,0}, new long[] {1,1,1,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,1,0,1}, new long[] {0,0,0,1});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
     
     Set<PartitionMemberInfo> details = model.getPartitionedMemberDetails("a");
     assertEquals(2, details.size());
@@ -86,7 +79,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     //TODO - make some assertions about what's in the details
 
     //we expect three moves
-    assertEquals(3, doMoves(model));
+    assertEquals(3, doMoves(new CompositeDirector(true, true, false, false), model));
     
     //TODO - make some assertions about what's in the details
     
@@ -103,19 +96,20 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * it is too big..
    * @throws Exception
    */
+  @Test
   public void testRedundancySatisfactionWithSizeLimit() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, true, true, false, false, 3, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, 3, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     
     //A member with 1 bucket with low redundancy, but it is too big to copy anywhere
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new int[] {30,0,0}, new int[] {1,0,0});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new long[] {30,0,0}, new long[] {1,0,0});
     //A member with 2 buckets with low redundancy that can be copied
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 40, 40, new int[] {0,10,10}, new int[] {0,1,1});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 40, 40, new long[] {0,10,10}, new long[] {0,1,1});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
     
     //we expect 2 moves
-    assertEquals(2, doMoves(model));
+    assertEquals(2, doMoves(new CompositeDirector(true, true, false, false), model));
     
     List<Create> expectedCreates = new ArrayList<Create>();
     expectedCreates.add(new Create(member1, 1));
@@ -123,20 +117,21 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     assertEquals(expectedCreates, bucketOperator.creates);
   }
   
+  @Test
   public void testRedundancySatisfactionWithCriticalMember() throws Exception {
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(
-        bucketOperator, 2, true, true, false, false, 3, getAddressComparor(false), logger,
-        true, Collections.<InternalDistributedMember> singleton(member1), null);
+        bucketOperator, 2, 3, getAddressComparor(false),
+        Collections.<InternalDistributedMember> singleton(member1), null);
 
     //this member has critical heap
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new int[] {10,0,0}, new int[] {1,0,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 40, 40, new int[] {0,10,10}, new int[] {0,1,1});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new long[] {10,0,0}, new long[] {1,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 40, 40, new long[] {0,10,10}, new long[] {0,1,1});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
     
     //we expect 2 moves
-    assertEquals(1, doMoves(model));
+    assertEquals(1, doMoves(new CompositeDirector(true, true, false, false),model));
     
     List<Create> expectedCreates = new ArrayList<Create>();
     expectedCreates.add(new Create(member2, 0));
@@ -147,19 +142,20 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * This test makes sure we ignore the size limit if requested
    * @throws Exception
    */
+  @Test
   public void testRedundancySatisfactionDoNotEnforceLocalMaxMemory() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, true, true, false, false, 3, getAddressComparor(false), logger, false, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, 3, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     
     //A member with 1 bucket with low redundancy, but it is too big to copy anywhere
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new int[] {30,0,0}, new int[] {1,0,0});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new long[] {30,0,0}, new long[] {1,0,0});
     //A member with 2 buckets with low redundancy that can be copied
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 40, 40, new int[] {0,10,10}, new int[] {0,1,1});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 40, 40, new long[] {0,10,10}, new long[] {0,1,1});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), false);
     
     //we expect 2 moves
-    assertEquals(3, doMoves(model));
+    assertEquals(3, doMoves(new CompositeDirector(true, true, false, false), model));
     
     List<Create> expectedCreates = new ArrayList<Create>();
     expectedCreates.add(new Create(member2, 0));
@@ -182,20 +178,21 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * make redundant copies on members with remote IP addresses.
    * @throws Exception
    */
+  @Test
   public void testRedundancySatisfactionPreferRemoteIp() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, false, false, 3, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1,  3, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getLocalHost(), 3);
 
     //Create some buckets with low redundancy on members 1 and 2
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {30,0,0}, new int[] {1,0,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,30,30}, new int[] {0,1,1});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {0,0,0}, new int[] {0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {30,0,0}, new long[] {1,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,30,30}, new long[] {0,1,1});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {0,0,0}, new long[] {0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
     
     //we expect 3 moves
-    assertEquals(3, doMoves(model));
+    assertEquals(3, doMoves(new CompositeDirector(true, true, false, false), model));
     
     //The buckets should all be created on member 3 because
     //it has a different ip address
@@ -206,40 +203,42 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     assertEquals(expectedCreates, bucketOperator.creates);
   }
   
+  @Test
   public void testRedundancySatisfactionEnforceRemoteIp() throws Exception {
-      PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, false, false, 3, getAddressComparor(true), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
-      InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
-      InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 3, getAddressComparor(true), Collections.<InternalDistributedMember>emptySet(), null);
+    InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
+    InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
 
-      //Create some buckets with low redundancy on members 1
-      PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {30,30,30}, new int[] {1,1,1});
-      PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0}, new int[] {0,0,0});
-      model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    //Create some buckets with low redundancy on members 1
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {30,30,30}, new long[] {1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0}, new long[] {0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
 
-      //we expect 0 moves, because we're enforcing that we can't create
-      //copies on the same IP.
-      assertEquals(0, doMoves(model));
+    //we expect 0 moves, because we're enforcing that we can't create
+    //copies on the same IP.
+    assertEquals(0, doMoves(new CompositeDirector(true, true, false, false), model));
 
-      assertEquals(Collections.emptyList(), bucketOperator.creates);
+    assertEquals(Collections.emptyList(), bucketOperator.creates);
   }
   
+  @Test
   public void testMoveBucketsEnforceRemoteIp() throws Exception {
-      PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, true, true, true, true, 3, getAddressComparor(true), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
-      InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
-      InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, 3, getAddressComparor(true), Collections.<InternalDistributedMember>emptySet(), null);
+    InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
+    InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
 
-      //Create some buckets with low redundancy on members 1
-      PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {30,30,30}, new int[] {1,1,1});
-      PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0}, new int[] {0,0,0});
-      model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    //Create some buckets with low redundancy on members 1
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {30,30,30}, new long[] {1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0}, new long[] {0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
 
-      //we expect 0 moves, because we're enforcing that we can't create
-      //copies on the same IP.
-      assertEquals(1, doMoves(model));
+    //we expect 0 moves, because we're enforcing that we can't create
+    //copies on the same IP.
+    assertEquals(1, doMoves(new CompositeDirector(true, true, true, true), model));
 
-      List<Move> expectedMoves = new ArrayList<Move>();
-      expectedMoves.add(new Move(member1, member2));
-      assertEquals(expectedMoves, bucketOperator.bucketMoves);
+    List<Move> expectedMoves = new ArrayList<Move>();
+    expectedMoves.add(new Move(member1, member2));
+    assertEquals(expectedMoves, bucketOperator.bucketMoves);
   }
   
   /**
@@ -247,19 +246,20 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * between nodes to ensure an even load.
    * @throws Exception
    */
+  @Test
   public void testRedundancySatisfactionBalanced() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, false, false, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     //Create some buckets with low redundancy on member 1
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
     
     //we expect 4 moves
-    assertEquals(4, doMoves(model));
+    assertEquals(4, doMoves(new CompositeDirector(true, true, false, false), model));
     
     //The bucket creates should alternate between members
     //so that the load is balanced.
@@ -276,20 +276,21 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * between nodes to ensure an even load.
    * @throws Exception
    */
+  @Test
   public void testColocatedRegions() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, false, true, 12, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 12, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     //Create some buckets with low redundancy on member 1
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1,1,1,1,1,1,1,1,1}, new int[] {1,1,1,1,1,1,1,1,1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 250, 250, new int[] {0,0,0,0,0,0,0,0,0,0,0,0}, new int[] {0,0,0,0,0,0,0,0,0,0,0,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 250, 250, new int[] {0,0,0,0,0,0,0,0,0,0,0,0}, new int[] {0,0,0,0,0,0,0,0,0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
-    model.addRegion("b", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1,1,1,1,1,1,1,1,1}, new long[] {1,1,1,1,1,1,1,1,1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 250, 250, new long[] {0,0,0,0,0,0,0,0,0,0,0,0}, new long[] {0,0,0,0,0,0,0,0,0,0,0,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 250, 250, new long[] {0,0,0,0,0,0,0,0,0,0,0,0}, new long[] {0,0,0,0,0,0,0,0,0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
+    model.addRegion("b", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
     
     //we expect 4 moves
-    assertEquals(18, doMoves(model));
+    assertEquals(18, doMoves(new CompositeDirector(true, true, false, true), model));
     
     //The bucket creates should alternate between members
     //so that the load is balanced.
@@ -318,25 +319,102 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     assertEquals(expectedMoves, new HashSet(bucketOperator.primaryMoves));
   }
   
+  @Test
   public void testIncompleteColocation() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, false, true, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     //Create some buckets with low redundancy on member 1
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {1,1,0,0}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
-    model.addRegion("b", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
-    model.addRegion("c", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {1,1,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
+    model.addRegion("b", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
+    model.addRegion("c", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
     //Add a region which is not created on all of the members.
     
     //Member 3 should not be considered a target for any moves. 
     
-    assertEquals(6, doMoves(model));
+    assertEquals(6, doMoves(new CompositeDirector(true, true, false, true), model));
     
     //Everything should be creatd on member2
+    Set<Create> expectedCreates = new HashSet<Create>();
+    expectedCreates.add(new Create(member2, 0));
+    expectedCreates.add(new Create(member2, 1));
+    expectedCreates.add(new Create(member2, 2));
+    expectedCreates.add(new Create(member2, 3));
+    assertEquals(expectedCreates, new HashSet(bucketOperator.creates));
+    
+    Set<Move> expectedMoves= new HashSet<Move>();
+    expectedMoves.add(new Move(member1, member2));
+    expectedMoves.add(new Move(member1, member2));
+    assertEquals(expectedMoves, new HashSet(bucketOperator.primaryMoves));
+  }
+  
+  /**
+   * Test that we enforce local max memory on a per region basis
+   * IE if one of the regions has a low lmm, it will prevent a bucket move
+   * @throws Exception
+   */
+  @Test
+  public void testColocationEnforceLocalMaxMemory() throws Exception {
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
+    InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
+    InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
+    InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
+    //Create some buckets with low redundancy on member 1
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
+    
+    
+    //Member 2 has a lmm of 2, so it should only accept 2 buckets
+    PartitionMemberInfoImpl bDetails1 = buildDetails(member1, 2, 2, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl bDetails2 = buildDetails(member2, 2, 2, new long[] {0,0,0,0}, new long[] {0,0,0,0});    
+    model.addRegion("b", Arrays.asList(bDetails1, bDetails2), new FakeOfflineDetails(), true);
+    
+    
+    assertEquals(4, doMoves(new CompositeDirector(true, true, false, true), model));
+    
+    //Everything should be create on member2
+    Set<Create> expectedCreates = new HashSet<Create>();
+    expectedCreates.add(new Create(member2, 0));
+    expectedCreates.add(new Create(member2, 1));
+    assertEquals(expectedCreates, new HashSet(bucketOperator.creates));
+    
+    Set<Move> expectedMoves= new HashSet<Move>();
+    expectedMoves.add(new Move(member1, member2));
+    expectedMoves.add(new Move(member1, member2));
+    assertEquals(expectedMoves, new HashSet(bucketOperator.primaryMoves));
+  }
+  
+  /**
+   * Test that each region indivually honors it's enforce local max
+   * memory flag.
+   * @throws Exception
+   */
+  @Test
+  public void testColocationIgnoreEnforceLocalMaxMemory() throws Exception {
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
+    InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
+    InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
+    InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
+    //Create some buckets with low redundancy on member 1
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
+    
+    
+    //Member 2 has a lmm of 2, so it should only accept 2 buckets
+    PartitionMemberInfoImpl bDetails1 = buildDetails(member1, 2, 2, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl bDetails2 = buildDetails(member2, 2, 2, new long[] {0,0,0,0}, new long[] {0,0,0,0});    
+    model.addRegion("b", Arrays.asList(bDetails1, bDetails2), new FakeOfflineDetails(), false);
+    
+    
+    assertEquals(6, doMoves(new CompositeDirector(true, true, false, true), model));
+    
+    //Everything should be created on member2
     Set<Create> expectedCreates = new HashSet<Create>();
     expectedCreates.add(new Create(member2, 0));
     expectedCreates.add(new Create(member2, 1));
@@ -357,17 +435,19 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    *  TODO rebalance - change this test of fix the algorithm?
    * @throws Exception
    */
-  public void z_testFoolGreedyAlgorithm() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, false, false, 50, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+  @Ignore
+  @Test
+  public void testFoolGreedyAlgorithm() throws Exception {
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 50, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, new int[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new int[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, new int[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, new long[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new long[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, new long[] {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
     
-    doMoves(model);
+    doMoves(new CompositeDirector(true, true, false, false), model);
 
     //we'd like to have 20 buckets per member, but what we'll find is that member 1
     //will have 15 and 2 and 3 will have 17 and 18.
@@ -381,33 +461,35 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * between nodes to ensure an even load.
    * @throws Exception
    */
+  @Test
   public void testRedundancySatisfactionWithFailures() throws Exception {
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     final InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     MyBucketOperator op = new MyBucketOperator() {
       @Override
-      public boolean createRedundantBucket(
+      public void createRedundantBucket(
           InternalDistributedMember targetMember, int i,
-          Map<String, Long> colocatedRegionBytes) {
+          Map<String, Long> colocatedRegionBytes, Completion completion) {
         if(targetMember.equals(member2)) {
-          return false;
+          completion.onFailure();
+        } else {
+          super.createRedundantBucket(targetMember, i, colocatedRegionBytes, completion);
         }
-        return super.createRedundantBucket(targetMember, i, colocatedRegionBytes);
       }
       
     };
     
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(op ,1, true, true, false, false, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(op ,1, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     
     //Create some buckets with low redundancy on member 1
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
     
     //we expect 8 moves
-    assertEquals(8, doMoves(model));
+    assertEquals(8, doMoves(new CompositeDirector(true, true, false, false), model));
     
     //The bucket creates should do all of the creates on member 3
     //because member2 failed.
@@ -419,6 +501,56 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     assertEquals(expectedCreates, op.creates);
   }
   
+  /**
+   * Test that redundancy satisfation can handle asynchronous failures
+   * and complete the job correctly. 
+   * @throws Exception
+   */
+  @Test
+  public void testRedundancySatisfactionWithAsyncFailures() throws Exception {
+    InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
+    InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
+    InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
+    
+    BucketOperatorWithFailures operator = new BucketOperatorWithFailures();
+    operator.addBadMember(member2);
+    bucketOperator = operator;
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(
+        bucketOperator, 1, 6, getAddressComparor(false),
+        Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1,1,1}, new long[] {1,1,1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0,0,0}, new long[] {0,0,0,0,0,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {0,0,0,0,0,0}, new long[] {0,0,0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
+    
+    Set<PartitionMemberInfo> details = model.getPartitionedMemberDetails("a");
+    assertEquals(3, details.size());
+    
+    //TODO - make some assertions about what's in the details
+
+    //we expect 6 moves (3 of these will fail)
+    assertEquals(6, doMoves(new CompositeDirector(true, true, false, false), model));
+    
+    assertEquals(3, bucketOperator.creates.size());
+    for(Completion completion: operator.pendingSuccesses) {
+      completion.onSuccess();
+    }
+    for(Completion completion: operator.pendingFailures) {
+      completion.onFailure();
+    }
+    
+    //Now the last two moves will get reattempted to a new location (because the last location failed)
+    assertEquals(3, doMoves(new CompositeDirector(true, true, false, false), model));
+    
+    List<Create> expectedCreates = new ArrayList<Create>();
+    expectedCreates.add(new Create(member3, 1));
+    expectedCreates.add(new Create(member3, 3));
+    expectedCreates.add(new Create(member3, 5));
+    expectedCreates.add(new Create(member3, 0));
+    expectedCreates.add(new Create(member3, 2));
+    expectedCreates.add(new Create(member3, 4));
+    assertEquals(expectedCreates, bucketOperator.creates);
+  }
   
   /**
    * Very basic test of moving primaries. Creates two nodes and four buckets, with a copy
@@ -426,16 +558,17 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * primaries to move to the other node.
    * @throws Exception
    */
+  @Test
   public void testMovePrimaries() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, false, false, false, true, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     //Create some imbalanced primaries
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {1,1,1,1}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {1,1,1,1}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
 
-    assertEquals(2, doMoves(model));
+    assertEquals(2, doMoves(new CompositeDirector(false, false, false, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
 
@@ -453,6 +586,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * to member3 instead.
    * @throws Exception
    */
+  @Test
   public void testMovePrimariesWithFailures() throws Exception {
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     final InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
@@ -469,14 +603,14 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
       }
     };
     
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(op ,2, false, false, false, true, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(op ,2, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     //Create some imbalanced primaries
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {1,1,1,1}, new int[] {0,0,0,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {1,1,1,1}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {1,1,1,1}, new long[] {0,0,0,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {1,1,1,1}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
 
-    assertEquals(8, doMoves(model));
+    assertEquals(8, doMoves(new CompositeDirector(false, false, false, true), model));
     
     assertEquals(Collections.emptyList(), op.creates);
 
@@ -492,18 +626,19 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * Test of moving primaries when nodes are weighted relative to each other
    * @throws Exception
    */
+  @Test
   public void testMovePrimariesWithWeights() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, false, false, false, true, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     
     //member 1 has a lower weight, and all of the primaries
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 1, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 1, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
     //member 2 has a higher weight
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 3, 500, new int[] {1,1,1,1}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 3, 500, new long[] {1,1,1,1}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
     
-    assertEquals(3, doMoves(model));
+    assertEquals(3, doMoves(new CompositeDirector(false, false, false, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
 
@@ -533,20 +668,21 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * 
    * @throws Exception
    */
+  @Test
   public void testPrimaryShuffle() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, false, false, false, true, 9, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 9, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 1, 500, new int[] {1,1,1,1,1,1,0,0,0}, new int[] {1,1,1,1,1,1,0,0,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 1, 500, new int[] {1,1,1,1,1,1,1,1,1}, new int[] {0,0,0,0,0,0,1,1,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 1, 500, new int[] {0,0,0,0,0,0,1,1,1}, new int[] {0,0,0,0,0,0,0,0,1});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 1, 500, new long[] {1,1,1,1,1,1,0,0,0}, new long[] {1,1,1,1,1,1,0,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 1, 500, new long[] {1,1,1,1,1,1,1,1,1}, new long[] {0,0,0,0,0,0,1,1,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 1, 500, new long[] {0,0,0,0,0,0,1,1,1}, new long[] {0,0,0,0,0,0,0,0,1});
     
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
 
     
-    int moves = doMoves(model);
+    int moves = doMoves(new CompositeDirector(false, false, false, true), model);
     assertEquals("Actual Moves" + bucketOperator.primaryMoves, 3, moves);
     
 
@@ -564,24 +700,25 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * Test a case where we seem to get into an infinite loop while balancing primaries.
    * @throws Exception
    */
+  @Test
   public void testBug39953() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, false, false, false, true, 113, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, 113, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     InternalDistributedMember member4 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 4);
     //Create some imbalanced primaries
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 216, 216, new int[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new int[] {0,0,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,1,1,0,0,1,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,1,0,1,1,1,0,0,0,0,0
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 216, 216, new long[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new long[] {0,0,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,1,1,0,0,1,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,0,1,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,1,0,1,1,1,0,0,0,0,0
 });
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 216, 216, new int[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new int[] {1,0,0,0,1,1,0,1,0,0,0,1,0,0,0,1,1,0,1,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 216, 216, new long[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new long[] {1,0,0,0,1,1,0,1,0,0,0,1,0,0,0,1,1,0,1,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0
 });
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 216, 216, new int[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new int[] {0,1,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,0,0,1,0,0,1,1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,1,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 216, 216, new long[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new long[] {0,1,0,0,0,0,1,0,0,1,1,0,1,0,1,0,0,0,0,1,0,0,1,1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,1,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,1
 });
-    PartitionMemberInfoImpl details4 = buildDetails(member4, 216, 216, new int[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new int[] {0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0
+    PartitionMemberInfoImpl details4 = buildDetails(member4, 216, 216, new long[] {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, new long[] {0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,1,1,0,0,0,0,0,1,0,1,0,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0
 });
-    model.addRegion("a", Arrays.asList(details1, details2,details3, details4), new FakeOfflineDetails());
+    model.addRegion("a", Arrays.asList(details1, details2,details3, details4), new FakeOfflineDetails(), true);
 
-    assertEquals(0, doMoves(model));
+    assertEquals(0, doMoves(new CompositeDirector(false, false, false, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
 
@@ -593,16 +730,17 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * Very basic test of moving buckets. Creates two nodes and four buckets, with buckets only on one node. Half of the buckets should move to the other node. 
    * @throws Exception
    */
+  @Test
   public void testMoveBuckets() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, false, false, true, true, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     //Create some imbalanced nodes
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
 
-    assertEquals(2, doMoves(model));
+    assertEquals(2, doMoves(new CompositeDirector(false, false, true, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
     assertEquals(Collections.emptyList(), bucketOperator.primaryMoves);
@@ -620,6 +758,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * member2 refuses the buckets, so the buckets should move to member3
    * @throws Exception
    */
+  @Test
   public void testMoveBucketsWithFailures() throws Exception {
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     final InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
@@ -636,14 +775,14 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
         return super.moveBucket(source, target, id, colocatedRegionBytes);
       }
     };
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(op ,0, false, false, true, true, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(op ,0, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     //Create some imbalanced nodes
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
 
-    assertEquals(8, doMoves(model));
+    assertEquals(8, doMoves(new CompositeDirector(false, false, true, true), model));
     
     assertEquals(Collections.emptyList(), op.creates);
     assertEquals(Collections.emptyList(), op.primaryMoves);
@@ -661,16 +800,17 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * of a node while moving buckets. 
    * @throws Exception
    */
+  @Test
   public void testMoveBucketsWithWeights() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, false, false, true, true, 6, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, 6, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     //Create some imbalanced nodes
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 250, 250, new int[] {1,1,1,1, 1, 1}, new int[] {1,1,1,1, 1, 1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0, 0, 0 }, new int[] {0,0,0,0, 0, 0});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 250, 250, new long[] {1,1,1,1, 1, 1}, new long[] {1,1,1,1, 1, 1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0, 0, 0 }, new long[] {0,0,0,0, 0, 0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
 
-    assertEquals(4, doMoves(model));
+    assertEquals(4, doMoves(new CompositeDirector(false, false, true, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
     assertEquals(Collections.emptyList(), bucketOperator.primaryMoves);
@@ -691,16 +831,17 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * choosing which buckets to move.
    * @throws Exception
    */
+  @Test
   public void testMoveBucketsWithSizes() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, false, false, true, true, 6, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, 6, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     //Create some imbalanced nodes
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {3,1,1,1,1,1}, new int[] {1,1,1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {0,0,0,0,0,0}, new int[] {0,0,0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {3,1,1,1,1,1}, new long[] {1,1,1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {0,0,0,0,0,0}, new long[] {0,0,0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2), new FakeOfflineDetails(), true);
 
-    assertEquals(4, doMoves(model));
+    assertEquals(4, doMoves(new CompositeDirector(false, false, true, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
     assertEquals(Collections.emptyList(), bucketOperator.primaryMoves);
@@ -721,20 +862,65 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * Makes sure that buckets and primaries are balanced
    * @throws Exception
    */
+  @Test
   public void testMoveBucketsWithRedundancy() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, false, false, true, true, 4, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     InternalDistributedMember member4 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 4);
     //Create some imbalanced nodes
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new int[] {1,1,1,1}, new int[] {1,1,0,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new int[] {1,1,1,1}, new int[] {0,0,1,0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new int[] {1,1,1,1}, new int[] {0,0,0,1});
-    PartitionMemberInfoImpl details4 = buildDetails(member4, 500, 500, new int[] {0,0,0,0}, new int[] {0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3, details4), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, 500, new long[] {1,1,1,1}, new long[] {1,1,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, 500, new long[] {1,1,1,1}, new long[] {0,0,1,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, 500, new long[] {1,1,1,1}, new long[] {0,0,0,1});
+    PartitionMemberInfoImpl details4 = buildDetails(member4, 500, 500, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3, details4), new FakeOfflineDetails(), true);
 
-    doMoves(model);
+    doMoves(new CompositeDirector(false, false, true, true), model);
+    
+    assertEquals(Collections.emptyList(), bucketOperator.creates);
+
+    //One bucket should move from each member to member4
+    Set<Move> expectedMoves = new HashSet<Move>();
+    expectedMoves.add(new Move(member1, member4));
+    expectedMoves.add(new Move(member2, member4));
+    expectedMoves.add(new Move(member3, member4));
+
+    assertEquals(expectedMoves, new HashSet<Move>(bucketOperator.bucketMoves));
+    
+    //We don't know how many primaries will move, because
+    //the move buckets algorithm could move the primary or
+    //it could move a redundant copy. But after we're done, we should
+    //only have one primary per member.
+    Set<PartitionMemberInfo> detailSet = model.getPartitionedMemberDetails("a");
+    for(PartitionMemberInfo member: detailSet) {
+      assertEquals(1, member.getPrimaryCount());
+      assertEquals(3, member.getBucketCount());
+    }
+  }
+  
+  /**
+   * Test to move buckets with some large buckets (to make sure there are no issues with buffer overflow);
+   * Makes sure that buckets and primaries are balanced
+   * @throws Exception
+   */
+  @Test
+  public void testMoveLargeBucketsWithRedundancy() throws Exception {
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,2, 4, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
+    InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
+    InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
+    InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
+    InternalDistributedMember member4 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 4);
+    //Create some imbalanced nodes
+    
+    long bigBucket = Integer.MAX_VALUE * 5L + 10L;
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 500, Long.MAX_VALUE, new long[] {bigBucket,bigBucket,bigBucket,bigBucket}, new long[] {1,1,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 500, Long.MAX_VALUE, new long[] {bigBucket,bigBucket,bigBucket,bigBucket}, new long[] {0,0,1,0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 500, Long.MAX_VALUE, new long[] {bigBucket,bigBucket,bigBucket,bigBucket}, new long[] {0,0,0,1});
+    PartitionMemberInfoImpl details4 = buildDetails(member4, 500, Long.MAX_VALUE, new long[] {0,0,0,0}, new long[] {0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3, details4), new FakeOfflineDetails(), true);
+
+    doMoves(new CompositeDirector(false, false, true, true), model);
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
 
@@ -762,19 +948,20 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * honors size restrictions for VMs.
    * @throws Exception
    */
+  @Test
   public void testMoveBucketsWithSizeLimits() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, false, false, true, true, 6, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, 6, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     //Create some imbalanced nodes
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new int[] {30,30,30,0,0,0}, new int[] {1,1,1,0,0,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 50, 50, new int[] {0,0,0,10,10,10}, new int[] {0,0,0,1,1,1});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new long[] {30,30,30,0,0,0}, new long[] {1,1,1,0,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 50, 50, new long[] {0,0,0,10,10,10}, new long[] {0,0,0,1,1,1});
     //this member has a lower size that can't fit buckets of size 30
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 50, 20, new int[] {0,0,0,0,0,0}, new int[] {0,0,0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 50, 20, new long[] {0,0,0,0,0,0}, new long[] {0,0,0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
 
-    assertEquals(3, doMoves(model));
+    assertEquals(3, doMoves(new CompositeDirector(false, false, true, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
 
@@ -798,21 +985,22 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * honors size critical members
    * @throws Exception
    */
+  @Test
   public void testMoveBucketsWithCriticalMember() throws Exception {
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(
-        bucketOperator, 0, false, false, true, true, 6, getAddressComparor(false), logger,
-        true, Collections.<InternalDistributedMember> singleton(member3), null);
+        bucketOperator, 0, 6, getAddressComparor(false),
+        Collections.<InternalDistributedMember> singleton(member3), null);
     //Create some imbalanced nodes
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new int[] {10,10,10,10,10,10}, new int[] {1,1,1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 50, 50, new int[] {0,0,0,0,0,0}, new int[] {0,0,0,0,0,0});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 50, 50, new long[] {10,10,10,10,10,10}, new long[] {1,1,1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 50, 50, new long[] {0,0,0,0,0,0}, new long[] {0,0,0,0,0,0});
     //this member has a critical heap
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 50, 50, new int[] {0,0,0,0,0,0}, new int[] {0,0,0,0,0,0});
-    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 50, 50, new long[] {0,0,0,0,0,0}, new long[] {0,0,0,0,0,0});
+    model.addRegion("a", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
 
-    assertEquals(3, doMoves(model));
+    assertEquals(3, doMoves(new CompositeDirector(false, false, true, true), model));
     
     assertEquals(Collections.emptyList(), bucketOperator.creates);
 
@@ -828,8 +1016,9 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
   /** Test to make sure two runs with the same information
    * perform the same moves. 
    */
+  @Test
   public void testRepeatableRuns() throws UnknownHostException {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, false, false, true, true, 113, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,0, 113, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 22893);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 25655);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 22959);
@@ -837,17 +1026,17 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     InternalDistributedMember member5 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 28609);
     InternalDistributedMember member6 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 22911);
     InternalDistributedMember member7 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 29562);
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 50 * 1024 * 1024, 50 * 1024 * 1024, new int[] {23706, 0, 23347, 23344, 0, 0, 0, 11386, 0, 0, 0, 0, 0, 10338, 0, 9078, 6413, 10411, 5297, 1226, 0, 2594, 2523, 0, 1297, 0, 3891, 2523, 0, 0, 2594, 0, 1297, 0, 1297, 2594, 1, 0, 10375, 5188, 9078, 0, 1297, 0, 0, 1226, 1, 1, 0, 0, 1297, 11672, 0, 0, 0, 0, 7782, 0, 11673, 0, 2594, 1, 0, 2593, 3891, 1, 0, 7711, 7710, 2594, 0, 6485, 0, 1, 7711, 6485, 7711, 3891, 1297, 0, 10303, 2594, 3820, 0, 2523, 3999, 0, 1, 0, 2522, 1, 5188, 5188, 0, 2594, 3891, 2523, 2594, 0, 1297, 1, 1, 1226, 0, 1297, 0, 3891, 1226, 2522, 11601, 10376, 0, 2594}, new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 50 * 1024 * 1024, 50 * 1024 * 1024, new int[] {0, 24674, 0, 23344, 0, 19312, 19421, 11386, 7889, 0, 0, 6413, 12933, 10338, 18088, 9078, 0, 0, 0, 1226, 0, 2594, 0, 0, 0, 2594, 0, 2523, 0, 1, 0, 0, 1297, 0, 0, 0, 0, 2594, 0, 5188, 9078, 0, 0, 0, 1, 1226, 1, 0, 1297, 5187, 0, 0, 0, 0, 0, 1, 0, 11602, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 7710, 0, 10304, 6485, 0, 0, 0, 0, 0, 3891, 0, 0, 10303, 0, 0, 1, 2523, 3999, 0, 0, 1, 0, 0, 5188, 0, 5116, 2594, 3891, 2523, 0, 2522, 1297, 1, 0, 0, 1297, 0, 1297, 3891, 1226, 2522, 0, 10376, 0, 0}, new int[] {0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 50 * 1024 * 1024, 50 * 1024 * 1024, new int[] {23706, 24674, 0, 0, 20901, 0, 19421, 0, 7889, 11708, 0, 0, 12933, 10338, 18088, 0, 6413, 10411, 5297, 0, 7782, 2594, 0, 1297, 0, 2594, 3891, 0, 2523, 1, 0, 2523, 1297, 1297, 1297, 0, 1, 2594, 0, 0, 0, 1297, 0, 1297, 1, 0, 0, 1, 1297, 5187, 0, 0, 13007, 0, 11672, 0, 7782, 11602, 0, 0, 0, 0, 2594, 2593, 3891, 1, 7782, 7711, 0, 0, 10304, 0, 7711, 0, 7711, 6485, 7711, 0, 1297, 1297, 10303, 2594, 3820, 1, 2523, 0, 1, 0, 1, 2522, 1, 5188, 5188, 5116, 2594, 3891, 2523, 2594, 0, 0, 0, 1, 1226, 1297, 1297, 1297, 0, 0, 2522, 0, 0, 2523, 0}, new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0});
-    PartitionMemberInfoImpl details4 = buildDetails(member4, 50 * 1024 * 1024, 50 * 1024 * 1024, new int[] {23706, 24674, 23347, 0, 20901, 19312, 0, 0, 7889, 11708, 12933, 6413, 0, 0, 0, 9078, 6413, 10411, 5297, 1226, 7782, 0, 2523, 1297, 0, 0, 0, 2523, 0, 0, 2594, 2523, 0, 1297, 0, 2594, 1, 0, 10375, 0, 0, 1297, 1297, 1297, 1, 1226, 1, 0, 1297, 0, 1297, 0, 13007, 7781, 11672, 1, 7782, 11602, 11673, 5225, 2594, 1, 2594, 2593, 3891, 0, 7782, 0, 7710, 0, 10304, 0, 0, 1, 7711, 6485, 7711, 0, 0, 0, 0, 0, 3820, 1, 0, 3999, 1, 1, 1, 0, 1, 0, 5188, 0, 0, 3891, 0, 0, 2522, 1297, 1, 0, 0, 0, 1297, 1297, 0, 0, 2522, 11601, 10376, 2523, 2594}, new int[] {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0});
-    PartitionMemberInfoImpl details5 = buildDetails(member5, 50 * 1024 * 1024, 50 * 1024 * 1024, new int[] {23706, 24674, 0, 23344, 0, 0, 19421, 0, 0, 11708, 12933, 6413, 12933, 10338, 18088, 0, 0, 10411, 0, 1226, 7782, 2594, 2523, 1297, 1297, 2594, 3891, 0, 2523, 1, 2594, 2523, 0, 1297, 1297, 2594, 0, 2594, 10375, 0, 0, 1297, 0, 1297, 0, 1226, 1, 1, 0, 5187, 1297, 11672, 13007, 7781, 11672, 1, 0, 11602, 11673, 5225, 2594, 1, 0, 2593, 3891, 1, 7782, 0, 0, 2594, 0, 6485, 7711, 1, 7711, 0, 7711, 3891, 0, 1297, 0, 2594, 3820, 0, 2523, 0, 1, 1, 0, 2522, 0, 0, 0, 5116, 0, 0, 0, 0, 2522, 0, 0, 1, 0, 1297, 1297, 1297, 3891, 0, 0, 0, 0, 0, 2594}, new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0});
-    PartitionMemberInfoImpl details6 = buildDetails(member6, 50 * 1024 * 1024, 50 * 1024 * 1024, new int[] {0, 0, 23347, 0, 20901, 19312, 0, 11386, 7889, 0, 12933, 6413, 0, 0, 18088, 0, 6413, 0, 5297, 0, 7782, 0, 2523, 0, 1297, 2594, 0, 0, 2523, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5188, 9078, 0, 1297, 0, 1, 0, 0, 1, 0, 0, 1297, 11672, 13007, 7781, 0, 0, 0, 0, 0, 5225, 0, 0, 2594, 0, 0, 0, 7782, 7711, 0, 2594, 0, 0, 7711, 0, 0, 0, 0, 0, 1297, 1297, 0, 0, 0, 1, 0, 3999, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 2523, 2594, 0, 0, 0, 0, 1226, 1297, 0, 0, 3891, 1226, 0, 11601, 10376, 2523, 0}, new int[] {0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0});
-    PartitionMemberInfoImpl details7 = buildDetails(member7, 50 * 1024 * 1024, 50 * 1024 * 1024, new int[] {0, 0, 23347, 23344, 20901, 19312, 19421, 11386, 0, 11708, 12933, 0, 12933, 0, 0, 9078, 0, 0, 0, 0, 0, 0, 0, 1297, 1297, 0, 3891, 2523, 2523, 1, 2594, 2523, 1297, 1297, 1297, 2594, 1, 2594, 10375, 5188, 9078, 1297, 1297, 1297, 0, 0, 0, 0, 1297, 5187, 0, 11672, 0, 7781, 11672, 1, 7782, 0, 11673, 5225, 2594, 0, 2594, 0, 0, 1, 0, 7711, 7710, 2594, 10304, 6485, 7711, 1, 0, 6485, 0, 3891, 1297, 1297, 10303, 2594, 0, 0, 0, 0, 0, 1, 0, 2522, 0, 5188, 5188, 5116, 2594, 0, 0, 2594, 2522, 1297, 1, 1, 1226, 0, 0, 0, 0, 1226, 0, 11601, 0, 2523, 2594}, new int[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 50 * 1024 * 1024, 50 * 1024 * 1024, new long[] {23706, 0, 23347, 23344, 0, 0, 0, 11386, 0, 0, 0, 0, 0, 10338, 0, 9078, 6413, 10411, 5297, 1226, 0, 2594, 2523, 0, 1297, 0, 3891, 2523, 0, 0, 2594, 0, 1297, 0, 1297, 2594, 1, 0, 10375, 5188, 9078, 0, 1297, 0, 0, 1226, 1, 1, 0, 0, 1297, 11672, 0, 0, 0, 0, 7782, 0, 11673, 0, 2594, 1, 0, 2593, 3891, 1, 0, 7711, 7710, 2594, 0, 6485, 0, 1, 7711, 6485, 7711, 3891, 1297, 0, 10303, 2594, 3820, 0, 2523, 3999, 0, 1, 0, 2522, 1, 5188, 5188, 0, 2594, 3891, 2523, 2594, 0, 1297, 1, 1, 1226, 0, 1297, 0, 3891, 1226, 2522, 11601, 10376, 0, 2594}, new long[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 50 * 1024 * 1024, 50 * 1024 * 1024, new long[] {0, 24674, 0, 23344, 0, 19312, 19421, 11386, 7889, 0, 0, 6413, 12933, 10338, 18088, 9078, 0, 0, 0, 1226, 0, 2594, 0, 0, 0, 2594, 0, 2523, 0, 1, 0, 0, 1297, 0, 0, 0, 0, 2594, 0, 5188, 9078, 0, 0, 0, 1, 1226, 1, 0, 1297, 5187, 0, 0, 0, 0, 0, 1, 0, 11602, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 7710, 0, 10304, 6485, 0, 0, 0, 0, 0, 3891, 0, 0, 10303, 0, 0, 1, 2523, 3999, 0, 0, 1, 0, 0, 5188, 0, 5116, 2594, 3891, 2523, 0, 2522, 1297, 1, 0, 0, 1297, 0, 1297, 3891, 1226, 2522, 0, 10376, 0, 0}, new long[] {0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 50 * 1024 * 1024, 50 * 1024 * 1024, new long[] {23706, 24674, 0, 0, 20901, 0, 19421, 0, 7889, 11708, 0, 0, 12933, 10338, 18088, 0, 6413, 10411, 5297, 0, 7782, 2594, 0, 1297, 0, 2594, 3891, 0, 2523, 1, 0, 2523, 1297, 1297, 1297, 0, 1, 2594, 0, 0, 0, 1297, 0, 1297, 1, 0, 0, 1, 1297, 5187, 0, 0, 13007, 0, 11672, 0, 7782, 11602, 0, 0, 0, 0, 2594, 2593, 3891, 1, 7782, 7711, 0, 0, 10304, 0, 7711, 0, 7711, 6485, 7711, 0, 1297, 1297, 10303, 2594, 3820, 1, 2523, 0, 1, 0, 1, 2522, 1, 5188, 5188, 5116, 2594, 3891, 2523, 2594, 0, 0, 0, 1, 1226, 1297, 1297, 1297, 0, 0, 2522, 0, 0, 2523, 0}, new long[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0});
+    PartitionMemberInfoImpl details4 = buildDetails(member4, 50 * 1024 * 1024, 50 * 1024 * 1024, new long[] {23706, 24674, 23347, 0, 20901, 19312, 0, 0, 7889, 11708, 12933, 6413, 0, 0, 0, 9078, 6413, 10411, 5297, 1226, 7782, 0, 2523, 1297, 0, 0, 0, 2523, 0, 0, 2594, 2523, 0, 1297, 0, 2594, 1, 0, 10375, 0, 0, 1297, 1297, 1297, 1, 1226, 1, 0, 1297, 0, 1297, 0, 13007, 7781, 11672, 1, 7782, 11602, 11673, 5225, 2594, 1, 2594, 2593, 3891, 0, 7782, 0, 7710, 0, 10304, 0, 0, 1, 7711, 6485, 7711, 0, 0, 0, 0, 0, 3820, 1, 0, 3999, 1, 1, 1, 0, 1, 0, 5188, 0, 0, 3891, 0, 0, 2522, 1297, 1, 0, 0, 0, 1297, 1297, 0, 0, 2522, 11601, 10376, 2523, 2594}, new long[] {1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0});
+    PartitionMemberInfoImpl details5 = buildDetails(member5, 50 * 1024 * 1024, 50 * 1024 * 1024, new long[] {23706, 24674, 0, 23344, 0, 0, 19421, 0, 0, 11708, 12933, 6413, 12933, 10338, 18088, 0, 0, 10411, 0, 1226, 7782, 2594, 2523, 1297, 1297, 2594, 3891, 0, 2523, 1, 2594, 2523, 0, 1297, 1297, 2594, 0, 2594, 10375, 0, 0, 1297, 0, 1297, 0, 1226, 1, 1, 0, 5187, 1297, 11672, 13007, 7781, 11672, 1, 0, 11602, 11673, 5225, 2594, 1, 0, 2593, 3891, 1, 7782, 0, 0, 2594, 0, 6485, 7711, 1, 7711, 0, 7711, 3891, 0, 1297, 0, 2594, 3820, 0, 2523, 0, 1, 1, 0, 2522, 0, 0, 0, 5116, 0, 0, 0, 0, 2522, 0, 0, 1, 0, 1297, 1297, 1297, 3891, 0, 0, 0, 0, 0, 2594}, new long[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0});
+    PartitionMemberInfoImpl details6 = buildDetails(member6, 50 * 1024 * 1024, 50 * 1024 * 1024, new long[] {0, 0, 23347, 0, 20901, 19312, 0, 11386, 7889, 0, 12933, 6413, 0, 0, 18088, 0, 6413, 0, 5297, 0, 7782, 0, 2523, 0, 1297, 2594, 0, 0, 2523, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5188, 9078, 0, 1297, 0, 1, 0, 0, 1, 0, 0, 1297, 11672, 13007, 7781, 0, 0, 0, 0, 0, 5225, 0, 0, 2594, 0, 0, 0, 7782, 7711, 0, 2594, 0, 0, 7711, 0, 0, 0, 0, 0, 1297, 1297, 0, 0, 0, 1, 0, 3999, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 2523, 2594, 0, 0, 0, 0, 1226, 1297, 0, 0, 3891, 1226, 0, 11601, 10376, 2523, 0}, new long[] {0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0});
+    PartitionMemberInfoImpl details7 = buildDetails(member7, 50 * 1024 * 1024, 50 * 1024 * 1024, new long[] {0, 0, 23347, 23344, 20901, 19312, 19421, 11386, 0, 11708, 12933, 0, 12933, 0, 0, 9078, 0, 0, 0, 0, 0, 0, 0, 1297, 1297, 0, 3891, 2523, 2523, 1, 2594, 2523, 1297, 1297, 1297, 2594, 1, 2594, 10375, 5188, 9078, 1297, 1297, 1297, 0, 0, 0, 0, 1297, 5187, 0, 11672, 0, 7781, 11672, 1, 7782, 0, 11673, 5225, 2594, 0, 2594, 0, 0, 1, 0, 7711, 7710, 2594, 10304, 6485, 7711, 1, 0, 6485, 0, 3891, 1297, 1297, 10303, 2594, 0, 0, 0, 0, 0, 1, 0, 2522, 0, 5188, 5188, 5116, 2594, 0, 0, 2594, 2522, 1297, 1, 1, 1226, 0, 0, 0, 0, 1226, 0, 11601, 0, 2523, 2594}, new long[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1});
 
-    model.addRegion("a", Arrays.asList(details1, details2, details3, details4, details5, details6, details7), new FakeOfflineDetails());
+    model.addRegion("a", Arrays.asList(details1, details2, details3, details4, details5, details6, details7), new FakeOfflineDetails(), true);
     
-    doMoves(model);
+    doMoves(new CompositeDirector(false, false, true, true), model);
     List<Move> bucketMoves1 = new ArrayList<Move>(bucketOperator.bucketMoves);
     List<Create> bucketCreates1 = new ArrayList<Create>(bucketOperator.creates);
     List<Move> primaryMoves1 = new ArrayList<Move>(bucketOperator.primaryMoves);
@@ -856,19 +1045,20 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     bucketOperator.primaryMoves.clear();
     
     
-    model = new PartitionedRegionLoadModel(bucketOperator ,0, false, false, true, true, 113, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
-    model.addRegion("a", Arrays.asList(details1, details2, details4, details3, details5, details6, details7), new FakeOfflineDetails());
+    model = new PartitionedRegionLoadModel(bucketOperator ,0, 113, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
+    model.addRegion("a", Arrays.asList(details1, details2, details4, details3, details5, details6, details7), new FakeOfflineDetails(), true);
     
-    doMoves(model);
+    doMoves(new CompositeDirector(false, false, true, true), model);
     assertEquals(bucketCreates1, bucketOperator.creates);
     assertEquals(bucketMoves1, bucketOperator.bucketMoves);
     assertEquals(primaryMoves1, bucketOperator.primaryMoves);
   }
 
-  
   /**
    * This is more of a simulation than a test
    */
+  @Ignore
+  @Test
   public void z_testRandom() throws Exception {
     long seed = System.nanoTime();
     System.out.println("random seed=" + seed);
@@ -883,8 +1073,8 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
       int members = rand.nextInt(MAX_MEMBERS) + 2;
       int buckets = rand.nextInt(MAX_BUCKETS) + members;
       int redundancy = rand.nextInt(MAX_REDUNDANCY);
-      int[][] bucketLocations = new int[members][buckets];
-      int[][] bucketPrimaries= new int[members][buckets];
+      long[][] bucketLocations = new long[members][buckets];
+      long[][] bucketPrimaries= new long[members][buckets];
       for(int i = 0; i < buckets; i++) {
         int bucketSize = rand.nextInt(AVERAGE_BUCKET_SIZE * 2);
 
@@ -909,7 +1099,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
         }
       }
 
-      PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator, redundancy, true, true, true, true, buckets, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+      PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator, redundancy, buckets, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
       PartitionMemberInfoImpl[] details = new PartitionMemberInfoImpl[members]; 
       for(int i = 0; i < members; i++) {
         InternalDistributedMember member = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), i);
@@ -917,9 +1107,9 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
         details[i] = buildDetails(member, maxMemory, maxMemory, bucketLocations[i], bucketPrimaries[i]);
       }
 
-      model.addRegion("a", Arrays.asList(details), new FakeOfflineDetails());
+      model.addRegion("a", Arrays.asList(details), new FakeOfflineDetails(), true);
 
-      doMoves(model);
+      doMoves(new CompositeDirector(true, true, true, true), model);
     } catch(Throwable e) {
       throw new Exception("Error with seed " + seed, e);
     }
@@ -930,6 +1120,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
    * with multiple levels of colocation. See bug #40943
    * @throws Exception
    */
+  @Test
   public void testManyColocatedRegions() throws Exception {
     for(int i = 0; i < 10; i++) {
       try {
@@ -940,35 +1131,36 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     }
   }
   
-  public void doManyColocatedRegionsTest(int colocatedRegions) throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, true, true, 5, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+  private void doManyColocatedRegionsTest(int colocatedRegions) throws Exception {
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 5, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     InternalDistributedMember member3 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 3);
     //Create some buckets with low redundancy on member 1
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 200, 200, new int[] {30,23,28,30,23}, new int[] {1,1,1,0,0});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 200, 200, new int[] {30,23,28,30,23}, new int[] {0,0,0,1,1});
-    PartitionMemberInfoImpl details3 = buildDetails(member3, 200, 200, new int[] {0,0,0,0,0}, new int[] {0,0,0,0,0});
-    model.addRegion("primary", Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 200, 200, new long[] {30,23,28,30,23}, new long[] {1,1,1,0,0});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 200, 200, new long[] {30,23,28,30,23}, new long[] {0,0,0,1,1});
+    PartitionMemberInfoImpl details3 = buildDetails(member3, 200, 200, new long[] {0,0,0,0,0}, new long[] {0,0,0,0,0});
+    model.addRegion("primary", Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
     for(int i = 0; i < colocatedRegions; i++) {
-      model.addRegion("colocated" + i, Arrays.asList(details1, details2, details3), new FakeOfflineDetails());
+      model.addRegion("colocated" + i, Arrays.asList(details1, details2, details3), new FakeOfflineDetails(), true);
     }
     
     //we expect 3 moves
-    assertEquals(4, doMoves(model));
+    assertEquals(4, doMoves(new CompositeDirector(true, true, true, true), model));
   }
   
   /**
    * Test to make sure than redundancy satisfaction ignores offline members
    * @throws Exception
    */
+  @Test
   public void testRedundancySatisficationWithOfflineMembers() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, false, false, 5, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 5, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 200, 200, new int[] {30,0,28,30,23}, new int[] {1,0,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 200, 200, new int[] {0,23,0,0,0}, new int[] {0,1,0,0,0});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 200, 200, new long[] {30,0,28,30,23}, new long[] {1,0,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 200, 200, new long[] {0,23,0,0,0}, new long[] {0,1,0,0,0});
     
     
     
@@ -977,9 +1169,9 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     Set<PersistentMemberID> x = Collections.emptySet();
     final OfflineMemberDetailsImpl offlineDetails = new OfflineMemberDetailsImpl(new Set[] {x, x, o, o, x} );
     
-    model.addRegion("primary", Arrays.asList(details1, details2), offlineDetails);
+    model.addRegion("primary", Arrays.asList(details1, details2), offlineDetails, true);
     
-    assertEquals(3, doMoves(model));
+    assertEquals(3, doMoves(new CompositeDirector(true, true, false, false), model));
     
     List<Create> expectedCreates = new ArrayList<Create>();
     expectedCreates.add(new Create(member2, 0));
@@ -988,13 +1180,14 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     assertEquals(expectedCreates, bucketOperator.creates);
   }
   
+  @Test
   public void testRebalancingWithOfflineMembers() throws Exception {
-    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, true, true, true, true, 6, getAddressComparor(false), logger, true, Collections.<InternalDistributedMember>emptySet(), null);
+    PartitionedRegionLoadModel model = new PartitionedRegionLoadModel(bucketOperator ,1, 6, getAddressComparor(false), Collections.<InternalDistributedMember>emptySet(), null);
     InternalDistributedMember member1 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 1);
     InternalDistributedMember member2 = new InternalDistributedMember(InetAddress.getByName("127.0.0.1"), 2);
     
-    PartitionMemberInfoImpl details1 = buildDetails(member1, 480, 480, new int[] {1,1,1,1,1,1}, new int[] {1,1,1,1,1,1});
-    PartitionMemberInfoImpl details2 = buildDetails(member2, 480, 480, new int[] {0,0,0,0,0,0}, new int[] {0,0,0,0,0,0});
+    PartitionMemberInfoImpl details1 = buildDetails(member1, 480, 480, new long[] {1,1,1,1,1,1}, new long[] {1,1,1,1,1,1});
+    PartitionMemberInfoImpl details2 = buildDetails(member2, 480, 480, new long[] {0,0,0,0,0,0}, new long[] {0,0,0,0,0,0});
     
     
     
@@ -1003,8 +1196,8 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     Set<PersistentMemberID> x = Collections.emptySet();
     final OfflineMemberDetailsImpl offlineDetails = new OfflineMemberDetailsImpl(new Set[] {o, o, o, o, o, o} );
     
-    model.addRegion("primary", Arrays.asList(details1, details2), offlineDetails);
-    assertEquals(3, doMoves(model));
+    model.addRegion("primary", Arrays.asList(details1, details2), offlineDetails, true);
+    assertEquals(3, doMoves(new CompositeDirector(true, true, true, true), model));
     
     List<Move> expectedMoves = new ArrayList<Move>();
     expectedMoves.add(new Move(member1, member2));
@@ -1013,7 +1206,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     assertEquals(expectedMoves, bucketOperator.bucketMoves);
   }
   
-  private int doMoves(PartitionedRegionLoadModel model) {
+  private int doMoves(RebalanceDirector director, PartitionedRegionLoadModel model) {
     int moveCount = 0;
     float initialVariance = model.getVarianceForTest();
     float initialPrimaryVariance = model.getPrimaryVarianceForTest();
@@ -1021,7 +1214,9 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
       System.out.println("Initial Model\n" + model + "\nVariance= " + initialVariance
           + ", Primary variance=" + initialPrimaryVariance + "\n---------------");
     }
-    while(model.nextStep() && moveCount < MAX_MOVES) {
+    model.initialize();
+    director.initialize(model);
+    while(director.nextStep() && moveCount < MAX_MOVES) {
       
       moveCount++;
       float variance = model.getVarianceForTest();
@@ -1052,7 +1247,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     return moveCount;
   }
   
-  private PartitionMemberInfoImpl buildDetails(InternalDistributedMember id, float weight, int localMaxMemory, int[] loads, int[] primaryLoads) {
+  private PartitionMemberInfoImpl buildDetails(InternalDistributedMember id, float weight, long localMaxMemory, long[] loads, long[] primaryLoads) {
     PRLoad load1 = new PRLoad(loads.length, weight);
     int size = 0;
     int primaryCount = 0;
@@ -1187,11 +1382,7 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
   public static class Move {
     public final InternalDistributedMember sourceMember;
     public final InternalDistributedMember targetMember;
-    /**
-     * @param sourceMember
-     * @param targetMember
-     * @param bucketId
-     */
+
     public Move(InternalDistributedMember sourceMember,
         InternalDistributedMember targetMember) {
       this.sourceMember = sourceMember;
@@ -1242,14 +1433,15 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     private MoveType lastMove = null;
     
 
-    public boolean createRedundantBucket(
-        InternalDistributedMember targetMember, int i, Map<String, Long> colocatedRegionBytes) {
+    @Override
+    public void createRedundantBucket(
+        InternalDistributedMember targetMember, int i, Map<String, Long> colocatedRegionBytes, Completion completion) {
       creates.add(new Create(targetMember, i));
       if(DEBUG) {
         System.out.println("Created bucket " + i + " on " + targetMember);
       }
       lastMove = MoveType.CREATE;
-      return true;
+      completion.onSuccess();
     }
 
     @Override
@@ -1287,6 +1479,35 @@ public class PartitionedRegionLoadModelJUnitTest extends TestCase {
     }
     
     
+  }
+  
+  public static class BucketOperatorWithFailures extends MyBucketOperator {
+    List<Completion> pendingSuccesses = new ArrayList<Completion>();
+    List<Completion> pendingFailures = new ArrayList<Completion>();
+    Set<InternalDistributedMember> badMembers = new HashSet<InternalDistributedMember> ();
+
+    public void addBadMember(InternalDistributedMember member) {
+      this.badMembers.add(member);
+    }
+    @Override
+    public void createRedundantBucket(InternalDistributedMember targetMember,
+        int i, Map<String, Long> colocatedRegionBytes, Completion completion) {
+      if(badMembers.contains(targetMember)) {
+        pendingFailures.add(completion);
+      } else {
+        super.createRedundantBucket(targetMember, i, colocatedRegionBytes, new Completion() {
+          @Override
+          public void onSuccess() {
+          }
+
+          @Override
+          public void onFailure() {
+          }
+        });
+        
+        pendingSuccesses.add(completion);
+;      }
+    }
   }
   
   private static enum MoveType {

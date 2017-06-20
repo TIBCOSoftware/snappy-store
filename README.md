@@ -15,7 +15,7 @@ See the instructions below to build the product from source. Once built, you can
 
 ## Repository layout
 
-The snappy-store branch now mostly mimics the layout of Apache Geode layout for GemFire components and a more structured one for GemFireXD components. It uses gradle based build that can build entire GemFire+GemFireXD+hydra sources and run unit tests (running hydra tests still needs to be added).
+The snappy/master branch now mostly mimics the layout of Apache Geode layout for GemFire components and a more structured one for GemFireXD components. It uses gradle based build that can build entire GemFire+GemFireXD+hydra sources and run unit tests (running hydra tests still needs to be added).
 
 Some details on the directories in GemFire layout are mentioned below:
 
@@ -77,15 +77,43 @@ The GemFireXD layout is divided into separate logical modules namely:
 
 GemFireXD now builds completely using gradle. Due to the repository layout changes, the older ant builds no longer work (unless someone takes the effort to change them). The new scripts are much simpler, cleaner and way faster than old ant scripts but are still missing a bunch of old targets. Plan is to add them progressively as required.
 
-  * Switch to "snappy-store" branch if not on that already. Update the branch to the latest version. Then test the build with: ./gradlew clean && ./gradlew assemble testClasses
-  * Run a a GemFireXD junit test: ./gradlew :gemfirexd:tools:test -Dtest.single=\*\*/BugsTest
+  * Switch to "snappy/master" branch if not on that already. Update the branch to the latest version. Then test the build with: ./gradlew cleanAll && ./gradlew buildAll
+  * Run a GemFireXD junit test: ./gradlew :gemfirexd-tools:junit -Djunit.single='\*\*/BugsTest.class'
+  * Run a GemFireXD dunit test: ./gradlew :gemfirexd-tools:dunit -Ddunit.single='\*\*/BugsDUnit.class'
+  * Run a GemFireXD wan test:   ./gradlew :gemfirexd-tools:wan -Dwan.single='\*\*/GfxdSerialWanDUnit.class'
 
+Useful build and test targets:
+```
+./gradlew assemble           -  build all the sources
+./gradlew testClasses        -  build all the tests
+./gradlew product            -  build and place the product distribution
+                                (in build-artifacts/{osname like linux}/store)
+./gradlew buildAll           -  build all sources, tests, product, packages (all targets above)
+./gradlew cleanAll           -  clean all build and test output
+./gradlew junit              -  run junit tests for all components
+./gradlew dunit              -  run distributed unit (dunit) tests for all relevant components
+./gradlew wan                -  run distributed WAN tests for all relevant components
+./gradlew check              -  run all tests including junit, dunit and wan
+./gradlew precheckin -Pgfxd  -  cleanAll, buildAll, check
+```
+
+Command-line properties:
+```
+-Djunit.single=<test>        - run a single junit test; the test is provided as path
+                               to its .class file (wildcards like '*' and '**' can be
+                               used like in gradle includes/excludes patterns)
+-Ddunit.single=<test>          - run a single dunit test
+-Dwan.single=<test>            - run a single wan dunit test
+-DlogLevel=<level>             - set the log-level for the tests (default is "config")
+-DsecurityLogLevel=<level>     - set the security-log-level for the tests (default is "config")
+-Dskip.wanTest=true|false      - if true, then skip the wan tests when running check/precheckin
+```
 
 ## Setting up Intellij with gradle
 
 If the build works fine, then import into Intellij:
   * Update Intellij to the latest version just to be sure. Double check that Gradle plugin is enabled in File->Settings->Plugins.
-  * Select import project, then point to the GemFireXD directory. Use external Gradle import. Add -XX:MaxPermSize=350m to VM options in global Gradle settings. Select defaults, next, next ... finish. Ignore "Gradle location is unknown warning". Ensure that a JDK7 installation has been selected.
+  * Select import project, then point to the GemFireXD directory. Use external Gradle import. Select defaults, next, next ... finish. Ignore "Gradle location is unknown warning". Ensure that a JDK7 installation has been selected.
   * Once import finishes, go to File->Settings->Editor->Code Style->Java. Set the scheme as "Project". Then OK to apply and close it. Next copy codeStyleSettings.xml to .idea directory created by Intellij and then File->Synchronize just to be sure. Check that settings are now applied in File->Settings->Editor->Code Style->Java which should show TabSize, Indent as 2 and continuation indent as 4.
   * If the Gradle tab is not visible immediately, then select it from window list popup at the left-bottom corner of IDE. If you click on that window list icon, then the tabs will appear permanently.
   * Generate GemFireXD required sources by expanding :gemfirexd->Tasks->other. Right click on "generateSources" and run it. The Run item may not be available if indexing is still in progress, so wait for it to finish. This step has to be done only first time, or if ./gradlew clean has been run, or you have made changes to javacc source files.
@@ -95,7 +123,9 @@ If the build works fine, then import into Intellij:
   * Try Run->Run... on a test like CreateSchemaTest. Select the normal junit configuration (red+green arrows icon) and not gradle configuration (green round icon).
 
 
-### Running a junit test
+### Running a unit test
 
  * When selecting a run configuration for junit, avoid selecting the gradle one (green round icon) otherwise that will launch an external gradle process that will start building the project all over again. Use the normal junit (red+green arrows icon).
  * For JUnit tests, ensure that working directory is "$MODULE_DIR$/build-artifacts" as mentioned before. Otherwise many GemFireXD tests will fail to find the resource files required in many tests. They will also pollute the checkouts with large number of log files etc, so this will allow those to go into build-artifacts that can also be cleaned up easily.
+
+A dunit test can also be executed like above with the difference that multiple JVMs (ChildVM) will get launched in the test run. If you wish to debug the other JVMs, then need to find the appropriate process and attach the IDE debugger to the external JVM process.

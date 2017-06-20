@@ -36,11 +36,11 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 public final class MsgStreamerList implements BaseMsgStreamer {
 
   /**
-   * List of {@link MsgStreamer}s encapsulated by this MsgStreamerList.
+   * List of {@link BaseMsgStreamer}s encapsulated by this MsgStreamerList.
    */
-  private final List<MsgStreamer> streamers;
+  private final List<BaseMsgStreamer> streamers;
 
-  MsgStreamerList(List<MsgStreamer> streamers) {
+  MsgStreamerList(List<BaseMsgStreamer> streamers) {
     this.streamers = streamers;
   }
 
@@ -50,7 +50,7 @@ public final class MsgStreamerList implements BaseMsgStreamer {
   @Override
   public void reserveConnections(long startTime, long ackTimeout,
       long ackSDTimeout) {
-    for (MsgStreamer streamer : this.streamers) {
+    for (BaseMsgStreamer streamer : this.streamers) {
       streamer.reserveConnections(startTime, ackTimeout, ackSDTimeout);
     }
   }
@@ -62,8 +62,8 @@ public final class MsgStreamerList implements BaseMsgStreamer {
   public int writeMessage() throws IOException {
     int result = 0;
     RuntimeException ex = null;
-    IOException ioex = null;
-    for (MsgStreamer streamer : this.streamers) {
+    IOException ioe = null;
+    for (BaseMsgStreamer streamer : this.streamers) {
       if (ex != null) {
         streamer.release();
       }
@@ -74,14 +74,14 @@ public final class MsgStreamerList implements BaseMsgStreamer {
       } catch (RuntimeException e) {
         ex = e;
       } catch (IOException e) {
-        ioex = e;
+        ioe = e;
       }
     }
     if (ex != null) {
       throw ex;
     }
-    if (ioex != null) {
-      throw ioex;
+    if (ioe != null) {
+      throw ioe;
     }
     return result;
   }
@@ -93,7 +93,7 @@ public final class MsgStreamerList implements BaseMsgStreamer {
   @Override
   public List<?> getSentConnections() {
     List<Object> sentCons = Collections.emptyList();
-    for (MsgStreamer streamer : this.streamers) {
+    for (BaseMsgStreamer streamer : this.streamers) {
       if (sentCons.size() == 0) {
         sentCons = (List<Object>)streamer.getSentConnections();
       }
@@ -110,7 +110,7 @@ public final class MsgStreamerList implements BaseMsgStreamer {
   @Override
   public ConnectExceptions getConnectExceptions() {
     ConnectExceptions ce = null;
-    for (MsgStreamer streamer : this.streamers) {
+    for (BaseMsgStreamer streamer : this.streamers) {
       if (ce == null) {
         ce = streamer.getConnectExceptions();
       }
@@ -137,9 +137,9 @@ public final class MsgStreamerList implements BaseMsgStreamer {
   public void close(LogWriterI18n logger) throws IOException {
     // only throw the first exception and try to close all
     IOException ex = null;
-    for (MsgStreamer m : this.streamers) {
+    for (BaseMsgStreamer m : this.streamers) {
       try {
-        m.close();
+        m.close(logger);
       } catch (IOException e) {
         if (ex == null) {
           ex = e;
@@ -153,6 +153,16 @@ public final class MsgStreamerList implements BaseMsgStreamer {
     }
     if (ex != null) {
       throw ex;
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void release() {
+    for (BaseMsgStreamer m : this.streamers) {
+      m.release();
     }
   }
 }

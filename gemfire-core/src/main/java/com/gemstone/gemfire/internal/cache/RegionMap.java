@@ -143,6 +143,7 @@ public interface RegionMap extends LRUMapCallbacks {
    */
   public RegionEntry getOperationalEntryInVM(Object key);
 
+
   //   /**
 //    * Removes any entry associated with <code>key</code>.
 //    * Do nothing if the map has no entry for key.

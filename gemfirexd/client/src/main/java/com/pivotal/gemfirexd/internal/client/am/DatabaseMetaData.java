@@ -2375,10 +2375,10 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
         try
         {
 			if (metaDataInfoIsCached_) {
-				return ((Integer) metaDataInfoCache_[infoCallIndex]).intValue() != 0;
+				return ((int) metaDataInfoCache_[infoCallIndex]) != 0;
 			}
 			metaDataInfoCall();
-			return ((Integer) metaDataInfoCache_[infoCallIndex]).intValue() != 0;
+			return ((int) metaDataInfoCache_[infoCallIndex]) != 0;
         }
         catch ( SqlException se )
         {

@@ -156,4 +156,34 @@ public abstract class ClientResolverUtils {
     hash = addByteToHash((byte)(val >>> 8), hash);
     return addByteToHash((byte)val, hash);
   }
+
+  public static int addIntToHashOpt(final int val, int hash) {
+    return (hash ^ 0x9e3779b9) + val + (hash << 6) + (hash >>> 2);
+  }
+
+  public static int addLongToHashOpt(final long val, int hash) {
+    return (hash ^ 0x9e3779b9) + (int)(val ^ (val >>> 32)) +
+        (hash << 6) + (hash >>> 2);
+  }
+
+  /** 2<sup>32</sup> &middot; &phi;, &phi; = (&#x221A;5 &minus; 1)/2. */
+  private static final int INT_PHI = 0x9E3779B9;
+
+  /** Quickly mixes the bits of an integer.
+   *
+   * <p>This method mixes the bits of the argument by multiplying by the
+   * golden ratio and XORshifting the result. It is borrowed from
+   * <a href="https://github.com/OpenHFT/Koloboke">Koloboke</a>, and
+   * it has slightly worse behaviour than MurmurHash3 (in open-addressed
+   * hash tables the average number of probes is slightly larger),
+   * but it's much faster.
+   */
+  public static int fastHashInt(final int v) {
+    final int h = v * INT_PHI;
+    return h ^ (h >>> 16);
+  }
+
+  public static int fastHashLong(long v) {
+    return fastHashInt((int)(v ^ (v >>> 32)));
+  }
 }

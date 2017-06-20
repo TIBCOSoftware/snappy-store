@@ -26,7 +26,7 @@ import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
-import com.pivotal.gemfirexd.thrift.gfxdConstants;
+import io.snappydata.thrift.snappydataConstants;
 
 /**
  * A collection of constants used in GemFireXD.
@@ -132,6 +132,8 @@ public interface GfxdConstants {
    */
   final String REGION_INITSIZE_KEY = "GEMFIRE_REGION_INITSIZE";
 
+  String TABLE_ROW_ENCODER_CLASS_KEY = "TABLE_ROW_ENCODER_CLASS";
+
   /**
    * this string is used to pass the DistributionDescriptor between the
    * CreateTableNode and CreateTableConstantAction. It could be better just
@@ -183,6 +185,22 @@ public interface GfxdConstants {
   final String GFXD_LOG_FILE = GFXD_PREFIX + Attribute.LOG_FILE;
 
   /**
+   * @see Attribute#GFXD_HOST_DATA
+   */
+  final String GFXD_HOST_DATA = GFXD_PREFIX + Attribute.GFXD_HOST_DATA;
+
+  /**
+   * @see Attribute#SERVER_GROUPS
+   */
+  final String GFXD_SERVER_GROUPS = GFXD_PREFIX + Attribute.SERVER_GROUPS;
+
+  /**
+   * @see Attribute#STAND_ALONE_LOCATOR
+   */
+  final String GFXD_STAND_ALONE_LOCATOR = GFXD_PREFIX +
+      Attribute.STAND_ALONE_LOCATOR;
+
+  /**
    * The prefix for client driver system properties.
    */
   final String GFXD_CLIENT_PREFIX = Attribute.CLIENT_JVM_PROPERTY_PREFIX;
@@ -224,11 +242,6 @@ public interface GfxdConstants {
    * Protocol string used for obtaining connection
    */
   final String PROTOCOL = Attribute.PROTOCOL;
-
-  /**
-   * Protocol string used for thin network clients.
-   */
-  final String NET_PROTOCOL = Attribute.THRIFT_PROTOCOL;
 
   /**
    * A random date selected to represent infinity value
@@ -433,6 +446,7 @@ public interface GfxdConstants {
           Attribute.SERVER_GROUPS,
           Attribute.GFXD_HOST_DATA,
           Attribute.GFXD_PERSIST_DD,
+          Attribute.READ_TIMEOUT,
           Attribute.KEEPALIVE_IDLE,
           Attribute.KEEPALIVE_INTVL,
           Attribute.KEEPALIVE_CNT,
@@ -454,6 +468,7 @@ public interface GfxdConstants {
           Attribute.SHUTDOWN_ATTR,
           Attribute.SKIP_LISTENERS,
           Attribute.SKIP_LOCKS,
+          Attribute.DEFAULT_SCHEMA,
           Attribute.CLIENT_SECURITY_MECHANISM,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.SOFT_UPGRADE_NO_FEATURE_CHECK,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.TERRITORY,
@@ -462,6 +477,7 @@ public interface GfxdConstants {
           Attribute.AUTH_PROVIDER,
           Attribute.SERVER_AUTH_PROVIDER,
           Attribute.PERSIST_INDEXES,
+          Attribute.DEFAULT_PERSISTENT,
           Property.HADOOP_IS_GFXD_LONER,
           Property.GFXD_HD_HOMEDIR,
           Property.GFXD_HD_NAMENODEURL,
@@ -470,9 +486,11 @@ public interface GfxdConstants {
           CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
           CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
           Attribute.THRIFT_USE_BINARY_PROTOCOL,
+          Attribute.THRIFT_USE_FRAMED_TRANSPORT,
           Attribute.THRIFT_USE_SSL,
           Attribute.THRIFT_SSL_PROPERTIES,
           Attribute.PREFER_NETSERVER_IP_ADDRESS,
+          Attribute.HOSTNAME_FOR_CLIENTS,
           Attribute.QUERY_HDFS,
           Attribute.NCJ_BATCH_SIZE,
           Attribute.NCJ_CACHE_SIZE,
@@ -780,10 +798,23 @@ public interface GfxdConstants {
   final String GFXD_ENABLE_GETALL_LOCALINDEX_EMBED_GFE = GFXD_PREFIX
       + Attribute.ENABLE_GETALL_LOCALINDEX_EMBED_GFE;
 
+  /**
+   * System property to certain store queries to spark for better performance
+   */
+
+  final String GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK =
+      GFXD_PREFIX + "enable-routing-arbiter";
+
+//  public static final String GFXD_COST_OPTIMIZED_ROUTING_THRESHOLD =
+//      GFXD_PREFIX +"cost-optimized-routing-threshold";
+
+  int SNAPPY_MIN_COLUMN_DELTA_ROWS = 200;
+
   // --------------------- Defaults for GFXD connection/transaction props
 
   /** Default for autocommit in GFXD is false. */
-  final boolean GFXD_AUTOCOMMIT_DEFAULT = gfxdConstants.DEFAULT_AUTOCOMMIT;
+  final boolean GFXD_AUTOCOMMIT_DEFAULT =
+      snappydataConstants.DEFAULT_AUTOCOMMIT;
 
   /** Default for {@link #GFXD_DISABLE_STREAMING} is false. */
   final boolean GFXD_STREAMING_DEFAULT = true;

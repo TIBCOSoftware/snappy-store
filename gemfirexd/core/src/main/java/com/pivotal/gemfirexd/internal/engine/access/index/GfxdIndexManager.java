@@ -19,14 +19,7 @@ package com.pivotal.gemfirexd.internal.engine.access.index;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
@@ -51,30 +44,8 @@ import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.distributed.internal.membership.MembershipManager;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.BucketAdvisor;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.DistributedRegion;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.InitialImageOperation;
-import com.gemstone.gemfire.internal.cache.KeyInfo;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.OperationReattemptException;
-import com.gemstone.gemfire.internal.cache.Oplog;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.Oplog.DiskRegionInfo;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.SortedIndexContainer;
-import com.gemstone.gemfire.internal.cache.SortedIndexRecoveryJob;
-import com.gemstone.gemfire.internal.cache.TXEntryState;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.Token;
-import com.gemstone.gemfire.internal.cache.TransactionMessage;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgument;
@@ -237,6 +208,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   private InternalDistributedMember thisNodeMemberId;
 
   private MembershipManager membershipManager;
+
 
   public enum Index{
     LOCAL,
@@ -438,8 +410,16 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
               owner.getFullPath());
         }
 
+        boolean isRecovered = false;
+        if (!owner.isInitialized()) {
+          DiskRegion dr = owner.getDiskRegion();
+          if (dr != null) {
+            isRecovered = dr.testIsRecovered(entry, false);
+          }
+        }
         boolean throwEEE = false;
-        if (!posDup && owner.isInitialized()) {
+        if (!posDup && (owner.isInitialized() || (!this.isPartitionedRegion && !owner.isInitialized()
+            && !isRecovered))) {
           if (lastModifiedFromOrigin == -1
               || lastModifiedFromOrigin != entry.getLastModified()) {
             throwEEE = true;
@@ -516,8 +496,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
             }
             throw new EntryExistsException(event.getKey().toString(), OffHeapHelper.getHeapForm(oldValue));
           }
-        }
-        else {
+        } else {
           // for the case of posDup or dup during GII just ignore and return
           if (this.logFineEnabled) {
             traceIndex("GfxdIndexManager#onEvent: ignored "
@@ -1060,7 +1039,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           this.container, getObjectString(indexes), entry, success,
           event);
     }
-    if(event.getTXState() != null && event.isCustomEviction()) {      
+    if (event.getTXState() != null && event.isCustomEviction()) {
       return;
     }
     final Operation op = event.getOperation();
@@ -1556,7 +1535,12 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
                 // snapshot
                 // the value in the key.
                 if (!updatedValue) {
-                  foundKey.snapshotKeyFromValue();
+                  byte[] value = foundKey.snapshotKeyFromValue();
+                  if(value != null){
+                    indexContainer.accountSnapshotEntry(value.length);
+                  }
+
+
                 }
               }
             } finally {
@@ -2668,83 +2652,86 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
    
     if (indexContainer.isInitialized() && !posDup && owner.isInitialized()) {
-      final String lineSep = SanityManager.lineSeparator;
-      final StringBuilder sb = new StringBuilder().append(lineSep);
-      final BucketRegion breg;
-      final PartitionedRegion preg;
-      final boolean isPrimary;
-      if (owner instanceof BucketRegion) {
-        breg = (BucketRegion)owner;
-        preg = breg.getPartitionedRegion();
-        isPrimary = breg.getBucketAdvisor().isPrimary();
-      }
-      else {
-        breg = null;
-        preg = null;
-        isPrimary = false;
-      }
-      final GemFireContainer container = indexContainer.getBaseContainer();
-      final RowFormatter rf = container.getCurrentRowFormatter();
-      final String[] columnNames;
-      if (rf != null) {
-        columnNames = new String[rf.getNumColumns()];
-        for (int i = 0; i < columnNames.length; ++i) {
-          columnNames[i] = rf.getColumnDescriptor(i).getColumnName();
-        }
-      }
-      else {
-        columnNames = null;
-      }
-      // Asif: Added assertion error as a Delete for now should
-      // always have an Entry in the index.
-      final MemIndex conglom = (MemIndex)indexContainer.getConglomerate();
       if (GemFireXDUtils.TracePersistIndex) {
-        conglom.dumpIndex(dumpFlag);
-      }
-      // also dump the region contents
-      if (breg != null) {
-        sb.append("======== Bucket ID=")
-            .append(preg.bucketStringForLogs(breg.getId())).append(" region=")
-            .append(breg.getName()).append(" primary=").append(isPrimary)
-            .append(" contents: ========");
-      }
-      else {
-        sb.append("======= Region=").append(owner.getFullPath())
-            .append(" contents: ========");
-      }
-      Iterator<?> iter = owner.getBestLocalIterator(true, 4.0, false);
-      while (iter.hasNext()) {
-        RegionEntry re = (RegionEntry) iter.next();
-        @Retained
-        @Released
-        final ExecRow row = RegionEntryUtils.getRowWithoutFaultIn(container,
-            owner, re, (ExtraTableInfo) re.getContainerInfo());
-        try {
-          sb.append(lineSep).append('\t');
-          if (row != null) {
-            final DataValueDescriptor[] dvds = row.getRowArray();
-            for (int i = 0; i < dvds.length; ++i) {
-              if (i > 0) {
-                sb.append(',');
-              }
-              sb.append((columnNames != null ? columnNames[i] : "col" + i))
-                  .append(':').append(dvds[i]);
-            }
-          } else {
-            sb.append("NULL");
-          }
-          sb.append('\t').append(re);
-          if (sb.length() > (4 * 1024 * 1024)) {
-            SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
-            sb.setLength(0);
-          }
-        } finally {
-          if(row != null) {
-            row.releaseByteSource();
+        final String lineSep = SanityManager.lineSeparator;
+        final StringBuilder sb = new StringBuilder().append(lineSep);
+        final BucketRegion breg;
+        final PartitionedRegion preg;
+        final boolean isPrimary;
+        if (owner instanceof BucketRegion) {
+          breg = (BucketRegion)owner;
+          preg = breg.getPartitionedRegion();
+          isPrimary = breg.getBucketAdvisor().isPrimary();
+        }
+        else {
+          breg = null;
+          preg = null;
+          isPrimary = false;
+        }
+        final GemFireContainer container = indexContainer.getBaseContainer();
+        final RowFormatter rf = container.getCurrentRowFormatter();
+        final String[] columnNames;
+        if (rf != null) {
+          columnNames = new String[rf.getNumColumns()];
+          for (int i = 0; i < columnNames.length; ++i) {
+            columnNames[i] = rf.getColumnDescriptor(i).getColumnName();
           }
         }
+        else {
+          columnNames = null;
+        }
+
+        // Asif: Added assertion error as a Delete for now should
+        // always have an Entry in the index.
+        final MemIndex conglom = (MemIndex)indexContainer.getConglomerate();
+        conglom.dumpIndex(dumpFlag);
+
+        // also dump the region contents
+        if (breg != null) {
+          sb.append("======== Bucket ID=")
+              .append(preg.bucketStringForLogs(breg.getId())).append(" region=")
+              .append(breg.getName()).append(" primary=").append(isPrimary)
+              .append(" contents: ========");
+        }
+        else {
+          sb.append("======= Region=").append(owner.getFullPath())
+              .append(" contents: ========");
+        }
+        Iterator<?> iter = owner.getBestLocalIterator(true, 4.0, false);
+        while (iter.hasNext()) {
+          RegionEntry re = (RegionEntry)iter.next();
+          @Retained
+          @Released
+          final ExecRow row = RegionEntryUtils.getRowWithoutFaultIn(container,
+              owner, re, (ExtraTableInfo)re.getContainerInfo());
+          try {
+            sb.append(lineSep).append('\t');
+            if (row != null) {
+              final DataValueDescriptor[] dvds = row.getRowArray();
+              for (int i = 0; i < dvds.length; ++i) {
+                if (i > 0) {
+                  sb.append(',');
+                }
+                sb.append((columnNames != null ? columnNames[i] : "col" + i))
+                    .append(':').append(dvds[i]);
+              }
+            }
+            else {
+              sb.append("NULL");
+            }
+            sb.append('\t').append(re);
+            if (sb.length() > (4 * 1024 * 1024)) {
+              SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
+              sb.setLength(0);
+            }
+          } finally {
+            if (row != null) {
+              row.releaseByteSource();
+            }
+          }
+        }
+        SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
       }
-      SanityManager.DEBUG_PRINT(dumpFlag, sb.toString());
       String message = "Delete did not happen on "
           + "index: " + indexContainer.getQualifiedTableName()
           + " for indexKey: " + ArrayUtils.objectString(indexKey)
@@ -3132,7 +3119,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
    * 
    * @param event
    *          from underlying region.
-   * @param newEntery
+   * @param rl
    *          from underlying region doing the create.
    */
   private void checkForeignKeyConstraint(EntryEventImpl event,
@@ -4362,7 +4349,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
   @Override
   public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-      boolean holdIndexLock,List<?> bucketEntries) {
+      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
     EmbedConnection conn = null;
     GemFireContainer gfc = null;
     LanguageConnectionContext lcc = null;
@@ -4407,10 +4394,10 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           giiLockAcquired = true;
         }
       }
-     
+
       // for the case of replicated region, simply blow away the entire
       // local indexes
-      if (!region.isUsedForPartitionedRegionBucket()) {
+      if (!region.isUsedForPartitionedRegionBucket() && !destroyOffline) {
         if (indexes != null) {
           for (GemFireContainer index : indexes) {
             index.clear(lcc, tc);
@@ -4422,12 +4409,11 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       RegionEntry entry;
       boolean isOffHeapEnabled = region.getEnableOffHeapMemory();
       if (isOffHeapEnabled || indexes != null) {
-        Iterator<?> bucketEntriesIter = bucketEntries.iterator();
         while (bucketEntriesIter.hasNext()) {
           entry = (RegionEntry) bucketEntriesIter.next();
           try {
             if (indexes != null) {
-              basicClearEntry(region, tc, indexes, entry);
+              basicClearEntry(region, tc, indexes, entry, destroyOffline);
             }
           } catch (Throwable th) {
             if (logger != null) {
@@ -4464,7 +4450,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   }
 
   void basicClearEntry(LocalRegion region, GemFireTransaction tc,
-      final List<GemFireContainer> indexes, RegionEntry entry)
+      final List<GemFireContainer> indexes, RegionEntry entry, boolean destroyOffline)
       throws StandardException, InternalGemFireError, Error {
     ExecRow oldRow;
     synchronized (entry) {
@@ -4481,8 +4467,15 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           // value
           // is a ListOfDeltas in which case ignore the destroy (bug #41529)
           if (oldRow != null) {
-            EntryEventImpl event = EntryEventImpl.create(region,
+            // destroyOffline flag is a hack set when bucket region is not created
+            // and instead a PR is passed as region. Avoid passing region tp
+            // EntryEventImpl.create if destroyOffline is set as it
+            // will try to find routing object if region is passed
+            EntryEventImpl event = EntryEventImpl.create(destroyOffline ? null : region,
                 Operation.DESTROY, entry.getKey(), null, null, false, null);
+            if (destroyOffline) {
+              event.setRegion(region);
+            }
             event.setOldValue(val, true);
             event.setPossibleDuplicate(true);
             //mark the vent with set duplicate as true as it is possible that 
@@ -4556,7 +4549,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
   }
 
-  public List<ConglomerateDescriptor> getIndexConglomerateDescriptors() {
+  public final List<ConglomerateDescriptor> getIndexConglomerateDescriptors() {
     return this.indexDescs;
   }
 
@@ -4942,7 +4935,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           // to load the index neverthless
           numEntries += oplog.recoverIndexes(singleIndex);
         }
-        else if (oplog.getIndexFileIfValid() != null) {
+        else if (oplog.getIndexFileIfValid(false) != null) {
           Collection<DiskRegionInfo> regions = oplog
               .getTargetRegionsForIndexes(singleIndex.keySet());
           numEntries += oplog.writeIRF(oplog.getSortedLiveEntries(regions),
@@ -4961,6 +4954,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         Misc.checkIfCacheClosing(null);
       }
       indexRecoveryJob.endJobs();
+      indexContainer.accountMemoryForIndex(numEntries, true);
       return numEntries;
     } catch (IOException ioe) {
       // check for node shutdown
@@ -4981,6 +4975,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   public long loadLocalIndexRecords(GemFireContainer indexContainer)
       throws StandardException {
     final LocalRegion region = this.container.getRegion();
+    // Compute the size of index step wise , with power of two
+
     final SortedIndexRecoveryJob indexRecoveryJob = new SortedIndexRecoveryJob(
         region.getCache(), null, region.getCancelCriterion(), indexContainer);
     try {
@@ -4993,6 +4989,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       Iterator<?> entryIterator = this.container.getEntrySetIterator(null,
           false, 0, true);
       while (entryIterator.hasNext()) {
+        indexContainer.accountMemoryForIndex(numEntries, false);
         RegionEntry entry = (RegionEntry)entryIterator.next();
         @Released
         final Object val = ((RowLocation)entry)
@@ -5020,6 +5017,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         numEntries++;
       }
       indexRecoveryJob.endJobs();
+      indexContainer.accountMemoryForIndex(numEntries, true);
+      List<GemFireContainer> indexes = getAllIndexes();
       return numEntries;
     } catch (CancelException ce) {
       throw ce;

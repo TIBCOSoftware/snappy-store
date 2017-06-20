@@ -39,11 +39,11 @@ import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.SerializableDelta;
-import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
-import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.engine.store.RegionEntryUtils;
 import com.pivotal.gemfirexd.internal.engine.store.RegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
+import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
+import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
@@ -131,7 +131,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
     @Override
     public final int computeHashCode(final Object obj, final long offsetAndWidth) {
       final byte[] bytes = (byte[])obj;
-      final int width = (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+      final int width = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       return ResolverUtils.addBytesToHash(bytes, offset, width, 0);
     }
@@ -143,7 +143,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
       // right side object is the incoming bytes
       final byte[] bytes = (byte[])obj1;
       final byte[] otherBytes = (byte[])obj2;
-      final int width = (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+      final int width = (int)offsetAndWidth;
       final int offset = (int)(offsetAndWidth >>> Integer.SIZE);
       if (bytes.length == width) {
         for (int index = 0; index < bytes.length; ++index) {
@@ -391,8 +391,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
               .getTypeId().getTypeFormatId();
           routingObject = ResolverUtils.addBytesToBucketHash(kbytes,
               (int)(offsetAndWidth >>> Integer.SIZE),
-              (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK), 0, 
-              typeId);
+              (int)offsetAndWidth, 0, typeId);
         }
       }
       else if (offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT) {
@@ -414,24 +413,31 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
         final RowFormatter rf = this.gfContainer.getCurrentRowFormatter();
         final ColumnDescriptor cd = rf.getColumnDescriptor(this.colIndexInVal);
         final byte[] vbytes;
-        if (!rf.hasLobs()) {
-          if (val.getClass() == byte[].class) {
-            vbytes = (byte[])val;
+        final Class<?> vclass = val.getClass();
+        if (vclass == byte[].class) {
+          if (cd.isLob) {
+            vbytes = cd.columnDefaultBytes;
           } else {
-            vbytes = ((OffHeapByteSource) val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+            vbytes = (byte[])val;
           }
-        }
-        else if (cd.isLob) {
-          if (val.getClass() == byte[][].class) {
+        } else if (vclass == byte[][].class) {
+          if (cd.isLob) {
             vbytes = rf.getLob((byte[][])val, this.colIndexInVal + 1);
           } else {
-            vbytes = rf.getLob((OffHeapRowWithLobs)val, this.colIndexInVal + 1); // OFFHEAP: optimize; no need to read all the bytes
+            vbytes = ((byte[][])val)[0];
           }
-        }
-        else if (val.getClass() == byte[][].class) {
-          vbytes = ((byte[][])val)[0];
+        } else if (vclass == OffHeapRowWithLobs.class) {
+          if (cd.isLob) {
+            vbytes = rf.getLob((OffHeapRowWithLobs)val, this.colIndexInVal + 1); // OFFHEAP: optimize; no need to read all the bytes
+          } else {
+            vbytes = ((OffHeapRowWithLobs)val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+          }
         } else {
-          vbytes = ((OffHeapByteSource) val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+          if (cd.isLob) {
+            vbytes = cd.columnDefaultBytes;
+          } else {
+            vbytes = ((OffHeapByteSource)val).getRowBytes(); // OFFHEAP: optimize; no need to read all the bytes
+          }
         }
         final long offsetAndWidth = rf.getOffsetAndWidth(
             this.colIndexInVal + 1, vbytes, cd);
@@ -442,8 +448,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
                 .getType().getTypeId().getTypeFormatId();
             routingObject = ResolverUtils.addBytesToBucketHash(vbytes,
                 (int)(offsetAndWidth >>> Integer.SIZE),
-                (int)(offsetAndWidth & RowFormatter.LOWER_INT32_MASK), 0,
-                typeId);
+                (int)offsetAndWidth, 0, typeId);
           }
         }
         else if (offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT) {
@@ -609,7 +614,8 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
           {
               throw StandardException
               .newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE,
-                  "partition by list value not compatible with column type", colRef.getColumnName());       	  
+                  "partition by list value not compatible with column type",
+                  colRef.getColumnName());
           }
           final byte[] bytes = new byte[length];
           dvd.writeBytes(bytes, 0, dtd);
@@ -617,7 +623,7 @@ public final class GfxdListPartitionResolver extends GfxdPartitionResolver {
         } catch (ClassCastException ex) {
           throw StandardException
               .newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, ex,
-                  "partition by list");
+                  "partition by list", colRef.getColumnName());
         }
       }
       return node;

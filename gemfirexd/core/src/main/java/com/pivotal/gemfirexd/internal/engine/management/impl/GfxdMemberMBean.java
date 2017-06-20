@@ -62,6 +62,11 @@ public class GfxdMemberMBean extends NotificationBroadcasterSupport implements G
   }
 
   @Override
+  public boolean isLead() {
+    return this.gfxdbridge.isLead();
+  }
+
+  @Override
   public boolean isLocator() {
     return this.gfxdbridge.isLocator();
   }

@@ -107,18 +107,18 @@ public class ServerConnection implements Runnable {
 
   // IMPORTANT: if new messages are added change setHandshake to initialize them
   // to the correct Version for serializing to the client
-  private Message requestMsg = new Message(2, Version.CURRENT);
-  private Message replyMsg = new Message(1, Version.CURRENT);
-  private Message responseMsg = new Message(1, Version.CURRENT);
-  private Message errorMsg = new Message(1, Version.CURRENT);
+  private Message requestMsg = new Message(2, Version.CURRENT_GFE);
+  private Message replyMsg = new Message(1, Version.CURRENT_GFE);
+  private Message responseMsg = new Message(1, Version.CURRENT_GFE);
+  private Message errorMsg = new Message(1, Version.CURRENT_GFE);
 
   // IMPORTANT: if new messages are added change setHandshake to initialize them
   // to the correct Version for serializing to the client
-  private ChunkedMessage queryResponseMsg = new ChunkedMessage(2, Version.CURRENT);
-  private ChunkedMessage chunkedResponseMsg = new ChunkedMessage(1, Version.CURRENT);
-  private ChunkedMessage executeFunctionResponseMsg = new ChunkedMessage(1, Version.CURRENT);
-  private ChunkedMessage registerInterestResponseMsg = new ChunkedMessage(1, Version.CURRENT);
-  private ChunkedMessage keySetResponseMsg = new ChunkedMessage(1, Version.CURRENT);
+  private ChunkedMessage queryResponseMsg = new ChunkedMessage(2, Version.CURRENT_GFE);
+  private ChunkedMessage chunkedResponseMsg = new ChunkedMessage(1, Version.CURRENT_GFE);
+  private ChunkedMessage executeFunctionResponseMsg = new ChunkedMessage(1, Version.CURRENT_GFE);
+  private ChunkedMessage registerInterestResponseMsg = new ChunkedMessage(1, Version.CURRENT_GFE);
+  private ChunkedMessage keySetResponseMsg = new ChunkedMessage(1, Version.CURRENT_GFE);
 
   private final LogWriterI18n logger;
   private final LogWriterI18n securityLogger;
@@ -1900,7 +1900,7 @@ public class ServerConnection implements Runnable {
     // deserialize this using handshake keys
     HeapDataOutputStream hdos = null;
     try {
-      hdos = new HeapDataOutputStream(Version.CURRENT);
+      hdos = new HeapDataOutputStream(Version.CURRENT_GFE);
 
       hdos.writeLong(id);
 

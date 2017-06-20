@@ -303,7 +303,10 @@ public class UpdateQueryInfo extends DMLQueryInfo {
         }
         this.updateCols[this.currentColumnIndex - 1][1] =rhs;
         //TODO: Asif: Identify a cleaner way
-        if(rhs == QueryInfoConstants.DUMMY) {
+        if(rhs == QueryInfoConstants.DUMMY ||
+            // #51906 clear flag for update query with set statement with no ValueQueryInfo
+            // for ex. update t1 set col2  = col3 where col1 =1
+            rhs instanceof ColumnQueryInfo) {
           this.queryType = GemFireXDUtils.clear(this.queryType,IS_PRIMARY_KEY_TYPE);
         }
         

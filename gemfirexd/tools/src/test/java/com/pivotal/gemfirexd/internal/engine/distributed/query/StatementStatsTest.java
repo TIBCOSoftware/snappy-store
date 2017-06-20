@@ -32,7 +32,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.SharedLibrary;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.OSType;
+import com.gemstone.gemfire.internal.shared.jna.OSType;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;

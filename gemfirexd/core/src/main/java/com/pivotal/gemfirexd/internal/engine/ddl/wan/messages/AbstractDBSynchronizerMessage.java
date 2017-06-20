@@ -41,8 +41,8 @@ import com.gemstone.gemfire.internal.cache.EventID;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -55,7 +55,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
  */
 public abstract class AbstractDBSynchronizerMessage extends GfxdMessage {
 
-  private transient EntryEventImpl event = null;;
+  private transient EntryEventImpl event = null;
 
   // final private transient boolean remoteDistribution;
   final transient LocalRegion rgn;
@@ -162,6 +162,8 @@ public abstract class AbstractDBSynchronizerMessage extends GfxdMessage {
       final LocalRegion rgn = this.event.getRegion();
       if (rgn != null) {
         rgn.waitOnInitialization();
+      } else {
+        Misc.checkIfCacheClosing(null);
       }
       if (GemFireXDUtils.TraceDBSynchronizer) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DB_SYNCHRONIZER,
@@ -182,7 +184,10 @@ public abstract class AbstractDBSynchronizerMessage extends GfxdMessage {
           logger.severe("DBSynchronizerMessage: SQL exception in "
               + "executing message with fields as " + this.toString(), ex);
         }
-        if (this.processorId > 0 || dm == null) {
+        if (dm == null) {
+          throw new ReplyException(
+              "Unexpected SQLException on member with no DM (going down?)", ex);
+        } else if (this.processorId > 0) {
           throw new ReplyException("Unexpected SQLException on member "
               + dm.getDistributionManagerId(), ex);
         }
@@ -210,22 +215,16 @@ public abstract class AbstractDBSynchronizerMessage extends GfxdMessage {
   public void fromData(DataInput in)
       throws IOException, ClassNotFoundException {
     super.fromData(in);
-    try {
-      // Read EventID
-      EventID eventID = (EventID)DataSerializer.readObject(in);
-      DistributedMember member = DSFIDFactory.readInternalDistributedMember(in);
-      String regionName = DataSerializer.readString(in);
-      final LocalRegion rgn = Misc.getGemFireCache()
-          .getRegionByPathForProcessing(regionName);
-
-      if (rgn != null) {
-        this.initializeEvent(rgn, eventID, member);
-      }
-    } catch (IOException ioe) {
-      throw ioe;
-    } catch (Exception e) {
-      throw new IOException(e);
-    }
+    // Read EventID
+    EventID eventID = DataSerializer.readObject(in);
+    DistributedMember member = DSFIDFactory.readInternalDistributedMember(in);
+    String regionName = DataSerializer.readString(in);
+    final GemFireCacheImpl cache = Misc.getGemFireCacheNoThrow();
+    final LocalRegion rgn = cache != null
+        ? cache.getRegionByPathForProcessing(regionName) : null;
+    // initialize event even if Region is null so that child classes can
+    // proceed with their fromData
+    this.initializeEvent(rgn, eventID, member);
   }
 
   public final void applyOperation() throws StandardException {

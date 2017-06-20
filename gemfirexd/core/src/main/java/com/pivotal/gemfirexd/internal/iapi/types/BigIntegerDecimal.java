@@ -81,7 +81,7 @@ public final class BigIntegerDecimal extends BinaryDecimal
 		
 		// TODO Range checking
 		if (!rangeOk)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 		
 		return bi.longValue();
 	}
@@ -457,7 +457,7 @@ public final class BigIntegerDecimal extends BinaryDecimal
 			
 			if (futurePrecision > desiredPrecision)
 				throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, 
-						("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+")"));
+						("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+")"), (String)null);
 		}
 		
 		if (deltaScale == 0)

@@ -50,6 +50,8 @@ import com.pivotal.gemfirexd.internal.client.am.LogWriter;
 import com.pivotal.gemfirexd.internal.client.am.SqlException;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
 import com.pivotal.gemfirexd.internal.client.net.NetLogWriter;
+import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionUtil;
+import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
 
 /**
@@ -216,21 +218,34 @@ public class ClientDataSource extends ClientBaseDataSource implements DataSource
         
     }
 
-  // GemStone changes BEGIN
-  // add JDBC 4.0 method stubs so will compile with JDK 1.6
-  public boolean isWrapperFor(Class interfaces) throws SQLException {
-    throw new AssertionError("should be overridden in JDBC 4.0");
+// GemStone changes BEGIN
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean isWrapperFor(Class<?> interfaces) throws SQLException {
+    return interfaces.isInstance(this);
   }
 
-  public Object unwrap(java.lang.Class interfaces) throws SQLException {
-    throw new AssertionError("should be overridden in JDBC 4.0");
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public <T> T unwrap(java.lang.Class<T> interfaces) throws SQLException {
+    try {
+      return interfaces.cast(this);
+    } catch (ClassCastException ce) {
+      throw ExceptionUtil.newSQLException(SQLState.UNABLE_TO_UNWRAP,
+          ce, interfaces);
+    }
   }
 
   // jdbc 4.1 from jdk 1.7
+  @Override
   public Logger getParentLogger() {
     throw new AssertionError("should be overridden in JDBC 4.1");
   }
-  // GemStone changes END
+// GemStone changes END
 
 }
 

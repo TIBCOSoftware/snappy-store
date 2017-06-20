@@ -23,7 +23,7 @@ import java.util.Collections;
 import java.sql.ResultSetMetaData;
 
 /**
- * An interface for retrieving rows as List<Object> from an incoming
+ * An interface for retrieving rows as List&lt;Object&gt; from an incoming
  * result set.
  *
  * Uses blocking, balking, and timeout semantics in the style of a
@@ -41,7 +41,7 @@ public interface IncomingResultSet {
   static final List<Object> END_OF_RESULTS = new ArrayList<Object>();
   
   /**
-   * Retrieve and removes the head row in this result set as a List<Object>,
+   * Retrieve and removes the head row in this result set as a List&lt;Object&gt;,
    * waiting if necessary until an element becomes available, or returning
    * END_OF_RESULTS if there are no more rows in this result set.
    *

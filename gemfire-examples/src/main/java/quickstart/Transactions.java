@@ -30,7 +30,7 @@ import com.gemstone.gemfire.cache.Region;
  * you would in a database. GemFire transactions are compatible with Java 
  * Transaction API (JTA) transactions. Please refer to the quickstart guide 
  * for instructions on how to run this example. 
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 4.1.1

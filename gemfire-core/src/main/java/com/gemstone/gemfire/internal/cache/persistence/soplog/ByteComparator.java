@@ -23,24 +23,20 @@ import com.gemstone.gemfire.internal.cache.persistence.soplog.SortedReader.Seria
 /**
  * Compares objects byte-by-byte.  This is fast and sufficient for cases when
  * lexicographic ordering is not important or the serialization is order-
- * preserving. 
- * 
+ * preserving.
+ *
  * @author bakera
  */
-public class ByteComparator implements SerializedComparator {
-  @Override
-  public int compare(byte[] rhs, byte[] lhs) {
-    return compare(rhs, 0, rhs.length, lhs, 0, lhs.length);
-  }
+public class ByteComparator extends SerializedComparator {
 
   @Override
   public int compare(byte[] r, int rOff, int rLen, byte[] l, int lOff, int lLen) {
     return compareBytes(r, rOff, rLen, l, lOff, lLen);
   }
-  
+
   /**
    * Compares two byte arrays element-by-element.
-   * 
+   *
    * @param r the right array
    * @param rOff the offset of r
    * @param rLen the length of r to compare
@@ -49,8 +45,8 @@ public class ByteComparator implements SerializedComparator {
    * @param lLen the length of l to compare
    * @return -1 if r < l; 0 if r == l; 1 if r > 1
    */
-  
-  public static int compareBytes(byte[] r, int rOff, int rLen, byte[] l, int lOff, int lLen) {
+  public static int compareBytes(byte[] r, int rOff, int rLen, byte[] l,
+      int lOff, int lLen) {
     return Bytes.compareTo(r, rOff, rLen, l, lOff, lLen);
   }
 }

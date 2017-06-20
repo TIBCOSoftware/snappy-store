@@ -65,9 +65,9 @@ import java.util.*;
 // GemStone changes BEGIN
 import java.io.File;
 
-import scala.tools.jline.console.ConsoleReader;
-import scala.tools.jline.console.history.FileHistory;
-import scala.tools.jline.console.completer.StringsCompleter;
+import jline.console.ConsoleReader;
+import jline.console.history.FileHistory;
+import jline.console.completer.StringsCompleter;
 // GemStone changes END
 
 /**
@@ -205,7 +205,7 @@ public class Main {
 
 // GemStone changes BEGIN
 		if (in != null && in.isStandardInput() && System.console() != null
-		    && !"scala.tools.jline.UnsupportedTerminal".equals(
+		    && !"jline.UnsupportedTerminal".equals(
 		        System.getProperty("jline.terminal"))) {
 		  // use jline for reading input
 		  final String encode;

@@ -145,6 +145,57 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
   }
 
   /**
+   * Basic test for the internal method that retrieves LDAP group members as
+   * also recursive group retrieval for Active Directory kind of config.
+   * The loaded sample is "authAD.ldif" similar to "auth.ldif" but using
+   * "sAMAccountName" instead of "uid".
+   */
+  @Test
+  public void ldapADGroupMembers() throws Exception {
+    stopServer();
+    Properties bootProperties = SecurityTestUtils
+        .startLdapServerAndGetBootProperties(0, 0, sysUser,
+            TestUtil.getResourcesDir() + "/lib/ldap/authAD.ldif");
+    bootProperties.setProperty(
+        com.pivotal.gemfirexd.Property.AUTH_LDAP_SEARCH_FILTER,
+        "(&(objectClass=inetOrgPerson)(givenName=%USERNAME%))");
+    TestUtil.setupConnection(bootProperties, LdapGroupAuthTest.class);
+
+    Set<String> expectedGroup1Members = new HashSet<String>(
+        Arrays.asList(new String[] { "GEMFIRE1", "GEMFIRE2", "GEMFIRE3" }));
+    Set<String> expectedGroup2Members = new HashSet<String>(
+        Arrays.asList(new String[] { "GEMFIRE3", "GEMFIRE4", "GEMFIRE5" }));
+    Set<String> expectedGroup3Members = new HashSet<String>(
+        Arrays.asList(new String[] { "GEMFIRE6", "GEMFIRE7", "GEMFIRE8" }));
+    Set<String> expectedGroup4Members = new HashSet<String>(
+        Arrays.asList(new String[] { "GEMFIRE1", "GEMFIRE3", "GEMFIRE9" }));
+    Set<String> expectedGroup5Members = new HashSet<String>(Arrays.asList(
+        new String[] { "GEMFIRE4", "GEMFIRE6", "GEMFIRE7", "GEMFIRE8" }));
+    Set<String> expectedGroup6Members = new HashSet<String>(
+        Arrays.asList(new String[] { "GEMFIRE2", "GEMFIRE6", "GEMFIRE1",
+            "GEMFIRE3", "GEMFIRE9" }));
+    Set<String> expectedGroup7Members = Collections.emptySet();
+
+    Set<String> group1Members = getLdapGroupMembers("gemGroup1");
+    Assert.assertEquals(expectedGroup1Members, group1Members);
+    Set<String> group2Members = getLdapGroupMembers("GemGroup2");
+    Assert.assertEquals(expectedGroup2Members, group2Members);
+    Set<String> group3Members = getLdapGroupMembers("GEMGROUP3");
+    Assert.assertEquals(expectedGroup3Members, group3Members);
+    Set<String> group4Members = getLdapGroupMembers("gemGroup4");
+    Assert.assertEquals(expectedGroup4Members, group4Members);
+    Set<String> group5Members = getLdapGroupMembers("gemGroup5");
+    Assert.assertEquals(expectedGroup5Members, group5Members);
+    Set<String> group6Members = getLdapGroupMembers("gemgroup6");
+    Assert.assertEquals(expectedGroup6Members, group6Members);
+    Set<String> group7Members = getLdapGroupMembers("gemgroup7");
+    Assert.assertEquals(expectedGroup7Members, group7Members);
+
+    stopServer();
+    startServer();
+  }
+
+  /**
    * Test for internal GrantIterator and DataDictionary methods that have been
    * added to traverse group permissions with and without top-level GRANT/REVOKE
    */

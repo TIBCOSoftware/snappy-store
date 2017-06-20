@@ -25,9 +25,9 @@ import java.io.BufferedReader;
 import java.sql.Driver;
 import java.util.Hashtable;
 import javax.management.ObjectName;
+
+import io.snappydata.jdbc.EmbeddedDriver;
 import junit.framework.Test;
-import junit.framework.Test;
-import junit.framework.TestSuite;
 import org.apache.derbyTesting.junit.Utilities;
 
 
@@ -132,7 +132,7 @@ public class JDBCMBeanTest extends MBeanTest {
          * this test configuration is client/server.
          * Assuming that the embedded driver is available in the classpath.
          */
-        Driver d = new com.pivotal.gemfirexd.jdbc.EmbeddedDriver();
+        Driver d = new EmbeddedDriver();
         int expected = d.getMajorVersion();
         assertIntAttribute(expected, getJdbcMBeanObjectName(), "MajorVersion");
     }
@@ -157,7 +157,7 @@ public class JDBCMBeanTest extends MBeanTest {
          * this test configuration is client/server.
          * Assuming that DriverManager is available in the classpath.
          */
-        Driver d = new com.pivotal.gemfirexd.jdbc.EmbeddedDriver();
+        Driver d = new EmbeddedDriver();
         int expected = d.getMinorVersion();
         assertIntAttribute(expected, getJdbcMBeanObjectName(), "MinorVersion");
     }

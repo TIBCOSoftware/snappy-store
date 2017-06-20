@@ -42,7 +42,6 @@ package com.pivotal.gemfirexd.internal.iapi.types;
 
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -50,12 +49,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLBoolean;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -115,7 +108,7 @@ public final class SQLDouble extends NumberDataType
 	{
 	    // REMIND: do we want to check for truncation?
 		if ((value > (((double) Integer.MAX_VALUE) + 1.0d)) || (value < (((double) Integer.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 		return (int)value;
 	}
 
@@ -125,7 +118,7 @@ public final class SQLDouble extends NumberDataType
 	public byte	getByte() throws StandardException
 	{
           if ((this.value > (((double) Byte.MAX_VALUE) + 1.0d)) || (this.value < (((double) Byte.MIN_VALUE) - 1.0d)))
-            throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+            throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
           return (byte) value;
 	}
         
@@ -136,7 +129,7 @@ public final class SQLDouble extends NumberDataType
 	public short	getShort() throws StandardException
 	{
 		if ((value > (((double) Short.MAX_VALUE) + 1.0d)) || (value < (((double) Short.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 		return (short) value;
 	}
 
@@ -146,7 +139,7 @@ public final class SQLDouble extends NumberDataType
 	public long	getLong() throws StandardException
 	{
 		if ((value > (((double) Long.MAX_VALUE) + 1.0d)) || (value < (((double) Long.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 		return (long) value;
 	}
 
@@ -156,7 +149,7 @@ public final class SQLDouble extends NumberDataType
 	public float	getFloat() throws StandardException
 	{
 		if (Float.isInfinite((float)value))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
 		return (float) value;
 	}
 
@@ -750,7 +743,7 @@ public final class SQLDouble extends NumberDataType
 		double tempResult = leftValue * rightValue;
         // check underflow (result rounded to 0.0)
         if ( (tempResult == 0.0) && ( (leftValue != 0.0) && (rightValue != 0.0) ) ) {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME, (String)null);
         }
 
 		result.setValue(tempResult);
@@ -808,7 +801,7 @@ public final class SQLDouble extends NumberDataType
 
         // check underflow (result rounded to 0.0d)
         if ((divideResult == 0.0d) && (dividendValue != 0.0d)) {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME, (String)null);
         }
 
 		result.setValue(divideResult);
@@ -994,9 +987,9 @@ public final class SQLDouble extends NumberDataType
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
+  public int readBytes(long memOffset,
       final int columnWidth, ByteSource bs) {
-    long bits = RowFormatter.readLong(unsafe, memOffset);
+    long bits = RowFormatter.readLong(memOffset);
     this.isnull = false;
     this.value = Double.longBitsToDouble(bits);
     assert columnWidth == (Double.SIZE >>> 3);
@@ -1015,9 +1008,8 @@ public final class SQLDouble extends NumberDataType
     return Double.longBitsToDouble(bits);
   }
 
-  static final double getAsDouble(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    final long bits = RowFormatter.readLong(unsafe, memOffset);
+  static final double getAsDouble(final long memOffset) {
+    final long bits = RowFormatter.readLong(memOffset);
     return Double.longBitsToDouble(bits);
   }
 

@@ -67,12 +67,13 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ValueNode;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 import java.sql.SQLWarning;
-
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
 /**
  * CompilerContext stores the parser and type id factory to be used by
  * the compiler.  Stack compiler contexts when a new, local parser is needed
@@ -700,6 +701,9 @@ public interface CompilerContext extends Context
         void storeTypeCompilerForParam(TypeCompiler tc);
         
         public void resetNumTables();
+
+        public void setExecutionEngine(ExecutionEngine engine);
+        public ExecutionEngine getExecutionEngine();
 
         public void setQueryHDFS(boolean val);
         

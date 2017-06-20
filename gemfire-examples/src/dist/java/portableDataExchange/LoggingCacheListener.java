@@ -27,7 +27,7 @@ import com.gemstone.gemfire.pdx.PdxInstance;
 /**
  * An example of a cache listener that does not deserialize objects stored in 
  * the PDX format. Instead, it introspects the serialized version of the object.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.6

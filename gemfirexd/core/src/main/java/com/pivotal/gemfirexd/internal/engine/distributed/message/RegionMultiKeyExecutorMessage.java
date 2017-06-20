@@ -37,7 +37,6 @@ import com.gemstone.gemfire.internal.cache.KeyWithRegionContext;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TransactionMessage;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -114,7 +113,7 @@ public abstract class RegionMultiKeyExecutorMessage extends
       boolean timeStatsEnabled, final RowFormatter targetFormat,
       final int[] projectionFixedColumns, final int[] projectionVarColumns,
       final int[] projectionLobColumns, final int[] projectionAllColumns) {
-    super(collector, region, routingObjects, tx, timeStatsEnabled);
+    super(collector, region, routingObjects, tx, timeStatsEnabled, true);
     this.regionPath = region.getFullPath();
     if (region.getPartitionAttributes() != null) {
       this.pr = (PartitionedRegion)region;

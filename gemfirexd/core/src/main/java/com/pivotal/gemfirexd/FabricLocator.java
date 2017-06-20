@@ -80,9 +80,9 @@ import com.gemstone.gemfire.internal.DistributionLocator;
  * defined as system properties. GemFireXD looks for this file in the current
  * working directory, followed by 'gemfirexd.user.home' directory and then in
  * 'user.home' directory. The file name can be overridden using the system
- * property -Dgemfirexd.properties=<property file>. If this value is a relative
- * file system path then the above search is done. If it is an absolute file
- * system path then that file must exist; no search for it is done.
+ * property -Dgemfirexd.properties=&lt;property file&gt;. If this value is a
+ * relative file system path then the above search is done. If it is an absolute
+ * file system path then that file must exist; no search for it is done.
  * 
  * <P>
  * The actual configuration attribute values used to connect comes from the
@@ -127,7 +127,6 @@ import com.gemstone.gemfire.internal.DistributionLocator;
  * start-up sequence cannot be controlled in this way when using a JDBC
  * Connection directly, i.e. this server will be active immediately after
  * joining the distributed system.</li>
- * </li>
  * </ul>
  * 
  * @author swale
@@ -170,7 +169,7 @@ public interface FabricLocator extends FabricService {
    * properties. GemFireXD looks for this file in the current working
    * directory, followed by 'gemfirexd.user.home' directory and then in
    * 'user.home' directory. The file name can be overridden using the system
-   * property -Dgemfirexd.properties=<property file>. If this value is a
+   * property -Dgemfirexd.properties=&lt;property file&gt;. If this value is a
    * relative file system path then the above search is done. If it is an
    * absolute file system path then that file must exist; no search for it is
    * done.
@@ -201,8 +200,8 @@ public interface FabricLocator extends FabricService {
    *          The host name or IP address to bind the locator port. If this is
    *          null then binds to {@link #LOCATOR_DEFAULT_BIND_ADDRESS}.
    * @param port
-   *          The port to bind the locator. A value <= 0 will cause this to use
-   *          the default port {@link #LOCATOR_DEFAULT_PORT}.
+   *          The port to bind the locator. A value &lt;= 0 will cause this
+   *          to use the default port {@link #LOCATOR_DEFAULT_PORT}.
    * @param bootProperties
    *          Driver boot properties. If non-null, overrides default properties in
    *          'gemfirexd.properties'.
@@ -239,7 +238,7 @@ public interface FabricLocator extends FabricService {
    * properties. GemFireXD looks for this file in the current working
    * directory, followed by 'gemfirexd.user.home' directory and then in
    * 'user.home' directory. The file name can be overridden using the system
-   * property -Dgemfirexd.properties=<property file>. If this value is a
+   * property -Dgemfirexd.properties=&lt;property file&gt;. If this value is a
    * relative file system path then the above search is done. If it is an
    * absolute file system path then that file must exist; no search for it is
    * done.
@@ -270,8 +269,8 @@ public interface FabricLocator extends FabricService {
    *          The host name or IP address to bind the locator port. If this is
    *          null then binds to {@link #LOCATOR_DEFAULT_BIND_ADDRESS}.
    * @param port
-   *          The port to bind the locator. A value <= 0 will cause this to use
-   *          the default port {@link #LOCATOR_DEFAULT_PORT}.
+   *          The port to bind the locator. A value &lt;= 0 will cause this
+   *          to use the default port {@link #LOCATOR_DEFAULT_PORT}.
    * @param bootProperties
    *          Driver boot properties. If non-null, overrides default properties in
    *          'gemfirexd.properties'.

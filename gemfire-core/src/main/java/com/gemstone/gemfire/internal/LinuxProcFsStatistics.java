@@ -14,6 +14,25 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal;
 
 import java.io.BufferedReader;
@@ -21,11 +40,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -68,11 +89,10 @@ public class LinuxProcFsStatistics {
   private static final String PGPGOUT = "pgpgout ";
   private static final String PSWPIN = "pswpin ";
   private static final String PSWPOUT = "pswpout ";
-  
+
   private static File procFile;
   private static FileChannel fchannel;
-  private static Reader procFileReader ;
-  
+
   //Do not create instances of this class
   private LinuxProcFsStatistics() {
   }
@@ -91,18 +111,12 @@ public class LinuxProcFsStatistics {
     } catch (FileNotFoundException e) {
       throw new GemFireIOException(e.getMessage(), e);
     }
-    procFileReader = Channels.newReader(fchannel, Charset.defaultCharset().newDecoder(), -1);
     return 0;
   }
 
   static void close() {
     cpuStatSingleton = null;
     st = null;
-    try {
-      procFileReader.close();
-    } catch (IOException e) {
-      // ignore
-    }
     try {
       fchannel.close();
     } catch (IOException e) {
@@ -122,42 +136,41 @@ public class LinuxProcFsStatistics {
    */ 
   static void refreshProcess(int pid, int[] ints, long[] longs, double[] doubles) {
     //Just incase a pid is not available
-    if(pid == 0) return;
-    BufferedReader br = null;
+    if (pid == 0) return;
+
     try {
-      br = new BufferedReader(procFileReader, 2048);
+      fchannel.position(0);
+      Reader procFileReader = Channels.newReader(fchannel,
+          Charset.defaultCharset().newDecoder(), -1);
+      BufferedReader br = new BufferedReader(procFileReader, 2048);
       String line = br.readLine();
-      if ( line == null ) {
+      if (line == null) {
         return;
       }
       st.setString(line);
       st.skipTokens(22);
       ints[LinuxProcessStats.imageSizeINT] = (int) (st.nextTokenAsLong() / OneMeg);
       ints[LinuxProcessStats.rssSizeINT] = (int) ((st.nextTokenAsLong()*pageSize)/OneMeg);
-    } catch ( NoSuchElementException nsee ) {
-      // It might just be a case of the process going away while we
-      // where trying to get its stats. 
-      // So for now lets just ignore the failure and leave the stats
-      // as they are.
-    } catch ( IOException ioe ) {
+    } catch (NoSuchElementException | IOException ignored) {
       // It might just be a case of the process going away while we
       // where trying to get its stats. 
       // So for now lets just ignore the failure and leave the stats
       // as they are.
     } finally {
       st.releaseResources();
-      if(br != null) try { br.close(); } catch(IOException ignore) {}
     }
   }
 
   static void refreshSystem(int[] ints, long[] longs, double[] doubles) {
-    ints[LinuxSystemStats.processesINT] = getProcessCount();        
+    ints[LinuxSystemStats.processesINT] = getProcessCount();
     ints[LinuxSystemStats.cpusINT] = sys_cpus;
-    InputStreamReader isr = null;
-    BufferedReader br = null;
-    try {
-      isr = new InputStreamReader( new FileInputStream( "/proc/stat" ));
-      br = new BufferedReader(isr);
+    getSystemFileDescriptorStats(longs);
+    longs[LinuxSystemStats.threadsSessionMaxLONG] =
+        NativeCalls.getInstance().getSessionThreadLimit();
+    longs[LinuxSystemStats.threadsSystemMaxLONG] = getSystemThreadLimit();
+
+    try (BufferedReader br = Files.newBufferedReader(Paths.get("/proc/stat"),
+        StandardCharsets.UTF_8)) {
       String line = null;
       while ( ( line = br.readLine() ) != null ) {
         try {
@@ -195,10 +208,8 @@ public class LinuxProcFsStatistics {
         }
       }
     } catch ( IOException ioe ) {
-    } finally {
-      if(br != null) try { br.close(); } catch(IOException ignore) {}
     }
-    getLoadAvg(doubles);
+    getLoadAvg(doubles, longs);
     getMemInfo(ints);
     getDiskStats(longs);
     getNetStats(longs);
@@ -210,13 +221,9 @@ public class LinuxProcFsStatistics {
 
   // Example of /proc/loadavg
   // 0.00 0.00 0.07 1/218 7907
-  private static void getLoadAvg(double[] doubles) {
-    InputStreamReader isr = null;
-    BufferedReader br = null;
+  private static void getLoadAvg(double[] doubles, long[] longs) {
     try {
-      isr = new InputStreamReader( new FileInputStream( "/proc/loadavg" ));
-      br = new BufferedReader(isr, 512);
-      String line = br.readLine();
+      String line = getLineFromFile("/proc/loadavg");
       if ( line == null ) {
         return;
       }
@@ -224,11 +231,21 @@ public class LinuxProcFsStatistics {
       doubles[LinuxSystemStats.loadAverage1DOUBLE] = st.nextTokenAsDouble();
       doubles[LinuxSystemStats.loadAverage5DOUBLE]  = st.nextTokenAsDouble();
       doubles[LinuxSystemStats.loadAverage15DOUBLE] = st.nextTokenAsDouble();
-    } catch ( NoSuchElementException nsee ) {
-    } catch (IOException ioe) {
+      // also read the total number of threads in the system
+      String threadLoad = st.nextToken();
+      if (threadLoad != null) {
+        int slashIndex = threadLoad.indexOf('/');
+        if (slashIndex >= 0) {
+          threadLoad = threadLoad.substring(slashIndex + 1);
+        }
+        try {
+          longs[LinuxSystemStats.totalThreadsLONG] = Long.parseLong(threadLoad);
+        } catch (NumberFormatException ignored) {
+        }
+      }
+    } catch (NoSuchElementException ignored) {
     } finally {
       st.releaseResources();
-      if(br != null) try { br.close(); } catch(IOException ignore) {}
     }
   }
 
@@ -238,26 +255,22 @@ public class LinuxProcFsStatistics {
    * @return the available memory in bytes
    */
   public static long getAvailableMemory(LogWriter logger) {
-    try {
-      BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/meminfo")));
-      try {
-        long free = 0;
-        Pattern p = Pattern.compile("(.*)?:\\s+(\\d+)( kB)?");
-        
-        String line;
-        while ((line = br.readLine()) != null) {
-          Matcher m = p.matcher(line);
-          if (m.matches() && ("MemFree".equals(m.group(1)) || "Cached".equals(m.group(1)))) {
-            free += Long.parseLong(m.group(2));
-          }
+    try (BufferedReader br = Files.newBufferedReader(Paths.get("/proc/meminfo"),
+        StandardCharsets.UTF_8)) {
+      long free = 0;
+      Pattern p = Pattern.compile("(.*)?:\\s+(\\d+)( kB)?");
+
+      String line;
+      while ((line = br.readLine()) != null) {
+        Matcher m = p.matcher(line);
+        if (m.matches() && ("MemFree".equals(m.group(1)) ||
+            "Cached".equals(m.group(1)))) {
+          free += Long.parseLong(m.group(2));
         }
-        
-        // convert to bytes
-        return 1024 * free;
-        
-      } finally {
-        br.close();
       }
+
+      // convert to bytes
+      return 1024 * free;
     } catch (IOException e) {
       logger.warning("Error determining free memory", e);
       return Long.MAX_VALUE;
@@ -269,11 +282,8 @@ public class LinuxProcFsStatistics {
   //Mem:  4118380544 3816050688 302329856        0 109404160 3060326400
   //Swap: 4194881536 127942656 4066938880
   private static void getMemInfo(int[] ints) {
-    InputStreamReader isr = null;  
-    BufferedReader br = null;
-    try {
-      isr = new InputStreamReader( new FileInputStream( "/proc/meminfo" ));
-      br = new BufferedReader(isr);
+    try (BufferedReader br = Files.newBufferedReader(Paths.get("/proc/meminfo"),
+        StandardCharsets.UTF_8)) {
       //Assume all values read in are in kB, convert to MB
       String line = null;
       while ( (line = br.readLine()) != null) {
@@ -319,10 +329,9 @@ public class LinuxProcFsStatistics {
           //ignore and let that stat not to be updated this time
         }
       }
-    } catch ( IOException ioe ) {
+    } catch (IOException ignored) {
     } finally {
       st.releaseResources();
-      if(br != null) try { br.close(); } catch(IOException ignore) {}
     }
   }
 
@@ -333,11 +342,8 @@ Inter-|   Receive                                                |  Transmit
 */
 
   private static void getNetStats(long[] longs) {
-    InputStreamReader isr = null;
-    BufferedReader br = null;
-    try {
-      isr = new InputStreamReader( new FileInputStream( "/proc/net/dev" ));
-      br = new BufferedReader(isr);
+    try (BufferedReader br = Files.newBufferedReader(Paths.get("/proc/net/dev"),
+        StandardCharsets.UTF_8)) {
       br.readLine(); // Discard header info
       br.readLine(); // Discard header info
       long lo_recv_packets = 0, lo_recv_bytes = 0; 
@@ -349,7 +355,12 @@ Inter-|   Receive                                                |  Transmit
       while ( (line = br.readLine()) != null) {
         int index = line.indexOf(":");
         boolean isloopback = (line.indexOf("lo:") != -1);
-        st.setString(line.substring(index+1));
+        // skip leading spaces
+        final int len = line.length();
+        while (++index < len) {
+          if (line.charAt(index) != ' ' && line.charAt(index) != '\t') break;
+        }
+        st.setString(line.substring(index));
         long recv_bytes   = st.nextTokenAsLong(); 
         long recv_packets = st.nextTokenAsLong(); 
         long recv_errs    = st.nextTokenAsLong(); 
@@ -395,11 +406,9 @@ Inter-|   Receive                                                |  Transmit
       longs[LinuxSystemStats.xmitErrorsLONG] = other_xmit_errs;
       longs[LinuxSystemStats.xmitDropsLONG] = other_xmit_drop;
       longs[LinuxSystemStats.xmitCollisionsLONG] = other_xmit_colls;
-    } catch (NoSuchElementException nsee) {
-    } catch (IOException ioe) {
+    } catch (NoSuchElementException | IOException ignored) {
     } finally {
       st.releaseResources();
-      if(br != null) try { br.close(); } catch(IOException ignore) {}
     }
   }
 
@@ -428,19 +437,19 @@ Inter-|   Receive                                                |  Transmit
 //    8   17 sdb1 12601113 213085114 216407197 1731257800
 //    3    0 hda 0 0 0 0 0 0 0 0 0 0 0
   private static void getDiskStats(long[] longs) {
-    InputStreamReader isr = null;
-    BufferedReader br = null;
+    String fileName;
     String line = null;
-    try {
-      if (hasDiskStats) {
-        // 2.6 kernel
-        isr = new InputStreamReader( new FileInputStream( "/proc/diskstats" ));
-      } else {
-        // 2.4 kernel
-        isr = new InputStreamReader( new FileInputStream( "/proc/partitions" ));
-      }
-      br = new BufferedReader(isr);
-      long readsCompleted = 0, readsMerged = 0; 
+
+    if (hasDiskStats) {
+      // 2.6 kernel
+      fileName = "/proc/diskstats";
+    } else {
+      // 2.4 kernel
+      fileName = "/proc/partitions";
+    }
+    try (BufferedReader br = Files.newBufferedReader(Paths.get(fileName),
+        StandardCharsets.UTF_8)) {
+      long readsCompleted = 0, readsMerged = 0;
       long sectorsRead    = 0, timeReading  = 0; 
       long writesCompleted = 0, writesMerged = 0; 
       long sectorsWritten  = 0, timeWriting = 0;
@@ -520,7 +529,6 @@ Inter-|   Receive                                                |  Transmit
     } catch (IOException ioe) {
     } finally {
       st.releaseResources();
-      if(br != null) try { br.close(); } catch(IOException ignore) {}
     }
   }
 
@@ -532,11 +540,8 @@ Inter-|   Receive                                                |  Transmit
   //pswpout 14495
   private static void getVmStats(long[] longs) {
     assert hasProcVmStat != false : "getVmStats called when hasVmStat was false";
-    InputStreamReader isr = null;
-    BufferedReader br = null;
-    try {
-      isr = new InputStreamReader( new FileInputStream( "/proc/vmstat" ));
-      br = new BufferedReader(isr);
+    try (BufferedReader br = Files.newBufferedReader(Paths.get("/proc/vmstat"),
+        StandardCharsets.UTF_8)) {
       String line = null;
       while((line = br.readLine()) != null) {
         if(line.startsWith(PGPGIN)) {
@@ -553,10 +558,7 @@ Inter-|   Receive                                                |  Transmit
                 = SpaceTokenizer.parseAsLong(line.substring(PSWPOUT.length()));
         }
       }
-    } catch (NoSuchElementException nsee) {
-    } catch (IOException ioe) {
-    } finally {
-      if(br != null) try { br.close(); } catch(IOException ignore) {}
+    } catch (NoSuchElementException | IOException ignored) {
     }
   }
 
@@ -591,18 +593,79 @@ Inter-|   Receive                                                |  Transmit
     }
     return count;
   }
- 
+
   /**
-   * @return the number of running processes on the system 
+   * @return the number of running processes on the system
    */
   private static int getProcessCount() {
     File proc = new File("/proc");
     String[] procFiles = proc.list();
-    if(procFiles == null) {
+    if (procFiles == null) {
       //unknown error, continue without this stat
       return 0;
     }
     return procFiles.length - nonPidFilesInProc;
+  }
+
+  /**
+   * Read the first line from a given file.
+   */
+  private static String getLineFromFile(String fileName) {
+    try (BufferedReader br = Files.newBufferedReader(Paths.get(fileName),
+        StandardCharsets.UTF_8)) {
+      return br.readLine();
+    } catch (IOException ignored) {
+    }
+    return null;
+  }
+
+  /**
+   * Get the current total number of threads across system and maximum number
+   * of file descriptors threads allowed by OS for the machine.
+   */
+  private static void getSystemFileDescriptorStats(long[] longs) {
+    String line = getLineFromFile("/proc/sys/fs/file-nr");
+    if (line != null) {
+      String[] parts = line.split("[ \t]");
+      if (parts.length > 0) {
+        try {
+          longs[LinuxSystemStats.totalFileDescriptorsLONG] =
+              Long.parseLong(parts[0]);
+        } catch (NumberFormatException ignored) {
+        }
+        if (parts.length > 2) {
+          try {
+            longs[LinuxSystemStats.fileDescriptorsSystemMaxLONG] =
+                Long.parseLong(parts[2]);
+          } catch (NumberFormatException ignored) {
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Get the maximum number of threads allowed by OS for the machine.
+   * This returns smaller of threads-max and pid_max from /proc/sys/kernel.
+   */
+  private static long getSystemThreadLimit() {
+    String line = getLineFromFile("/proc/sys/kernel/threads-max");
+    long threadsMax = 0;
+    if (line != null) {
+      try {
+        threadsMax = Long.parseLong(line);
+      } catch (NumberFormatException ignored) {
+      }
+    }
+    line = getLineFromFile("/proc/sys/kernel/pid_max");
+    if (line != null) {
+      try {
+        long pidMax = Long.parseLong(line);
+        threadsMax = threadsMax > 0 ? Math.min(threadsMax, pidMax) : pidMax;
+      } catch (NumberFormatException ignored) {
+      }
+    }
+    return threadsMax;
   }
 
   //The array indices must be ordered as they appear in /proc/stats

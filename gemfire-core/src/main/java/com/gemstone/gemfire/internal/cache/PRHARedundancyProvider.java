@@ -1,36 +1,29 @@
 /*
- * Copyright (c) 2010-2015 Pivotal Software, Inc. All rights reserved.
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you
- * may not use this file except in compliance with the License. You
- * may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied. See the License for the specific language governing
- * permissions and limitations under the License. See accompanying
- * LICENSE file.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
@@ -41,6 +34,7 @@ import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.persistence.PartitionOfflineException;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
+import com.gemstone.gemfire.distributed.internal.LonerDistributionManager;
 import com.gemstone.gemfire.distributed.internal.MembershipListener;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -53,38 +47,20 @@ import com.gemstone.gemfire.internal.OneTaskOnlyExecutor;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RetryTimeKeeper;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore.CreateBucketResult;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
-import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
-import com.gemstone.gemfire.internal.cache.partitioned.BucketBackupMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.CreateBucketMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.EndBucketCreationMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.FetchPartitionDetailsMessage;
+import com.gemstone.gemfire.internal.cache.partitioned.*;
 import com.gemstone.gemfire.internal.cache.partitioned.FetchPartitionDetailsMessage.FetchPartitionDetailsResponse;
-import com.gemstone.gemfire.internal.cache.partitioned.InternalPRInfo;
-import com.gemstone.gemfire.internal.cache.partitioned.InternalPartitionDetails;
-import com.gemstone.gemfire.internal.cache.partitioned.LoadProbe;
-import com.gemstone.gemfire.internal.cache.partitioned.ManageBackupBucketMessage;
-import com.gemstone.gemfire.internal.cache.partitioned.ManageBucketMessage;
 import com.gemstone.gemfire.internal.cache.partitioned.ManageBucketMessage.NodeResponse;
-import com.gemstone.gemfire.internal.cache.partitioned.CreateMissingBucketsTask;
-import com.gemstone.gemfire.internal.cache.partitioned.OfflineMemberDetails;
-import com.gemstone.gemfire.internal.cache.partitioned.OfflineMemberDetailsImpl;
-import com.gemstone.gemfire.internal.cache.partitioned.PRLoad;
-import com.gemstone.gemfire.internal.cache.partitioned.PartitionMemberInfoImpl;
-import com.gemstone.gemfire.internal.cache.partitioned.PartitionRegionInfoImpl;
-import com.gemstone.gemfire.internal.cache.partitioned.PartitionedRegionRebalanceOp;
-import com.gemstone.gemfire.internal.cache.partitioned.RecoveryRunnable;
-import com.gemstone.gemfire.internal.cache.partitioned.RedundancyLogger;
-import com.gemstone.gemfire.internal.cache.partitioned.RegionAdvisor;
 import com.gemstone.gemfire.internal.cache.partitioned.RegionAdvisor.PartitionProfile;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.CompositeDirector;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.FPRDirector;
+import com.gemstone.gemfire.internal.cache.partitioned.rebalance.RebalanceDirector;
 import com.gemstone.gemfire.internal.cache.persistence.MembershipFlushRequest;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentStateListener;
 import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.AI;
 import com.gemstone.gemfire.internal.concurrent.AL;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.tools.gfsh.app.commands.pr;
 import com.gemstone.org.jgroups.util.StringId;
 
 /**
@@ -639,10 +615,18 @@ public class PRHARedundancyProvider
 	   newBucketSize, excludedMembers, acceptedMembers, failedMembers, timeOut, allStores);
         if (candidate != null) {
           if (this.prRegion.getDistributionManager().enforceUniqueZone()) {
-            Set<InternalDistributedMember> exm = getBuddyMembersInZone(candidate, allStores);
-            exm.remove(candidate);
-            exm.removeAll(acceptedMembers);
-            excludedMembers.addAll(exm);
+        	//enforceUniqueZone property has no effect for a loner. Fix for defect #47181
+        	if (!(this.prRegion.getDistributionManager() instanceof LonerDistributionManager)) {
+        	  Set<InternalDistributedMember> exm = getBuddyMembersInZone(candidate, allStores);
+              exm.remove(candidate);
+              exm.removeAll(acceptedMembers);
+              excludedMembers.addAll(exm);
+        	} else {
+        	  //log a warning if Loner
+            if(logger.warningEnabled()) {
+              logger.warning(LocalizedStrings.GemFireCache_ENFORCE_UNIQUE_HOST_NOT_APPLICABLE_FOR_LONER);
+            }
+        	}
           }
         }
 
@@ -989,6 +973,7 @@ public class PRHARedundancyProvider
       final InternalDistributedMember acceptedMember, 
       final Set<InternalDistributedMember> allStores) 
   {
+    HashSet<InternalDistributedMember> allMembersOnSystem = new HashSet<InternalDistributedMember>();
     DM dm = this.prRegion.getDistributionManager();
     Set<InternalDistributedMember> buddies = dm.getMembersInSameZone(acceptedMember);
     //TODO Dan - I'm not sure this retain all is necessary, but there may have been a reason we were 
@@ -1683,16 +1668,23 @@ public class PRHARedundancyProvider
         try {
           final boolean isFixedPartitionedRegion 
           = PRHARedundancyProvider.this.prRegion.isFixedPartitionedRegion();
-          final PartitionedRegionRebalanceOp rebalance;
+          
           
           //Fix for 43582 - always replace offline data for fixed partitioned
           //regions - this guarantees we create the buckets we are supposed to
           //create on this node.
           boolean replaceOfflineData = isFixedPartitionedRegion || !isStartup;
-            rebalance = new PartitionedRegionRebalanceOp(
-                PRHARedundancyProvider.this.prRegion, false, true, false, 
-                    movePrimaries, replaceOfflineData,false);
+          
+          RebalanceDirector director;
+          if(isFixedPartitionedRegion) {
+            director = new FPRDirector(true, movePrimaries);
+          } else {
+            director=  new CompositeDirector(true, true, false,
+                    movePrimaries);
+          }
 
+          final PartitionedRegionRebalanceOp rebalance = new PartitionedRegionRebalanceOp(
+              PRHARedundancyProvider.this.prRegion, false, director, replaceOfflineData,false);
           
           long start = PRHARedundancyProvider.this.prRegion.getPrStats()
               .startRecovery();
@@ -2068,7 +2060,8 @@ public class PRHARedundancyProvider
     InternalPartitionDetails localDetails = null;
     
     long size = 0;
-    InternalDistributedMember localMember = pr.getMyId();
+    InternalDistributedMember localMember = (InternalDistributedMember) 
+        pr.getMyId();
     
     int configuredBucketCount = pr.getTotalNumberOfBuckets();
     long[] bucketSizes = new long[configuredBucketCount];
@@ -2133,6 +2126,11 @@ public class PRHARedundancyProvider
         Thread.currentThread().interrupt();
       }
     }
+    
+    List<PartitionedRegion> colocatedRegions = ColocationHelper.getColocatedChildRegions(this.prRegion);
+    for(PartitionedRegion child : colocatedRegions) {
+      child.getRedundancyProvider().waitForPersistentBucketRecoveryOrClose();
+    }
   }
   
   /**
@@ -2155,6 +2153,29 @@ public class PRHARedundancyProvider
         Thread.currentThread().interrupt();
       }
     }
+  }
+  
+  public boolean isPersistentRecoveryComplete() {
+    if(!ColocationHelper.checkMembersColocation(this.prRegion, this.prRegion.getMyId())) {
+      return false;
+    }
+    
+    if(allBucketsRecoveredFromDisk != null
+        && allBucketsRecoveredFromDisk.getCount() > 0) {
+      return false;
+    }
+    
+    Map<String, PartitionedRegion> colocatedRegions = ColocationHelper.getAllColocationRegions(this.prRegion);
+    
+    for(PartitionedRegion region : colocatedRegions.values()) {
+      PRHARedundancyProvider redundancyProvider = region.getRedundancyProvider();
+      if(redundancyProvider.allBucketsRecoveredFromDisk != null
+          && redundancyProvider.allBucketsRecoveredFromDisk.getCount() > 0) {
+        return false;
+      }
+    }
+    
+    return true;
   }
 
   private static class ManageBucketRsp  {
@@ -2214,8 +2235,8 @@ public class PRHARedundancyProvider
    */
   private class BucketMembershipObserver implements MembershipListener {
     final Bucket bucketToMonitor;
-    final AI arrivals = CFactory.createAI(0);
-    final AB departures = CFactory.createAB(false);
+    final AtomicInteger arrivals = new AtomicInteger(0);
+    final AtomicBoolean departures = new AtomicBoolean(false);
    
     public BucketMembershipObserver(Bucket b) {
       this.bucketToMonitor = b;
@@ -2382,11 +2403,12 @@ public class PRHARedundancyProvider
         //ignore
       }
     }
-    
-    public void memberSuspect(InternalDistributedMember id,
-        InternalDistributedMember whoSuspected) {
+
+    @Override
+    public void memberSuspect(InternalDistributedMember id, InternalDistributedMember whoSuspected) {
+
     }
-    
+
     public void memberJoined(InternalDistributedMember id)
     {
       // no action required

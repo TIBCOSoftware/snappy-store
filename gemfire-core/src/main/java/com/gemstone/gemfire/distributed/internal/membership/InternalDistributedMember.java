@@ -197,6 +197,7 @@ public final class InternalDistributedMember
   }
 
 
+
   // Used only by Externalization
   public InternalDistributedMember() {
     this.groups = new String[0];
@@ -374,6 +375,27 @@ public final class InternalDistributedMember
     if (isCurrentHost) {
       defaultToCurrentHost();
     }
+  }
+
+
+  public InternalDistributedMember withOrdinal(short ordinalToUse ) {
+    InternalDistributedMember copy = new InternalDistributedMember();
+    copy.vmKind = this.vmKind;
+    copy.ipAddr = this.getNetMember();
+    copy.hostName = this.hostName;
+    copy.isPartial = this.isPartial;
+    copy.dcPort = this.dcPort;
+    copy.vmPid = this.vmPid;
+    copy.groups = this.groups;
+    copy.name = this.name;
+    copy.uniqueTag = this.uniqueTag;
+    copy.vmViewId = this.vmViewId;
+    copy.durableClientAttributes = this.durableClientAttributes;
+    copy.version = ordinalToUse;
+    copy.versionObj = Version.fromOrdinalOrCurrent(copy.version);
+    copy.cachedToString = null;
+    copy.essentialData = null;
+    return copy;
   }
 
   /**
@@ -912,7 +934,8 @@ public final class InternalDistributedMember
     DataSerializer.writeString(this.name, out);
     DataSerializer.writeString(this.uniqueTag, out);
     DataSerializer.writeString(this.durableClientAttributes==null ? "" : this.durableClientAttributes.getId(), out);
-    DataSerializer.writeInteger(Integer.valueOf(this.durableClientAttributes==null ? 300 : this.durableClientAttributes.getTimeout()), out);
+    out.writeInt(this.durableClientAttributes == null ? 300
+        : this.durableClientAttributes.getTimeout());
     Version.writeOrdinal(out, this.version, true);
   }
 
@@ -946,7 +969,7 @@ public final class InternalDistributedMember
      this.name = DataSerializer.readString(in);
      this.uniqueTag = DataSerializer.readString(in);
      String durableId = DataSerializer.readString(in);
-     int durableTimeout = DataSerializer.readInteger(in).intValue();
+     int durableTimeout = in.readInt();
      this.durableClientAttributes = new DurableClientAttributes(durableId, durableTimeout);
 
      readVersion(flags, in);

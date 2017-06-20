@@ -64,9 +64,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.TypedFormat;
 import com.pivotal.gemfirexd.internal.iapi.services.loader.ClassInspector;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.ConnectionUtil;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -1239,14 +1236,14 @@ public class XML
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
+  public int readBytes(long memOffset,
       final int columnWidth, ByteSource bs) {
     if (xmlStringValue == null) {
       xmlStringValue = new SQLVarchar();
     }
     // skip UTF8_IMPL_ID since it is not used currently
     int numBytes = IMPL_ID_SIZE
-        + xmlStringValue.readBytes(unsafe, memOffset + IMPL_ID_SIZE,
+        + xmlStringValue.readBytes(memOffset + IMPL_ID_SIZE,
             columnWidth - IMPL_ID_SIZE, bs);
 
     // If we read it from row then it must have type
@@ -1280,9 +1277,8 @@ public class XML
         - IMPL_ID_SIZE);
   }
 
-  static final String getAsString(final UnsafeWrapper unsafe,
-      final long memOffset, final int columnWidth, final OffHeapByteSource bs) {
-    return SQLVarchar.getAsString(unsafe, memOffset + IMPL_ID_SIZE, columnWidth
+  static final String getAsString(final long memOffset, final int columnWidth, final OffHeapByteSource bs) {
+    return SQLVarchar.getAsString(memOffset + IMPL_ID_SIZE, columnWidth
         - IMPL_ID_SIZE, bs);
   }
 

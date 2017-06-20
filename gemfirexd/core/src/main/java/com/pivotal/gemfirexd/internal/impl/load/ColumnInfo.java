@@ -127,7 +127,7 @@ class ColumnInfo {
 		this.tableName =  tName;
 		
 		// GemStone changes BEGIN
-		
+		columnDelimiter = columnDelimiter == null ? "," : columnDelimiter;
 		//First, read column names from file. 
 		//If data file has no column name specified, then readColumnListFromFile returns null
 		String insertColumnListFromFile = readColumnListFromFile(inputFileName, columnDelimiter);
@@ -142,7 +142,7 @@ class ColumnInfo {
 		{
 			//break the comma seperated column list and initialze column info
 			//eg: C2 , C1 , C3
-			StringTokenizer st = new StringTokenizer(insertColumnList , ",");
+			StringTokenizer st = new StringTokenizer(insertColumnList , columnDelimiter);
 			while (st.hasMoreTokens()) 
 			{
 				String columnName = (st.nextToken()).trim();
@@ -211,6 +211,7 @@ class ColumnInfo {
       String columnDelimiter) throws SQLException {
 
     BufferedReader reader = null;
+    String caseSensitiveColumnNameList = "";
     try {
       URL url = new URL(inputFileName);
       if (url.getProtocol().equals("file")) {
@@ -231,31 +232,39 @@ class ColumnInfo {
                                                                 schemaName,
                                                                 tableName,
                                                                 null);
-      HashSet<String> colMetaData = new HashSet<String>();
+      HashMap<String, String> colMetaData = new HashMap<String, String>();
       while (rs.next()) {
-        String columnName = rs.getString(4).trim().toUpperCase();
-        
-        colMetaData.add(columnName.trim().toUpperCase());
+        String columnName = rs.getString(4).trim();
+        colMetaData.put(columnName.toUpperCase(), columnName.trim());
       }
       
       String potentialColumnInfo = reader.readLine();
       if (potentialColumnInfo == null) {
         return null;
+      } else {
+        potentialColumnInfo=potentialColumnInfo.replaceAll("\"" , "");
       }
-      StringTokenizer tokens = new StringTokenizer(potentialColumnInfo, (columnDelimiter != null ? columnDelimiter : ","));
+
+      StringTokenizer tokens = new StringTokenizer(potentialColumnInfo, columnDelimiter);
       while(tokens.hasMoreTokens()) {
         String t = tokens.nextToken();
         if (t != null && !t.isEmpty()) {
           // if one of the mentioned columns is not found in the table, don't consider
           // first line as column List.
-          if (!colMetaData.contains(t.trim().toUpperCase())) {
+          if (!colMetaData.keySet().contains(t.trim().toUpperCase())) {
             return null;
+          } else {
+            //  create a column List from the database metadata column list to avoid any case related
+            //  problems.
+            String currentColumn =  colMetaData.get(t.trim().toUpperCase());
+           caseSensitiveColumnNameList +=
+                 caseSensitiveColumnNameList == "" ? currentColumn : columnDelimiter + currentColumn;
           }
         }
       }
       
       hasColumnDefinition = true;
-      return potentialColumnInfo;
+      return caseSensitiveColumnNameList;
     } catch (IOException e) {
     }
     

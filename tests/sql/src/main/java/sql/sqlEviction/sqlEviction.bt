@@ -133,6 +133,7 @@ sql/sqlEviction/multiTablesUniqDAPWithAccessorsHA.conf
     B=accessor accessorHosts=2 accessorVMsPerHost=5 accessorThreadsPerVM=5
     redundantCopies=2
 
+/* currently not running tests with offheap enabled. hence commented.
 // offHeap variants of the above tests
 sql/sqlEviction/evictionOverflowOffHeap.conf
   A=store storeHosts=2 storeVMsPerHost=2 storeThreadsPerVM=1
@@ -190,3 +191,4 @@ sql/sqlEviction/evictionOverflowHAOffHeap.conf
   useHeapPercentage = true 
   maxHeapSize=350 offHeapMemorySize=1m
   setCriticalHeap = true
+*/

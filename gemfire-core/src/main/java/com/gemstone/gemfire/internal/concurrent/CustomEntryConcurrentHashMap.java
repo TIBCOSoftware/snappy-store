@@ -68,19 +68,15 @@ import java.util.concurrent.RejectedExecutionException;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantReadWriteLock;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.BucketRegionIndexCleaner;
-import com.gemstone.gemfire.internal.cache.CacheObserver;
-import com.gemstone.gemfire.internal.cache.CacheObserverHolder;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
 
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
@@ -231,6 +227,14 @@ public class CustomEntryConcurrentHashMap<K, V> extends AbstractMap<K, V>
 
   public static final int keyHash(final Object o, final boolean compareValues) {
     return compareValues ? o.hashCode() : System.identityHashCode(o);
+  }
+
+  public void postMemAccount(String path){
+    if(segments != null && segments.length > 0){
+      for(Segment s : segments){
+        s.postMemAccount(path);
+      }
+    }
   }
 
   /**
@@ -896,6 +900,12 @@ RETRYLOOP:
       return null;
     }
 
+    final void postMemAccount(String path) {
+      CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(path,
+          this.table.length * ReflectionSingleObjectSizer.REFERENCE_SIZE,
+          null, true, false);
+    }
+
 // End GemStone additions
 
     final void rehash() {
@@ -903,6 +913,17 @@ RETRYLOOP:
       final int oldCapacity = oldTable.length;
       if (oldCapacity >= MAXIMUM_CAPACITY) {
         return;
+      }
+
+      // update the acquired memory storage; this will always increase
+      // monotonically. Not throwing any exception if memory could not be allocated from
+      // memory manager as this is the last step of a region operation.
+      if (LocalRegion.regionPath.get() != null){
+        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
+            LocalRegion.regionPath.get(),
+            oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE,
+            null, true, false);
+        LocalRegion.regionPath.remove();
       }
 
       /*
@@ -1114,6 +1135,20 @@ RETRYLOOP:
           final HashEntry<K, V>[] tab = this.table;
           // GemStone changes BEGIN
           boolean collectEntries = clearedEntries != null;
+          // clear in-line for new off-heap
+          if (GemFireCacheImpl.hasNewOffHeap()) {
+            for (HashEntry<K, V> he : tab) {
+              for (HashEntry<K, V> p = he; p != null; p = p.getNextEntry()) {
+                if (p instanceof AbstractRegionEntry) {
+                  AbstractRegionEntry re = (AbstractRegionEntry)p;
+                  Object val = re._getValue();
+                  if (val instanceof SerializedDiskBuffer) {
+                    ((SerializedDiskBuffer)val).release();
+                  }
+                }
+              }
+            }
+          }
           if (!collectEntries) {
             // see if we have a map with off-heap region entries
             for (HashEntry<K, V> he : tab) {
@@ -1950,7 +1985,6 @@ RETRYLOOP:
     } finally {
       if (entries != null) {
         final ArrayList<HashEntry<?,?>> clearedEntries = entries;
-        
         final Runnable runnable = new Runnable() {
           public void run() {
             ArrayList<RegionEntry> regionEntries =  cleaner != null?
@@ -2134,7 +2168,8 @@ RETRYLOOP:
 
     HashEntry<K, V> lastReturned;
 
-    final ArrayList<HashEntry<K, V>> currentList;
+    private HashEntry<K, V> currentEntry;
+    private final ArrayList<HashEntry<K, V>> currentList;
 
     int currentListIndex;
 
@@ -2142,7 +2177,7 @@ RETRYLOOP:
       this.currentSegmentIndex = CustomEntryConcurrentHashMap.this
           .segments.length;
       this.nextTableIndex = -1;
-      this.currentList = new ArrayList<HashEntry<K, V>>(5);
+      this.currentList = new ArrayList<>(4);
       this.currentListIndex = 0;
       advance();
     }
@@ -2153,7 +2188,17 @@ RETRYLOOP:
 
     final void advance() {
 // GemStone changes BEGIN
-      if (this.currentListIndex < this.currentList.size()) {
+      if (this.currentListIndex == 0) {
+        if (this.currentEntry != null) {
+          this.nextEntry = this.currentEntry;
+          this.currentListIndex = 1;
+          return;
+        } else if (this.currentList.size() > 0) {
+          this.nextEntry = this.currentList.get(0);
+          this.currentListIndex = 1;
+          return;
+        }
+      } else if (this.currentListIndex < this.currentList.size()) {
         this.nextEntry = this.currentList.get(this.currentListIndex++);
         return;
       }
@@ -2222,11 +2267,26 @@ RETRYLOOP:
       assert segments[currentSegmentIndex] != null: "unexpected null currentSegment";
       assert segments[currentSegmentIndex].listUpdateLock.numReaders() > 0;
 
-      this.currentList.clear();
+      this.currentEntry = null;
+      if (this.currentList.size() > 0) {
+        this.currentList.clear();
+      }
       this.currentListIndex = 0;
+      boolean useEntry = true;
       for (HashEntry<K, V> p = this.nextEntry.getNextEntry(); p != null; p = p
           .getNextEntry()) {
-        this.currentList.add(p);
+        if (useEntry) {
+          if (this.currentEntry == null) {
+            this.currentEntry = p;
+          } else {
+            this.currentList.add(this.currentEntry);
+            this.currentList.add(p);
+            this.currentEntry = null;
+            useEntry = false;
+          }
+        } else {
+          this.currentList.add(p);
+        }
       }
     }
 

@@ -233,7 +233,7 @@ public final class GfxdDRWLockService extends DLockService implements
    * <code>true</code> as soon as the lock is acquired. If a write lock on the
    * same object is currently held by another thread in this or any other
    * process in the distributed system (by a call to
-   * {@link #writeLock(Object, long, long, boolean)}), this method keeps trying
+   * {@link #writeLock(Object, Object, long, long)}), this method keeps trying
    * to acquire the lock for up to <code>waitTimeMillis</code> before giving up
    * and returning <code>false</code>. If the lock is acquired, it is held until
    * <code>readUnlock(Object)</code> is invoked.
@@ -306,7 +306,7 @@ public final class GfxdDRWLockService extends DLockService implements
 
   /**
    * Attempts to acquire a read lock on given {@link GfxdLockable}. This method
-   * has the same semantics as {@link #readLock(Object, long)} with the
+   * has the same semantics as {@link #readLock(Object, Object, long)} with the
    * optimization that the {@link GfxdReadWriteLock} as obtained using
    * {@link GfxdLockable#getReadWriteLock()} is used if available instead of
    * looking up from the global map.
@@ -336,7 +336,7 @@ public final class GfxdDRWLockService extends DLockService implements
    * @return true if the lock was acquired, false if the timeout
    *         <code>waitTimeMillis</code> passed without acquiring the lock.
    * 
-   * @see #readLock(Object, long)
+   * @see #readLock(Object, Object, long)
    */
   public boolean readLock(GfxdLockable lockable, Object owner,
       long waitTimeMillis) {
@@ -445,7 +445,7 @@ public final class GfxdDRWLockService extends DLockService implements
    * @param leaseTimeMillis
    *          the number of milliseconds to hold the lock after granting it,
    *          before automatically releasing it if it hasn't already been
-   *          released by invoking {@link #writeUnlock(Object, boolean)}. If
+   *          released by invoking {@link #writeUnlock(Object, Object)}. If
    *          <code>leaseTimeMillis</code> is -1, hold the lock until explicitly
    *          unlocked.
    * 
@@ -520,12 +520,12 @@ public final class GfxdDRWLockService extends DLockService implements
 
   /**
    * Attempts to acquire a write lock on given {@link GfxdLockable} object. This
-   * method has the same semantics as {@link #writeLock(Object, Object, long)}
+   * method has the same semantics as {@link #writeLock(Object, Object, long, long)}
    * with the optimization that when possible the {@link GfxdReadWriteLock} as
    * obtained using {@link GfxdLockable#getReadWriteLock()} is used if available
    * instead of looking up from the global map.
    * 
-   * @param name
+   * @param lockable
    *          The {@link GfxdLockable} to acquire in this service. This object
    *          must conform to the general contract of
    *          <code>equals(Object)</code> and <code>hashCode()</code> as
@@ -545,7 +545,7 @@ public final class GfxdDRWLockService extends DLockService implements
    * @param leaseTimeMillis
    *          the number of milliseconds to hold the lock after granting it,
    *          before automatically releasing it if it hasn't already been
-   *          released by invoking {@link #writeUnlock(Object, boolean)}. If
+   *          released by invoking {@link #writeUnlock(Object, Object)}. If
    *          <code>leaseTimeMillis</code> is -1, hold the lock until explicitly
    *          unlocked.
    * 
@@ -709,7 +709,7 @@ public final class GfxdDRWLockService extends DLockService implements
   public final TimeoutException getLockTimeoutRuntimeException(
       final Object lockObject, final Object owner, final boolean dumpAllLocks) {
     if (dumpAllLocks) {
-      dumpAllRWLocks("LOCK TABLE at the time of failure", true, false);
+      dumpAllRWLocks("LOCK TABLE at the time of failure", true, false, true);
     }
     return this.localLockMap.getLockTimeoutRuntimeException(lockObject, owner,
         false);
@@ -722,7 +722,7 @@ public final class GfxdDRWLockService extends DLockService implements
   public final StandardException getLockTimeoutException(
       final Object lockObject, final Object owner, final boolean dumpAllLocks) {
     if (dumpAllLocks) {
-      dumpAllRWLocks("LOCK TABLE at the time of failure", true, false);
+      dumpAllRWLocks("LOCK TABLE at the time of failure", true, false, true);
     }
     return this.localLockMap.getLockTimeoutException(lockObject, owner,
         false);
@@ -741,10 +741,14 @@ public final class GfxdDRWLockService extends DLockService implements
    * @param stdout
    *          if true then dump is generated on standard output else it goes to
    *          standard GFXD log file
+   * @param force
+   *          if true then dump is forced immediately, else avoid multiple
+   *          dumps in quick succession (e.g. when many thread timeout on lock)
    */
-  public void dumpAllRWLocks(String logPrefix, boolean allVMs, boolean stdout) {
+  public void dumpAllRWLocks(String logPrefix, boolean allVMs, boolean stdout,
+      boolean force) {
     this.localLockMap.dumpAllRWLocks(logPrefix, stdout ? new PrintWriter(
-        System.out) : null);
+        System.out) : null, force);
     if (allVMs) {
       GfxdDRWLockDumpMessage.send(this.ds, this.serviceName, logPrefix, stdout,
           getLogWriter());

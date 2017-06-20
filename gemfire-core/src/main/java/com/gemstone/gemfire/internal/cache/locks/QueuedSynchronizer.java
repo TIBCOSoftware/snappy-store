@@ -64,7 +64,7 @@ import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.LockSupport;
 
 import com.gemstone.gemfire.CancelCriterion;
-import com.gemstone.gemfire.cache.CacheFactory;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
 
 /**
@@ -974,9 +974,9 @@ public final class QueuedSynchronizer extends AbstractOwnableSynchronizer
     Thread.currentThread().interrupt();
     // below call will also check for CancelCriterion
     if (cc == null) {
-      CacheFactory.getAnyInstance();
-    }
-    else {
+      GemFireCacheImpl.getExisting().getCancelCriterion()
+          .checkCancelInProgress(null);
+    } else {
       cc.checkCancelInProgress(null);
     }
   }

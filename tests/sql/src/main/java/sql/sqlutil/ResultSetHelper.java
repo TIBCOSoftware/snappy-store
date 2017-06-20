@@ -244,7 +244,7 @@ public class ResultSetHelper {
         				objects[i] = "empty";
         		}
         		else
-        			objects[i] = rs.getObject(i+1);
+        			objects[i] = blob;
         	} else if (java.sql.Clob.class.isAssignableFrom(oTypes[i].resolveClass())) {
           	//convert clob to String, so it can be compared for verification
           		Clob clob = rs.getClob(i+1);
@@ -265,7 +265,7 @@ public class ResultSetHelper {
           			} else objects[i] = "empty profile";
           		}
           		else
-          			objects[i] = rs.getObject(i+1);
+          			objects[i] = clob;
           } else if (oTypes[i].getSimpleClassName().equalsIgnoreCase("ResultSetHelper$ByteClass")) {
             byte[] bytes = rs.getBytes(i+1);
             if (bytes != null) {

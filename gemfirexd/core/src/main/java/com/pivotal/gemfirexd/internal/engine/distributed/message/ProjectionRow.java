@@ -190,40 +190,9 @@ public final class ProjectionRow extends RawValue implements GfxdSerializable {
   public final void toData(final DataOutput out) throws IOException {
     // GfxdDataSerializable.writeGfxdHeader(this, out);
     if (this.hasProjection) {
-      // target formatter should be the latest one
-      final RowFormatter targetFormatter = this.formatter.container
-          .getCurrentRowFormatter();
-      // serialize the required columns directly in the form that the target
-      // projection RowFormatter expects
-      // keep the serialization compatible with CompactExecRow* classes
-      final int targetFormatOffsetIsDefault = RowFormatter
-          .getOffsetValueForDefault(this.targetFormatOffsetBytes);
       if (this.lobColumns == null) {
         // serialize the projection byte[] directly without actually creating it
-        if (this.formatter.hasLobs()) {
-          if (this.rawValue instanceof OffHeapRowWithLobs) {
-            this.formatter.serializeColumns((OffHeapRowWithLobs)this.rawValue,
-                out, this.fixedColumns, this.varColumns,
-                this.targetFormatOffsetBytes, targetFormatOffsetIsDefault,
-                targetFormatter);
-          }
-          else {
-            this.formatter.serializeColumns(((byte[][])this.rawValue)[0], out,
-                this.fixedColumns, this.varColumns,
-                this.targetFormatOffsetBytes, targetFormatOffsetIsDefault,
-                targetFormatter);
-          }
-        }
-        else if (this.rawValue instanceof OffHeapRow) {
-          this.formatter.serializeColumns((OffHeapRow)this.rawValue, out,
-              this.fixedColumns, this.varColumns, this.targetFormatOffsetBytes,
-              targetFormatOffsetIsDefault, targetFormatter);
-        }
-        else {
-          this.formatter.serializeColumns((byte[])this.rawValue, out,
-              this.fixedColumns, this.varColumns, this.targetFormatOffsetBytes,
-              targetFormatOffsetIsDefault, targetFormatter);
-        }
+        serializeColumns(out);
       }
       else {
         assert this.formatter.hasLobs(): "unexpected LOB columns "
@@ -233,21 +202,13 @@ public final class ProjectionRow extends RawValue implements GfxdSerializable {
         // first write the byte[][] length
         InternalDataSerializer
             .writeArrayLength(this.lobColumns.length + 1, out);
-        if (this.rawValue instanceof OffHeapRowWithLobs) {
-          byteSource = (OffHeapRowWithLobs)this.rawValue;
-          // write the first byte[]
-          this.formatter.serializeColumns(byteSource, out, this.fixedColumns,
-              this.varColumns, this.targetFormatOffsetBytes,
-              targetFormatOffsetIsDefault, targetFormatter);
-        }
-        else {
+        serializeColumns(out);
+        final Class<?> rawValueClass = rawValue.getClass();
+        if (rawValueClass == byte[][].class) {
           byteArrays = (byte[][])this.rawValue;
-          // write the first byte[]
-          this.formatter.serializeColumns(byteArrays[0], out,
-              this.fixedColumns, this.varColumns, this.targetFormatOffsetBytes,
-              targetFormatOffsetIsDefault, targetFormatter);
+        } else if (rawValueClass == OffHeapRowWithLobs.class) {
+          byteSource = (OffHeapRowWithLobs)this.rawValue;
         }
-
         // now write the LOB byte arrays
         for (int index = 0; index < this.lobColumns.length; ++index) {
           if (byteSource != null) {
@@ -282,6 +243,39 @@ public final class ProjectionRow extends RawValue implements GfxdSerializable {
         out.writeByte(InternalDataSerializer.BYTE_ARRAY);
         DataSerializer.writeByteArray(null, out);
       }
+    }
+  }
+
+  private void serializeColumns(DataOutput out) throws IOException {
+    // target formatter should be the latest one
+    final RowFormatter targetFormatter = this.formatter.container
+        .getCurrentRowFormatter();
+    // serialize the required columns directly in the form that the target
+    // projection RowFormatter expects
+    // keep the serialization compatible with CompactExecRow* classes
+    final int targetFormatOffsetIsDefault = RowFormatter
+        .getOffsetValueForDefault(this.targetFormatOffsetBytes);
+    final Class<?> rawValueClass = rawValue.getClass();
+
+    // serialize the projection byte[] directly without actually creating it
+    if (rawValueClass == byte[][].class) {
+      this.formatter.serializeColumns(((byte[][])this.rawValue)[0], out,
+          this.fixedColumns, this.varColumns,
+          this.targetFormatOffsetBytes, targetFormatOffsetIsDefault,
+          targetFormatter);
+    } else if (rawValueClass == byte[].class) {
+      this.formatter.serializeColumns((byte[])this.rawValue, out,
+          this.fixedColumns, this.varColumns, this.targetFormatOffsetBytes,
+          targetFormatOffsetIsDefault, targetFormatter);
+    } else if (rawValueClass == OffHeapRowWithLobs.class) {
+      this.formatter.serializeColumns((OffHeapRowWithLobs)this.rawValue,
+          out, this.fixedColumns, this.varColumns,
+          this.targetFormatOffsetBytes, targetFormatOffsetIsDefault,
+          targetFormatter);
+    } else { //rawValueClass == OffHeapRow.class
+      this.formatter.serializeColumns((OffHeapRow)this.rawValue, out,
+          this.fixedColumns, this.varColumns, this.targetFormatOffsetBytes,
+          targetFormatOffsetIsDefault, targetFormatter);
     }
   }
 

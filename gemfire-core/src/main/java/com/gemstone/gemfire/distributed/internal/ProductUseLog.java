@@ -35,7 +35,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
  *
  * This class wraps a {@link LogWriterImpl} which it uses to record messages.
  * It wipes the log when it gets too large.  The size of the log file is limited to 5mb by
- * default and can be adjusted with the system property <b>gemfire.max_product_use_file_size</b>,
+ * default and can be adjusted with the system property <b>max_view_log_size</b>,
  * though the size is not allowed to be less than 1mb.
  * 
  * @author Bruce Schuchardt

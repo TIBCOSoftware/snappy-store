@@ -24,7 +24,9 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import com.gemstone.gemfire.cache.query.Struct;
@@ -32,6 +34,7 @@ import com.gemstone.gemfire.cache.query.Struct;
 import sql.SQLBB;
 import sql.SQLHelper;
 import sql.SQLPrms;
+import sql.SQLTest;
 import sql.dmlDistTxStatements.TradeSecuritiesDMLDistTxStmt;
 import sql.sqlTx.ReadLockedKey;
 import sql.sqlTx.SQLDistRRTxTest;
@@ -39,6 +42,7 @@ import sql.sqlTx.SQLDistTxTest;
 import sql.sqlTx.SQLTxRRReadBB;
 import sql.sqlutil.ResultSetHelper;
 import util.TestException;
+import util.TestHelper;
 
 public class TradeSecuritiesDMLDistTxRRStmt extends
     TradeSecuritiesDMLDistTxStmt {
@@ -55,12 +59,20 @@ public class TradeSecuritiesDMLDistTxRRStmt extends
   */
   protected static boolean reproduce39455 = TestConfig.tab().booleanAt(SQLPrms.toReproduce39455, false);
 
-  protected boolean verifyConflict(HashMap<String, Integer> modifiedKeysByOp, 
+
+
+
+
+
+
+
+  protected boolean verifyConflict(HashMap<String, Integer> modifiedKeysByOp,
       HashMap<String, Integer>modifiedKeysByThisTx, SQLException gfxdse,
       boolean getConflict) {
     return verifyConflictForRR(modifiedKeysByOp, modifiedKeysByThisTx, gfxdse, getConflict);
   }
-  
+
+
   public boolean queryGfxd(Connection gConn, boolean withDerby){
     if (!withDerby) {
       return queryGfxdOnly(gConn);

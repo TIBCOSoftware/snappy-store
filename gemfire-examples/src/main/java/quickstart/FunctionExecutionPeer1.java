@@ -28,7 +28,7 @@ import com.gemstone.gemfire.cache.execute.FunctionService;
  * This is the peer to which FunctionExecutionPeer2 connects for function execution.
  * This peer executes the function execution request and returns the results to
  * the requesting peer.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.0

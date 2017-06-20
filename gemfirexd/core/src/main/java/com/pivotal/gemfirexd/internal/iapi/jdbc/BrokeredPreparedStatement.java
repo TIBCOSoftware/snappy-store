@@ -580,6 +580,11 @@ public abstract class BrokeredPreparedStatement extends BrokeredStatement
 	}
 
   // GemStone changes BEGIN
+  public int getStatementType() throws SQLException {
+    return ((EnginePreparedStatement)getPreparedStatement())
+        .getStatementType();
+  }
+
   // Add dummy methods so will compile with JDK 1.6
   public void setRowId(int parameterIndex, RowId x) throws SQLException{
     throw new AssertionError("should have been overridden in JDBC 4.0");

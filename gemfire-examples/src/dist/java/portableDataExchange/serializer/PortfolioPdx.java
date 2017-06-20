@@ -24,7 +24,7 @@ import java.util.Map;
  * An example of a portfolio object for a trading application. This example 
  * object shows how to serialize and deserialize an object by implementing the 
  * PdxSerializable interface.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.6

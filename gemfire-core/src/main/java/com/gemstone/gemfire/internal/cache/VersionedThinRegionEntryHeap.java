@@ -15,43 +15,22 @@
  * LICENSE file.
  */
 
-package com.gemstone.gemfire.internal.cache;
-// DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-
-
-
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
-
-
-
-
-
-
-
-import com.gemstone.gemfire.cache.EntryEvent;
-import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
-import com.gemstone.gemfire.internal.cache.versions.VersionSource;
-import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
-import com.gemstone.gemfire.internal.cache.versions.VersionTag;
-import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
-// macros whose definition changes this class:
-// disk: DISK
-// lru: LRU
-// stats: STATS
-// versioned: VERSIONED
-// offheap: OFFHEAP
-// rowlocation: ROWLOCATION
-// local: LOCAL
-// bucket: BUCKET
-// package: PKG
 /**
  * Do not modify this class. It was generated.
  * Instead modify LeafRegionEntry.cpp and then run
  * bin/generateRegionEntryClasses.sh from the directory
  * that contains your build.xml.
  */
+package com.gemstone.gemfire.internal.cache;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import com.gemstone.gemfire.internal.cache.Token;
+import com.gemstone.gemfire.internal.concurrent.AtomicUpdaterFactory;
+import com.gemstone.gemfire.cache.EntryEvent;
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.internal.cache.versions.VersionSource;
+import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
+import com.gemstone.gemfire.internal.cache.versions.VersionTag;
+import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
 @SuppressWarnings("serial")
 public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
     implements VersionStamp
@@ -62,11 +41,8 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
     super(context,
           value
         );
-    // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
     this.key = key;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // common code
   protected int hash;
   private HashEntry<Object, Object> next;
   @SuppressWarnings("unused")
@@ -79,9 +55,6 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
-  /**
-   * @see HashEntry#getEntryHash()
-   */
   @Override
   public final int getEntryHash() {
     return this.hash;
@@ -90,22 +63,14 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   protected void setEntryHash(int v) {
     this.hash = v;
   }
-  /**
-   * @see HashEntry#getNextEntry()
-   */
   @Override
   public final HashEntry<Object, Object> getNextEntry() {
     return this.next;
   }
-  /**
-   * @see HashEntry#setNextEntry
-   */
   @Override
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // versioned code
   private VersionSource memberID;
   private short entryVersionLowBytes;
   private short regionVersionHighBytes;
@@ -130,7 +95,6 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   public int getDistributedSystemId() {
     return this.distributedSystemId;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   public void setVersions(VersionTag tag) {
     this.memberID = tag.getMemberID();
     int eVersion = tag.getEntryVersion();
@@ -156,7 +120,6 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   public VersionStamp getVersionStamp() {
     return this;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   public VersionTag asVersionTag() {
     VersionTag tag = VersionTag.create(memberID);
     tag.setEntryVersion(getEntryVersion());
@@ -172,20 +135,14 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   }
   @Override
   public void processVersionTag(EntryEvent cacheEvent) {
-    // this keeps Eclipse happy.  without it the sender chain becomes confused
-    // while browsing this code
     super.processVersionTag(cacheEvent);
   }
-  /** get rvv internal high byte.  Used by region entries for transferring to storage */
   public short getRegionVersionHighBytes() {
     return this.regionVersionHighBytes;
   }
-  /** get rvv internal low bytes.  Used by region entries for transferring to storage */
   public int getRegionVersionLowBytes() {
     return this.regionVersionLowBytes;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
-  // key code
   private Object key;
   @Override
   public final Object getRawKey() {
@@ -197,6 +154,21 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   }
   private volatile Object value;
   @Override
+  public final boolean isRemoved() {
+    final Object o = this.value;
+    return (o == Token.REMOVED_PHASE1) || (o == Token.REMOVED_PHASE2) || (o == Token.TOMBSTONE);
+  }
+  @Override
+  public final boolean isDestroyedOrRemoved() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2 || o == Token.TOMBSTONE;
+  }
+  @Override
+  public final boolean isDestroyedOrRemovedButNotTombstone() {
+    final Object o = this.value;
+    return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
+  }
+  @Override
   protected Object getValueField() {
     return this.value;
   }
@@ -204,7 +176,6 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   protected void setValueField(Object v) {
     this.value = v;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
       return new VersionedThinRegionEntryHeap(context, key, value);
@@ -223,5 +194,4 @@ public class VersionedThinRegionEntryHeap extends VMThinRegionEntry
   public static RegionEntryFactory getEntryFactory() {
     return factory;
   }
-  // DO NOT modify this class. It was generated from LeafRegionEntry.cpp
 }

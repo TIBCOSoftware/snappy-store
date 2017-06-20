@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build" ToolsVersion="4.0">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="x64Debug|Win32">
+      <Configuration>x64Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="x64Release|Win32">
+      <Configuration>x64Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="x86Debug|Win32">
+      <Configuration>x86Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="x86Release|Win32">
+      <Configuration>x86Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <Keyword>MakeFileProj</Keyword>
+    <ProjectGUID>{90E77B51-BE0B-339D-B673-DD297FD4E7D9}</ProjectGUID>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='x86Release|Win32'">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <OutDir>.vs\snappyclientLib\$(Configuration)</OutDir>
+    <IntDir>.vs\snappyclientLib\$(Configuration)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='x86Debug|Win32'">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <OutDir>.vs\snappyclientLib\$(Configuration)</OutDir>
+    <IntDir>.vs\snappyclientLib\$(Configuration)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='x64Release|Win32'">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <OutDir>.vs\snappyclientLib\$(Configuration)</OutDir>
+    <IntDir>.vs\snappyclientLib\$(Configuration)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='x64Debug|Win32'">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <OutDir>.vs\snappyclientLib\$(Configuration)</OutDir>
+    <IntDir>.vs\snappyclientLib\$(Configuration)</IntDir>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>
+  <PropertyGroup Label="UserMacros"/>
+  <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x86Release|Win32'">
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX86ReleaseStaticLibrary -PbothArch</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX86ReleaseStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions></NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-1.0.0-1\include;dist\boost-1.59.0\include;dist\mpir-2.7.2\include;dist\openssl-1.0.2h\include</NMakeIncludeSearchPath>
+    <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x86\release\snappyclient.lib</NMakeOutput>
+  </PropertyGroup>
+  <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x86Debug|Win32'">
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX86DebugStaticLibrary -PbothArch</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX86DebugStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>_DEBUG</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-1.0.0-1\include;dist\boost-1.59.0\include;dist\mpir-2.7.2\include;dist\openssl-1.0.2h\include</NMakeIncludeSearchPath>
+    <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x86\debug\snappyclient.lib</NMakeOutput>
+  </PropertyGroup>
+  <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x64Release|Win32'">
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX64ReleaseStaticLibrary -PbothArch</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX64ReleaseStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions></NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-1.0.0-1\include;dist\boost-1.59.0\include;dist\mpir-2.7.2\include;dist\openssl-1.0.2h\include</NMakeIncludeSearchPath>
+    <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x64\release\snappyclient.lib</NMakeOutput>
+  </PropertyGroup>
+  <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x64Debug|Win32'">
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX64DebugStaticLibrary -PbothArch</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX64DebugStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>_DEBUG</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-1.0.0-1\include;dist\boost-1.59.0\include;dist\mpir-2.7.2\include;dist\openssl-1.0.2h\include</NMakeIncludeSearchPath>
+    <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x64\debug\snappyclient.lib</NMakeOutput>
+  </PropertyGroup>
+  <ItemGroup Label="Sources">
+    <ClCompile Include="build.gradle"/>
+    <ClCompile Include="src\snappyclient\cpp\ClientAttribute.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\ClientProperty.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\ColumnDescriptor.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\common\MessageBase.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\common\SystemProperties.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\Connection.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\DatabaseMetaData.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\BufferedSocketTransport.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\BufferedSocketTransport.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\ClientService.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\ClientService.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\ControlConnection.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\ControlConnection.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\DNSCacheService.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\DNSCacheService.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalLogger.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalLogger.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalUtils.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\InternalUtils.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeList.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeMap.h"/>
+    <ClCompile Include="src\snappyclient\cpp\LogWriter.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\messages\SQLMessage.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\messages\SQLStateMessage.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\Parameters.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\ParametersBatch.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\PreparedStatement.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\Result.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\ResultSet.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\Row.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\SQLException.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\SQLState.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\StatementAttributes.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\LocatorService.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\LocatorService.h"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\SnappyDataService.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\SnappyDataService.h"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_constants.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_BlobChunk.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ClobChunk.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ColumnDescriptor.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ColumnValue.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ConnectionProperties.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_DateTime.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Decimal.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_EntityId.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_HostAddress.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_JSONObject.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_JSONValue.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_OpenConnectionArgs.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_OutputParameter.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_PrepareResult.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Row.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_RowSet.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ServiceMetaData.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ServiceMetaDataArgs.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyExceptionData.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_StatementAttrs.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_StatementResult.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Timestamp.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_UpdateResult.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_types.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\types\Blob.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\types\Clob.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\types\DateTime.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\types\Decimal.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\types\JSON.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\types\LobBase.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\types\Timestamp.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\UpdatableRow.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\Utils.cpp"/>
+  </ItemGroup>
+  <ItemGroup Label="Headers">
+    <ClInclude Include="src\snappyclient\headers\ClientAttribute.h"/>
+    <ClInclude Include="src\snappyclient\headers\ClientBase.h"/>
+    <ClInclude Include="src\snappyclient\headers\ClientProperty.h"/>
+    <ClInclude Include="src\snappyclient\headers\ColumnDescriptor.h"/>
+    <ClInclude Include="src\snappyclient\headers\ColumnDescriptorBase.h"/>
+    <ClInclude Include="src\snappyclient\headers\common\ArrayList.h"/>
+    <ClInclude Include="src\snappyclient\headers\common\Base.h"/>
+    <ClInclude Include="src\snappyclient\headers\common\MessageBase.h"/>
+    <ClInclude Include="src\snappyclient\headers\common\SystemProperties.h"/>
+    <ClInclude Include="src\snappyclient\headers\Connection.h"/>
+    <ClInclude Include="src\snappyclient\headers\DatabaseMetaData.h"/>
+    <ClInclude Include="src\snappyclient\headers\LogWriter.h"/>
+    <ClInclude Include="src\snappyclient\headers\messages\SQLMessage.h"/>
+    <ClInclude Include="src\snappyclient\headers\messages\SQLStateMessage.h"/>
+    <ClInclude Include="src\snappyclient\headers\ParameterDescriptor.h"/>
+    <ClInclude Include="src\snappyclient\headers\Parameters.h"/>
+    <ClInclude Include="src\snappyclient\headers\ParametersBatch.h"/>
+    <ClInclude Include="src\snappyclient\headers\PreparedStatement.h"/>
+    <ClInclude Include="src\snappyclient\headers\Result.h"/>
+    <ClInclude Include="src\snappyclient\headers\ResultSet.h"/>
+    <ClInclude Include="src\snappyclient\headers\Row.h"/>
+    <ClInclude Include="src\snappyclient\headers\SnappyDataClient.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_constants.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_BlobChunk.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ClobChunk.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ColumnDescriptor.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ColumnValue.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ConnectionProperties.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_DateTime.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_Decimal.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_EntityId.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_HostAddress.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_JSONObject.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_JSONValue.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_OpenConnectionArgs.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_OutputParameter.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_PrepareResult.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_Row.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_RowSet.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ServiceMetaData.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_ServiceMetaDataArgs.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_SnappyExceptionData.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_StatementAttrs.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_StatementResult.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_Timestamp.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_UpdateResult.h"/>
+    <ClInclude Include="src\snappyclient\headers\snappydata_types.h"/>
+    <ClInclude Include="src\snappyclient\headers\SQLException.h"/>
+    <ClInclude Include="src\snappyclient\headers\SQLState.h"/>
+    <ClInclude Include="src\snappyclient\headers\StatementAttributes.h"/>
+    <ClInclude Include="src\snappyclient\headers\types\Blob.h"/>
+    <ClInclude Include="src\snappyclient\headers\types\Clob.h"/>
+    <ClInclude Include="src\snappyclient\headers\types\DateTime.h"/>
+    <ClInclude Include="src\snappyclient\headers\types\Decimal.h"/>
+    <ClInclude Include="src\snappyclient\headers\types\JSON.h"/>
+    <ClInclude Include="src\snappyclient\headers\types\LobBase.h"/>
+    <ClInclude Include="src\snappyclient\headers\types\Timestamp.h"/>
+    <ClInclude Include="src\snappyclient\headers\Types.h"/>
+    <ClInclude Include="src\snappyclient\headers\UpdatableRow.h"/>
+    <ClInclude Include="src\snappyclient\headers\Utils.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\BufferedSocketTransport.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\ClientService.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\ControlConnection.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\DNSCacheService.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\InternalLogger.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\InternalUtils.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\MessageRegistry.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeList.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeMap.h"/>
+    <ClInclude Include="src\snappyclient\cpp\thrift\LocatorService.h"/>
+    <ClInclude Include="src\snappyclient\cpp\thrift\SnappyDataService.h"/>
+    <ClInclude Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h"/>
+  </ItemGroup>
+  <ItemGroup Label="References"/>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>
+</Project>

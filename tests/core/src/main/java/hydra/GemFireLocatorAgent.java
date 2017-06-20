@@ -120,7 +120,7 @@ public class GemFireLocatorAgent
       try {
         Class.forName(
             "com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable")
-            .getMethod("init").invoke(null);
+            .getMethod("initTypes").invoke(null);
       } catch (ClassNotFoundException ex) {
         // ignore if the GemFireXD classes are not found in CLASSPATH
       }

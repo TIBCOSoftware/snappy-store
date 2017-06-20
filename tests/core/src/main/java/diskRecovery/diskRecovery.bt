@@ -175,7 +175,7 @@ diskRecovery/multiDiskStoreMixedShutDownAllManySR.conf
 //   B=persist persistHosts=10 persistVMsPerHost=1 persistThreadsPerVM=3
 //   oldVersion=700
 
-// Suds/Gester/team decision, Feb 10, 2012; we will document that shutDownAll cannot
+// Team decision, Feb 10, 2012; we will document that shutDownAll cannot
 // be used with a mix of 661 and 662 jvms; removing test
 // mixed 661 and 662 jvms are not supported when networkPartitionDetection is true
 //diskRecovery/shutDownAllDuringRecoveryCompat.conf

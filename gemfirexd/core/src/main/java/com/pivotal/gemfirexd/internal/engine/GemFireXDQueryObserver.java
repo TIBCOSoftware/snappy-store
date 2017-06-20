@@ -69,6 +69,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.FromBaseTable;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.SelectNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
 
 /**
  * This interface is used by testing/debugging code to be notified of various
@@ -1020,4 +1021,10 @@ public interface GemFireXDQueryObserver extends QueryObserver {
   public void afterQueryPlanGeneration(); 
   
   public void afterLockingTableDuringImport();
+
+  public boolean testIndexRecreate();
+
+  public void testExecutionEngineDecision(QueryInfo queryInfo,
+      ExecutionEngineRule.ExecutionEngine engine, String queryText);
+
 }

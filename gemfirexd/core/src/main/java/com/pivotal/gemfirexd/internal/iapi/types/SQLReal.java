@@ -50,13 +50,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLBoolean;
-import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -117,7 +110,7 @@ public final class SQLReal
 	public int	getInt() throws StandardException
 	{
 		if ((value > (((double) Integer.MAX_VALUE + 1.0d))) || (value < (((double) Integer.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 		return (int) value;
 	}
 
@@ -128,7 +121,7 @@ public final class SQLReal
 	public byte	getByte() throws StandardException
 	{
 		if ((value > (((double) Byte.MAX_VALUE + 1.0d))) || (value < (((double) Byte.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		return (byte) value;
 	}
 
@@ -139,7 +132,7 @@ public final class SQLReal
 	public short	getShort() throws StandardException
 	{
 		if ((value > (((double) Short.MAX_VALUE + 1.0d))) || (value < (((double) Short.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 		return (short) value;
 	}
 
@@ -150,7 +143,7 @@ public final class SQLReal
 	public long	getLong() throws StandardException
 	{
 		if ((value > (((double) Long.MAX_VALUE + 1.0d))) || (value < (((double) Long.MIN_VALUE) - 1.0d)))
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
 		return (long) value;
 	}
 
@@ -470,7 +463,7 @@ public final class SQLReal
 		float fv = (float) theValue;
         // detect rounding taking place at cast time
         if (fv == 0.0f && theValue != 0.0d) {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
         }
         setValue(fv);
 	}
@@ -768,7 +761,7 @@ public final class SQLReal
 		double tempResult = leftValue * rightValue;
         // check underflow (result rounded to 0.0)
         if ( (tempResult == 0.0) && ( (leftValue != 0.0) && (rightValue != 0.0) ) ) {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
         }
 
 		result.setValue(tempResult);
@@ -820,7 +813,7 @@ public final class SQLReal
 
         // check underflow (result rounded to 0.0)
         if ((resultValue == 0.0e0d) && (dividendValue != 0.0e0d)) {
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME);
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
         }
 
 		result.setValue(resultValue);
@@ -982,9 +975,9 @@ public final class SQLReal
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
-    this.value = Float.intBitsToFloat(RowFormatter.readInt(unsafe, memOffset));
+  public int readBytes(long memOffset,
+			final int columnWidth, ByteSource bs) {
+    this.value = Float.intBitsToFloat(RowFormatter.readInt(memOffset));
     this.isnull = false;
     assert columnWidth == (Float.SIZE >>> 3);
     return columnWidth;
@@ -1001,9 +994,8 @@ public final class SQLReal
     return Float.intBitsToFloat(RowFormatter.readInt(inBytes, offset));
   }
 
-  static final float getAsFloat(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    return Float.intBitsToFloat(RowFormatter.readInt(unsafe, memOffset));
+  static final float getAsFloat(final long memOffset) {
+    return Float.intBitsToFloat(RowFormatter.readInt(memOffset));
   }
 
   @Override

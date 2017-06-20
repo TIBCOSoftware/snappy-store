@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Comparator;
-import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.GemFireIOException;
@@ -242,7 +241,7 @@ public class ArraySortedCollectionWithOverflow extends
       int maxExceptionsTolerance = 100;
       while (true) {
         overflowFile = new File(overflowDir, "sortOverflow-"
-            + UUID.randomUUID().toString());
+            + IOUtils.newNonSecureRandomUUID().toString());
         try {
           if (overflowFile.createNewFile()) {
             break;
@@ -311,9 +310,7 @@ public class ArraySortedCollectionWithOverflow extends
       return new OverflowData(fis, numElements, startPos, endPos, bufSize);
     } catch (IOException ioe) {
       handleIOException(ioe, this.resourceManager);
-      AssertionError ae = new AssertionError("did not expect to reach");
-      ae.initCause(ioe);
-      throw ae;
+      throw new AssertionError("did not expect to reach", ioe);
     }
   }
 
@@ -325,9 +322,7 @@ public class ArraySortedCollectionWithOverflow extends
       if (element != null) {
         DataSerializer.writeObject(element, dos);
         numElements++;
-        continue;
-      }
-      else {
+      } else {
         break;
       }
     }
@@ -467,15 +462,17 @@ public class ArraySortedCollectionWithOverflow extends
    * @author swale
    * @since gfxd 1.1
    */
-  protected static final class OverflowData extends
+  public static final class OverflowData extends
       ChannelBufferUnsafeDataInputStream {
 
     // used for sizing of DirectByteBuffer
     private static final ByteBuffer TMP_BUF = ByteBuffer.allocateDirect(1);
 
+    public static final long DIRECT_BUFFER_OVERHEAD =
+        ReflectionSingleObjectSizer.sizeof(TMP_BUF.getClass());
+
     public static final long BASE_CLASS_OVERHEAD = ReflectionSingleObjectSizer
-        .sizeof(OverflowData.class)
-        + ReflectionSingleObjectSizer.sizeof(TMP_BUF.getClass());
+        .sizeof(OverflowData.class) + DIRECT_BUFFER_OVERHEAD;
 
     long currentPos;
     final long endPos;
@@ -553,10 +550,8 @@ public class ArraySortedCollectionWithOverflow extends
       if (this.size-- > 0) {
         try {
           return readElement(this.data);
-        } catch (ClassNotFoundException cnfe) {
-          handleIOException(cnfe, null);
-        } catch (IOException ioe) {
-          handleIOException(ioe, null);
+        } catch (ClassNotFoundException | IOException e) {
+          handleIOException(e, null);
         }
       }
       return null;
@@ -611,7 +606,7 @@ public class ArraySortedCollectionWithOverflow extends
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 

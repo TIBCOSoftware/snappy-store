@@ -44,8 +44,8 @@ package com.pivotal.gemfirexd.internal.iapi.types;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
@@ -64,17 +64,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.FormatIdInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.io.StreamStorable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.ConcatableDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLDate;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLTime;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLTimestamp;
-import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
@@ -339,7 +328,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "byte");
+                    SQLState.LANG_FORMAT_EXCEPTION, "byte", (String)null);
         }
     }
 
@@ -366,7 +355,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "short");
+                    SQLState.LANG_FORMAT_EXCEPTION, "short", (String)null);
         }
     }
 
@@ -393,7 +382,7 @@ public class SQLChar
         {
           // GemStone changes BEGIN
           throw StandardException.newException(
-              SQLState.LANG_FORMAT_EXCEPTION, "int (" + nfe.getMessage() + ")");
+              SQLState.LANG_FORMAT_EXCEPTION, "int (" + nfe.getMessage() + ")", (String)null);
             /*(original code) throw StandardException.newException(
                     SQLState.LANG_FORMAT_EXCEPTION, "int");*/
           // GemStone changes END
@@ -423,7 +412,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "long");
+                    SQLState.LANG_FORMAT_EXCEPTION, "long", (String)null);
         }
     }
 
@@ -449,7 +438,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "float");
+                    SQLState.LANG_FORMAT_EXCEPTION, "float", (String)null);
         }
     }
 
@@ -475,7 +464,7 @@ public class SQLChar
         catch (NumberFormatException nfe) 
         {
             throw StandardException.newException(
-                    SQLState.LANG_FORMAT_EXCEPTION, "double");
+                SQLState.LANG_FORMAT_EXCEPTION, "double", (String)null);
         }
     }
 
@@ -740,7 +729,7 @@ public class SQLChar
         }
         if (this.rawLength != -1) {
           if (this.rawData != null) {
-            this.value = ClientSharedUtils.getJdkHelper().newWrappedString(
+            this.value = ClientSharedUtils.newWrappedString(
                 this.rawData, 0, this.rawLength);
             return this.value;
           }
@@ -750,7 +739,7 @@ public class SQLChar
         /*
         try {
           if (readFromStream()) {
-            this.value = ClientSharedUtils.getJdkHelper().newWrappedString(
+            this.value = ClientSharedUtils.newWrappedString(
                 this.rawData, 0, this.rawLength);
             return this.value;
           }
@@ -3235,13 +3224,13 @@ readingLoop:
           return this.value;
         }
         if (this.rawLength != -1) {
-          return ClientSharedUtils.getJdkHelper().newWrappedString(
+          return ClientSharedUtils.newWrappedString(
               this.rawData, 0, this.rawLength);
         }
         /*
         try {
           if (readFromStream()) {
-            return ClientSharedUtils.getJdkHelper().newWrappedString(
+            return ClientSharedUtils.newWrappedString(
                 this.rawData, 0, this.rawLength);
           }
         } catch (EOFException eofe) {
@@ -3650,11 +3639,10 @@ readingLoop:
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, final ByteSource bs) {
+  public int readBytes(long memOffset, int columnWidth, final ByteSource bs) {
     final char[] chars = new char[columnWidth];
-    final int strlen = readIntoCharsFromByteSource(unsafe, memOffset,
-        columnWidth, bs, chars);
+    final int strlen = readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
+        memOffset, columnWidth, bs, chars);
     // if char[] length is much larger than actual length then it is
     // worthwhile to make a copy of required chars only
     if (columnWidth >= (strlen >>> 1)) {
@@ -3705,7 +3693,7 @@ readingLoop:
     try {
       final char[] data = getCharArray(false);
       if (this.rawLength != -1 && this.value == null) {
-        this.value = ClientSharedUtils.getJdkHelper().newWrappedString(data, 0,
+        this.value = ClientSharedUtils.newWrappedString(data, 0,
             this.rawLength);
       }
     } catch (StandardException se) {
@@ -3720,7 +3708,7 @@ readingLoop:
   }
 
   public static final int readIntoCharsFromByteSource(
-      final UnsafeWrapper unsafe, long memOffset, final int utflen,
+      final sun.misc.Unsafe unsafe, long memOffset, final int utflen,
       final ByteSource inBytes, final char[] chars) {
     if (utflen == 0) return 0; // fixes 50281
     int count = 0;
@@ -3890,7 +3878,7 @@ readingLoop:
     }
     else {
       final OffHeapByteSource bs = (OffHeapByteSource)inBytes;
-      return readIntoCharsFromByteSource(UnsafeMemoryChunk.getUnsafeWrapper(),
+      return readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
           bs.getUnsafeAddress(offset, utflen), utflen, bs, chars);
     }
   }
@@ -5357,22 +5345,21 @@ readingLoop:
     if (size > strlen) {
       appendBlanks(chars, strlen, size - strlen);
     }
-    return ClientSharedUtils.getJdkHelper().newWrappedString(chars, 0, size);
+    return ClientSharedUtils.newWrappedString(chars, 0, size);
   }
 
-  static final String getAsString(final UnsafeWrapper inBytes,
-      final long memOffset, final int columnWidth, final OffHeapByteSource bs,
-      final DataTypeDescriptor dtd) {
+  static final String getAsString(final long memOffset, final int columnWidth,
+      final OffHeapByteSource bs, final DataTypeDescriptor dtd) {
     final int size = dtd.getMaximumWidth();
     final char[] chars = new char[size];
-    int strlen = readIntoCharsFromByteSource(inBytes, memOffset, columnWidth,
-        bs, chars);
+    int strlen = readIntoCharsFromByteSource(UnsafeHolder.getUnsafe(),
+        memOffset, columnWidth, bs, chars);
     // TODO: SW: change derby layer that still pads DVDs with blanks in puts
     // pad with blanks if required
     if (size > strlen) {
       appendBlanks(chars, strlen, size - strlen);
     }
-    return ClientSharedUtils.getJdkHelper().newWrappedString(chars, 0, size);
+    return ClientSharedUtils.newWrappedString(chars, 0, size);
   }
 
   /**

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 
 import com.gemstone.gemfire.DataSerializer;
@@ -62,8 +61,10 @@ import com.gemstone.gemfire.internal.cache.versions.ConcurrentCacheModificationE
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gnu.trove.THashMap;
-import com.gemstone.gnu.trove.THashSet;
 
 /**
  * A Partitioned Region update message.  Meant to be sent only to
@@ -407,8 +408,9 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     InternalDistributedMember myId = r.getDistributionManager().getDistributionManagerId();
     final TXStateInterface txi = getTXState(r);
     final TXState tx = txi != null ? txi.getTXStateForWrite() : null;
-    final InternalDataView view = r.getDataView(tx);
+    final InternalDataView view = (tx != null && tx.isSnapshot()) ? r.getSharedDataView() : r.getDataView(tx);
     boolean lockedForPrimary = false;
+    UMMMemoryTracker memoryTracker = null;
     try {
     
     if (!notificationOnly) {
@@ -416,7 +418,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
       bucketRegion = ds.getInitializedBucketForId(null, bucketId);
 
       this.versions = new VersionedObjectList(
-          tx == null ? this.putAllPRDataSize : 1, true, bucketRegion
+          (tx == null || tx.isSnapshot()) ? this.putAllPRDataSize : 1, true, bucketRegion
               .getAttributes().getConcurrencyChecksEnabled());
 
       // create a base event and a DPAO for PutAllMessage distributed btw redundant buckets
@@ -432,10 +434,13 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
       baseEvent.setLockingPolicy(getLockingPolicy());
       baseEvent.setFetchFromHDFS(this.fetchFromHDFS);
       baseEvent.setPutDML(this.isPutDML);
+
       if (logFineEnabled) {
         logger.fine("PutAllPRMessage.doLocalPutAll: eventSender is "
             + eventSender + ", baseEvent is " + baseEvent + ", msg is " + this);
       }
+      lastModified = baseEvent.getEventTime(lastModified);
+      baseEvent.setEntryLastModified(lastModified);
       dpao = new DistributedPutAllOperation(r, baseEvent, putAllPRDataSize,
           false, this.putAllPRData);
     }
@@ -457,7 +462,8 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
       }
     }
     if (!notificationOnly) {
-      bucketRegion.putAllLock.readLock().lock();
+      //bucketRegion.columnBatchFlushLock.readLock().lock();
+      boolean success = false;
       try {
         if (putAllPRData.length > 0) {
           if (this.posDup && bucketRegion.getConcurrencyChecksEnabled()) {
@@ -476,7 +482,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           bucketRegion.recordPutAllStart(membershipID);
         }
         // no need to lock keys for transactions
-        if (tx == null) {
+        if (tx == null || tx.isSnapshot()) {
           bucketRegion.waitUntilLocked(keys);
         }
 
@@ -490,13 +496,21 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
 
         final boolean cacheWrite = bucketRegion.getBucketAdvisor()
             .isPrimary();
-        //final boolean hasRedundancy = bucketRegion.getRedundancyLevel() > 0;
+        // final boolean hasRedundancy = bucketRegion.getRedundancyLevel() > 0;
         try {
-          if (tx == null) {
+          if (tx == null || tx.isSnapshot()) {
             bucketRegion.doLockForPrimary(false);
             lockedForPrimary = true;
           } else {
             lockedForPrimary = false;
+          }
+
+          if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                  && !r.isInternalRegion()){
+            // Setting thread local buffer to 0 here.
+            // UMM will provide an initial estimation based on the first row
+            memoryTracker = new UMMMemoryTracker(
+                Thread.currentThread().getId(), putAllPRDataSize);
           }
 
         /* The real work to be synchronized, it will take long time. We don't
@@ -513,6 +527,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
 
               ev.setPutAllOperation(dpao);
               ev.setTXState(txi);
+              ev.setBufferedMemoryTracker(memoryTracker);
 
               // set the fetchFromHDFS flag
               ev.setFetchFromHDFS(this.fetchFromHDFS);
@@ -520,15 +535,16 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
               // make sure a local update inserts a cache de-serializable
               ev.makeSerializedNewValue();
 //            ev.setLocalFilterInfo(r.getFilterProfile().getLocalFilterRouting(ev));
-
+              if (tx == null || tx.isSnapshot())
+                ev.setEntryLastModified(lastModified);
               // ev will be added into dpao in putLocally()
               // oldValue and real operation will be modified into ev in putLocally()
               // then in basicPutPart3(), the ev is added into dpao
-              putAllPRData[i].setTailKey(ev.getTailKey());
-              putAllPRData[i].setBatchUUID(ev.getBatchUUID());
-              boolean didPut = false;
+
+
+              boolean didPut;
               try {
-                if (tx != null) {
+                if (tx != null && !tx.isSnapshot()) {
                   didPut = tx.putEntryOnRemote(ev, false, false, null, false,
                       cacheWrite, lastModified, true);
               /*
@@ -539,6 +555,8 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
                 } else {
                   didPut = view.putEntryOnRemote(ev, false, false, null,
                       false, cacheWrite, lastModified, true);
+                  putAllPRData[i].setTailKey(ev.getTailKey());
+                  putAllPRData[i].setBatchUUID(ev.getBatchUUID());
                 }
                 if (didPut && logger.fineEnabled()) {
                   logger.fine("PutAllPRMessage.doLocalPutAll:putLocally success for " + ev);
@@ -582,7 +600,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
                 fre.setHash(ev.getKey().hashCode());
                 throw fre;
               } else {
-                if (tx == null) {
+                if (tx == null || tx.isSnapshot()) {
                   this.versions.addKeyAndVersion(putAllPRData[i].getKey(),
                       ev.getVersionTag());
                 }
@@ -612,8 +630,14 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
             // So we have to manually set useFakeEventId for this DPAO
             dpao.setUseFakeEventId(true);
             r.checkReadiness();
-            bucketRegion.getDataView(tx).postPutAll(dpao, this.versions,
-                bucketRegion);
+            if (tx != null && tx.isSnapshot()) {
+              bucketRegion.getSharedDataView().postPutAll(dpao, this.versions,
+                  bucketRegion);
+            } else {
+              bucketRegion.getDataView(tx).postPutAll(dpao, this.versions,
+                  bucketRegion);
+            }
+
           /*
           if (tx != null && hasRedundancy) {
             tx.flushPendingOps(null);
@@ -627,7 +651,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           }
         }
         if (partialKeys.hasFailure()) {
-          if (tx == null) {
+          if (tx == null || tx.isSnapshot()) {
             partialKeys.addKeysAndVersions(this.versions);
           }
           if (logFineEnabled) {
@@ -636,21 +660,28 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           }
           throw new PutAllPartialResultException(partialKeys);
         }
+        success = true;
         } catch (RegionDestroyedException e) {
           ds.checkRegionDestroyedOnBucket(bucketRegion, true, e);
         } finally {
+          if (memoryTracker != null) {
+            long unusedMemory = memoryTracker.freeMemory();
+            if (unusedMemory > 0) {
+              CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
+                  memoryTracker.getFirstAllocationObject(), unusedMemory, false);
+            }
+          }
           // no need to lock keys for transactions
-          if (tx == null) {
+          if (tx == null || tx.isSnapshot()) {
             bucketRegion.removeAndNotifyKeys(keys);
           }
-          bucketRegion.putAllLock.readLock().unlock();
-          // TODO: For tx it may change.
-          // TODO: For concurrent putALLs, this will club other putall as well
-          // the putAlls in worst case so cachedbatchsize may be large?
-          if (bucketRegion.getPartitionedRegion().needsBatching()
-              && bucketRegion.size() >= GemFireCacheImpl.getColumnBatchSize()) {
-            bucketRegion.createAndInsertCachedBatch(false);
-          }
+        //bucketRegion.columnBatchFlushLock.readLock().unlock();
+        // TODO: For tx it may change.
+        // TODO: For concurrent putALLs, this will club other putall as well
+        // the putAlls in worst case so columnBatchSize may be large?
+        if (success && bucketRegion.checkForColumnBatchCreation()) {
+          bucketRegion.createAndInsertColumnBatch(false);
+        }
           if (lockedForPrimary) {
             bucketRegion.doUnlockForPrimary();
           }

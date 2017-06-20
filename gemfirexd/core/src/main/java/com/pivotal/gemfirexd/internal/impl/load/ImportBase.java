@@ -198,7 +198,7 @@ public class ImportBase extends ImportAbstract{
 	 *                         appended.(0 - append , > 0 Replace the data)
      * @param lobsInExtFile true, if the lobs data is stored in an external file,
      *                      and the reference to it is stored in the main import file.
- 	 * @exception SQL Exception on errors
+ 	 * @exception SQLException on errors
 	 */
 
 	public static void importTable(Connection connection, String schemaName, 
@@ -528,9 +528,11 @@ public class ImportBase extends ImportAbstract{
                   if (err.get() != null) {
                     // try to interrupt as soon as possible
                     th.join(100);
-                    if (th.isAlive()) {
-                      th.interrupt();
-                    }
+                    // Not giving interrupt to all the threads as it can close the oplog file channel
+                    // which can close the region and the network interfaces. See bug SNAP-1138.
+                    // if (th.isAlive()) {
+                      // th.interrupt();
+                    // }
                     th.join(1000);
                     break;
                   }

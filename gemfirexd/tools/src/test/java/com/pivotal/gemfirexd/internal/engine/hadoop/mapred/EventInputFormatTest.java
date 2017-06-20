@@ -30,6 +30,15 @@ import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreFactoryImpl;
+import com.pivotal.gemfirexd.FabricServiceManager;
+import com.pivotal.gemfirexd.TestUtil;
+import com.pivotal.gemfirexd.callbacks.Event.Type;
+import com.pivotal.gemfirexd.hadoop.mapred.Key;
+import com.pivotal.gemfirexd.hadoop.mapred.Row;
+import com.pivotal.gemfirexd.hadoop.mapred.RowInputFormat;
+import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -38,16 +47,6 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.lib.CombineFileSplit;
-
-import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreFactoryImpl;
-import com.gemstone.gemfire.internal.FileUtil;
-import com.pivotal.gemfirexd.FabricServiceManager;
-import com.pivotal.gemfirexd.TestUtil;
-import com.pivotal.gemfirexd.callbacks.Event.Type;
-import com.pivotal.gemfirexd.hadoop.mapred.Key;
-import com.pivotal.gemfirexd.hadoop.mapred.Row;
-import com.pivotal.gemfirexd.hadoop.mapred.RowInputFormat;
-import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
 
 public class EventInputFormatTest extends JdbcTestBase {
   String HDFS_DIR = "./myhdfs";
@@ -563,14 +562,14 @@ public class EventInputFormatTest extends JdbcTestBase {
   
   @Override
   public void setUp() throws Exception {
-    FileUtil.delete(new File(HDFS_DIR));
+    FileUtils.deleteQuietly(new File(HDFS_DIR));
     super.setUp();
   }
 
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
-    FileUtil.delete(new File(HDFS_DIR));
+    FileUtils.deleteQuietly(new File(HDFS_DIR));
   }
 
   public EventInputFormatTest(String name) {

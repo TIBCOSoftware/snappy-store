@@ -72,12 +72,12 @@ public class GfxdSystemAdmin extends SystemAdmin {
    * Commands from {@link SystemAdmin} that are not used in GemFireXD and have
    * been removed.
    */
-  final static HashSet<String> removedCommands = new HashSet<String>();
+  protected final static HashSet<String> removedCommands = new HashSet<String>();
 
-  final static HashMap<String, String> modifiedUsageInfo =
+  protected final static HashMap<String, String> modifiedUsageInfo =
     new HashMap<String, String>();
 
-  final static HashMap<String, String> modifiedHelpInfo =
+  protected final static HashMap<String, String> modifiedHelpInfo =
     new HashMap<String, String>();
 
   final static String[] commandsWithDSProps = new String[] { "backup",
@@ -94,7 +94,7 @@ public class GfxdSystemAdmin extends SystemAdmin {
   private final static List<String> noValArgs = Arrays.asList("-password",
       SKIP_ACCESSORS);
 
-  private String defaultLogFileName;
+  protected String defaultLogFileName;
 
   // flags to shut-down-all to indicate skipping accessors or including all
   private boolean shutDownAllIncludeAdmins;
@@ -232,6 +232,13 @@ public class GfxdSystemAdmin extends SystemAdmin {
   }
 
   @Override
+  public void printStacks(String cmd, List<String> cmdLine,
+      boolean allStacks) {
+    // always print everything in GemXD
+    super.printStacks(cmd, cmdLine, true);
+  }
+
+  @Override
   protected void checkDashArg(String cmd, String arg,
       @SuppressWarnings("rawtypes") Iterator it) {
     if (Arrays.binarySearch(commandsWithDSProps, cmd) >= 0) {
@@ -246,7 +253,7 @@ public class GfxdSystemAdmin extends SystemAdmin {
   }
 
   /** returns the list of valid commands supported by {@link SystemAdmin} */
-  protected static String[] getValidCommands() {
+  public static String[] getValidCommands() {
     return SystemAdmin.getValidCommands();
   }
 

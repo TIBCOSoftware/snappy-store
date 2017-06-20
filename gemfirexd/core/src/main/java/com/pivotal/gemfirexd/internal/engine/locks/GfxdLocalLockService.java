@@ -21,9 +21,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.management.LockInfo;
 import java.lang.management.ManagementFactory;
-import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.Map;
@@ -41,6 +39,7 @@ import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.EventID;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.locks.impl.GfxdReentrantReadWriteLock;
@@ -266,7 +265,7 @@ public final class GfxdLocalLockService extends
       final Object lockObject, final Object lockOwner,
       final boolean dumpAllLocks) {
     if (dumpAllLocks) {
-      dumpAllRWLocks("LOCK TABLE at the time of failure", null);
+      dumpAllRWLocks("LOCK TABLE at the time of failure", null, true);
     }
     // check if the current thread was interrupted or system shutting down
     Throwable cause = null;
@@ -310,13 +309,16 @@ public final class GfxdLocalLockService extends
    * @param pw
    *          if non-null then dump is generated on given PrintWriter else it
    *          goes to standard GFXD log file
+   * @param force
+   *          if true then dump is forced immediately, else avoid multiple
+   *          dumps in quick succession (e.g. when many thread timeout on lock)
    */
-  public void dumpAllRWLocks(String logPrefix, PrintWriter pw) {
+  public void dumpAllRWLocks(String logPrefix, PrintWriter pw, boolean force) {
     // do not do the dump multiple times since multiple threads will try
     // to dump fairly close together
     synchronized (this) {
       long currentTime = System.currentTimeMillis();
-      if (this.lastDumpTime > 0) {
+      if (!force && this.lastDumpTime > 0) {
         if ((currentTime - this.lastDumpTime) < this.maxVMWriteLockWait) {
           return;
         }
@@ -380,64 +382,8 @@ public final class GfxdLocalLockService extends
   public static void generateThreadDump(StringBuilder msg) {
     ThreadMXBean mbean = ManagementFactory.getThreadMXBean();
     for (ThreadInfo tInfo : mbean.dumpAllThreads(true, true)) {
-      msg.append('"').append(tInfo.getThreadName()).append('"').append(" Id=")
-          .append(tInfo.getThreadId()).append(' ')
-          .append(tInfo.getThreadState());
-      if (tInfo.getLockName() != null) {
-        msg.append(" on ").append(tInfo.getLockName());
-      }
-      if (tInfo.getLockOwnerName() != null) {
-        msg.append(" owned by \"").append(tInfo.getLockOwnerName())
-            .append("\" Id=").append(tInfo.getLockOwnerId());
-      }
-      if (tInfo.isSuspended()) {
-        msg.append(" (suspended)");
-      }
-      if (tInfo.isInNative()) {
-        msg.append(" (in native)");
-      }
-      msg.append(SanityManager.lineSeparator);
-      final StackTraceElement[] stackTrace = tInfo.getStackTrace();
-      for (int index = 0; index < stackTrace.length; ++index) {
-        msg.append("\tat ").append(stackTrace[index].toString())
-            .append(SanityManager.lineSeparator);
-        if (index == 0 && tInfo.getLockInfo() != null) {
-          final Thread.State ts = tInfo.getThreadState();
-          switch (ts) {
-            case BLOCKED:
-              msg.append("\t-  blocked on ").append(tInfo.getLockInfo())
-                  .append(SanityManager.lineSeparator);
-              break;
-            case WAITING:
-              msg.append("\t-  waiting on ").append(tInfo.getLockInfo())
-                  .append(SanityManager.lineSeparator);
-              break;
-            case TIMED_WAITING:
-              msg.append("\t-  waiting on ").append(tInfo.getLockInfo())
-                  .append(SanityManager.lineSeparator);
-              break;
-            default:
-          }
-        }
-
-        for (MonitorInfo mi : tInfo.getLockedMonitors()) {
-          if (mi.getLockedStackDepth() == index) {
-            msg.append("\t-  locked ").append(mi)
-                .append(SanityManager.lineSeparator);
-          }
-        }
-      }
-
-      final LockInfo[] locks = tInfo.getLockedSynchronizers();
-      if (locks.length > 0) {
-        msg.append(SanityManager.lineSeparator)
-            .append("\tNumber of locked synchronizers = ").append(locks.length)
-            .append(SanityManager.lineSeparator);
-        for (LockInfo li : locks) {
-          msg.append("\t- ").append(li).append(SanityManager.lineSeparator);
-        }
-      }
-      msg.append(SanityManager.lineSeparator);
+      ClientSharedUtils.dumpThreadStack(tInfo, msg,
+          SanityManager.lineSeparator);
     }
   }
 

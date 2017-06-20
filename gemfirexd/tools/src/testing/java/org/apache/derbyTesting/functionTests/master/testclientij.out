@@ -14,7 +14,7 @@ gfxd> --
 --   See the License for the specific language governing permissions and
 --   limitations under the License.
 --
-driver 'com.pivotal.gemfirexd.jdbc.ClientDriver';
+driver 'io.snappydata.jdbc.ClientDriver';
 gfxd> --Bug 4632  Make the db italian to make sure string selects  are working
 connect 'jdbc:derby://localhost:1527/testij;create=true;territory=it' USER 'dbadmin' PASSWORD 'dbadmin';
 ij(CONNECTION1)> connect 'jdbc:derby://localhost:1527/testij' USER 'dbadmin' PASSWORD 'dbadbmin';

@@ -208,9 +208,9 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     clientSQLExecute(1, "insert into EMP.TESTTABLE_ONE values (1, 'hello')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_TWO values (1, 'hello')");
     Thread.sleep(5000);
-    long start = System.currentTimeMillis();
     clientSQLExecute(1, "insert into EMP.TESTTABLE_ONE values (2, 'goodbye')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_TWO values (2, 'goodbye')");
+    long start = System.currentTimeMillis();
     stopVMNum(-1);
     restartVMNums(-1);
     // startServerVMs(1, 0, null);
@@ -221,6 +221,8 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     long elapsed = System.currentTimeMillis() - start;
     if (elapsed < 6000) {
       Thread.sleep(6000 - elapsed);
+    } else if (elapsed > 10000) {
+      expected = null;
     }
 
     validateResults("EMP.TESTTABLE_ONE", expected);
@@ -233,7 +235,7 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     clientSQLExecute(1, "drop table EMP.TESTTABLE_ONE");
     serverSQLExecute(1, "drop diskstore teststore");
   }
-  
+
   public void testAlterCommandTimeToLive() throws Exception {
     // The test is valid only for transaction isolation level NONE. 
     if (isTransactional) {
@@ -255,16 +257,15 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
 
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (1, 'hello')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (2, 'goodbye')");
-    
+
     //alter table set expire entry timetolive
     clientSQLExecute(1, "ALTER TABLE EMP.TESTTABLE "
         + "set EXPIRE ENTRY WITH TIMETOLIVE 20 ACTION DESTROY");
-    
 
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (3, 'hello1')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (4, 'goodbye1')");
 
-    //changed TTL applies only to the entries inserted after alter command 
+    //changed TTL applies only to the entries inserted after alter command
     TIntHashSet expected = new TIntHashSet();
     expected.add(1);
     expected.add(2);
@@ -280,7 +281,7 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     clientSQLExecute(1, "drop table EMP.TESTTABLE");
     serverSQLExecute(1, "drop diskstore teststore");
   }
-  
+
   /**
    * Test that idle expiration time is rest on persistent recovery
    * 
@@ -329,10 +330,14 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     long elapsed = System.currentTimeMillis() - start;
     if (elapsed < 6000) {
       Thread.sleep(6000 - elapsed);
+    } else if (elapsed > 10000) {
+      expected = null;
     }
 
     validateResults("EMP.TESTTABLE_ONE", expected);
-    expected.add(3);
+    if (expected != null) {
+      expected.add(3);
+    }
     validateResults("EMP.TESTTABLE_TWO", expected);
     Thread.sleep(5000);
     validateResults("EMP.TESTTABLE_ONE", null);

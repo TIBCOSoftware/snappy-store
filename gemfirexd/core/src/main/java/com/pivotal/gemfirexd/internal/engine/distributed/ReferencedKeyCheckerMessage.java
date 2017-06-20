@@ -54,6 +54,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntHashSet;
@@ -113,6 +114,8 @@ public final class ReferencedKeyCheckerMessage extends
   private String tableName;
 
   private ArrayList<DataValueDescriptor[]> keyColumnDVDs;
+  private int numColumns;
+  private ArrayList<byte[]> keyRows;
 
   private long connectionId;
 
@@ -221,7 +224,7 @@ public final class ReferencedKeyCheckerMessage extends
       FormatableBitSet refColsUpdtdBits, TIntObjectHashMap refColUpdtd2DependentCols,
       TIntIntHashMap refCol2IndexMap,
       int[] colToDVDPosMapping ) {
-    super(rc, tx, getTimeStatsSettings(lcc));
+    super(rc, tx, getTimeStatsSettings(lcc), true);
     this.container = container;
     this.schemaName = container.getSchemaName();
     if (this.schemaName == null) {
@@ -262,6 +265,47 @@ public final class ReferencedKeyCheckerMessage extends
 
   @Override
   protected void execute() throws SQLException, StandardException {
+
+    this.container = (GemFireContainer)Misc.getRegionByPath(
+        Misc.getRegionPath(this.schemaName, this.tableName, null), true)
+        .getUserAttribute();
+
+    if (this.keyColumnDVDs == null && this.keyRows != null) {
+      final int columns = this.numColumns;
+      final int numRows = this.keyRows.size();
+      this.keyColumnDVDs = new ArrayList<>(numRows);
+      final ExtraTableInfo tableInfo = this.container.getExtraTableInfo();
+      final RowFormatter rf;
+      // if(forUpdate) {
+      // rf = tableInfo.getReferencedKeyRowFormatter()
+      // .getSubSetReferenceKeyFormatter(this.refImpactedCols);
+      // }else {
+      // rf = tableInfo.getReferencedKeyRowFormatter();
+      // }
+      rf = tableInfo.getReferencedKeyRowFormatter();
+
+      // final int[] keyPositions =
+      // this.forUpdate?this.refImpactedCols:tableInfo.getReferencedKeyColumns();
+      final int[] keyPositions = tableInfo.getReferencedKeyColumns();
+      assert columns == keyPositions.length : "numKeys=" + keyPositions.length
+          + ", read=" + columns;
+
+      byte[] rowBytes;
+
+      DataValueDescriptor[] row;
+      for (int index = 0; index < numRows; index++) {
+        rowBytes = this.keyRows.get(index);
+        if (rowBytes != null) {
+          row = new DataValueDescriptor[columns];
+          for (int col = 1; col <= columns; col++) {
+            row[col - 1] = rf.getColumn(col, rowBytes);
+          }
+          this.keyColumnDVDs.add(row);
+        }
+      }
+      // free the keyRows
+      this.keyRows = null;
+    }
 
     final DataDictionary dd;
     LanguageConnectionContext lcc = null;
@@ -806,10 +850,8 @@ public final class ReferencedKeyCheckerMessage extends
     super.fromData(in);
     this.schemaName = DataSerializer.readString(in);
     this.tableName = DataSerializer.readString(in);
-    this.container = (GemFireContainer)Misc.getRegionByPath(
-        Misc.getRegionPath(this.schemaName, this.tableName, null), true)
-        .getUserAttribute();
     final int columns = InternalDataSerializer.readArrayLength(in);
+    this.numColumns = columns;
     final boolean hasDVDs = in.readBoolean();
 
     final int rows;
@@ -870,42 +912,10 @@ public final class ReferencedKeyCheckerMessage extends
       // }
       // }
       rows = InternalDataSerializer.readArrayLength(in);
-      this.keyColumnDVDs = new ArrayList<DataValueDescriptor[]>(rows);
-      final ExtraTableInfo tableInfo = this.container.getExtraTableInfo();
-      final RowFormatter rf;
-      // if(forUpdate) {
-      // rf =
-      // tableInfo.getReferencedKeyRowFormatter().getSubSetReferenceKeyFormatter(this.refImpactedCols);
-      // }else {
-      // rf = tableInfo.getReferencedKeyRowFormatter();
-      // }
-      rf = tableInfo.getReferencedKeyRowFormatter();
-
-      // final int[] keyPositions =
-      // this.forUpdate?this.refImpactedCols:tableInfo.getReferencedKeyColumns();
-      final int[] keyPositions = tableInfo.getReferencedKeyColumns();
-      assert columns == keyPositions.length: "numKeys=" + keyPositions.length
-          + ", read=" + columns;
-
-      byte[] rowBytes;
-      
-      DataValueDescriptor[] row;
-      try {
-        for (int index = 0; index < rows; index++) {
-          rowBytes = DataSerializer.readByteArray(in);
-         
-          if (rowBytes != null) {
-            
-            row = new DataValueDescriptor[columns];
-            for (int col = 1; col <= columns; col++) {
-              row[col - 1] = rf.getColumn(col, rowBytes);
-            }
-            this.keyColumnDVDs.add(row);
-          }
-        }
-      } catch (StandardException se) {
-        throw new IOException(
-            "ConstraintCheckArgs#fromData: unexpected exception", se);
+      this.keyRows = new ArrayList<>(rows);
+      this.keyColumnDVDs = null;
+      for (int index = 0; index < rows; index++) {
+        this.keyRows.add(DataSerializer.readByteArray(in));
       }
     }
     this.connectionId = GemFireXDUtils.readCompressedHighLow(in);
@@ -1054,22 +1064,22 @@ public final class ReferencedKeyCheckerMessage extends
               final byte[] rowBytes = (byte[])rowValue;
               rf = tableInfo.getRowFormatter(rowBytes);
               rf.serializeColumns(rowBytes, out, fixedPositions, varPositions,
-                  refKeyFormatter.offsetBytes, refKeyFormatter.offsetIsDefault,
-                  refKeyFormatter);
+                  refKeyFormatter.getNumOffsetBytes(),
+                  refKeyFormatter.getOffsetDefaultToken(), refKeyFormatter);
             }
             else if (cls == byte[][].class) {
               final byte[] rowBytes = ((byte[][])rowValue)[0];
               rf = tableInfo.getRowFormatter(rowBytes);
               rf.serializeColumns(rowBytes, out, fixedPositions, varPositions,
-                  refKeyFormatter.offsetBytes, refKeyFormatter.offsetIsDefault,
-                  refKeyFormatter);
+                  refKeyFormatter.getNumOffsetBytes(),
+                  refKeyFormatter.getOffsetDefaultToken(), refKeyFormatter);
             }
             else {
               rowBS = (OffHeapByteSource)rowValue;
               rf = tableInfo.getRowFormatter(rowBS);
               rf.serializeColumns(rowBS, out, fixedPositions, varPositions,
-                  refKeyFormatter.offsetBytes, refKeyFormatter.offsetIsDefault,
-                  refKeyFormatter);
+                  refKeyFormatter.getNumOffsetBytes(),
+                  refKeyFormatter.getOffsetDefaultToken(), refKeyFormatter);
             }
           }
           else {
@@ -1187,8 +1197,21 @@ public final class ReferencedKeyCheckerMessage extends
       else {
         sb.append(numKeys).append(" keys");
       }
-    }
-    else {
+    } else if (this.keyRows != null) {
+      final int numKeys = this.keyRows.size();
+      if (numKeys <= 10) {
+        for (int index = 0; index < numKeys; index++) {
+          if (index > 0) {
+            sb.append("::");
+          }
+          byte[] keyRow = this.keyRows.get(index);
+          sb.append(ClientSharedUtils.toHexString(keyRow, 0, keyRow.length));
+        }
+      }
+      else {
+        sb.append(numKeys).append(" keys");
+      }
+    } else {
       final int numKeys = this.keyColumnLocations.size();
       if (numKeys <= 10) {
         final int[] keyPositions = this.forUpdate ? this.refImpactedCols

@@ -49,36 +49,31 @@ public interface FabricService {
    * <CENTER> <B><a name="states">Different states of service</a></B> </CENTER>.
    * 
    * <dl>
-   * <a name="#UNINITIALIZED">
-   * <dt>UNINITIALIZED</dt></a>
+   * <dt>{@link State#UNINITIALIZED}</dt>
    * <dd><U>Description</U>: This is the initial state of the status when
    * service on this peer is yet to be started or the start was unsuccessful.</dd>
    * </dl>
    * 
    * <dl>
-   * <a name="#STARTING">
-   * <dt>STARTING</dt></a>
+   * <dt>{@link State#STARTING}</dt>
    * <dd><U>Description</U>: Service was started on the peer but is still in the
    * process of booting up its driver and joining the distributed system..</dd>
    * </dl>
    * 
    * <dl>
-   * <a name="#WAITING">
-   * <dt>WAITING</dt></a>
+   * <dt>{@link State#WAITING}</dt>
    * <dd><U>Description</U>: This state indicates that the peer is waiting for
    * other offline members of the distributed system to come online.</dd>
    * </dl>
    * 
    * <dl>
-   * <a name="#RUNNING">
-   * <dt>RUNNING</dt></a>
+   * <dt>{@link State#RUNNING}</dt>
    * <dd><U>Description</U>: Indicates that the peer is ready to service JDBC
    * connections in the application program.
    * </dl>
    * 
    * <dl>
-   * <a name="#STOPPING">
-   * <dt>STOPPING</dt></a>
+   * <dt>{@link State#STOPPING}</dt>
    * <dd><U>Description</U>: The peer has initiated the shutdown process (
    * {@link FabricService#stop}). No new JDBC connections will be allowed
    * and existing ones will be closed. Current activity on the connection may
@@ -86,8 +81,7 @@ public interface FabricService {
    * </dl>
    * 
    * <dl>
-   * <a name="#STOPPED">
-   * <dt>STOPPED</dt></a>
+   * <dt>{@link State#STOPPED}</dt>
    * <dd><U>Description</U>: The peer has successfully disconnected from
    * distributed system. No new JDBC connections will be allowed and existing
    * will be closed. Current activity on the connection may raise
@@ -95,8 +89,7 @@ public interface FabricService {
    * </dl>
    * 
    * <dl>
-   * <a name="#RECONNECTING">
-   * <dt>RECONNECTING</dt></a>
+   * <dt>{@link State#RECONNECTING}</dt>
    * <dd><U>Description</U>: The peer has lost its connection to the
    * distributed system and is reconnecting.
    * </dl>
@@ -114,8 +107,8 @@ public interface FabricService {
    * be called multiple times to bind to multiple network interfaces.
    * 
    * By default this starts DRDA server ({@link #startDRDAServer} unless
-   * {@link ClientSharedUtils#USE_THRIFT_AS_DEFAULT} system property is set in
-   * which case it start a Thrift server {@link #startThriftServer}
+   * {@link ClientSharedUtils#USE_THRIFT_AS_DEFAULT_PROP} system property is
+   * set in which case it start a Thrift server {@link #startThriftServer}
    * 
    * @param bindAddress
    *          The host name or IP address to bind the network server. If this is
@@ -123,8 +116,8 @@ public interface FabricService {
    *          listens only on that address, else binds to local loopback
    *          address.
    * @param port
-   *          The port to bind the network server. A value <= 0 will cause this
-   *          to use the default port {@link #NETSERVER_DEFAULT_PORT}.
+   *          The port to bind the network server. A value &lt;= 0 will cause
+   *          this to use the default port {@link #NETSERVER_DEFAULT_PORT}.
    * @param networkProperties
    *          <a href=
    *          "http://community.gemstone.com/display/sqlfabric/Connection+Attributes"
@@ -144,8 +137,8 @@ public interface FabricService {
    *          listens only on that address, else binds to local loopback
    *          address.
    * @param port
-   *          The port to bind the network server. A value <= 0 will cause this
-   *          to use the default port {@link #NETSERVER_DEFAULT_PORT}.
+   *          The port to bind the network server. A value &lt;= 0 will cause
+   *          this to use the default port {@link #NETSERVER_DEFAULT_PORT}.
    * @param networkProperties
    *          <a href=
    *          "http://community.gemstone.com/display/sqlfabric/Connection+Attributes"
@@ -165,8 +158,8 @@ public interface FabricService {
    *          listens only on that address, else binds to local loopback
    *          address.
    * @param port
-   *          The port to bind the DRDA server. A value <= 0 will cause this
-   *          to use the default port {@link #NETSERVER_DEFAULT_PORT}.
+   *          The port to bind the DRDA server. A value &lt;= 0 will cause
+   *          this to use the default port {@link #NETSERVER_DEFAULT_PORT}.
    * @param networkProperties
    *          <a href=
    *          "http://community.gemstone.com/display/sqlfabric/Connection+Attributes"

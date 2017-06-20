@@ -20,19 +20,23 @@ import com.gemstone.gemfire.internal.cache.persistence.soplog.SortedReader.Seria
 
 /**
  * Delegates object comparisons to one or more embedded comparators.
- *  
+ *
  * @author bakera
  */
-public interface DelegatingSerializedComparator extends SerializedComparator {
+public abstract class DelegatingSerializedComparator
+    extends CompositeSerializedComparator {
+
   /**
    * Injects the embedded comparators.
+   *
    * @param comparators the comparators for delegation
    */
-  void setComparators(SerializedComparator[] comparators);
-  
+  public abstract void setComparators(SerializedComparator[] comparators);
+
   /**
    * Returns the embedded comparators.
+   *
    * @return the comparators
    */
-  SerializedComparator[] getComparators();
+  public abstract SerializedComparator[] getComparators();
 }

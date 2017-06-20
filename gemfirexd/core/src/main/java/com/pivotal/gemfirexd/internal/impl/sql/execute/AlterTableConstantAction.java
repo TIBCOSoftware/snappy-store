@@ -412,7 +412,7 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
     GfxdPartitionResolver spr = null;
     if (pattrs != null) {
       PartitionResolver<?, ?> pr = pattrs.getPartitionResolver();
-      if (pr != null && pr instanceof GfxdPartitionResolver) {
+      if (pr instanceof GfxdPartitionResolver) {
         spr = (GfxdPartitionResolver)pr;
       }
     }
@@ -705,11 +705,13 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
 								numRows = getSemiRowCount(tc);
 							}
 // GemStone changes BEGIN
-              // GemFireXD cannot handle PK create with data or buckets (#40712)
+              // GemFireXD cannot handle PK create with data (#40712)
               if (this.numBuckets > 0) {
-                throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
-                    "PRIMARY KEY create in ALTER TABLE "
-                        + "with data or data history");
+                numRows = getSemiRowCount(tc);
+                if (numRows > 0) {
+                  throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
+                      "PRIMARY KEY create in ALTER TABLE with data");
+                }
               }
               else {
                 this.isPkAdd = true;
@@ -809,6 +811,8 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
     // a) COMPRESS, b) truncate; these two call init() methods
     // with different parameters not having mutator object -- see
     // init methods in AlterTableNode
+    final GemFireContainer gfc = GemFireContainer.getGemFireContainer(td,
+        (GemFireTransaction)tc);
     if (this.mutator != null && !this.truncateTable) {
       CacheLoader<?, ?> ldr = attrs.getCacheLoader();
       if (ldr != null) {
@@ -830,7 +834,7 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
       // can very well be zero due to delayed region initializations.
       if (/* this.numBuckets > 0 && */ !isSet) {
         if (spr != null) {
-          DistributionDescriptor distributionDesc = spr
+          DistributionDescriptor distributionDesc = gfc
               .getDistributionDescriptor();
           // Update the distribution descriptor's column positions
           // even if there's data in the table
@@ -945,8 +949,6 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
       }
       // [yogesh]
       if (this.mutator.isAlterGatewaySender()) {
-        final GemFireContainer cntr = GemFireContainer.getGemFireContainer(td,
-            (GemFireTransaction)tc);
         Iterator<ColumnDescriptor> itr = td.getColumnDescriptorList()
             .iterator();
         while (itr.hasNext()) {

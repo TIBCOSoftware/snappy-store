@@ -257,7 +257,7 @@ public class ExecuteFunctionNoAckOp {
 
     @Override  
     protected Message createResponseMessage() {
-      return new Message(1, Version.CURRENT);
+      return new Message(1, Version.CURRENT_GFE);
     }
   }
 

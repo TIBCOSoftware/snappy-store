@@ -641,7 +641,7 @@ public final class ResultHolder extends GfxdDataSerializable {
             "ResultHolder::prepareSend: got exception while sending", t);
       }
       else if (GemFireXDUtils.TraceFunctionException
-          | GemFireXDUtils.TraceExecute) {
+          | GemFireXDUtils.TraceExecution) {
         // log full stack for unexpected runtime exceptions
         boolean printStack = false;
         Throwable fail = t;
@@ -810,7 +810,7 @@ public final class ResultHolder extends GfxdDataSerializable {
     final TXStateProxy txProxy = tx.getProxy();
     final TXChanges txChanges = TXChanges.fromMessage(this.sourceMessage,
         txProxy);
-    if (this.sourceMessage.finishTXProxyRead()) {
+    if (this.sourceMessage.finishTXProxyRead() && !txProxy.isSnapshot()) {
       // in case there is nothing in the TXStateProxy then get rid of it
       // so that commit/rollback will not be required for this node;
       // this is now a requirement since commit/rollback targets only the

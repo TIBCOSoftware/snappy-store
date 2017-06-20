@@ -422,7 +422,7 @@ public class LocalRegionDataView implements InternalDataView {
   @Override
   public Iterator<?> getLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
-      LocalRegion currRegion) {
+      LocalRegion currRegion, boolean fetchRemote) {
     throw new IllegalStateException("getLocalEntriesIterator: "
         + "this method is intended to be called only for PRs");
   }

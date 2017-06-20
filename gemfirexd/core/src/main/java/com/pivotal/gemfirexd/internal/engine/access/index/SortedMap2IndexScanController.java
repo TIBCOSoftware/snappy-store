@@ -122,7 +122,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
   private boolean needScanKey;
 
-  private Set<Integer> localBucketSet;
+  private boolean[] localBucketSet;
   
   private int scanKeyGroupID =0;
 
@@ -315,7 +315,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 //                int len = ((SQLChar)key).getCharArray(chars, 0);
 //                SQLChar.appendBlanks(chars, len, maxLength - len);
 //                // Set value to the padded string
-//                key.setValue(ClientSharedUtils.getJdkHelper().newWrappedString(
+//                key.setValue(ClientSharedUtils.newWrappedString(
 //                    chars, 0, maxLength));
 //              }
 //            }
@@ -394,14 +394,14 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
                       ? regionForBSet.getName() : "(null)"));
         }
         if (prpLEItr) {
-          this.localBucketSet = bset;
+          this.localBucketSet = getBucketSet(bset);
           bucketSetGotFromSingleHop = true;
         }
       }
 
       if (!bucketSetGotFromSingleHop) {
-        this.localBucketSet = getLocalBucketSet(container, this.baseRegion,
-            this.activation, "SortedMap2IndexScanController");
+        this.localBucketSet = getBucketSet(getLocalBucketSet(container, this.baseRegion,
+            this.activation, "SortedMap2IndexScanController"));
       }
     }
     
@@ -409,11 +409,23 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
         && this.activation.getUseOnlyPrimaryBuckets()) {
       // put all primary buckets here
       if (this.baseContainer.isPartitioned()) {
-        this.localBucketSet = ((PartitionedRegion)this.baseRegion)
-            .getDataStore().getAllLocalPrimaryBucketIds();
+        this.localBucketSet = getBucketSet(((PartitionedRegion)this.baseRegion)
+            .getDataStore().getAllLocalPrimaryBucketIds());
       }
     }
     this.hasNext = true;
+  }
+
+  private boolean[] getBucketSet(Set<Integer> bucketSet) {
+    if (bucketSet != null) {
+      int maxBucketId = ((PartitionedRegion)this.baseRegion).getTotalNumberOfBuckets();
+      boolean[] buckets = new boolean[maxBucketId + 1];
+      for (int b : bucketSet) {
+        buckets[b] = true;
+      }
+      return buckets;
+    }
+    return null;
   }
 
   /**
@@ -505,8 +517,9 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
         // this TX may have local state for this entry
         dataRegion = this.baseRegion.getDataRegionForRead(rl.getKey(), null,
             bucketId, Operation.GET_ENTRY);
+        // TODO: Suranjan For index scan snapshot we can start snapshot tx and use that.
         rl = (RowLocation)localTXState.getLocalEntry(this.baseRegion,
-            dataRegion, bucketId, (AbstractRegionEntry)rl);
+            dataRegion, bucketId, (AbstractRegionEntry)rl, this.forUpdate != 0);
         if (rl == null) {
           this.currentRowLocation = null;
           ret = false;
@@ -830,11 +843,11 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
     final TXStateInterface txState;
     final GemFireContainer container;
-    final Set<Integer> localBucketSet;
+    final boolean[] localBucketSet;
     final int openMode;
 
     AbstractRowLocationIterator(final TXStateInterface tx,
-        final GemFireContainer container, final Set<Integer> localBucketSet,
+        final GemFireContainer container, final boolean[] localBucketSet,
         final int openMode) {
       this.txState = tx;
       this.container = container;
@@ -892,7 +905,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
     public static final RowLocation isRowLocationValid(RowLocation rowloc,
         final LanguageConnectionContext lcc, final TXStateInterface tx,
-        final GemFireContainer container, final Set<Integer> localBucketSet,
+        final GemFireContainer container, final boolean[] localBucketSet,
         final int openMode) {
       final TXId rlTXId;
 
@@ -922,8 +935,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
       final int bucketID = rowloc.getBucketID();
       if (bucketID > -1 && container.hasBucketRowLoc()) {
-        if (localBucketSet != null
-            && !localBucketSet.contains(Integer.valueOf(bucketID))) {
+        if (localBucketSet != null && !localBucketSet[bucketID]) {
           if (GemFireXDUtils.TraceIndex) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_INDEX,
                 "SortedMap2IndexScanController#isRowLocationValid: returning "
@@ -983,7 +995,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
     RowLocationArrayIterator(final RowLocation[] array,
         final TXStateInterface tx, final GemFireContainer con,
-        final Set<Integer> localBucketSet, final int openMode) {
+        final boolean[] localBucketSet, final int openMode) {
       super(tx, con, localBucketSet, openMode);
       this.rlArray = array;
       this.index = 0;
@@ -1030,7 +1042,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
     RowLocationSetIterator(final ConcurrentTHashSet<?> vals,
         final TXStateInterface tx, final GemFireContainer con,
-        final Set<Integer> localBucketSet, final int openMode) {
+        final boolean[] localBucketSet, final int openMode) {
       super(tx, con, localBucketSet, openMode);
       init(vals, tx);
     }
@@ -1148,7 +1160,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 
@@ -1308,9 +1320,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
   /**
    * General scan for selects when value is a set of RowLocations.
-   * 
-   * @param nextValue
-   * 
+   *
    * @return true if scan can return a value.
    */
   private final RowLocation scanHashSet(final ConcurrentTHashSet<?> set)

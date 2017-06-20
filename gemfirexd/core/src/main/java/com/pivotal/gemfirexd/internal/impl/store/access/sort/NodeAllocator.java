@@ -153,7 +153,8 @@ final class NodeAllocator
 	public void grow(int percent)
 	{
 		if (percent > 0)		// cannot shrink
-			maxSize = maxSize * (100+percent)/100;
+		   maxSize = maxSize * ((100+percent)/100);
+
 	}
 
 	/**

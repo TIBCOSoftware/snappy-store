@@ -257,8 +257,17 @@ public enum LockingPolicy {
       // a conflict. So in this case the commit becomes two-phase and the lock
       // upgrade to EX mode is done in pre-commit phase that throws a conflict
       // exception.
-      acquireLockFailFast(lockObj, mode, ExclusiveSharedSynchronizer
-          .ALLOW_READ_ONLY_WITH_EX_SH | flags, lockOwner, context, msg);
+      // Removed the ALLOW_READ_ONLY_WITH_EX_SH flag due to the following
+      // possible scenario:
+      //  1) child starts transactional insert but still not reached insert
+      //  2) parent delete ReferencedKeyChecker searches and finds nothing,
+      //     not even a transactional entry so does nothing
+      //  3) parent delete acquires write lock on parent entry
+      //  4) child insert acquires write lock on child entry and READ_ONLY
+      //     on parent entry (which does not get a conflict due to this flag)
+      //  5) child insert finishes and commits successfully releasing READ_ONLY
+      //  6) parent delete then finishes successfully
+      acquireLockFailFast(lockObj, mode, flags, lockOwner, context, msg);
     }
 
     @Override
@@ -452,6 +461,75 @@ public enum LockingPolicy {
       return lockObj.hasExclusiveLock(owner, context);
     }
   },
+  /**
+   * Defines a snapshot locking policy. i.e. no lock.
+   * we can add lock later for write to detect write write conflict.
+   * read can start tx
+   * This is default lock policy for Transaction isolation level NONE.
+   */
+  SNAPSHOT {
+
+    @Override
+    public LockMode getReadLockMode() {
+      return null;
+    }
+
+    @Override
+    public LockMode getWriteLockMode() {
+      return null;
+    }
+
+    @Override
+    public LockMode getReadOnlyLockMode() {
+      return null;
+    }
+
+    @Override
+    public boolean readCanStartTX() {
+      return true;
+    }
+
+    @Override
+    public boolean readOnlyCanStartTX() {
+      return true;
+    }
+
+    @Override
+    public final void acquireLock(ExclusiveSharedLockObject lockObj,
+        LockMode mode, int flags, Object lockOwner, Object context,
+        AbstractOperationMessage msg) throws ConflictException,
+        LockTimeoutException {
+      // TODO: Suranjan Ideally no request should come in this mode.
+      // put an assert here!
+      acquireLockFailFast(lockObj, mode, flags, lockOwner, context, msg);
+    }
+
+    @Override
+    public final long getTimeout(Object lockObj, LockMode newMode,
+        LockMode currentMode, int flags, final long msecs) {
+      return msecs;
+    }
+
+    @Override
+    public final IsolationLevel getIsolationLevel() {
+      return IsolationLevel.SNAPSHOT;
+    }
+
+    @Override
+    public final boolean isFailFast() {
+      return true;
+    }
+
+    @Override
+    public final Object lockForRead(final ExclusiveSharedLockObject lockObj,
+        LockMode mode, Object lockOwner, final Object context,
+        final int iContext, AbstractOperationMessage msg,
+        boolean allowTombstones, ReadEntryUnderLock reader) {
+      // TODO: Suranjan try to see if we can add versioning information here and read
+      return reader.readEntry(lockObj, context, iContext, allowTombstones);
+    }
+  },
+  ;
   ;
 
   /**

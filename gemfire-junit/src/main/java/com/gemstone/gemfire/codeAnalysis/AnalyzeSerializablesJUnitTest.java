@@ -63,7 +63,7 @@ public class AnalyzeSerializablesJUnitTest extends TestCase {
     String gfxdjar = null;
     for (int i=entries.length-1; i>=0; i--) {
       System.out.println("examining '" + entries[i] + "'");
-      if (entries[i].matches("gemfirexd-[0-9\\.]*(-SNAPSHOT.[0-9]*)?.jar")) {
+      if (entries[i].matches("snappydata-store-[0-9\\.]*(-SNAPSHOT.[0-9]*)?.jar")) {
         gfxdjar = entries[i];
         break;
       }

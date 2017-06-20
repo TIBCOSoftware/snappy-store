@@ -38,7 +38,7 @@
       Recognized JDBC drivers:
     </p>
     <ul>
-      <li><code>com.pivotal.gemfirexd.jdbc.ClientDriver</code></li>
+      <li><code>io.snappydata.jdbc.ClientDriver</code></li>
       <li><code>com.pivotal.gemfirexd.jdbc.EmbeddedDriver</code></li>
     </ul>
     <p>&nbsp;</p>

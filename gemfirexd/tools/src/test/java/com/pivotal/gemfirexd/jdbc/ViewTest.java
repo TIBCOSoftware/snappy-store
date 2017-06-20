@@ -244,8 +244,8 @@ public class ViewTest extends JdbcTestBase {
         PreparedStatement psInsert = conn
             .prepareStatement("insert into trade.A values (?, ?, ?, ?)");
         for (int i = 0; i < 30; i++) {
-          psInsert.setString(1, securities[i % 29]);
-          psInsert.setString(2, securities[i % 29]);
+          psInsert.setString(1, securities[i % 30]);
+          psInsert.setString(2, securities[i % 30]);
           psInsert.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
           psInsert.setInt(4, i + 1);
           psInsert.executeUpdate();
@@ -256,9 +256,9 @@ public class ViewTest extends JdbcTestBase {
         PreparedStatement psInsert = conn
             .prepareStatement("insert into trade.B values (?, ?, ?)");
         for (int i = 0; i < 30; i++) {
-          psInsert.setString(1, securities[i % 29]);
+          psInsert.setString(1, securities[i % 30]);
           psInsert.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
-          psInsert.setString(3, securities[i % 29]);
+          psInsert.setString(3, securities[i % 30]);
           psInsert.executeUpdate();
         }
       }
@@ -275,7 +275,7 @@ public class ViewTest extends JdbcTestBase {
           while (r.next()) {
             count++;
           }
-          assertEquals(29, count);
+          assertEquals(30, count);
           r.close();
         }
       }

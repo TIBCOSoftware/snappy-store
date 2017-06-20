@@ -144,6 +144,7 @@ public final class ExtraTableInfo extends ExtraInfo implements Dependent {
     container.initCompactTemplateRow(this);
     // also update any information cached by the locking subsystem
     container.refreshLockingInfo();
+    container.schemaUpdated();
   }
 
   private final void refreshPrimaryKeyFormatter(
@@ -190,65 +191,60 @@ public final class ExtraTableInfo extends ExtraInfo implements Dependent {
       @Unretained final OffHeapByteSource vbytes) {
     // if this is for the latest schema, then vbytes must have the same schema
     // else we may need to read vbytes to get the schema it represents
-    if (this.isLatestSchema) {
-      assert getSchemaVersionFromValueBytes(vbytes) == formatter.schemaVersion:
-        "mismatch of versions: formatter=" + formatter.schemaVersion
-            + ", fromBytes=" + getSchemaVersionFromValueBytes(vbytes);
-
-      return this.formatter;
-    }
-    else {
-      return this.container.getRowFormatter(vbytes);
-    }
+    // Disabling this optimization for bug SNAP-766
+//    if (this.isLatestSchema) {
+//      assert getSchemaVersionFromValueBytes(vbytes) == formatter.schemaVersion:
+//        "mismatch of versions: formatter=" + formatter.schemaVersion
+//            + ", fromBytes=" + getSchemaVersionFromValueBytes(vbytes);
+//
+//      return this.formatter;
+//    }
+//    else {
+//      return this.container.getRowFormatter(vbytes);
+//    }
+    return this.container.getRowFormatter(vbytes);
   }
 
   @Override
-  public final RowFormatter getRowFormatter(final UnsafeWrapper unsafe,
-      final long memAddr, @Unretained final OffHeapByteSource vbytes) {
+  public final RowFormatter getRowFormatter(final long memAddr,
+      @Unretained final OffHeapByteSource vbytes) {
     // if this is for the latest schema, then vbytes must have the same schema
     // else we may need to read vbytes to get the schema it represents
-    if (this.isLatestSchema) {
-      assert getSchemaVersionFromValueBytes(unsafe, memAddr) ==
-          formatter.schemaVersion: "mismatch of versions: formatter="
-              + formatter.schemaVersion + ", fromBytes="
-              + getSchemaVersionFromValueBytes(unsafe, memAddr);
-
-      return this.formatter;
-    }
-    else {
-      return this.container.getRowFormatter(unsafe, memAddr, vbytes);
-    }
+    // Disabling this optimization for bug SNAP-766
+//    if (this.isLatestSchema) {
+//      assert getSchemaVersionFromValueBytes(unsafe, memAddr) ==
+//          formatter.schemaVersion: "mismatch of versions: formatter="
+//              + formatter.schemaVersion + ", fromBytes="
+//              + getSchemaVersionFromValueBytes(unsafe, memAddr);
+//
+//      return this.formatter;
+//    }
+//    else {
+//      return this.container.getRowFormatter(unsafe, memAddr, vbytes);
+//    }
+    return this.container.getRowFormatter(memAddr, vbytes);
   }
 
   @Override
   public final RowFormatter getRowFormatter(final byte[] vbytes) {
     // if this is for the latest schema, then vbytes must have the same schema
     // else we may need to read vbytes to get the schema it represents
-    if (this.isLatestSchema) {
-      assert getSchemaVersionFromValueBytes(vbytes) == formatter.schemaVersion:
-        "mismatch of versions: formatter=" + formatter.schemaVersion
-            + ", fromBytes=" + getSchemaVersionFromValueBytes(vbytes);
-
-      return this.formatter;
-    }
-    else {
-      return this.container.getRowFormatter(vbytes);
-    }
+    // Disabling this optimization for bug SNAP-766
+//    if (this.isLatestSchema) {
+//      assert getSchemaVersionFromValueBytes(vbytes) == formatter.schemaVersion:
+//        "mismatch of versions: formatter=" + formatter.schemaVersion
+//            + ", fromBytes=" + getSchemaVersionFromValueBytes(vbytes);
+//
+//      return this.formatter;
+//    }
+//    else {
+//      return this.container.getRowFormatter(vbytes);
+//    }
+    return this.container.getRowFormatter(vbytes);
   }
 
   private static int getSchemaVersionFromValueBytes(byte[] vbytes) {
     return RowFormatter.readCompactInt(vbytes, 0);
-  }
-
-  private static int getSchemaVersionFromValueBytes(
-      @Unretained final OffHeapByteSource vbytes) {
-    return RowFormatter.readCompactInt(UnsafeMemoryChunk.getUnsafeWrapper(),
-        vbytes.getUnsafeAddress(), 0);
-  }
-
-  private static int getSchemaVersionFromValueBytes(final UnsafeWrapper unsafe,
-      final long memAddr) {
-    return RowFormatter.readCompactInt(unsafe, memAddr, 0);
   }
 
   public final boolean isValid() {

@@ -17,8 +17,17 @@
 
 package hydra;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
+import org.apache.commons.lang.StringUtils;
+
+import java.io.File;
 import java.io.Serializable;
 import java.util.*;
+
+import util.TestException;
 
 /**
  *
@@ -150,6 +159,43 @@ implements Serializable {
     return map;
   }
 
+  protected static String getSnappyJarPath(String jarPath, final String jarName) {
+    String snappyJar = null;
+    File baseDir = new File(jarPath);
+    try {
+      IOFileFilter filter = new WildcardFileFilter(jarName);
+      List<File> files = (List<File>) FileUtils.listFiles(baseDir, filter, TrueFileFilter.INSTANCE);
+      Log.getLogWriter().info("Jar file found: " + Arrays.asList(files));
+      for (File file1 : files) {
+        if (file1.getAbsolutePath().contains("/dtests/"))
+          snappyJar = file1.getAbsolutePath();
+      }
+    } catch (Exception e) {
+      String msg = "Unable to find " + jarName + " jar at " + jarPath + " location.";
+      throw new TestException(msg, e);
+    }
+    return snappyJar;
+  }
+
+  protected static String getAllSnappyJars(String jarPath) {
+    ArrayList<String> jarFiles = new ArrayList<>();
+    String SnappyJarsList = null;
+    File baseDir = new File(jarPath);
+    try {
+      IOFileFilter filter = new WildcardFileFilter("*.jar");
+      List<File> files = (List<File>) FileUtils.listFiles(baseDir, filter, TrueFileFilter.INSTANCE);
+      Log.getLogWriter().info("Jar files found: " + Arrays.asList(files));
+      for (File file1 : files) {
+        jarFiles.add(file1.getAbsolutePath());
+      }
+    } catch (Exception e) {
+      String msg = "Unable to find " + jarPath + " location.";
+      throw new TestException(msg, e);
+    }
+    SnappyJarsList = StringUtils.join(jarFiles, ":");
+    return SnappyJarsList;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   ////    CONFIGURATION                                                     ////
   //////////////////////////////////////////////////////////////////////////////
@@ -202,9 +248,9 @@ implements Serializable {
           }
 
           // cache unconverted extra classpaths for versioning
-          vmd.setUnconvertedExtraClassPath(paths);
+            vmd.setUnconvertedExtraClassPath(paths);
 
-          if (paths.size() > 0) {
+            if (paths.size() > 0) {
             paths = EnvHelper.expandEnvVars(paths, hd);
             classPath.addAll(paths);
           }
@@ -213,24 +259,33 @@ implements Serializable {
         //             and needs no conversion except perhaps pseudo-envvars
       }
 
-      // classPath -- junit.jar
-      classPath.add( hd.getTestDir() + hd.getFileSep() + "junit.jar" );
+        // classPath -- junit.jar
+        classPath.add(hd.getTestDir() + hd.getFileSep() + "junit.jar");
 
-      // classPath -- test classes
-      classPath.add( hd.getTestDir() );
+        // classPath -- test classes
+        classPath.add(hd.getTestDir());
 
-      if ( hd.getExtraTestDir() != null ) {
-        classPath.add( hd.getExtraTestDir() );
+        if (hd.getExtraTestDir() != null) {
+            classPath.add(hd.getExtraTestDir());
+        }
+
+        // classPath -- product jars
+      if (hd.getGemFireHome() != null) {
+        classPath.add(VmDescription.getAllSnappyJars(hd.getGemFireHome() +
+            hd.getFileSep() + ".." + hd.getFileSep() + "snappy" + hd.getFileSep() + "jars"));
       }
 
-      // classPath -- product jars
-      if ( hd.getGemFireHome() != null ) {
-        classPath.add(hd.getGemFireHome() + hd.getFileSep() + "lib"
-                                          + hd.getFileSep() + "gemfire.jar");
-      }
+        // classPath -- test jars
+      classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+          ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
-      // classPath -- set at last
-      vmd.setClassPath(EnvHelper.asPath(classPath, hd));
+      classPath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() +
+          hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
+
+        // classPath -- set at last
+        vmd.setClassPath(EnvHelper.asPath(classPath, hd));
 
       // libPath
       Vector libPath = new Vector();

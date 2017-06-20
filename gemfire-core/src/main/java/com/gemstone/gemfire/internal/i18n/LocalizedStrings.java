@@ -584,9 +584,9 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId CacheServerLauncher_ERROR_0 = new StringIdImpl(3965, "Error: {0}");
   public static final StringId CacheServerLauncher_STARTING_0_WITH_PID_1 = new StringIdImpl(3966, "Starting {0} with pid: {1,number,#}");
   public static final StringId ExecuteFunction_RESULTS_ALREADY_COLLECTED = new StringIdImpl(3967, "Function results already collected");
-  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE = new StringIdImpl(3968, "The specified working directory ({0}) contains no status file");
-  public static final StringId CacheServerLauncher_0_STOPPED = new StringIdImpl(3969, "The {0} has stopped.");
-  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 = new StringIdImpl(3970, "Timeout waiting for {0} to shutdown, status is: {1}");
+  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE = new StringIdImpl(3968, "The specified working directory ({0}) on {1} contains no status file");
+  public static final StringId CacheServerLauncher_0_STOPPED = new StringIdImpl(3969, "The {0} on {1} has stopped.");
+  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 = new StringIdImpl(3970, "Timeout waiting for {0} to shutdown on {1}, status is: {2}");
   public static final StringId CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS = new StringIdImpl(3971, "See log file for details.");
   public static final StringId DistributionManager__0_MESSAGE_DISTRIBUTION_HAS_TERMINATED = new StringIdImpl(3972, "{0}: Message distribution has terminated");
   public static final StringId SystemFailure_DISTRIBUTION_HALTED_DUE_TO_JVM_CORRUPTION = new StringIdImpl(3973, "Distribution halted due to JVM corruption");
@@ -1536,7 +1536,7 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId DiskStoreStillAtVersion_0 = new StringIdImpl(4897, "This disk store is still at version {0}.");
 
   public static final StringId DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION = new StringIdImpl(
-      4898, "No Data Store found for distribution for : {0}.");
+      4898, "No Data Store found in the distributed system for: {0}");
   public static final StringId GemFireUtilLauncher_SystemAdmin_Usage = new StringIdImpl(
       4899, "Various administrative utilities for a GemFire distributed system");
   public static final StringId CacheServerLauncher_EVICTION_HEAP_PERCENTAGE =
@@ -1985,6 +1985,11 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId RegionCreation_REGION_DESTROYED_DURING_INITIALIZATION = new StringIdImpl(5463, "Region was globally destroyed during cache initialization: {0}");
   public static final StringId SnappyCompressor_UNABLE_TO_LOAD_NATIVE_SNAPPY_LIBRARY = new StringIdImpl(5464, "Unable to load native Snappy library. Common causes include unsupported host OS or insufficient file permissions.");
 
+  public static final StringId PERCENTAGE_MOVE_DIRECTORY_SOURCE_NOT_DATA_STORE = new StringIdImpl(5465, "Source member does not exist or is not a data store for the partitioned region {0}: {1}");
+  public static final StringId PERCENTAGE_MOVE_DIRECTORY_TARGET_NOT_DATA_STORE = new StringIdImpl(5466, "Target member does not exist or is not a data store for the partitioned region {0}: {1}");
+  public static final StringId PERCENTAGE_MOVE_TARGET_SAME_AS_SOURCE = new StringIdImpl(5467, "Target member is the same as source member for the partitioned region {0}: {1}");
+
+
   /** HOPLOG STRINGS, 5500 - 5600 **/
   public static final StringId HOPLOG_FAILED_TO_READ_HDFS_FILE = new StringIdImpl(5500, "Exception while reading file on HDFS: {0}");
   public static final StringId HOPLOG_HDFS_COMPACTION_ERROR = new StringIdImpl(5501, "Error while compacting files of bucket {0}");
@@ -2026,9 +2031,13 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId DiskStoreImpl_PREVENTING_COMPACTION_LOOP = new StringIdImpl(5807,
       "Not rescheduling compaction because the list of compactable oplogs has not changed. "
           + "Compactable oplogs are {0}");
+
+
   public static final StringId HDFSSTORE_IS_USED_IN_NONHDFS_REGION = new StringIdImpl(5808, "Only regions with HDFS_PARTITION or HDFS_PERSISTENT_PARTITION data policies can specify a HDFS Store");
   public static final StringId EVICTORSERVICE_CAUGHT_EXCEPTION_0 = new StringIdImpl(5809, "Evictor Service caught following exception : {0}");
   public static final StringId HDFSSTORE_IS_USED_IN_REPLICATED_TABLE = new StringIdImpl(5810, "HDFS Store cannot be used for REPLICATED TABLE");
+
+  public static final StringId GemFireCache_ENFORCE_UNIQUE_HOST_NOT_APPLICABLE_FOR_LONER = new StringIdImpl(5606, "enforce-unique-host and redundancy-zone properties have no effect for a LonerDistributedSystem.");
   public static final StringId HDFS_USER_IS_SAME_AS_GFXD_USER = new StringIdImpl(5611, "Gemfire XD user is the same as HDFS user, may cause security risks: {0}");
   public static final StringId GFXD_KERBEROS_KEYTAB_FILE_ABSENT = new StringIdImpl(5612, "Gemfire XD kerberos keytab file is missing: {0}");
   public static final StringId GFXD_KERBEROS_NAMENODE_PRINCIPAL_UNDEF = new StringIdImpl(5613, "Namenode principal must be configured when using kerberos authentication");
@@ -2089,5 +2098,5 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId EVENT_LOGGER_FAILED_0_1_2 = new StringIdImpl(90005, "Event error logger failed to log event and error. Event: {0} , Error: {1}. Logger exception: {2}");
   public static final StringId CUSTOM_EVENT_ERROR_HANDLER_FAILED_0_1_2 = new StringIdImpl(90006, "Custom event error handler failed to handle event and error. Event: {0} , Error: {1}. Handler exception: {2}");
   public static final StringId FAILED_TO_CREATE_LOG_EVENT_0_1_2_3_4 = new StringIdImpl(90007, "Failed to create log event for batch-id: {0}, Event-id: {1}, Op: {2}, Key: {3}, Value: {4} ");
-
+  public static final StringId AbstractDistributionConfig_MEMORY_SIZE = new StringIdImpl(90008, "Total off-heap memory which server regions and various operators can occupy");
 }

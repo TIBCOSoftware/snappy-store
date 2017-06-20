@@ -36,6 +36,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.PartitionAttributesFactory;
@@ -49,21 +50,14 @@ import com.gemstone.gemfire.distributed.DistributedLockService;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisee;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.DiskEntry;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
-import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
-import com.gemstone.gemfire.internal.cache.RegionQueue;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
+import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.partitioned.PREntriesIterator;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
-import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderEventProcessor;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
-import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.serial.SerialGatewaySenderQueue;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentSkipListMap;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
@@ -73,6 +67,7 @@ import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.Constants;
 import com.pivotal.gemfirexd.Constants.QueryHints.SizerHints;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -83,7 +78,7 @@ import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.RegionEntryUtils;
-import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
+import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRow;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -91,10 +86,12 @@ import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableHashtable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import com.pivotal.gemfirexd.internal.snappy.ColumnBatchKey;
 
 /**
  * This class helps in finding out memory footprint per Region and divides
@@ -111,6 +108,8 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 public class ObjectSizer {
   static GemFireXDInstrumentation SIZE_OF_UTIL = GemFireXDInstrumentation
       .getInstance();
+  static final com.gemstone.gemfire.cache.util.ObjectSizer GEM_SIZER =
+      o -> (int)SIZE_OF_UTIL.sizeof(o);
 
   private final static ObjectSizer _this = new ObjectSizer();
 
@@ -247,6 +246,10 @@ public class ObjectSizer {
       this.reset(true);
     }
 
+  }
+
+  public void setForInternalUse(boolean isForInternalUse) {
+    this.isForInternalUse = isForInternalUse;
   }
 
   public void setQueryHints(FormatableHashtable queryHints) {
@@ -426,7 +429,6 @@ public class ObjectSizer {
   public LinkedHashMap<String, Object[]> size(final GemFireContainer c,
       final PreQualifier preQualifier) throws IllegalArgumentException,
       IllegalAccessException, InterruptedException, StandardException {
-
     final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<String, Object[]>();
     try {
 
@@ -631,10 +633,17 @@ public class ObjectSizer {
     long maxSize = 0;
     long maxOffheapSize = 0;
     long rowCount = 0;
+    long columnRowCount = 0;
     long keyInMemoryCount = 0;
     long valInMemoryCount = 0;
     long valInOffheapCount = 0;
     final boolean agentAttached = SIZE_OF_UTIL.isAgentAttached();
+    boolean isValueTypeEvaluated = false;
+    final boolean isColumnTable = isColumnTable(c.getQualifiedTableName());
+    int numColumnsInColumnTable = -1;
+    long dvdArraySize = 0;
+    boolean gatewayEntries = false;
+    boolean offHeapEntries = false;
     final LocalRegion region = c.getRegion();
     int maxPrimaryBucketKeyLength = 0, maxSecondaryBucketKeyLength = 0;
     int maxPrimaryBucketValueLength = 0, maxSecondaryBucketValueLength = 0;
@@ -699,13 +708,16 @@ public class ObjectSizer {
       }
 
       @Retained @Released Object value = null;
-      Object k = null;
+      Object k;
+      ColumnBatchKey batchKey = null;
+      AbstractRegionEntry re = null;
       try {
         // base region
         if (entry instanceof RowLocation) {
           final RowLocation rl = (RowLocation)entry;
           k = rl.getRawKey();
           if (entry instanceof AbstractRegionEntry) {
+            re = (AbstractRegionEntry)entry;
             SimpleMemoryAllocatorImpl.skipRefCountTracking();
             value = RegionEntryUtils.getValueInVM((AbstractRegionEntry)entry,
                 region);
@@ -720,21 +732,105 @@ public class ObjectSizer {
         // global index region / gateway queues.
         else {
           assert (entry instanceof AbstractRegionEntry);
-          final AbstractRegionEntry aRe = (AbstractRegionEntry)entry;
-          k = aRe.getRawKey();
+          re = (AbstractRegionEntry)entry;
+          k = re.getRawKey();
           assert k != null;
           SimpleMemoryAllocatorImpl.skipRefCountTracking();
-          value = aRe.getValue(c.getRegion());
+          value = re.getValue(c.getRegion());
           SimpleMemoryAllocatorImpl.unskipRefCountTracking();
         }
 
         if (k != null) {
           keyInMemoryCount++;
-          keySize += SIZE_OF_UTIL.sizeof(k);
+          // keySize += SIZE_OF_UTIL.sizeof(k);
+          if (isColumnTable) {
+            batchKey = (ColumnBatchKey)k;
+            keySize += batchKey.getSizeInBytes();
+          } else {
+            keySize += CachedDeserializableFactory.calcMemSize(
+                k, GEM_SIZER, true);
+          }
         }
 
         // No need to add SZ_REF since it is already accounted for by entrySize
+        if (!agentAttached) {
+          if (value != null) {
+            if (!isValueTypeEvaluated) {
+              if (isColumnTable) {
+                numColumnsInColumnTable = batchKey.getNumColumnsInTable(
+                    c.getQualifiedTableName());
+              } else if (value instanceof DataValueDescriptor[]) {
+                dvdArraySize = SIZE_OF_UTIL.sizeof(value);
+              } else if (value instanceof GatewaySenderEventImpl) {
+                gatewayEntries = true;
+              } else if (value instanceof Chunk) {
+                offHeapEntries = true;
+              }
+              isValueTypeEvaluated = true;
+            }
+            if (isColumnTable) {
+              int valueSize = ((Sizeable)value).getSizeInBytes();
+              columnRowCount += batchKey.getColumnBatchRowCount(prEntryIter,
+                  re, numColumnsInColumnTable);
+              valInMemoryCount++;
+              valInMemorySize += valueSize;
+              if (valueSize > maxSize) {
+                maxSize = valueSize;
+              }
+            } else if (dvdArraySize > 0) {
+              DataValueDescriptor[] dvds = (DataValueDescriptor[])value;
+              valInMemoryCount++;
+              valInMemorySize += dvdArraySize;
+              for (DataValueDescriptor v : dvds) {
+                valInMemorySize += CachedDeserializableFactory.calcMemSize(
+                    v.getObject(), GEM_SIZER, true);
+              }
+            } else if (gatewayEntries) {
+              GatewaySenderEventImpl event = (GatewaySenderEventImpl)value;
+              int offHeapSize = 0;
+              SimpleMemoryAllocatorImpl.skipRefCountTracking();
+              value = event.getRawValue();
+              SimpleMemoryAllocatorImpl.unskipRefCountTracking();
+              if (value instanceof Chunk) {
+                // fix for 49921
+                final Chunk chunkVal = (Chunk)value;
+                // chunkVal is released as "value" in the finally block
+                // outside the while loop
+                valInOffheapCount++;
+                offHeapSize = chunkVal.getSizeInBytes();
+                valInOffheapSize += offHeapSize;
+                if (offHeapSize > maxOffheapSize) {
+                  maxOffheapSize = offHeapSize;
+                }
+              }
+              valInMemoryCount++; // event object is in heap memory
+              int eventSize = event.getSizeInBytes() - offHeapSize;
+              valInMemorySize += eventSize;
+              if (eventSize > maxSize) {
+                maxSize = eventSize;
+              }
+            } else if (offHeapEntries) {
+              final Chunk chunkVal = (Chunk)value;
+              int offHeapSize = chunkVal.getSizeInBytes();
+              valInOffheapCount++;
+              valInOffheapSize += offHeapSize;
+              if (offHeapSize > maxOffheapSize) {
+                maxOffheapSize = offHeapSize;
+              }
+            } else {
+              int valueSize = CachedDeserializableFactory.calcMemSize(
+                  value, GEM_SIZER, true);
+              valInMemoryCount++;
+              valInMemorySize += valueSize;
+              if (valueSize > maxSize) {
+                maxSize = valueSize;
+              }
+            }
+          }
+          continue;
+        }
         OUTER: while (value != null) {
+
           final Class<?> valClass = value.getClass();
           if (valClass == byte[].class) {
             valInMemoryCount++;
@@ -746,6 +842,11 @@ public class ObjectSizer {
             break OUTER;
           }
           else if (valClass == byte[][].class) {
+
+            if (isColumnTable(c.getQualifiedTableName())) {
+              columnRowCount += getRowCountFromColumnTable(c, (byte[][])value);
+            }
+
             valInMemoryCount++;
             byte[][] values = ((byte[][])value);  // add in size of Object[]
             long len = SIZE_OF_UTIL.sizeof(value);
@@ -870,7 +971,7 @@ public class ObjectSizer {
       retEstimates.put(key, new Object[] {
           new long[] { constantOverhead, entrySize, keySize, valInMemorySize,
               valInOffheapSize, rowCount, keyInMemoryCount, valInMemoryCount,
-              valInOffheapCount }, bucketDistInfo });
+              valInOffheapCount, columnRowCount }, bucketDistInfo });
     }
     else {
       long[] numericVals = (long[])val[0];
@@ -884,6 +985,7 @@ public class ObjectSizer {
       numericVals[i++] += keyInMemoryCount;
       numericVals[i++] += valInMemoryCount;
       numericVals[i++] += valInOffheapCount;
+      numericVals[i++] += columnRowCount;
 
       if (bucketDistInfo.length() > 0) {
         StringBuilder info = (StringBuilder)val[1];
@@ -891,6 +993,23 @@ public class ObjectSizer {
       }
     }
 
+  }
+
+  private static final Pattern columnTableRegex =
+      Pattern.compile(StoreCallbacks.SHADOW_SCHEMA_NAME + "(.*)" +
+          StoreCallbacks.SHADOW_TABLE_SUFFIX);
+  private Boolean isColumnTable(String fullyQualifiedTable) {
+    return columnTableRegex.matcher(fullyQualifiedTable).matches();
+  }
+
+  private int getRowCountFromColumnTable(GemFireContainer c, byte[][] value) throws StandardException {
+    int rowCount = 0;
+    RowFormatter rf = c.getRowFormatter(value);
+    ColumnDescriptor cd = c.getTableDescriptor().getColumnDescriptor("NUMROWS");
+    if (cd != null)
+      rowCount = rf.getColumn(cd.getPosition(), value).getInt();
+
+    return rowCount;
   }
 
   private static void createDistributionInfo(StringBuilder miscInfo,
@@ -944,7 +1063,7 @@ public class ObjectSizer {
 
   }
 
-  private void estimateIndexEntryValueSizes(
+  public void estimateIndexEntryValueSizes(
       final String baseTableContainerName, List<GemFireContainer> indexes,
       final LinkedHashMap<String, Object[]> retEstimates,
       final PreQualifier preQualifier) throws StandardException,
@@ -968,7 +1087,7 @@ public class ObjectSizer {
           continue;
         }
 
-        if (!this.isForInternalUse) {
+        if (!this.isForInternalUse && this.traceOutput) {
           SanityManager.DEBUG_PRINT("TRACE", logPrefix
               + "Estimating Index Entry Size/Value Size for " + index);
         }

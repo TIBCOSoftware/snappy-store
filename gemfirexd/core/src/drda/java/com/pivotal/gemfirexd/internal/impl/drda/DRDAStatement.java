@@ -686,6 +686,7 @@ class DRDAStatement
                   database.getConnection().getLanguageConnectionContext()
                       .setExecuteLocally(BUCKET_FLAG, null, false, null);
                 }
+		sqlStmt = trimNulls(sqlStmt);
 		// Gemstone changes END
 		return prepare(sqlStmt);
 	}
@@ -696,6 +697,16 @@ class DRDAStatement
 	}
 
 // GemStone changes BEGIN
+	private static String trimNulls(String sqlStmt) {
+	  // trim any trailing nulls
+	  int stmtEnd = sqlStmt.length();
+	  while (stmtEnd > 0 && sqlStmt.charAt(stmtEnd - 1) == 0) stmtEnd--;
+	  if (stmtEnd < sqlStmt.length()) {
+	    sqlStmt = sqlStmt.substring(0, stmtEnd);
+	  }
+	  return sqlStmt;
+	}
+
 	private static final Set<Integer> BUCKET_FLAG = Collections
 	    .unmodifiableSet(new HashSet<Integer>(1));
 
@@ -715,7 +726,7 @@ class DRDAStatement
 
           pstmt = database.getConnection().createStatement(scrollType,
               concurType, withHoldCursor);
-          this.sqlText = sqlStmt;
+          this.sqlText = trimNulls(sqlStmt);
 
           // beetle 3849 - Need to change the cursor name to what
           // JCC thinks it will be, since there is no way in the
@@ -891,7 +902,7 @@ class DRDAStatement
 		    }
 		    setStatus("EXECUTING BATCH");
 		    this.statementAccessFrequency++;
-		    this.executionBeginTime = System.currentTimeMillis();
+		    this.executionBeginTime = System.nanoTime();
 		    this.batchResult = this.ps.executeBatch();
 		    hasResultSet = false;
 		  }
@@ -899,7 +910,7 @@ class DRDAStatement
 		    this.batchResult = null;
                     setStatus("EXECUTING PREPAREDSTATEMENT");
                     this.statementAccessFrequency++;
-                    this.executionBeginTime = System.currentTimeMillis();
+                    this.executionBeginTime = System.nanoTime();
 		    hasResultSet = this.ps.execute();
 		    if (!hasResultSet) {
                       setStatus("CHECKING BUCKET HOSTED");
@@ -911,7 +922,7 @@ class DRDAStatement
 		    this.batchResult = null;
 		    s = this.pstmt;
                     setStatus("EXECUTING STATEMENT");
-                    this.executionBeginTime = System.currentTimeMillis();
+                    this.executionBeginTime = System.nanoTime();
 		    hasResultSet = this.pstmt.execute(this.sqlText);
                     if (!hasResultSet) {
                       setStatus("DONE");
