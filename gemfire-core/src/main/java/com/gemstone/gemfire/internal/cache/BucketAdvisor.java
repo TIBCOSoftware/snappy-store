@@ -1122,9 +1122,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this advisor has been closed
    */
   protected boolean isClosed() {
+    return this.primaryState == CLOSED;
+    /*
     synchronized(this) {
       return this.primaryState == CLOSED;
     }
+    */
   }
 
   /** 
@@ -1133,9 +1136,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently marked as primary
    */
   public boolean isPrimary() {
+    return this.primaryState == IS_PRIMARY_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == IS_PRIMARY_HOSTING;
     }
+    */
   }
   
   /** 
@@ -1144,9 +1150,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently volunteering for primary
    */
   protected boolean isVolunteering() {
+    return this.primaryState == VOLUNTEERING_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == VOLUNTEERING_HOSTING;
     }
+    */
   }
 
   /** 
