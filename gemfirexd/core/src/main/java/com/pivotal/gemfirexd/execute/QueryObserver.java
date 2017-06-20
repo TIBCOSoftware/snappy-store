@@ -17,6 +17,7 @@
 
 package com.pivotal.gemfirexd.execute;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -79,7 +80,7 @@ public interface QueryObserver extends CacheCallback {
 
   /**
    * Callback invoked after an unsuccessful prepare of a
-   * {@link PreparedStatement}.
+   * {@link PreparedStatement} or {@link CallableStatement}.
    * 
    * @param conn
    *          the current server connection on which query is being prepared
@@ -110,8 +111,8 @@ public interface QueryObserver extends CacheCallback {
    *          returned from the inserted row or rows
    * @param sqle
    *          the exception thrown during the prepare of current statement
-   * 
-   * @return if non-null then the new {@link PreparedStatement} object to be
+   *
+   * @return if non-null then the new {@link CallableStatement} object to be
    *         used internally
    */
   public PreparedStatement afterQueryPrepareFailure(Connection conn,

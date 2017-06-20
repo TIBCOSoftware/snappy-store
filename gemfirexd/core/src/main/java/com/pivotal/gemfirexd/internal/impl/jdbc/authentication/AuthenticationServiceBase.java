@@ -48,6 +48,7 @@ import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.SecurityLogWriter;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.gemstone.gemfire.security.AuthInitialize;
 import com.gemstone.gemfire.security.AuthenticationFailedException;
@@ -727,13 +728,8 @@ public abstract class AuthenticationServiceBase
 		    // normalize the userName
 		    userName = IdUtil.getUserAuthorizationId(userName);
 		  }
-		  try {
-		    GemFireXDUtils.updateCipherKeyBytes(bytePasswd,
-		        userName.getBytes("UTF-8"));
-		  } catch (UnsupportedEncodingException ue) {
-		    // never expected to happen except in broken JVMs
-		    throw new IllegalStateException(ue.getMessage(), ue);
-		  }
+		  GemFireXDUtils.updateCipherKeyBytes(bytePasswd,
+		      userName.getBytes(ClientSharedData.UTF8));
 		}
 // GemStone changes END
 		algorithm.update(bytePasswd);
@@ -744,7 +740,8 @@ public abstract class AuthenticationServiceBase
 		        encryptVal, 0, encryptVal.length);
                 if (SanityManager.DEBUG_ON("__PINT__")) {
                   SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,
-                      " encrypting with v2encrypt=" + v2Encrypt + plainTxtUserPassword + " to " + hexString, new Throwable("SB"));
+                      " encrypting with v2encrypt=" + v2Encrypt +
+                      plainTxtUserPassword + " to " + hexString, new Throwable());
                 }
 		return (hexString);
 

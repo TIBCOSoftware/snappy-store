@@ -32,11 +32,11 @@ import com.gemstone.gemfire.Statistics;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.InternalPartitionResolver;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
-import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.diag.MemoryAnalyticsVTI;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.management.TableMXBean.TableMetadata;
@@ -93,7 +93,8 @@ public class TableMBeanBridge implements Cleanable, Updatable<TableMBeanBridge> 
 
     this.partitioningScheme      = ManagementUtils.NA;
 
-    GfxdPartitionResolver resolver = GemFireXDUtils.getResolver(this.container.getRegion());
+    InternalPartitionResolver<?, ?> resolver = GemFireXDUtils
+        .getInternalResolver(this.container.getRegion());
     if (resolver != null) {
       this.partitioningScheme = resolver.getDDLString();
     }

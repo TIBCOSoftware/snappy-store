@@ -169,7 +169,24 @@ public interface Constants {
      * SELECT * FROM userTable t1 -- GEMFIREXD-PROPERTIES queryHDFS=true \n  
      *  WHERE t1.col1 is not null
      */
-    queryHDFS,    
+    queryHDFS,
+
+    /**
+     * Query hint to specify the execution engine for the query.
+     *
+     * <p>
+     * Possible values are 'Spark' or 'Store'.
+     *
+     * <p>
+     * This can only be used with FROM clause, in other words, this can only be
+     * mentioned between FROM clause and the first table name.
+     *
+     * <p>
+     * example: <br>
+     * SELECT * FROM userTable t1 -- GEMFIREXD-PROPERTIES executionEngine=Spark \n
+     *  WHERE t1.col1 is not null
+     */
+    executionEngine,
 
     /**
      * Memory Analytics sizer query hints.
@@ -249,7 +266,7 @@ public interface Constants {
   /**
    * The security mechanism to use when starting network server to impose policy
    * for client connections.
-   * <p/>
+   * <p>
    * Security mechanism options are:
    * <ul>
    * <li>USER_ONLY_SECURITY
@@ -259,37 +276,37 @@ public interface Constants {
    * <li>STRONG_PASSWORD_SUBSTITUTE_SECURITY
    * </ul>
    * The default security mechanism is USER_ONLY SECURITY
-   * <p/>
+   * <p>
    * If the application specifies a security mechanism then it will be the only
    * one attempted. If the specified security mechanism is not supported by the
    * conversation then an exception will be thrown and there will be no
    * additional retries.
-   * <p/>
+   * <p>
    * Both user and password need to be set for all security mechanism except
    * USER_ONLY_SECURITY
    */
   public static enum SecurityMechanism {
     /**
      * SECMEC_USRIDONL = 4
-     * <p/>
+     * <p>
      * Only user id is required.
      */
     USER_ONLY_SECURITY,
     /**
      * SECMEC_USRIDPWD = 3
-     * <p/>
+     * <p>
      * Both user id and password are required. password is in clear text.
      */
     CLEAR_TEXT_PASSWORD_SECURITY,
     /**
      * SECMEC_EUSRIDPWD = 9
-     * <p/>
+     * <p>
      * both password and user are encrypted
      */
     ENCRYPTED_USER_AND_PASSWORD_SECURITY,
     /**
      * SECMEC_USRSSBPWD = 8
-     * <p/>
+     * <p>
      * Password substitute is to be used.
      */
     STRONG_PASSWORD_SUBSTITUTE_SECURITY;

@@ -21,7 +21,7 @@
   </script>
 
 	<job id="busyAirportsJob"
-       libs="${LIB_DIR}/gemfirexd-mapreduce-1.0-SNAPSHOT.jar,${LIB_DIR}/appassembler/repo/gemfirexd-1.5.Beta-SNAPSHOT.jar"
+       libs="${LIB_DIR}/snappydata-store-mapreduce-1.0-SNAPSHOT.jar,${LIB_DIR}/appassembler/repo/snappydata-store-1.5.0-SNAPSHOT.jar"
        input-format="com.pivotal.gemfirexd.internal.engine.hadoop.mapreduce.EventInputFormat"
        output-path="${flights.intermediate.path}"
        mapper="demo.gfxd.mr2.BusyAirports.SampleMapper"
@@ -30,7 +30,7 @@
   />
 
   <job id="topBusyAirportJob"
-       libs="${LIB_DIR}/gemfirexd-mapreduce-1.0-SNAPSHOT.jar"
+       libs="${LIB_DIR}/snappydata-store-mapreduce-1.0-SNAPSHOT.jar"
        input-path="${flights.intermediate.path}"
        output-path="${flights.output.path}"
        mapper="demo.gfxd.mr2.TopBusyAirport.TopBusyAirportMapper"

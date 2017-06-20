@@ -47,7 +47,7 @@ public abstract class AbstractOp implements Op {
   private final Message msg;
 
   protected AbstractOp(LogWriterI18n lw, int msgType, int msgParts) {
-    this.msg = new Message(msgParts, Version.CURRENT);
+    this.msg = new Message(msgParts, Version.CURRENT_GFE);
     getMessage().setLogger(lw);
     getMessage().setMessageType(msgType);
   }
@@ -120,7 +120,7 @@ public abstract class AbstractOp implements Op {
     if (cnx.getServer().getRequiresCredentials()) {
       // Security is enabled on client as well as on server
       getMessage().setEarlyAck(Message.MESSAGE_HAS_SECURE_PART);
-      HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT);
+      HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT_GFE);
       long userId = -1;
 
       if (UserAttributes.userAttributes.get() == null) { // single user mode
@@ -226,7 +226,7 @@ public abstract class AbstractOp implements Op {
    * Subclasses can override this.
    */
   protected Message createResponseMessage() {
-    return new Message(1, Version.CURRENT);
+    return new Message(1, Version.CURRENT_GFE);
   }
   
   protected Object processResponse(Message m, Connection con) throws Exception {

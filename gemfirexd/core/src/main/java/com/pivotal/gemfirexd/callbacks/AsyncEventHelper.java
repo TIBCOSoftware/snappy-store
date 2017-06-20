@@ -123,7 +123,7 @@ public class AsyncEventHelper {
    * instance.
    */
   public final boolean traceExecute() {
-    return GemFireXDUtils.TraceExecute;
+    return GemFireXDUtils.TraceExecution;
   }
 
   /**

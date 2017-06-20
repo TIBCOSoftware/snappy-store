@@ -274,8 +274,8 @@ public abstract class SortedReaderTestCase extends TestCase {
 
   @Override
   protected final void setUp() throws IOException {
-    data = new TreeMap<byte[], byte[]>(new ByteComparator());
-    
+    data = new TreeMap<>(new ByteComparator().toBytesComparator());
+
     for (int i = 0; i < 100; i++) {
       data.put(wrapInt(i), wrapInt(i));
     }

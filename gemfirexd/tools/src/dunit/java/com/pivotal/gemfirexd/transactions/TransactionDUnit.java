@@ -24,7 +24,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,9 +60,9 @@ import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedPreparedStatement;
-import com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource;
 import com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import io.snappydata.jdbc.ClientXADataSource;
 import io.snappydata.test.dunit.AsyncInvocation;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
@@ -1565,12 +1567,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.commit();
   }
 
-  /**
-   * Jag's simple test case.
-   * 
-   * @throws Exception
-   */
-  public void testJagsUseCase_timeInserts() throws Exception {
+  /** Simple test case of timing inserts. */
+  public void testUseCase_timeInserts() throws Exception {
     // reduce logs
     reduceLogLevelForTest("warning");
 
@@ -1581,7 +1579,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     Statement s = conn.createStatement();
     try {
       s.executeUpdate("drop table securities");
-    } catch (Exception e) {
+    } catch (Exception ignored) {
     }
 
     s.executeUpdate("create table securities ( sec_id integer not null "
@@ -4226,6 +4224,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
           // check successful commit the second time with new store
           barrier.await();
           conn.commit();
+          TXManagerImpl.waitForPendingCommitForTest();
         } catch (Throwable t) {
           failEx[0] = t;
           getLogWriter().error("unexpected exception", t);
@@ -4262,6 +4261,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     if (failEx[0] != null) {
       throw failEx[0];
     }
+    TXManagerImpl.waitForPendingCommitForTest();
 
     // check the final values
     SerializableRunnable checkRS = new SerializableRunnable() {
@@ -4797,5 +4797,73 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     
     newstmt.close();
     newConn.commit();
+  }
+
+  /**
+   * Test insufficient data store behaviour for distributed/update/delete/select
+   * and for primary key based select/update/delete
+   *
+   * @throws Exception
+   */
+  public void testGFXDDeleteWithConcurrency() throws Exception {
+    startVMs(0, 2);
+    startVMs(1, 0);
+    createDiskStore(true, 1);
+    // Create a schema
+    clientSQLExecute(1, "create schema trade");
+
+    Map<Integer, String> expected = new HashMap<Integer, String>();
+    clientSQLExecute(1, "create table trade.customers (cid int not null, "
+        + "cust_name varchar(100), tid int, primary key (cid)) ENABLE CONCURRENCY CHECKS replicate "
+        + getSuffix());
+    Connection conn = TestUtil.getConnection();
+    conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+    conn.setAutoCommit(false);
+    PreparedStatement psInsert = conn
+        .prepareStatement("insert into trade.customers values (?,?,?)");
+    for (int i = 1; i < 5; ++i) {
+      psInsert.setInt(1, i);
+      psInsert.setString(2, "unmodified");
+      psInsert.setInt(3, i);
+      psInsert.executeUpdate();
+      expected.put(i,  "unmodified");
+    }
+    conn.commit();
+    Statement st = conn.createStatement();
+    boolean b = st.execute("delete from trade.customers where cid = 4");
+    conn.commit();
+    expected.remove(4);
+
+    {
+      //Make sure vm2 has the correct contents.
+      //Now we want to validate the region contents and RVVs...
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+
+      assertEquals(expected,received);
+    }
+
+    stopVMNums(-1);
+
+    //Make sure vm2 has the correct contents.
+    //Now we want to validate the region contents and RVVs...
+    {
+      Statement s = conn.createStatement();
+      s.execute("select * from trade.customers");
+      ResultSet rs = s.getResultSet();
+      rs = s.getResultSet();
+
+      Map<Integer, String> received = new HashMap();
+      while(rs.next()) {
+        received.put(rs.getInt("cid"), rs.getString("cust_name"));
+      }
+      assertEquals(expected,received);
+    }
   }
 }

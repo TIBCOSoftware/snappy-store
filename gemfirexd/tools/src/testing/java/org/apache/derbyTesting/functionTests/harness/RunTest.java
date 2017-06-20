@@ -224,7 +224,7 @@ public class RunTest
 // Gemstone changes BEGIN
 	  System.setProperty(GfxdConstants.GFXD_LOG_FILE, "gemfirexd.log");
 	  // allow running in background that gets stuck due to jline usage
-	  System.setProperty("jline.terminal", "scala.tools.jline.UnsupportedTerminal");
+	  System.setProperty("jline.terminal", "jline.UnsupportedTerminal");
 // Gemstone changes END
 		Locale.setDefault(Locale.US);
 		skiptestReason.setLength(0); // 0 out for useprocess
@@ -1108,11 +1108,11 @@ public class RunTest
 			{
 				c = Class.forName("com.ibm.db2.jcc.DB2Driver");
 				o = c.newInstance();
-				m = c.getMethod("getMajorVersion", null);
-				i = (Integer)m.invoke(o, null);
+				m = c.getMethod("getMajorVersion");
+				i = (Integer)m.invoke(o);
 				jccMajor = i.intValue();
-				m = c.getMethod("getMinorVersion", null);
-				i = (Integer)m.invoke(o, null);
+				m = c.getMethod("getMinorVersion");
+				i = (Integer)m.invoke(o);
 				jccMinor = i.intValue();
 			} catch (ClassNotFoundException e) {}
 
@@ -1610,7 +1610,7 @@ clp.list(System.out);
             ap.put("gemfire.log-level", "fine");
             ap.put(GfxdConstants.GFXD_LOG_FILE, "gemfirexd.log");
             // allow running in background that gets stuck due to jline usage
-            ap.put("jline.terminal", "scala.tools.jline.UnsupportedTerminal");
+            ap.put("jline.terminal", "jline.UnsupportedTerminal");
 // GemStone changes END 
 
             bos = new BufferedOutputStream(new FileOutputStream(appPropFile));
@@ -2867,12 +2867,12 @@ clp.list(System.out);
             
             try{
                 // Get the static suite() method if it exists.
-                Method suiteMethod = testClass.getMethod("suite", null);
+                Method suiteMethod = testClass.getMethod("suite");
                 // Get the TestSuite object returned by the suite() method
                 // by invoking it.
                 // Method is static, hence param1 is null
                 // Method has no formal parameters, hence param2 is null
-                junitTestSuite = (TestSuite) suiteMethod.invoke(null, null);
+                junitTestSuite = (TestSuite) suiteMethod.invoke(null);
             } catch(Exception ex){
                 // Not able to access static suite() method (with no params)
                 // returning a TestSuite object.

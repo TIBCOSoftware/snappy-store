@@ -1,4 +1,4 @@
-// Suds/Gester/team decision, Feb 10, 2012; we will document that shutDownAll cannot
+// Team decision, Feb 10, 2012; we will document that shutDownAll cannot
 // be used with a mix of 661 and 662/663 jvms, so the following test must be run with shutDownAll=false
 
 // 661 to 663

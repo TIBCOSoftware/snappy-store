@@ -48,6 +48,7 @@ import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.execute.CallbackStatement;
 import com.pivotal.gemfirexd.internal.client.am.DisconnectException;
+import com.pivotal.gemfirexd.internal.client.net.NetAgent;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
@@ -66,12 +67,14 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import io.snappydata.app.TestThrift;
 import io.snappydata.test.dunit.Host;
 import io.snappydata.test.dunit.RMIException;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import io.snappydata.test.util.TestException;
+import io.snappydata.thrift.internal.ClientConnection;
 import org.apache.derby.drda.NetworkServerControl;
 import org.apache.derbyTesting.junit.JDBC;
 
@@ -142,9 +145,9 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     final PartitionAttributes<?, ?> pa;
     if (isDataStore) {
       pa = new PartitionAttributesFactory<Object, Object>(clientAttrs
-          .getPartitionAttributes()).create();
-    }
-    else {
+          .getPartitionAttributes()).setLocalMaxMemory(
+          PartitionAttributesFactory.LOCAL_MAX_MEMORY_DEFAULT).create();
+    } else {
       pa = new PartitionAttributesFactory<Object, Object>(clientAttrs
           .getPartitionAttributes()).setLocalMaxMemory(0).create();
     }
@@ -470,12 +473,18 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
   private static volatile boolean hasQueryObservers = false;
   private static volatile int preparedExec = 0;
   private static volatile int unpreparedExec = 0;
+
   public void testNetworkClient() throws Exception {
+    networkClientTests(null, null);
+  }
+
+  private int[] networkClientTests(Properties extraProps,
+      Properties extraConnProps) throws Exception {
     // start a couple of servers
     startVMs(0, 2);
     // Start network server on the VMs
-    final int netPort = startNetworkServer(1, null, null);
-    final int netPort2 = startNetworkServer(2, null, null);
+    final int netPort = startNetworkServer(1, null, extraProps);
+    final int netPort2 = startNetworkServer(2, null, extraProps);
     final VM serverVM = this.serverVMs.get(0);
 
     // Use this VM as the network client
@@ -484,6 +493,9 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     Connection conn, conn2;
     final Properties connProps = new Properties();
     connProps.setProperty("load-balance", "false");
+    if (extraConnProps != null) {
+      connProps.putAll(extraConnProps);
+    }
     final InetAddress localHost = SocketCreator.getLocalHost();
     String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
     conn = DriverManager.getConnection(url, connProps);
@@ -653,7 +665,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
         }
         else {
@@ -698,7 +710,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(1, batchExecutions.size());
           ArrayList<Integer> batchExecs = batchExecutions
               .get(null /* no string for unprepared execs */);
@@ -756,7 +768,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     if (!TestUtil.USE_ODBC_BRIDGE) {
       url = TestUtil.getNetProtocol(localHost.getHostName(), netPort) + "test";
       try {
-        conn = DriverManager.getConnection(url);
+        DriverManager.getConnection(url);
       } catch (SQLException ex) {
         if (!"XJ028".equals(ex.getSQLState())
             && !"XJ212".equals(ex.getSQLState())) {
@@ -961,7 +973,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(1, batchExecutions.size());
           ArrayList<Integer> batchExecs = batchExecutions
               .get(null /* no string for unprepared execs */);
@@ -1002,7 +1014,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
         }
         else {
@@ -1163,7 +1175,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
           // three unpreparedExec due to successes in batch statement and delete
           assertEquals(3, unpreparedExec);
@@ -1201,7 +1213,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         assertEquals(0, preparedExec);
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           // 2 for the selects
           assertEquals(2, unpreparedExec);
         }
@@ -1222,7 +1234,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     results = cstmt.executeBatch();
     assertEquals(numOps, results.length);
     for (int res : results) {
-      if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+      if (ClientSharedUtils.isThriftDefault()) {
         assertEquals(0, res);
       }
       else {
@@ -1236,7 +1248,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
         assertEquals(numOps, preparedExec);
         assertEquals(0, unpreparedExec);
         preparedExec = 0;
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(1, batchExecutions.size());
           ArrayList<Integer> batchExecs = batchExecutions
               .get("call proc.test(?)");
@@ -1260,7 +1272,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         assertEquals(0, batchExecutions.size());
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
           assertEquals(1, unpreparedExec);
         }
@@ -1283,7 +1295,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     serverVM.invoke(new SerializableRunnable() {
       @Override
       public void run() {
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
         }
         else {
@@ -1301,7 +1313,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         assertEquals(0, batchExecutions.size());
-        if (ClientSharedUtils.USE_THRIFT_AS_DEFAULT) {
+        if (ClientSharedUtils.isThriftDefault()) {
           assertEquals(0, preparedExec);
           assertEquals(1, unpreparedExec);
         }
@@ -1329,6 +1341,22 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     stmt.execute("drop table TESTTABLE");
     stmt.close();
     conn.close();
+
+    return new int[] { netPort, netPort2 };
+  }
+
+  public void testThriftFramedProtocol() throws Exception {
+    // only if thrift is being used
+    if (!ClientSharedUtils.isThriftDefault()) return;
+    // first check with server and JDBC client with framed protocol
+    Properties props = new Properties();
+    props.setProperty(Attribute.THRIFT_USE_FRAMED_TRANSPORT, "true");
+    Properties connProps = new Properties();
+    connProps.setProperty("framed-transport", "true");
+    int[] netPorts = networkClientTests(props, connProps);
+    // also check with direct thrift client
+    TestThrift.run(SocketCreator.getLocalHost().getHostName(),
+        netPorts[1], true);
   }
 
   public void test44240() throws Exception {
@@ -1656,7 +1684,12 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertNumConnections(1, -1, 2);
 
     // Some sanity checks for DB meta-data
-    checkDBMetadata(conn2, url2);
+    // URL remains the first control connection one for thrift
+    if (ClientSharedUtils.isThriftDefault()) {
+      checkDBMetadata(conn2, url);
+    } else {
+      checkDBMetadata(conn2, url2);
+    }
 
     stmt = conn2.createStatement();
     rs = stmt.executeQuery("select * from TESTTABLE");
@@ -1844,6 +1877,93 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
   }
 
   /**
+   * Test if multiple connections from network clients failover successfully.
+   */
+  public void testNetworkClientFailoverWithCurrentSchemaSetting() throws Exception {
+    // start some servers not using locator
+    startVMs(0, 2);
+    // Start two network servers
+    final int netPort = startNetworkServer(1, null, null);
+    final int netPort2 = startNetworkServer(2, null, null);
+    // Use this VM as the network client
+    TestUtil.loadNetDriver();
+    TestUtil.deletePersistentFiles = true;
+    final InetAddress localHost = SocketCreator.getLocalHost();
+    Connection conn = TestUtil.getNetConnection(
+        localHost.getCanonicalHostName(), netPort, null, new Properties());
+
+    int port;
+    if (ClientSharedUtils.isThriftDefault()) {
+      ClientConnection clientConn = (ClientConnection)conn;
+      port = clientConn.getClientService().getCurrentHostConnection()
+          .hostAddr.getPort();
+    } else {
+      com.pivotal.gemfirexd.internal.client.am.Connection clientConn
+          = (com.pivotal.gemfirexd.internal.client.am.Connection)conn;
+      NetAgent agent = (NetAgent)clientConn.agent_;
+      port = agent.getPort();
+    }
+    assertTrue(port == netPort || port == netPort2);
+    boolean connectedToFirst = true;
+    if (port == netPort2) {
+      connectedToFirst = false;
+    }
+
+    // Create a table
+    Statement stmt = conn.createStatement();
+    stmt.execute("create schema CURRSCHEMA");
+    stmt.execute("set current schema CURRSCHEMA");
+    stmt.execute("create table TESTTABLE (ID int primary key, "
+        + "DESCRIPTION varchar(1024) not null) redundancy 1");
+
+    // now try putting a unicode string (#41673)
+    PreparedStatement pstmt = conn
+        .prepareStatement("insert into TESTTABLE values(?,?)");
+
+    final String s = "test\u0905";
+    pstmt.setInt(1, 1);
+    pstmt.setString(2, s);
+    pstmt.execute();
+
+    ResultSet rs = conn.createStatement().executeQuery(
+        "select * from TESTTABLE");
+    assertTrue(rs.next());
+    assertEquals(1, rs.getInt(1));
+    String resultStr = rs.getString(2);
+    getLogWriter().info("sent chars: " + Arrays.toString(s.toCharArray()));
+    getLogWriter().info(
+        "got chars: " + Arrays.toString(resultStr.toCharArray()));
+    assertEquals(s.length(), resultStr.length());
+    assertEquals(s.charAt(s.length() - 1), resultStr
+        .charAt(resultStr.length() - 1));
+    assertEquals(s, resultStr);
+    assertFalse(rs.next());
+
+    pstmt.setInt(1, 10);
+    pstmt.setString(2, s);
+    pstmt.execute();
+    // now stop the server to which the conn is connected to.
+    if (connectedToFirst) {
+      stopVMNums(-1);
+    }
+    else {
+      stopVMNums(-2);
+    }
+
+    // Now try inserting one more into the table without resetting the current schema
+    pstmt.setInt(1, 30);
+    pstmt.setString(2, s);
+    pstmt.execute();
+
+    rs = conn.createStatement().executeQuery(
+        "select count(*) from TESTTABLE");
+    assertTrue(rs.next());
+    assertEquals(3, rs.getInt(1));
+    assertFalse(rs.next());
+    conn.close();
+  }
+
+  /**
    * Test if client is successfully able to failover to secondary locators for
    * control connection specified with "secodary-locators" property if the
    * primary one is unavailable at the time of the first connection (#47486).
@@ -1955,7 +2075,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       fail("expected connection failure with no locator available");
     } catch (SQLException sqle) {
       if (!"08006".equals(sqle.getSQLState())
-          && !"X0Z01".equals(sqle.getSQLState())) {
+          && !"X0Z01".equals(sqle.getSQLState())
+          && !"40XD0".equals(sqle.getSQLState())) {
         fail("unexpected exception", sqle);
       }
     }
@@ -2075,8 +2196,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
     // check new connection opened on servers successfully load-balanced
     assertNumConnections(1, 0, locator);
-    assertNumConnections(1, -1, 1);
-    assertNumConnections(1, -1, 2);
+    assertNumConnections(-2, -1, 1);
+    assertNumConnections(-2, -1, 2);
 
     stmt = conn2.createStatement();
     rs = stmt.executeQuery("select * from TESTTABLE");
@@ -2093,15 +2214,15 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertFalse(rs.next());
 
     assertNumConnections(1, 0, locator);
-    assertNumConnections(1, -1, 1);
-    assertNumConnections(1, -1, 2);
+    assertNumConnections(-2, -1, 1);
+    assertNumConnections(-2, -1, 2);
 
     // now a third connection
     Connection conn3 = TestUtil.getNetConnection(localHost.getCanonicalHostName(),
         netPort, null, new Properties());
 
     assertNumConnections(1, 0, locator);
-    assertNumConnections(3, -1, 1, 2);
+    assertNumConnections(-4, -1, 1, 2);
 
     // add expected exception for server connection failure
     addExpectedException(null, new Object[] { java.net.ConnectException.class,
@@ -2122,7 +2243,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
     // check connections opened on second server
     assertNumConnections(1, 0, locator);
-    assertNumConnections(3, -1, 2);
+    assertNumConnections(-4, -1, 2);
 
     removeExpectedException(null, new Object[] {
         java.net.ConnectException.class, DisconnectException.class,
@@ -2158,7 +2279,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
     // check connection opened on second server
     assertNumConnections(1, 0, locator);
-    assertNumConnections(4, -1, 2);
+    assertNumConnections(-5, -1, 2);
 
     // now drop the table and close the connections
     stmt.execute("drop table TESTTABLE");
@@ -2166,22 +2287,22 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     conn.close();
 
     assertNumConnections(1, 0, locator);
-    assertNumConnections(4, -2, 2);
+    assertNumConnections(-5, -2, 2);
 
     conn2.close();
 
     assertNumConnections(1, 0, locator);
-    assertNumConnections(4, -3, 2);
+    assertNumConnections(-5, -3, 2);
 
     conn3.close();
 
     assertNumConnections(1, 0, locator);
-    assertNumConnections(4, -4, 2);
+    assertNumConnections(-5, -4, 2);
 
     conn4.close();
 
     assertNumConnections(1, 0, locator);
-    assertNumConnections(4, -5, 2);
+    assertNumConnections(-5, -5, 2);
   }
 
   public void testPersistentDD() throws Exception {
@@ -3222,13 +3343,30 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
         serverExecute(1, new SerializableRunnable() {
           @Override
           public void run() {
+            TestException te = null;
+            try {
+              userProps.setProperty(
+                  com.pivotal.gemfirexd.Attribute.USERNAME_ATTR, "sysUser1");
+              userProps.setProperty(
+                  com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR, "pwd_sysUser1");
+              final Connection conn = TestUtil.getConnection(userProps);
+              final Statement stmt = conn.createStatement();
+              stmt.execute("call sys.drop_user('gem1')");
+              stmt.close();
+              conn.close();
+            } catch (SQLException sqle) {
+              te = new TestException("unexpected exception");
+              te.initCause(sqle);
+            }
             try {
               FabricServiceManager.getFabricServerInstance()
                   .stopAllNetworkServers();
               TestUtil.shutDown(stopProps);
             } catch (SQLException sqle) {
-              final TestException te = new TestException("unexpected exception");
+              te = new TestException("unexpected exception");
               te.initCause(sqle);
+            }
+            if (te != null) {
               throw te;
             }
           }
@@ -3255,6 +3393,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     File authFile = new File(authDir, "gfxd-security.properties");
     FileOutputStream fos = new FileOutputStream(authFile);
     authProps.store(fos, null);
+    Connection conn2 = null;
+    Statement systemUser_stmt = null;
     try {
       // start a locator and some severs with auth enabled
       final int locPort = AvailablePort
@@ -3281,8 +3421,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       // connect as system user 'root'
       props2.setProperty("user", "root");
       props2.setProperty("password", "root");
-      Connection conn2 = TestUtil.getConnection(props2);
-      Statement systemUser_stmt = conn2.createStatement();
+      conn2 = TestUtil.getConnection(props2);
+      systemUser_stmt = conn2.createStatement();
 
       // create a new user
       systemUser_stmt.execute("call sys.create_user('user1', 'a')");
@@ -3315,15 +3455,23 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
       }
 
       conn1.close();
-      conn2.close();
       conn3.close();
     } finally {
-      fos.close();
-      if (!authFile.delete()) {
-        authFile.deleteOnExit();
-      }
-      if (!authDir.delete()) {
-        authDir.deleteOnExit();
+      try {
+        if (conn2 != null) {
+          if (systemUser_stmt != null) {
+            systemUser_stmt.execute("call sys.drop_user('user1')");
+          }
+          conn2.close();
+        }
+      } finally {
+        fos.close();
+        if (!authFile.delete()) {
+          authFile.deleteOnExit();
+        }
+        if (!authDir.delete()) {
+          authDir.deleteOnExit();
+        }
       }
     }
   }

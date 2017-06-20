@@ -22,9 +22,9 @@ import java.nio.ByteBuffer;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.ObjToByteArraySerializer;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * GfxdHeapDataOutputStream extends {@link HeapDataOutputStream} from which it
@@ -34,7 +34,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
  * be used if the source byte[] array is immutable in terms of its data , a
  * guarantee which an application may be able to offer. The benefit gained is in
  * preventing the copying of data from source byte[] to internal byte buffer.
- * 
+ *
  * @author Asif
  */
 public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
@@ -70,21 +70,35 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
   public final void write(byte[] source, int offset, int len) {
     // if there is enough space in current byte buffer, then use that instead
     // of always wrapping to avoid one additional allocation
-    if (this.wrapBytes && this.buffer.remaining() < len) {
+    if (this.wrapBytes &&
+        this.buffer.position() > 0 && this.buffer.remaining() < len) {
       this.writeWithByteArrayWrappedConditionally(source, offset, len);
-    }
-    else {
+    } else {
       super.write(source, offset, len);
     }
   }
 
-  public final void writeNoWrap(byte[] source, int offset, int len) {
-    super.write(source, offset, len);
+  /**
+   * Write a byte buffer to this HeapDataOutputStream,
+   * <p>
+   * The contents of the buffer between the position and the limit
+   * are copied to the output stream or the buffer kept as is (if wrapBytes
+   * has been passed as true in constructor).
+   */
+  @Override
+  public final void write(ByteBuffer source) {
+    if (this.wrapBytes) {
+      this.writeWithByteBufferWrappedConditionally(source);
+    } else {
+      super.write(source);
+    }
   }
 
+  /**
+   * Efficient copy of data from given source object to self.
+   * Used by generated code of ComplexTypeSerializer implementation.
+   */
   public final void copyMemory(final Object src, long srcOffset, int length) {
-    final sun.misc.Unsafe unsafe = UnsafeHolder.getUnsafe();
-
     // require that buffer is a heap byte[] one
     ByteBuffer buffer = this.buffer;
     byte[] dst = buffer.array();
@@ -93,8 +107,8 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
     // copy into as available space first
     final int remainingSpace = buffer.capacity() - pos;
     if (remainingSpace < length) {
-      UnsafeHolder.copyMemory(src, srcOffset, dst,
-          UnsafeHolder.arrayBaseOffset + offset + pos, remainingSpace, unsafe);
+      Platform.copyMemory(src, srcOffset, dst,
+          Platform.BYTE_ARRAY_OFFSET + offset + pos, remainingSpace);
       buffer.position(pos + remainingSpace);
       srcOffset += remainingSpace;
       length -= remainingSpace;
@@ -106,8 +120,8 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
       pos = buffer.position();
     }
     // copy remaining bytes
-    UnsafeHolder.copyMemory(src, srcOffset, dst,
-        UnsafeHolder.arrayBaseOffset + offset + pos, length, unsafe);
+    Platform.copyMemory(src, srcOffset, dst,
+        Platform.BYTE_ARRAY_OFFSET + offset + pos, length);
     buffer.position(pos + length);
   }
 
@@ -115,11 +129,5 @@ public final class GfxdHeapDataOutputStream extends HeapDataOutputStream
   protected final void expand(int amount) {
     Misc.checkMemoryRuntime(thresholdListener, query, amount);
     super.expand(amount);
-  }
-
-  public final byte[] toByteArrayCopy() {
-    final byte[] bytes = new byte[size()];
-    sendTo(bytes, 0);
-    return bytes;
   }
 }

@@ -27,7 +27,7 @@ import com.gemstone.gemfire.cache.Region;
  * DurableServer.java has the server to which the DurableClient connects. See
  * the DurableClient or the quickstart guide for run instructions. To stop the
  * server, type "Exit" in server console.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

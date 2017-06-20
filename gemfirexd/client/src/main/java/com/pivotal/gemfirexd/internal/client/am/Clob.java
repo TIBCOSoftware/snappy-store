@@ -46,6 +46,8 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.Reader;
 import java.sql.SQLException;
+
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.pivotal.gemfirexd.internal.client.net.EncodedInputStream;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 // GemStone changes BEGIN
@@ -1046,15 +1048,17 @@ public class Clob extends Lob implements java.sql.Clob {
             return utf8String_.length;
         }
 
-        try {
-            utf8String_ = string_.getBytes("UTF-8");
+        // try {
+            utf8String_ = string_.getBytes(ClientSharedData.UTF8);
             return utf8String_.length;
+        /*
         } catch (java.io.UnsupportedEncodingException e) {
             throw new SqlException(agent_.logWriter_,
                 new ClientMessageId(SQLState.UNSUPPORTED_ENCODING),
                 "String", "UTF8 byte[]",
-                this.columnName /* GemStoneAddition */, e);
+                this.columnName /* GemStoneAddition, e);
         }
+        */
     }
 
     // auxiliary method for position (Clob, long)

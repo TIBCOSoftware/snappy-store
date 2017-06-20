@@ -2262,6 +2262,12 @@ public class SelectNode extends ResultSetNode
 		ResultSetNode	 rightResultSet;
                 // GemStone changes BEGIN
                 if (convertCountToRegionSize) {
+                  if (GemFireXDUtils.TraceQuery) {
+                    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+                     "Not converting count(*) to Region.size() despite flag being true");
+                  }
+                }
+                if (false) {
             
                   // this is just safe.
                   QueryTreeNode qt = fromList.elementAt(0);

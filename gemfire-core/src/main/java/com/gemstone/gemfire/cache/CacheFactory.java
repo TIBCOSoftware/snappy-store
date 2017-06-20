@@ -19,11 +19,13 @@ package com.gemstone.gemfire.cache;
 
 import java.util.Properties;
 
+import com.gemstone.gemfire.cache.client.PoolFactory;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.GemFireVersion;
 import com.gemstone.gemfire.internal.cache.CacheConfig;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.InitialImageOperation;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jndi.JNDIInvoker;
@@ -81,9 +83,9 @@ Applications that need to explicitly control the individual region attributes ca
  */
 public class CacheFactory {
 
-  private final Properties dsProps;
+  protected final Properties dsProps;
   
-  private final CacheConfig cacheConfig =  new CacheConfig();
+  protected final CacheConfig cacheConfig =  new CacheConfig();
        
   /**
    * Creates a default cache factory.
@@ -227,6 +229,7 @@ public class CacheFactory {
     }
   }
 
+
   /**
    * Gets the instance of {@link Cache} produced by an
    * earlier call to {@link #create()}.
@@ -257,7 +260,8 @@ public class CacheFactory {
     // deadlock when messaging returns to this VM
     final int initReq = LocalRegion.threadInitLevelRequirement();
     if (initReq == LocalRegion.ANY_INIT
-        || initReq == LocalRegion.BEFORE_INITIAL_IMAGE) { // fix bug 33471
+        || initReq == LocalRegion.BEFORE_INITIAL_IMAGE  // fix bug 33471
+        || (InitialImageOperation.anyTestHookInstalled())) {
       return basicGetInstancePart2(system, closeOk);
     } else {
       synchronized (CacheFactory.class) {

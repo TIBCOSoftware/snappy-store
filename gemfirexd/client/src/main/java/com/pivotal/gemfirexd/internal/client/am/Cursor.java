@@ -42,7 +42,6 @@ package com.pivotal.gemfirexd.internal.client.am;
 // GemStone changes BEGIN
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
 import com.pivotal.gemfirexd.internal.iapi.reference.JDBC40Translation;
 
 import java.io.IOException;
@@ -52,6 +51,7 @@ import java.io.ObjectStreamClass;
 // GemStone changes END
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -127,6 +127,7 @@ public abstract class Cursor {
     private boolean isRowUpdated_;
 
 // GemStone changes BEGIN
+    final static public Charset ISO_8859_1 = Charset.forName("ISO-8859-1");
     final static public java.lang.Boolean ROW_IS_NULL = Boolean.TRUE;
     final static public java.lang.Boolean ROW_IS_NOT_NULL = Boolean.FALSE;
     /* (original code)
@@ -719,7 +720,8 @@ public abstract class Cursor {
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream( bytes );
 // GemStone changes BEGIN
-            ObjectInputStream ois = new ThreadContextObjectInputStream(bais);
+            ObjectInputStream ois = new ClientSharedUtils
+                .ThreadContextObjectInputStream(bais);
             /* (original code)
             ObjectInputStream ois = new ObjectInputStream( bais );
             */
@@ -754,7 +756,7 @@ public abstract class Cursor {
       }
     }
 
-    private final byte[] get_UDT_bytes(int column, String charsetName)
+    private final byte[] get_UDT_bytes(int column, Charset charset)
         throws SqlException {
       final Object o = get_UDT(column);
       if (o == null) {
@@ -764,14 +766,16 @@ public abstract class Cursor {
         return (byte[])o;
       }
       else if (o instanceof String) {
-        try {
-          return ((String)o).getBytes(charsetName);
+        // try {
+          return ((String)o).getBytes(charset);
+        /*
         } catch (java.io.UnsupportedEncodingException e) {
           throw new SqlException(agent_.logWriter_, new ClientMessageId(
               SQLState.UNSUPPORTED_ENCODING), "UDT with java type "
-              + o.getClass().getName(), charsetName,
-              getColumnLabel(column) /* GemStoneAddition */, e);
+              + o.getClass().getName(), charset,
+              getColumnLabel(column) /* GemStoneAddition *, e);
         }
+        */
       }
       else {
         throw getUDTTypeConversionException(column, o, "String");
@@ -783,40 +787,6 @@ public abstract class Cursor {
       return new ColumnTypeConversionException(agent_.logWriter_,
           "java.sql.Types " + jdbcTypes_[column - 1] + " java type "
               + o.getClass().getName(), convertType);
-    }
-
-    public static final ThreadLocal ALLOW_THREADCONTEXT_CLASSLOADER =
-        new ThreadLocal();
-    /** allow using Thread context ClassLoader to load classes */
-    public static final class ThreadContextObjectInputStream extends
-        ObjectInputStream {
-
-      protected ThreadContextObjectInputStream() throws IOException,
-          SecurityException {
-        super();
-      }
-  
-      public ThreadContextObjectInputStream(final InputStream in)
-          throws IOException {
-        super(in);
-      }
-
-      protected Class resolveClass(final ObjectStreamClass desc)
-          throws IOException, ClassNotFoundException {
-        try {
-          return super.resolveClass(desc);
-        } catch (ClassNotFoundException cnfe) {
-          // try to load using Thread context ClassLoader, if required
-          final Object allowTCCL = ALLOW_THREADCONTEXT_CLASSLOADER.get();
-          if (allowTCCL == null || !Boolean.TRUE.equals(allowTCCL)) {
-            throw cnfe;
-          }
-          else {
-            return Thread.currentThread().getContextClassLoader()
-                .loadClass(desc.getName());
-          }
-        }
-      }
     }
 // GemStone changes END
 
@@ -1405,24 +1375,28 @@ public abstract class Cursor {
                     return c.getAsciiStreamX();
                 }
             case java.sql.Types.CHAR:
-                try {
-                    return new java.io.ByteArrayInputStream(getCHAR(column).getBytes("ISO-8859-1"));
+                // try {
+                    return new java.io.ByteArrayInputStream(getCHAR(column).getBytes(ISO_8859_1));
+                /*
                 } catch (java.io.UnsupportedEncodingException e) {
                     throw new SqlException(agent_.logWriter_, 
                     		new ClientMessageId (SQLState.UNSUPPORTED_ENCODING), 
                     		"CHAR", "java.io.InputStream",
-                    		getColumnLabel(column) /* GemStoneAddition */, e);
+                                getColumnLabel(column) /* GemStoneAddition *, e);
                 }
+                */
             case java.sql.Types.VARCHAR:
             case java.sql.Types.LONGVARCHAR:
-                try {
-                    return new java.io.ByteArrayInputStream(getVARCHAR(column).getBytes("ISO-8859-1"));
+                // try {
+                    return new java.io.ByteArrayInputStream(getVARCHAR(column).getBytes(ISO_8859_1));
+                /*
                 } catch (java.io.UnsupportedEncodingException e) {
                     throw new SqlException(agent_.logWriter_, 
                     		new ClientMessageId (SQLState.UNSUPPORTED_ENCODING), 
                     		"VARCHAR/LONGVARCHAR", "java.io.InputStream",
-                    		getColumnLabel(column) /* GemStoneAddition */, e);
+                                getColumnLabel(column) /* GemStoneAddition *, e);
                 }
+                */
             case java.sql.Types.BINARY:
                 return new java.io.ByteArrayInputStream(get_CHAR_FOR_BIT_DATA(column));
             case java.sql.Types.VARBINARY:
@@ -1432,7 +1406,7 @@ public abstract class Cursor {
                 return getBinaryStream(column);
 // GemStone changes BEGIN
             case java.sql.Types.JAVA_OBJECT:
-                return new java.io.ByteArrayInputStream(get_UDT_bytes(column, "ISO-8859-1"));
+                return new java.io.ByteArrayInputStream(get_UDT_bytes(column, ISO_8859_1));
 // GemStone changes END
             default:
                 throw new ColumnTypeConversionException(agent_.logWriter_,
@@ -1448,36 +1422,42 @@ public abstract class Cursor {
                 {
                     Clob c = getClobColumn_(column, agent_, false);
                     String s = c.getSubString(1L, (int) c.length());
-                    try {
-                        return new java.io.ByteArrayInputStream(s.getBytes("UTF-8"));
+                    // try {
+                        return new java.io.ByteArrayInputStream(s.getBytes(ClientSharedData.UTF8));
+                    /*
                     } catch (java.io.UnsupportedEncodingException e) {
                         throw new SqlException(agent_.logWriter_, 
                         		new ClientMessageId (SQLState.UNSUPPORTED_ENCODING), 
                         		"CLOB", "UnicodeStream",
-                        		getColumnLabel(column) /* GemStoneAddition */, e);
+                                        getColumnLabel(column) /* GemStoneAddition *, e);
                     }
+                    */
                 }
             case java.sql.Types.CHAR:
                 {
-                    try {
-                        return new java.io.ByteArrayInputStream(getCHAR(column).getBytes("UTF-8"));
+                    // try {
+                        return new java.io.ByteArrayInputStream(getCHAR(column).getBytes(ClientSharedData.UTF8));
+                    /*
                     } catch (java.io.UnsupportedEncodingException e) {
                         throw new SqlException(agent_.logWriter_, 
                         		new ClientMessageId (SQLState.UNSUPPORTED_ENCODING), 
                         		"CHAR", "UnicodeStream",
-                        		getColumnLabel(column) /* GemStoneAddition */, e);
+                                        getColumnLabel(column) /* GemStoneAddition *, e);
                     }
+                    */
                 }
             case java.sql.Types.VARCHAR:
             case java.sql.Types.LONGVARCHAR:
-                try {
-                    return new java.io.ByteArrayInputStream(getVARCHAR(column).getBytes("UTF-8"));
+                // try {
+                    return new java.io.ByteArrayInputStream(getVARCHAR(column).getBytes(ClientSharedData.UTF8));
+                /*
                 } catch (java.io.UnsupportedEncodingException e) {
                     throw new SqlException(agent_.logWriter_, 
                     		new ClientMessageId (SQLState.UNSUPPORTED_ENCODING), 
                     		"VARCHAR/LONGVARCHAR", "UnicodeStream",
-                    		getColumnLabel(column) /* GemStoneAddition */, e);
+                                getColumnLabel(column) /* GemStoneAddition *, e);
                 }
+                */
             case java.sql.Types.BINARY:
                 return new java.io.ByteArrayInputStream(get_CHAR_FOR_BIT_DATA(column));
             case java.sql.Types.VARBINARY:
@@ -1487,7 +1467,7 @@ public abstract class Cursor {
                 return getBinaryStream(column);
 // GemStone changes BEGIN
             case java.sql.Types.JAVA_OBJECT:
-                return new java.io.ByteArrayInputStream(get_UDT_bytes(column, "UTF-8"));
+                return new java.io.ByteArrayInputStream(get_UDT_bytes(column, ClientSharedData.UTF8));
 // GemStone changes END
             default:
                 throw new ColumnTypeConversionException(agent_.logWriter_,
@@ -1606,14 +1586,11 @@ public abstract class Cursor {
         switch (jdbcTypes_[column - 1]) {
         case java.sql.Types.SMALLINT:
 // GemStone changes BEGIN
-            // changed to use *.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger(
-                get_SMALLINT(column)); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
+            return (int)get_SMALLINT(column); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
         case java.sql.Types.INTEGER:
-            return ClientSharedUtils.getJdkHelper().newInteger(
-                get_INTEGER(column));
+            return get_INTEGER(column);
         case java.sql.Types.BIGINT:
-            return ClientSharedUtils.getJdkHelper().newLong(get_BIGINT(column));
+            return get_BIGINT(column);
             /* (original code)
             return new Integer(get_SMALLINT(column)); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
         case java.sql.Types.INTEGER:
@@ -1623,9 +1600,9 @@ public abstract class Cursor {
             */
 // GemStone changes END
         case java.sql.Types.REAL:
-            return new Float(get_FLOAT(column));
+            return get_FLOAT(column);
         case java.sql.Types.DOUBLE:
-            return new Double(get_DOUBLE(column));
+            return get_DOUBLE(column);
         case java.sql.Types.DECIMAL:
             return get_DECIMAL(column);
         case java.sql.Types.DATE:

@@ -642,9 +642,12 @@ public class SQLPrms extends BasePrms{
     SQLBB.getBB().getSharedMap().put(SQLPrms.HDFS_TRIGGER, StrTriggerName);
     return triggerStmt.toArray(new String[triggerStmt.size()]);
   }
-  
- 
- 
+
+  /** (boolean) whether snapshotIsolation is enabled.
+   *  default is true;.
+   */
+   public static Long isSnapshotEnabled;
+
   /** (boolean) whether a record is manipulated only by the thread which creates it.
    *  default is true;.
    */
@@ -977,6 +980,11 @@ public class SQLPrms extends BasePrms{
   *
   */
   public static Long testEviction;
+
+  /** (boolean) whether the test should avoid the lockservice and proceed in case of snappy cluster
+   *
+   */
+  public static Long isSnappyTest;
   
   /** (boolean) whether the test eviction use heap percentage
   *
@@ -1427,7 +1435,15 @@ public class SQLPrms extends BasePrms{
       return SQLPrms.tab().stringAt(sql.SQLPrms.sqlFilePath);
     }
   }
-
+  /**
+   * (boolean)
+   * Whether to record data in BB or not.  Defaults to true.
+   */
+  public static Long insertInBB;
+  public static boolean isInsertInBB() {
+    Long key = insertInBB;
+    return tasktab().booleanAt(key, tab().booleanAt(key, true));
+  }
   public static Long traceFlags;
   public static String getTraceFlags() {
     return tasktab().stringAt(traceFlags, tab().stringAt(traceFlags, null));

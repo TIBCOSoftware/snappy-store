@@ -94,4 +94,11 @@ public interface SortedIndexContainer {
    */
   public void mergeValuesForNonUnique(SortedIndexKey mergeInto,
       SortedIndexKey mergeFrom) throws IndexMaintenanceException;
+
+  /**
+   * New API added to account Index memory while index is getting loaded
+   * @param cursorPosition for which we are trying to estimate memory
+   * @param forceAccount whether to account irrespective of cursor position
+   */
+  public void accountMemoryForIndex(long cursorPosition, boolean forceAccount);
 }

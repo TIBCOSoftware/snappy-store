@@ -32,7 +32,7 @@ import com.pivotal.gemfirexd.internal.tools.dataextractor.utils.ExtractorUtils;
 
 public class GemFireXDDataExtractorLoaderImpl extends GemFireXDDataExtractorImpl{
 
-  private static final String DRIVER_STRING = "com.pivotal.gemfirexd.jdbc.ClientDriver"; 
+  private static final String DRIVER_STRING = "io.snappydata.jdbc.ClientDriver";
   private static final String LOADER_OUTPUT_DIR = "EXTRACTED_LOADER";
   private String stringDelimiter = "\"";
   private String columnDelimiter = ",";

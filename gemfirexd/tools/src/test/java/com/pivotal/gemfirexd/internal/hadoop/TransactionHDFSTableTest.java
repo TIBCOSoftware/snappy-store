@@ -22,8 +22,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
 
 public class TransactionHDFSTableTest extends JdbcTestBase {
@@ -431,13 +429,15 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     conn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
     conn.setAutoCommit(false);
     Statement st = conn.createStatement();
-    
-    st.execute("create hdfsstore myhdfs namenode 'localhost' homedir './myhdfs' queuepersistent true");
-    
+
+    st.execute("create hdfsstore myhdfs namenode 'localhost' homedir "
+        + "'./myhdfs' queuepersistent true");
+
     st.execute("create schema tran");
     st.execute("Create table tran.t1 (c1 int not null , c2 int not null, "
-        + "primary key(c1)) " + " persistent hdfsstore (myhdfs) " + " eviction by criteria ( c2 > 10 ) EVICT INCOMING");
-    
+        + "primary key(c1)) " + " persistent hdfsstore (myhdfs) "
+        + " eviction by criteria ( c2 > 10 ) EVICT INCOMING");
+
     conn.commit();
     
     ResultSet rs = st.executeQuery("Select * from tran.t1");

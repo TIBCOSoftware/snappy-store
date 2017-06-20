@@ -145,7 +145,7 @@ public class ClientInterestMessageImpl implements ClientMessage {
   }
   
   protected Message getGFEMessage() throws IOException {
-    Message message = new Message(isRegister() ? 7 : 6, Version.CURRENT);
+    Message message = new Message(isRegister() ? 7 : 6, Version.CURRENT_GFE);
     message.setLogger(this.logger);
     message.setTransactionId(0);
     

@@ -29,7 +29,7 @@ import com.gemstone.gemfire.cache.query.SelectResults;
 /**
  * You can query on the data in your cached regions. Please refer to the 
  * quickstart guide for instructions on how to run this example. 
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 4.1.1

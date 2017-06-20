@@ -26,7 +26,6 @@ import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.EvictionCriteria;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
@@ -233,7 +232,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    */
   public boolean fillInValue(LocalRegion r,
       @Retained(ABSTRACT_REGION_ENTRY_FILL_IN_VALUE) InitialImageOperation.Entry entry,
-      ByteArrayDataInput in, DM mgr, Version targetVersion);
+      DM mgr, Version targetVersion);
 
   /**
    * Returns true if this entry has overflowed to disk.
@@ -540,7 +539,12 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * @see Token#isInvalidOrRemoved(Object)
    */
   public boolean isInvalidOrRemoved();
-  
+
+  /**
+   * Returns true if the RegionEntry is for storing an off-heap value
+   */
+  public boolean isOffHeap();
+
   /**
    * Sets the entry value to null.
    */

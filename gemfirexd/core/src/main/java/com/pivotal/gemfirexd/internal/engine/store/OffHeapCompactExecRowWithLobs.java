@@ -17,8 +17,6 @@
 
 package com.pivotal.gemfirexd.internal.engine.store;
 
-import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.OFFHEAP_COMPACT_EXEC_ROW_WITH_LOBS_SOURCE;
-
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -34,7 +32,6 @@ import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.RegionAndKey;
@@ -48,6 +45,9 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
+import org.apache.spark.unsafe.types.UTF8String;
+
+import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.OFFHEAP_COMPACT_EXEC_ROW_WITH_LOBS_SOURCE;
 
 /**
  * A compact implementation of Row that contains one or more LOBs (i.e. BLOBs or
@@ -267,6 +267,24 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
       }
     }
     else {
+      return null;
+    }
+  }
+
+  @Override
+  public UTF8String getAsUTF8String(int index) throws StandardException {
+    final Object source = this.source;
+    if (source != null) {
+      final Class<?> cls = source.getClass();
+      if (cls == OffHeapRowWithLobs.class) {
+        return this.formatter.getAsUTF8String(index,
+            (OffHeapRowWithLobs)source);
+      } else if (cls == byte[][].class) {
+        return this.formatter.getAsUTF8String(index, (byte[][])source);
+      } else {
+        return this.formatter.getAsUTF8String(index, (OffHeapRow)source);
+      }
+    } else {
       return null;
     }
   }
@@ -520,6 +538,28 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
   }
 
   @Override
+  public long getAsDateMillis(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    final Object source = this.source;
+    if (source != null) {
+      final Class<?> cls = source.getClass();
+      if (cls == OffHeapRowWithLobs.class) {
+        return this.formatter.getAsDateMillis(index,
+            (OffHeapRowWithLobs)source, cal, wasNull);
+      } else if (cls == byte[][].class) {
+        return this.formatter.getAsDateMillis(index, (byte[][])source,
+            cal, wasNull);
+      } else {
+        return this.formatter.getAsDateMillis(index, (OffHeapRow)source,
+            cal, wasNull);
+      }
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0L;
+    }
+  }
+
+  @Override
   protected java.sql.Date getDate(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException {
     final Object source = this.source;
@@ -568,6 +608,28 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
   }
 
   @Override
+  public long getAsTimestampMicros(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    final Object source = this.source;
+    if (source != null) {
+      final Class<?> cls = source.getClass();
+      if (cls == OffHeapRowWithLobs.class) {
+        return this.formatter.getAsTimestampMicros(index,
+            (OffHeapRowWithLobs)source, cal, wasNull);
+      } else if (cls == byte[][].class) {
+        return this.formatter.getAsTimestampMicros(index, (byte[][])source,
+            cal, wasNull);
+      } else {
+        return this.formatter.getAsTimestampMicros(index, (OffHeapRow)source,
+            cal, wasNull);
+      }
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0L;
+    }
+  }
+
+  @Override
   protected java.sql.Timestamp getTimestamp(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException {
     final Object source = this.source;
@@ -608,11 +670,8 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
       else {
         return this.formatter.getAsBlob(position, (OffHeapRow)source, wasNull);
       }
-    }
-    else {
-      if (wasNull != null) {
-        wasNull.setWasNull();
-      }
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
       return null;
     }
   }
@@ -633,11 +692,8 @@ public final class OffHeapCompactExecRowWithLobs extends AbstractCompactExecRow 
       else {
         return this.formatter.getAsClob(position, (OffHeapRow)source, wasNull);
       }
-    }
-    else {
-      if (wasNull != null) {
-        wasNull.setWasNull();
-      }
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
       return null;
     }
   }

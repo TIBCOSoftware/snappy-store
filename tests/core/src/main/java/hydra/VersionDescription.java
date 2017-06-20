@@ -192,9 +192,19 @@ implements Serializable {
       classpath.add(hd.getExtraTestDir());
     }
 
+    // test jars
+    classpath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+        hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+        ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
+
+    classpath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() +
+        hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+        hd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
+
     // product jars for this version
     classpath.add(gfh + hd.getFileSep() + "lib"
-                      + hd.getFileSep() + "gemfire.jar");
+        + hd.getFileSep() + "snappydata-store-" +
+        ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
 
     return EnvHelper.asPath(classpath, hd);
   }

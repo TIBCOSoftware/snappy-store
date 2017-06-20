@@ -368,7 +368,7 @@ public class DBSynchronizer implements AsyncEventListener {
   /**
    * Close this {@link DBSynchronizer} instance.
    * 
-   * To prevent a possible concurrency issue between closing thread & the
+   * To prevent a possible concurrency issue between closing thread &amp; the
    * processor thread, access to this method is synchronized on 'this'
    */
   public synchronized void close() {
@@ -383,7 +383,7 @@ public class DBSynchronizer implements AsyncEventListener {
    * Basic actions to be performed to close the {@link DBSynchronizer} instance
    * though the instance will itself not be marked as having shut down.
    * 
-   * To prevent a possible concurrency issue between closing thread & the
+   * To prevent a possible concurrency issue between closing thread &amp; the
    * processor thread, access to this method is synchronized on 'this'
    */
   public final synchronized void basicClose() {

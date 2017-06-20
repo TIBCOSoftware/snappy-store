@@ -83,7 +83,7 @@ public final class GenericParameterValueSet implements ParameterValueSet
 	 *			this is NOT the same thing as an output parameter -- return
 	 *			output parameters are special cases of output parameters.
 	 */
-	GenericParameterValueSet(ClassInspector ci, int numParms, boolean hasReturnOutputParam)
+	public GenericParameterValueSet(ClassInspector ci, int numParms, boolean hasReturnOutputParam)
 	{
 		this.ci = ci;
 		this.hasReturnOutputParam = hasReturnOutputParam;
@@ -252,7 +252,7 @@ public final class GenericParameterValueSet implements ParameterValueSet
 
 				if (throwError) {
 					throw StandardException.newException(SQLState.LANG_DATA_TYPE_SET_MISMATCH, t,
-						ClassInspector.readableClassName(value.getClass()), gp.declaredClassName);
+						ClassInspector.readableClassName(value.getClass()), gp.declaredClassName, null);
 				}
 			}
 
@@ -356,7 +356,7 @@ public final class GenericParameterValueSet implements ParameterValueSet
 		{
 // GemStone changes BEGIN
 		  strbuf.append(";value=").append(parms[ctr]).append(",type=")
-		      .append(parms[ctr].getSQLType());
+		      .append(parms[ctr].getRegisterOutputType());
 		  /*
 			strbuf.append("begin parameter #" + (ctr + 1) + ": ");
 			strbuf.append(parms[ctr].toString());

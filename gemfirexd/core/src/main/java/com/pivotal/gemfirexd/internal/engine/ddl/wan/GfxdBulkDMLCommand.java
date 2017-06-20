@@ -17,11 +17,10 @@
 package com.pivotal.gemfirexd.internal.engine.ddl.wan;
 
 import java.sql.SQLException;
-
 import java.sql.Statement;
 import java.util.ArrayList;
 
-import com.gemstone.gemfire.cache.PartitionAttributes;
+import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.EventErrorHandler;
 import com.gemstone.gemfire.internal.cache.GatewayEventImpl;
@@ -33,15 +32,14 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.Message;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Part;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerConnection;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.pivotal.gemfirexd.callbacks.AsyncEventHelper;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
-import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.GfxdCBArgForSynchPrms;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionByExpressionResolver;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
+import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.GfxdCBArgForSynchPrms;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdCallbackArgument;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -207,7 +205,7 @@ public final class GfxdBulkDMLCommand extends BaseCommand {
       return oldKey;
     }
     else {
-      return Long.valueOf(gfc.newUUIDForRegionKey());
+      return gfc.newUUIDForRegionKey();
     }
   }
 
@@ -215,12 +213,9 @@ public final class GfxdBulkDMLCommand extends BaseCommand {
   public Object regenerateCallbackConditionally(final Object key,
       final Object oldCallbackArg, final LocalRegion region) {
     GemFireContainer gfc = (GemFireContainer)region.getUserAttribute();
-    PartitionAttributes<?, ?> prAttr = region.getAttributes()
-        .getPartitionAttributes();
-    GfxdPartitionResolver resolver = null;
+    GfxdPartitionResolver resolver = GemFireXDUtils.getResolver(region);
     boolean isPartitioningKeyThePrimaryKey = false;
-    if (prAttr != null) {
-      resolver = (GfxdPartitionResolver)prAttr.getPartitionResolver();
+    if (resolver != null) {
       isPartitioningKeyThePrimaryKey = resolver
           .isPartitioningKeyThePrimaryKey();
     }
@@ -355,7 +350,9 @@ public final class GfxdBulkDMLCommand extends BaseCommand {
           conn.getTR().restoreContextStack();
         }
       } catch (StandardException se) {
-        throw new GemFireXDRuntimeException(se);
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DB_SYNCHRONIZER,
+            "GfxdBulkDMLCommand::afterOperationCallback: " +
+                "exception in finally block: " + se, se);
       }
     }
   }

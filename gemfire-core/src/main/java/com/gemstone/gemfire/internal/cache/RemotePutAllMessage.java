@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
@@ -484,8 +485,13 @@ public final class RemotePutAllMessage extends
       }
     }, baseEvent.getEventId());
     if (tx != null || r.getConcurrencyChecksEnabled()) {
-      r.getDataView(tx).postPutAll(dpao, versions, r);
+      if (tx != null && tx.isSnapshot()) {
+        r.getSharedDataView().postPutAll(dpao, versions, r);
+      } else {
+        r.getDataView(tx).postPutAll(dpao, versions, r);
+      }
     }
+
     if (sendReply) {
       PutAllReplyMessage.send(getSender(), this.processorId,
           getReplySender(r.getDistributionManager()), versions, this);

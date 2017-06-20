@@ -21,6 +21,7 @@ import hydra.Log;
 import hydra.MasterController;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import sql.SQLPrms;
 import sql.generic.SqlUtilityHelper;
 import util.TestException;
 
@@ -40,7 +42,7 @@ import com.google.common.primitives.Ints;
 /**
  * DataGenerator Helper provides static methods to access functionality of
  * DataGenerator
- * 
+ *
  * @author Rahul Diyewar
  */
 
@@ -54,31 +56,29 @@ public class DataGeneratorHelper {
   /**
    * Initialise and host instance of DataGenerator. It also creates CSVs for
    * populate task and rows in DataGeneratorBB for Insert.
-   * 
-   * @param mapper
-   *          mapper file
-   * @param tableNames
-   *          tablesNames
-   * @param rowCounts
-   *          Rows count for CSVs
-   * @param conn
-   *          GemfireXD connection
+   *
+   * @param mapper     mapper file
+   * @param tableNames tablesNames
+   * @param rowCounts  Rows count for CSVs
+   * @param conn       GemfireXD connection
    */
   public static synchronized void initDataGenerator(String mapper,
       String[] tableNames, int[] rowCounts, Connection conn) {
-    
+
     if (DataGeneratorBB.getBB().getSharedCounters()
         .incrementAndRead(DataGeneratorBB.PARSE_MAPPER) == 1) {
-      if (datagen == null) {        
+      if (datagen == null) {
         File mfile = new File(mapper);
         String destMapper = null;
-        if(mfile.exists()){
+        if (mfile.exists()) {
           destMapper = "datagenmapper.prop";
-          FileUtil.copyFile(mapper, destMapper);
-        }else{
+          if (!new File(destMapper).exists()) {
+            FileUtil.copyFile(mapper, destMapper);
+          }
+        } else {
           log.warning("Mapper file does not Exists: " + mapper);
         }
-        
+
         log.info("Init DataGenerator in this vm with mapper : " + destMapper);
         try {
           datagen = DataGenerator.getDataGenerator();
@@ -90,14 +90,48 @@ public class DataGeneratorHelper {
         // create csv for populate task
         generateCSVsForPopulate(datagen, tableNames, rowCounts, conn);
 
-        // create rows in BB for insert
-        generateRowsInBBForInserts(datagen, tableNames, conn);
-      }else{
+        // create rows in BB for insert. isInsertInBB is default true.
+        if (SQLPrms.isInsertInBB()) {
+          generateRowsInBBForInserts(datagen, tableNames, conn);
+        }
+      } else {
         throw new TestException("Datagenerator is already initialized");
-      }    
-    }else{
+      }
+    } else {
       log.info("DataGenerator is already initialized by other vm");
     }
+  }
+
+  public static synchronized void clearDataGenerator() {
+    datagen = null;
+    long val = DataGeneratorBB.getBB().getSharedCounters()
+        .decrementAndRead(DataGeneratorBB.PARSE_MAPPER);
+    assert val == 0;
+  }
+
+  private static String getHighestFileNum(final String fileName) {
+    final String fn = fileName.substring(0, fileName.indexOf(".csv"));
+    String path = new File(fileName).getAbsolutePath();
+    int x = path.lastIndexOf(File.separator);
+    File d = new File(path.substring(0, x));
+    assert d.isDirectory();
+    File[] files = d.listFiles(new FilenameFilter() {
+      @Override
+      public boolean accept(File dir, String name) {
+        return name.startsWith(fn) && !name.equals(fileName);
+      }
+    });
+
+    int max = 0;
+    for (File f : files) {
+      String fileN = f.getName();
+      String numberS = fileN.substring(fileN.lastIndexOf("_") + 1, fileN.indexOf(".csv"));
+      if (max < Integer.parseInt(numberS)) {
+        max = Integer.parseInt(numberS);
+      }
+    }
+
+    return max < 9 ? "0" + (max + 1) : String.valueOf(max + 1);
   }
 
   private static void generateCSVsForPopulate(final DataGenerator datagen, final String[] tableNames,
@@ -105,12 +139,18 @@ public class DataGeneratorHelper {
     String[] outputFiles = new String[tableNames.length];
     for (int i = 0; i < tableNames.length; i++) {
       outputFiles[i] = tableNames[i].trim().toUpperCase() + "_populate.csv";
+      File f = new File(outputFiles[i]);
+      if (f.exists()) {
+        String newName = outputFiles[i].substring(0, outputFiles[i].indexOf(".csv")) + "_" + getHighestFileNum(outputFiles[i]) + ".csv";
+        log.info("Renaming " + f.getName() + " to " + newName);
+        f.renameTo(new File(newName));
+      }
       DataGeneratorBB.setCSVFileName(tableNames[i], outputFiles[i]);
     }
     log.info("Generating CSVs for tables=" + Arrays.asList(tableNames)
-        + ", rows=" + Ints.asList(rowCounts) 
+        + ", rows=" + Ints.asList(rowCounts)
         + ", outputFiles=" + Arrays.asList(outputFiles));
-   
+
     datagen.generateCSVs(tableNames, rowCounts, outputFiles, conn);
   }
 
@@ -128,13 +168,13 @@ public class DataGeneratorHelper {
                   + tableName);
               List<Map<String, Object>> rowList;
               try {
-                rowList = datagen.getNewRows(table,1000, conn);
+                rowList = datagen.getNewRows(table, 1000, conn);
                 DataGeneratorBB.addTableRowsToBB(tableName, rowList);
                 DataGeneratorBB.setRowsLowThresholdReached(tableName, false);
               } catch (Exception e) {
-               throw new TestException("Error in creating rows in BB for insert ", e);
+                throw new TestException("Error in creating rows in BB for insert ", e);
               }
-                            
+
             }
           }
           log.info("DataGenerator - datapopulator for insert, Sleeping for 2 sec");
@@ -146,15 +186,14 @@ public class DataGeneratorHelper {
 
   /**
    * Get new row for the table form BlackBoard
-   * 
-   * @param fullTableName
-   *          Format SchemaName.TableName
+   *
+   * @param fullTableName Format SchemaName.TableName
    * @return Map<String, Object> key=fully qualified columnName (SCHEMANAME.TABLENAME.COLUMNNAME) in upper case, value=Object
    */
   public static Map<String, Object> getNewRow(String fullTableName) {
     String key = fullTableName.toUpperCase();
     Queue<Map<String, Object>> tableRowsQueue = null;
-    Map<String, Object> rowMap = null; 
+    Map<String, Object> rowMap = null;
     synchronized (tableRowsQueueMap) {
       tableRowsQueue = tableRowsQueueMap.get(key);
       if (tableRowsQueue == null) {
@@ -163,24 +202,23 @@ public class DataGeneratorHelper {
         tableRowsQueueMap.put(key, tableRowsQueue);
         log.info("Initialize local rows cache for table " + fullTableName
             + " with cached is " + tableRowsQueue.size() + " rows");
-      }
-      else if (tableRowsQueue.size() < 10) {
+      } else if (tableRowsQueue.size() < 10) {
         // populate 100 rows from blackboard
         tableRowsQueue.addAll(DataGeneratorBB.getRowsFromBB(key));
         log.info("Added 100 rows into local cache for table " + fullTableName
             + " total cached is " + tableRowsQueue.size());
       }
-      rowMap = tableRowsQueue.poll(); 
+      rowMap = tableRowsQueue.poll();
     }
-    
-    if (rowMap == null){
+
+    if (rowMap == null) {
       log.info("DataGenerator - No row in local queue, waiting for 2 sec");
       MasterController.sleepForMs(2 * 1000);
       rowMap = getNewRow(fullTableName);
     }
     return rowMap;
   }
-  
+
   public static Object getTidsList() {
     ArrayList<Integer> tids = new ArrayList<Integer>();
     // todo - get correct tids

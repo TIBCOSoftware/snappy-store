@@ -2319,7 +2319,7 @@ public abstract class BaseActivation implements CursorActivation, GeneratedByteC
       switch (queryCancellationFlag) {
       case BaseActivation.CANCELLED_LOW_MEMORY:
         if (SanityManager.DEBUG) {
-          if (GemFireXDUtils.TraceHeapThresh || GemFireXDUtils.TraceExecute) {
+          if (GemFireXDUtils.TraceHeapThresh || GemFireXDUtils.TraceExecution) {
             SanityManager
                 .DEBUG_PRINT(
                     GfxdConstants.TRACE_HEAPTHRESH,
@@ -2335,7 +2335,7 @@ public abstract class BaseActivation implements CursorActivation, GeneratedByteC
         
       case BaseActivation.CANCELLED_TIMED_OUT:
         if (SanityManager.DEBUG) {
-          if (GemFireXDUtils.TraceExecute) {
+          if (GemFireXDUtils.TraceExecution) {
             SanityManager.DEBUG_PRINT(
                 GfxdConstants.TRACE_EXECUTION,
                 "BaseActivation: statement "
@@ -2350,7 +2350,7 @@ public abstract class BaseActivation implements CursorActivation, GeneratedByteC
         
       case BaseActivation.CANCELLED_USER_REQUESTED:
         if (SanityManager.DEBUG) {
-          if (GemFireXDUtils.TraceExecute) {
+          if (GemFireXDUtils.TraceExecution) {
             SanityManager.DEBUG_PRINT(
                 GfxdConstants.TRACE_EXECUTION,
                 "BaseActivation: statement "

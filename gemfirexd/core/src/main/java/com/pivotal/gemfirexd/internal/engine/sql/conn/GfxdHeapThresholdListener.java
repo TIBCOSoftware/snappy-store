@@ -25,7 +25,6 @@ import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.NanoTimer;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
@@ -358,31 +357,9 @@ public final class GfxdHeapThresholdListener implements MemoryThresholdListener 
                 }
 
                 // fix for #45508 (ignore DROP/DELETE/TRUNCATE).
-                final ConstantAction ca = ps.getConstantAction();
-                if(ca != null) {
-                  if(!ca.isCancellable()) {
-                    if (GemFireXDUtils.TraceHeapThresh) {
-                      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_HEAPTHRESH,
-                          "GfxdHeapThreshold: Skipping ConstantAction statement " + ps.getUserQueryString(act.getLanguageConnectionContext()) + " for cancellation");
-                    }
-                    continue;
-                  }
-                }
-                else {
-                  final int statementType = ps.getStatementType();
-                  switch (statementType) {
-                    case StatementType.DELETE:
-                      if (GemFireXDUtils.TraceHeapThresh) {
-                        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_HEAPTHRESH,
-                            "GfxdHeapThreshold: Skipping data reduction statement " + ps.getUserQueryString(act.getLanguageConnectionContext()) + " for cancellation");
-                      }
-                      continue;
-                    default:
-                      ;
-                  }
-                }
-      
-                 //if already canceled and criticalDown is yet to receive.
+               if (!isCancellableQuery(act)) continue;
+
+               //if already canceled and criticalDown is yet to receive.
                  if (act.isQueryCancelled()) {
                    if (GemFireXDUtils.TraceHeapThresh) {
                      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_HEAPTHRESH,
@@ -471,7 +448,47 @@ public final class GfxdHeapThresholdListener implements MemoryThresholdListener 
       _evictionDisabled = true;
     }
   }
-  
+
+  /**
+   * Checks whether the prepared statement corresponding to the activation
+   * can be aborted in low memory condition (CRITICAL UP event).
+   * DELETE/DROP/TRUNCATE statements are allowed to be executed in low memory
+   * condition.
+   * @param act
+   * @return
+   */
+  public static boolean isCancellableQuery(Activation act) {
+    ExecPreparedStatement ps = act.getPreparedStatement();
+    if (ps == null) {
+      return false;
+    }
+    final ConstantAction ca = ps.getConstantAction();
+    if(ca != null) {
+      if(!ca.isCancellable()) {
+        if (GemFireXDUtils.TraceHeapThresh) {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_HEAPTHRESH,
+              "GfxdHeapThresholdListener.isCancellableQuery: Skipping ConstantAction statement " +
+                  ps.getUserQueryString(act.getLanguageConnectionContext()) + " for cancellation");
+        }
+        return false;
+      }
+    }
+    else {
+      final int statementType = ps.getStatementType();
+      switch (statementType) {
+        case StatementType.DELETE:
+          if (GemFireXDUtils.TraceHeapThresh) {
+            SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_HEAPTHRESH,
+                "GfxdHeapThresholdListener.isCancellableQuery: Skipping data reduction statement " +
+                    ps.getUserQueryString(act.getLanguageConnectionContext()) + " for cancellation");
+          }
+          return false;
+        default: break;
+      }
+    }
+    return true;
+  }
+
   public static GfxdHeapThresholdListener createInstance(GemFireCacheImpl cache) {
     final GfxdHeapThresholdListener listener = new GfxdHeapThresholdListener(cache);
     cache.getResourceManager().addResourceListener(ResourceType.HEAP_MEMORY, listener);

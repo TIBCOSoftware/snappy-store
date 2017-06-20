@@ -675,7 +675,6 @@ Guide.
                 <text>CHANGE_PASSWORD not allowed for current authentication scheme '{0}'.</text>
                 <arg>schemeName</arg>
             </msg>
-
             <msg>
                 <name>0A000.S.27</name>
                 <text>Local index '{0}' can only be created on table '{1}' using HDFSStore when the table uses EVICTION BY CRITERIA or uses OVERFLOW. The eviction action for the table is '{2}'.</text>
@@ -683,17 +682,15 @@ Guide.
                 <arg>tableName</arg>
                 <arg>evictionAction</arg>
             </msg>
-            
             <msg>
                 <name>0A000.S.28</name>
                 <text>LRU eviction is not supported for HDFS tables.</text>
             </msg>
-            
             <msg>
                 <name>0A000.S.29</name>
-                <text>HDFS Store cannot be used for REPLICATED TABLE.</text>
+                <text>HDFS Store table creation failed: {0}.</text>
+                <arg>message</arg>
             </msg>
-            	
             <msg>
                 <name>0A000.S.30</name>
                 <text>Foreign key constraint is not supported with custom eviction criteria for HDFS tables.</text>
@@ -716,7 +713,10 @@ Guide.
                 <text>HDFS file rollover is supported only for write-only HDFS tables. '{0}' is not a write-only HDFS table.</text>
                 <arg>fqtn</arg>
            </msg>
-           
+           <msg>
+               <name>0A000.S.35</name>
+               <text>Statement.cancel(): no unique active statement found for the connection on server.</text>
+           </msg>
 <!--  GemStone changes END -->
         </family>
 
@@ -1561,6 +1561,13 @@ Guide.
                 <name>42831</name>
                 <text>'{0}' cannot be a column of a primary key or unique key because it can contain null values.</text>
                 <arg>columnName</arg>
+            </msg>
+
+            <msg>
+                <name>42832</name>
+                <text>Column '{0}' of type '{1}' cannot be part of a primary/unique key or index because it is of LOB/UDT type.</text>
+                <arg>columnName</arg>
+                <arg>type</arg>
             </msg>
 
             <msg>
@@ -3245,6 +3252,14 @@ Guide.
             </msg>
 
             <msg>
+                <name>X0X64.S</name>
+                <text>Inconsistency found between table '{0}' and index '{1}'. No value found for the key '{2}' in the global index. The suggested corrective action is to recreate the index.</text>
+                <arg>tableName</arg>
+                <arg>indexName</arg>
+                <arg>rowLocation</arg>
+            </msg>
+
+            <msg>
                 <name>X0X67.S</name>
                 <text>Columns of type '{0}' may not be used in CREATE INDEX, ORDER BY, GROUP BY, UNION, INTERSECT, EXCEPT or DISTINCT statements because comparisons are not supported for that type.</text>
                 <arg>type</arg>
@@ -3458,6 +3473,24 @@ Guide.
                 <arg>rowName</arg>
                 <arg>constraintName</arg>
             </msg>
+
+            <msg>
+                <name>X0Y60.S</name>
+                <text>The number of rows in the base table does not match the number of rows in at least 1 of the indexes on the table.
+                    Index '{0}' on table '{1}' has total {2} rows, but the base table has {3} rows.
+                    Num of rows in local primary buckets = {4}. Num of rows in local redundant buckets = {5}
+                    Num of rows in index for local primary buckets = {6}. Num of rows in index for local redundant buckets = {7}
+                    The suggested corrective action is to recreate the index.</text>
+                <arg>indexName</arg>
+                <arg>tableName</arg>
+                <arg>totalTableRows</arg>
+                <arg>totalIndexRows</arg>
+                <arg>tablePrimaryRows</arg>
+                <arg>tableSecondaryRows</arg>
+                <arg>indexPrimaryRows</arg>
+                <arg>indexSecondaryRows</arg>
+            </msg>
+
 
             <msg>
                 <name>X0Y63.S</name>
@@ -3820,6 +3853,16 @@ Guide.
                 <text>Locking skipped due to skip-locks connection attribute for: {0}</text>
                 <arg>value</arg>
            </msg>
+            <msg>
+                <name>X0Z36.S</name>
+                <text>Exception occurred in creating custom partition resolver for '{0}'.</text>
+                <arg>name</arg>
+            </msg>
+            <msg>
+                <name>X0Z37.S</name>
+                <text>Exception occurred in creating row encoder for '{0}'.</text>
+                <arg>name</arg>
+            </msg>
 <!-- GemStone changes END -->
         </family>
 
@@ -4512,6 +4555,10 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
             <msg>
                 <name>XCL56.S</name>
                 <text>The statement has been cancelled due to a user request.</text>
+            </msg>
+            <msg>
+                <name>XCL57</name>
+                <text>Table schema changed(due to DROP/CREATE/ALTER operation). Please retry the query</text>
             </msg>
 <!--  GemStone changes END -->
 
@@ -5350,7 +5397,8 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
 
             <msg>
                 <name>XJ213.C</name>
-                <text>The traceLevel connection property does not have a valid format for a number.</text>
+                <text>The logging level connection property is not valid: {0}</text>
+                <arg>value</arg>
             </msg>
 
             <msg>
@@ -8022,7 +8070,7 @@ Shutting down instance {0}</text>
 
             <msg>
                 <name>I015</name>
-                <text>com.pivotal.gemfirexd.jdbc.EmbeddedDriver is not registered with the JDBC driver manager</text>
+                <text>io.snappydata.jdbc.EmbeddedDriver is not registered with the JDBC driver manager</text>
             </msg>
 
             <msg>

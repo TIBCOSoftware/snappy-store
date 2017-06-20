@@ -28,7 +28,7 @@ import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
 
 /**
  * Application Function to retrieve values for multiple keys in a region.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.0

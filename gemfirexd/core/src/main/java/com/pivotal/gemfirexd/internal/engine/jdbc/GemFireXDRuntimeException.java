@@ -92,13 +92,11 @@ public final class GemFireXDRuntimeException extends RuntimeException implements
       Throwable t) {
     try {
       return getOrThrowSQLException(t, false, message);
-    } catch (StandardException ex) {
-      // will never happen
-    } catch (SQLException e) {
+    } catch (StandardException | SQLException ex) {
       // will never happen
     }
     // will never be reached
-    return null;
+    throw new GemFireXDRuntimeException(message, t);
   }
 
   /**

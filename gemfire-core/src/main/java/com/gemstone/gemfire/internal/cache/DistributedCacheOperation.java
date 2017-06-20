@@ -972,10 +972,12 @@ public abstract class DistributedCacheOperation {
 
     protected boolean inhibitAllNotifications;
 
-    protected CacheOperationMessage() {
+    protected CacheOperationMessage(){super((TXStateInterface)null);}
+
+    protected CacheOperationMessage(TXStateInterface tx) {
       // this never carries TX information but may still require to wait for a
       // previous pending TX
-      super((TXStateInterface)null);
+      super(tx);
     }
 
     public Operation getOperation() {
@@ -1228,6 +1230,8 @@ public abstract class DistributedCacheOperation {
           final EntryEventImpl entryEvent = (EntryEventImpl)event;
           entryEvent.setLockingPolicy(getLockingPolicy());
           // no TX state for DistributedCacheOperations
+          // Suranjan: There will be for snapshot operations
+          // set it in particular operation
           entryEvent.setTXState(null);
           if (this.possibleDuplicate) {
             entryEvent.setPossibleDuplicate(true);
@@ -1300,7 +1304,8 @@ public abstract class DistributedCacheOperation {
         SystemFailure.checkFailure();
         thr = t;
       } finally {
-        checkVersionIsRecorded(this.versionTag, lclRgn);
+        checkVersionIsRecorded(this.versionTag, lclRgn,
+            event.getOperation().isEntry() ? (EntryEventImpl)event : null);
         if (sendReply) {
           // logger.fine("basicProcess: <" + this + ">: sending reply");
           ReplyException rex = null;
@@ -1340,7 +1345,7 @@ public abstract class DistributedCacheOperation {
      * @param tag the version information
      * @param r the affected region
      */
-    public void checkVersionIsRecorded(VersionTag tag, LocalRegion r) {
+    public void checkVersionIsRecorded(VersionTag tag, LocalRegion r, EntryEventImpl event) {
       if (tag != null && !tag.isRecorded()) { // oops - someone forgot to record the event
         if (r != null) {
           RegionVersionVector v = r.getVersionVector();
@@ -1352,7 +1357,7 @@ public abstract class DistributedCacheOperation {
             if (r.getLogWriterI18n().finerEnabled()) {
               r.getLogWriterI18n().finer("recording version tag in RVV in basicProcess since it wasn't done earlier");
             }
-            v.recordVersion(mbr, tag);
+            v.recordVersion(mbr, tag, event);
           }
         }
       }

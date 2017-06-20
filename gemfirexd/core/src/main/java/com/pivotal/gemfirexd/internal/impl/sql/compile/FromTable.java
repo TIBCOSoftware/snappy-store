@@ -40,17 +40,15 @@
 
 package	com.pivotal.gemfirexd.internal.impl.sql.compile;
 
-
-
-
-
-
-
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Properties;
+import java.util.Vector;
 
 import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.pivotal.gemfirexd.Constants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.NcjHashMapWrapper;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
@@ -58,27 +56,17 @@ import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.AccessPath;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.C_NodeTypes;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.CompilerContext;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.CostEstimate;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.JoinStrategy;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.Optimizable;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.OptimizablePredicate;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.OptimizablePredicateList;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.Optimizer;
-import com.pivotal.gemfirexd.internal.iapi.sql.compile.RowOrdering;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.*;
+import com.pivotal.gemfirexd.internal.iapi.sql.compile.*;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConglomerateDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.util.JBitSet;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.HashScanResultSet;
-
-import java.util.Enumeration;
-import java.util.Properties;
-import java.util.Vector;
-import java.util.HashMap;
-
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
 /**
  * A FromTable represents a table in the FROM clause of a DML statement.
  * It can be either a base table, a subquery or a project restrict.
@@ -97,6 +85,7 @@ abstract class FromTable extends ResultSetNode implements Optimizable
 	String		correlationName;
 	TableName	corrTableName;
 	int			tableNumber;
+	ExecutionEngine executionEngine = ExecutionEngine.NOT_DECIDED;
 	/* (Query block) level is 0-based. */
 	/* RESOLVE - View resolution will have to update the level within
 	 * the view tree.
@@ -109,11 +98,11 @@ abstract class FromTable extends ResultSetNode implements Optimizable
 	int				initialCapacity = HashScanResultSet.DEFAULT_INITIAL_CAPACITY;
 	float			loadFactor = HashScanResultSet.DEFAULT_LOADFACTOR;
 	int				maxCapacity = HashScanResultSet.DEFAULT_MAX_CAPACITY;
-	//GemStone changes BEGIN
+// GemStone changes BEGIN
 	boolean includeSecondaryBuckets = false;
         boolean explicitSecondaryBucketSet = false;
         boolean queryHDFS = false;
-	//GemStone changes END
+// GemStone changes END
 
 	AccessPathImpl			currentAccessPath;
 	AccessPathImpl			bestAccessPath;
@@ -196,11 +185,7 @@ abstract class FromTable extends ResultSetNode implements Optimizable
                     String key = (String) e.nextElement();
                     String value = (String) this.tableProperties.get(key);
                     if (key.equals(Constants.QueryHints.queryHDFS.name())) {
-                      if (value.length() == 1) {
-                        queryHDFS = Integer.parseInt(value) == 0 ? false : true;
-                      } else {
-                        queryHDFS = Boolean.parseBoolean(value);
-                      }
+                      queryHDFS = Misc.parseBoolean(value);
                       getCompilerContext().setQueryHDFS(queryHDFS);
                       getCompilerContext().setHasQueryHDFS(true);
                     }
@@ -1702,13 +1687,29 @@ abstract class FromTable extends ResultSetNode implements Optimizable
         }
 
         /**
-         * @param userSpecifiedJoinStrategy the userSpecifiedJoinStrategy to set
+         * @param value the userSpecifiedJoinStrategy to set
          */
         protected void setUserSpecifiedJoinStrategy(String value) {
           String upperValue = StringUtil.SQLToUpperCase(value);
           this.userSpecifiedJoinStrategy = upperValue;
         }
-        
+
+        /**
+         * @param value the executionEngine to set
+         */
+        protected void setUserSpecifiedExecutionEngine(String value) {
+          if (StringUtil.SQLEqualsIgnoreCase(value, ExecutionEngine.STORE.name())) {
+            this.executionEngine = ExecutionEngine.STORE;
+          } else if (StringUtil.SQLEqualsIgnoreCase(value,  ExecutionEngine.SPARK.name())) {
+            this.executionEngine = ExecutionEngine.SPARK;
+          }
+          getCompilerContext().setExecutionEngine(executionEngine);
+        }
+
+        protected ExecutionEngineRule.ExecutionEngine getExecutionEngine() {
+          return executionEngine;
+        }
+
         @Override
         public int getNumPartitioningCols() throws StandardException {
       

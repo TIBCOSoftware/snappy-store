@@ -48,7 +48,6 @@ import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.NullDataOutputStream;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 // GemStone changes END
@@ -57,19 +56,9 @@ import com.pivotal.gemfirexd.internal.catalog.TypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
-import com.pivotal.gemfirexd.internal.iapi.services.io.FormatIdUtil;
-import com.pivotal.gemfirexd.internal.iapi.services.io.Formatable;
-import com.pivotal.gemfirexd.internal.iapi.services.io.TypedFormat;
 import com.pivotal.gemfirexd.internal.iapi.services.loader.ClassInspector;
-import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
-import com.pivotal.gemfirexd.internal.iapi.types.UserDataValue;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -729,7 +718,7 @@ public class UserType extends DataType
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
+  public int readBytes(long memOffset,
       final int columnWidth, final ByteSource bs) {
     if (columnWidth > 0) {
       final OffHeapByteSource obs = (OffHeapByteSource)bs;

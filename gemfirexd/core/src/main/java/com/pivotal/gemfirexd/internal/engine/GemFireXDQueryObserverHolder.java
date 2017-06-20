@@ -18,6 +18,7 @@
 package com.pivotal.gemfirexd.internal.engine;
 
 import java.io.Serializable;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -72,6 +73,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.FromBaseTable;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.SelectNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
+import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
 
 // Borrowed the idea from the current GFE OQL testing system
 
@@ -258,8 +260,8 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
 
   /**
    * Returns the first observer of the given class (registered using
-   * {@link #putInstance(GemFireXDQueryObserver)} or
-   * {@link #putInstanceIfAbsent(GemFireXDQueryObserver)} or
+   * {@link #putInstance(QueryObserver)} or
+   * {@link #putInstanceIfAbsent(QueryObserver)} or
    * {@link #setInstance(GemFireXDQueryObserver)}), or null if none found.
    */
   @SuppressWarnings("unchecked")
@@ -281,8 +283,8 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
 
   /**
    * Returns all the observers of the given class (registered using
-   * {@link #putInstance(GemFireXDQueryObserver)} or
-   * {@link #putInstanceIfAbsent(GemFireXDQueryObserver)} or
+   * {@link #putInstance(QueryObserver)} or
+   * {@link #putInstanceIfAbsent(QueryObserver)} or
    * {@link #setInstance(GemFireXDQueryObserver)}), or null if none found.
    */
   @SuppressWarnings("unchecked")
@@ -323,8 +325,8 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
 
   /**
    * Removes all observers of the given class (registered using
-   * {@link #putInstance(GemFireXDQueryObserver)} or
-   * {@link #putInstanceIfAbsent(GemFireXDQueryObserver)} or
+   * {@link #putInstance(QueryObserver)} or
+   * {@link #putInstanceIfAbsent(QueryObserver)} or
    * {@link #setInstance(GemFireXDQueryObserver)}) and returns true if any
    * observer was removed else false.
    */
@@ -1664,6 +1666,12 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
       observer.afterLockingTableDuringImport();
     }
   }
+
+  @Override
+  public boolean testIndexRecreate() {
+    return false;
+  }
+
   @Override
   public void afterQueryPlanGeneration() {
     final GemFireXDQueryObserver[] observers = this.observerCollection;
@@ -1672,4 +1680,11 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
     }
   }
 
+  @Override
+  public void testExecutionEngineDecision(QueryInfo queryInfo, ExecutionEngineRule.ExecutionEngine engine, String queryText) {
+    final GemFireXDQueryObserver[] observers = this.observerCollection;
+    for (GemFireXDQueryObserver observer : observers) {
+      observer.testExecutionEngineDecision(queryInfo, engine, queryText);
+    }
+  }
 }

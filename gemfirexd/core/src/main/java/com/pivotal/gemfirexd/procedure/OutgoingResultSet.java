@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * An interface for constructing an outgoing result set by adding rows as
- * List<Object>.
+ * List&lt;Object&gt;.
  *
  * {@link #addColumn} is used for specifying the column names for this result
  * set. If {@link #addRow} is called before {@link #addColumn}, then
@@ -59,8 +59,8 @@ public interface OutgoingResultSet {
    * otherwise default column descriptions will be inferred
    * based on the first row added with columns named "c1", "c2", etc.
    *
-   * @param row a List<Object> for this row. Each element will be converted
-   *            to the corresponding SQL type.
+   * @param row a List&lt;Object&gt; for this row. Each element will be
+   *            converted to the corresponding SQL type.
    * @throws IllegalArgumentException if the row is not of the correct length
    *         based on previous calls to addColumn.
    */

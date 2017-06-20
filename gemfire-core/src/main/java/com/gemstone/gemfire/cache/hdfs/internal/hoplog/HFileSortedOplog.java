@@ -35,6 +35,7 @@ import com.gemstone.gemfire.cache.hdfs.HDFSIOException;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
 import com.gemstone.gemfire.cache.hdfs.internal.cardinality.HyperLogLog;
 import com.gemstone.gemfire.cache.hdfs.internal.cardinality.ICardinality;
+import com.gemstone.gemfire.internal.cache.persistence.soplog.ByteComparator;
 import com.gemstone.gemfire.internal.cache.persistence.soplog.DelegatingSerializedComparator;
 import com.gemstone.gemfire.internal.cache.persistence.soplog.HFileStoreStatistics;
 import com.gemstone.gemfire.internal.cache.persistence.soplog.SortedOplogStatistics;
@@ -47,16 +48,18 @@ import com.gemstone.gemfire.internal.util.SingletonValue;
 import com.gemstone.gemfire.internal.util.SingletonValue.SingletonBuilder;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.BlockType.BlockCategory;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
-import org.apache.hadoop.hbase.io.hfile.Compression.Algorithm;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.io.hfile.HFile.Reader;
 import org.apache.hadoop.hbase.io.hfile.HFile.Writer;
 import org.apache.hadoop.hbase.io.hfile.HFileBlockIndex.BlockIndexReader;
+import org.apache.hadoop.hbase.io.hfile.HFileContext;
+import org.apache.hadoop.hbase.io.hfile.HFileContextBuilder;
 import org.apache.hadoop.hbase.io.hfile.HFileScanner;
-import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
+import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.util.BloomFilterFactory;
 import org.apache.hadoop.hbase.util.BloomFilterWriter;
 import org.apache.hadoop.ipc.RemoteException;
@@ -215,12 +218,15 @@ public final class HFileSortedOplog extends AbstractHoplog {
         Algorithm compress = Algorithm.valueOf(System.getProperty(HoplogConfig.COMPRESSION,
             HoplogConfig.COMPRESSION_DEFAULT));
 
-//        ByteComparator bc = new ByteComparator();
+        ByteComparator bc = new ByteComparator();
+        HFileContext hcontext = new HFileContextBuilder()
+            .withBlockSize(hfileBlockSize)
+            .withCompression(compress)
+            .build();
         writer = HFile.getWriterFactory(conf, cacheConf)
             .withPath(fsProvider.getFS(), path)
-            .withBlockSize(hfileBlockSize)
-//            .withComparator(bc)
-            .withCompression(compress)
+            .withFileContext(hcontext)
+            .withComparator(bc)
             .create();
         bfw = BloomFilterFactory.createGeneralBloomAtWrite(conf, cacheConf, BloomType.ROW, keys,
             writer);
@@ -382,11 +388,11 @@ public final class HFileSortedOplog extends AbstractHoplog {
     private final Map<byte[], byte[]> fileInfo;
     private final HyperLogLog estimator;
     private final FileSystem previousFS;
-    
+
     public HFileReader() throws IOException {
       try {
         FileSystem fs = fsProvider.getFS();
-        reader = HFile.createReader(fs, path, cacheConf);
+        reader = HFile.createReader(fs, path, cacheConf, conf);
         fileInfo = reader.loadFileInfo();
         closed = new AtomicBoolean(false);
 
@@ -727,7 +733,8 @@ public final class HFileSortedOplog extends AbstractHoplog {
         }
 
         assert from == null || to == null
-            || scan.getReader().getComparator().compare(from, to) <= 0;
+            || scan.getReader().getComparator().compare(
+            from, 0, from.length, to, 0, to.length) <= 0;
 
         initIterator();
       }

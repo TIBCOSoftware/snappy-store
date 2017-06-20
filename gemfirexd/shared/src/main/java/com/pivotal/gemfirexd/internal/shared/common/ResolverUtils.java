@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.shared.common;
 
@@ -45,8 +63,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     // no instance
   }
 
-  public static Integer TOKEN_FOR_DB_SYNC = ClientSharedUtils.getJdkHelper()
-      .newInteger(Short.MAX_VALUE);
+  public static Integer TOKEN_FOR_DB_SYNC = (int)Short.MAX_VALUE;
 
   public static Object TOK_ALL_NODES = new Object() {
 
@@ -68,8 +85,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     Constructor<?> cons;
     Field strChars;
     try {
-      cons = BigInteger.class.getDeclaredConstructor(new Class[] { int[].class,
-          int.class });
+      cons = BigInteger.class.getDeclaredConstructor(int[].class, int.class);
       cons.setAccessible(true);
     } catch (Exception e) {
       cons = null;
@@ -88,11 +104,9 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     stringChars = strChars;
   }
 
-  private static final Integer MINUS_ONE = ClientSharedUtils.getJdkHelper()
-      .newInteger(-1);
-  private static final Integer ZERO = ClientSharedUtils.getJdkHelper().newInteger(0);
-  private static final Integer PLUS_ONE = ClientSharedUtils.getJdkHelper()
-      .newInteger(1);
+  private static final Integer MINUS_ONE = -1;
+  private static final Integer ZERO = 0;
+  private static final Integer PLUS_ONE = 1;
 
   /**
    * Create a new BigInteger given a magnitude and signum wrapping the given
@@ -118,10 +132,10 @@ public abstract class ResolverUtils extends ClientResolverUtils {
             break;
           // should never happen
           default:
-            sig = ClientSharedUtils.getJdkHelper().newInteger(signum);
+            sig = signum;
             break;
         }
-        return (BigInteger)bigIntCons.newInstance(new Object[] { mag, sig });
+        return (BigInteger)bigIntCons.newInstance(mag, sig);
       } catch (Exception ex) {
         throw ClientSharedUtils.newRuntimeException("unexpected exception", ex);
       }
@@ -212,8 +226,8 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     private static final long serialVersionUID = -1475537216488457161L;
 
     /**
-     * If object is null, the {{@link #isExclusive} true means -infinity else
-     * +infinity
+     * If object is null, the <code>isExclusive</code> true means -infinity
+     * else +infinity
      */
     protected Comparable obj;
 
@@ -331,12 +345,12 @@ public abstract class ResolverUtils extends ClientResolverUtils {
      * 
      * Also requires the SQL command string that is prepended to the exception
      * messages.
-     * 
-     * @throws StandardException
-     *           if either of start or end is not {@link Comparable}, or both
-     *           are null or the two are part of completely different type
-     *           hierarchies
      */
+//     * @throws StandardException
+//     *           if either of start or end is not {@link Comparable}, or both
+//     *           are null or the two are part of completely different type
+//     *           hierarchies
+//     */
     public GfxdRange(String command, Object start, Object end)
         /*throws StandardException*/ {
       if (start != null) {
@@ -426,7 +440,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
     }
 
     /**
-     * Invalidate this range so that any further {@link #inRange(Object)} calls
+     * Invalidate this range so that any further {@link #inRange} calls
      * throw {@link ClassCastException}s.
      */
     public void invalidate() {
@@ -849,8 +863,8 @@ public abstract class ResolverUtils extends ClientResolverUtils {
    * Compute the hashCode of a BigInteger using provided magnitude without
    * serializing the value to bytes. The value returned is the same as would be
    * obtained by serializing to bytes using
-   * {@link #serializeBigIntMagnitudeToBytes(int[], byte[], int)} and then
-   * invoking {@link GemFireXDUtils#addBytesToBucketHash(byte[], int)} on the result.
+   * <code></code>InternalDataSerializer#serializeBigIntMagnitudeToBytes</code>
+   * and then invoking {@link #addBytesToBucketHash} on the result.
    */
   public static int computeHashCode(final int[] magnitude, int hash, 
       int formatId) {
@@ -909,25 +923,6 @@ public abstract class ResolverUtils extends ClientResolverUtils {
       }
     }
     return getChars(s, slen);
-  }
-
-  /**
-   * Get the internal char[] handle for this string so use with extreme care.
-   * Returns null if it cannot get the handle for some reason, or if the string
-   * does not start at zero offset.
-   */
-  public static char[] getInternalCharsOnly(final String s) {
-    if (stringChars != null) {
-      try {
-        final char[] chars = (char[])stringChars.get(s);
-        if (chars != null && chars.length == s.length()) {
-          return chars;
-        }
-      } catch (Exception ex) {
-        throw ClientSharedUtils.newRuntimeException("unexpected exception", ex);
-      }
-    }
-    return null;
   }
 
   /**

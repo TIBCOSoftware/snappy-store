@@ -27,6 +27,7 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableHashtable;
+import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.vti.VTICosting;
 import com.pivotal.gemfirexd.internal.vti.VTIEnvironment;
 import com.pivotal.gemfirexd.internal.vti.VTITemplate;
@@ -217,9 +218,9 @@ public abstract class GfxdVTITemplate extends VTITemplate implements VTICosting 
    * Return a type conversion exception from this type to another.
    */
   protected final StandardException dataTypeConversion(String targetType,
-      String actualType) {
+      ResultColumnDescriptor rcd) {
     return StandardException.newException(SQLState.LANG_DATA_TYPE_GET_MISMATCH,
-        targetType, actualType);
+        targetType, rcd.getType().getTypeName(), rcd.getName());
   }
 
   /** VTI costing interface */

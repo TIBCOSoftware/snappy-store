@@ -244,7 +244,7 @@ public class RemoteDestroyMessage extends RemoteOperationMessageWithDirectReply 
           event.setVersionTag(versionTag);
           final RegionVersionVector rvv = r.getVersionVector();
           if (rvv != null) {
-            rvv.recordVersion(versionTag.getMemberID(), versionTag);
+            rvv.recordVersion(versionTag.getMemberID(), versionTag, event);
           }
         }
         event.setInhibitDistribution(true);

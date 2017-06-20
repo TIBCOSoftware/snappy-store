@@ -37,7 +37,6 @@ import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
@@ -600,8 +599,7 @@ public class AbstractRowLocationAdapter implements RowLocation {
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
-      ByteSource bs) {
+  public int readBytes(long memOffset, int columnWidth, ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + getClass());
   }

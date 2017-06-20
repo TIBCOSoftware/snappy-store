@@ -30,7 +30,7 @@ import com.gemstone.gemfire.cache.query.Struct;
 /**
  * A sample gemfire client that writes and queries PositionPdx objects on a 
  * server.
- * </p>
+ * <p>
  *
  * @author GemStone Systems, Inc.
  * @since 6.6

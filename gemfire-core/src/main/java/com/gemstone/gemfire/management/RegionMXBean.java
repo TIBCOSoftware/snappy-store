@@ -356,4 +356,19 @@ public interface RegionMXBean {
    * For other regions it will be -1 ( Not Available)
    */
   public long getEstimatedSizeForHDFSRegion();
+
+  /**
+   * It is true if its a column table. False for normal row tables
+   */
+  public boolean isColumnTable();
+
+  /**
+   * get number of rows which have been overflown to column batches
+   */
+  public long getRowsInColumnBatches();
+
+  /**
+   * get number of rows in Reservoir
+   */
+  public long getRowsInReservoir();
 }

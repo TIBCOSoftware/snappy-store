@@ -59,9 +59,9 @@ abstract class JDBCDriversPropertyTest extends TestCase {
         Class alt = Class.forName(
            "org.apache.derbyTesting.functionTests.tests.jdbcapi.AutoloadTest");
         
-        Method suiteMethod = alt.getMethod("suite", null);
+        Method suiteMethod = alt.getMethod("suite");
         
-        return (Test) suiteMethod.invoke(null, null);
+        return (Test) suiteMethod.invoke(null);
     }
     
     JDBCDriversPropertyTest() {

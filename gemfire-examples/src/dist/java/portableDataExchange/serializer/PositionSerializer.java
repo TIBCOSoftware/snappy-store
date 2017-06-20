@@ -22,7 +22,7 @@ import com.gemstone.gemfire.pdx.PdxWriter;
 
 /**
  * An example of a PdxSerializer that can serialize PositionPdx objects.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.6

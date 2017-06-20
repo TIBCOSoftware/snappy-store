@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.engine.store;
 
@@ -39,6 +57,7 @@ import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.DistributedMember;
+import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisee;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
@@ -48,6 +67,8 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.ClassPathLoader;
+import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.GemFireLevel;
 import com.gemstone.gemfire.internal.HostStatSampler.StatsSamplerCallback;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -56,7 +77,6 @@ import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
-import com.gemstone.gemfire.internal.shared.Jdk6Helper;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TLongHashSet;
@@ -72,6 +92,7 @@ import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryTimeStatistics;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.SigThreadDumpHandler;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.access.PropertyConglomerate;
@@ -87,6 +108,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCl
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
+import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl.NetworkInterfaceImpl;
@@ -104,6 +126,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.DistributionObserver;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.IdentityValueManager;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.GFContainerLocking;
+import com.pivotal.gemfirexd.internal.engine.ui.SnappyRegionStatsCollectorFunction;
 import com.pivotal.gemfirexd.internal.hadoop.HadoopGfxdLonerConfig;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
@@ -118,6 +141,8 @@ import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PersistentSet;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyFactory;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.Authorizer;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.AccessFactory;
@@ -540,6 +565,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         }
       }
     }
+    invalidateHiveMetaDataForAllTables();
+  }
+
+  public void invalidateHiveMetaDataForAllTables() {
+    List<GemFireContainer> containers = getAllContainers();
+    for (GemFireContainer container : containers) {
+      container.invalidateHiveMetaData();
+    }
   }
 
   public void dropConglomerate(Transaction xact, ContainerKey id)
@@ -571,6 +604,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.uninitializedConglomerates.remove(id);
       }
     }
+    invalidateHiveMetaDataForAllTables();
   }
 
   public boolean addPendingOperation(MemOperation op, GemFireTransaction tran)
@@ -710,24 +744,23 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       final Properties properties) throws StandardException {
     Properties dsProps = null;
     String serverGroupsCSV = null;
-    String hostDataStr = null;
+    boolean hostData = true;
     boolean isLocator = false;
     boolean isAgent = false;
     boolean isAdmin = false;
+    int dumpTimeStatsFreq = -1;
     float criticalHeapPercent = -1.0f;
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
-
+   
     // install the GemFireXD specific thread dump signal (URG) handler
-    /*
     try {
       SigThreadDumpHandler.install();
     } catch (Throwable t) {
       SanityManager.DEBUG_PRINT("fine:TRACE",
           "Failed to install thread dump signal handler: " + t.getCause());
     }
-    */
 
     // first clear any residual statics from a previous unclean run
     clearStatics(true);
@@ -747,6 +780,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
     // set the flag to indicate a GemFireXD system
     GemFireCacheImpl.setGFXDSystem(true);
+
+    // set the gemfirePropertyFile
+    String propertyFileName = PropertyUtil.isSQLFire
+        ? com.pivotal.gemfirexd.Property.SQLF_PROPERTIES_FILE
+        : com.pivotal.gemfirexd.Property.PROPERTIES_FILE;
+    DistributedSystem.PROPERTY_FILE = PropertyUtil.getSystemProperty(
+        propertyFileName, PropertyUtil.getSystemProperty(
+            "gemfirePropertyFile", propertyFileName));
 
     ResolverUtils.reset();
     if (PropertyUtil.getSystemBoolean(
@@ -773,9 +814,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           useDebugVersion);
     }
 
-    int dumpTimeStatsFreq = Integer.getInteger(GfxdConstants.GFXD_PREFIX
-        + Attribute.DUMP_TIME_STATS_FREQ, -1).intValue();
-
     final Properties finalGFXDBootProps;
     try {
       finalGFXDBootProps = FabricServiceUtils.preprocessProperties(properties,
@@ -801,65 +839,23 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       for (Map.Entry<Object,Object> e: props.entrySet()) {
         finalGFXDBootProps.put(e.getKey(), e.getValue());
       }
-      dsys.getLogWriter().info("Booting data store with reconnected distributed system: " + dsys);
+      dsys.getLogWriter().info(
+          "Booting data store with reconnected distributed system: " + dsys);
     }
 
     final Enumeration<?> propNames = finalGFXDBootProps.propertyNames();
+    String propName, propValue;
     while (propNames.hasMoreElements()) {
-      final String propName = (String)propNames.nextElement();
-      final String propValue = finalGFXDBootProps.getProperty(propName);
+      propName = (String)propNames.nextElement();
+      propValue = finalGFXDBootProps.getProperty(propName);
 
-      if (propName.equals(Attribute.GFXD_HOST_DATA)) {
-        hostDataStr = propValue;
-      }
-      else if (propName.equals(Attribute.SERVER_GROUPS)) {
-        serverGroupsCSV = propValue;
-      }
-      else if (propName.equals(Attribute.STAND_ALONE_LOCATOR)) {
-        isLocator = true;
-      }
-      else if (propName.equals(GfxdConstants.PROPERTY_BOOT_INDICATOR)) {
+      if (propName.equals(GfxdConstants.PROPERTY_BOOT_INDICATOR)) {
         if(propValue.equals(GfxdConstants.BT_INDIC.FABRICAGENT.toString())) {
           isAgent = true;
         }
       }
       else if (propName.equals(Property.PROPERTY_GEMFIREXD_ADMIN)) {
         isAdmin = true;
-      }
-      else if (propName.equals(Attribute.DUMP_TIME_STATS_FREQ)) {
-        dumpTimeStatsFreq = readUnsignedIntegerProperty(propValue, propName);
-      }
-      else if (propName.equals(Attribute.SYS_PERSISTENT_DIR)) {
-        // Also set this property in the SystemProperties so that GatewayImpl
-        // can also access it
-        // For time being. This needs to be removed
-        System.setProperty(GfxdConstants.SYS_PERSISTENT_DIR_PROP, propValue);
-        this.persistenceDir = propValue;
-      }
-      else if (propName.equals(Attribute.SYS_HDFS_ROOT_DIR)) {
-        System.setProperty(GfxdConstants.SYS_HDFS_ROOT_DIR_PROP, propValue);
-        this.hdfsRootDir = propValue;
-      }
-      else if (propName.equals(CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE)) {
-        criticalHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(CacheServerLauncher.EVICTION_HEAP_PERCENTAGE)) {
-        evictionHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE)) {
-        criticalOffHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE)) {
-        evictionOffHeapPercent = Float.parseFloat(propValue);
-      }
-      else if (propName.equals(Property.HADOOP_IS_GFXD_LONER)) {
-        this.isHadoopGfxdLonerMode = Boolean.parseBoolean(propValue);
-        if (this.isHadoopGfxdLonerMode) {
-          hadoopGfxdLonerConfig = new HadoopGfxdLonerConfig(finalGFXDBootProps,
-              this);
-          System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,
-              "true");
-        }
       }
 
       // remember these properties, so that modules that require one of
@@ -868,6 +864,80 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.serviceProperties.setProperty(propName, propValue);
       }
     }
+
+    final Properties props = this.serviceProperties;
+    hostData = PropertyUtil.getBooleanProperty(Attribute.GFXD_HOST_DATA,
+        GfxdConstants.GFXD_HOST_DATA, props, true, null);
+    serverGroupsCSV = PropertyUtil.findAndGetProperty(props,
+        Attribute.SERVER_GROUPS, GfxdConstants.GFXD_SERVER_GROUPS);
+    isLocator = PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
+        GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
+
+
+    Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
+        GemFireSparkConnectorCacheFactory.gfeGridNamePrefix);
+    Map<String, String> gfeGridPoolProps = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
+        GemFireSparkConnectorCacheFactory.gfeGridPropsPrefix);
+
+    propName = Attribute.DUMP_TIME_STATS_FREQ;
+    propValue = PropertyUtil.findAndGetProperty(props,
+        propName, GfxdConstants.GFXD_PREFIX + propName);
+    if (propValue != null) {
+      dumpTimeStatsFreq = readUnsignedIntegerProperty(propValue, propName);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        Attribute.SYS_PERSISTENT_DIR, GfxdConstants.SYS_PERSISTENT_DIR_PROP);
+    if (propValue != null) {
+      // Also set this property in the SystemProperties so that GatewayImpl
+      // can also access it
+      // For time being. This needs to be removed
+      System.setProperty(GfxdConstants.SYS_PERSISTENT_DIR_PROP, propValue);
+      this.persistenceDir = propValue;
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        Attribute.SYS_HDFS_ROOT_DIR, GfxdConstants.SYS_HDFS_ROOT_DIR_PROP);
+    if (propValue != null) {
+      System.setProperty(GfxdConstants.SYS_HDFS_ROOT_DIR_PROP, propValue);
+      this.hdfsRootDir = propValue;
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      criticalHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.EVICTION_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.EVICTION_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      evictionHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
+        GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      criticalOffHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
+        GfxdConstants.GFXD_PREFIX
+            + CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE);
+    if (propValue != null) {
+      evictionOffHeapPercent = Float.parseFloat(propValue);
+    }
+    propValue = PropertyUtil.findAndGetProperty(props,
+        Property.HADOOP_IS_GFXD_LONER, Property.HADOOP_IS_GFXD_LONER);
+    if (propValue != null) {
+      this.isHadoopGfxdLonerMode = Boolean.parseBoolean(propValue);
+      if (this.isHadoopGfxdLonerMode) {
+        hadoopGfxdLonerConfig = new HadoopGfxdLonerConfig(finalGFXDBootProps,
+            this);
+        System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,
+            "true");
+      }
+    }
+
     InternalDistributedSystem
         .setHadoopGfxdLonerMode(this.isHadoopGfxdLonerMode);
 
@@ -909,7 +979,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     else if(isAgent) {
       this.myKind = VMKind.AGENT;
     }
-    else if (hostDataStr != null && !Boolean.parseBoolean(hostDataStr)) {
+    else if (!hostData) {
       this.myKind = VMKind.ACCESSOR;
       // fix for bug #48479 accessor hung trying to reconnect after network failure
       finalGFXDBootProps.put(DistributionConfig.DISABLE_AUTO_RECONNECT_NAME, "true");
@@ -948,10 +1018,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
       // Register DVD deserialization helper
       DataType.init();
-
-      // Any initialization required for helper. Engine is always compiled with
-      // and runs on >= JDK6, so use JDK6 specific helper.
-      Jdk6Helper.init();
 
       // use given properties to connect to the
       // distributed system and create the cache and region
@@ -1002,12 +1068,18 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       }
 
       try {
-        CacheFactory c = new CacheFactory(dsProps);
+        CacheFactory c = null;
+        if (!gfeGridMappings.isEmpty()) {
+          c = new GemFireSparkConnectorCacheFactory(dsProps, gfeGridMappings, gfeGridPoolProps);
+        } else {
+          c = new CacheFactory(dsProps);
+        }
         if (this.persistingDD) {
           c.setPdxPersistent(true);
           c.setPdxDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
         }
-        this.gemFireCache = (GemFireCacheImpl) c.create();
+
+        this.gemFireCache = (GemFireCacheImpl)c.create();
         this.gemFireCache.getLogger().info(
             "GemFire Cache successfully created.");
       } catch (CacheExistsException ex) {
@@ -1087,6 +1159,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           new GfxdPartitionResolver.HdfsGlobalIndexLookupFunction());
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
+      FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
+      FunctionService.registerFunction(new SnappyRemoveCachedObjectsFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
       if (logger.fineEnabled()) {
@@ -1268,6 +1342,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
+
+
+
   /**
    * Start executor if any of the accessor is a driver.
    */
@@ -1401,8 +1478,11 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       // when DD is not being persisted then we no longer allow regions with
       // persistence to be created; however, if "sys-disk-dir" is explicitly
       // set then that can be used for overflow/gateway
-      
-      if (this.persistingDD || this.persistenceDir != null) {
+
+      String serverGroup = this.getBootProperty("server-groups");
+      Boolean isLeadMember = serverGroup != null ? serverGroup.contains("IMPLICIT_LEADER_SERVERGROUP") : false;
+
+      if (this.persistingDD || this.persistenceDir != null || isLeadMember) {
         try {
           DiskStoreFactory dsf = this.gemFireCache.createDiskStoreFactory();
           File file = new File(generatePersistentDirName(null))
@@ -1420,7 +1500,11 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
               dsf.setMaxOplogSize(DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE);
             }
             else {
-              dsf.setMaxOplogSize(10);
+              if (isLeadMember) {
+                dsf.setMaxOplogSize(1);
+              } else {
+                dsf.setMaxOplogSize(10);
+              }
             }
           }
           dsf.setDiskDirs(new File[] { file });
@@ -1814,6 +1898,28 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   public void setProperty(String key, Serializable value, boolean dbOnlyProperty)
       throws StandardException {
     this.xactProperties.setProperty(null, key, value, dbOnlyProperty);
+    if (key.contains("auth") || key.contains("security")) {
+      // refresh the cached access-level in authorizers
+      final GemFireXDUtils.Visitor<LanguageConnectionContext> refresh =
+          new GemFireXDUtils.Visitor<LanguageConnectionContext>() {
+            @Override
+            public boolean visit(LanguageConnectionContext lcc) {
+              Authorizer authorizer = lcc.getAuthorizer();
+              if (authorizer != null) {
+                try {
+                  authorizer.refresh();
+                } catch (StandardException se) {
+                  // log a warning and move on
+                  SanityManager.DEBUG_PRINT("warning:"
+                          + GfxdConstants.TRACE_AUTHENTICATION,
+                      "Exception in refreshing access-level", se);
+                }
+              }
+              return true;
+            }
+          };
+      GemFireXDUtils.forAllContexts(refresh);
+    }
   }
 
   @Override
@@ -2237,14 +2343,22 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   // The first access of this will instantiate the snappy catalog
 	public void initExternalCatalog() {
+    GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)Misc.getI18NLogWriter());
+    int previousLevel = bridgeLogger.getLevel();
     try {
+      // just log the warning messages, during hive client initialization
+      // as it generates hundreds of line of logs which are of no use.
+      // Once the initialization is done, restore the logging level.
+      bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
+
       if (this.externalCatalog == null) {
         synchronized (this) {
           if (this.externalCatalog == null) {
             // Instantiate using reflection
             try {
-              this.externalCatalog = (ExternalCatalog)Class.forName(
-                  "io.snappydata.impl.SnappyHiveCatalog").newInstance();
+              this.externalCatalog = (ExternalCatalog)ClassPathLoader
+                  .getLatest().forName("io.snappydata.impl.SnappyHiveCatalog")
+                  .newInstance();
             } catch (InstantiationException | IllegalAccessException
                 | ClassNotFoundException e) {
               throw new IllegalStateException(
@@ -2259,6 +2373,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       }
     } catch(Throwable ex) {
       throw new RuntimeException(ex);
+    } finally {
+      bridgeLogger.setLevel(previousLevel);
     }
 	}
 
@@ -2273,8 +2389,11 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.databaseName.equalsIgnoreCase("snappydata")) {
         this.snappyStore = true;
         this.database.setdisableStatementOptimizationToGenericPlan();
+        gemFireCache.DEFAULT_SNAPSHOT_ENABLED = true;
+        gemFireCache.startOldEntryCleanerService();
       }
     }
+    ClientSharedUtils.setThriftDefault(this.snappyStore);
   }
 
   private String databaseName;
@@ -2602,10 +2721,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           .currentFabricServiceInstance();
       if (service != null) {
         assert service instanceof FabricServiceImpl;
-        Iterator<NetworkInterface> nwIter = ((FabricServiceImpl)service)
-            .getAllNetworkServers().iterator();
-        while (nwIter.hasNext()) {
-          NetworkInterfaceImpl nwImpl = (NetworkInterfaceImpl)nwIter.next();
+        for (NetworkInterface nw : service.getAllNetworkServers()) {
+          NetworkInterfaceImpl nwImpl = (NetworkInterfaceImpl)nw;
           nwImpl.collectStatisticsSample();
         }
       }

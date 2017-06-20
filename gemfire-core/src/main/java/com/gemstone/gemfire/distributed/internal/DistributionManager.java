@@ -180,7 +180,9 @@ public final class DistributionManager
     Integer.getInteger("DistributionManager.MAX_WAITING_THREADS", Integer.MAX_VALUE).intValue();
 
   public static final int MAX_THREADS = Integer.getInteger("DistributionManager.MAX_THREADS", Math.max(Runtime.getRuntime().availableProcessors()*4, 100)).intValue();
-  public static final int MAX_PR_THREADS = Integer.getInteger("DistributionManager.MAX_PR_THREADS", Math.max(Runtime.getRuntime().availableProcessors()*4, 16)).intValue();
+  public static final int MAX_PR_THREADS_SET = Integer.getInteger("DistributionManager.MAX_PR_THREADS", -1);
+  public static final int MAX_PR_THREADS = MAX_PR_THREADS_SET > 0 ? MAX_PR_THREADS_SET
+      : Math.max(Runtime.getRuntime().availableProcessors() * 4, 16);
   public static final int MAX_FE_THREADS = Integer.getInteger("DistributionManager.MAX_FE_THREADS", Math.max(Runtime.getRuntime().availableProcessors()*4, 16)).intValue();
   //    Integer.getInteger("DistributionManager.MAX_THREADS", max(Runtime.getRuntime().availableProcessors()*2, 2)).intValue();
 

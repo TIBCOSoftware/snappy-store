@@ -662,7 +662,7 @@ public class PreparedStatement extends Statement
                     //see http://issues.apache.org/jira/browse/DERBY-1610#action_12432568
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       jdbcType,
-                                                      paramType );
+                                                      paramType, parameterIndex);
                 }
                 
                 setNullX(parameterIndex, jdbcType);
@@ -711,15 +711,14 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.BOOLEAN,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.BIT;
 // GemStone changes BEGIN
                 // changed to Short.valueOf() if possible
-                setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-                    .newShort((short)(x ? 1 : 0)));
+                setInput(parameterIndex, (short)(x ? 1 : 0));
                 /* (original code)
                 setInput(parameterIndex, new Short((short) (x ? 1 : 0)));
                 */
@@ -747,15 +746,13 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.TINYINT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.TINYINT;
 // GemStone changes BEGIN
-                // changed to use Short.valueOf() if possible
-                setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-                    .newShort(x));
+                setInput(parameterIndex, (short)x);
                 /* (original code)
                 setInput(parameterIndex, new Short(x));
                 */
@@ -783,7 +780,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.SMALLINT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                                                   
 
                 }
@@ -801,8 +798,7 @@ public class PreparedStatement extends Statement
     void setShortX(int parameterIndex, short x) throws SqlException {
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.SMALLINT;
 // GemStone changes BEGIN
-        // changed to use Short.valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper().newShort(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Short(x));
         */
@@ -825,7 +821,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.INTEGER,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                 }
                 
                 setIntX(parameterIndex, x);
@@ -841,9 +837,7 @@ public class PreparedStatement extends Statement
     void setIntX(int parameterIndex, int x) throws SqlException {
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.INTEGER;
 // GemStone changes BEGIN
-        // changed to use Integer.valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-            .newInteger(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Integer(x));
         */
@@ -866,7 +860,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.INTEGER,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                 }
                 setLongX(parameterIndex, x);
             }
@@ -883,8 +877,7 @@ public class PreparedStatement extends Statement
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] 
                 = java.sql.Types.BIGINT;
 // GemStone changes BEGIN
-        // changed to use valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper().newLong(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Long(x));
         */
@@ -906,7 +899,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.FLOAT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
 
                 }
                 
@@ -935,7 +928,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.DOUBLE,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -964,7 +957,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.BIGINT,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
 
@@ -998,7 +991,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_ ,
                                                       java.sql.Types.DATE,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -1066,7 +1059,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception( agent_.logWriter_,
                                                        java.sql.Types.TIME,
-                                                       paramType );
+                                                       paramType, parameterIndex);
                 }
                 
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.TIME;
@@ -1133,7 +1126,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.TIMESTAMP,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                     
                 }
                 
@@ -1206,7 +1199,7 @@ public class PreparedStatement extends Statement
                 if( ! PossibleTypes.POSSIBLE_TYPES_IN_SET_STRING.checkType( paramType ) ){
                     PossibleTypes.throw22005Exception(agent_.logWriter_ ,
                                                       java.sql.Types.VARCHAR,
-                                                      paramType);
+                                                      paramType, parameterIndex);
                 }
                 
                 setStringX(parameterIndex, x);
@@ -1243,7 +1236,7 @@ public class PreparedStatement extends Statement
                     
                     PossibleTypes.throw22005Exception(agent_.logWriter_,
                                                       java.sql.Types.VARBINARY,
-                                                      paramType );
+                                                      paramType, parameterIndex);
                 }
                 
                 setBytesX(parameterIndex, x);
@@ -1405,7 +1398,7 @@ public class PreparedStatement extends Statement
             
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.LONGVARCHAR,
-                                              paramType);
+                                              paramType, parameterIndex);
             
             
         }
@@ -1418,7 +1411,7 @@ public class PreparedStatement extends Statement
                 checkType(paramType)) {
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.VARBINARY,
-                                              paramType);
+                                              paramType, parameterIndex);
         }
     }
     
@@ -1429,7 +1422,7 @@ public class PreparedStatement extends Statement
                 checkType(paramType)) {
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.LONGVARCHAR,
-                                              paramType);
+                                              paramType, parameterIndex);
         }
     }
 
@@ -1440,7 +1433,7 @@ public class PreparedStatement extends Statement
             
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.BLOB,
-                                              paramType);
+                                              paramType, parameterIndex);
         }
     }
     
@@ -1452,7 +1445,7 @@ public class PreparedStatement extends Statement
                     
             PossibleTypes.throw22005Exception(agent_.logWriter_,
                                               java.sql.Types.CLOB,
-                                              paramType);
+                                              paramType, parameterIndex);
                     
         }
         
@@ -1819,7 +1812,7 @@ public class PreparedStatement extends Statement
         if ( !( paramType == expectedType ) )
         {
             PossibleTypes.throw22005Exception
-                (agent_.logWriter_, expectedType, paramType );
+                (agent_.logWriter_, expectedType, paramType, parameterIndex);
         }
         
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = expectedType;
@@ -1846,7 +1839,7 @@ public class PreparedStatement extends Statement
         }
         catch (ClassNotFoundException e) { problem = e; }
 // GemStone changes BEGIN
-        if (Boolean.TRUE.equals(Cursor.ALLOW_THREADCONTEXT_CLASSLOADER.get())) {
+        if (Boolean.TRUE.equals(ClientSharedUtils.ALLOW_THREADCONTEXT_CLASSLOADER.get())) {
           try {
             // also check with current thread context ClassLoader
             Class targetClass = Class.forName(targetClassName, true,
@@ -4061,7 +4054,7 @@ public class PreparedStatement extends Statement
         
         static SqlException throw22005Exception( LogWriter logWriter, 
                                                  int valType,
-                                                 int paramType)
+                                                 int paramType, int parameterIndex)
             
             throws SqlException{
             
@@ -4069,7 +4062,7 @@ public class PreparedStatement extends Statement
                                     new ClientMessageId(SQLState.LANG_DATA_TYPE_GET_MISMATCH) ,
                                     new Object[]{ 
                                         Types.getTypeString(valType),
-                                        Types.getTypeString(paramType) 
+                                        Types.getTypeString(paramType), parameterIndex
                                     },
                                     (Throwable) null);
         }

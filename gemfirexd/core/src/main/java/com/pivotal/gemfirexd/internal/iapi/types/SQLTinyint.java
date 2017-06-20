@@ -49,13 +49,9 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
+import org.apache.spark.unsafe.Platform;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -397,7 +393,7 @@ public final class SQLTinyint
 	public void setValue(short theValue) throws StandardException
 	{
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		value = (byte)theValue;
 		isnull = false;
 	}
@@ -408,7 +404,7 @@ public final class SQLTinyint
 	public void setValue(int theValue) throws StandardException
 	{
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		value = (byte)theValue;
 		isnull = false;
 	}
@@ -419,7 +415,7 @@ public final class SQLTinyint
 	public void setValue(long theValue) throws StandardException
 	{
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 		value = (byte)theValue;
 		isnull = false;
 	}
@@ -434,7 +430,7 @@ public final class SQLTinyint
 		theValue = NumberDataType.normalizeREAL(theValue);
 
 		if (theValue > Byte.MAX_VALUE || theValue < Byte.MIN_VALUE)
-			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 
 		float floorValue = (float)Math.floor(theValue);
 
@@ -818,10 +814,9 @@ public final class SQLTinyint
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset, final int columnWidth, ByteSource bs) {
     assert columnWidth == 1: columnWidth;
-    this.value = unsafe.getByte(memOffset);
+    this.value = Platform.getByte(null, memOffset);
     return 1;
   }
 

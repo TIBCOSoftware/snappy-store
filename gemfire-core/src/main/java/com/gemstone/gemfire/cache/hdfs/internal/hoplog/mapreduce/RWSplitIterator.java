@@ -24,7 +24,6 @@ import com.gemstone.gemfire.cache.hdfs.internal.hoplog.AbstractHoplog;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.HFileSortedOplog;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 
 /**
  * An iterator that iterates over a split in a read/write hoplog
@@ -38,7 +37,8 @@ public class RWSplitIterator extends HDFSSplitIterator {
 
   @Override
   protected AbstractHoplog getHoplog(FileSystem fs, Path path) throws IOException {
-    SchemaMetrics.configureGlobally(fs.getConf());
+    // [sumedh] should not be required with the new metrics2
+    // SchemaMetrics.configureGlobally(fs.getConf());
     return HFileSortedOplog.getHoplogForLoner(fs, path); 
   }
 

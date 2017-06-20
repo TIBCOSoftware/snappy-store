@@ -25,20 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -46,8 +33,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.LongBinaryOperator;
 import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -61,7 +50,6 @@ import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.admin.internal.SystemMemberCacheEventProcessor;
-import com.gemstone.gemfire.cache.AttributesFactory;
 import com.gemstone.gemfire.cache.AttributesMutator;
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheClosedException;
@@ -84,7 +72,6 @@ import com.gemstone.gemfire.cache.DiskWriteAttributesFactory;
 import com.gemstone.gemfire.cache.EntryDestroyedException;
 import com.gemstone.gemfire.cache.EntryExistsException;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.EvictionAction;
 import com.gemstone.gemfire.cache.EvictionAttributes;
 import com.gemstone.gemfire.cache.ExpirationAttributes;
 import com.gemstone.gemfire.cache.FailedSynchronizationException;
@@ -156,7 +143,6 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ClassLoadUtil;
-import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.NanoTimer;
@@ -166,7 +152,6 @@ import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskEntryPage;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskSavyIterator;
 import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
-import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation.GIIStatus;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException.PutAllPartialResult;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
@@ -228,12 +213,16 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock.StoppableWriteLock;
-import com.gemstone.org.jgroups.util.StringId;
 
 /**
  * Implementation of a local scoped-region. Note that this class has a different
@@ -338,6 +327,12 @@ public class LocalRegion extends AbstractRegion
    * Set to true if this region supports transaction else false.
    */
   private final boolean supportsTX;
+
+
+
+
+  public static final ThreadLocal<String> regionPath =
+      new ThreadLocal<String>() ;
 
   public static final ReadEntryUnderLock READ_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
@@ -656,6 +651,9 @@ public class LocalRegion extends AbstractRegion
    */
   final UUIDAdvisor uuidAdvisor;
 
+  public static final Random rand = new Random(Long.getLong(
+      "gemfire.PartitionedRegionRandomSeed", System.nanoTime()));
+
   // below atomic vars are used by newUUID() and newShortUUID() in case
   // the region is local
   private final AtomicLong localUUID;
@@ -740,6 +738,9 @@ public class LocalRegion extends AbstractRegion
     Assert.assertTrue(regionName != null, "regionName must not be null");
     this.sharedDataView = buildDataView();
     this.regionName = regionName;
+    if (regionName.toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+      this.isInternalColumnTable = true;
+    }
     this.parentRegion = parentRegion;
     this.fullPath = calcFullPath(regionName, parentRegion);
     final GemFireCacheImpl.StaticSystemCallbacks sysCb =
@@ -753,6 +754,7 @@ public class LocalRegion extends AbstractRegion
     }
     this.regionId = getIDFromPath(this.fullPath, this.regionUUID);
     this.regionLock = new ReentrantLock();
+
 
     this.initializationLatchBeforeGetInitialImage = new StoppableCountDownLatch(
         this.stopper, 1);
@@ -968,7 +970,7 @@ public class LocalRegion extends AbstractRegion
       // copy the versions that we have recovered from disk into
       // the version vector.
       this.versionVector.recordVersions(diskVector
-          .getCloneForTransmission());
+          .getCloneForTransmission(), null);
     } else if (!dataPolicy.withStorage()) {
       // version vectors are currently only necessary in empty regions for
       // tracking canonical member IDs
@@ -1417,7 +1419,8 @@ public class LocalRegion extends AbstractRegion
                 
               } else {
                 newRegion = new BucketRegion(subregionName, regionAttributes,
-                    this, this.cache, internalRegionArgs);  
+                    this, this.cache, internalRegionArgs);
+
               }
             }
             else if (regionAttributes.getPartitionAttributes() != null) {
@@ -1488,11 +1491,11 @@ public class LocalRegion extends AbstractRegion
             
             if (!newRegion.getEnableOffHeapMemory()) {
               newRegion.initialCriticalMembers(cache.getResourceManager().getHeapMonitor().getState().isCritical(), cache
-                  .getResourceAdvisor().adviseCritialMembers());
+                  .getResourceAdvisor().adviseCriticalMembers());
             } else {
               newRegion.initialCriticalMembers(cache.getResourceManager().getHeapMonitor().getState().isCritical()
                   || cache.getResourceManager().getOffHeapMonitor().getState().isCritical(), cache.getResourceAdvisor()
-                  .adviseCritialMembers());
+                  .adviseCriticalMembers());
             }
 
             // synchronization would be done on ManagementAdapter.regionOpLock
@@ -1749,7 +1752,7 @@ public class LocalRegion extends AbstractRegion
   public final InternalDataView getDataView() {
     if (this.supportsTX) {
       final TXStateInterface tx = TXManagerImpl.getCurrentTXState();
-      if (tx != null) {
+      if (tx != null ) {
         // NORMAL/PRELOADED regions are now supported in the new TX model mixed
         // with PRs just like replicated regions
         /*
@@ -1819,6 +1822,7 @@ public class LocalRegion extends AbstractRegion
           re = this.entries.getOperationalEntryInVM(key);
         }
       }
+
       //skip updating the stats if the value is null
       // TODO - We need to clean up the callers of the this class so that we can
       // update the statistics here, where it would make more sense.
@@ -2393,6 +2397,16 @@ public class LocalRegion extends AbstractRegion
       throw new InternalGemFireError("unexpected call to newUUID for "
           + toString());
     }
+  }
+
+  /**
+   * Get a new unique java UUID that is guaranteed to be unique in the
+   * distributed system for this region.
+   */
+  public final UUID newJavaUUID() throws IllegalStateException {
+    long msb = newUUID(true);
+    long lsb = rand.nextLong();
+    return new UUID(msb, lsb);
   }
 
   /**
@@ -3543,7 +3557,7 @@ public class LocalRegion extends AbstractRegion
       if (isEntryExpiryPossible()) {
         rescheduleEntryExpiryTasks(); // called after gii to fix bug 35214
       }
-      
+      this.accountRegionOverhead();
       initialized();
     }
     catch (RegionDestroyedException e) {
@@ -6179,7 +6193,7 @@ public class LocalRegion extends AbstractRegion
     //like it's not doing the right thing if the current member is the member
     //we just recovered.
     //We need to update the RVV in memory
-    this.versionVector.recordGCVersion(member, gcVersion);
+    this.versionVector.recordGCVersion(member, gcVersion, null);
     
     //We also need to update the RVV that represents what we have persisted on disk
     DiskRegion dr = this.getDiskRegion();
@@ -6201,7 +6215,7 @@ public class LocalRegion extends AbstractRegion
   
   @Override
   public void recordRecoveredVersionTag(VersionTag tag) {
-    this.versionVector.recordVersion(tag.getMemberID(), tag.getRegionVersion());
+    this.versionVector.recordVersion(tag.getMemberID(), tag.getRegionVersion(), null);
     DiskRegion dr = this.getDiskRegion();
     //We also need to update the RVV that represents what we have persisted on disk
     if(dr != null) {
@@ -6266,7 +6280,7 @@ public class LocalRegion extends AbstractRegion
         id = myId;
       }
       //Make sure the version is applied to the regions RVV
-      rvv.recordVersion(id, stamp.getRegionVersion());
+      rvv.recordVersion(id, stamp.getRegionVersion(), null);
       
     }
   }
@@ -6310,7 +6324,7 @@ public class LocalRegion extends AbstractRegion
           "LR.basicInvalidate: this cache has already seen this event " + event);
       }
       if (this.concurrencyChecksEnabled && event.getVersionTag() != null && !event.getVersionTag().isRecorded()) {
-        getVersionVector().recordVersion((InternalDistributedMember) event.getDistributedMember(), event.getVersionTag());
+        getVersionVector().recordVersion((InternalDistributedMember) event.getDistributedMember(), event.getVersionTag(), event);
       }
       return;
     }
@@ -7030,7 +7044,8 @@ public class LocalRegion extends AbstractRegion
           + event);
       }
       if (this.concurrencyChecksEnabled && event.getVersionTag() != null && !event.getVersionTag().isRecorded()) {
-        getVersionVector().recordVersion((InternalDistributedMember) event.getDistributedMember(), event.getVersionTag());
+        getVersionVector().recordVersion((InternalDistributedMember) event.getDistributedMember(),
+            event.getVersionTag(), event);
       }
       return;
     }
@@ -7661,7 +7676,7 @@ public class LocalRegion extends AbstractRegion
    * @since 5.7
    */
   public void syncPutAll(final TXStateInterface tx, Runnable r, EventID eventID) {
-    if (this.eventTracker != null && tx == null) {
+    if (this.eventTracker != null && (tx == null || tx.isSnapshot())) {
       this.eventTracker.syncPutAll(r, eventID);
     }
     else {
@@ -7840,7 +7855,8 @@ public class LocalRegion extends AbstractRegion
             // recent
             this.parentRegion.updateStats();
           }
-  
+
+          getCache().removeRegionFromOldEntryMap(this.getFullPath());
         
           try {
             eventSet = callbackEvents ? new HashSet() : null;
@@ -7876,7 +7892,7 @@ public class LocalRegion extends AbstractRegion
                 .getDistributedSystem();
             system.handleResourceEvent(ResourceEvent.REGION_REMOVE, this);
           }
-      
+
           try {
             LocalRegion parent = this.parentRegion;
             if (parent == null) {
@@ -8092,7 +8108,8 @@ public class LocalRegion extends AbstractRegion
           + event);
       }
       if (this.concurrencyChecksEnabled && event.getVersionTag() != null && !event.getVersionTag().isRecorded()) {
-        getVersionVector().recordVersion((InternalDistributedMember) event.getDistributedMember(), event.getVersionTag());
+        getVersionVector().recordVersion((InternalDistributedMember) event.getDistributedMember(),
+            event.getVersionTag(), event);
       }
       // Bug 49449: When client retried and returned with hasSeenEvent for both LR and DR, the server should still 
       // notifyGatewayHubs even the event could be duplicated in gateway queues1 
@@ -8122,6 +8139,7 @@ public class LocalRegion extends AbstractRegion
     }
     tx = discoverJTA();
     event.setTXState(tx);
+
     return tx;
   }
 
@@ -8959,7 +8977,7 @@ public class LocalRegion extends AbstractRegion
     // complete index is going to be blown away; bucket region will need to
     // override to clear in every case
     if (!setIsDestroyed) {
-      return indexUpdater.clearIndexes(this, lockForGII, true, null);
+      return indexUpdater.clearIndexes(this, lockForGII, true, null, false);
     }
     return false;
   }
@@ -10306,7 +10324,6 @@ public class LocalRegion extends AbstractRegion
     final TXStateInterface tx = context.getTXState();
     final StaticSystemCallbacks sysCb;
     if (tx != null) {
-//      getLogWriterI18n().fine("DEBUG: getJTAEnlistedTX for " + getName() + ".  ignoreJTA="+ignoreJTA + "; tx=" + tx);
       if (!ignoreJTA && tx.getProxy().isJCA()) {
         cache.getTxManager().setTXState(null);
         tx.rollback(null);
@@ -11169,7 +11186,7 @@ public class LocalRegion extends AbstractRegion
         // generate a new version for the operation
         VersionTag tag = VersionTag.create(getVersionMember());
         tag.setVersionTimeStamp(cacheTimeMillis());
-        tag.setRegionVersion(myVector.getNextVersionWhileLocked());
+        tag.setRegionVersion(myVector.getNextVersionWhileLocked(null));
         if (log.fineEnabled() || RegionVersionVector.DEBUG) {
           log.info(LocalizedStrings.DEBUG, "recording version tag for clear: " + tag);
         }
@@ -11180,7 +11197,7 @@ public class LocalRegion extends AbstractRegion
           if (log.fineEnabled()) {
             log.fine("recording version tag for clear: " + tag);
           }
-          myVector.recordVersion(tag.getMemberID(), tag); // clear() events always have the ID in the tag
+          myVector.recordVersion(tag.getMemberID(), tag, null); // clear() events always have the ID in the tag
         }
       }
     }
@@ -11625,13 +11642,18 @@ public class LocalRegion extends AbstractRegion
         final PutAllPartialResult partialKeys = new PutAllPartialResult(size);
         final Iterator iterator;
         final boolean isVersionedResults;
+        int putAllSize = 0;
         if (proxyResult != null) {
           iterator = proxyResult.iterator();
+          putAllSize = proxyResult.size();
           isVersionedResults = true;
         } else {
           iterator = map.entrySet().iterator();
+          putAllSize = map.size();
           isVersionedResults = false;
         }
+        UMMMemoryTracker memoryTracker = null;
+
         Runnable r = new Runnable() {
           public void run() {
             int offset = 0;
@@ -11737,7 +11759,24 @@ public class LocalRegion extends AbstractRegion
             }
           }
         };
-        this.syncPutAll(tx, r, eventId);
+        try {
+          if (callback.isSnappyStore()
+                  && !this.isInternalRegion()) {
+            memoryTracker = new UMMMemoryTracker(
+                Thread.currentThread().getId(), putAllSize);
+            putAllOp.getEvent().setBufferedMemoryTracker(memoryTracker);
+          }
+          this.syncPutAll(tx, r, eventId);
+        } finally {
+          if (memoryTracker != null) {
+            long unusedMemory = memoryTracker.freeMemory();
+            if (unusedMemory > 0) {
+              callback.releaseStorageMemory(
+                  memoryTracker.getFirstAllocationObject(), unusedMemory, false);
+            }
+          }
+        }
+
         if (partialKeys.hasFailure()) {
           partialKeys.addKeysAndVersions(succeeded);
           getGemFireCache().getLoggerI18n().info(
@@ -11861,6 +11900,7 @@ public class LocalRegion extends AbstractRegion
         putallOp, this, Operation.PUTALL_CREATE, key, value, callbackArg);
     event.setFetchFromHDFS(putallOp.getEvent().isFetchFromHDFS());
     event.setPutDML(putallOp.getEvent().isPutDML());
+    event.setBufferedMemoryTracker(putallOp.getEvent().getMemoryTracker());
     try {
     if (tagHolder != null) {
       event.setVersionTag(tagHolder.getVersionTag());
@@ -12584,7 +12624,11 @@ public class LocalRegion extends AbstractRegion
     }
   }
   void updateSizeOnClearRegion(int sizeBeforeClear) {
-    // Only needed by BucketRegion
+    if(!this.reservedTable() && needAccounting()) {
+      long ignoreBytes = this.isDestroyed() ? getIgnoreBytes() :
+              getIgnoreBytes() + regionOverHead;
+      callback.dropStorageMemory(getFullPath(), ignoreBytes);
+    }
   }
 
   /**
@@ -14295,4 +14339,206 @@ public class LocalRegion extends AbstractRegion
       uuidAdvisor.postInitialize();
     }
   }
+
+  protected StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+  protected volatile boolean regionOverHeadAccounted = false;
+  protected volatile long regionOverHead = -1L;
+  protected volatile long entryOverHead = -1L;
+  protected volatile long diskIdOverHead = -1L;
+
+  protected void accountRegionOverhead() {// Not throwing LowMemoryException while region creation
+    if (!this.reservedTable() && !regionOverHeadAccounted && needAccounting()) {
+      synchronized (this) {
+        if (!regionOverHeadAccounted) {
+          this.regionOverHead = ReflectionSingleObjectSizer.INSTANCE.sizeof(this);
+          callback.acquireStorageMemory(getFullPath(),
+                  regionOverHead, null, true, false);
+          regionOverHeadAccounted = true;
+        }
+      }
+    }
+  }
+
+
+  private long getEntryOverhead(RegionEntry entry) {
+    long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
+    Object key = entry.getRawKey();
+    if (key != null) {
+      entryOverhead += CachedDeserializableFactory.calcMemSize(key);
+    } else {
+      // first key.
+      Object firstKey = this.getRegionMap().keySet().iterator().next();
+      if (firstKey != null) {
+        entryOverhead += CachedDeserializableFactory.calcMemSize(firstKey);
+      }
+    }
+    if (entry instanceof DiskEntry) {
+      DiskId diskId = ((DiskEntry) entry).getDiskId();
+      if (diskId != null) {
+        entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(diskId);
+      }
+    }
+    return entryOverhead;
+  }
+
+  protected long calculateEntryOverhead(RegionEntry entry) {
+    if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
+      synchronized (this) {
+        if (entryOverHead == -1L) {
+          entryOverHead = getEntryOverhead(entry);
+          memTrace("Entry overhead for " + getFullPath() + " = " + entryOverHead);
+        }
+      }
+    }
+    return entryOverHead;
+  }
+
+  protected long calculateDiskIdOverhead(DiskId diskId) {
+    if (!this.reservedTable() && diskIdOverHead == -1L && needAccounting()) {
+      diskIdOverHead = ReflectionObjectSizer.getInstance().sizeof(diskId);
+      memTrace("diskIdOverHead = " + diskIdOverHead);
+    }
+    return diskIdOverHead;
+  }
+
+  private AtomicLong memoryBeforeAcquire = new AtomicLong(0L);
+
+  public static long MAX_VALUE_BEFORE_ACQUIRE = 1032 * 10; //10 KB
+
+  private LongBinaryOperator op = new LongBinaryOperator() {
+
+    @Override
+    public long applyAsLong(long prev, long delta) {
+       long newVal = prev + delta;
+      if (newVal >= MAX_VALUE_BEFORE_ACQUIRE) {
+        return newVal - MAX_VALUE_BEFORE_ACQUIRE;
+      } else {
+        return newVal;
+      }
+    }
+  };
+
+  protected void delayedAcquirePoolMemory(long oldSize, long newSize, boolean withEntryOverHead,
+                                          boolean shouldEvict) throws LowMemoryException {
+    if (!this.reservedTable() && needAccounting()) {
+      long size;
+      if (withEntryOverHead) {
+        size = (newSize - oldSize) + Math.max(0L, entryOverHead);
+      } else {
+        size = (newSize - oldSize);
+      }
+
+      if (MAX_VALUE_BEFORE_ACQUIRE == 1 || size > MAX_VALUE_BEFORE_ACQUIRE) {
+        if (!callback.acquireStorageMemory(getFullPath(),
+                (size), null, shouldEvict, false)) {
+          throwLowMemoryException(size);
+        }
+      } else {
+        long prevValue = memoryBeforeAcquire.getAndAccumulate(size, op);
+        long currValue = prevValue + size;
+        if (currValue >= MAX_VALUE_BEFORE_ACQUIRE) {
+          if (!callback.acquireStorageMemory(getFullPath(),
+                  MAX_VALUE_BEFORE_ACQUIRE, null, shouldEvict, false)) {
+            throwLowMemoryException(size);
+          }
+        }
+      }
+    }
+  }
+
+  public void acquirePoolMemory(long oldSize, long newSize, boolean withEntryOverHead,
+      UMMMemoryTracker buffer, boolean shouldEvict) throws LowMemoryException {
+    if (!this.reservedTable() && needAccounting()) {
+      long size = 0L;
+      if (withEntryOverHead) {
+        size = (newSize - oldSize) + Math.max(0L, entryOverHead);
+      } else {
+        size = (newSize - oldSize);
+      }
+      if (!callback.acquireStorageMemory(getFullPath(),
+          size, buffer, shouldEvict, false)) {
+        throwLowMemoryException(size);
+      }
+    }
+  }
+
+  private void throwLowMemoryException(long size) {
+    Set<DistributedMember> sm = Collections.singleton(cache.getMyId());
+    throw new LowMemoryException("Could not obtain memory of size " + size, sm);
+  }
+
+  public void freePoolMemory(long oldSize, boolean withEntryOverHead) {
+    if (!this.reservedTable() && needAccounting()) {
+      if (withEntryOverHead) {
+        callback.releaseStorageMemory(getFullPath(),
+            oldSize + Math.max(0L, entryOverHead), false);
+      } else {
+        callback.releaseStorageMemory(getFullPath(), oldSize, false);
+      }
+    }
+  }
+
+  public static boolean isMetaTable(String fullpath) {
+    return fullpath.startsWith("/SNAPPY_HIVE_METASTORE") ||
+        fullpath.startsWith("/__UUID_PERSIST") ||
+        fullpath.startsWith("/_DDL_STMTS_META_REGION");
+  }
+
+  public boolean reservedTable() {
+    return isSecret() || isUsedForMetaRegion() || isUsedForPartitionedRegionAdmin()
+        || isMetaTable(this.getFullPath());
+  }
+
+  protected boolean needAccounting(){
+    return callback.isSnappyStore();
+  }
+
+  // All put/delete should take care of this value;
+  // A simple integer as write will be few while read threads will be many and frequent.
+  protected int indexOverhead = 0;
+
+  private Object overHeadLock = new Object();
+
+  // Num bytes to be ignored by LocalRegion while region destroy
+  protected LongAdder ignoreBytes = new LongAdder();
+
+  protected int indicesOverHead() {
+    if (isUsedForPartitionedRegionBucket) {
+      return getPartitionedRegion().indexOverhead;
+    } else {
+      return indexOverhead;
+    }
+  }
+
+  public void setIndexOverhead(int val) {
+    synchronized (overHeadLock){
+      indexOverhead = indexOverhead + val;
+    }
+  }
+
+  public void incIgnoreBytes(long numBytes) {
+    ignoreBytes.add(numBytes);
+  }
+
+  protected long getIgnoreBytes() {
+    if (isUsedForPartitionedRegionBucket) {
+      return getPartitionedRegion().ignoreBytes.sum();
+    } else {
+      return ignoreBytes.sum();
+    }
+  }
+
+  private void memTrace(String mesage) {
+    if (java.lang.Boolean.getBoolean("snappydata.umm.memtrace")) {
+      LogWriterI18n log = getLogWriterI18n();
+      log.fine(mesage);
+    }
+  }
+
+  public boolean isInternalColumnTable() {
+    return isInternalColumnTable;
+  }
+
+  private boolean isInternalColumnTable = false;
+
 }

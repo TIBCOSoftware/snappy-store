@@ -456,7 +456,7 @@ public class HDFSConfigJUnitTest extends TestCase {
       
       //Configure a block cache to cache about 20 blocks.
       long heapSize = HeapMemoryMonitor.getTenuredPoolMaxMemory();
-      int blockSize = StoreFile.DEFAULT_BLOCKSIZE_SMALL;
+      int blockSize = HDFSStoreImpl.DEFAULT_BLOCKSIZE_SMALL;
       int blockCacheSize = 5 * blockSize;
       int entrySize = blockSize / 2;
       

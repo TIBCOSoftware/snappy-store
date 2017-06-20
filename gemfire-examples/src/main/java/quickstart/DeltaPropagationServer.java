@@ -27,7 +27,7 @@ import com.gemstone.gemfire.cache.CacheFactory;
  * DeltaPropagationClient connects. See the DeltaPropagationClient or the
  * quickstart guide for run instructions. To stop the server, type "Exit" in
  * server console.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

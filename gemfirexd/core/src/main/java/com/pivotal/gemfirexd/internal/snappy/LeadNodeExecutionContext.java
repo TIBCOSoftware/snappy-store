@@ -17,14 +17,13 @@
 
 package com.pivotal.gemfirexd.internal.snappy;
 
-import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.internal.DataSerializableFixedID;
-import com.gemstone.gemfire.internal.shared.Version;
-import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
-
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+
+import com.gemstone.gemfire.internal.DataSerializableFixedID;
+import com.gemstone.gemfire.internal.shared.Version;
+import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 
 public final class LeadNodeExecutionContext implements GfxdSerializable {
   private long connId;
@@ -37,7 +36,7 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
     this.connId = connId;
   }
 
-  public  long getConnId(){
+  public long getConnId() {
     return connId;
   }
 
@@ -53,12 +52,12 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
 
   @Override
   public void toData(DataOutput out) throws IOException {
-    DataSerializer.writeLong(connId , out);
+    out.writeLong(connId);
   }
 
   @Override
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
-    connId = DataSerializer.readLong(in);
+    connId = in.readLong();
   }
 
   @Override

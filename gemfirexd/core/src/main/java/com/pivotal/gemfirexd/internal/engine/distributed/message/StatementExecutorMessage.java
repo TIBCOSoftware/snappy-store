@@ -143,9 +143,9 @@ public class StatementExecutorMessage<T> extends RegionExecutorMessage<T> {
       boolean flattenSubquery, boolean needKeysForSelectForUpdateCase,
       ParameterValueSet pvs, LocalRegion region, Set<Object> routingObjects,
       final boolean insertAsSubSelect, LanguageConnectionContext lcc,
-      long timeOutMillis) {
+      long timeOutMillis, boolean abortOnLowMemory) {
     super(collector, region, routingObjects, getCurrentTXState(lcc),
-        getTimeStatsSettings(lcc));
+        getTimeStatsSettings(lcc), abortOnLowMemory);
     if (source != null && !Property.DEFAULT_USER_NAME.equals(defaultSchema)) {
       this.defaultSchema = defaultSchema;
       this.queryFlags = GemFireXDUtils.set(this.queryFlags, HASAUTHID);

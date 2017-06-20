@@ -23,8 +23,10 @@ package com.pivotal.gemfirexd.internal.client.net;
 
 
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.pivotal.gemfirexd.internal.client.am.SignedBinary;
 import com.pivotal.gemfirexd.internal.client.am.SqlException;
 import com.pivotal.gemfirexd.internal.client.am.DisconnectException;
@@ -671,6 +673,9 @@ public class Reply {
     }
 
     final String readString(int length, String encoding) throws DisconnectException {
+        if (Typdef.UTF8ENCODING.equals(encoding)) {
+            return readString(length, ClientSharedData.UTF8);
+        }
         ensureBLayerDataInBuffer(length);
         adjustLengths(length);
         String s = null;
@@ -684,6 +689,14 @@ public class Reply {
                     e));
         }
 
+        pos_ += length;
+        return s;
+    }
+
+    final String readString(int length, Charset encoding) throws DisconnectException {
+        ensureBLayerDataInBuffer(length);
+        adjustLengths(length);
+        String s = new String(buffer_, pos_, length, encoding);
         pos_ += length;
         return s;
     }

@@ -44,6 +44,7 @@ import com.gemstone.gnu.trove.THashMap;
 public final class SortedIndexRecoveryJob extends BatchJobControl {
 
   private final DiskStoreImpl dsi;
+
   private final SortedIndexContainer indexContainer;
   private final boolean isNonUnique;
   private final SortedIndexRecoveryJobPart sortedFragments;
@@ -77,6 +78,11 @@ public final class SortedIndexRecoveryJob extends BatchJobControl {
       SortedIndexKey[] sortedKeys, int length) {
     getBatchJob(currentJob).addJob(sortedKeys, length);
   }
+
+  public SortedIndexContainer getIndexContainer() {
+    return indexContainer;
+  }
+
 
   /**
    * {@inheritDoc}

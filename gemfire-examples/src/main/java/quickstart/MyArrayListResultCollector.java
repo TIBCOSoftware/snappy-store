@@ -27,11 +27,11 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 /**
  * MyArrayListResultCollector gathers result from all the function execution
  * nodes.
- * </p>
+ * <p>
  * Using a custom ResultCollector a user can sort/aggregate the result. This
  * implementation stores the result in a List. The size of the list will be 
  * same as the no of nodes on which a function got executed
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.0
@@ -52,10 +52,10 @@ public class MyArrayListResultCollector implements ResultCollector<Object, Objec
   /**
    * Waits if necessary for the computation to complete, and then retrieves its
    * result.
-   * </p>
+   * <p>
    * If {@link Function#hasResult()} is false, upon calling
    * {@link ResultCollector#getResult()} throws {@link FunctionException}.
-   * </p>
+   * <p>
    * 
    * @return the computed result
    * @throws FunctionException if something goes wrong while retrieving the result
@@ -68,10 +68,10 @@ public class MyArrayListResultCollector implements ResultCollector<Object, Objec
   /**
    * Waits if necessary for at most the given time for the computation to
    * complete, and then retrieves its result, if available.
-   * </p>
+   * <p>
    * If {@link Function#hasResult()} is false, upon calling
    * {@link ResultCollector#getResult()} throws {@link FunctionException}.
-   * </p>
+   * <p>
    * 
    * @param timeout the maximum time to wait
    * @param unit the time unit of the timeout argument

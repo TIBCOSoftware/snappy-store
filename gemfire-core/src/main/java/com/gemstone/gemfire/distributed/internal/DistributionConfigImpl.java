@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.distributed.internal;
 
@@ -39,6 +57,7 @@ import com.gemstone.gemfire.internal.ConfigSource;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.process.ProcessLauncherContext;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.memcached.GemFireMemcachedServer;
 
 /**
@@ -303,7 +322,10 @@ public class DistributionConfigImpl
   
   /** Whether pages should be locked into memory or allowed to swap to disk */
   private boolean lockMemory = DEFAULT_LOCK_MEMORY;
-  
+
+  /** "memory-size" with value of "" or "<size>[g|m]" */
+  private String memorySize = DEFAULT_MEMORY_SIZE;
+
   //////////////////////  Constructors  //////////////////////
 
   /**
@@ -416,6 +438,8 @@ public class DistributionConfigImpl
     }
     
     this.lockMemory = other.getLockMemory();
+
+    this.memorySize = other.getMemorySize();
   }
 
   /**
@@ -480,11 +504,20 @@ public class DistributionConfigImpl
       setSource(nonDefault, ConfigSource.api());
     }
     //Now remove all user defined properties from props.
-    for (Object entry : props.entrySet()) {
-      Map.Entry<String, String> ent = (Map.Entry<String, String>)entry; 
-      if (((String)ent.getKey()).startsWith(USERDEFINED_PREFIX_NAME) ||
-          ((String)ent.getKey()).startsWith(GFXD_USERDEFINED_PREFIX_NAME)){
+    String sysPrefix = SystemProperties.getServerInstance()
+        .getSystemPropertyNamePrefix();
+    if (GEMFIRE_PREFIX.equals(sysPrefix)) {
+      sysPrefix = null;
+    }
+    Iterator<?> propsIter = props.entrySet().iterator();
+    while (propsIter.hasNext()) {
+      Map.Entry<?, ?> ent = (Map.Entry<?, ?>)propsIter.next();
+      String key = (String)ent.getKey();
+      if (key.startsWith(USERDEFINED_PREFIX_NAME) ||
+          key.startsWith(GFXD_USERDEFINED_PREFIX_NAME)) {
         userDefinedProps.put(ent.getKey(), ent.getValue());
+      } else if (sysPrefix != null && key.startsWith(sysPrefix)) {
+        propsIter.remove();
       }
     }
     // Now override values picked up from the file or code with values
@@ -504,7 +537,15 @@ public class DistributionConfigImpl
     while (sysPropsIter.hasNext()) {
       Map.Entry sysEntry = (Map.Entry)sysPropsIter.next();
       String sysName = (String)sysEntry.getKey();
-      if (attNameSet.contains(sysName)
+      if (sysName.startsWith(SNAPPY_PREFIX)) {
+        String sysValue = (String)sysEntry.getValue();
+        String attName;
+        if (sysValue != null && isWellKnownAttribute(
+            attName = sysName.substring(SNAPPY_PREFIX.length()))) {
+          props.put(attName, sysValue);
+          this.sourceMap.put(attName, ConfigSource.sysprop());
+        }
+      } else if (attNameSet.contains(sysName)
           || sysName.startsWith(GEMFIRE_PREFIX + SECURITY_PREFIX_NAME)) {
         String sysValue = (String)sysEntry.getValue();
         if (sysValue != null) {
@@ -2150,5 +2191,20 @@ public class DistributionConfigImpl
   
   protected void checkOffHeapMemorySize(String value) {
     super.checkOffHeapMemorySize(value);
+  }
+
+  @Override
+  public String getMemorySize() {
+    return this.memorySize;
+  }
+
+  @Override
+  public void setMemorySize(String value) {
+    checkMemorySize(value);
+    this.memorySize = value;
+  }
+
+  protected void checkMemorySize(String value) {
+    super.checkMemorySize(value);
   }
 }

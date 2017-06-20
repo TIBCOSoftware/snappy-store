@@ -39,8 +39,7 @@
  */
 package com.pivotal.gemfirexd.internal.client.net;
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.JdkHelper;
+import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.pivotal.gemfirexd.internal.client.am.Blob;
 import com.pivotal.gemfirexd.internal.client.am.ClientMessageId;
 import com.pivotal.gemfirexd.internal.client.am.Clob;
@@ -1190,9 +1189,7 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
             return null;
         }
 // GemStone changes BEGIN
-        // changed to use Integer.valueOf() if possible
-        return promototedParameters_.get(ClientSharedUtils.getJdkHelper()
-            .newInteger(index));
+        return promototedParameters_.get(index);
         /* (original code)
         return promototedParameters_.get(new Integer(index));
         */
@@ -1226,9 +1223,6 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                 promototedParameters_.clear();
             }
 
-// GemStone changes BEGIN
-            final JdkHelper helper = ClientSharedUtils.getJdkHelper();
-// GemStone changes END
             for (int i = 0; i < numVars; i++) {
 
                 int jdbcType;
@@ -1267,8 +1261,8 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                         // Flow the data as CLOB data if the data too large to for LONGVARCHAR
                         java.io.ByteArrayInputStream bais = null;
                         byte[] ba = null;
-                        try {
-                            ba = s.getBytes("UTF-8");
+                        // try {
+                            ba = s.getBytes(ClientSharedData.UTF8);
                             bais = new java.io.ByteArrayInputStream(ba);
                             Clob c = new Clob(netAgent_, bais, "UTF-8", ba.length,
                                 parameterMetaData.getColumnLabelX(i + 1) /* GemStoneAddition */);
@@ -1276,8 +1270,7 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                             // Place the new Lob in the promototedParameter_ collection for
                             // NetStatementRequest use
 // GemStone changes BEGIN
-                            // changed to use Integer.valueOf() if possible
-                            promototedParameters_.put(helper.newInteger(i), c);
+                            promototedParameters_.put(i, c);
                             /* (original code)
                             promototedParameters_.put(new Integer(i), c);
                             */
@@ -1294,13 +1287,14 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                                 lidAndLengths[i][1] = buildPlaceholderLength(c.length());
                                 
                             }
-                            
+                        /*
                         } catch (java.io.UnsupportedEncodingException e) {
                             throw new SqlException(netAgent_.logWriter_, 
                                 new ClientMessageId(SQLState.UNSUPPORTED_ENCODING),
                                 "byte array", "Clob",
-                                parameterMetaData.getColumnLabelX(i + 1) /* GemStoneAddition */, e);
+                                parameterMetaData.getColumnLabelX(i + 1) /* GemStoneAddition *, e);
                         }
+                        */
                     }
                     break;
                 case java.sql.Types.INTEGER:
@@ -1403,8 +1397,8 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                         // Flow the data as CLOB data if the data too large to for LONGVARCHAR
                         java.io.ByteArrayInputStream bais = null;
                         byte[] ba = null;
-                        try {
-                            ba = s.getBytes("UTF-8");
+                        // try {
+                            ba = s.getBytes(ClientSharedData.UTF8);
                             bais = new java.io.ByteArrayInputStream(ba);
                             Clob c = new Clob(netAgent_, bais, "UTF-8", ba.length,
                                 parameterMetaData.getColumnLabelX(i + 1) /* GemStoneAddition */);
@@ -1413,8 +1407,7 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                             // Place the new Lob in the promototedParameter_ collection for
                             // NetStatementRequest use
 // GemStone changes BEGIN
-                            // changed to use Integer.valueOf() if possible
-                            promototedParameters_.put(helper.newInteger(i), c);
+                            promototedParameters_.put(i, c);
                             /* (original code)
                             promototedParameters_.put(new Integer(i), c);
                             */
@@ -1422,12 +1415,14 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
 
                             lidAndLengths[i][0] = DRDAConstants.DRDA_TYPE_NLOBCMIXED;
                             lidAndLengths[i][1] = buildPlaceholderLength(c.length());
+                        /*
                         } catch (java.io.UnsupportedEncodingException e) {
                             throw new SqlException(netAgent_.logWriter_, 
                                 new ClientMessageId(SQLState.UNSUPPORTED_ENCODING),
                                 "byte array", "Clob",
-                                parameterMetaData.getColumnLabelX(i + 1) /* GemStoneAddition */);
+                                parameterMetaData.getColumnLabelX(i + 1) /* GemStoneAddition *);
                         }
+                        */
                     }
                     break;
                 case java.sql.Types.BINARY:
@@ -1448,8 +1443,7 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                         // Place the new Lob in the promototedParameter_ collection for
                         // NetStatementRequest use
 // GemStone changes BEGIN
-                        // changed to use Integer.valueOf() if possible
-                        promototedParameters_.put(helper.newInteger(i), b);
+                        promototedParameters_.put(i, b);
                         /* (original code)
                         promototedParameters_.put(new Integer(i), b);
                         */
@@ -1476,8 +1470,7 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                         // Place the new Lob in the promototedParameter_ collection for
                         // NetStatementRequest use
 // GemStone changes BEGIN
-                        // changed to use Integer.valueOf() if possible
-                        promototedParameters_.put(helper.newInteger(i), b);
+                        promototedParameters_.put(i, b);
                         /* (original code)
                         promototedParameters_.put(new Integer(i), b);
                         */
@@ -1911,9 +1904,7 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
                 extdtaPositions_ = new java.util.ArrayList();
             }
 // GemStone changes BEGIN
-            // changed to use Integer.valueOf() if possible
-            extdtaPositions_.add(ClientSharedUtils.getJdkHelper()
-                .newInteger(i));
+            extdtaPositions_.add(i);
             /* (original code)
             extdtaPositions_.add(new Integer(i));
             */
@@ -1929,8 +1920,7 @@ public class NetStatementRequest extends NetPackageRequest implements StatementR
         }
         
 // GemStone changes BEGIN
-        // changed to use Integer.valueOf() if possible
-        extdtaPositions_.add(ClientSharedUtils.getJdkHelper().newInteger(i));
+        extdtaPositions_.add(i);
         /* (original code)
         extdtaPositions_.add(new Integer(i));
         */

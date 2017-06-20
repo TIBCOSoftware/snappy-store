@@ -23,15 +23,18 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import com.gemstone.gemfire.cache.query.Struct;
 
 import sql.SQLHelper;
+import sql.SQLTest;
 import sql.dmlDistTxStatements.TradeNetworthDMLDistTxStmt;
 import sql.sqlTx.ReadLockedKey;
 import sql.sqlTx.SQLDistRRTxTest;
+import sql.sqlTx.SQLDistTxTest;
 import sql.sqlTx.SQLTxRRReadBB;
 import sql.sqlutil.ResultSetHelper;
 import util.TestException;
@@ -42,7 +45,11 @@ public class TradeNetworthDMLDistTxRRStmt extends TradeNetworthDMLDistTxStmt {
       boolean getConflict) {
     return verifyConflictForRR(modifiedKeysByOp, modifiedKeysByThisTx, gfxdse, getConflict);
   }
-  
+
+
+
+
+
   public boolean queryGfxd(Connection gConn, boolean withDerby){
     if (!withDerby) {
       return queryGfxdOnly(gConn);
@@ -58,45 +65,57 @@ public class TradeNetworthDMLDistTxRRStmt extends TradeNetworthDMLDistTxStmt {
     BigDecimal querySec= new BigDecimal (Integer.toString(rand.nextInt(sec)));
     ResultSet gfxdRS = null;
     SQLException gfxdse = null;
-    
-    try {
-      gfxdRS = query (gConn, whichQuery, queryCash, querySec, loanLimit, loanAmount, tid);   
-      if (gfxdRS == null) {
-        if (isHATest) {
-          Log.getLogWriter().info("Testing HA and did not get GFXD result set");
-          return true;
+
+    for (int i = 0; i < 10; i++) {
+      try {
+        Log.getLogWriter().info("RR: executing query " + i + "times");
+        gfxdRS = query(gConn, whichQuery, queryCash, querySec, loanLimit, loanAmount, tid);
+        if (gfxdRS == null) {
+          if (isHATest) {
+            Log.getLogWriter().info("Testing HA and did not get GFXD result set");
+            return true;
+          } else
+            throw new TestException("Not able to get gfxd result set");
         }
-        else     
-          throw new TestException("Not able to get gfxd result set");
-      }
-    } catch (SQLException se) {
-      if (isHATest &&
-        SQLHelper.gotTXNodeFailureException(se) ) {
+      } catch (SQLException se) {
+        if (isHATest &&
+            SQLHelper.gotTXNodeFailureException(se)) {
+          SQLHelper.printSQLException(se);
+          Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
+          return false; //assume node failure exception causes the tx to rollback
+        }else if (se.getSQLState().equals("X0Z02") && (i < 9)) {
+          Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+          continue;
+        }
+
         SQLHelper.printSQLException(se);
-        Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
-        return false; //assume node failure exception causes the tx to rollback 
+        gfxdse = se;
       }
-      
-      SQLHelper.printSQLException(se);
-      gfxdse = se;
+
+      try {
+        List<Struct> gfxdList = ResultSetHelper.asList(gfxdRS, false);
+        if (gfxdList == null) {
+          if (isHATest) {
+            Log.getLogWriter().info("Testing HA and did not get GFXD result set");
+            return true; //do not compare query results as gemfirexd does not get any
+          } else
+            throw new TestException("Did not get gfxd results and it is not HA test");
+        }
+
+        addReadLockedKeys(gfxdList);
+
+        addQueryToDerbyTx(whichQuery, queryCash, querySec, loanLimit, loanAmount,
+            tid, gfxdList, gfxdse);
+      } catch (TestException te) {
+        if (te.getMessage().contains("Conflict detected in transaction operation and it will abort") && (i < 9)) {
+          Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+          continue;
+        } else throw te;
+      }
+      //only the first thread to commit the tx in this round could verify results
+      //this is handled in the SQLDistTxTest doDMLOp
+      break;
     }
-    
-    List<Struct> gfxdList = ResultSetHelper.asList(gfxdRS, false);
-    if (gfxdList == null) {
-      if (isHATest) {
-        Log.getLogWriter().info("Testing HA and did not get GFXD result set");
-        return true; //do not compare query results as gemfirexd does not get any
-      } else 
-        throw new TestException("Did not get gfxd results and it is not HA test");
-    }
-    
-    addReadLockedKeys(gfxdList);
-    
-    addQueryToDerbyTx(whichQuery, queryCash, querySec, loanLimit, loanAmount, 
-        tid, gfxdList, gfxdse);
-    //only the first thread to commit the tx in this round could verify results
-    //this is handled in the SQLDistTxTest doDMLOp
-    
     return true;
   }  
   

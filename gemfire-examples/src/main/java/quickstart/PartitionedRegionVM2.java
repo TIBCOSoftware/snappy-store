@@ -30,7 +30,7 @@ import com.gemstone.gemfire.cache.Region;
  * VM shuts down, no data is lost. Operations proceed normally on the other VM.  
  * Please refer to the quickstart guide for instructions on how to run this 
  * example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

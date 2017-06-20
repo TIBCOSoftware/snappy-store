@@ -641,7 +641,7 @@ public static void getMainInfo (java.io.PrintWriter aw, boolean pause) {
 		tryMyClasspath("com.pivotal.gemfirexd.internal.drda.NetworkServerControl", Main.getTextMessage("SIF08.I", "gemfirexd.jar"), successes, failures);
 	}
 	private static void tryClientClasspath(StringBuilder successes, StringBuilder failures) {
-		tryMyClasspath("com.pivotal.gemfirexd.jdbc.ClientDriver", Main.getTextMessage("SIF08.L", "gemfirexd-client.jar"), successes, failures);
+		tryMyClasspath("io.snappydata.jdbc.ClientDriver", Main.getTextMessage("SIF08.L", "gemfirexd-client.jar"), successes, failures);
 	}
     private static void tryDB2DriverClasspath(StringBuilder successes,
             StringBuilder failures)

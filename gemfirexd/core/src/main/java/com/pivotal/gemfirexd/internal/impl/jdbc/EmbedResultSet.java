@@ -48,6 +48,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.ResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.procedure.coordinate.ProcedureProcessorResultSet;
@@ -148,8 +149,8 @@ public abstract class EmbedResultSet extends ConnectionChild
 	 * The currentRow contains the data of the current row of the resultset.
 	 * If currentRow is null, the cursor is not postioned on a row 
 	 */
-	protected /* GemStone change private */ ExecRow currentRow;
-    
+	public /* GemStone change private */ ExecRow currentRow;
+
     /**
      * Set if this ResultSet is definitely closed.
      * If the connection has been closed, or the database
@@ -164,12 +165,12 @@ public abstract class EmbedResultSet extends ConnectionChild
 	private Object	currentStream;
 
 	// immutable state
-	private final ResultSet theResults;
+	public final ResultSet theResults;
       
       /**
        * Indicates whether results are being locally processed.<br>
        * In other words, isLocallyProcessing is <code>true</code> iff <br>
-       * <code> {@link ResultHolder#setupResults(GfxdResultCollector, Activation)} </code>
+       * <code>{@link ResultHolder#setupResults(GfxdResultCollector, Activation)}</code>
        * <br>
        * is invoked.<br>
        * <br>
@@ -287,8 +288,8 @@ public abstract class EmbedResultSet extends ConnectionChild
 		SanityManager.ASSERT(resultsToWrap!=null);
                 
                 theResults = resultsToWrap;
-                
-		
+
+
 		// ResultSet's for metadata are single use, they are created
 		// with a PreparedStatement internally, but that statement is
 		// never returned to the application.
@@ -371,7 +372,7 @@ public abstract class EmbedResultSet extends ConnectionChild
            if (stmt.resultSetType == java.sql.ResultSet.TYPE_FORWARD_ONLY)
                maxRows = stmt.maxRows;
 
-           maxFieldSize = stmt.MaxFieldSize;
+           maxFieldSize = stmt.maxFieldSize;
         }
 		else
 			maxFieldSize = 0;
@@ -2622,6 +2623,7 @@ public abstract class EmbedResultSet extends ConnectionChild
 	public final int getFetchDirection() throws SQLException {
 		checkIfClosed("getFetchDirection");
 		if (fetchDirection == 0) {
+			if (stmt == null) return java.sql.ResultSet.FETCH_FORWARD;
 			// value is not set at the result set level
 			// get it from the statement level
 			return stmt.getFetchDirection();
@@ -2687,6 +2689,7 @@ public abstract class EmbedResultSet extends ConnectionChild
 	 */
 	public final int getType() throws SQLException {
 		checkIfClosed("getType");
+		if (stmt == null) return java.sql.ResultSet.TYPE_FORWARD_ONLY;
 		return stmt.getResultSetType();
 	}
 
@@ -5315,12 +5318,14 @@ public abstract class EmbedResultSet extends ConnectionChild
 
 	private final SQLException dataTypeConversion(String targetType, int column) {
 		return newSQLException(SQLState.LANG_DATA_TYPE_GET_MISMATCH, targetType,
-                getColumnSQLType(column));
+                getColumnSQLType(column),
+	        resultDescription.getColumnDescriptor(column).getName());
 	}
 
 	private final SQLException dataTypeConversion(int column, String targetType) {
 		return newSQLException(SQLState.LANG_DATA_TYPE_GET_MISMATCH,
-                getColumnSQLType(column), targetType);
+                getColumnSQLType(column), targetType,
+	        resultDescription.getColumnDescriptor(column).getName());
 	}
     
     /**

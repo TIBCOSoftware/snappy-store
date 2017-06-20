@@ -883,7 +883,8 @@ public class WanTest extends sql.SQLTest {
           Log.getLogWriter().info("created table " + derbyTables[i]);
         }
       } else if (url.equals(GFEDBManager.getUrl())
-          || url.startsWith(GFEDBClientManager.getProtocol())){
+          || url.startsWith(GFEDBClientManager.getProtocol())
+          || url.startsWith(GFEDBClientManager.getDRDAProtocol())) {
         if (!testPartitionBy) gfeDDL = SQLPrms.getGFEDDL(); //use config
         else {
           while (wanBB.getSharedCounters().incrementAndRead(SQLWanBB.synchWanSiteParitionKeys)!=1) {

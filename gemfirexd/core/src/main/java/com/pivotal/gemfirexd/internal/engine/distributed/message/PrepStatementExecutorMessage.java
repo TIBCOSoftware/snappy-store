@@ -83,12 +83,12 @@ public final class PrepStatementExecutorMessage<T> extends
       boolean flattenSubquery, boolean needKeysForSelectForUpdate,
       ParameterValueSet pvs, LocalRegion region, Set<Object> routingObjects,
       boolean insertAsSubselect, LanguageConnectionContext lcc,
-      long timeOutMillis) {
+      long timeOutMillis, boolean abortOnLowMemory) {
     super(collector, userName, connectionId, statementId, executionId, rootID,
         statementLevel, source, isSelect, optimizeForWrite, withSecondaries,
         isSpecialCaseOuterJoin, needGfxdSubActivation, flattenSubquery,
         needKeysForSelectForUpdate, pvs, region, routingObjects,
-        insertAsSubselect, lcc, timeOutMillis);
+        insertAsSubselect, lcc, timeOutMillis, abortOnLowMemory);
     this.origSource = source;
   }
 

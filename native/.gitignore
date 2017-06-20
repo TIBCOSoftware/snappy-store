@@ -1,0 +1,12 @@
+.settings/gradle.prefs
+.settings/org.eclipse.buildship.core.prefs
+Debug/
+Release/
+dist/
+
+# visual studio generated files
+obj/
+.vs/
+*.db
+*.opendb
+*.vcxproj.user

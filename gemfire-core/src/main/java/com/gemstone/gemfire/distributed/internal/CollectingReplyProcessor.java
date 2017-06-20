@@ -16,12 +16,12 @@
  */
 package com.gemstone.gemfire.distributed.internal;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * This reply processor collects all of the exceptions/results from the
@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public class CollectingReplyProcessor<T> extends ReplyProcessor21 {
 
-  private Map<InternalDistributedMember, T> results = new HashMap<InternalDistributedMember, T>();
+  private Map<InternalDistributedMember, T> results = new ConcurrentHashMap<>();
 
   public CollectingReplyProcessor(DM dm,
       Collection initMembers) {

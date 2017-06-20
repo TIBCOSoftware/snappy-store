@@ -480,7 +480,7 @@ public class CastNode extends ValueNode
 				}
 				else
 				{
-					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "boolean");
+					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "boolean", (String)null);
 				}
 
 			case Types.DATE:
@@ -514,7 +514,7 @@ public class CastNode extends ValueNode
 				catch (NumberFormatException nfe)
 				{
 					String sqlName = TypeId.getBuiltInTypeId(destJDBCTypeId).getSQLTypeName();
-					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, sqlName);
+					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, sqlName, (String)null);
 				}
 			case Types.REAL:
 				Float floatValue;
@@ -524,7 +524,7 @@ public class CastNode extends ValueNode
 				}
 				catch (NumberFormatException nfe)
 				{
-					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "float");
+					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "float", (String)null);
 				}
 				return (ValueNode) getNodeFactory().getNode(
 											C_NodeTypes.FLOAT_CONSTANT_NODE,
@@ -538,7 +538,7 @@ public class CastNode extends ValueNode
 				}
 				catch (NumberFormatException nfe)
 				{
-					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "double");
+					throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "double", (String)null);
 				}
 				return (ValueNode) getNodeFactory().getNode(
 											C_NodeTypes.DOUBLE_CONSTANT_NODE,
@@ -587,7 +587,7 @@ public class CastNode extends ValueNode
 				if (longValue < Byte.MIN_VALUE ||
 					longValue > Byte.MAX_VALUE)
 				{
-					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 				}
 				return (ValueNode) getNodeFactory().getNode(
 										C_NodeTypes.TINYINT_CONSTANT_NODE,
@@ -598,7 +598,7 @@ public class CastNode extends ValueNode
 				if (longValue < Short.MIN_VALUE ||
 					longValue > Short.MAX_VALUE)
 				{
-					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SHORT");
+					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SHORT", (String)null);
 				}
 				return (ValueNode) getNodeFactory().getNode(
 											C_NodeTypes.SMALLINT_CONSTANT_NODE,
@@ -610,7 +610,7 @@ public class CastNode extends ValueNode
 				if (longValue < Integer.MIN_VALUE ||
 					longValue > Integer.MAX_VALUE)
 				{
-					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 				}
 				return (ValueNode) getNodeFactory().getNode(
 												C_NodeTypes.INT_CONSTANT_NODE,
@@ -627,7 +627,7 @@ public class CastNode extends ValueNode
 			case Types.REAL:
 				if (Math.abs(longValue) > Float.MAX_VALUE)
 				{
-					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "REAL");
+					throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "REAL", (String)null);
 				}
 				return (ValueNode) getNodeFactory().getNode(
 											C_NodeTypes.FLOAT_CONSTANT_NODE,

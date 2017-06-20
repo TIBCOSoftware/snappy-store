@@ -27,10 +27,10 @@ import com.gemstone.gemfire.cache.Region;
  * In this example the server starts on a port with security properties for
  * client requests. Please refer to the quickstart guide for instructions on how
  * to run this example.
- * </p>
+ * <p>
  * Add $GEMFIRE/lib/gfSecurityImpl.jar to your CLASSPATH before running this
  * example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.5

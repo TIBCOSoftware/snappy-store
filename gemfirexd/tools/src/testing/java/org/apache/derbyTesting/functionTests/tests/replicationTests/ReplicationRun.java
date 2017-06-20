@@ -20,6 +20,7 @@ limitations under the License.
  */
 package org.apache.derbyTesting.functionTests.tests.replicationTests;
 
+import io.snappydata.jdbc.ClientDataSource;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -29,7 +30,6 @@ import java.util.Properties;
 
 import java.sql.*;
 import java.io.*;
-import com.pivotal.gemfirexd.internal.jdbc.ClientDataSource;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 
 import org.apache.derbyTesting.junit.BaseJDBCTestCase;
@@ -872,7 +872,7 @@ public class ReplicationRun extends BaseTestCase
                     Class.forName(DRIVER_CLASS_NAME); // Needed when running from classes!
                     conn = DriverManager.getConnection(URL);
                      */
-                    ClientDataSource ds = new com.pivotal.gemfirexd.internal.jdbc.ClientDataSource();
+                    ClientDataSource ds = new ClientDataSource();
                     ds.setDatabaseName(masterDatabasePath+FS+masterDbSubPath+FS+dbName);
                     ds.setServerName(masterHost);
                     ds.setPortNumber(masterServerPort);
@@ -1121,7 +1121,7 @@ public class ReplicationRun extends BaseTestCase
                         Class.forName(DRIVER_CLASS_NAME); // Needed when running from classes!
                         conn = DriverManager.getConnection(URL);
                          */
-                        ClientDataSource ds = new com.pivotal.gemfirexd.internal.jdbc.ClientDataSource();
+                        ClientDataSource ds = new ClientDataSource();
                         ds.setDatabaseName(fDbPath);
                         ds.setServerName(fSlaveHost);
                         ds.setPortNumber(fSlaveServerPort);
@@ -1408,7 +1408,7 @@ public class ReplicationRun extends BaseTestCase
     {
         util.DEBUG("BEGIN verifySlave "+slaveServerHost+":"
                 +slaveServerPort+"/"+slaveDatabasePath+FS+slaveDbSubPath+FS+replicatedDb);
-        ClientDataSource ds = new com.pivotal.gemfirexd.internal.jdbc.ClientDataSource();
+        ClientDataSource ds = new ClientDataSource();
         ds.setDatabaseName(slaveDatabasePath + FS + slaveDbSubPath + FS +
                            replicatedDb);
         ds.setServerName(slaveServerHost);
@@ -1430,7 +1430,7 @@ public class ReplicationRun extends BaseTestCase
     {
         util.DEBUG("BEGIN verifyMaster " + masterServerHost + ":"
                 +masterServerPort+"/"+masterDatabasePath+FS+masterDbSubPath+FS+replicatedDb);
-        ClientDataSource ds = new com.pivotal.gemfirexd.internal.jdbc.ClientDataSource();
+        ClientDataSource ds = new ClientDataSource();
         ds.setDatabaseName(masterDatabasePath + FS + masterDbSubPath + FS +
                            replicatedDb);
         ds.setServerName(masterServerHost);

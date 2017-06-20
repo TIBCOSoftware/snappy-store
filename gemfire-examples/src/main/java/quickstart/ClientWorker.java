@@ -28,7 +28,7 @@ import com.gemstone.gemfire.cache.Region;
  * client requests and updates. The client forwards all data requests it cannot
  * fulfill to the server and is configured to update the server as well. Please
  * refer to the quickstart guide for instructions on how to run this example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 5.8

@@ -195,6 +195,7 @@ public class SQLTest {
   public static int numOfWorkers = (int) TestConfig.tab().longAt(SQLPrms.numOfWorkers, 6);
   public static boolean hasPersistentTables = TestConfig.tab().booleanAt(GfxdHelperPrms.persistTables, false);
   public static boolean isWanTest = TestConfig.tab().booleanAt(SQLWanPrms.isWanTest, false);
+  public static boolean isSnappyTest = TestConfig.tab().booleanAt(SQLPrms.isSnappyTest, false);
   protected static boolean useWriterForWriteThrough = TestConfig.tab().booleanAt(SQLPrms.useWriterForWriteThrough, false);
   protected static boolean testLoaderCreateRandomRow = TestConfig.tab().booleanAt(SQLPrms.testLoaderCreateRandomRow, false);  
   public static boolean hasTx = TestConfig.tab().booleanAt(SQLPrms.hasTx, false);
@@ -331,8 +332,11 @@ public class SQLTest {
   public static boolean dumpThreads = TestConfig.tab().booleanAt(SQLPrms.dumpThreads, false);
   public static int dumpThreadsInterval = (int) TestConfig.tab().longAt(SQLPrms.dumpThreadsInterval, 10000);
   public static int dumpThreadsTotalTime = (int) TestConfig.tab().longAt(SQLPrms.dumpThreadsTotalTime, 600); //maxResultWaitSec
-  //public static boolean enableConcurrencyCheck = isHATest ? true : (random.nextBoolean() && testUniqueKeys? false: true);
-  public static boolean enableConcurrencyCheck = false; //Not covered in this 1.0 cheetah release, and removed from docs
+  //public static boolean enableConcurrencyCheck = isHATest ? true : (random.nextBoolean() &&  testUniqueKeys? false: true);
+  //enableConcurrecyChecks : needs to true in case of snapshotIsolation is enabled.
+  //Was set to false earlier (Not covered in this 1.0 cheetah release, and removed from docs)
+  public static boolean enableConcurrencyCheck = TestConfig.tab().booleanAt(SQLPrms
+      .isSnapshotEnabled,true);
   public static String ENABLECONCURRENCYCHECKS = " ENABLE CONCURRENCY CHECKS ";
   private static boolean isTicket51584Fixed = false;
   public static boolean reproduceTicket51628 = false;
@@ -1085,7 +1089,8 @@ public class SQLTest {
           s.execute(derbyTables[i]);
         }
       } else if (url.equals(GFEDBManager.getUrl())
-          || url.startsWith(GFEDBClientManager.getProtocol())){
+          || url.startsWith(GFEDBClientManager.getProtocol())
+          || url.startsWith(GFEDBClientManager.getDRDAProtocol())) {
 
         if (hasHdfs) {
           SQLPrms.setHdfsDDL(SQLPrms.getCreateTablesStatements(false));
@@ -1121,7 +1126,7 @@ public class SQLTest {
             }
           }
         }
-        
+
         if (enableConcurrencyCheck) {
           for (int i =0; i<gfeDDL.length; i++) {
             gfeDDL[i] += ENABLECONCURRENCYCHECKS;
@@ -1229,8 +1234,9 @@ public class SQLTest {
       for (int i = 0; i < tables.length; i++) {
         aStr.append(tables[i] + "\n");
       }
-    } else if (url.equals(GFEDBManager.getUrl())||
-        url.startsWith(GFEDBClientManager.getProtocol())){
+    } else if (url.equals(GFEDBManager.getUrl())
+        || url.startsWith(GFEDBClientManager.getProtocol())
+        || url.startsWith(GFEDBClientManager.getDRDAProtocol())) {
       for (int i = 0; i < gfeDDL.length; i++) {
         aStr.append(gfeDDL[i] + "\n");
       }
@@ -3127,6 +3133,19 @@ public class SQLTest {
     return rs1;
   }
 
+
+  protected void getCountQueryResult(Connection conn, String query, String tableName) {
+    try {
+      ResultSet rs = conn.createStatement().executeQuery(query);
+      while (rs.next()) {
+        Log.getLogWriter().info("Query:: " + query + "\nResult in GemFireXD:: " + rs.getLong(1));
+        SQLBB.getBB().getSharedMap().put(tableName, rs.getLong(1));
+      }
+    } catch (SQLException se) {
+      SQLHelper.handleSQLException(se);
+    }
+  }
+
   //verify two results from derby and gemfirexd are same
   protected boolean verifyResultSets(ResultSet rs1, ResultSet rs2) {
     return ResultSetHelper.compareResultSets(rs1, rs2);
@@ -3161,6 +3180,19 @@ public class SQLTest {
     
     closeDiscConnection(dConn);
     closeGFEConnection(gConn);
+  }
+
+  protected void writeCountQueryResultsToBB() {
+    Connection gConn = null;
+    gConn = getGFEConnection();
+    String selectQuery = "select count(*) from ";
+    ArrayList<String[]> tables = getTableNames(gConn);
+    SQLBB.getBB().getSharedMap().put("tableNames", tables);
+    for (String[] table : tables) {
+      String schemaTableName = table[0] + "." + table[1];
+      String query = selectQuery + schemaTableName.toLowerCase();
+      getCountQueryResult(gConn, query, schemaTableName);
+    }
   }
   
   public static void HydraTask_VerifyResultSetsStandalone(){
@@ -3693,6 +3725,10 @@ public class SQLTest {
   
   public static void HydraTask_verifyResultSets() {
     sqlTest.verifyResultSets();
+  }
+
+  public static void HydraTask_writeCountQueryResultsToSQLBB() {
+    sqlTest.writeCountQueryResultsToBB();
   }
 
   public static void HydraTask_clearTables() {

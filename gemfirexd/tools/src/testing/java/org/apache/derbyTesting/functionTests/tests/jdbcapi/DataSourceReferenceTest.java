@@ -409,8 +409,8 @@ public class DataSourceReferenceTest
             Method getMethod = getGet(property, ds);
 
             // Obtain value from original data source, then the recreated one.
-            Object dsValue = getMethod.invoke(ds, null);
-            Object rdsValue = getMethod.invoke(rds, null);
+            Object dsValue = getMethod.invoke(ds);
+            Object rdsValue = getMethod.invoke(rds);
 
             if (dsValue == null) {
                 assertNull(rdsValue);
@@ -493,7 +493,7 @@ public class DataSourceReferenceTest
         String methodName =
             "get" + property.substring(0,1).toUpperCase()
             + property.substring(1);
-        Method m = ds.getClass().getMethod(methodName, null);
+        Method m = ds.getClass().getMethod(methodName);
         return m;
     }
 

@@ -53,7 +53,7 @@ import com.gemstone.gemfire.internal.util.Bytes;
  * 
  * @author bakera
  */
-public class LexicographicalComparator implements SerializedComparator {
+public class LexicographicalComparator extends SerializedComparator {
 
   //////////////////////////////////////////////////////////////////////////////
   //
@@ -113,12 +113,7 @@ public class LexicographicalComparator implements SerializedComparator {
   private static final int STRING_TO_STRING_BYTES       = DSCODE.STRING       << 8 | DSCODE.STRING_BYTES;
   private static final int STRING_BYTES_TO_STRING       = DSCODE.STRING_BYTES << 8 | DSCODE.STRING;
   private static final int STRING_BYTES_TO_STRING_BYTES = DSCODE.STRING_BYTES << 8 | DSCODE.STRING_BYTES;
-  
-  @Override
-  public int compare(byte[] o1, byte[] o2) {
-    return compare(o1, 0, o1.length, o2, 0, o2.length);
-  }
-  
+
   @Override
   public int compare(byte[] b1, int o1, int l1, byte[] b2, int o2, int l2) {
     byte type1 = b1[o1];

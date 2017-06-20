@@ -70,7 +70,7 @@ public class RowOutputFormat<VALUE> extends OutputFormat<Key, VALUE> {
   public static final int OUTPUT_BATCH_SIZE_DEFAULT = 10000;
 
   private static final String OUTPUT_DRIVER_CLASS = "gfxd.output.driver";
-  private static final String DRIVER = "com.pivotal.gemfirexd.jdbc.ClientDriver";
+  private static final String DRIVER = "io.snappydata.jdbc.ClientDriver";
   
   private OutputFormatUtil util = new OutputFormatUtil();
 

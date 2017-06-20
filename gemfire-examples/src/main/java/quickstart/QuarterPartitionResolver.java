@@ -27,7 +27,7 @@ import com.gemstone.gemfire.cache.FixedPartitionResolver;
 
 /**
  * Partitions data into two "quarters."
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

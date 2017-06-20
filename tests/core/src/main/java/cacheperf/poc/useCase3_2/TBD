@@ -25,7 +25,7 @@ RUN ON 32-bit JROCKIT 1.6.0_27
 RUN FOR 4 HOURS
 
 ================================================================================
-STRESS TEST DESCRIPTION based on meeting with Suds Fri 07/16/10
+STRESS TEST DESCRIPTION based on meeting on Fri 07/16/10
 ================================================================================
 base on UseCase3 use case
 not a performance test, just stress/mtbf, no functional validation

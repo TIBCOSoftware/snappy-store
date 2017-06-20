@@ -632,7 +632,7 @@ public class CacheClientUpdater extends Thread implements ClientUpdater,
    * message received from the server.
    */
   private Message initializeMessage() {
-    Message _message = new Message(2, Version.CURRENT);
+    Message _message = new Message(2, Version.CURRENT_GFE);
     _message.setLogger(logger);
     try {
       _message.setComms(socket, in, out, commBuffer, this.stats);

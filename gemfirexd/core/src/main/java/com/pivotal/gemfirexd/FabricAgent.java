@@ -40,7 +40,7 @@ public interface FabricAgent extends FabricService, Agent {
    * directory, if set, otherwise in the current working directory, followed by 
    * 'user.home' directory.
    * The file name can be overridden using the system property
-   * -Dgemfirexd.properties=<property file>.
+   * -Dgemfirexd.properties=&lt;property file&gt;.
    * If this value is a relative file system path then the above search is done.
    * If it is an absolute file system path then that file must exist; no search for it is done.
    *
@@ -83,7 +83,7 @@ public interface FabricAgent extends FabricService, Agent {
    * directory, if set, otherwise in the current working directory, followed by 
    * 'user.home' directory.
    * The file name can be overridden using the system property
-   * -Dgemfirexd.properties=<property file>.
+   * -Dgemfirexd.properties=&lt;property file&gt;.
    * If this value is a relative file system path then the above search is done.
    * If it is an absolute file system path then that file must exist; no search for it is done.
    *

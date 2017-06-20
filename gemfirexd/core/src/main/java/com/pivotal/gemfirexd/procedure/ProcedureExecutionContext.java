@@ -57,7 +57,7 @@ public interface ProcedureExecutionContext {
   /**
    * A "nested" JDBC connection that can be used by
    * the procedure to execute SQL. If the SQL query string
-   * begins with the "<local>" escape sequence, then execution
+   * begins with the "&lt;local&gt;" escape sequence, then execution
    * will be restricted to local execution only, and only on
    * the data "assigned" to this procedure on this server.
    * This Connection is the same Connection obtained with

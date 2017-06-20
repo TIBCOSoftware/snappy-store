@@ -3378,7 +3378,7 @@ public class NetConnectionReply extends Reply
                 case CodePoint.PBSD_SCHEMA:
                     netAgent_.netConnection_.
                         completeInitialPiggyBackSchema
-                            (readString(getDdmLength(), "UTF-8"));
+                            (readString(getDdmLength(), ClientSharedData.UTF8));
                     break;
 // GemStone changes BEGIN
                 case CodePoint.PBSD_SVRVER:
@@ -3425,7 +3425,7 @@ public class NetConnectionReply extends Reply
             case CodePoint.PBSD_SCHEMA:
                 netAgent_.netConnection_.
                     completePiggyBackSchema
-                    (readString(getDdmLength(), "UTF-8"));
+                    (readString(getDdmLength(), ClientSharedData.UTF8));
                 break;
 // GemStone changes BEGIN
             case CodePoint.PBSD_TXID:

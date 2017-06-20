@@ -40,6 +40,13 @@
 
 package com.pivotal.gemfirexd.internal.iapi.services.property;
 
+import java.io.Serializable;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Attribute;
 import com.pivotal.gemfirexd.internal.iapi.reference.EngineType;
@@ -48,10 +55,6 @@ import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.ModuleFactory;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
-
-import java.util.Properties;
-import java.io.Serializable;
-import java.util.Dictionary;
 
 /**
 	There are 5 property objects within a JBMS system.
@@ -203,7 +206,18 @@ public class PropertyUtil {
           return findAndGetProperty(set, key, systemKey, null);
         }
 
-         public static String findAndGetProperty(Properties set, String key,
+	public static Map<String, String> findAndGetPropertiesWithPrefix(Properties set, String keyNamePrefix) {
+		Set<String> keys = set.stringPropertyNames();
+		Map<String, String> mappings = new HashMap<String, String>();
+		for (String key : keys) {
+			if (key.startsWith(keyNamePrefix)) {
+				mappings.put(key, set.getProperty(key));
+			}
+		}
+		return mappings;
+	}
+
+	public static String findAndGetProperty(Properties set, String key,
              String systemKey, ModuleFactory monitor) {
 
            ModuleFactory monitorLite = monitor;

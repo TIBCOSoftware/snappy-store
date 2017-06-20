@@ -47,22 +47,17 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 
 import java.io.PrintWriter;
-import java.util.Hashtable;
 import java.util.Properties;
 import java.util.logging.Logger;
 
 /* -- New jdbc 20 extension types --- */
-import javax.naming.Context;
-import javax.naming.Name;
-import javax.sql.DataSource;
 
 
 import com.pivotal.gemfirexd.Attribute;
-import com.pivotal.gemfirexd.internal.iapi.error.ExceptionSeverity;
-import com.pivotal.gemfirexd.internal.iapi.reference.MessageId;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
-import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import io.snappydata.jdbc.AutoloadedDriver;
+import io.snappydata.jdbc.EmbeddedDriver;
 
 /** 
 	
@@ -545,12 +540,12 @@ public class EmbeddedDataSource extends ReferenceableDataSource implements
 				if (driver == null || !driver.acceptsURL(url))
 				{
 
-					new com.pivotal.gemfirexd.jdbc.EmbeddedDriver();
+					new EmbeddedDriver();
 
 					// If we know the driver, we loaded it.   Otherwise only
 					// work if DriverManager has already loaded it.
 
-					AutoloadedDriver	autoloadedDriver =
+					AutoloadedDriver autoloadedDriver =
 						(AutoloadedDriver) DriverManager.getDriver(url);
 					driver = (InternalDriver) autoloadedDriver.getDriverModule();
 					// DriverManager will throw an exception if it cannot find the driver

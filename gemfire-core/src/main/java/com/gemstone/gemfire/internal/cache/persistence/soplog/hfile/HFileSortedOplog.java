@@ -48,9 +48,10 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.io.hfile.HFile.Reader;
 import org.apache.hadoop.hbase.io.hfile.HFile.Writer;
+import org.apache.hadoop.hbase.io.hfile.HFileContext;
+import org.apache.hadoop.hbase.io.hfile.HFileContextBuilder;
 import org.apache.hadoop.hbase.io.hfile.HFileScanner;
-import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
-import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
+import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.util.BloomFilterFactory;
 import org.apache.hadoop.hbase.util.BloomFilterWriter;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -95,7 +96,8 @@ public class HFileSortedOplog implements SortedOplog {
     hconf = new Configuration();
 
     hconf.setBoolean("hbase.metrics.showTableName", true);
-    SchemaMetrics.configureGlobally(hconf);
+    // [sumedh] should not be required with the new metrics2
+    // SchemaMetrics.configureGlobally(hconf);
 
     try {
       fs = FileSystem.get(hconf);
@@ -176,7 +178,7 @@ public class HFileSortedOplog implements SortedOplog {
     private volatile boolean closed;
     
     public HFileSortedOplogReader() throws IOException {
-      reader = HFile.createReader(fs, path, hcache);
+      reader = HFile.createReader(fs, path, hcache, hconf);
       validate();
       
       stats = new HFileSortedStatistics(reader);
@@ -394,16 +396,22 @@ public class HFileSortedOplog implements SortedOplog {
     private final BloomFilterWriter bfw;
     
     public HFileSortedOplogWriter() throws IOException {
+      HFileContext hcontext = new HFileContextBuilder()
+          .withBlockSize(sopConfig.getBlockSize())
+          .withBytesPerCheckSum(sopConfig.getBytesPerChecksum())
+          .withChecksumType(HFileSortedOplogFactory.convertChecksum(
+              sopConfig.getChecksum()))
+          .withCompression(HFileSortedOplogFactory.convertCompression(
+              sopConfig.getCompression()))
+          .withDataBlockEncoding(HFileSortedOplogFactory.convertEncoding(
+              sopConfig.getKeyEncoding()).getDataBlockEncoding())
+          .build();
       writer = HFile.getWriterFactory(hconf, hcache)
           .withPath(fs, path)
-          .withBlockSize(sopConfig.getBlockSize())
-          .withBytesPerChecksum(sopConfig.getBytesPerChecksum())
-          .withChecksumType(HFileSortedOplogFactory.convertChecksum(sopConfig.getChecksum()))
-//          .withComparator(sopConfig.getComparator())
-          .withCompression(HFileSortedOplogFactory.convertCompression(sopConfig.getCompression()))
-          .withDataBlockEncoder(HFileSortedOplogFactory.convertEncoding(sopConfig.getKeyEncoding()))
+          .withFileContext(hcontext)
+          .withComparator(sopConfig.getComparator())
           .create();
-      
+
       bfw = sopConfig.isBloomFilterEnabled() ?
 //          BloomFilterFactory.createGeneralBloomAtWrite(hconf, hcache, BloomType.ROW,
 //              0, writer, sopConfig.getComparator())

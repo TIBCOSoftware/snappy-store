@@ -166,6 +166,25 @@ final class ConcurrentTHashSegment<E> extends ReentrantReadWriteLock implements
     }
   }
 
+  public final Object put(E e, final int hash) {
+    super.writeLock().lock();
+    try {
+      final Object[] set = this.set;
+      int index = insertionIndex(e, hash, set);
+
+      if (index < 0) {
+        index = -index - 1;
+      }
+      Object old = set[index];
+      set[index] = e;
+
+      postInsertHook(old == null);
+      return old;
+    } finally {
+      super.writeLock().unlock();
+    }
+  }
+
   final Object addP(E e, final int hash) {
     final Object[] set = this.set;
     int index = insertionIndex(e, hash, set);

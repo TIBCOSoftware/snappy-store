@@ -264,7 +264,9 @@ public final class IndexRowToBaseRowResultSet extends NoPutResultSetImpl
     // also, gets whole row only if accessedHeapCols is equal to accessedAllCols.
     // This should be the case if this is a SELECT, but may not be the case
     // for other cases such as DELETE
-    if (getWholeRow) {
+    // [sumedh] Is this really required? If getWholeRow is true then DELETE
+    // and other DMLs should also work fine.
+    if (getWholeRow && forUpdate) {
       getWholeRow = accessedAllCols == null
                        && accessedHeapCols == null
                     || accessedAllCols != null
@@ -277,7 +279,7 @@ public final class IndexRowToBaseRowResultSet extends NoPutResultSetImpl
     boolean useBytes = gfc.isByteArrayStore() && getWholeRow;
 
     // if we are getting the whole row as bytes, then optimize by using null
-    // bit sets and set the resultRow to be a CompactExecRow    
+    // bit sets and set the resultRow to be a CompactExecRow
     if (useBytes) {
       this.accessedAllCols = null;
       this.accessedHeapCols = null;

@@ -29,6 +29,7 @@ import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.net.URL;
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -99,6 +100,7 @@ public class CacheServerLauncher  {
   protected final String startLogFileName;
   protected final String pidFileName;
   protected final String statusName;
+  protected final String hostName;
   protected Status status = null;
   protected File workingDir = null;
   protected PrintStream oldOut = System.out;
@@ -107,8 +109,8 @@ public class CacheServerLauncher  {
   protected String maxHeapSize;
   protected String initialHeapSize;
   protected String offHeapSize;
-  protected String maxPermGenSize;
-  protected boolean useThriftServerDefault;
+  protected boolean useThriftServerDefault =
+      ClientSharedUtils.isThriftDefault();
 
   protected static CacheServerLauncher instance;
 
@@ -129,6 +131,22 @@ public class CacheServerLauncher  {
     this.defaultLogFileName = baseNameLowerCase + ".log";
     this.pidFileName = baseNameLowerCase + ".pid";
     this.statusName = "." + baseNameLowerCase + ".ser";
+
+    InetAddress host;
+    try {
+      host = SocketCreator.getLocalHost();
+    } catch (Exception ex) {
+      try {
+        host = InetAddress.getLocalHost();
+      } catch (Exception e) {
+        host = null;
+      }
+    }
+    if (host != null) {
+      this.hostName = host.getCanonicalHostName();
+    } else {
+      this.hostName = "localhost";
+    }
   }
 
   protected String getBaseName(final String name) {
@@ -217,7 +235,7 @@ public class CacheServerLauncher  {
     }
     else {
       System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED
-          .toLocalizedString(this.baseName));
+          .toLocalizedString(this.baseName, this.hostName));
     }
     System.exit(0);
   }
@@ -335,14 +353,11 @@ public class CacheServerLauncher  {
   public static final String EVICTION_HEAP_PERCENTAGE =
       "eviction-heap-percentage";
   public static final String CRITICAL_OFF_HEAP_PERCENTAGE =
-      "critical-off-heap-percentage";
+        "critical-off-heap-percentage";
   public static final String EVICTION_OFF_HEAP_PERCENTAGE =
       "eviction-off-heap-percentage";
   protected static final String LOCK_MEMORY = "lock-memory";
 
-  protected static final String MAX_PERM_SIZE = "-XX:MaxPermSize";
-  protected static final String MAX_PERM_DEFAULT = "=128m";
-  
   protected final File processDirOption(final Map<String, Object> options, final String dirValue) throws FileNotFoundException {
     final File inputWorkingDirectory = new File(dirValue);
 
@@ -372,7 +387,6 @@ public class CacheServerLauncher  {
     final Properties props = new Properties();
     options.put(PROPERTIES, props);
 
-    boolean hasSecRndArg = false;
     for (final String arg : args) {
       if(arg == null) {
         continue;
@@ -423,10 +437,6 @@ public class CacheServerLauncher  {
           this.maxHeapSize = vmArg.substring(4);
         } else if (vmArg.startsWith("-Xms")) {
           this.initialHeapSize = vmArg.substring(4);
-        } else if (vmArg.startsWith(MAX_PERM_SIZE)) {
-          this.maxPermGenSize = vmArg;
-        } else if (vmArg.startsWith("-Djava.security.egd")) {
-          hasSecRndArg = true;
         } else if (vmArg.startsWith(thriftArg = ("-D"
             + SystemProperties.getServerInstance().getSystemPropertyNamePrefix()
             + ClientSharedUtils.USE_THRIFT_AS_DEFAULT_PROP))) {
@@ -480,10 +490,6 @@ public class CacheServerLauncher  {
     // configure commons-logging to use Log4J logging
     vmArgs.add("-Dorg.apache.commons.logging.Log=" +
         "org.apache.commons.logging.impl.Log4JLogger");
-
-    if (!hasSecRndArg && NativeCalls.getInstance().getOSType().isPOSIX()) {
-      vmArgs.add("-Djava.security.egd=file:/dev/./urandom");
-    }
 
     vmArgs = postProcessOptions(vmArgs, options);
     options.put(VMARGS, vmArgs);
@@ -734,7 +740,7 @@ public class CacheServerLauncher  {
   /**
    * Sets the status of the cache server to be {@link #RUNNING}.
    */
-  public void running(final InternalDistributedSystem system) {
+  public void running(final InternalDistributedSystem system, boolean endWaiting) {
     Status stat = this.status;
     if (stat == null) {
       stat = this.status = createStatus(this.baseName, RUNNING, getProcessId());
@@ -742,6 +748,9 @@ public class CacheServerLauncher  {
     else {
       if (stat.state == WAITING) {
         stat.dsMsg = null;
+        if (endWaiting) {
+          stat.state = RUNNING;
+        }
       } else {
         stat.state = RUNNING;
       }
@@ -896,7 +905,7 @@ public class CacheServerLauncher  {
 
     startAdditionalServices(cache, options, props);
 
-    this.running(system);
+    this.running(system, false);
 
     clearLogListener();
 
@@ -1197,18 +1206,19 @@ public class CacheServerLauncher  {
 
       // after polling, determine the status of the Cache Server one last time and determine how to exit...
       if (this.status.state == SHUTDOWN) {
-        System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED.toLocalizedString(this.baseName));
+        System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED
+            .toLocalizedString(this.baseName, this.hostName));
         deleteStatus();
         exitStatus = 0;
       }
       else {
         System.out.println(LocalizedStrings.CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1
-          .toLocalizedString(this.baseName, this.status));
+          .toLocalizedString(this.baseName, this.hostName, this.status));
       }
     }
     else {
       System.out.println(LocalizedStrings.CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE
-        .toLocalizedString(this.workingDir));
+        .toLocalizedString(this.workingDir, this.hostName));
     }
 
     if (DONT_EXIT_AFTER_LAUNCH) {

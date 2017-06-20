@@ -73,7 +73,7 @@ parReg/colocation/persistence/prColocationWithListenerPersist.conf
    peerHosts=5 peerVMsPerHost=2 peerThreadsPerVM=20 
    numKeys=5000 byteArraySize=5 redundantCopies=3
 
-// removed because of bug 41984; Dan Smith and Suds determined that we will
+// removed because of bug 41984; Team determined that we will
 // not support PartitionManager/PartitionListener with HA and persistence
 //parReg/colocation/persistence/prColocationWithListenerHAPersist.conf
 //   A=edge edgeHosts=5 edgeVMsPerHost=1 edgeThreadsPerVM=5

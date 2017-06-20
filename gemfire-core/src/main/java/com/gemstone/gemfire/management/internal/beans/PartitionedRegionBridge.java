@@ -16,13 +16,18 @@
  */
 package com.gemstone.gemfire.management.internal.beans;
 
+import java.util.Iterator;
 import java.util.Set;
 
 import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
+import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionStats;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.management.FixedPartitionAttributesData;
 import com.gemstone.gemfire.management.PartitionAttributesData;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
@@ -73,6 +78,8 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
 
   private StatsAverageLatency remotePutAvgLatency;
 
+  private boolean isColumnTable = false;
+
   public static final String PAR_REGION_MONITOR = "PartitionedRegionMonitor";
   
   public static <K, V> PartitionedRegionBridge<K, V> getInstance(Region<K, V> region) {
@@ -92,6 +99,8 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
     super(region);
     this.parRegion = (PartitionedRegion)region;
     this.prStats = parRegion.getPrStats();
+
+    this.isColumnTable = parRegion.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
     
     PartitionAttributes<K, V>  partAttrs = parRegion.getPartitionAttributes();    
     
@@ -316,5 +325,36 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
 
   public long getEstimatedSizeForHDFSRegion() {
     return -1;
+  }
+
+  @Override
+  public boolean isColumnTable() {
+    return isColumnTable;
+  }
+
+  @Override
+  public long getRowsInColumnBatches() {
+    return this.prStats.getPRNumRowsInColumnBatches();
+  }
+
+  private int minimumReservoirEntrySize = Sizeable.PER_OBJECT_OVERHEAD * 6;
+  
+  @Override
+  public long getRowsInReservoir() {
+    if (parRegion.isDataStore()) {
+      int numLocalEntries = 0;
+      Iterator itr = parRegion.localEntriesIterator((InternalRegionFunctionContext)null, true, false, true, null);
+      while (itr.hasNext()) {
+        RegionEntry re = (RegionEntry)itr.next();
+        Sizeable value = (Sizeable)re._getValue();
+        long valSize = value.getSizeInBytes();
+        if (valSize > minimumReservoirEntrySize) {
+          numLocalEntries += (valSize - minimumReservoirEntrySize) / Sizeable.PER_OBJECT_OVERHEAD;
+        }
+      }
+      return numLocalEntries;
+    } else {
+      return  ManagementConstants.ZERO;
+    }
   }
 }

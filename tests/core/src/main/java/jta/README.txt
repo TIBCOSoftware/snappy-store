@@ -39,7 +39,7 @@ utx.commit()
 
 [serial/conc]JtaCacheCallbackWithTxWriter.conf
 Same as the above test, but with an attempt to execute the commit in the TxWriter. 
-(This was a high priority use case/requirements from Jags, but like the
+(This was a high priority use case/requirements, but like the
 DBWriter, this doesn't work when invoked in a remote VM in a thread other than
 the thread initiating the UserTransaction.  Now this jtaTxWriter is used to
 test that throwning an Exception (randomly) from the TxWriter will

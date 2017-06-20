@@ -1,4 +1,28 @@
+/*
+ * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
+plugins {
+  id 'com.github.johnrengelman.shadow' version '1.2.3'
+}
+
 dependencies {
+  provided "org.apache.thrift:libthrift:${thriftVersion}"
+  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+
   compile project(subprojectBase + 'gemfirexd-shared')
 }
 
@@ -10,7 +34,7 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
   doLast {
     println('Creating DRDA client properties')
     derbyProps.put('gemfirexd.product.technology.name', "${DERBY_NAME} Network Client")
-    derbyProps.put('gemfirexd.product.file', "gemfirexd-client.jar")
+    derbyProps.put('gemfirexd.product.file', 'snappydata-store-client.jar')
     writeProperties(infoDir, 'dnc.properties', COPYRIGHT, derbyProps)
 
     println('Creating Thrift client properties')
@@ -24,35 +48,37 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
         'gemfirexd.product.external.version': PRODUCT_VERSION,
         'gemfirexd.version.beta'            : 'true',
         'gemfirexd.product.vendor'          : PRODUCT_VENDOR,
-        'gemfirexd.product.file'            : 'gemfirexd-client.jar'])
+        'gemfirexd.product.file'            : 'snappydata-store-client.jar'])
   }
 }
 
 compileJava {
-  dependsOn project(subprojectBase + 'gemfirexd-core').jar
   dependsOn generatePropertiesFiles
 }
 
-archivesBaseName = 'gemfirexd-client'
+archivesBaseName = 'snappydata-store-client'
+
 jar {
-  baseName = 'gemfirexd-client'
-
-  from {
-    configurations.runtime.collect {
-      it.isDirectory() ? it : zipTree(it).matching {
-        exclude {
-          it.path.contains('META-INF')
-        }
-      }
-    }
-  }
-
+  dependsOn subprojectBase + 'gemfirexd-core:doSplit'
+  baseName = 'snappydata-store-client'
   manifest {
     attributes = getManifest('gemfirexdclient', '*',
-        'com.pivotal.gemfirexd.jdbc', [])
+        'io.snappydata.jdbc', [])
   }
 
   doFirst {
     generateCommonManifest(projectDir, buildDir)
   }
+}
+
+shadowJar {
+  dependsOn jar
+  baseName = 'snappydata-client'
+  classifier = ''
+  // avoid conflict with the older incompatible thrift versions
+  relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
+
+  configurations = [ project.configurations.runtime, project.configurations.provided ]
+
+  mergeServiceFiles()
 }

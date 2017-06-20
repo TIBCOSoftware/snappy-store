@@ -45,8 +45,6 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.sql.SQLException;
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.JdkHelper;
 import com.pivotal.gemfirexd.internal.client.am.SQLExceptionFactory;
 import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
 import com.pivotal.gemfirexd.internal.shared.common.i18n.MessageUtil;
@@ -259,17 +257,13 @@ public abstract class ResultSet implements java.sql.ResultSet,
         // TYPE_SCROLL_INSENSITIVE = 1004
         // TYPE_SCROLL_SENSITIVE = 1005
         if (resultSetType_ < statement_.resultSetType_) {
-// GemStone changes BEGIN
-            final JdkHelper helper = ClientSharedUtils.getJdkHelper();
-// GemStone changes END
             statement_.accumulateWarning(
                 new SqlWarning(
                     agent_.logWriter_, 
                     new ClientMessageId(SQLState.INVALID_RESULTSET_TYPE),
 // GemStone changes BEGIN
-                        // changed to use Integer.valueOf() if possible
-                        helper.newInteger(statement_.resultSetType_),
-                        helper.newInteger(resultSetType_)));
+                        statement_.resultSetType_,
+                        resultSetType_));
                         /* (original code)
                         new Integer(statement_.resultSetType_),
                         new Integer(resultSetType_)));
@@ -2609,7 +2603,7 @@ public abstract class ResultSet implements java.sql.ResultSet,
                 new ClientMessageId(SQLState.NUMBER_OF_ROWS_TOO_LARGE_FOR_INT),
 // GemStone changes BEGIN
                 // changed to use valueOf() if possible
-                ClientSharedUtils.getJdkHelper().newLong(row)));
+                row));
                 /* (original code)
                 new Long(row)));
                 */

@@ -28,7 +28,7 @@ import com.gemstone.gemfire.InvalidDeltaException;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 /**
  * Sample Object class which implements Delta.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 6.1

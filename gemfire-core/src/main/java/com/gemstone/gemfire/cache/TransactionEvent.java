@@ -58,7 +58,7 @@ public interface TransactionEvent {
    */
   public TransactionId getTransactionId();
 
-  // TODO: TX: ask Sudhir if we can remove the deprecated methods below for 7.0
+  // TODO: TX: ask team if we can remove the deprecated methods below for 7.0
 
   /** Gets all "create" EntryEvents for this transaction;
    * <code>Region.create</code> and/or <code>Region.put</code>

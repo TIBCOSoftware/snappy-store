@@ -1900,13 +1900,21 @@ public class SQLDistTxTest extends SQLTxTest {
       Log.getLogWriter().info(sql);
       MemHeapScanController.setWaitForLatchForTEST(10);
       MemHeapScanController.setWaitObjectAfterFirstQualifyForTEST(latch);
-      try {
-        int count = gConn.createStatement().executeUpdate(sql);
-        if (count == 0)
-          verifyGreen = false; // avoid the case no qualified row in the gfxd
-      } catch (SQLException se) {
-        dumpResults();
-        SQLHelper.handleSQLException(se);
+      for(int i=0; i< 10; i++) {
+        try {
+          Log.getLogWriter().info("RR: doDML42084 " + i + " times");
+          int count = gConn.createStatement().executeUpdate(sql);
+          if (count == 0)
+            verifyGreen = false; // avoid the case no qualified row in the gfxd
+          break;
+        } catch (SQLException se) {
+          if (se.getMessage().contains("Conflict detected in transaction operation and it will abort") && i < 9) {
+            Log.getLogWriter().info("RR: detected conflict , retrying");
+            continue;
+          }
+          dumpResults();
+          SQLHelper.handleSQLException(se);
+        }
       }
     } else if (num == 2) {
       secondInThisRound = true;
@@ -1915,13 +1923,21 @@ public class SQLDistTxTest extends SQLTxTest {
       Log.getLogWriter().info(sql);
       MemHeapScanController.setWaitForLatchForTEST(10);
       MemHeapScanController.setWaitObjectAfterFirstQualifyForTEST(latch);
-      try {
-        int count = gConn.createStatement().executeUpdate(sql);
-        if (count == 0)
-          verifyYellow = false; // avoid the case no qualified row in the gfxd
-      } catch (SQLException se) {
-        dumpResults();
-        SQLHelper.handleSQLException(se);
+      for(int i=0; i< 10; i++) {
+        try {
+          Log.getLogWriter().info("RR: doDML42084 " + i + " times");
+          int count = gConn.createStatement().executeUpdate(sql);
+          if (count == 0)
+            verifyYellow = false; // avoid the case no qualified row in the gfxd
+          break;
+        } catch (SQLException se) {
+          if (se.getMessage().contains("Conflict detected in transaction operation and it will abort") && i < 9) {
+            Log.getLogWriter().info("RR: detected conflict , retrying");
+            continue;
+          }
+          dumpResults();
+          SQLHelper.handleSQLException(se);
+        }
       }
     } else {
       sql = random.nextBoolean() ? "update simpleTable set condition = "
@@ -1949,7 +1965,7 @@ public class SQLDistTxTest extends SQLTxTest {
     // finishing
     if (firstInThisRound) {
       SQLBB.getBB().getSharedCounters().zero(SQLBB.firstInRound); // for next
-                                                                  // round
+      // round
       int curLatchCount = (int) latch.getCount();
       Log.getLogWriter().info("latch count is: " + curLatchCount);
       if (curLatchCount != 0) {

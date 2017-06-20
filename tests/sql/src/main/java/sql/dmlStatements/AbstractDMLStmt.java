@@ -153,9 +153,11 @@ public abstract class AbstractDMLStmt implements DMLStmtIF {
   public static ThreadLocal<Calendar> myCal; 
   public static boolean testworkaroundFor51519 = TestConfig.tab().booleanAt(sql.SQLPrms.testworkaroundFor51519,
       true) && !SQLTest.hasDerbyServer;
-  
+
   static {
-    if (SQLTest.isEdge) lock = SQLBB.getBB().getSharedLock();
+    if (SQLTest.isSnappyTest) {
+      //do nothing
+    } else if (SQLTest.isEdge) lock = SQLBB.getBB().getSharedLock();
     else dls = getLockService();
   }
   
@@ -201,7 +203,7 @@ public abstract class AbstractDMLStmt implements DMLStmtIF {
       }
     }
   }
-  
+
   private static DistributedLockService getLockService() {
     DistributedLockService dls = DistributedLockService.getServiceNamed(LOCK_SERVICE_NAME);
     if (dls == null) {

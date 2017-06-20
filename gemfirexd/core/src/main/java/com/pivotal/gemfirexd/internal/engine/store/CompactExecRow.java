@@ -33,6 +33,7 @@ import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import org.apache.spark.unsafe.types.UTF8String;
 
 /**
  * A compact implementation of Row used to minimize the footprint of a row and
@@ -367,6 +368,11 @@ public final class CompactExecRow extends AbstractCompactExecRow {
   }
 
   @Override
+  public UTF8String getAsUTF8String(int index) throws StandardException {
+    return this.formatter.getAsUTF8String(index, this.source);
+  }
+
+  @Override
   protected String getString(int position, ResultWasNull wasNull)
       throws StandardException {
     return this.formatter.getAsString(position, this.source, wasNull);
@@ -433,6 +439,12 @@ public final class CompactExecRow extends AbstractCompactExecRow {
   }
 
   @Override
+  public long getAsDateMillis(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    return this.formatter.getAsDateMillis(index, this.source, cal, wasNull);
+  }
+
+  @Override
   protected java.sql.Date getDate(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException {
     return this.formatter.getAsDate(position, this.source, cal, wasNull);
@@ -442,6 +454,12 @@ public final class CompactExecRow extends AbstractCompactExecRow {
   protected java.sql.Time getTime(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException {
     return this.formatter.getAsTime(position, this.source, cal, wasNull);
+  }
+
+  @Override
+  public long getAsTimestampMicros(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException {
+    return this.formatter.getAsTimestampMicros(index, this.source, cal, wasNull);
   }
 
   @Override

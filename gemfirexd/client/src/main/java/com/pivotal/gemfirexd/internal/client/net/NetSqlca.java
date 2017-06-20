@@ -55,7 +55,7 @@ public class NetSqlca extends Sqlca {
        {
             throw new SqlException(null, 
                   new ClientMessageId(SQLState.UNSUPPORTED_ENCODING),
-                       "sqlstate bytes", "SQLSTATE",uee);
+                       "sqlstate bytes", "SQLSTATE", null, uee);
        }
        sqlErrpBytes_ = sqlErrpBytes;
    }

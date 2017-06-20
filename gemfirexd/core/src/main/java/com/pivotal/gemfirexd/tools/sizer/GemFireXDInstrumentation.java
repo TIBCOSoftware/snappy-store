@@ -29,8 +29,10 @@ import com.gemstone.gemfire.internal.size.SingleObjectSizer;
  * as I am yet to find java agent instrumentation before starting
  * VM in a DUnit, a hydra test will be required.<BR>
  * <BR>
+ * <ul>
  * <li>GemFireXDInstrumentation</li>
  * <li>ObjectSizer</li>
+ * </ul>
  * <BR>
  * Second mechanism of instrumenting after JVM is launched doesn't works
  * correctly in current version 1.6<BR>
@@ -48,8 +50,6 @@ public final class GemFireXDInstrumentation implements SingleObjectSizer {
   private static Instrumentation instAgent = null;
 
   private static String agentArguments = null;
-  
-  private final static ReflectionSingleObjectSizer reflectionSizer = new ReflectionSingleObjectSizer();
   
   private static final GemFireXDInstrumentation theInstance;
   
@@ -80,7 +80,7 @@ public final class GemFireXDInstrumentation implements SingleObjectSizer {
       return 0;
     }
     if (instAgent == null) {
-      return reflectionSizer.sizeof(objectToSize);
+      return ReflectionSingleObjectSizer.INSTANCE.sizeof(objectToSize);
     }
 
     return instAgent.getObjectSize(objectToSize);

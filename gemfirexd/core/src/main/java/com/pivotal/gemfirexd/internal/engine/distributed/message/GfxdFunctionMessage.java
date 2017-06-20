@@ -119,6 +119,8 @@ public abstract class GfxdFunctionMessage<T> extends
 
   protected transient Set<DistributedMember> failedNodes;
 
+  protected transient boolean abortOnLowMemory = true;
+
   /**
    * The DistributionManager being used for processing. Will be null if message
    * is being processed locally.
@@ -186,8 +188,10 @@ public abstract class GfxdFunctionMessage<T> extends
 
   /** Constructor that should be invoked by child classes. */
   protected GfxdFunctionMessage(ResultCollector<Object, T> collector,
-      final TXStateInterface tx, boolean timeStatsEnabled) {
+      final TXStateInterface tx, boolean timeStatsEnabled,
+      boolean abortOnLowMemory) {
     super(tx, timeStatsEnabled);
+    this.abortOnLowMemory = abortOnLowMemory;
     if (this.timeStatsEnabled) {
       replyReceivedMsgs = Collections
           .synchronizedList(new ArrayList<GfxdFunctionReplyMessage>());
@@ -212,6 +216,7 @@ public abstract class GfxdFunctionMessage<T> extends
     assert other.userCollector != null: "unexpected null ResultCollector";
     this.userCollector = other.userCollector;
     this.gfxdCollector = other.gfxdCollector;
+    this.abortOnLowMemory = other.abortOnLowMemory;
     // pass the reference
     if (this.timeStatsEnabled) {
       this.membersMsgsSent = other.membersMsgsSent;
@@ -576,10 +581,11 @@ public abstract class GfxdFunctionMessage<T> extends
     final HeapMemoryMonitor hmm = cache.getResourceManager().getHeapMonitor();
     @SuppressWarnings({ "unchecked", "rawtypes" })
     final Set<InternalDistributedMember> tgtMembers = (Set)members;
-    if (optimizeForWrite() && hmm.containsHeapCriticalMembers(tgtMembers)
+    if (optimizeForWrite() && abortOnLowMemory &&
+        hmm.containsHeapCriticalMembers(tgtMembers)
         && !MemoryThresholds.isLowMemoryExceptionDisabled()) {
       final Set<InternalDistributedMember> hcm = cache.getResourceAdvisor()
-          .adviseCritialMembers();
+          .adviseCriticalMembers();
       @SuppressWarnings("unchecked")
       final Set<DistributedMember> sm = new THashSet(4);
       GemFireXDUtils.setIntersect(hcm, tgtMembers, sm);
@@ -606,7 +612,7 @@ public abstract class GfxdFunctionMessage<T> extends
     HeapMemoryMonitor hmm = getGemFireCache().getResourceManager()
         .getHeapMonitor();
     if (optimizeForWrite() && !MemoryThresholds.isLowMemoryExceptionDisabled()
-        && hmm.isMemberHeapCritical(m)) {
+        && abortOnLowMemory && hmm.isMemberHeapCritical(m)) {
       throw new LowMemoryException(LocalizedStrings
           .ResourceManager_LOW_MEMORY_FOR_0_FUNCEXEC_MEMBERS_1
               .toLocalizedString(new Object[] {this.getClass().getName(),

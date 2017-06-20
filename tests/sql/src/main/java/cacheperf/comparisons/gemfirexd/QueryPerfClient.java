@@ -799,6 +799,7 @@ public class QueryPerfClient extends CachePerfClient {
           }
         }
       }
+      c.reportMemoryUsed();
     }
   }
 
@@ -855,6 +856,36 @@ public class QueryPerfClient extends CachePerfClient {
       }
     }
     return 0;
+  }
+
+  private void reportMemoryUsed() throws SQLException {
+    if (this.queryAPI != QueryPrms.GFXD) {
+      noop();
+    } else {
+      Log.getLogWriter().info("Printing memory analytics...");
+      Connection tmpconn = QueryUtil.gfxdEmbeddedSetup(this);
+      tmpconn.setTransactionIsolation(QueryPerfPrms.TRANSACTION_NONE);
+      String stmt = "select sum(entry_size), sum(key_size), sum(value_size), sum(total_size), table_name,index_name from sys.memoryanalytics group by table_name , index_name";
+      Log.getLogWriter().info("Executing " + stmt);
+      PreparedStatement memstmt = tmpconn.prepareStatement(stmt);
+      ResultSet rs = memstmt.executeQuery();
+      Log.getLogWriter().info("Executed " + stmt + ", reading results");
+      long total_entry_size = 0L;
+      long total_key_size = 0L;
+      long total_value_size = 0L;
+      long total_size = 0L;
+      while (rs.next()) {
+        total_entry_size += rs.getLong(1);
+        total_key_size += rs.getLong(2);
+        total_value_size += rs.getLong(3);
+        total_size += rs.getLong(4);
+      }
+      Log.getLogWriter().info("MEMORY Analysis: total_size=" + total_size + " total_entry_size=" +  total_entry_size + " total_key_size=" + total_key_size + " total_value_size=" + total_value_size);
+      rs.close();
+      rs = null;
+      tmpconn.close();
+      Log.getLogWriter().info("Done printing memory analytics");
+    }
   }
 
   public Statistics getPRStatsByTextId(String tableName) {

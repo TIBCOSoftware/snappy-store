@@ -25,9 +25,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import io.snappydata.jdbc.ClientDataSource;
 import junit.framework.Test;
 import junit.framework.TestSuite;
-import com.pivotal.gemfirexd.internal.jdbc.ClientDataSource;
 import org.apache.derbyTesting.junit.SecurityManagerSetup;
 
 
@@ -137,7 +138,7 @@ public class ReplicationRun_Local_1 extends ReplicationRun
     {
         util.DEBUG("_testInsertUpdateDeleteOnMaster: " + serverHost + ":" +
                    serverPort + "/" + dbPath);
-        ClientDataSource ds = new com.pivotal.gemfirexd.internal.jdbc.ClientDataSource();
+        ClientDataSource ds = new ClientDataSource();
         ds.setDatabaseName(dbPath);
         ds.setServerName(serverHost);
         ds.setPortNumber(serverPort);
@@ -166,7 +167,7 @@ public class ReplicationRun_Local_1 extends ReplicationRun
         throws SQLException
     {
         util.DEBUG("_verifyDatabase: "+serverHost+":"+serverPort+"/"+dbPath);
-        ClientDataSource ds = new com.pivotal.gemfirexd.internal.jdbc.ClientDataSource();
+        ClientDataSource ds = new ClientDataSource();
         ds.setDatabaseName(dbPath);
         ds.setServerName(serverHost);
         ds.setPortNumber(serverPort);

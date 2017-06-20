@@ -39,7 +39,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.MissingArgumentException;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import scala.tools.jline.console.ConsoleReader;
+import jline.console.ConsoleReader;
 
 /**
  * Base class for command-line launcher tools. Encapsulates the common

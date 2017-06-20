@@ -351,7 +351,7 @@ public final class RemotePutMessage extends
           final RegionVersionVector rvv = r.getVersionVector();
           if (rvv != null) {
             rvv.recordVersion(result.versionTag.getMemberID(),
-                result.versionTag);
+                result.versionTag, event);
           }
         }
         event.setInhibitDistribution(true);

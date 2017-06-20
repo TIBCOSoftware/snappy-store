@@ -56,18 +56,12 @@ import java.util.concurrent.TimeUnit;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.EntryDestroyedException;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.execute.FunctionContext;
 import com.gemstone.gemfire.cache.execute.RegionFunctionContext;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.TXEntryState;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXState;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.execute.
     InternalRegionFunctionContext;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
@@ -99,7 +93,6 @@ import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
-import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
@@ -117,6 +110,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
+import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 
 /**
  * DOCUMENT ME!
@@ -187,6 +181,8 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
   protected GemFireContainer gfContainer;
 
+  protected boolean isOffHeap;
+
   private boolean addRegionAndKey = false;
 
   private boolean addKeyForSelectForUpdate = false;
@@ -203,11 +199,15 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
   private TXId txId;
 
+  private boolean snashotTxStarted;
+
   private LockingPolicy lockPolicy;
 
   private LockMode readLockMode;
 
   private TXState localTXState;
+
+  private TXStateInterface localSnapshotTXState;
 
   private Object lockContext;
 
@@ -263,6 +263,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
       throws StandardException {
     this.gfContainer = conglomerate.getGemFireContainer();
     assert this.gfContainer != null;
+    this.isOffHeap = this.gfContainer.isOffHeap();
     conglomerate.openContainer(tran, openMode, lockLevel, locking);
     this.tran = tran;
     this.openMode = openMode;
@@ -375,8 +376,10 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     }
 
     this.txState = this.gfContainer.getActiveTXState(this.tran);
-    final boolean restoreBatching;
+
+    boolean restoreBatching = false;
     if (this.txState != null) {
+      // TODO: Suranjan take snapshot, each time we open a scan controller.
       this.txId = this.txState.getTransactionId();
       this.lockPolicy = this.txState.getLockingPolicy();
       if (this.forUpdate != 0) {
@@ -404,13 +407,44 @@ public class MemHeapScanController implements MemScanController, RowCountable,
         restoreBatching = this.localTXState.getProxy().remoteBatching(true);
       }
     }
-    else {
+    else if (Misc.getGemFireCache().snapshotEnabled()) {
+      // Start snapshot tx only for read operations.but not for read_only mode
+      boolean forReadOnly = (this.openMode & GfxdConstants
+          .SCAN_OPENMODE_FOR_READONLY_LOCK) != 0;
+      if (region.getConcurrencyChecksEnabled() &&
+          region.getCache().snapshotEnabled() &&
+          (region.getCache().getCacheTransactionManager().getTXState() == null)
+          && (this.forUpdate == 0)
+          && !forReadOnly) {
+
+        if (GemFireXDUtils.TraceQuery) {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+              "MemHeapScanController scanning table: " + this.regionName
+                  + ", openMode=" + openMode + " starting the gemfire snapshot tx.");
+        }
+        // We can begin each time as we have to clear below as we don't know when commit will take place.
+        region.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+        if (region.getCache().getRowScanTestHook() != null) {
+          region.getCache().notifyScanTestHook();
+          region.getCache().waitOnRowScanTestHook();
+        }
+        this.txState = region.getCache().getCacheTransactionManager().getTXState();
+        this.localTXState = this.txState.getTXStateForRead();
+        this.snashotTxStarted = true;
+        this.txId = this.txState.getTransactionId();
+        this.lockPolicy = this.txState.getLockingPolicy();
+        this.readLockMode = this.lockPolicy.getReadLockMode();
+        this.lockContext = null;
+        restoreBatching = true;
+      }
+    } else {
       this.txId = null;
       this.readLockMode = null;
       this.localTXState = null;
       this.lockContext = null;
       restoreBatching = true;
     }
+
     // if the restoreBatching flag has already been set in previous open, then
     // don't reset to true due to a reopen
     if (!restoreBatching && this.restoreBatching) {
@@ -475,8 +509,9 @@ public class MemHeapScanController implements MemScanController, RowCountable,
                       ? regionForBSet.getName() : "(null)"));
         }
         this.bucketSet = bset;
+        // incase of snappy fetch remote entry of bucket by default
         this.entryIterator = gfContainer.getEntrySetIteratorForBucketSet(bset,
-            tran, this.txState, openMode, this.forUpdate != 0);
+            tran, this.txState, openMode, this.forUpdate != 0, Misc.getMemStore().isSnappyStore());
       }
       else {
         boolean useOnlyPrimaryBuckets = ((this.openMode & GfxdConstants
@@ -524,6 +559,29 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     }
     else {
       this.templateCompactExecRow = null;
+    }
+
+    if (snashotTxStarted) {
+      // clear the txState so that other thread local is cleared.
+      TXManagerImpl.getOrCreateTXContext().clearTXState();
+      // gemfire tx shouldn't be cleared in case of row buffer scan
+      if (!(this.getGemFireContainer().isRowBuffer() && lcc.isSkipConstraintChecks())) {
+        if (GemFireXDUtils.TraceQuery) {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+              "MemHeapScanController::positionAtInitScan bucketSet: " + " lcc.isSkipConstraintChecks " + lcc.isSkipConstraintChecks() +
+          " " + "Setting snapshotTxStae to NULL.");
+        }
+        TXManagerImpl.snapshotTxState.set(null);
+        this.localSnapshotTXState = this.txState;
+      }
+      this.txState = null;
+      this.localTXState = null;
+      this.txId = null;
+      this.lockPolicy = null;
+      this.readLockMode = null;
+      this.lockContext = null;
+      restoreBatching = true;
+      snashotTxStarted = false;
     }
   }
 
@@ -812,7 +870,8 @@ public class MemHeapScanController implements MemScanController, RowCountable,
                     + ", isIterOnPR=" + this.gfContainer.isPartitioned());
           }
           // a null owner in full scan will happen for remote entries
-          if (owner == null && !isGlobalScan) {
+          if (owner == null && !isGlobalScan &&
+              !Misc.getMemStore().isSnappyStore()) {
             // Not a real bucket :
             // Asif: what should we do in this case? Assign PR as the
             // owner?
@@ -847,7 +906,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
           if (this.templateCompactExecRow != null) {
             row = RegionEntryUtils.fillRowWithoutFaultIn(this.gfContainer,
                 owner, this.currentRowLocation.getRegionEntry(),
-                this.templateCompactExecRow);
+                this.templateCompactExecRow) ? templateCompactExecRow : null;
           }
           else {
             row = RegionEntryUtils.getRowWithoutFaultIn(this.gfContainer,
@@ -950,7 +1009,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
           }
         }
         else {
-          if (this.gfContainer.isOffHeap()) {
+          if (this.isOffHeap) {
             final OffHeapResourceHolder offheapOwner = this.offheapOwner != null
                 ? this.offheapOwner : this.tran;
             if (this.currentExecRow != null) {
@@ -978,6 +1037,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     if (entryIterator instanceof CloseableIterator) {
       ((CloseableIterator<?>)entryIterator).close();
     }
+
     return false;
   }
 
@@ -1040,9 +1100,22 @@ public class MemHeapScanController implements MemScanController, RowCountable,
     // help the garbage collector; also required since this scan may be
     // reopened/reinitialized
     this.activation = null;
+    //TODO: Suranjan if the tx has been started for snapshot then clean it from hostedTxState too.
+    // For smart connector use lcc attr to see if it needs to be committed later.
+    if (this.localSnapshotTXState != null) {
+      if (GemFireXDUtils.TraceQuery ) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+            "MemHeapScanController::closeScan : " +
+                " " + "Commiting snapshotTxStae. ");
+      }
+      this.localSnapshotTXState.commit(null);
+    }
+
     this.lcc = null;
     this.txId = null;
     this.txState = null;
+
+    this.localSnapshotTXState = null;
     this.readLockMode = null;
     this.localTXState = null;
     this.lockContext = null;

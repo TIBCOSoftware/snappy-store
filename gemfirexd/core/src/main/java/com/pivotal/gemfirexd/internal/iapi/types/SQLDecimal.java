@@ -57,6 +57,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
+import org.apache.spark.unsafe.Platform;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -144,6 +145,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
      * as base2 int[] (not using long[] since we then need to multiply
      * long*long which can overflow long) by 10^9, writes remainder and stores
      * back quotient, then again by 10^9, writes the remainder and so on.
+     * Using 10^9 since it is the max power of 10 that can fit in an integer.
      * <p>
      * All storage of in[] is done in big-endian format (i.e. most significant
      * integer is at 0th position) to be consistent with BigInteger and to be
@@ -184,8 +186,8 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
           BigInteger[] quotientAndRemainder = pow2.divideAndRemainder(billion);
   
           final byte[] qmag = quotientAndRemainder[0].toByteArray();
-          POW2_QUOTIENTS[index] = covertIntsToUnsignedLongs(convertBytesToIntegerMagnitude(
-              qmag, 0, qmag.length));
+          POW2_QUOTIENTS[index] = covertIntsToUnsignedLongs(
+              convertBytesToIntegerMagnitude(qmag, 0, qmag.length));
           // remainder will be less than billion
           POW2_REMAINDERS[index] = quotientAndRemainder[1].intValue();
         }
@@ -516,7 +518,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 		} catch (StandardException se) {
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "INTEGER", (String)null);
 	}
 
 	/**
@@ -536,7 +538,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 		} catch (StandardException se) {
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "TINYINT", (String)null);
 	}
         
         
@@ -558,7 +560,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 		} catch (StandardException se) {
 		}
 
-		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT");
+		throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "SMALLINT", (String)null);
 	}
 
 	/**
@@ -592,7 +594,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
                         return localValue.longValue();
                 }
 
-                throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT");
+                throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, "BIGINT", (String)null);
         }
 
 	/**
@@ -637,8 +639,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 	  return value;
 	}
 
-	private BigDecimal	getBigDecimal()
-	{
+	public final BigDecimal getBigDecimal()	{
 // GemStone changes BEGIN
 	  if (this.value != null) {
 	    return this.value;
@@ -1512,7 +1513,8 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 			((desiredPrecision - desiredScale) <  SQLDecimal.getWholeDigits(getBigDecimal())))
 		{
 			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, 
-									("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+")"));
+									("DECIMAL/NUMERIC("+desiredPrecision+","+desiredScale+") - " +
+									    getBigDecimal()), (String)null);
 		}
 		value = value.setScale(desiredScale, BigDecimal.ROUND_DOWN);
 		rawData = null;
@@ -1579,7 +1581,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 			try {
 				return new BigDecimal(value.getString().trim());
 			} catch (NumberFormatException nfe) {
-				throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "java.math.BigDecimal");
+				throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION, "java.math.BigDecimal", (String)null);
 			}
 		case Types.BIGINT:
 			return BigDecimal.valueOf(value.getLong());
@@ -1824,16 +1826,14 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset, final int columnWidth, ByteSource bs) {
     final int numBytes = columnWidth - 2;
     // clear the previous value to ensure that the rawData value will be used
     this.value = null;
     this.rawData = new byte[numBytes];
-    this.rawScale = unsafe.getByte(memOffset++);
-    this.rawSig = unsafe.getByte(memOffset++);
-    UnsafeMemoryChunk
-        .readUnsafeBytes(unsafe, memOffset, this.rawData, numBytes);
+    this.rawScale = Platform.getByte(null, memOffset++);
+    this.rawSig = Platform.getByte(null, memOffset++);
+    UnsafeMemoryChunk.readUnsafeBytes(memOffset, this.rawData, numBytes);
     assert ((int)this.rawSig) == 0 || ((int)this.rawSig) == -1
         || ((int)this.rawSig) == 1: ((int)this.rawSig) + " byte=" + this.rawSig;
     return columnWidth;
@@ -1890,17 +1890,16 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
     return new BigDecimal(new BigInteger(signum, bytes), scale);
   }
 
-  static final BigDecimal getAsBigDecimal(final UnsafeWrapper unsafe,
-      long memOffset, final int columnWidth) {
+  static final BigDecimal getAsBigDecimal(long memOffset, final int columnWidth) {
     final int scale, signum;
-    scale = unsafe.getByte(memOffset++);
-    signum = unsafe.getByte(memOffset++);
+    scale = Platform.getByte(null, memOffset++);
+    signum = Platform.getByte(null, memOffset++);
     // we need to create intermediate byte[] since the package private
     // constructor of BigInteger that directly takes int[] is only available
     // in Sun JDK >= 1.6.0_20
     final int numBytes = columnWidth - 2;
     final byte[] bytes = new byte[numBytes];
-    UnsafeMemoryChunk.readUnsafeBytes(unsafe, memOffset, bytes, numBytes);
+    UnsafeMemoryChunk.readUnsafeBytes(memOffset, bytes, numBytes);
     return new BigDecimal(new BigInteger(signum, bytes), scale);
   }
 
@@ -1930,7 +1929,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
       final ByteArrayDataOutput buffer) {
     final int size = Math.max(scale, 19) + 3;
     final char[] s = new char[size];
-    int endPos = size;
+    int endPos;
     if (scale > 0 && scale < 20) {
       final int decimalPos = size - 1 - scale;
       endPos = DataTypeUtilities.toStringUnsignedWithDecimalPoint(v, s, size,
@@ -2067,7 +2066,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
         s[i] = '0';
       }
       if (buffer == null) {
-        return ClientSharedUtils.getJdkHelper().newWrappedString(s, 0, size);
+        return ClientSharedUtils.newWrappedString(s, 0, size);
       }
       else {
         buffer.writeBytes(s, 0, size);

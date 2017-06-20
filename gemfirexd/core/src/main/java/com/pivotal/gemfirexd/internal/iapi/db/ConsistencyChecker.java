@@ -42,9 +42,13 @@ package com.pivotal.gemfirexd.internal.iapi.db;
 
 // GemStone changes BEGIN
 
-import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Collection;
 
+import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.store.CompositeRegionKey;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 // GemStone changes END
@@ -76,6 +80,8 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 
 import java.sql.SQLException;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * The ConsistencyChecker class provides static methods for verifying
@@ -136,6 +142,8 @@ public class ConsistencyChecker
 		DataDictionary			dd;
 		TableDescriptor			td;
 		long					baseRowCount = -1;
+		long          basePrimaryBucketsRowCount = 0;
+		long          baseRedundantBucketsRowCount = 0;
 		TransactionController	tc;
 		ConglomerateDescriptor	heapCD;
 		ConglomerateDescriptor	indexCD;
@@ -148,10 +156,20 @@ public class ConsistencyChecker
 		int						baseColumns = 0;
 		DataValueFactory		dvf;
 		long					indexRows;
+		long          indexRowsForLocalPrimaryBuckets = 0;
+		long          indexRowsForLocalRedundantBuckets = 0;
 		ConglomerateController	baseCC = null;
 		ConglomerateController	indexCC = null;
 		SchemaDescriptor		sd;
 		ConstraintDescriptor	constraintDesc;
+
+		LocalRegion region = (LocalRegion)Misc.getRegionForTable(schemaName + "." + tableName, true);
+		Set<Integer> localPrimaryBucketSet = null;
+		if (region.getDataPolicy().withPartitioning()) {
+			localPrimaryBucketSet = ((PartitionedRegion)region)
+					.getDataStore().getAllLocalPrimaryBucketIds();
+		}
+
 
 		LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
 		tc = lcc.getTransactionExecute();
@@ -224,7 +242,7 @@ public class ConsistencyChecker
 				    continue;
 				  }
 				}
-//GemStone changes END				  							
+//GemStone changes END
 				/* Check the internal consistency of the index */
 				indexCC = 
 			        tc.openConglomerate(
@@ -275,15 +293,35 @@ public class ConsistencyChecker
 // GemStone changes END
 					/* Also, get the row location template for index rows */
 					rl = scan.newRowLocationTemplate();
-					scanRL = scan.newRowLocationTemplate();
+//					scanRL = scan.newRowLocationTemplate();
 
-					for (baseRowCount = 0; scan.next(); baseRowCount++) {
-					  scan.fetch(baseRow);
+//					for (baseRowCount = 0; scan.next(); baseRowCount++) {
+//					  scan.fetch(baseRow);
+//					}
+
+					if (region.getDataPolicy().withPartitioning()) {
+						Map<Integer, Integer> bucketSizes = ((PartitionedRegion)region)
+								.getDataStore().getSizeLocally();
+						baseRowCount = 0;
+						basePrimaryBucketsRowCount = 0;
+						baseRedundantBucketsRowCount = 0;
+						Set<Integer> primaryBuckets = ((PartitionedRegion)region)
+								.getDataStore().getAllLocalPrimaryBucketIds();
+						for (Map.Entry<Integer, Integer> e : bucketSizes.entrySet()) {
+							baseRowCount += e.getValue();
+							if (primaryBuckets.contains(e.getKey())) {
+								basePrimaryBucketsRowCount += e.getValue();
+							} else {
+								baseRedundantBucketsRowCount += e.getValue();
+							}
+						}
+					} else {
+						baseRowCount = region.size();
 					}
-						
 
 					scan.close();
 					scan = null;
+
 				}
 //Gemstone changes BEGIN
 				if(indexType.equals(GfxdConstants.LOCAL_SORTEDMAP_INDEX_TYPE) || indexType.equals("BTREE")) {
@@ -337,8 +375,10 @@ public class ConsistencyChecker
 				{
 					baseRowIndexOrder[i] = baseObjectArray[baseColumnPositions[i] - 1];
 				}
-			
+
 				/* Get the index rows and count them */
+          indexRowsForLocalPrimaryBuckets = 0;
+					indexRowsForLocalRedundantBuckets = 0;
 				for (indexRows = 0; scan.fetchNext(indexRow); indexRows++)
 				{
 					/*
@@ -353,6 +393,12 @@ public class ConsistencyChecker
 				  boolean base_row_exists = baseRL != null;
 				  if (base_row_exists) {
 				    indexRow.setColumn(baseColumns + 1,baseRL);
+						if (region.getDataPolicy().withPartitioning() &&
+								localPrimaryBucketSet.contains(baseRL.getBucketID())) {
+							indexRowsForLocalPrimaryBuckets ++;
+						} else {
+							indexRowsForLocalRedundantBuckets ++;
+						}
 				  }
 // GemStone changes END
 					/* Throw exception if fetch() returns false */
@@ -384,19 +430,6 @@ public class ConsistencyChecker
                                 td.getColumnDescriptor(
                                     baseColumnPositions[column]);
 
-                            /*
-                            System.out.println(
-                                "SQLState.LANG_INDEX_COLUMN_NOT_EQUAL:" +
-                                "indexCD.getConglomerateName()" + indexCD.getConglomerateName() +
-                                ";td.getSchemaName() = " + td.getSchemaName() +
-                                ";td.getName() = " + td.getName() +
-                                ";baseRL.toString() = " + baseRL.toString() +
-                                ";cd.getColumnName() = " + cd.getColumnName() +
-                                ";indexColumn.toString() = " + indexColumn.toString() +
-                                ";baseColumn.toString() = " + baseColumn.toString() +
-                                ";indexRow.toString() = " + indexRow.toString());
-                            */
-
 							throw StandardException.newException(
                                 SQLState.LANG_INDEX_COLUMN_NOT_EQUAL, 
                                 indexCD.getConglomerateName(),
@@ -421,12 +454,24 @@ public class ConsistencyChecker
 				*/
 				if (indexRows != baseRowCount)
 				{
-					throw StandardException.newException(SQLState.LANG_INDEX_ROW_COUNT_MISMATCH, 
-										indexCD.getConglomerateName(),
-										td.getSchemaName(),
-										td.getName(),
-										Long.toString(indexRows),
-										Long.toString(baseRowCount));
+					if (!region.getDataPolicy().withPartitioning()) {
+						throw StandardException.newException(SQLState.LANG_INDEX_ROW_COUNT_MISMATCH,
+								indexCD.getConglomerateName(),
+								td.getSchemaName(),
+								td.getName(),
+								Long.toString(indexRows),
+								Long.toString(baseRowCount));
+					} else {
+						throw StandardException.newException(SQLState.LANG_INDEX_ROW_COUNT_MISMATCH_PR,
+								indexCD.getConglomerateName(),
+								td.getSchemaName() + "." + td.getName(),
+								Long.toString(indexRows),
+								Long.toString(baseRowCount),
+								Long.toString(basePrimaryBucketsRowCount),
+								Long.toString(baseRedundantBucketsRowCount),
+								Long.toString(indexRowsForLocalPrimaryBuckets),
+								Long.toString(indexRowsForLocalRedundantBuckets));
+					}
 				}
 // GemStone changes BEGIN
 				}
@@ -504,170 +549,267 @@ public class ConsistencyChecker
 		return true;
 	}
 // GemStone changes BEGIN
-/**
- * This class is added to check the consistency between the base table and global hash index.
- * As we can not iterate all the entries of partitioned regions scattered over several nodes,
- * a weak consistency is be checked. For each entry of a base table partitioned region, 
- * there is a index entry in the global hash index. In other words, we do not assure that
- * each entry in a global hash index has a corresponding base table entry.
- * [sumedh] Now added full consistency checking by iterating over the global
- * index and checking that every key matches that of base table.
- * 
- * @author yjing
- * @author swale
- */	
-  static void checkGlobalHashIndex(TransactionController tc, TableDescriptor td,
-      ConglomerateController baseCC, ConglomerateDescriptor heapCD,
-      ConglomerateDescriptor indexCD) throws StandardException {
+///**
+// * This class is added to check the consistency between the base table and global hash index.
+// * As we can not iterate all the entries of partitioned regions scattered over several nodes,
+// * a weak consistency is be checked. For each entry of a base table partitioned region,
+// * there is a index entry in the global hash index. In other words, we do not assure that
+// * each entry in a global hash index has a corresponding base table entry.
+// * [sumedh] Now added full consistency checking by iterating over the global
+// * index and checking that every key matches that of base table.
+// *
+// * @author yjing
+// * @author swale
+// */
+//  static void checkGlobalHashIndex(TransactionController tc, TableDescriptor td,
+//      ConglomerateController baseCC, ConglomerateDescriptor heapCD,
+//      ConglomerateDescriptor indexCD) throws StandardException {
+//
+//    ExecRow baseRow = td.getEmptyExecRow();
+//    //DataValueDescriptor[] baseObjectArray = baseRow.getRowArrayClone();
+//
+//    IndexRowGenerator irg = indexCD.getIndexDescriptor();
+//    int[] baseColumnPositions = irg.baseColumnPositions();
+//    int baseColumns = baseColumnPositions.length;
+//    final DataValueDescriptor[] searchCondition =
+//      new DataValueDescriptor[baseColumnPositions.length];
+//    ExecIndexRow indexRow = irg.getIndexRowTemplate();
+//
+//    ScanController scan = tc.openScan(
+//        heapCD.getConglomerateNumber(),
+//        false, // hold
+//        GfxdConstants.SCAN_OPENMODE_FOR_GLOBALINDEX // get proper RowLocation
+//          | GfxdConstants.SCAN_OPENMODE_FOR_FULLSCAN, // open a full table scan
+//        TransactionController.MODE_TABLE,
+//        TransactionController.ISOLATION_SERIALIZABLE, RowUtil.EMPTY_ROW_BITSET,
+//        null, // startKeyValue
+//        0, // not used with null start posn.
+//        null, // qualifier
+//        null, // stopKeyValue
+//        0, null); // not used with null stop posn.
+//    irg.getIndexRow(baseRow, scan.newRowLocationTemplate(), indexRow, null);
+//
+//    final HashSet<CompositeRegionKey> tableIndexKeys =
+//      new HashSet<CompositeRegionKey>();
+//    ScanController indexScan = null;
+//    CompositeRegionKey key;
+//    while (scan.next()) {
+//      scan.fetch(baseRow);
+//      for (int i = 0; i < baseColumns; ++i) {
+//        searchCondition[i] = baseRow.getColumn(baseColumnPositions[i]);
+//      }
+//      if (indexScan == null) {
+//        indexScan = tc.openScan(indexCD.getConglomerateNumber(), false, 0,
+//            TransactionController.MODE_TABLE,
+//            TransactionController.ISOLATION_SERIALIZABLE,
+//            (FormatableBitSet)null,
+//            searchCondition, // startKeyValue
+//            ScanController.GE,
+//            null, // qualifier
+//            // added last argument null for activation
+//            searchCondition, ScanController.GT, null);
+//      }
+//      else {
+//        indexScan.reopenScan(searchCondition, // startKeyValue
+//                             ScanController.GE,
+//                             null, // qualifier
+//                             searchCondition,
+//                             ScanController.GT,
+//                             null);
+//      }
+//      if (!indexScan.next()) {
+//        throw StandardException.newException(
+//            SQLState.LANG_INCONSISTENT_ROW_LOCATION, td.getQualifiedName(),
+//            indexCD.getConglomerateName(), RowUtil.toString(searchCondition),
+//            baseRow.toString());
+//      }
+//      indexScan.fetch(indexRow);
+//      key = new CompositeRegionKey(getNewArray(searchCondition,
+//          baseColumns, true));
+//      tableIndexKeys.add(key);
+//      // below no longer works since we do not have RegionKey in the
+//      // GlobalRowLocation any more; instead we confirm that the
+//      // number of unique rows in index is same as that in the table
+//      /*
+//      RowLocation baseRL = (RowLocation)indexRow.getColumn(baseColumns + 1);
+//      boolean base_row_exists = baseCC.fetch(baseRL, baseObjectArray, null);
+//
+//      // Throw exception if fetch() returns false
+//      if (!base_row_exists) {
+//        String indexName = indexCD.getConglomerateName();
+//        throw StandardException.newException(
+//            SQLState.LANG_INCONSISTENT_ROW_LOCATION,
+//            (td.getSchemaName() + "." + td.getName()),
+//            indexName,
+//            baseRL.toString(),
+//            indexRow.toString());
+//      }
+//
+//      //compare the rows, which is obtained by scanning the base table
+//      //and by index row location.
+//
+//      DataValueDescriptor[] scanedBaseRow = baseRow.getRowArray();
+//      // Compare all the column values
+//      for (int column = 0; column < td.getNumberOfColumns(); column++) {
+//        // With this form of compare(), null is considered equal
+//        // to null.
+//        if (baseObjectArray[column].compare(scanedBaseRow[column]) != 0) {
+//          ColumnDescriptor cd = td
+//              .getColumnDescriptor(column+1);
+//
+//          throw StandardException.newException(
+//              SQLState.LANG_INDEX_COLUMN_NOT_EQUAL,
+//              indexCD.getConglomerateName(),
+//              td.getSchemaName(),
+//              td.getName(),
+//              baseRL.toString(),
+//              cd.getColumnName(),
+//              RowUtil.toString(baseObjectArray),
+//              baseRow.toString()
+//              );
+//        }
+//      }
+//      */
+//    }
+//    // now check the total number of keys in the index
+//    int numIndexEntries = 0;
+//    if (indexScan != null) {
+//      indexScan.close();
+//      indexScan = null;
+//    }
+//    indexScan = tc.openScan(indexCD.getConglomerateNumber(), false, 0,
+//        TransactionController.MODE_TABLE,
+//        TransactionController.ISOLATION_SERIALIZABLE,
+//        (FormatableBitSet)null,
+//        null, // null startKeyValue for a full scan
+//        ScanController.GE,
+//        null, // qualifier
+//        null, ScanController.GT, null);
+//    DataValueDescriptor[] indexRowArray;
+//    while (indexScan.next()) {
+//      indexRowArray = indexRow.getRowArray();
+//      indexScan.fetch(indexRow);
+//      key = new CompositeRegionKey(getNewArray(indexRowArray, baseColumns,
+//          false));
+//      if (!tableIndexKeys.contains(key)) {
+//        throw StandardException.newException(
+//            SQLState.LANG_INCONSISTENT_ROW_LOCATION, td.getQualifiedName(),
+//            indexCD.getConglomerateName(), key.toString(), indexRow.toString());
+//      }
+//      ++numIndexEntries;
+//    }
+//    if (numIndexEntries != tableIndexKeys.size()) {
+//      throw StandardException.newException(
+//          SQLState.LANG_INDEX_ROW_COUNT_MISMATCH,
+//          indexCD.getConglomerateName(), td.getSchemaName(), td.getName(),
+//          numIndexEntries, tableIndexKeys.size());
+//    }
+//    if (indexScan != null) {
+//      indexScan.close();
+//      indexScan = null;
+//    }
+//    scan.close();
+//    scan = null;
+//  }
 
-    ExecRow baseRow = td.getEmptyExecRow();
-    //DataValueDescriptor[] baseObjectArray = baseRow.getRowArrayClone();
+	static void checkGlobalHashIndex(TransactionController tc, TableDescriptor td,
+			ConglomerateController baseCC, ConglomerateDescriptor heapCD,
+			ConglomerateDescriptor indexCD) throws StandardException {
+		LocalRegion globalIndexRegion = (LocalRegion)Misc.getRegionForTable(
+				td.getSchemaName() + "." + indexCD.getDescriptorName(), true);
 
-    IndexRowGenerator irg = indexCD.getIndexDescriptor();
-    int[] baseColumnPositions = irg.baseColumnPositions();
-    int baseColumns = baseColumnPositions.length;
-    final DataValueDescriptor[] searchCondition =
-      new DataValueDescriptor[baseColumnPositions.length];
-    ExecIndexRow indexRow = irg.getIndexRowTemplate();
+		ExecRow baseRow = td.getEmptyExecRow();
+		//DataValueDescriptor[] baseObjectArray = baseRow.getRowArrayClone();
 
-    ScanController scan = tc.openScan(
-        heapCD.getConglomerateNumber(),
-        false, // hold
-        GfxdConstants.SCAN_OPENMODE_FOR_GLOBALINDEX // get proper RowLocation
-          | GfxdConstants.SCAN_OPENMODE_FOR_FULLSCAN, // open a full table scan
-        TransactionController.MODE_TABLE,
-        TransactionController.ISOLATION_SERIALIZABLE, RowUtil.EMPTY_ROW_BITSET,
-        null, // startKeyValue
-        0, // not used with null start posn.
-        null, // qualifier
-        null, // stopKeyValue
-        0, null); // not used with null stop posn.
-    irg.getIndexRow(baseRow, scan.newRowLocationTemplate(), indexRow, null);
+		IndexRowGenerator irg = indexCD.getIndexDescriptor();
+		int[] baseColumnPositions = irg.baseColumnPositions();
+		int baseColumns = baseColumnPositions.length;
+		final DataValueDescriptor[] searchCondition =
+				new DataValueDescriptor[baseColumnPositions.length];
+		ExecIndexRow indexRow = irg.getIndexRowTemplate();
 
-    final HashSet<CompositeRegionKey> tableIndexKeys =
-      new HashSet<CompositeRegionKey>();
-    ScanController indexScan = null;
-    CompositeRegionKey key;
-    while (scan.next()) {
-      scan.fetch(baseRow);
-      for (int i = 0; i < baseColumns; ++i) {
-        searchCondition[i] = baseRow.getColumn(baseColumnPositions[i]);
-      }
-      if (indexScan == null) {
-        indexScan = tc.openScan(indexCD.getConglomerateNumber(), false, 0,
-            TransactionController.MODE_TABLE,
-            TransactionController.ISOLATION_SERIALIZABLE,
-            (FormatableBitSet)null,
-            searchCondition, // startKeyValue
-            ScanController.GE, 
-            null, // qualifier
-            // added last argument null for activation
-            searchCondition, ScanController.GT, null);
-      }
-      else {
-        indexScan.reopenScan(searchCondition, // startKeyValue
-                             ScanController.GE, 
-                             null, // qualifier
-                             searchCondition, 
-                             ScanController.GT,
-                             null);
-      }
-      if (!indexScan.next()) {
-        throw StandardException.newException(
-            SQLState.LANG_INCONSISTENT_ROW_LOCATION, td.getQualifiedName(),
-            indexCD.getConglomerateName(), RowUtil.toString(searchCondition),
-            baseRow.toString());
-      }
-      indexScan.fetch(indexRow);
-      key = new CompositeRegionKey(getNewArray(searchCondition,
-          baseColumns, true));
-      tableIndexKeys.add(key);
-      // below no longer works since we do not have RegionKey in the
-      // GlobalRowLocation any more; instead we confirm that the
-      // number of unique rows in index is same as that in the table
-      /*
-      RowLocation baseRL = (RowLocation)indexRow.getColumn(baseColumns + 1);
-      boolean base_row_exists = baseCC.fetch(baseRL, baseObjectArray, null);
+		ScanController scan = tc.openScan(
+				heapCD.getConglomerateNumber(),
+				false, // hold
+//				GfxdConstants.SCAN_OPENMODE_FOR_GLOBALINDEX // get proper RowLocation
+//						| GfxdConstants.SCAN_OPENMODE_FOR_FULLSCAN, // open a full table scan
+				0,
+				TransactionController.MODE_TABLE,
+				TransactionController.ISOLATION_SERIALIZABLE, RowUtil.EMPTY_ROW_BITSET,
+				null, // startKeyValue
+				0, // not used with null start posn.
+				null, // qualifier
+				null, // stopKeyValue
+				0, null); // not used with null stop posn.
+		irg.getIndexRow(baseRow, scan.newRowLocationTemplate(), indexRow, null);
 
-      // Throw exception if fetch() returns false
-      if (!base_row_exists) {
-        String indexName = indexCD.getConglomerateName();
-        throw StandardException.newException(
-            SQLState.LANG_INCONSISTENT_ROW_LOCATION,
-            (td.getSchemaName() + "." + td.getName()),
-            indexName, 
-            baseRL.toString(), 
-            indexRow.toString());
-      }
+		int batchSize = 5000;
+		Object[] tableIndexKeys = new Object[batchSize];
+		Object key;
+		int numRows = 0;
 
-      //compare the rows, which is obtained by scanning the base table 
-      //and by index row location.
+		// allocate key objects upfront to be reused
+		// for every batch
+		if (baseColumns > 1) {
+			for (int p = 0; p < batchSize; p++) {
+				tableIndexKeys[p] = new CompositeRegionKey();
+			}
+		}
+		while (scan.next()) {
+			scan.fetch(baseRow);
+			for (int i = 0; i < baseColumns; ++i) {
+				searchCondition[i] = baseRow.getColumn(baseColumnPositions[i]);
+			}
+			if (searchCondition.length == 1) {
+				key = searchCondition[0].getClone();
+				tableIndexKeys[numRows] = key;
+			} else {
+				key = getNewArray(searchCondition, baseColumns, true);
+				((CompositeRegionKey)tableIndexKeys[numRows]).setPrimaryKey((
+						DataValueDescriptor[])key);
+			}
+			numRows++;
 
-      DataValueDescriptor[] scanedBaseRow = baseRow.getRowArray();
-      // Compare all the column values
-      for (int column = 0; column < td.getNumberOfColumns(); column++) {
-        // With this form of compare(), null is considered equal
-        // to null.
-        if (baseObjectArray[column].compare(scanedBaseRow[column]) != 0) {
-          ColumnDescriptor cd = td
-              .getColumnDescriptor(column+1);
+			if ((numRows % batchSize) == 0) {
+				checkTableKeysInGlobalIndexRegion(td, indexCD, globalIndexRegion,
+						searchCondition, Arrays.asList(tableIndexKeys));
+				Arrays.asList(tableIndexKeys);
+				numRows = 0;
+			}
+		}
 
-          throw StandardException.newException(
-              SQLState.LANG_INDEX_COLUMN_NOT_EQUAL, 
-              indexCD.getConglomerateName(), 
-              td.getSchemaName(), 
-              td.getName(),
-              baseRL.toString(),
-              cd.getColumnName(),
-              RowUtil.toString(baseObjectArray),
-              baseRow.toString()
-              );
-        }
-      }
-      */
-    }
-    // now check the total number of keys in the index
-    int numIndexEntries = 0;
-    if (indexScan != null) {
-      indexScan.close();
-      indexScan = null;
-    }
-    indexScan = tc.openScan(indexCD.getConglomerateNumber(), false, 0,
-        TransactionController.MODE_TABLE,
-        TransactionController.ISOLATION_SERIALIZABLE,
-        (FormatableBitSet)null,
-        null, // null startKeyValue for a full scan
-        ScanController.GE, 
-        null, // qualifier
-        null, ScanController.GT, null);
-    DataValueDescriptor[] indexRowArray;
-    while (indexScan.next()) {
-      indexRowArray = indexRow.getRowArray();
-      indexScan.fetch(indexRow);
-      key = new CompositeRegionKey(getNewArray(indexRowArray, baseColumns,
-          false));
-      if (!tableIndexKeys.contains(key)) {
-        throw StandardException.newException(
-            SQLState.LANG_INCONSISTENT_ROW_LOCATION, td.getQualifiedName(),
-            indexCD.getConglomerateName(), key.toString(), indexRow.toString());
-      }
-      ++numIndexEntries;
-    }
-    if (numIndexEntries != tableIndexKeys.size()) {
-      throw StandardException.newException(
-          SQLState.LANG_INDEX_ROW_COUNT_MISMATCH,
-          indexCD.getConglomerateName(), td.getSchemaName(), td.getName(),
-          numIndexEntries, tableIndexKeys.size());
-    }
-    if (indexScan != null) {
-      indexScan.close();
-      indexScan = null;
-    }
-    scan.close();
-    scan = null;
-  }
+		if (numRows > 0) {
+			Object[] remainingTableIndexKeys = Arrays.copyOfRange(tableIndexKeys,
+					0, numRows);
+			checkTableKeysInGlobalIndexRegion(td, indexCD, globalIndexRegion,
+					searchCondition, Arrays.asList(remainingTableIndexKeys));
+		}
+		scan.close();
+		scan = null;
+	}
 
-  private static DataValueDescriptor[] getNewArray(DataValueDescriptor[] row,
+	private static void checkTableKeysInGlobalIndexRegion(TableDescriptor td,
+			ConglomerateDescriptor indexCD, LocalRegion globalIndexRegion,
+			DataValueDescriptor[] searchCondition,
+			Collection tableIndexKeys) throws StandardException {
+		Map globalIndexEntriesMap = globalIndexRegion.getAll(tableIndexKeys);
+		for (Object o : tableIndexKeys) {
+			if (globalIndexEntriesMap.get(o) == null) {
+				DataValueDescriptor keyColumns[] = new
+						DataValueDescriptor[searchCondition.length];
+				if (searchCondition.length == 1) {
+					keyColumns[0] = (DataValueDescriptor)o;
+				} else {
+					((CompositeRegionKey)o).getKeyColumns(keyColumns);
+				}
+				throw StandardException.newException(
+						SQLState.LANG_INCONSISTENT_GLOBAL_INDEX_KEY, td.getQualifiedName(),
+						indexCD.getConglomerateName(), RowUtil.toString(keyColumns));
+			}
+		}
+	}
+
+	private static DataValueDescriptor[] getNewArray(DataValueDescriptor[] row,
       int numColumns, boolean clone) {
     final DataValueDescriptor[] newRow = new DataValueDescriptor[numColumns];
     for (int index = 0; index < numColumns; ++index) {

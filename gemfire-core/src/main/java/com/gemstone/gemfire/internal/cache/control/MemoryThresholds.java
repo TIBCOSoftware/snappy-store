@@ -24,6 +24,7 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.LowMemoryException;
 import com.gemstone.gemfire.cache.control.ResourceManager;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 
 /**
  * Stores eviction and critical thresholds for memory as well as the logic for
@@ -66,7 +67,8 @@ public class MemoryThresholds {
     }
 
     public boolean isEviction() {
-      return (this == EVICTION || this == EVICTION_CRITICAL_DISABLED || this == EVICTION_CRITICAL);
+      return (!CallbackFactoryProvider.getStoreCallbacks().isSnappyStore())
+          && (this == EVICTION || this == EVICTION_CRITICAL_DISABLED || this == EVICTION_CRITICAL);
     }
 
     public boolean isCritical() {

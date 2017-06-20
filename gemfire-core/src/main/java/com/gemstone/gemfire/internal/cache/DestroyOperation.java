@@ -25,6 +25,7 @@ import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.distributed.internal.*;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.versions.ConcurrentCacheModificationException;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -98,8 +99,13 @@ public class DestroyOperation extends DistributedCacheOperation
 
     public DestroyMessage() {
     }
-    
+
+    public DestroyMessage(TXStateInterface tx) {
+      super(tx);
+    }
+
     public DestroyMessage(InternalCacheEvent event) {
+      super(((EntryEventImpl)event).getTXState());
       this.event = (EntryEventImpl) event; 
     }
     
@@ -109,13 +115,21 @@ public class DestroyOperation extends DistributedCacheOperation
     {
       EntryEventImpl ev = (EntryEventImpl)event;
       DistributedRegion rgn = (DistributedRegion)ev.region;
-
+      TXManagerImpl txMgr = null;
+      TXManagerImpl.TXContext context = null;
+      if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+        txMgr = rgn.getCache().getTxManager();
+        context = txMgr.masqueradeAs(this, false,
+            true);
+        ev.setTXState(getTXState());
+      }
       try {
         if(!rgn.isCacheContentProxy()) {
           rgn.basicDestroy(ev,
                            false,
                            null); // expectedOldValue not supported on
                                   // non- partitioned regions
+
         }
         this.appliedOperation = true;
         
@@ -143,6 +157,10 @@ public class DestroyOperation extends DistributedCacheOperation
       }
       catch (TimeoutException e) {
         throw new Error(LocalizedStrings.DestroyOperation_DISTRIBUTEDLOCK_SHOULD_NOT_BE_ACQUIRED.toLocalizedString(), e);
+      } finally {
+        if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+          txMgr.unmasquerade(context, true);
+        }
       }
       return true;
     }

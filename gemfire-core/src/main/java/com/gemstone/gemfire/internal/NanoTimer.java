@@ -135,6 +135,8 @@ public final class NanoTimer {
       }
     }
     CLOCKID_BEST = clockIdBest;
+    SharedLibrary.logInitMessage(LogWriterImpl.FINE_LEVEL,
+        "Choosing CLOCKID=" + CLOCKID_BEST, null);
     setNativeTimer(true,
         getNativeTimerTypeFromString(SystemProperties.getServerInstance()
             .getString(NATIVETIMER_TYPE_PROPERTY, "DEFAULT")));

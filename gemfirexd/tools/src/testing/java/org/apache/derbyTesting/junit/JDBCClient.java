@@ -46,10 +46,10 @@ public final class JDBCClient {
      */
     static final JDBCClient EMBEDDED_40 = new JDBCClient(
             "Embedded_40", 
-            "com.pivotal.gemfirexd.jdbc.EmbeddedDriver", 
-            "com.pivotal.gemfirexd.internal.jdbc.EmbeddedDataSource40", 
-            "com.pivotal.gemfirexd.internal.jdbc.EmbeddedConnectionPoolDataSource40",
-            "com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource40",
+            "io.snappydata.jdbc.EmbeddedDriver",
+            "io.snappydata.jdbc.EmbeddedDataSource",
+            "io.snappydata.jdbc.EmbeddedConnectionPoolDataSource",
+            "io.snappydata.jdbc.EmbeddedXADataSource",
             // GemStone changes BEGIN
             "jdbc:gemfirexd:");
             // GemStone changes END
@@ -86,15 +86,15 @@ public final class JDBCClient {
      */
     static final JDBCClient DERBYNETCLIENT= new JDBCClient(
             "DerbyNetClient",
-            "com.pivotal.gemfirexd.jdbc.ClientDriver",
+            "io.snappydata.jdbc.ClientDriver",
             JDBC.vmSupportsJDBC4() ?
-            "com.pivotal.gemfirexd.internal.jdbc.ClientDataSource40" :
+            "io.snappydata.jdbc.ClientDataSource" :
             "com.pivotal.gemfirexd.internal.jdbc.ClientDataSource",
             JDBC.vmSupportsJDBC4() ?
-            "com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource40" :
+            "io.snappydata.jdbc.ClientConnectionPoolDataSource" :
             "com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource",
             JDBC.vmSupportsJDBC4() ?
-            "com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource40" :
+            "io.snappydata.jdbc.ClientXADataSource" :
             "com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource",
             // GemStone changes BEGIN
             "jdbc:gemfirexd://");

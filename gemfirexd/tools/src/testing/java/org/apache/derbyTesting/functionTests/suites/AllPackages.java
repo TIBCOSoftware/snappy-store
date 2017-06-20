@@ -96,9 +96,9 @@ public class AllPackages extends BaseTestCase {
         try {
             Class clz = Class.forName(className);
             
-            Method sm = clz.getMethod("suite", null);
+            Method sm = clz.getMethod("suite");
                   
-            return (Test) sm.invoke(null, null);
+            return (Test) sm.invoke(null);
         } catch (LinkageError  e) {
             return new TestSuite("SKIPPED: " + className + " - " +
                     e.getMessage());

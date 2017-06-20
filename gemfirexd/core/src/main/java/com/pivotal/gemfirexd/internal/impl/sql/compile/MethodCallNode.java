@@ -982,7 +982,7 @@ abstract class MethodCallNode extends JavaValueNode
         			
         			if (!type.equals(rsType))
         				throw StandardException.newException(SQLState.LANG_DATA_TYPE_GET_MISMATCH, 
-                				type, rsType);
+                				type, rsType, (String)null);
 
         			if (signatureTypes.length == signature.length)
         			{
@@ -1023,7 +1023,7 @@ abstract class MethodCallNode extends JavaValueNode
 				}
 			}
         	throw StandardException.newException(SQLState.LANG_DATA_TYPE_GET_MISMATCH, 
-        				type, paramTypeId.getSQLTypeName()); // type conversion error
+        				type, paramTypeId.getSQLTypeName(), (String)null); // type conversion error
         }
         
         // Did signature end with trailing comma?

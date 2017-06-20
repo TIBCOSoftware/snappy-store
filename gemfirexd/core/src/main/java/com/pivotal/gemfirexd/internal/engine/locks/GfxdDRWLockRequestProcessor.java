@@ -40,13 +40,11 @@ import com.gemstone.gemfire.distributed.internal.locks.DLockLogWriter;
 import com.gemstone.gemfire.distributed.internal.locks.DLockRequestProcessor;
 import com.gemstone.gemfire.distributed.internal.locks.DLockService;
 import com.gemstone.gemfire.distributed.internal.locks.LockGrantorId;
-import com.gemstone.gemfire.distributed.internal.locks.DLockRequestProcessor.
-    DLockResponseMessage;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdReplyMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResponseCode;
@@ -61,16 +59,15 @@ import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockReleaseProcessor.G
  * A lock client first obtains a DLock by sending a
  * <code>DLockRequestMessage</code> to the lock grantor as in
  * {@link DLockRequestProcessor}. Once the DLock is successfully obtained it
- * sends a write lock request to all members using
- * {@link RWLockRequestProcessor} to acquire a write lock locally on each of the
- * members using {@link GfxdDRWLockService}. This allows the read locks to be
- * local to each member so that the distributed write lock acquisition will wait
- * until read locks on all members have been released.
+ * sends a write lock request to all members to acquire a write lock locally
+ * on each of the members using {@link GfxdDRWLockService}. This allows the
+ * read locks to be local to each member so that the distributed write lock
+ * acquisition will wait until read locks on all members have been released.
  * 
  * In case the write lock acquisition fails due to time out or some other
  * condition then the acquired DLock and all write locks acquired thus far are
  * released by invoking {@link GfxdDRWLockReleaseProcessor} using a call to
- * {@link DLockResponseMessage#releaseOrphanedGrant()}.
+ * {@link DLockResponseMessage#releaseOrphanedGrant(DM)}.
  * 
  * @see GfxdDRWLockService
  * @author swale
@@ -545,10 +542,10 @@ public final class GfxdDRWLockRequestProcessor extends DLockRequestProcessor {
   // -------------------------------------------------------------------------
   /**
    * Message to dump all the locks using
-   * {@link GfxdDRWLockService#dumpAllRWLocks(String, boolean)} on all members
+   * {@link GfxdDRWLockService#dumpAllRWLocks} on all members
    * (other than this VM) of the DS.
    * 
-   * @see GfxdDRWLockService#dumpAllRWLocks(String, boolean)
+   * @see GfxdDRWLockService#dumpAllRWLocks
    * @author swale
    */
   public static final class GfxdDRWLockDumpMessage extends GfxdMessage
@@ -611,7 +608,7 @@ public final class GfxdDRWLockRequestProcessor extends DLockRequestProcessor {
       if (svc != null && svc instanceof GfxdDRWLockService) {
         // dump the locks
         final GfxdDRWLockService rwsvc = (GfxdDRWLockService)svc;
-        rwsvc.dumpAllRWLocks(this.logPrefix, false, this.stdout);
+        rwsvc.dumpAllRWLocks(this.logPrefix, false, this.stdout, false);
       }
     }
 

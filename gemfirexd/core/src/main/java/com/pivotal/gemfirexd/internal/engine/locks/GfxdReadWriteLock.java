@@ -115,8 +115,8 @@ public interface GfxdReadWriteLock extends ReadWriteLockObject {
   StringBuilder fillSB(StringBuilder sb);
 
   /**
-   * A value indicating infinite timeout in {@link #attemptReadLock(long)} and
-   * {@link #attemptWriteLock(long)} methods.
+   * A value indicating infinite timeout in {@link #attemptReadLock} and
+   * {@link #attemptWriteLock} methods.
    */
   public static final int TIMEOUT_INFINITE = -1;
 }

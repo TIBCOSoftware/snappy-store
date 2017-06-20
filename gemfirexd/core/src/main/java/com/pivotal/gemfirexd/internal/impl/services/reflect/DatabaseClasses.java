@@ -305,7 +305,7 @@ abstract class DatabaseClasses
 		}
 		throw new ClassNotFoundException(className + " : " + loadError.getMessage());
 	}
-	
+
 	abstract Class loadClassNotInDatabaseJar(String className)
 		throws ClassNotFoundException;
 
@@ -314,6 +314,23 @@ abstract class DatabaseClasses
 		return loadApplicationClass(classDescriptor.getName());
 	}
 
+	public final Class loadClassFromDB(String name) throws ClassNotFoundException {
+		ClassNotFoundException cnfe = new ClassNotFoundException(name);
+		if (applicationLoader == null) throw cnfe;
+		// if DDL replay has not started then ignore
+		final GemFireStore memStore = GemFireStore
+				.getBootingInstance();
+		if (memStore == null || !(memStore
+				.initialDDLReplayInProgress()
+				|| memStore.initialDDLReplayDone())) {
+			throw cnfe;
+		}
+		Class c = applicationLoader.loadClass(name, true);
+		if (c == null)
+			throw cnfe;
+		return c;
+
+	}
 	public boolean isApplicationClass(Class theClass) {
 
 		return theClass.getClassLoader()

@@ -76,7 +76,7 @@ public class AlterTableTest extends JdbcTestBase {
     // these tests generate lots of logs, so reducing them
     return "config";
   }
-  public static enum ConstraintNumber {
+  public enum ConstraintNumber {
     CUST_PK {
       @Override
       public void checkConstraint(Statement stmt, boolean valid)
@@ -559,7 +559,7 @@ public class AlterTableTest extends JdbcTestBase {
     TableDescriptor td = getTableDescriptor(schemaName, tableName);
     String fullTableName = td.getQualifiedName();
     ConglomerateDescriptor[] cds = td.getConglomerateDescriptors();
-    String indexTypeFound = null;
+    String indexTypeFound;
     Arrays.sort(columnNames);
     for (ConglomerateDescriptor cd : cds) {
       if (cd.isIndex()) {
@@ -718,14 +718,7 @@ public class AlterTableTest extends JdbcTestBase {
     stmt.execute("delete from trade.customers where 1=1");
     prepStmt = conn.prepareStatement("alter table trade.portfolio "
         + "add constraint portf_pk primary key (sid)");
-    try {
-      prepStmt.execute();
-      fail("Expected unsupported exception for PK add in ALTER TABLE");
-    } catch (SQLException ex) {
-      if (!"0A000".equals(ex.getSQLState())) {
-        throw ex;
-      }
-    }
+    prepStmt.execute();
     stmt.execute("drop table trade.portfolio");
     stmt.execute("drop table trade.customers");
     prepStmt = conn.prepareStatement("create table trade.customers "

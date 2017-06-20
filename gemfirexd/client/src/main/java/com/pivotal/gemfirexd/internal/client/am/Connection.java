@@ -60,15 +60,7 @@ public abstract class Connection implements java.sql.Connection,
     //---------------------navigational members-----------------------------------
 
 // GemStone changes BEGIN
-  static FinalizeInvoker finalizer;
-  static Thread finalizerThread;
   static {
-    finalizer = new FinalizeInvoker();
-    finalizerThread = new Thread(finalizer, "FinalizeInvoker");
-    finalizerThread.setDaemon(true);
-    finalizerThread.start();
-    Runtime.getRuntime().addShutdownHook(
-        new FinalizeInvoker.StopFinalizer(finalizer));
     initialize();
   }
 //GemStone changes END
@@ -127,7 +119,11 @@ public abstract class Connection implements java.sql.Connection,
 
     // used to set transaction isolation level
     private Statement setTransactionIsolationStmt = null;
-    
+
+    // GemStone changes BEGIN
+    // Storing current schema set on connection for failover purpose
+    private Statement setCurrentSchemaStmt = null;
+    // GemStone changes END
     // used to get transaction isolation level
     private Statement getTransactionIsolationStmt = null;
     
@@ -253,8 +249,9 @@ public abstract class Connection implements java.sql.Connection,
 
     // indicates if a deferred reset connection is required
     public boolean resetConnectionAtFirstSql_ = false;
+  public String setSchemaSql_;
 
-    //---------------------constructors/finalizer---------------------------------
+  //---------------------constructors/finalizer---------------------------------
 
     // For jdbc 2 connections
     protected Connection(com.pivotal.gemfirexd.internal.client.am.LogWriter logWriter,
@@ -465,11 +462,14 @@ public abstract class Connection implements java.sql.Connection,
     // per-socket TCP keepalive settings
 
     public int keepAliveIdle_ = SystemProperties.getClientInstance()
-        .getKeepAliveIdle();
+        .getInteger(ClientAttribute.KEEPALIVE_IDLE,
+            SystemProperties.DEFAULT_KEEPALIVE_IDLE);
     public int keepAliveIntvl_ = SystemProperties.getClientInstance()
-        .getKeepAliveInterval();
+        .getInteger(ClientAttribute.KEEPALIVE_INTVL,
+            SystemProperties.DEFAULT_KEEPALIVE_INTVL);
     public int keepAliveCnt_ = SystemProperties.getClientInstance()
-        .getKeepAliveCount();
+        .getInteger(ClientAttribute.KEEPALIVE_CNT,
+            SystemProperties.DEFAULT_KEEPALIVE_CNT);
 
     /**
      * Maximum timeout in seconds for read before failover in case nothing is
@@ -489,9 +489,6 @@ public abstract class Connection implements java.sql.Connection,
     public static final int DEFAULT_SINGLE_HOP_MAX_CONN_PER_SERVER = 5;
     
     public static int SINGLE_HOP_MAX_CONN_PER_SERVER;
-
-    public static void init() {
-    }
 
     public static void initialize() {
       try {
@@ -530,8 +527,7 @@ public abstract class Connection implements java.sql.Connection,
     public abstract java.io.InputStream getInputStream();
 
     /**
-     * Return status of {@link Connection#doFailoverOnException(String, int)}
-     * method.
+     * Return status of {@link Connection#doFailoverOnException} method.
      */
     public enum FailoverStatus {
 
@@ -1484,7 +1480,26 @@ public abstract class Connection implements java.sql.Connection,
 // GemStone changes END
         }
     }
+// GemStone changes BEGIN
+protected final void setCurrentSchema() throws SqlException {
+  if (this.setSchemaSql_ != null) {
+    setCurrentSchemaStmt =
+        createStatementX(java.sql.ResultSet.TYPE_FORWARD_ONLY,
+            java.sql.ResultSet.CONCUR_READ_ONLY,
+            holdability());
 
+    try {
+      setCurrentSchemaStmt.executeUpdate(this.setSchemaSql_);
+    } catch (SQLException sqle) {
+      // Eat the exception as the schema might have been dropped.
+      // At least log it.
+      SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,
+          "WARN exception while setting current schema on failed" +
+              "over connection sqlstate " + sqle.getSQLState(), sqle);
+    }
+  }
+}
+// GemStone changes END
     /**
      * Finds out if the underlaying database connection supports session data
      * caching.

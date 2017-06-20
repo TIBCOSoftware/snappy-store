@@ -49,19 +49,15 @@ import com.pivotal.gemfirexd.internal.iapi.jdbc.BrokeredConnectionControl;
 import com.pivotal.gemfirexd.internal.iapi.reference.Attribute;
 import com.pivotal.gemfirexd.internal.iapi.reference.MessageId;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
-import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.security.SecurityUtil;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableProperties;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
-import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultSet;
 import com.pivotal.gemfirexd.internal.impl.jdbc.*;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Driver;
-import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 
 import java.security.Permission;

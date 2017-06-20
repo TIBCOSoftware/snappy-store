@@ -64,7 +64,7 @@ import com.pivotal.gemfirexd.internal.iapi.tools.i18n.PagedLocalizedOutput;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.RedirectedLocalizedOutput;
 import com.pivotal.gemfirexd.internal.impl.tools.ij.ijException;
 import com.pivotal.gemfirexd.internal.shared.common.StopWatch;
-import scala.tools.jline.console.ConsoleReader;
+import jline.console.ConsoleReader;
 
 /**
 	
@@ -250,18 +250,19 @@ public class JDBCDisplayUtil {
 	 */
 	static public void DisplayResults(PrintWriter out, Statement stmt, Connection conn,
 	    ConsoleReader reader /* GemStoneAddition */,
-	    StopWatch timer /* GemStoneAddition */) throws SQLException
+	    StopWatch timer /* GemStoneAddition */, boolean displayCount /* GemStoneAddition */)
+      throws SQLException
 	{
 		indent_DisplayResults( out, stmt, conn, 0, null, null,
 		    reader /* GemStoneAddition */,
-		    timer /* GemStoneAddition */);			
+		    timer /* GemStoneAddition */, displayCount /* GemStoneAddition */);
 	}
 
 	static private void indent_DisplayResults
 	(PrintWriter out, Statement stmt, Connection conn, int indentLevel,
 	 int[] displayColumns, int[] displayColumnWidths,
 	 ConsoleReader reader /* GemStoneAddition */,
-	 StopWatch timer /* GemStoneAddition */)
+	 StopWatch timer /* GemStoneAddition */, boolean displayCount /* GemStoneAddition */)
 		throws SQLException {
 
 		checkNotNull(stmt, "Statement");
@@ -275,7 +276,9 @@ public class JDBCDisplayUtil {
 			rs.close(); // let the result set go away
 		}
 		else {
-			DisplayUpdateCount(out,stmt.getUpdateCount(), indentLevel);
+			if (displayCount) {
+			    DisplayUpdateCount(out, stmt.getUpdateCount(), indentLevel);
+			}
 		}
 
 		ShowWarnings(out,stmt);

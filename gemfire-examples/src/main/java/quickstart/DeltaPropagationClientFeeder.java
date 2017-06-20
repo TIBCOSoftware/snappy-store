@@ -26,14 +26,14 @@ import com.gemstone.gemfire.cache.Region;
 /**
  * DeltaPropagationClient.java has the client which connects to the
  * DeltaPropagationServer.java.
- * </p>
+ * <p>
  * Ensure that before running this class the Server is up.
- * </p>
+ * <p>
  * Prerequisites: Build the QuickStart(./build.sh compile-quickstart) and set
  * the CLASSPATH to include $GEMFIRE/quickstart/classes
- * </p>
+ * <p>
  * Following are the steps to test the Delta Propagation Functionality.
- * </p>
+ * <p>
  * <ol>
  * <li>Start DeltaPropagationServer</li>
  * <li>Start DeltaPropagationClient Receiver</li>
@@ -43,12 +43,12 @@ import com.gemstone.gemfire.cache.Region;
  * <li>The values passed to Server Cache.</li>
  * </ul>
  * </ol>
- * </p>
+ * <p>
  * Press Enter in Client Window to see the values and time taken in client
  * Cache.
- * </p>
+ * <p>
  * To stop the program, press "Ctrl-C" in console.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  */

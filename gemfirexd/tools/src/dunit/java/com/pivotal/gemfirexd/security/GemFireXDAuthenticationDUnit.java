@@ -38,6 +38,7 @@ import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
@@ -59,11 +60,14 @@ public class GemFireXDAuthenticationDUnit extends DistributedSQLTestBase {
 
   String origdebugtrue;
   String origmonitorverbose;
+
   public GemFireXDAuthenticationDUnit(String name) {
     super(name);
     if (getLogLevel().startsWith("fine")) {
-      origdebugtrue = System.setProperty("gemfirexd.debug.true", "TraceAuthentication,TraceFabricServerBoot");
-      origmonitorverbose = System.setProperty("gemfirexd.monitor.verbose", "true");
+      origdebugtrue = System.setProperty("gemfirexd.debug.true",
+          "TraceAuthentication,TraceFabricServerBoot");
+      origmonitorverbose = System.setProperty("gemfirexd.monitor.verbose",
+          "true");
     }
   }
 
@@ -85,6 +89,13 @@ public class GemFireXDAuthenticationDUnit extends DistributedSQLTestBase {
 
   @Override
   public void tearDown2() throws Exception {
+    Connection conn = TestUtil.jdbcConn;
+    if (conn == null && GemFireStore.getBootedInstance() != null) {
+      conn = TestUtil.getConnection();
+    }
+    if (conn != null) {
+      TestUtil.dropAllUsers(conn);
+    }
     if (getLogLevel().startsWith("fine")) {
       if(origdebugtrue == null)
         System.clearProperty("gemfirexd.debug.true");
@@ -122,10 +133,10 @@ public class GemFireXDAuthenticationDUnit extends DistributedSQLTestBase {
         locatorConnectionCredentials.getProperty(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR));
     diffSystemProps.putAll(locatorConnectionCredentials);
 
-    getLogWriter().info("diffSystem" + diffSystemProps);
+    getLogWriter().info("diffSystem " + diffSystemProps);
     final Properties locatorBootProperties = new Properties();
     locatorBootProperties.putAll(diffSystemProps);
-    
+
     SerializableCallable startlocator = new SerializableCallable(
         "starting locator") {
 
@@ -375,9 +386,10 @@ public class GemFireXDAuthenticationDUnit extends DistributedSQLTestBase {
         if (isSuccess)
           SanityManager.THROWASSERT("server start failure is expected.... ");
       }
-      
+
       TestUtil.doCommonSetup(diffSystemProps);
-      
+      diffSystemProps.setProperty("locators", locator);
+
       //attempt failure of connection because system user id is not passed to the locator
       //instead locally exception is raised.
       try {
@@ -676,8 +688,6 @@ public class GemFireXDAuthenticationDUnit extends DistributedSQLTestBase {
     }
   }
 
-  /**
-   */
   public void DISABLED_GEMXD11_testSchemaSharedBetweenUsersWithoutAuthorization() throws Exception {
     Properties extraServerProps = new Properties();
 

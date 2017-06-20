@@ -78,6 +78,22 @@ public enum IsolationLevel {
       return NO_ALTERNATIVE_JDBC_LEVEL;
     }
   },
+
+  /**
+   * Represents an isolation level of SNAPSHOT. Shouldn't map to any JDBC isolation level
+   */
+  SNAPSHOT {
+
+    @Override
+    public final int getJdbcIsolationLevel() {
+      return  NO_JDBC_LEVEL;
+    }
+
+    @Override
+    final int getAlternativeJdbcIsolationLevel() {
+      return NO_ALTERNATIVE_JDBC_LEVEL;
+    }
+  },
   ;
 
   /**
@@ -100,6 +116,8 @@ public enum IsolationLevel {
    */
   final static int NO_ALTERNATIVE_JDBC_LEVEL = -1;
 
+  public final static int NO_JDBC_LEVEL = -1;
+
   /**
    * If some other JDBC isolation level is to be upgraded to this one, then
    * return that else return {@link #NO_ALTERNATIVE_JDBC_LEVEL}.
@@ -121,7 +139,8 @@ public enum IsolationLevel {
     for (IsolationLevel level : values()) {
       final int jdbcLevel = level.getJdbcIsolationLevel();
       final int alternativeLevel = level.getAlternativeJdbcIsolationLevel();
-      if (jdbcLevel > max) {
+      if (jdbcLevel != NO_JDBC_LEVEL
+        && jdbcLevel > max) {
         max = jdbcLevel;
       }
       if (alternativeLevel != NO_ALTERNATIVE_JDBC_LEVEL
@@ -131,7 +150,10 @@ public enum IsolationLevel {
     }
     jdbcMapping = new IsolationLevel[max + 1];
     for (IsolationLevel level : values()) {
-      jdbcMapping[level.getJdbcIsolationLevel()] = level;
+      int jdbcLevel = level.getJdbcIsolationLevel();
+      if(jdbcLevel != NO_JDBC_LEVEL) {
+        jdbcMapping[jdbcLevel] = level;
+      }
       final int alternativeLevel = level.getAlternativeJdbcIsolationLevel();
       if (alternativeLevel != NO_ALTERNATIVE_JDBC_LEVEL) {
         jdbcMapping[alternativeLevel] = level;

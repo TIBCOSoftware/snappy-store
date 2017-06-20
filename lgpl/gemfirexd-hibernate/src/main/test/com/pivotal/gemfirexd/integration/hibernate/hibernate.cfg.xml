@@ -8,7 +8,7 @@
     <session-factory>
 
         <!-- Database connection settings
-        <property name="connection.driver_class">com.pivotal.gemfirexd.jdbc.ClientDriver</property>
+        <property name="connection.driver_class">io.snappydata.jdbc.ClientDriver</property>
 	 	-->
 	 	
         <!-- SQL dialect

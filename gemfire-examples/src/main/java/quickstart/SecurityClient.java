@@ -26,10 +26,10 @@ import com.gemstone.gemfire.cache.client.*;
  * PUT credentials. This client uses the valid LDAP username and password.
  * Please refer to the quickstart guide for instructions on how to run this
  * example.
- * </p>
+ * <p>
  * Add $GEMFIRE/lib/gfSecurityImpl.jar to your CLASSPATH before running this 
  * example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 5.5

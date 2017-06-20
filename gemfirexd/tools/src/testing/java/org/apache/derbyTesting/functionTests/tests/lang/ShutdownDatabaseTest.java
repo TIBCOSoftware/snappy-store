@@ -51,10 +51,10 @@ import java.sql.Statement;
 
 import javax.sql.DataSource;
 
+import io.snappydata.jdbc.ClientDataSource;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import com.pivotal.gemfirexd.internal.jdbc.ClientDataSource;
 import org.apache.derbyTesting.junit.BaseJDBCTestCase;
 import org.apache.derbyTesting.junit.CleanDatabaseTestSetup;
 import org.apache.derbyTesting.junit.JDBC;

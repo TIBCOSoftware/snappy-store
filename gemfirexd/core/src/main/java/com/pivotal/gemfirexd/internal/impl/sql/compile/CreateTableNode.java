@@ -508,9 +508,9 @@ public class CreateTableNode extends DDLStatementNode
 		GfxdPartitionResolver resolver = null;
 		GfxdEvictionCriteria evictionCriteria = null;
 		if (attrs != null) {
-		  if ((pattrs = attrs.getPartitionAttributes()) != null) {
-		    resolver = (GfxdPartitionResolver)pattrs
-		        .getPartitionResolver();
+		  if ((pattrs = attrs.getPartitionAttributes()) != null &&
+		      pattrs.getPartitionResolver() instanceof GfxdPartitionResolver) {
+		    resolver = (GfxdPartitionResolver)pattrs.getPartitionResolver();
 		  }
 		  if ((ceAttrs = attrs.getCustomEvictionAttributes()) != null) {
 		    evictionCriteria = (GfxdEvictionCriteria)ceAttrs
@@ -588,8 +588,8 @@ public class CreateTableNode extends DDLStatementNode
                       .validateAndResolveDistributionPolicy();
 		}
 		if (resolver != null) {
-		  resolver.setDistributionDescriptor(this.distributionDesc);
-                }
+		  resolver.updateDistributionDescriptor(this.distributionDesc);
+		}
 		//validateWanServerGroups();
 		//validateAsycnEventListenerServerGroups();
 // GemStone changes END
@@ -761,9 +761,10 @@ public class CreateTableNode extends DDLStatementNode
 	    
 	    RegionAttributes<?, ?> attrs = getRegionAttributes();
 	    PartitionAttributes<?, ?> pattrs;
-	    GfxdPartitionResolver resolver = null;
+	    GfxdPartitionResolver resolver;
 	    if (attrs != null) {
-	      if ((pattrs = attrs.getPartitionAttributes()) != null) {
+	      if ((pattrs = attrs.getPartitionAttributes()) != null &&
+	          pattrs.getPartitionResolver() instanceof GfxdPartitionResolver) {
 	        resolver = (GfxdPartitionResolver)pattrs
 	            .getPartitionResolver();
 	        String[] partition_columns = resolver.getColumnNames();

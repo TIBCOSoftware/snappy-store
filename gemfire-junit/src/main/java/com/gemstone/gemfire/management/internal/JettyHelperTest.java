@@ -21,6 +21,7 @@ import static org.junit.Assert.*;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
 import org.jmock.lib.legacy.ClassImposteriser;
@@ -67,7 +68,7 @@ public class JettyHelperTest {
 
     assertNotNull(jetty);
     assertNotNull(jetty.getConnectors()[0]);
-    assertEquals(8090, (jetty.getConnectors()[0]).getPort());
+    assertEquals(8090, ((ServerConnector) jetty.getConnectors()[0]).getPort());
   }
 
   @Test
@@ -82,7 +83,7 @@ public class JettyHelperTest {
 
     assertNotNull(jetty);
     assertNotNull(jetty.getConnectors()[0]);
-    assertEquals(10480, (jetty.getConnectors()[0]).getPort());
+    assertEquals(10480, ((ServerConnector) jetty.getConnectors()[0]).getPort());
   }
 
 }

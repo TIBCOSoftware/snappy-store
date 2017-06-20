@@ -57,21 +57,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.DerbyIOException;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatIdInputStream;
-import com.pivotal.gemfirexd.internal.iapi.services.io.FormatIdUtil;
-import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
-import com.pivotal.gemfirexd.internal.iapi.services.io.NewByteArrayInputStream;
-import com.pivotal.gemfirexd.internal.iapi.services.io.StreamStorable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BitDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.ConcatableDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
-import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
-import com.pivotal.gemfirexd.internal.iapi.types.VariableSizeDataValue;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
@@ -85,7 +71,6 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import java.sql.Blob;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
 
@@ -206,7 +191,7 @@ abstract class SQLBinary
 		dataValue = val;
 	}
 
-	SQLBinary(Blob val)
+	SQLBinary(Blob val) throws StandardException
 	{
 		setValue( val );
 	}
@@ -221,7 +206,7 @@ abstract class SQLBinary
 		//streamValueLength = -1;
 	}
 
-	public final void setValue(Blob theValue)
+	public final void setValue(Blob theValue) throws StandardException
 	{
 		dataValue = null;
         _blobValue = theValue;
@@ -712,7 +697,8 @@ abstract class SQLBinary
         if ( _blobValue != null )
         {
             SQLBinary self = (SQLBinary) getNewNull();
-            self.setValue(_blobValue);
+            self._blobValue = _blobValue;
+            self.dataValue = null;
             return self;
         }
 // GemStone changes BEGIN
@@ -737,7 +723,11 @@ abstract class SQLBinary
 		try
 		{
 			DataValueDescriptor cloneDVD = getNewNull();
-			cloneDVD.setValue(getValue());
+			if (_blobValue != null) {
+				cloneDVD.setValue(_blobValue);
+			} else {
+				cloneDVD.setValue(dataValue);
+			}
 			return cloneDVD;
 		}
 		catch (StandardException se)
@@ -1497,11 +1487,9 @@ abstract class SQLBinary
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset, final int columnWidth, ByteSource bs) {
     this.dataValue = new byte[columnWidth];
-    UnsafeMemoryChunk.readUnsafeBytes(unsafe, memOffset, this.dataValue,
-        columnWidth);
+    UnsafeMemoryChunk.readUnsafeBytes(memOffset, this.dataValue, columnWidth);
     return columnWidth;
   }
 
@@ -1554,7 +1542,7 @@ abstract class SQLBinary
     // off-heap always has to create a new byte[] so avoid extra calls of
     // getLength by just calling readBytes
     final byte[] data = new byte[columnWidth];
-    UnsafeMemoryChunk.readUnsafeBytes(unsafe, memOffset, data, columnWidth);
+    UnsafeMemoryChunk.readUnsafeBytes(memOffset, data, columnWidth);
     return data;
   }
 

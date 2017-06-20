@@ -57,6 +57,12 @@ public interface GfxdMemberMXBean {
   boolean isLocator();
 
   /**
+   * True if member is lead
+   *
+   */
+  boolean isLead();
+
+  /**
    * Represents network server client connection stats. It has attributes e.g.
    * connection type (connectionStatsType), open connections
    * (connectionsOpened), closed connections (connectionsClosed), connections

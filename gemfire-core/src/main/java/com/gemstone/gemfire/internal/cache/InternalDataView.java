@@ -330,7 +330,7 @@ public interface InternalDataView {
    */
   public Iterator<?> getLocalEntriesIterator(Set<Integer> bucketSet,
       boolean primaryOnly, boolean forUpdate, boolean includeValues,
-      LocalRegion currRegion);
+      LocalRegion currRegion, boolean fetchRemote);
 
   /**
    * 

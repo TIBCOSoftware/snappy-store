@@ -424,6 +424,25 @@ public class SQLClob
 
 // GemStone changes BEGIN
 
+    /**
+     * Set the value of this DataValueDescriptor from given Clob.
+     *
+     * @param clob The Clob value to set this DataValueDescriptor to
+     */
+    public void setValue(Clob clob) throws StandardException {
+      try {
+        long len = clob.length();
+        if (len >= 0L && len < Integer.MAX_VALUE) {
+          setValue(new ReaderToUTF8Stream(clob.getCharacterStream(),
+              (int)len, 0, TypeId.CLOB_NAME), (int)len);
+        } else {
+          throw this.outOfRange();
+        }
+      } catch (SQLException e) {
+        throw dataTypeConversion("java.sql.Clob");
+      }
+    }
+
     @Override
     public byte getTypeId() {
       return DSCODE.HUGE_STRING_BYTES;

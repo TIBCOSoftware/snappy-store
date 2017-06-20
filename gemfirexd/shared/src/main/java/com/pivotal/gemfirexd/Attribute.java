@@ -17,9 +17,9 @@
 
 package com.pivotal.gemfirexd;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
-
 import java.sql.Statement;
+
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 
 /**
  * List of all server connection (JDBC) attributes by the system.
@@ -183,8 +183,6 @@ public interface Attribute {
 
   /**
    * The GemFireXD log file path property.
-   * 
-   * added by GemStone
    */
   String LOG_FILE = "log-file";
 
@@ -247,17 +245,17 @@ public interface Attribute {
   String GFXD_PERSIST_DD = "persist-dd";
 
   /**
-   * Read timeout for the connection, in seconds. Only for thin client
-   * connections.
+   * Read timeout for the connection, in milliseconds. For network server and
+   * client connections.
    */
-  String READ_TIMEOUT = SystemProperties.READ_TIMEOUT_NAME;
+  String READ_TIMEOUT = "read-timeout";
 
   /**
    * TCP KeepAlive IDLE timeout in seconds for the network server and client
    * sockets. This is the idle time after which a TCP KeepAlive probe is sent
    * over the socket to determine if the other side is alive or not.
    */
-  String KEEPALIVE_IDLE = SystemProperties.KEEPALIVE_IDLE_NAME;
+  String KEEPALIVE_IDLE = SystemProperties.KEEPALIVE_IDLE;
 
   /**
    * TCP KeepAlive INTERVAL timeout in seconds for the network server and client
@@ -269,7 +267,7 @@ public interface Attribute {
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
    */
-  String KEEPALIVE_INTVL = SystemProperties.KEEPALIVE_INTVL_NAME;
+  String KEEPALIVE_INTVL = SystemProperties.KEEPALIVE_INTVL;
 
   /**
    * TCP KeepAlive COUNT for the network server and client sockets. This is the
@@ -280,19 +278,17 @@ public interface Attribute {
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
    */
-  String KEEPALIVE_CNT = SystemProperties.KEEPALIVE_CNT_NAME;
+  String KEEPALIVE_CNT = SystemProperties.KEEPALIVE_CNT;
 
   /**
    * Input buffer size to use for client-server sockets.
    */
-  String SOCKET_INPUT_BUFFER_SIZE =
-      SystemProperties.SOCKET_INPUT_BUFFER_SIZE_NAME;
+  String SOCKET_INPUT_BUFFER_SIZE = "socket-input-buffer-size";
 
   /**
    * Output buffer size to use for client-server sockets.
    */
-  String SOCKET_OUTPUT_BUFFER_SIZE =
-      SystemProperties.SOCKET_OUTPUT_BUFFER_SIZE_NAME;
+  String SOCKET_OUTPUT_BUFFER_SIZE = "socket-output-buffer-size";
 
   /**
    * The default DataPolicy for tables is now replicated when no explicit
@@ -419,8 +415,14 @@ public interface Attribute {
   String PREFER_NETSERVER_IP_ADDRESS = "prefer-netserver-ipaddress";
 
   /**
+   * System property to force using a different hostName/IP sent
+   * to clients that will be exposed for external JDBC clients.
+   */
+  String HOSTNAME_FOR_CLIENTS = "hostname-for-clients";
+
+  /**
    * The attribute that is used for the database name, from the JDBC notion of
-   * jdbc:<subprotocol>:<subname>
+   * jdbc:&lt;subprotocol&gt;:&lt;subname&gt;
    */
   String DBNAME_ATTR = "databaseName";
 
@@ -519,6 +521,19 @@ public interface Attribute {
   String SKIP_LOCKS = "skip-locks";
 
   /**
+   * Property to change the default schema to use for a connection.
+   * The default schema is normally the user name but this allows changing it.
+   */
+  String DEFAULT_SCHEMA = "default-schema";
+
+  /**
+   * Whether to use selector based server for the thrift server or
+   * per connection thread server model. Use with care since it is not
+   * fully tested yet. Default is false.
+   */
+  String THRIFT_SELECTOR_SERVER = "thrift-selector";
+
+  /**
    * If true then use <code>TBinaryProtocol</code> for the thrift server, else
    * the default is to use <code>TCompactProtocol</code>.
    * <p>
@@ -526,6 +541,19 @@ public interface Attribute {
    * in <code>FabricService.startThriftServer</code>.
    */
   String THRIFT_USE_BINARY_PROTOCOL = "thrift-binary-protocol";
+
+  /**
+   * If true then use <code>TFramedTransport</code> for the thrift server, else
+   * the default is to use non-framed transport.
+   * <p>
+   * This property can be specified for each thrift server startup in
+   * <code>FabricService.startThriftServer</code>.
+   * <p>
+   * WARNING: This is not recommended due to addional overheads and no gains,
+   * and also not as well tested. Only use for external connectors that don't
+   * support non-framed mode (reportedly elixir-thrift driver).
+   */
+  String THRIFT_USE_FRAMED_TRANSPORT = "thrift-framed-transport";
 
   /**
    * If true then use SSL sockets for thrift server.
@@ -538,9 +566,35 @@ public interface Attribute {
   /**
    * A comma-separate SSL property key,value pairs. The available property
    * values are:
-   * 
-   * <li>
-   * protocol: TODO: SW:</li>
+   *
+   * <ul>
+   * <li><i>protocol</i>: default "TLS", see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#SSLContext">
+   *   JCA docs</a></li>
+   * <li><i>enabled-protocols</i>: enabled protocols separated by ":"</li>
+   * <li><i>cipher-suites</i>: enabled cipher suites separated by ":", see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#ciphersuites">
+   *   JCA docs</a></li>
+   * <li><i>client-auth=(true|false)</i>: if client also needs to be authenticated, see
+   * <a href="https://docs.oracle.com/javase/7/docs/api/javax/net/ssl/SSLServerSocket.html#setNeedClientAuth(boolean)">
+   *   JCA docs</a></li>
+   * <li><i>keystore</i>: path to key store file</li>
+   * <li><i>keystore-type</i>: the type of key-store (default "JKS"), see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#KeyStore">
+   *   JCA docs</a></li>
+   * <li><i>keystore-password</i>: password for the key store file</li>
+   * <li><i>keymanager-type</i>: the type of key manager factory, see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/jsse/JSSERefGuide.html#KeyManagerFactory">
+   *   JSSE docs</a></li>
+   * <li><i>truststore</i>: path to trust store file</li>
+   * <li><i>truststore-type</i>: the type of trust-store (default "JKS"), see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#KeyStore">
+   *   JCA docs</a></li>
+   * <li><i>truststore-password</i>: password for the trust store file</li>
+   * <li><i>trustmanager-type</i>: the type of trust manager factory, see
+   * <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/jsse/JSSERefGuide.html#TrustManagerFactory">
+   *   JSSE docs</a></li>
+   * </ul>
    * 
    * <p>
    * If this is not specified then default java SSL properties as per

@@ -136,7 +136,7 @@ public class TradePortfolioDMLDistTxStmt extends TradePortfolioDMLStmt
   public boolean insertGfxd(Connection gConn, boolean withDerby) {
     if (!withDerby) {
       return insertGfxdOnly(gConn);
-      
+
     }
     int size = 1;
     int[] cid = new int[size];
@@ -148,23 +148,23 @@ public class TradePortfolioDMLDistTxStmt extends TradePortfolioDMLStmt
     boolean[] expectConflict = new boolean[1];
     Connection nonTxConn = (Connection)SQLDistTxTest.gfxdNoneTxConn.get();
     SQLException gfxdse = null;
-    
+
     getExistingCidFromCustomers(nonTxConn, cid);
     getDataFromResultSet(nonTxConn, sid, qty, sub, price, size); //get the data
     int chance = 200;
     if (rand.nextInt(chance) == 0) cid[0] = 0;
     else if (rand.nextInt(chance) == 0) sid[0] = 0;
-    
+
     HashMap<String, Integer> modifiedKeysByOp = new HashMap<String, Integer>();
     HashSet<String> parentKeysHold = new HashSet<String>();
     try {
       getKeysForInsert(nonTxConn, modifiedKeysByOp, cid[0], sid[0], expectConflict, parentKeysHold);
       /* using batching fk bb now
       if (batchingWithSecondaryData && expectConflict[0] == true) {
-        SQLDistTxTest.expectForeignKeyConflictWithBatching.set(expectConflict[0]); 
-        //TODO need to think a better way when #43170 is fixed -- which foreign keys (range keys) are held 
+        SQLDistTxTest.expectForeignKeyConflictWithBatching.set(expectConflict[0]);
+        //TODO need to think a better way when #43170 is fixed -- which foreign keys (range keys) are held
         //and by which threads need to be tracked and verified.
-      }  
+      }
       */
     } catch (SQLException se) {
       if (se.getSQLState().equals("X0Z01") && isHATest) { // handles HA issue for #41471
@@ -172,15 +172,15 @@ public class TradePortfolioDMLDistTxStmt extends TradePortfolioDMLStmt
         return true; //not able to process the keys due to HA, it is a no op
       } else SQLHelper.handleSQLException(se);
     }
-    
+
     if (batchingWithSecondaryData) {
       //add to fk bb for the fk key hold due to insert into child table
       HashSet<String> holdFKsByThisTx = (HashSet<String>) SQLDistTxTest.foreignKeyHeldWithBatching.get();
       holdFKsByThisTx.addAll(parentKeysHold);
       SQLDistTxTest.foreignKeyHeldWithBatching.set(holdFKsByThisTx);
-      
+
       hydra.blackboard.SharedMap holdingFKTxIds = SQLTxBatchingFKBB.getBB().getSharedMap();
-      Integer myTxId = (Integer) SQLDistTxTest.curTxId.get(); 
+      Integer myTxId = (Integer) SQLDistTxTest.curTxId.get();
       for (String key: parentKeysHold) {
         HashSet<Integer> txIds = (HashSet<Integer>) holdingFKTxIds.get(key);
         if (txIds == null) txIds = new HashSet<Integer>();
@@ -188,76 +188,86 @@ public class TradePortfolioDMLDistTxStmt extends TradePortfolioDMLStmt
         holdingFKTxIds.put(key, txIds);
       }
     }
-    
+
     HashMap<String, Integer> modifiedKeysByTx = (HashMap<String, Integer>)
-        SQLDistTxTest.curTxModifiedKeys.get(); 
-    
-    try {
-      insertToGfxdTable(gConn, cid, sid, qty, sub, updateCount, size);
-    } catch (SQLException se) {
-      SQLHelper.printSQLException(se);
-      if (se.getSQLState().equalsIgnoreCase("X0Z02") ) { 
-        if (expectConflict[0]) {
-          ; //if conflict caused by foreign key
-        }
-        else {
-          if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, se, true);
-          else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, se, hasSecondary, true);
-          //check if conflict caused by multiple inserts on the same keys
-        }
-        
-        if (batchingWithSecondaryData) cleanUpFKHolds(); //got the exception, ops are rolled back due to #43170
-        removePartialRangeForeignKeys(cid, sid);
-        return false;
-      } else if (gfxdtxHANotReady && isHATest && 
-          SQLHelper.gotTXNodeFailureException(se) ) {
+        SQLDistTxTest.curTxModifiedKeys.get();
+
+    for(int i=0; i< 10; i++) {
+      try {
+        Log.getLogWriter().info("RR: Inserting " + i + " times.");
+        insertToGfxdTable(gConn, cid, sid, qty, sub, updateCount, size);
+      } catch (SQLException se) {
+        SQLHelper.printSQLException(se);
+        if (se.getSQLState().equalsIgnoreCase("X0Z02")) {
+          try {
+            if (expectConflict[0]) {
+              ; //if conflict caused by foreign key
+            } else {
+              if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, se, true);
+              else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, se, hasSecondary, true);
+              //check if conflict caused by multiple inserts on the same keys
+            }
+          } catch (TestException te) {
+            if (te.getMessage().contains("but got conflict exception") && i < 9) {
+              Log.getLogWriter().info("RR: got conflict, retrying the operations ");
+              continue;
+            } else throw te;
+          }
+
+          if (batchingWithSecondaryData) cleanUpFKHolds(); //got the exception, ops are rolled back due to #43170
+          removePartialRangeForeignKeys(cid, sid);
+          return false;
+        } else if (gfxdtxHANotReady && isHATest &&
+            SQLHelper.gotTXNodeFailureException(se)) {
           SQLHelper.printSQLException(se);
           Log.getLogWriter().info("got node failure exception during Tx with HA support, continue testing");
-          
+
           if (batchingWithSecondaryData) cleanUpFKHolds(); //got the exception, ops are rolled back due to #43170
           removePartialRangeForeignKeys(cid, sid); //operation not successful, remove the fk constraint keys
-          
+
           return false; //not able to handle node failure yet, needs to rollback ops
-                      // to be confirmed if select query could cause lock to be released
-      } else {
-        if (expectConflict[0] && !se.getSQLState().equals("23505") 
-            && !se.getSQLState().equals("23503")) {
-          if (!batchingWithSecondaryData) 
-            throw new TestException("expect conflict exceptions, but did not get it" +
-              TestHelper.getStackTrace(se));
-          else {
-            //do nothing, as foreign key check may only be done on local node, conflict could be detected at commit time
-            ;
+          // to be confirmed if select query could cause lock to be released
+        } else {
+          if (expectConflict[0] && !se.getSQLState().equals("23505")
+              && !se.getSQLState().equals("23503")) {
+            if (!batchingWithSecondaryData)
+              throw new TestException("expect conflict exceptions, but did not get it" +
+                  TestHelper.getStackTrace(se));
+            else {
+              //do nothing, as foreign key check may only be done on local node, conflict could be detected at commit time
+              ;
+            }
           }
+          gfxdse = se;
+          if (batchingWithSecondaryData) cleanUpFKHolds(); //got the exception, ops are rolled back due to #43170
+          removePartialRangeForeignKeys(cid, sid); //operation not successful, remove the fk constraint keys
         }
-        gfxdse = se;
-        if (batchingWithSecondaryData) cleanUpFKHolds(); //got the exception, ops are rolled back due to #43170
-        removePartialRangeForeignKeys(cid, sid); //operation not successful, remove the fk constraint keys
       }
+      break;
     }
-    
+
     if (!batchingWithSecondaryData) verifyConflict(modifiedKeysByOp, modifiedKeysByTx, gfxdse, false);
     else verifyConflictWithBatching(modifiedKeysByOp, modifiedKeysByTx, gfxdse, hasSecondary, false);
 
     if (expectConflict[0] && gfxdse == null) {
-      if (!batchingWithSecondaryData) 
+      if (!batchingWithSecondaryData)
         throw new TestException("Did not get conflict exception for foreign key check. " +
-        "Please check for logs");
+            "Please check for logs");
       else {
         //do nothing, as foreign key check may only be done on local node, conflict could be detected at commit time
         ;
-      }      
+      }
     }
-    
+
     //add this operation also for derby
     if (withDerby) addInsertToDerbyTx(cid, sid, qty, sub, updateCount, gfxdse);
-    
+
     modifiedKeysByTx.putAll(modifiedKeysByOp);
     SQLDistTxTest.curTxModifiedKeys.set(modifiedKeysByTx);
 
     return true;
   }
-  
+
   protected int getDataFromResultSet(Connection regConn, int[] sid, int[] qty, 
       BigDecimal[] sub, BigDecimal[] price, int size) {
     if (testUniqueKeys) return super.getDataFromResultSet(regConn, sid, qty, sub, price, size);
@@ -293,7 +303,7 @@ public class TradePortfolioDMLDistTxStmt extends TradePortfolioDMLStmt
   }
   
   @SuppressWarnings("unchecked")
-  private void getKeysForInsert(Connection conn, HashMap<String, Integer > keys, 
+  private void getKeysForInsert(Connection conn, HashMap<String, Integer > keys,
      int cid, int sid, boolean[] expectConflict, HashSet<String> parentKeys) throws SQLException {
     String sql = null;
     ResultSet rs = null;
@@ -449,6 +459,126 @@ public class TradePortfolioDMLDistTxStmt extends TradePortfolioDMLStmt
     }
     return true;
   }
+
+  /* (non-Javadoc)
+ * @see sql.dmlStatements.AbstractDMLStmt#query(java.sql.Connection, java.sql.Connection)
+ */
+  @Override
+  public void query(Connection dConn, Connection gConn) {
+    int numOfNonUniq = 6; //how many select statement is for non unique keys, non uniq query must be at the end
+    int whichQuery = getWhichOne(numOfNonUniq, select.length); //randomly select one query sql based on test uniq or not
+
+    int qty = 1000;
+    int avail = 500;
+    int startPoint = 10000;
+    int range = 100000; //used for querying subTotal
+
+    BigDecimal subTotal1 = new BigDecimal(Integer.toString(rand.nextInt(startPoint)));
+    BigDecimal subTotal2 = subTotal1.add(new BigDecimal(Integer.toString(rand.nextInt(range))));
+    int queryQty = rand.nextInt(qty);
+    int queryAvail = rand.nextInt(avail);
+    int sid = 0;
+    int cid = 0;
+    for (int i = 0; i < 10; i++) {
+      Log.getLogWriter().info("RR: executing query(getKey) " + i + "times");
+      try {
+        int[] key = getKey(gConn);
+        if (key != null) {
+          sid = key[0];
+          cid = key[1];
+        }
+      } catch (TestException te) {
+        if (te.getMessage().contains("Conflict detected in transaction operation and it will abort") && (i < 9)) {
+          Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+          continue;
+        } else throw te;
+      }
+      break;
+    }
+
+    int tid = getMyTid();
+    ArrayList<SQLException> exceptionList = new ArrayList<SQLException>();
+    ResultSet discRS = null;
+    ResultSet gfeRS = null;
+
+    for(int i=0; i< 10; i++) {
+      Log.getLogWriter().info("RR: executing query " + i + "times");
+      if (dConn != null) {
+        try {
+          discRS = query(dConn, whichQuery, subTotal1, subTotal2, queryQty, queryAvail, sid, cid, tid);
+          if (discRS == null) {
+            Log.getLogWriter().info("could not get the derby result set after retry, abort this query");
+            if (alterTableDropColumn && SQLTest.alterTableException.get() != null && (Boolean)SQLTest.alterTableException.get() == true)
+              ; //do nothing, expect gfxd fail with the same reason due to alter table
+            else return;
+          }
+        } catch (SQLException se) {
+          SQLHelper.handleDerbySQLException(se, exceptionList);
+        }
+        try {
+          gfeRS = query(gConn, whichQuery, subTotal1, subTotal2, queryQty, queryAvail, sid, cid, tid);
+          if (gfeRS == null) {
+            if (isHATest) {
+              Log.getLogWriter().info("Testing HA and did not get GFXD result set after retry");
+              return;
+            } else if (setCriticalHeap) {
+              Log.getLogWriter().info("got XCL54 and does not get query result");
+              return; //prepare stmt may fail due to XCL54 now
+            } else
+              throw new TestException("Not able to get gfe result set after retry");
+          }
+        } catch (SQLException se) {
+          if (se.getSQLState().equals("X0Z02") && (i < 9)) {
+            Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+            continue;
+          }
+          SQLHelper.handleGFGFXDException(se, exceptionList);
+        }
+        SQLHelper.handleMissedSQLException(exceptionList);
+        if (discRS == null || gfeRS == null) return;
+
+        boolean success = ResultSetHelper.compareResultSets(discRS, gfeRS);
+        if (!success) {
+          Log.getLogWriter().info("Not able to compare results due to derby server error");
+        } //not able to compare results due to derby server error
+      }// we can verify resultSet
+      else {
+        try {
+          gfeRS = query(gConn, whichQuery, subTotal1, subTotal2, queryQty,
+              queryAvail, sid, cid, tid);
+        } catch (SQLException se) {
+          if (se.getSQLState().equals("42502") && SQLTest.testSecurity) {
+            Log.getLogWriter().info("Got expected no SELECT permission, continuing test");
+            return;
+          } else if (alterTableDropColumn && se.getSQLState().equals("42X04")) {
+            Log.getLogWriter().info("Got expected column not found exception, continuing test");
+            return;
+          } else if (se.getSQLState().equals("X0Z02") && (i < 9)) {
+            Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+            continue;
+          } else SQLHelper.handleSQLException(se);
+        }
+        try {
+          if (gfeRS != null)
+            ResultSetHelper.asList(gfeRS, false);
+          else if (isHATest)
+            Log.getLogWriter().info("could not get gfxd query results after retry due to HA");
+          else if (setCriticalHeap)
+            Log.getLogWriter().info("could not get gfxd query results after retry due to XCL54");
+          else
+            throw new TestException("gfxd query returns null and not a HA test");
+        } catch (TestException te) {
+          if (te.getMessage().contains("Conflict detected in transaction operation and it will abort") && (i < 9)) {
+            Log.getLogWriter().info("RR: Retrying the query as we got conflicts");
+            continue;
+          } else throw te;
+        }
+      }
+      break;
+    }
+    SQLHelper.closeResultSet(gfeRS, gConn);
+  }
+
 
   @SuppressWarnings("unchecked")
   protected void addQueryToDerbyTx(int whichQuery, BigDecimal subTotal1, BigDecimal subTotal2, 

@@ -5815,7 +5815,7 @@ public class ConnectionPoolDUnitTest extends CacheTestCase {
 
   
   
-  // disabled - per Sudhir we don't support multiple bridges in the same VM
+  // disabled - per team we don't support multiple bridges in the same VM
 //  public void test2BridgeServersWithDiffGroupsInSameVM() throws Exception {
 //    final String name = this.getName();
 //    final Host host = Host.getHost(0);

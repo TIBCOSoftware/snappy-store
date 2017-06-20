@@ -41,7 +41,6 @@ import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.control.RebalanceFactory;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.TLongObjectHashMap;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
@@ -2698,8 +2697,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
           }
 
           @Override
-          public int readBytes(UnsafeWrapper unsafe, long memOffset,
-              int columnWidth, ByteSource bs) {
+          public int readBytes(long memOffset, int columnWidth, ByteSource bs) {
             throw new UnsupportedOperationException("Not expected to be invoked for "
                 + getClass());
           }

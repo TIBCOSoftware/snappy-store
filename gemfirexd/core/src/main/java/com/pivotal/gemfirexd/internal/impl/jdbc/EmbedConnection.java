@@ -53,7 +53,6 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
@@ -63,6 +62,7 @@ import java.util.concurrent.Executor;
 
 // GemStone changes BEGIN
 import com.gemstone.gemfire.SystemFailure;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -74,6 +74,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentTLongObjectHashMap;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.FinalizeHolder;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
@@ -91,6 +92,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.StatementQueryExecutor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.ConnectionSignaller;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.ConnectionState;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
@@ -116,6 +118,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
+import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.store.access.XATransactionController;
 import com.pivotal.gemfirexd.internal.iapi.store.replication.master.MasterFactory;
 import com.pivotal.gemfirexd.internal.iapi.store.replication.slave.SlaveFactory;
@@ -180,7 +183,7 @@ public abstract class EmbedConnection implements EngineConnection
 
 	TransactionResourceImpl tr; // always access tr thru getTR()
 
-	private HashMap lobHashMap = null;
+	private ConcurrentTLongObjectHashMap<Object> lobHashMap = null;
 	private int lobHMKey = 0;
 
     /**
@@ -657,6 +660,11 @@ public abstract class EmbedConnection implements EngineConnection
 			}
 			
 			if(!shutdown) {
+			  if (tr.defaultSchema != null &&
+			      !tr.defaultSchema.equals(tr.lcc.getCurrentSchemaName())) {
+			    FabricDatabase.setupDefaultSchema(tr.lcc.getDataDictionary(), tr.lcc,
+			        tr.lcc.getTransactionExecute(), tr.defaultSchema, true);
+			  }
                             getLanguageConnection().setRunTimeStatisticsMode(
                                 tr.getDatabase().getRuntimeStatistics(), false);
 			}
@@ -1538,10 +1546,6 @@ public abstract class EmbedConnection implements EngineConnection
        * Same as prepareStatement() above, but allows change in query node
        * parameter.
        * 
-       * @param resultSetType
-       *          a result set type, see ResultSet.TYPE_XXX
-       * @param resultSetConcurrency
-       *          a concurrency type, see ResultSet.CONCUR_XXX
        * @return a new PreparedStatement object containing the pre-compiled SQL
        *         statement
        * @exception SQLException
@@ -1744,6 +1748,7 @@ public abstract class EmbedConnection implements EngineConnection
 			false, null, 0, 0);
 	}
 
+	@Override
 	public final PreparedStatement prepareStatement(
 	    String sql, int resultSetType,
 	    int resultSetConcurrency, int resultSetHoldability,
@@ -1760,6 +1765,7 @@ public abstract class EmbedConnection implements EngineConnection
 	      false, null, 0, 0);
 	}
 
+	@Override
 	public final PreparedStatement prepareStatement(
 	    String sql, int resultSetType,
 	    int resultSetConcurrency, int resultSetHoldability,
@@ -1778,6 +1784,7 @@ public abstract class EmbedConnection implements EngineConnection
 	      false, null, 0, 0);
 	}
 
+	@Override
 	public final PreparedStatement prepareStatement(
 	    String sql, int resultSetType,
 	    int resultSetConcurrency, int resultSetHoldability,
@@ -1979,8 +1986,20 @@ public abstract class EmbedConnection implements EngineConnection
 											   setResultSetType(resultSetType),
 											   resultSetConcurrency,
 											   resultSetHoldability, id,execFlags);
-			} 
-			finally 
+			} catch (SQLException sqle) { // GemStoneAddition
+			  final GemFireXDQueryObserver observer =
+			      GemFireXDQueryObserverHolder.getInstance();
+			  if (observer != null) {
+			    CallableStatement ps = (CallableStatement)observer.afterQueryPrepareFailure(
+			        this, sql, resultSetType, resultSetConcurrency,
+			        resultSetHoldability, Statement.NO_GENERATED_KEYS,
+			        null, null, sqle);
+			    if (ps != null) {
+			      return ps;
+			    }
+			  }
+			  throw sqle;
+			} finally
 			{
 			    restoreContextStack();
 			}
@@ -2288,8 +2307,23 @@ public abstract class EmbedConnection implements EngineConnection
   }
 
   /** basic cleanup required to avoid memory leaks etc. */
+  @Override
   public final void forceClose() {
-    synchronized (getConnectionSynchronization()) {
+    final TransactionResourceImpl tr = getTR();
+    if (tr != null) {
+      // try to abort any active transaction first
+      final LanguageConnectionContext lcc = tr.getLcc();
+      if (lcc != null) {
+        TransactionController tc = lcc.getTransactionExecute();
+        if (tc != null) {
+          try {
+            tc.abort();
+          } catch (StandardException ignored) {
+          }
+          tc.releaseAllLocks(true, true);
+        }
+      }
+
       if (rootConnection == this) {
         // cleanup the CM from ContextService
         final ContextManager cm = this.tr.cm;
@@ -2297,10 +2331,17 @@ public abstract class EmbedConnection implements EngineConnection
           ContextService.removeContextManager(cm);
         }
       }
-      if (!isClosed()) {
-        setInactive();
-      }
+      this.active.state = 0;
     }
+  }
+
+  @Override
+  public final FinalizeObject getAndClearFinalizer() {
+    final FinalizeEmbedConnection finalizer = this.finalizer;
+    if (finalizer != null) {
+      this.finalizer = null;
+    }
+    return finalizer;
   }
 
   public final void close(boolean distribute) throws SQLException {
@@ -2678,6 +2719,12 @@ public abstract class EmbedConnection implements EngineConnection
       setTransactionIsolation(level, null);
     }
 
+    @Override
+    public EnumSet<TransactionFlag> getTransactionFlags() {
+      return getTR().getTXFlags();
+    }
+
+    @Override
     public void setTransactionIsolation(int level,
         EnumSet<TransactionFlag> txFlags) throws SQLException {
       //SanityManager.showTrace(new Throwable(GfxdConstants.TRACE_TRAN));
@@ -2736,6 +2783,10 @@ public abstract class EmbedConnection implements EngineConnection
 		case java.sql.Connection.TRANSACTION_NONE:
 		  iLevel = ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
 		  break;
+		case IsolationLevel.NO_JDBC_LEVEL:
+			iLevel = ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
+			break;
+
 // GemStone changes END
 		default:
 			throw newSQLException(SQLState.UNIMPLEMENTED_ISOLATION_LEVEL,
@@ -3140,7 +3191,7 @@ public abstract class EmbedConnection implements EngineConnection
 
 
 // GemStone changes BEGIN
-	// increased visibility to public
+	@Override
 	final public Object getConnectionSynchronization()
 	/* (original code) final protected Object getConnectionSynchronization() */
 // GemStone changes END
@@ -3156,7 +3207,7 @@ public abstract class EmbedConnection implements EngineConnection
 		transaction needs to be started after a previous commit or rollback
 	 	@exception SQLException if fails
 	 */
-	protected final void setupContextStack(
+	public final void setupContextStack(
 	    final boolean isOperation) throws SQLException {
 
 		/*
@@ -3188,7 +3239,7 @@ public abstract class EmbedConnection implements EngineConnection
 
 	}
 
-	protected final void restoreContextStack() throws SQLException {
+	public final void restoreContextStack() throws SQLException {
 
 // GemStone changes BEGIN
 		if (SanityManager.DEBUG_ASSERT) {
@@ -3851,8 +3902,7 @@ public abstract class EmbedConnection implements EngineConnection
 	public int addLOBMapping(Object LOBReference) {
 		int loc = getIncLOBKey();
 // GemStone changes BEGIN
-		// changed to Integer.valueOf()
-		getlobHMObj().put(Integer.valueOf(loc), LOBReference);
+		getlobHMObj().putPrimitive(loc, LOBReference);
 		/* (original code)
 		getlobHMObj().put(new Integer(loc), LOBReference);
 		*/
@@ -3865,10 +3915,11 @@ public abstract class EmbedConnection implements EngineConnection
 	* @param key an integer that represents the locator that needs to be
 	*            removed from the table.
 	*/
-	public void removeLOBMapping(int key) {
 // GemStone changes BEGIN
+	@Override
+	public void removeLOBMapping(long key) {
 		// changed to Integer.valueOf()
-		getlobHMObj().remove(Integer.valueOf(key));
+		getlobHMObj().removePrimitive(key);
 		/* (original code)
 		getlobHMObj().remove(new Integer(key));
 		*/
@@ -3880,15 +3931,21 @@ public abstract class EmbedConnection implements EngineConnection
 	* @param key the integer that represents the LOB locator value.
 	* @return the LOB Object corresponding to this locator.
 	*/
-	public Object getLOBMapping(int key) {
 // GemStone changes BEGIN
-		return getlobHMObj().get(Integer.valueOf(key));
+	public Object getLOBMapping(long key) {
+		return getlobHMObj().getPrimitive(key);
 		// changed to use Integer.valueOf()
 		/* (original code)
 		return getlobHMObj().get(new Integer(key));
 		 */
-// GemStone changes END
 	}
+
+	@Override
+	public boolean hasLOBs() {
+	  final ConcurrentTLongObjectHashMap<Object> m = rootConnection.lobHashMap;
+	  return m != null && m.size() > 0;
+	}
+// GemStone changes END
 
 	/**
 	* Clear the HashMap of all entries.
@@ -3921,6 +3978,7 @@ public abstract class EmbedConnection implements EngineConnection
 	* @return an integer that represents the most recent locator value.
 	*/
 	private int getIncLOBKey() {
+	    synchronized (getConnectionSynchronization()) {
                 int newKey = ++rootConnection.lobHMKey;
                 // Skip 0x8000, 0x8002, 0x8004, 0x8006, for DERBY-3243
                 // Earlier versions of the Derby Network Server (<10.3) didn't
@@ -3934,11 +3992,12 @@ public abstract class EmbedConnection implements EngineConnection
                     newKey = ++rootConnection.lobHMKey;
                 // Also roll over when the high bit of four byte locator is set.
                 // This will prevent us from sending a negative locator to the
-                // client. Don't allow zero since it is not a valid locator for the 
+                // client. Don't allow zero since it is not a valid locator for the
                 // client.
                 if (newKey == 0x80000000 || newKey == 0)
                     newKey = rootConnection.lobHMKey = 1;
                 return newKey;
+	    }
 	}
 
     /**
@@ -3957,9 +4016,9 @@ public abstract class EmbedConnection implements EngineConnection
 	* Return the Hash Map in the root connection
 	* @return the HashMap that contains the locator to LOB object mapping
 	*/
-	public HashMap getlobHMObj() {
+	public final ConcurrentTLongObjectHashMap<Object> getlobHMObj() {
 		if (rootConnection.lobHashMap == null) {
-			rootConnection.lobHashMap = new HashMap();
+			rootConnection.lobHashMap = new ConcurrentTLongObjectHashMap<Object>();
 		}
 		return rootConnection.lobHashMap;
 	}
@@ -4330,12 +4389,11 @@ public abstract class EmbedConnection implements EngineConnection
   /**
    * The returned object should <b>NEVER</b> be held as a hard reference other
    * than local variable, else it will be a BIG time resource leak. Use & see
-   * EmbedConnectionContext#getNestedConnection instead whereever possible.
+   * EmbedConnectionContext#getNestedConnection instead wherever possible.
    * <p>
    * This is primarily a hack for nested connection to execute DDLs by flexibly
    * switching on autoCommit at
-   * {@link EmbedStatement#executeStatement(Activation, boolean, boolean,
-   *                                        boolean, boolean, boolean)}.
+   * {@link EmbedStatement#executeStatement}.
    * 
    * @return most root connection i.e. original user created connection.
    * @author soubhikc
@@ -4433,7 +4491,7 @@ public abstract class EmbedConnection implements EngineConnection
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 

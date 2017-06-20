@@ -171,7 +171,7 @@ public final class SQLDate extends DataType
      * Convert the date into a milli-seconds since the epoch
      * with the time set to 00:00 based upon the passed in Calendar.
      */
-    private long getTimeInMillis(Calendar cal)
+    public long getTimeInMillis(Calendar cal)
     {
         if( cal == null)
             cal = ClientSharedData.getDefaultCalendar();
@@ -455,7 +455,7 @@ public final class SQLDate extends DataType
      * @param isJdbcEscape if true then only the JDBC date escape syntax is allowed
      * @param localeFinder
      *
-     * @exception Standard exception if the syntax is invalid or the value is out of range.
+     * @exception StandardException if the syntax is invalid or the value is out of range.
      */
     public SQLDate( String dateStr, boolean isJdbcEscape, LocaleFinder localeFinder)
         throws StandardException
@@ -476,7 +476,7 @@ public final class SQLDate extends DataType
      * @param isJdbcEscape if true then only the JDBC date escape syntax is allowed
      * @param localeFinder
      *
-     * @exception Standard exception if the syntax is invalid or the value is out of range.
+     * @exception StandardException if the syntax is invalid or the value is out of range.
      */
     public SQLDate( String dateStr, boolean isJdbcEscape, LocaleFinder localeFinder, Calendar cal)
         throws StandardException
@@ -1162,10 +1162,10 @@ public final class SQLDate extends DataType
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset,
+			final int columnWidth, ByteSource bs) {
     this.valueString = null;
-    this.encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    this.encodedDate = RowFormatter.readInt(memOffset);
     return Integer.SIZE >>> 3;
   }
 
@@ -1174,6 +1174,15 @@ public final class SQLDate extends DataType
     assert !isNull();
     return ResolverUtils.addIntToBucketHash(this.encodedDate, hash,
         getTypeFormatId());
+  }
+
+  static final long getAsDateMillis(final byte[] bytes,
+      final int offset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(bytes, offset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis();
   }
 
   static final java.sql.Date getAsDate(final byte[] bytes,
@@ -1185,13 +1194,31 @@ public final class SQLDate extends DataType
     return new Date(cal.getTimeInMillis());
   }
 
+  static final long getAsDateMillis(final UnsafeWrapper unsafe,
+      final long memOffset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(memOffset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis();
+  }
+
   static final java.sql.Date getAsDate(final UnsafeWrapper unsafe,
       final long memOffset, final Calendar cal) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
     return new Date(cal.getTimeInMillis());
+  }
+
+  static final long getAsTimeStampMicros(final byte[] bytes,
+      final int offset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(bytes, offset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis() * 1000L;
   }
 
   static final java.sql.Timestamp getAsTimeStamp(final byte[] bytes,
@@ -1203,9 +1230,18 @@ public final class SQLDate extends DataType
     return new Timestamp(cal.getTimeInMillis());
   }
 
+  static final long getAsTimeStampMicros(final UnsafeWrapper unsafe,
+      final long memOffset, final Calendar cal) {
+    final int encodedDate = RowFormatter.readInt(memOffset);
+    if (encodedDate == 0) return 0L;
+    cal.clear();
+    SQLDate.setDateInCalendar(cal, encodedDate);
+    return cal.getTimeInMillis() * 1000L;
+  }
+
   static final java.sql.Timestamp getAsTimeStamp(final UnsafeWrapper unsafe,
       final long memOffset, final Calendar cal) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     cal.clear();
     SQLDate.setDateInCalendar(cal, encodedDate);
@@ -1222,19 +1258,17 @@ public final class SQLDate extends DataType
     SharedUtils.dateTimeToString(str, 0, SQLDate.getYear(encodedDate),
         SQLDate.getMonth(encodedDate), SQLDate.getDay(encodedDate), -1, -1, -1,
         -1, -1, false);
-    return ClientSharedUtils.getJdkHelper()
-        .newWrappedString(str, 0, DATE_CHARS);
+    return ClientSharedUtils.newWrappedString(str, 0, DATE_CHARS);
   }
 
   static String getAsString(final UnsafeWrapper unsafe, final long memOffset) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return null;
     char[] str = new char[DATE_CHARS];
     SharedUtils.dateTimeToString(str, 0, SQLDate.getYear(encodedDate),
         SQLDate.getMonth(encodedDate), SQLDate.getDay(encodedDate), -1, -1, -1,
         -1, -1, false);
-    return ClientSharedUtils.getJdkHelper()
-        .newWrappedString(str, 0, DATE_CHARS);
+    return ClientSharedUtils.newWrappedString(str, 0, DATE_CHARS);
   }
 
   static void writeAsString(final byte[] inBytes, final int offset,
@@ -1248,9 +1282,8 @@ public final class SQLDate extends DataType
     buffer.advance(DATE_CHARS);
   }
 
-  static void writeAsString(final UnsafeWrapper unsafe, final long memOffset,
-      final ByteArrayDataOutput buffer) {
-    final int encodedDate = RowFormatter.readInt(unsafe, memOffset);
+  static void writeAsString(final long memOffset, ByteArrayDataOutput buffer) {
+    final int encodedDate = RowFormatter.readInt(memOffset);
     if (encodedDate == 0) return;
     final int bufferPos = buffer.ensureCapacity(DATE_CHARS, buffer.position());
     SharedUtils.dateTimeToChars(buffer.getData(), bufferPos,

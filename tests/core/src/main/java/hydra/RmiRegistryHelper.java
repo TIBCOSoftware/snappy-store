@@ -123,19 +123,61 @@ public class RmiRegistryHelper {
     if ( Log.getLogWriter().finerEnabled() ) {
       Log.getLogWriter().finer("Looking up " + url);
     }
-    try {
-      Remote obj = Naming.lookup( url );
-      if ( Log.getLogWriter().finerEnabled() ) {
-        Log.getLogWriter().finer("Lookup succeeded, got " + obj);
+    final int MAX_RETRY_MS = 20000;
+    long retryStartTime = 0;
+    long attemptCount = 0;
+    while (true) {
+      try {
+        attemptCount++;
+        Remote obj = Naming.lookup(url);
+        if (Log.getLogWriter().finerEnabled()) {
+          Log.getLogWriter().finer("Lookup succeeded, got " + obj);
+        }
+        return obj;
+      } catch (NotBoundException e) {
+        return null;
+      } catch (java.rmi.UnmarshalException e) {  // workaround for bug 52149 and 52150
+        String failMessage = RmiRegistryHelper.detectKnownRMIBugs(e);
+        if (failMessage != null) {
+          Log.getLogWriter().info("Attempt to lookup " + url + " failed on attempt " + attemptCount +
+             " with cause " + failMessage);
+          if (retryStartTime == 0) {
+            retryStartTime = System.currentTimeMillis();
+          } else if (System.currentTimeMillis() - retryStartTime > MAX_RETRY_MS) {
+            throw new HydraRuntimeException("Problem looking up " + url + " after " + attemptCount + " attempts", e);
+          }
+          MasterController.sleepForMs(100); // sleep so this is not a hot loop
+        } else {
+          throw new HydraRuntimeException("Problem looking up " + url, e);
+        }
+      } catch (Exception e) {
+        throw new HydraRuntimeException("Problem looking up " + url, e);
       }
-      return obj;
-    } catch( NotBoundException e ) {
-      return null;
-    } catch( Exception e ) {
-      throw new HydraRuntimeException( "Problem looking up " + url, e );
     }
   }
 
+  /** Detect known RMI bugs, notably 52149 or 52150.
+   *
+   * @param unmarshalEx An UnmarshalException which was thrown by rmi.
+   * @return String The failure message for the known RMI bug, or null if no
+   *         bug was detected.
+   */
+  protected static String detectKnownRMIBugs(UnmarshalException unmarshalEx) {
+    String failMessage = unmarshalEx.getMessage();
+    if ((failMessage != null) && (failMessage.contains("Transport return code invalid"))) { // detected 52150
+      return failMessage;
+    } else { // look for 52149
+      Throwable causedBy = unmarshalEx.getCause();
+      if (causedBy instanceof java.io.InvalidClassException)  {
+        failMessage = causedBy.getMessage();
+        if ((failMessage != null) && (failMessage.contains("Not a proxy"))) { // detected 52149
+          return failMessage;
+        }
+      }
+    }
+    return null;
+  }
+  
   /**
    * Returns the master RMI registry.
    */

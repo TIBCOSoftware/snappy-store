@@ -47,11 +47,11 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
+import io.snappydata.jdbc.ClientConnectionPoolDataSource;
+import io.snappydata.jdbc.ClientXADataSource;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import com.pivotal.gemfirexd.internal.jdbc.ClientConnectionPoolDataSource;
-import com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource;
 import com.pivotal.gemfirexd.internal.jdbc.EmbeddedSimpleDataSource;
 import org.apache.derbyTesting.functionTests.util.SecurityCheck;
 import org.apache.derbyTesting.junit.BaseJDBCTestCase;
@@ -2397,7 +2397,7 @@ public class J2EEDataSourceTest extends BaseJDBCTestCase {
             return;
 
         // now with ConnectionPoolDataSource
-        ClientConnectionPoolDataSource cpds = 
+        ClientConnectionPoolDataSource cpds =
             new ClientConnectionPoolDataSource();
         // ConnectionPoolDataSource - EMPTY
         dsConnectionRequests(new String[]  

@@ -103,7 +103,7 @@ import java.io.PrintWriter;
 	<PRE>
 	gemfirexd.service.<EM>service name</EM>=<EM>class name</EM>
 	e.g.
-	# Added to the properties automatically by the class com.pivotal.gemfirexd.jdbc.EmbeddedDriver
+	# Added to the properties automatically by the class io.snappydata.jdbc.EmbeddedDriver
 	gemfirexd.service.jdbc=java.sql.Driver
 	</PRE>
 	<LI>A persistent service can be booted by having a property in the application properties

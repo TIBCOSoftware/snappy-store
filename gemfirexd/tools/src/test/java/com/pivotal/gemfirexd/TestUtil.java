@@ -35,6 +35,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import com.gemstone.gemfire.GemFireTestCase;
+import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
@@ -56,7 +57,8 @@ import com.gemstone.gemfire.internal.cache.xmlcache.CacheCreation;
 import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlGenerator;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionCreation;
-import com.gemstone.gemfire.internal.shared.OSType;
+import com.gemstone.gemfire.internal.shared.NativeCalls;
+import com.gemstone.gemfire.internal.shared.jna.OSType;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
@@ -133,9 +135,9 @@ import org.xml.sax.SAXParseException;
 public class TestUtil extends TestCase {
 
   // the default framework is embedded
-  private static final String driver = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  private static final String driver = "io.snappydata.jdbc.EmbeddedDriver";
 
-  private static final String netDriver = "com.pivotal.gemfirexd.jdbc.ClientDriver";
+  private static final String netDriver = "io.snappydata.jdbc.ClientDriver";
 
   private static final String protocol = "jdbc:gemfirexd:";
 
@@ -231,10 +233,11 @@ public class TestUtil extends TestCase {
     currentTest = getName();
     currentTestClass = getTestClass();
 
+    /*
     boolean nonTXTestMode = Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
       || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX));
-    
-//    isTransactional = !nonTXTestMode;
+    isTransactional = !nonTXTestMode;
+    */
 
     // reduce logging if test so requests
     String logLevel;
@@ -553,7 +556,7 @@ public class TestUtil extends TestCase {
         ExclusiveSharedSynchronizer.LOCK_MAX_TIMEOUT_PROP, "20000");
 
     // allow running in background that gets stuck due to jline usage
-    setPropertyIfAbsent(null, "jline.terminal", "scala.tools.jline.UnsupportedTerminal");
+    setPropertyIfAbsent(null, "jline.terminal", "jline.UnsupportedTerminal");
 
     // randomly set the streaming flag
     setPropertyIfAbsent(props, Attribute.DISABLE_STREAMING,
@@ -566,12 +569,14 @@ public class TestUtil extends TestCase {
     
     //Allow HDFS tests to create a standalone file system
     System.setProperty(HDFSStoreImpl.ALLOW_STANDALONE_HDFS_FILESYSTEM_PROP, "true");
-    
+
+    /*
     boolean nonTXTestMode = Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
         || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX)); 
-//    if (!nonTXTestMode) {
-//      props.put(Attribute.TX_SYNC_COMMITS, "true");
-//    }
+    if (!nonTXTestMode) {
+      props.put(Attribute.TX_SYNC_COMMITS, "true");
+    }
+    */
     
     return props;
   }
@@ -583,19 +588,19 @@ public class TestUtil extends TestCase {
     props = doCommonSetup(props);
 
     final Connection conn = DriverManager.getConnection(protocol, props);
-    
+    /*
     boolean nonTXTestMode = Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
         || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX));
-//    if (nonTXTestMode) {
+    if (nonTXTestMode) {
       System.out.println("Non-tx test mode.");
       conn.setAutoCommit(false);
       conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
-//    }
+    }
     Logger logger = getLogger();
     if (logger != null) {
       logger.info("TestUtil.getConnection::Autocommit is " + conn.getAutoCommit());
     }
-
+    */
     // Read the flag for deleting persistent files only during boot up
     if (jdbcConn == null || jdbcConn.isClosed()) {
       jdbcConn = conn;
@@ -641,13 +646,15 @@ public class TestUtil extends TestCase {
       }
       conn = DriverManager.getConnection(
           getNetProtocol(host, port) + urlSuffix, getNetProperties(props));
-      
+
+      /*
       boolean nonTXTestMode = (Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
           || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX))); 
-//      if (nonTXTestMode) {
+      if (nonTXTestMode) {
         conn.setAutoCommit(false);
         conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
-//      }
+      }
+      */
       return conn;
     } catch (UnknownHostException e) {
       throw new AssertionError(e);
@@ -778,10 +785,15 @@ public class TestUtil extends TestCase {
   }
 
   public static void loadDerbyDriver() throws Exception {
-    Driver autoDriver = (Driver)Class.forName(
-        "org.apache.derby.jdbc.AutoloadedDriver40").newInstance();
     Class<?> autoDriverBaseClass = Class.forName(
         "org.apache.derby.jdbc.AutoloadedDriver");
+    Driver autoDriver;
+    try {
+      autoDriver = (Driver)Class.forName(
+          "org.apache.derby.jdbc.AutoloadedDriver40").newInstance();
+    } catch (Throwable t) {
+      autoDriver = (Driver)autoDriverBaseClass.newInstance();
+    }
     Method m = autoDriverBaseClass.getDeclaredMethod("registerMe",
         autoDriverBaseClass);
     m.setAccessible(true);
@@ -893,6 +905,27 @@ public class TestUtil extends TestCase {
         // if the error code or SQLState is different, we have
         // an unexpected exception (shutdown failed)
         throw se;
+      }
+    }
+  }
+
+  public static void dropAllUsers(Connection conn) throws Exception {
+    Statement stmt = conn.createStatement();
+    stmt.execute("call sys.show_users()");
+    PreparedStatement pstmt = null;
+    try (ResultSet rs = stmt.getResultSet()) {
+      while (rs.next()) {
+        if (rs.getString(2).equalsIgnoreCase("USER")) {
+          if (pstmt == null) {
+            pstmt = conn.prepareStatement("call sys.drop_user(?)");
+          }
+          pstmt.setString(1, rs.getString(1));
+          pstmt.execute();
+        }
+      }
+    } finally {
+      if (pstmt != null) {
+        pstmt.close();
       }
     }
   }
@@ -1507,11 +1540,10 @@ public class TestUtil extends TestCase {
   }
 
   public static void checkServerGroups(String tableName, String... serverGroups) {
-    PartitionAttributesImpl pattrs = getPartitionAttributes(tableName);
-    GfxdPartitionResolver resolver = (GfxdPartitionResolver)pattrs
-        .getPartitionResolver();
-    SortedSet<String> actualServerGroups = resolver.getDistributionDescriptor()
-        .getServerGroups();
+    Region<?, ?> region = Misc.getRegionForTable(StringUtil
+        .SQLToUpperCase(tableName), true);
+    SortedSet<String> actualServerGroups = ((GemFireContainer)region.getUserAttribute())
+        .getDistributionDescriptor().getServerGroups();
     if (serverGroups == null) {
       assertTrue("expected target server groups to be null",
           actualServerGroups == null || actualServerGroups.size() == 0);
@@ -1526,11 +1558,13 @@ public class TestUtil extends TestCase {
 
   public static GfxdPartitionResolver checkColocation(String tableName,
       String targetSchema, String targetTable) {
-    PartitionAttributesImpl pattrs = getPartitionAttributes(tableName);
+    Region<?, ?> region = Misc.getRegionForTable(StringUtil
+        .SQLToUpperCase(tableName), true);
+    GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+    PartitionAttributes<?, ?> pattrs = container.getRegionAttributes()
+        .getPartitionAttributes();
     // first check using DistributionDescriptor
-    GfxdPartitionResolver resolver = (GfxdPartitionResolver)pattrs
-        .getPartitionResolver();
-    DistributionDescriptor dd = resolver.getDistributionDescriptor();
+    DistributionDescriptor dd = container.getDistributionDescriptor();
     String targetRegionPath = null;
     if (targetTable != null && targetTable.length() > 0) {
       targetTable = Misc.getFullTableName(
@@ -1543,7 +1577,7 @@ public class TestUtil extends TestCase {
     // then using region attributes
     assertEquals("Failure in checking colocation of regions: ",
         targetRegionPath, pattrs.getColocatedWith());
-    return resolver;
+    return (GfxdPartitionResolver)pattrs.getPartitionResolver();
   }
   /**
    * Utility class to store a column name and value pair using for creating a
@@ -2114,8 +2148,8 @@ public class TestUtil extends TestCase {
   public static final String EmbeddedeXADsClassName = 
       "com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource";
 
-  public static final String NetClientXADsClassName = 
-      "com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource";
+  public static final String NetClientXADsClassName =
+      "io.snappydata.jdbc.ClientXADataSource";
 
   public static Object getXADataSource(String xaDsClassName) {
     ClassLoader contextLoader = (ClassLoader)AccessController
@@ -2181,15 +2215,17 @@ public class TestUtil extends TestCase {
       }
     }
   }
-  
-  public static <T> Object getField(Class<T> clazz, T instance, String fieldName  ) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+
+  public static <T> Object getField(Class<T> clazz, T instance,
+      String fieldName) throws NoSuchFieldException, SecurityException,
+      IllegalArgumentException, IllegalAccessException {
     Field f = clazz.getDeclaredField(fieldName);
     f.setAccessible(true);
     return f.get(instance);
   }
 
   public static void assertTimerLibraryLoaded() {
-    final OSType ostype =  com.gemstone.gemfire.internal.shared.NativeCalls.getInstance().getOSType();
+    final OSType ostype = NativeCalls.getInstance().getOSType();
     if (ostype == OSType.LINUX) {
       assertTrue("Couldn't initialize jni native timer for " + ostype,
           NanoTimer.isJNINativeTimerEnabled());

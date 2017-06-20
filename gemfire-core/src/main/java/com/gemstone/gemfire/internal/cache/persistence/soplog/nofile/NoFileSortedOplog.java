@@ -57,7 +57,8 @@ public class NoFileSortedOplog implements SortedOplog {
     synchronized (metadata) {
       metadata.clear();
     }
-    data.set(new ConcurrentSkipListMap<byte[], byte[]>(config.getComparator()));
+    data.set(new ConcurrentSkipListMap<byte[], byte[]>(
+        config.getComparator().toBytesComparator()));
     
     return new NoFileWriter();
   }
@@ -146,7 +147,8 @@ public class NoFileSortedOplog implements SortedOplog {
 
     @Override
     public SerializedComparator getComparator() {
-      return (SerializedComparator) data.get().comparator();
+      return ((BytesComparator)data.get().comparator())
+          .getSerializedComparator();
     }
 
     @Override

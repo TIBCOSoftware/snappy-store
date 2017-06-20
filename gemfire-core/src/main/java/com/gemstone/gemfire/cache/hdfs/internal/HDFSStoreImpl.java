@@ -54,7 +54,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.LruBlockCache;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
-import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.ConnectTimeoutException;
@@ -68,6 +67,8 @@ import org.apache.hadoop.security.UserGroupInformation;
  */
 public class HDFSStoreImpl implements HDFSStore {
   public static final String ALLOW_STANDALONE_HDFS_FILESYSTEM_PROP = "gemfire.ALLOW_STANDALONE_HDFS_FILESYSTEM";
+  public static final int DEFAULT_BLOCKSIZE_SMALL = 8 * 1024;
+
   private final boolean ALLOW_TEST_FILE_SYSTEM = Boolean.getBoolean(ALLOW_STANDALONE_HDFS_FILESYSTEM_PROP);
   final LogWriterI18n logger;
 
@@ -125,7 +126,7 @@ public class HDFSStoreImpl implements HDFSStore {
 //      this.blockCache = new LruBlockCache(cacheSize,
 //          StoreFile.DEFAULT_BLOCKSIZE_SMALL, hconf, HFileSortedOplogFactory.convertStatistics(stats));
       this.blockCache = new LruBlockCache(cacheSize,
-          StoreFile.DEFAULT_BLOCKSIZE_SMALL, hconf);
+          DEFAULT_BLOCKSIZE_SMALL, hconf);
     } else {
       this.blockCache = null;
     }
@@ -205,7 +206,8 @@ public class HDFSStoreImpl implements HDFSStore {
           new String[]{"org.apache.hadoop.io.serializer.WritableSerialization"});
       // create writer
 
-      SchemaMetrics.configureGlobally(hconf);
+      // [sumedh] should not be required with the new metrics2
+      // SchemaMetrics.configureGlobally(hconf);
       
       String nameNodeURL = null;
       if ((nameNodeURL = getNameNodeURL()) == null) {

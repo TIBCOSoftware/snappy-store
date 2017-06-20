@@ -1,11 +1,27 @@
+/*
+ * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 plugins {
-  id "ca.coglinc.javacc" version "2.3.1"
+  id 'ca.coglinc.javacc' version '2.3.1'
+  id 'com.github.johnrengelman.shadow' version '1.2.3'
 }
 
-if (rootProject.hasProperty('enablePublish')) {
-  artifacts {
-    archives packageTests
-  }
+artifacts {
+  archives packageTests
 }
 
 dependencies {
@@ -19,11 +35,14 @@ dependencies {
   compile 'commons-configuration:commons-configuration:1.10'
   compile 'commons-pool:commons-pool:1.6'
   compile 'commons-dbcp:commons-dbcp:1.4'
-  compile "org.scala-lang:jline:${scalaVersion}"
+  compile "jline:jline:${jlineVersion}"
+  compile "org.apache.thrift:libthrift:${thriftVersion}"
+  compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
+  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   // use dunit support from snappydata
   if (subprojectBase == ':') {
-    testCompile 'io.snappydata:dunit:1.0.0'
+    testCompile 'io.snappydata:dunit:1.0.3.4'
   } else {
     testCompile project(':dunit')
   }
@@ -42,12 +61,20 @@ dependencies {
   provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
   provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${jerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${jerseyVersion}"
+  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "org.apache.hbase:hbase:${hbaseVersion}"
+  provided "org.eclipse.jetty:jetty-http:${jettyVersion}"
+  provided "org.eclipse.jetty:jetty-io:${jettyVersion}"
+  provided "org.eclipse.jetty:jetty-security:${jettyVersion}"
+  provided "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  provided "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
+  provided "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  provided "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
+  provided "org.eclipse.jetty:jetty-xml:${jettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
 
   testCompile "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
@@ -69,7 +96,15 @@ dependencies {
 
 // move javacc output directory to a place where IDEA can easily register
 def javaccOut = 'src/generated/javacc'
-compileJavacc.outputDirectory = file(javaccOut)
+compileJavacc {
+  arguments = [ grammar_encoding: 'UTF-8' ]
+  outputDirectory = file("${projectDir}/${javaccOut}")
+}
+
+task deleteGenerated(type: Delete) {
+  delete javaccOut
+}
+clean.dependsOn deleteGenerated
 
 sourceSets.main.java.srcDirs = [ 'src/main/java', javaccOut, 'src/ddlutils/java' ]
 sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/testing/java', 'src/dunit/java',
@@ -88,17 +123,12 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
 }
 compileJava.dependsOn generatePropertiesFiles
 
-archivesBaseName = 'gemfirexd-tools'
-jar {
-  baseName = 'gemfirexd-tools'
+archivesBaseName = 'snappydata-store-tools'
 
-  from {
-    configurations.runtime.collect {
-      it.isDirectory() ? it : zipTree(it).matching {
-        exclude {
-          it.path.contains('META-INF')
-        }
-      }
-    }
-  }
+shadowJar {
+  dependsOn jar
+  baseName = 'snappydata-tools'
+  classifier = ''
+
+  mergeServiceFiles()
 }

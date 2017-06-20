@@ -27,13 +27,13 @@ import com.gemstone.gemfire.cache.Region;
  * In this example of client/server caching, the server listens on a port for
  * client requests and updates. A clientworker forwards data requests to the
  * server and sends data updates to the server.
- * </p>
+ * <p>
  * This client is a consumer. It registers interest in events on the server and
  * the server sends automatic updates for the events.
- * </p>
+ * <p>
  * Please refer to the quickstart guide for instructions on how to run this
  * example.
- * </p>
+ * <p>
  * 
  * @author GemStone Systems, Inc.
  * @since 5.8

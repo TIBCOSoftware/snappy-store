@@ -84,6 +84,9 @@ public interface DiskRegionView extends PersistentMemberView, RegionEntryContext
   public boolean isReadyForRecovery();
   public int getRecoveredEntryCount();
   public void incRecoveredEntryCount();
+  public int getInvalidOrTombstoneEntryCount();
+
+  public void incInvalidOrTombstoneEntryCount();
   public void initRecoveredEntryCount();
   public void copyExistingRegionMap(LocalRegion drs,
       InternalRegionArguments internalRegionArgs);

@@ -26,6 +26,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Properties;
 
+import io.snappydata.jdbc.EmbeddedDriver;
+
 /**
  * Test opening connections until a failure due to out of memory
  * and then continue with 500 connection requests to see if the
@@ -39,7 +41,7 @@ public class ConnectionHandling {
         System.out.println("Test ConnectionHandling starting");
 
 
-        new com.pivotal.gemfirexd.jdbc.EmbeddedDriver();
+        new EmbeddedDriver();
         
         Connection conn = DriverManager.getConnection("jdbc:derby:wombat;create=true");
         conn.close();

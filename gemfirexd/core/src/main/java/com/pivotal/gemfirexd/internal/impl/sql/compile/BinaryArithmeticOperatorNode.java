@@ -43,7 +43,6 @@ package	com.pivotal.gemfirexd.internal.impl.sql.compile;
 // GemStone changes BEGIN
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.AbstractRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
@@ -52,6 +51,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.metadata.PrunedExpressi
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfoConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfoContext;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.expression.GfxdExprNodeVirtualIDVisitor;
 // GemStone changes END
 
@@ -309,8 +309,8 @@ public final class BinaryArithmeticOperatorNode extends BinaryOperatorNode
     }
     else if ((rgn = Misc.getRegionByPath(desc, this.lcc, true)).getAttributes()
         .getDataPolicy().withPartitioning()) {
-      final GfxdPartitionResolver spr = (GfxdPartitionResolver)
-          ((PartitionedRegion)rgn).getPartitionResolver();
+      final GfxdPartitionResolver spr = GemFireXDUtils.getResolver((AbstractRegion)rgn);
+      if (spr == null) return QueryInfoConstants.DUMMY;
       final String canonicalStr = visitor.getCanonicalizedExpression();
       if (canonicalStr.equals(spr.getCanonicalizedExpression())) {
         return new PrunedExpressionQueryInfo(this.getTypeServices(),

@@ -17,6 +17,8 @@
 
 package com.pivotal.gemfirexd.internal.engine.reflect;
 
+import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.PrepStatementSnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.loader.GeneratedClass;
@@ -25,13 +27,21 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 
 public class SnappyActivationClass implements GeneratedClass {
-  boolean returnRows;
-  public SnappyActivationClass(boolean returnRows) {
+
+  private final boolean returnRows;
+  private final int classLoaderVersion;
+  boolean isPrepStmt;
+
+  public SnappyActivationClass(LanguageConnectionContext lcc,
+      boolean returnRows, boolean isPrepStmt) {
     this.returnRows = returnRows;
+    this.classLoaderVersion = lcc.getLanguageConnectionFactory()
+        .getClassFactory().getClassLoaderVersion();
+    this.isPrepStmt = isPrepStmt;
   }
 
   public int getClassLoaderVersion() {
-    return 0;
+    return this.classLoaderVersion;
   }
 
   public GeneratedMethod getMethod(String simpleName) throws StandardException {
@@ -45,6 +55,10 @@ public class SnappyActivationClass implements GeneratedClass {
   public final Object newInstance(final LanguageConnectionContext lcc,
                                   final boolean addToLCC, final ExecPreparedStatement eps)
     throws StandardException {
-    return new SnappyActivation(lcc, eps, this.returnRows);
+    SnappyActivation sa = new SnappyActivation(lcc, eps, this.returnRows, this.isPrepStmt);
+    if (isPrepStmt) {
+      sa.initialize_pvs();
+    }
+    return sa;
   }
 }

@@ -465,8 +465,49 @@ public class BrokeredStatement implements EngineStatement
         /* (original code)
         return ((EngineStatement) getStatement()).getMoreResults( current);
         */
-// GemStone changes END
 	}
+
+	@Override
+  public boolean isPrepared() throws SQLException {
+    return ((EngineStatement)getStatement()).isPrepared();
+  }
+
+  @Override
+  public boolean hasDynamicResults() throws SQLException {
+    return ((EngineStatement)getStatement()).hasDynamicResults();
+  }
+
+  @Override
+  public void forceClearBatch() {
+    try {
+      ((EngineStatement)getStatement()).forceClearBatch();
+    } catch (SQLException sqle) {
+      // ignore
+    }
+  }
+
+  @Override
+  public void resetForReuse() throws SQLException {
+    ((EngineStatement)getStatement()).resetForReuse();
+  }
+
+  @Override
+  public void reset(int newType, int newConcurrency,
+      int newHoldability) throws SQLException {
+    ((EngineStatement)getStatement()).reset(newType, newConcurrency,
+        newHoldability);
+  }
+
+  @Override
+  public final void clearFinalizer() {
+    try {
+      ((EngineStatement)getStatement()).clearFinalizer();
+    } catch (SQLException sqle) {
+      // ignore
+    }
+  }
+
+// GemStone changes END
 
     /**
      * JDBC 3.0

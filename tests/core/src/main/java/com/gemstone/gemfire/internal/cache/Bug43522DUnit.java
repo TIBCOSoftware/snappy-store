@@ -17,11 +17,10 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.util.Arrays;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.HashMap;
 
-import com.gemstone.gemfire.internal.cache.DistributedPutAllOperation;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.DataPolicy;
@@ -38,13 +37,6 @@ import com.gemstone.gemfire.distributed.LockNotHeldException;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionMessage;
 import com.gemstone.gemfire.distributed.internal.DistributionMessageObserver;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.AbstractRegionMap;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.InitialImageOperation;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.UpdateOperation;
 import com.gemstone.gemfire.internal.cache.CreateRegionProcessor.CreateRegionMessage;
 
 import dunit.Host;
@@ -197,7 +189,7 @@ public class Bug43522DUnit extends CacheTestCase {
 
               @Override
               public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-                  boolean holdIndexLock, List<?> bucketEntries) {
+                  boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
                 return false;
               }
 
@@ -527,7 +519,7 @@ public class Bug43522DUnit extends CacheTestCase {
 
               @Override
               public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-                  boolean holdIndexLock, List<?> bucketEntries) {
+                  boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
                 return false;
               }
 
@@ -860,7 +852,7 @@ public class Bug43522DUnit extends CacheTestCase {
 
               @Override
               public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-                  boolean holdIndexLock, List<?> bucketEntries) {
+                  boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
                 return false;
               }
 
