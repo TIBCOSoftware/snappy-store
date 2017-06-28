@@ -31,6 +31,7 @@ import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
+import com.gemstone.gnu.trove.THashSet;
 
 
 /**
@@ -66,7 +67,8 @@ public class BridgeServerAdvisor extends GridAdvisor {
 
   @Override
   public Set adviseProfileRemove() {
-    Set results = super.adviseProfileRemove();
+    Set results = new THashSet();
+    results.addAll(super.adviseProfileRemove());
     // Add other members as recipients which are neither locators nor running netservers,
     // if this is a snappy node. This could be helpful if a Spark Driver process is
     // connected as a peer to this DS in split-cluster mode. SNAP-737
