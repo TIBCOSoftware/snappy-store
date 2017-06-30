@@ -67,10 +67,9 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
    * flag to UMM.
    */
   public ByteBufferDataOutput(int initialSize,
-      BufferAllocator allocator,
       Version version,
       String bufferOwner) {
-    this.allocator = allocator;
+    this.allocator = GemFireCacheImpl.getCurrentBufferAllocator();
     this.buffer = allocator.allocate(initialSize, bufferOwner)
         .order(ByteOrder.BIG_ENDIAN);
     this.version = version;
