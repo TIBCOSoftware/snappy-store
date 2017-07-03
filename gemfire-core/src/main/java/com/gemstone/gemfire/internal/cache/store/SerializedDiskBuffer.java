@@ -148,6 +148,14 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   public abstract void write(OutputStreamChannel channel) throws IOException;
 
   /**
+   * Write the serialization header separately if required.
+   */
+  public boolean writeSerializationHeader(ByteBuffer src,
+      ByteBuffer writeBuf) throws IOException {
+    return true;
+  }
+
+  /**
    * The total number of bytes that will be written to a channel
    * by {@link #write(OutputStreamChannel)}.
    */
