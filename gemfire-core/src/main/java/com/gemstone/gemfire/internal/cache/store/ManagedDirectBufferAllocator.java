@@ -149,10 +149,11 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
     assert required > 0 : "expand: unexpected required = " + required;
 
     final int currentUsed = buffer.limit();
-    if (currentUsed + required > buffer.capacity()) {
+    final int currentCapacity = buffer.capacity();
+    if (currentUsed + required > currentCapacity) {
       final int newLength = UnsafeHolder.getAllocationSize(
           BufferAllocator.expandedSize(currentUsed, required));
-      final int delta = newLength - currentUsed;
+      final int delta = newLength - currentCapacity;
       // expect original owner to be ManagedDirectBufferAllocator
       if (reserveMemory(owner, delta, false) ||
           tryEvictData(owner, delta)) {
