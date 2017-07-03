@@ -700,7 +700,7 @@ public interface DiskEntry extends RegionEntry {
           else {
             Assert.assertTrue(!Token.isRemovedFromDisk(value));
             buffer = EntryEventImpl.serializeBuffer(value, null);
-            if (buffer.channelSize() == 0) {
+            if (buffer.size() == 0) {
               throw new IllegalStateException("serializing <" + value +
                   "> produced empty byte array");
             }
@@ -727,7 +727,7 @@ public interface DiskEntry extends RegionEntry {
       }
 
       public int size() {
-        return this.buffer.channelSize();
+        return this.buffer.size();
       }
 
       public void release() {
