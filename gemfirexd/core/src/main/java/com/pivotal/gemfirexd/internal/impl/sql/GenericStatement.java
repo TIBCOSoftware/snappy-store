@@ -653,7 +653,8 @@ public class GenericStatement
 				  StringBuilder queryTextForStats = null;
 				  boolean continueLoop = true;
 			    int i = 0;
-			    boolean forceSkipQueryInfoCreation = false;
+			    boolean forceSkipQueryInfoCreation = Misc.getMemStore().isSnappyStore()
+					  && lcc.getBucketIdsForLocalExecution() != null;
 			    while (continueLoop) {
 			      i++;
 			      continueLoop = false;
