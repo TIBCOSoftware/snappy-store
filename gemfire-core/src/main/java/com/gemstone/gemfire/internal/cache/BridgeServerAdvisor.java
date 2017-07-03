@@ -67,8 +67,7 @@ public class BridgeServerAdvisor extends GridAdvisor {
 
   @Override
   public Set adviseProfileRemove() {
-    Set results = new THashSet();
-    results.addAll(super.adviseProfileRemove());
+    Set results = super.adviseProfileRemove();
     // Add other members as recipients which are neither locators nor running netservers,
     // if this is a snappy node. This could be helpful if a Spark Driver process is
     // connected as a peer to this DS in split-cluster mode. SNAP-737
