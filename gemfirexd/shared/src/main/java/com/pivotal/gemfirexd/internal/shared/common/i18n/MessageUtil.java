@@ -264,7 +264,7 @@ public class MessageUtil implements SQLMessageFormat
                         "Number of parameters expected for message id " +
                         messageId + " (" + numExpected +
                         ") does not match number of arguments received (" +
-                        arguments.length + ")");
+                        arguments.length + "): " + java.util.Arrays.toString(arguments));
                 }
 
                 try {
