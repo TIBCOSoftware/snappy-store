@@ -31,7 +31,6 @@ import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gnu.trove.THashSet;
 
 
 /**
