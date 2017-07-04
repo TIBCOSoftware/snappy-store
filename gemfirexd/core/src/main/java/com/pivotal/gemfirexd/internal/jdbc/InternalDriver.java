@@ -51,7 +51,9 @@ import java.util.logging.Logger;
 import java.security.Permission;
 import java.security.AccessControlException;
 
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -192,6 +194,7 @@ public abstract class InternalDriver implements ModuleControl {
 	}
 // GemStone changes BEGIN
     public Connection connect(String url, Properties info) throws SQLException {
+			// Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS InternalDriver.connect()");
       return connect(url, info, Connection.TRANSACTION_NONE);
     }
 
@@ -291,6 +294,13 @@ public abstract class InternalDriver implements ModuleControl {
 		try {
             
             finfo = getAttributes(url, info);
+			LogWriter log = Misc.getCacheLogWriterNoThrow();
+			if (log != null) {
+				log.info(LocalizedStrings.DEBUG, "ABS InternalDriver.url " + url);
+			} else {
+				System.out.println("ABS InternalDriver.url " + url);
+			}
+			finfo.list(System.out);
             info = null; // ensure we don't use this reference directly again.
 
 			/*

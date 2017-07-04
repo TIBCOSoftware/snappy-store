@@ -360,7 +360,8 @@ public final class BasicAuthenticationServiceImpl
 		// check if the passwords match
 		if (!definedUserPassword.equals(passedUserPassword))
 			return (passedUserPassword != null
-			    ? "Incorrect password for user '" + userName + "'"
+			    ? "Incorrect password ("+ passedUserPassword + ") for user '" + userName + "' (" +
+          definedUserPassword + ")"
 			    : "Null password for user '" + userName + "'");
 
 		// NOTE: We do not look at the passed-in database name value as

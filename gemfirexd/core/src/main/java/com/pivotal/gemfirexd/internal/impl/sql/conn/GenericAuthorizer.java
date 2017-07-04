@@ -169,6 +169,10 @@ implements Authorizer
 				throw externalRoutineException(operation, sqlAllowed);
 			break;
 		case Authorizer.SQL_SELECT_OP:
+//			StackTraceElement[] st = Thread.currentThread().getStackTrace();
+//			for (StackTraceElement ste : st) {
+//				System.out.println(ste);
+//			}
 			if (sqlAllowed > RoutineAliasInfo.READS_SQL_DATA)
 				throw externalRoutineException(operation, sqlAllowed);
 			break;

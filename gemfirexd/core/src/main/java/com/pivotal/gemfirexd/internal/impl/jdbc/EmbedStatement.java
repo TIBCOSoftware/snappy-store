@@ -79,6 +79,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.ConstantValueSet;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.NonUpdatableRowsResultSet;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericActivationHolder;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.DDLStatementNode;
 
@@ -86,6 +87,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 // GemStone changes END
@@ -182,6 +184,16 @@ public class EmbedStatement extends ConnectionChild
 	  for (String s : ignoreStatesForClientDDLRetry) {
 	    ignoreStateSetForClientDDLRetry.add(s);
 	  }
+	}
+
+	private Properties connProps;
+
+	public Properties getConnProps() {
+		return connProps;
+	}
+
+	public void setConnProps(Properties connProps) {
+		this.connProps = connProps;
 	}
 
 	public static final SQLWarning ignoreDDLForClientRetry(
@@ -1231,6 +1243,8 @@ public class EmbedStatement extends ConnectionChild
           checkRequiresCallableStatement(activation);
           activation.setFlags(activationFlags);
           activation.setFunctionContext(fnContext);
+					// TODO what if a different activation impl?
+					((GenericActivationHolder)activation).setConnProps(this.connProps);
           /* (original code)
           activation = preparedStatement.getActivation(lcc,
               resultSetType == java.sql.ResultSet.TYPE_SCROLL_INSENSITIVE, SQLText);
@@ -3431,7 +3445,7 @@ public class EmbedStatement extends ConnectionChild
     return destinationhdfsStores;
   }
 
-  @SuppressWarnings("serial")
+	@SuppressWarnings("serial")
   protected static class FinalizeStatement extends FinalizeObject {
 
     private Activation singleUseActivation;

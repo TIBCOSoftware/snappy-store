@@ -46,6 +46,7 @@ import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.procedure.cohort.ProcedureSender;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
 // GemStone changes END
 
@@ -78,6 +79,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.BaseActivation;
 
 import java.sql.SQLWarning;
 import java.util.ArrayList;
+import java.util.Properties;
 import java.util.Vector;
 import java.util.Hashtable;
 
@@ -1044,8 +1046,14 @@ public final class GenericActivationHolder implements Activation
   public void setUseOnlyPrimaryBuckets(boolean b) {
     this.ac.setUseOnlyPrimaryBuckets(b);
   }
-  
-  @Override
+
+	public void setConnProps(Properties p) {
+		if (this.ac instanceof SnappyActivation) {
+			((SnappyActivation)this.ac).setConnProps(p);
+		}
+	}
+
+	@Override
   public boolean getUseOnlyPrimaryBuckets() {
     return this.ac.getUseOnlyPrimaryBuckets();
   }

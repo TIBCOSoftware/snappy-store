@@ -46,10 +46,14 @@ import java.util.Iterator;
 import java.util.Properties;
 
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
+import com.pivotal.gemfirexd.Attribute;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineStatement;
+import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.jdbc.EmbedXAConnection;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.OpenConnectionArgs;
@@ -345,13 +349,29 @@ final class ConnectionHolder {
       if (stmt != null) {
         stmt.reset(resultSetType, resultSetConcurrency, resultSetHoldability);
         this.reusableStatement = null;
+        setProps(stmt);
         return stmt;
       }
     } finally {
       this.sync.unlock();
     }
-    return (EngineStatement)this.conn.createStatement(resultSetType,
+    Statement stmt = this.conn.createStatement(resultSetType,
         resultSetConcurrency, resultSetHoldability);
+    setProps(stmt);
+    return (EngineStatement)stmt;
+  }
+
+  private void setProps(Statement stmt) {
+    String uname = this.props.getProperty(Attribute.USERNAME_ATTR);
+    String pass = this.props.getProperty(Attribute.PASSWORD_ATTR);
+    Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS credentials in connHolder " +
+        uname + ", " + pass);
+    if (stmt instanceof EmbedStatement) {
+      Properties properties = new Properties();
+      properties.setProperty(Attribute.USERNAME_ATTR, uname);
+      properties.setProperty(Attribute.PASSWORD_ATTR, pass);
+      ((EmbedStatement)stmt).setConnProps(properties);
+    }
   }
 
   final EngineConnection getConnection() {

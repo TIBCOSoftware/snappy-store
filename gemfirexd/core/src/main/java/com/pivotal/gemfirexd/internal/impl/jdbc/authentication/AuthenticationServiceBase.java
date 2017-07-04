@@ -388,6 +388,12 @@ public abstract class AuthenticationServiceBase
 		}
                 // GemStone changes BEGIN
 		//return this.authenticationScheme.authenticateUser(userName,
+		StackTraceElement[] st = Thread.currentThread().getStackTrace();
+		Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS AuthenticationServiceBase.authenticate() passwd: " + userInfo
+				.getProperty(Attribute.PASSWORD_ATTR));
+//		for (StackTraceElement ste : st) {
+//			System.out.println(ste);
+//		}
                 String retval = this.authenticationScheme.authenticateUser(userName,
 						  userInfo.getProperty(Attribute.PASSWORD_ATTR),
 						  databaseName,
