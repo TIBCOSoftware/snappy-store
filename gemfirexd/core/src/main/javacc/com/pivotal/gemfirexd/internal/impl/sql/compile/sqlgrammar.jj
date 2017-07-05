@@ -1142,6 +1142,9 @@ public class SQLParser
 				  case BIT:
 					retval = true;
 					break;
+				  default:
+				    retval = true;
+				    break;
 				}
 				break;
 			}
@@ -5496,6 +5499,10 @@ longSubType() throws StandardException :
 		throw StandardException.newException(SQLState.NOT_IMPLEMENTED, TypeId.NATIONAL_LONGVARCHAR_NAME);
 		// return DataTypeDescriptor.getBuiltInDataTypeDescriptor(TypeId.NATIONAL_LONGVARCHAR_NAME);
 	}
+|
+    {
+        return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.BIGINT);
+    }
 }
 
 /*
