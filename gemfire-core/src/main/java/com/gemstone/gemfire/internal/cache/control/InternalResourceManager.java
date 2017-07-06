@@ -74,6 +74,7 @@ public class InternalResourceManager implements ResourceManager {
   private Map<ResourceType, Set<ResourceListener>> listeners = new HashMap<ResourceType, Set<ResourceListener>>();
   
   private final ScheduledExecutorService scheduledExecutor;
+  private final ScheduledExecutorService recoveryExecutor;
   private final ExecutorService notifyExecutor;
   
   //The set of in progress rebalance operations.
@@ -123,6 +124,18 @@ public class InternalResourceManager implements ResourceManager {
     };
     this.scheduledExecutor = new ScheduledThreadPoolExecutor(1, tf);
 
+    final ThreadGroup recoveryThrdGrp = LogWriterImpl.createThreadGroup(
+        "BucketRecoveryThreadGroup", cache.getLoggerI18n());
+    ThreadFactory recoveryFactory = new ThreadFactory() {
+      @Override
+      public Thread newThread(Runnable r) {
+        Thread thread = new Thread(recoveryThrdGrp, r, "BucketRecoveryThread");
+        thread.setDaemon(true);
+        return thread;
+      }
+    };
+    recoveryExecutor = new ScheduledThreadPoolExecutor(1, recoveryFactory);
+
     // Initialize the load probe
     try {
       Class loadProbeClass = ClassPathLoader.getLatest().forName(PR_LOAD_PROBE_CLASS);
@@ -170,6 +183,7 @@ public class InternalResourceManager implements ResourceManager {
     }
     
     stopExecutor(this.scheduledExecutor);
+    stopExecutor(this.recoveryExecutor);
     stopExecutor(this.notifyExecutor);
     
     this.stats.close();
@@ -367,7 +381,11 @@ public class InternalResourceManager implements ResourceManager {
   public ScheduledExecutorService getExecutor() {
     return this.scheduledExecutor;
   }
-  
+
+  public ScheduledExecutorService getRecoveryExecutor() {
+    return this.recoveryExecutor;
+  }
+
   public ResourceManagerStats getStats() {
     return this.stats;
   }
