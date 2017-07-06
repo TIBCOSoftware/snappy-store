@@ -123,7 +123,7 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * The current state of this BucketAdvisor which tracks which member is
    * primary and whether or not this member is hosting a real Bucket.
    */
-  private byte primaryState = NO_PRIMARY_NOT_HOSTING;
+  private volatile byte primaryState = NO_PRIMARY_NOT_HOSTING;
   
   /**
    * This delegate handles all volunteering for primary status. Lazily created.
@@ -1122,9 +1122,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this advisor has been closed
    */
   protected boolean isClosed() {
+    return this.primaryState == CLOSED;
+    /*
     synchronized(this) {
       return this.primaryState == CLOSED;
     }
+    */
   }
 
   /** 
@@ -1133,9 +1136,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently marked as primary
    */
   public boolean isPrimary() {
+    return this.primaryState == IS_PRIMARY_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == IS_PRIMARY_HOSTING;
     }
+    */
   }
   
   /** 
@@ -1144,9 +1150,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently volunteering for primary
    */
   protected boolean isVolunteering() {
+    return this.primaryState == VOLUNTEERING_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == VOLUNTEERING_HOSTING;
     }
+    */
   }
 
   /** 
@@ -1168,6 +1177,13 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently hosting real bucket
    */
   public boolean isHosting() {
+    final byte state = this.primaryState;
+    return state == NO_PRIMARY_HOSTING ||
+        state == OTHER_PRIMARY_HOSTING ||
+        state == VOLUNTEERING_HOSTING ||
+        state == BECOMING_HOSTING ||
+        state == IS_PRIMARY_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == NO_PRIMARY_HOSTING ||
              this.primaryState == OTHER_PRIMARY_HOSTING ||
@@ -1175,6 +1191,7 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
              this.primaryState == BECOMING_HOSTING ||
              this.primaryState == IS_PRIMARY_HOSTING;
     }
+    */
   }
   
   /**

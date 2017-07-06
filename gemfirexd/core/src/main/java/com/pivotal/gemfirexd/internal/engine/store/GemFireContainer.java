@@ -43,6 +43,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -1720,20 +1721,21 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         // first acquire the recovery lock to avoid any rebalance etc.
         // this is done only on the source node
         if (!lcc.isConnectionForRemote()) {
-          final RecoveryLock rl = pr.getRecoveryLock();
+          final AtomicBoolean locked = new AtomicBoolean();
+          final RecoveryLock rl = ColocationHelper.getLeaderRegion(pr).getRecoveryLock();
           rl.lock();
-          // register operation for releasing the lock at commit
+          locked.set(true);
+          // register operation for releasing the lock at commit/abort
           tc.logAndDo(new MemOperation(null) {
-            private boolean skipUnlock;
             @Override
             public void doMe(Transaction xact, LogInstant instant,
                 LimitObjectInput in) throws StandardException, IOException {
               if (GemFireXDUtils.TraceConglom) {
                 SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM,
-                    "Invoked localClear.RecoveryLock.unlock with skipUnlock="
-                        + this.skipUnlock + " for " + xact);
+                    "Invoked localClear.RecoveryLock.unlock with locked="
+                        + locked.get() + " for " + xact);
               }
-              if (!this.skipUnlock) {
+              if (locked.get()) {
                 try {
                   rl.unlock();
                 } catch (Exception e) {
@@ -1753,12 +1755,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             @Override
             public Compensation generateUndo(Transaction xact,
                 LimitObjectInput in) throws StandardException, IOException {
-              this.skipUnlock = true;
               return null;
             }
           });
         }
-        
+
         pr.clearLocalPrimaries();
       }
       else {

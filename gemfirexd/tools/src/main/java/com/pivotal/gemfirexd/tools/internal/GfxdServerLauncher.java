@@ -708,7 +708,6 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       vmArgs.add("-XX:+UseConcMarkSweepGC");
       vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
       vmArgs.add("-XX:+CMSClassUnloadingEnabled");
-      vmArgs.add("-XX:NewRatio=6");
       vmArgs.add("-XX:-DontCompileHugeMethods");
       vmArgs.add("-XX:+UnlockDiagnosticVMOptions");
       vmArgs.add("-XX:ParGCCardsPerStrideChunk=4k");

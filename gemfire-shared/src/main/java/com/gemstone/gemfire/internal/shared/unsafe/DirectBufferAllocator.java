@@ -79,15 +79,17 @@ public class DirectBufferAllocator extends BufferAllocator {
     assert required > 0 : "expand: unexpected required = " + required;
 
     final int currentUsed = buffer.limit();
-    final int newLength = BufferAllocator.expandedSize(currentUsed, required);
-    if (newLength > buffer.capacity()) {
-      final ByteBuffer newBuffer = ByteBuffer.allocateDirect(newLength);
+    if (currentUsed + required > buffer.capacity()) {
+      final int newLength = BufferAllocator.expandedSize(currentUsed, required);
+      final ByteBuffer newBuffer = ByteBuffer.allocateDirect(newLength)
+          .order(buffer.order());
+      buffer.rewind();
       newBuffer.put(buffer);
       UnsafeHolder.releaseDirectBuffer(buffer);
       newBuffer.rewind(); // position at start as per the contract of expand
       return newBuffer;
     } else {
-      buffer.limit(newLength);
+      buffer.limit(currentUsed + required);
       return buffer;
     }
   }
