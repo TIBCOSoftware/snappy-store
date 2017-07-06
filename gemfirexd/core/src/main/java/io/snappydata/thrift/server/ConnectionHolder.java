@@ -366,7 +366,7 @@ final class ConnectionHolder {
     String pass = this.props.getProperty(Attribute.PASSWORD_ATTR);
     Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS credentials in connHolder " +
         uname + ", " + pass);
-    if (stmt instanceof EmbedStatement) {
+    if (stmt instanceof EmbedStatement && uname != null && pass != null) {
       Properties properties = new Properties();
       properties.setProperty(Attribute.USERNAME_ATTR, uname);
       properties.setProperty(Attribute.PASSWORD_ATTR, pass);
