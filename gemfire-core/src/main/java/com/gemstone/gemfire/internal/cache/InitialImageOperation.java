@@ -45,6 +45,7 @@ import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.DiskAccessException;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
 import com.gemstone.gemfire.cache.hdfs.internal.AbstractBucketRegionQueue;
@@ -1926,7 +1927,9 @@ public class InitialImageOperation  {
       final LogWriterI18n logger = dm.getLoggerI18n();
       final boolean lclAbortTest = abortTest;
       if (lclAbortTest) abortTest = false;
-            
+
+      logger.info(LocalizedStrings.DEBUG, "processing GII for "+regionPath);
+
       boolean sendFailureMessage = true;
       try {
         Assert.assertTrue(this.regionPath != null, "Region path is null.");
@@ -1934,6 +1937,8 @@ public class InitialImageOperation  {
         if (rgn == null) {
           return;
         }
+
+        waitForRunningTXs(rgn, dm);
          
         // can simulate gc tombstone in middle of packing
         if (internalAfterReceivedRequestImage != null && internalAfterReceivedRequestImage.getRegionName().equals(rgn.getName())) {
@@ -2004,6 +2009,7 @@ public class InitialImageOperation  {
         }
         final ImageState imgState = rgn.getImageState();
         boolean markedOngoingGII = false;
+        TXManagerImpl txManager = null;
         try {
           boolean recoveringForLostMember = (this.lostMemberVersionID != null);
           RegionVersionHolder holderToSync = null;
@@ -2066,7 +2072,15 @@ public class InitialImageOperation  {
                 flowControl, fid, seriesNum, numSeries);
 
             final RegionVersionHolder holderToSend = holderToSync;
-            boolean finished = rgn.chunkEntries(sender, CHUNK_SIZE_IN_BYTES, !keysOnly, versionVector,
+
+
+          if (rgn.getCache().snapshotEnabled()) {
+            txManager = rgn.getCache().getCacheTransactionManager();
+            txManager.begin(IsolationLevel.SNAPSHOT, null);
+          }
+
+
+          boolean finished = rgn.chunkEntries(sender, CHUNK_SIZE_IN_BYTES, !keysOnly, versionVector,
                 (HashSet)this.unfinishedKeys, unfinishedKeysOnly, flowControl, new TObjectIntProcedure() {
               int msgNum = txMsgNum;
 
@@ -2141,6 +2155,9 @@ public class InitialImageOperation  {
             ((HARegion)rgn).endServingGIIRequest();
           }
           flowControl.unregister();
+          if( txManager != null ){
+            txManager.commit();
+          }
         }
         // This should never happen in production code!!!!
         
@@ -2204,6 +2221,16 @@ public class InitialImageOperation  {
         
         if (internalAfterSentImageReply != null && regionPath.endsWith(internalAfterSentImageReply.getRegionName())) {
           internalAfterSentImageReply.run();
+        }
+      }
+    }
+
+    protected void waitForRunningTXs(DistributedRegion rgn, DistributionManager dm) {
+      final TXManagerImpl txMgr = rgn.getCache().getCacheTransactionManager();
+      for (TXStateProxy proxy : txMgr.getHostedTransactionsInProgress()) {
+        final TXState txState = proxy.getLocalTXState();
+        if (txState != null && txState.isInProgress()) {
+         // Come back here later when iterator is fixed
         }
       }
     }
@@ -4516,7 +4543,7 @@ public class InitialImageOperation  {
     
   }
 
-  public static final boolean TRACE_GII = Boolean.getBoolean("gemfire.GetInitialImage.TRACE_GII");
+  public static final boolean TRACE_GII = true;// Boolean.getBoolean("gemfire.GetInitialImage.TRACE_GII");
   public static final boolean TRACE_GII_FINER = TRACE_GII || Boolean.getBoolean("gemfire.GetInitialImage.TRACE_GII_FINER");
   public static boolean FORCE_FULL_GII = Boolean.getBoolean("gemfire.GetInitialImage.FORCE_FULL_GII");
   

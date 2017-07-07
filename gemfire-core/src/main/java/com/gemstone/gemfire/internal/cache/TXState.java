@@ -3834,7 +3834,7 @@ public final class TXState implements TXStateInterface {
 
   // Writer should add old entry with tombstone with region version in the common map
   // wait till writer has written to common old entry map.
-  private Object getOldVersionedEntry(LocalRegion dataRegion, Object key, RegionEntry re) {
+  public Object getOldVersionedEntry(LocalRegion dataRegion, Object key, RegionEntry re) {
     Object oldEntry = getCache().readOldEntry(dataRegion, key, snapshot,
         true, re, this);
     if (oldEntry != null) {
@@ -4098,5 +4098,33 @@ public final class TXState implements TXStateInterface {
   }
   public boolean containsRegionEntryReference(RegionEntry re) {
     return regionEntryRef.contains(re);
+  }
+
+  public static class SnapshotEnabledIterator implements Iterator<RegionEntry> {
+
+    Iterator<RegionEntry> innerIterator;
+    TXState txState;
+    LocalRegion dataRegion;
+
+    public SnapshotEnabledIterator(Iterator<RegionEntry> it, TXState tx, LocalRegion region) {
+      this.innerIterator = it;
+      this.txState = tx;
+      this.dataRegion = region;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return innerIterator.hasNext();
+    }
+
+    @Override
+    public RegionEntry next() {
+      RegionEntry regionEntry = innerIterator.next();
+      if (dataRegion.getVersionVector() != null && !txState.checkEntryVersion(dataRegion, regionEntry)) {
+        return (RegionEntry)txState.getOldVersionedEntry(dataRegion, regionEntry.getKey(), regionEntry);
+      } else {
+        return regionEntry;
+      }
+    }
   }
 }

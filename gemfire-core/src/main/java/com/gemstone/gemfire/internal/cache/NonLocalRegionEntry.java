@@ -43,8 +43,12 @@ import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
+import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
+import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.shared.Version;
+
+import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.ABSTRACT_REGION_ENTRY_FILL_IN_VALUE;
 
 public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   protected long lastModified;
@@ -282,9 +286,85 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     return this.value == Token.TOMBSTONE;
   }
 
-  public boolean fillInValue(LocalRegion r,
-      InitialImageOperation.Entry entry, DM mgr, Version targetVersion) {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+  public boolean fillInValue(LocalRegion region,
+      InitialImageOperation.Entry dst, DM mgr, Version targetVersion) {
+    dst.setSerialized(false); // starting default value
+
+    @Retained(ABSTRACT_REGION_ENTRY_FILL_IN_VALUE) final Object v;
+    if (isTombstone()) {
+      v = Token.TOMBSTONE;
+    } else {
+      v = getValue(region); // OFFHEAP: need to incrc, copy bytes, decrc
+      if (v == null) {
+        return false;
+      }
+    }
+
+    dst.setLastModified(mgr, getLastModified()); // fix for bug 31059
+    final Class<?> vclass;
+    if (v == Token.INVALID) {
+      dst.setInvalid();
+    }
+    else if (v == Token.LOCAL_INVALID) {
+      dst.setLocalInvalid();
+    }
+    else if (v == Token.TOMBSTONE) {
+      dst.setTombstone();
+    }
+    else if ((vclass = v.getClass()) == byte[].class) {
+      dst.value = v;
+    }
+    else if (vclass == byte[][].class) {
+      if (CachedDeserializableFactory.preferObject()) {
+        dst.value = v;
+        dst.setEagerDeserialize();
+      }
+      else {
+        AbstractRegionEntry.serializeForEntry(dst, v);
+      }
+    }
+    else if (CachedDeserializable.class.isAssignableFrom(vclass)) {
+      // don't serialize here if it is not already serialized
+      if (CachedDeserializableFactory.preferObject()) {
+        // For GemFireXD we prefer eager deserialized
+        dst.setEagerDeserialize();
+      }
+
+      if (StoredObject.class.isAssignableFrom(vclass)
+          && !((StoredObject)v).isSerialized()) {
+        dst.value = ((StoredObject)v).getDeserializedForReading();
+      }
+      else {
+        if (CachedDeserializableFactory.preferObject()) {
+          dst.value = v;
+        }
+        else {
+          Object tmp = ((CachedDeserializable)v).getValue();
+          if (tmp instanceof byte[]) {
+            byte[] bb = (byte[])tmp;
+            dst.value = bb;
+            dst.setSerialized(true);
+          }
+          else {
+            AbstractRegionEntry.serializeForEntry(dst, tmp);
+          }
+        }
+      }
+    }
+    else {
+      Object preparedValue = AbstractRegionEntry.prepareValueForGII(v, vclass);
+      if (preparedValue == null) {
+        return false;
+      }
+      if (CachedDeserializableFactory.preferObject()) {
+        dst.value = preparedValue;
+        dst.setEagerDeserialize();
+      }
+      else {
+        AbstractRegionEntry.serializeForEntry(dst, preparedValue);
+      }
+    }
+    return true;
   }
 
   public boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp) {

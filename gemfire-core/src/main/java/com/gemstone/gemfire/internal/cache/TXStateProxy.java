@@ -179,8 +179,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   /** True if operations related to transactions have to be logged globally. */
   private static boolean VERBOSE = VERBOSE_ON();
   private static boolean VERBOSEVERBOSE = VERBOSEVERBOSE_ON();
-  public static boolean LOG_FINE = VERBOSE | VERBOSEVERBOSE;
-  public static boolean LOG_FINEST = VERBOSEVERBOSE;
+  public static boolean LOG_FINE = true;
+  public static boolean LOG_FINEST = true;
   public static boolean LOG_VERSIONS = LOG_FINE | StateFlushOperation.DEBUG
       | DistributionManager.VERBOSE;
   public static boolean TRACE_EXECUTE = LOG_FINE || DistributionManager.VERBOSE

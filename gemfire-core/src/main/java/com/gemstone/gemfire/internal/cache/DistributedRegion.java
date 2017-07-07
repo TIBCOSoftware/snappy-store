@@ -3293,6 +3293,10 @@ public class DistributedRegion extends LocalRegion implements
     return (mapEntry == null || (mapEntry.isRemoved() && !mapEntry.isTombstone()));
   }
 
+  protected boolean readFromOldMap(RegionEntry mapEntry) {
+    return this.getCache().snapshotEnabled();
+  }
+
   /**
    * Serialize the entries into byte[] chunks, calling proc for each one. proc
    * args: the byte[] chunk and an int indicating whether it is the last chunk
@@ -3320,6 +3324,8 @@ public class DistributedRegion extends LocalRegion implements
     }
 
     DistributionManager dm = (DistributionManager)getDistributionManager();
+    TXState txState = TXManagerImpl.getCurrentTXState() != null ?
+        TXManagerImpl.getCurrentTXState().getLocalTXState() : null;
 
     List<InitialImageOperation.Entry> chunkEntries = null;
     chunkEntries = new InitialImageVersionedEntryList(
@@ -3348,6 +3354,9 @@ public class DistributedRegion extends LocalRegion implements
         it = this.entries.regionEntries().iterator();
       } else {
         it = getBestLocalIterator(includeValues);
+      }
+      if( txState != null ){
+        it = new TXState.SnapshotEnabledIterator(it, txState, this);
       }
       do {
         try {
