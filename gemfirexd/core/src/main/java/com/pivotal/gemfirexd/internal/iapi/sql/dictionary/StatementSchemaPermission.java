@@ -21,8 +21,6 @@
 
 package com.pivotal.gemfirexd.internal.iapi.sql.dictionary;
 
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
@@ -79,29 +77,16 @@ public class StatementSchemaPermission extends StatementPermission
 				if (sd == null)
 					return;
 
-				if (!authid.equals(sd.getAuthorizationId())) {
-					if (schemaName.equalsIgnoreCase("SNAPPYSYS_INTERNAL")) {
-						Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS schema check failed: " +
-								authid + ", " + sd.getAuthorizationId(), new Exception());
-					}
+				if (!authid.equals(sd.getAuthorizationId()))
 					throw StandardException.newException(
-							SQLState.AUTH_NO_ACCESS_NOT_OWNER, authid, schemaName);
-				}
-				if (schemaName.equalsIgnoreCase("SNAPPYSYS_INTERNAL")) {
-					Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS schema check passed: " +
-							authid + ", " + sd.getAuthorizationId(), new Exception());
-				}
+						SQLState.AUTH_NO_ACCESS_NOT_OWNER, authid, schemaName);
 				break;
 			
 			case Authorizer.CREATE_SCHEMA_PRIV:
 				// Non-DBA Users can only create schemas that match their authid
 				// Also allow only DBA to set authid to another user
 				// Note that for DBA, check interface wouldn't be called at all
-				if (schemaName.equalsIgnoreCase("SNAPPYSYS_INTERNAL")) {
-					Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS create schema check. authid " +
-							authid + ", aid " + aid);
-				}
-				if ( !schemaName.equals(authid) ||
+				if ( !schemaName.equals(authid) || 
 						(aid != null && !aid.equals(authid)) )
 					throw StandardException.newException(
 						SQLState.AUTH_NOT_DATABASE_OWNER, authid, schemaName);

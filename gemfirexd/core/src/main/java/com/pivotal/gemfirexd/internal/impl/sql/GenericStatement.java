@@ -51,7 +51,6 @@ import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -605,7 +604,6 @@ public class GenericStatement
 				}
 				catch (StandardException | AssertFailure ex) {
           //wait till the query hint is examined before throwing exceptions or
-					Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS SE for " + source/*, ex*/);
           if (routeQuery) {
             if (STREAMING_DDL_PREFIX.matcher(source).matches()) {
               cc.markAsDDLForSnappyUse(true);
@@ -690,7 +688,6 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-						Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS SE for " + source/*, ex*/);
 						if (routeQuery) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
@@ -760,7 +757,6 @@ public class GenericStatement
 
 					}
 					catch(StandardException | AssertFailure ex) {
-						Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS SE for " + source/*, ex*/);
 						if (routeQuery) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
@@ -925,7 +921,6 @@ public class GenericStatement
             if (observer != null) {
               observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
             }
-            Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS SE for " + source/*, se*/);
             return getPreparedStatementForSnappy(true, statementContext, lcc, false,
                 checkCancellation);
           }

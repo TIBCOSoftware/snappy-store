@@ -274,6 +274,7 @@ public final class GenericLanguageConnectionContext
     protected Authorizer authorizer;
 	protected String userName = null; //The name the user connects with.
 	                                  //May still be quoted.
+	private String password = null;
 	protected String currentRole;
 	protected SchemaDescriptor	sd;
 
@@ -381,6 +382,7 @@ public final class GenericLanguageConnectionContext
 	 LanguageConnectionFactory lcf,
 	 Database db,
 	 String userName,
+	 String pass,
 	 int instanceNumber,
 	 String drdaID,
 // GemStone changes BEGIN
@@ -406,6 +408,7 @@ public final class GenericLanguageConnectionContext
 		connFactory =  lcf;
         this.db = db;
 		this.userName = userName;
+		this.password = pass;
 		this.instanceNumber = instanceNumber;
 		this.drdaID = drdaID;
 		this.dbname = dbname;
@@ -1423,6 +1426,16 @@ public final class GenericLanguageConnectionContext
 	public int getUniqueSavepointID()
 	{
 		return nextSavepointId-1;
+	}
+
+	public String getUserName()
+	{
+		return this.userName;
+	}
+
+	public String getPassword()
+	{
+		return this.password;
 	}
 
 	/**

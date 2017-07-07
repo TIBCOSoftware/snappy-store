@@ -182,13 +182,7 @@ class Database
 		  checkAndSetPossibleNCJBatchSizeDuplicate();
 		  checkAndSetPossibleNCJCacheSizeDuplicate();
 		  checkAndSetPossibleDuplicate();
-
-			Properties p = new Properties();
-			p.put(com.pivotal.gemfirexd.Attribute.USERNAME_ATTR, userId);
-			if (password != null) {
-				p.put(com.pivotal.gemfirexd.Attribute.PASSWORD_ATTR, password);
-			}
-			this.defaultStatement.setStatement(conn, p);
+		  this.defaultStatement.setStatement(conn);
 		}
 	}
 

@@ -122,7 +122,7 @@ public interface Database extends com.pivotal.gemfirexd.internal.database.Databa
          * @exception StandardException thrown if unable to create the connection.
          */
       public LanguageConnectionContext setupConnection(ContextManager cm, String user,
-          String drdaID, String dbname, long connectionID, boolean isRemote)
+          String pass, String drdaID, String dbname, long connectionID, boolean isRemote)
       throws StandardException;
 // GemStone changes END
 	/**

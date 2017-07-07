@@ -1709,6 +1709,7 @@ public final class FabricDatabase implements ModuleControl,
 
   public LanguageConnectionContext setupConnection(ContextManager cm,
                                                    String user,
+                                                   String pass,
                                                    String drdaID,
                                                    String dbname,
                                                    long connectionID,
@@ -1722,7 +1723,7 @@ public final class FabricDatabase implements ModuleControl,
     // push a database shutdown context
     // we also need to push a language connection context.
     LanguageConnectionContext lctx = lcf.newLanguageConnectionContext(cm, tc,
-        lf, this, user, drdaID, connectionID, isRemote, dbname);
+        lf, this, user, pass, drdaID, connectionID, isRemote, dbname);
 
     // push the context that defines our class factory
     pushClassFactoryContext(cm, lcf.getClassFactory());

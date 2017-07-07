@@ -25,7 +25,10 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
 
 /**
  * A class that holds parameters for operations to be done do for LeadNodeSmartConnectorOpMsg
@@ -54,7 +57,8 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
   private String className; // for udf
   private String jarURI; // for udf
 
-
+  private String user; // for security
+  private String password; // for security
 
   public LeadNodeSmartConnectorOpContext() {
 
@@ -86,6 +90,11 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     this.functionName = functionName;
     this.className = className;
     this.jarURI = jarURI;
+    LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
+    if (lcc != null) {
+      this.user = ((GenericLanguageConnectionContext)lcc).getUserName();
+      this.password = ((GenericLanguageConnectionContext)lcc).getPassword();
+    }
   }
 
   @Override
@@ -115,6 +124,8 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     DataSerializer.writeString(functionName, out);
     DataSerializer.writeString(className, out);
     DataSerializer.writeString(jarURI, out);
+    DataSerializer.writeString(this.user, out);
+    DataSerializer.writeString(this.password, out);
   }
 
   @Override
@@ -134,6 +145,8 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     this.functionName = DataSerializer.readString(in);
     this.className = DataSerializer.readString(in);
     this.jarURI = DataSerializer.readString(in);
+    this.user = DataSerializer.readString(in);
+    this.password = DataSerializer.readString(in);
   }
 
   @Override
@@ -191,5 +204,8 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
 
   public String getjarURI() { return jarURI; }
 
+  public String getUserName() { return this.user; }
+
+  public String getPassword() { return this.password; }
 
 }

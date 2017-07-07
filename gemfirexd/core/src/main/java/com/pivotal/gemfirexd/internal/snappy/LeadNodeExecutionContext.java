@@ -20,40 +20,44 @@ package com.pivotal.gemfirexd.internal.snappy;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.Properties;
 
+import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
 
 public final class LeadNodeExecutionContext implements GfxdSerializable {
   private long connId;
-  private Properties connProps;
+
+  private String username;
+  private String pass;
 
   public LeadNodeExecutionContext() {
     this.connId = 0;
-    this.connProps = new Properties();
   }
 
   public LeadNodeExecutionContext(long connId) {
     this.connId = connId;
-    this.connProps = new Properties();
-  }
-
-  public LeadNodeExecutionContext(long connId, Properties connProps) {
-    this.connId = connId;
-    this.connProps = connProps == null ? new Properties() : connProps;
+    LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
+    if (lcc != null) {
+      this.username = ((GenericLanguageConnectionContext)lcc).getUserName();
+      this.pass = ((GenericLanguageConnectionContext)lcc).getPassword();
+    }
   }
 
   public long getConnId() {
     return connId;
   }
 
-  public Properties getConnProps() {
-    return connProps;
+  public String getUserName() {
+    return this.username;
+  }
+
+  public String getPassword() {
+    return this.pass;
   }
 
   @Override
@@ -69,29 +73,15 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
   @Override
   public void toData(DataOutput out) throws IOException {
     out.writeLong(connId);
-    if (this.connProps.isEmpty()) {
-      out.writeUTF("");
-      out.writeUTF("");
-    } else {
-      String p = this.connProps.getProperty(Attribute.USERNAME_ATTR);
-      if (p != null) {
-        out.writeUTF(p);
-        out.writeUTF(this.connProps.getProperty(Attribute.PASSWORD_ATTR));
-      } else {
-        out.writeUTF("");
-        out.writeUTF("");
-      }
-    }
+    DataSerializer.writeString(this.username, out);
+    DataSerializer.writeString(this.pass, out);
   }
 
   @Override
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     connId = in.readLong();
-    this.connProps.setProperty(Attribute.USERNAME_ATTR, in.readUTF());
-    this.connProps.setProperty(Attribute.PASSWORD_ATTR, in.readUTF());
-    Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "ABS received credentials at lead " + this
-        .connProps.getProperty(Attribute
-        .USERNAME_ATTR) + ",  " + this.connProps.getProperty(Attribute.PASSWORD_ATTR));
+    this.username = DataSerializer.readString(in);
+    this.pass = DataSerializer.readString(in);
   }
 
   @Override

@@ -54,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Properties;
 import java.util.Set;
 import java.lang.reflect.Array;
 
@@ -62,7 +61,6 @@ import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
-import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
@@ -410,19 +408,6 @@ class DRDAStatement
 			stmt.setCursorName(cursorName);
 	}
 	/**
-	 * Set statement with properties
-	 *
-	 * @param conn	Connection
-	 * @exception SQLException
-	 */
-	protected void setStatement(Connection conn, Properties props)
-			throws SQLException
-	{
-		setStatement(conn);
-		// TODO What if it's not EmbedStatement?
-		((EmbedStatement)this.stmt).setConnProps(props);
-	}
-	/**
 	 * Get the statement
 	 *
 	 * @return statement
@@ -741,12 +726,6 @@ class DRDAStatement
 
           pstmt = database.getConnection().createStatement(scrollType,
               concurType, withHoldCursor);
-					if (pstmt instanceof EmbedStatement) {
-						Properties props = new Properties();
-						props.setProperty(Attribute.USERNAME_ATTR, database.userId);
-						props.setProperty(Attribute.PASSWORD_ATTR, database.password);
-						((EmbedStatement)pstmt).setConnProps(props);
-					}
           this.sqlText = trimNulls(sqlStmt);
 
           // beetle 3849 - Need to change the cursor name to what
@@ -819,12 +798,6 @@ class DRDAStatement
 			isCall = true;
 			ps = database.getConnection().prepareCall(
 				sqlStmt, scrollType, concurType, withHoldCursor);
-			if (ps instanceof EmbedStatement) {
-				Properties props = new Properties();
-				props.setProperty(Attribute.USERNAME_ATTR, database.userId);
-				props.setProperty(Attribute.PASSWORD_ATTR, database.password);
-				((EmbedStatement)ps).setConnProps(props);
-			}
 			setupCallableStatementParams((CallableStatement)ps);
 		}
 		else
@@ -847,12 +820,6 @@ class DRDAStatement
 		  this.ctx.setSendSingleHopInformation(this.sendSingleHopInfo);
 		  ps = conn.prepareStatement(
                       sqlStmt, scrollType, concurType, withHoldCursor);
-			if (ps instanceof EmbedStatement) {
-				Properties props = new Properties();
-				props.setProperty(Attribute.USERNAME_ATTR, database.userId);
-				props.setProperty(Attribute.PASSWORD_ATTR, database.password);
-				((EmbedStatement)ps).setConnProps(props);
-			}
 		  if (!(ps instanceof EmbedPreparedStatement)) {
 		    this.ctx = null;
 		  }
