@@ -33,7 +33,7 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
   private long connId;
 
   private String username;
-  private String pass;
+  private String authToken;
 
   public LeadNodeExecutionContext() {
     this.connId = 0;
@@ -44,7 +44,7 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
     LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
     if (lcc != null) {
       this.username = ((GenericLanguageConnectionContext)lcc).getUserName();
-      this.pass = ((GenericLanguageConnectionContext)lcc).getPassword();
+      this.authToken = ((GenericLanguageConnectionContext)lcc).getAuthToken();
     }
   }
 
@@ -56,8 +56,8 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
     return this.username;
   }
 
-  public String getPassword() {
-    return this.pass;
+  public String getAuthToken() {
+    return this.authToken;
   }
 
   @Override
@@ -74,14 +74,14 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
   public void toData(DataOutput out) throws IOException {
     out.writeLong(connId);
     DataSerializer.writeString(this.username, out);
-    DataSerializer.writeString(this.pass, out);
+    DataSerializer.writeString(this.authToken, out);
   }
 
   @Override
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     connId = in.readLong();
     this.username = DataSerializer.readString(in);
-    this.pass = DataSerializer.readString(in);
+    this.authToken = DataSerializer.readString(in);
   }
 
   @Override

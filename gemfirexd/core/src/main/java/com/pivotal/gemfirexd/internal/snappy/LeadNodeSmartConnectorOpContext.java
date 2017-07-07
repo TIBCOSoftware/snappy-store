@@ -26,7 +26,6 @@ import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
-import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
 
@@ -58,7 +57,7 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
   private String jarURI; // for udf
 
   private String user; // for security
-  private String password; // for security
+  private String authToken; // for security
 
   public LeadNodeSmartConnectorOpContext() {
 
@@ -93,7 +92,7 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
     if (lcc != null) {
       this.user = ((GenericLanguageConnectionContext)lcc).getUserName();
-      this.password = ((GenericLanguageConnectionContext)lcc).getPassword();
+      this.authToken = ((GenericLanguageConnectionContext)lcc).getAuthToken();
     }
   }
 
@@ -125,7 +124,7 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     DataSerializer.writeString(className, out);
     DataSerializer.writeString(jarURI, out);
     DataSerializer.writeString(this.user, out);
-    DataSerializer.writeString(this.password, out);
+    DataSerializer.writeString(this.authToken, out);
   }
 
   @Override
@@ -146,7 +145,7 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     this.className = DataSerializer.readString(in);
     this.jarURI = DataSerializer.readString(in);
     this.user = DataSerializer.readString(in);
-    this.password = DataSerializer.readString(in);
+    this.authToken = DataSerializer.readString(in);
   }
 
   @Override
@@ -206,6 +205,6 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
 
   public String getUserName() { return this.user; }
 
-  public String getPassword() { return this.password; }
+  public String getAuthToken() { return this.authToken; }
 
 }

@@ -159,7 +159,7 @@ public final class TransactionResourceImpl
 	private InternalDriver driver;
 	private String url;
 	private String drdaID;
-	private String password;
+	private String authToken;
 
 	// set these up after constructor, called by EmbedConnection
 	protected Database database;
@@ -185,7 +185,7 @@ public final class TransactionResourceImpl
 		// interface is used.  Thus, we look there first.
 		// Default to APP.
 		username = IdUtil.getUserNameFromURLProps(info);
-		this.password = info.getProperty(Attribute.PASSWORD_ATTR, "");
+		this.authToken = info.getProperty(Attribute.PASSWORD_ATTR, "");
 
 		drdaID = info.getProperty(Attribute.DRDAID_ATTR, null);		
 		
@@ -391,7 +391,7 @@ public final class TransactionResourceImpl
 	void startTransaction(long connectionID, boolean isRemote)
 	throws StandardException, SQLException {
 		// setting up local connection
-		lcc = database.setupConnection(cm, username, this.password, drdaID, dbname,
+		lcc = database.setupConnection(cm, username, this.authToken, drdaID, dbname,
 		    connectionID, isRemote);
 
 		// no streaming for remote connections

@@ -872,7 +872,7 @@ public abstract class BasicDatabase implements ModuleControl, ModuleSupportable,
   }
 
   public LanguageConnectionContext setupConnection(ContextManager cm,
-      String user, String pass, String drdaID, String dbname, long connectionID,
+      String user, String authToken, String drdaID, String dbname, long connectionID,
       boolean isRemote) throws StandardException {
     throw new AssertionError("This shouldn't have been called.");
   }
