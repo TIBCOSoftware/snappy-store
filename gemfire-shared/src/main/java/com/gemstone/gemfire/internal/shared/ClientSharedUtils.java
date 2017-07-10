@@ -1165,8 +1165,8 @@ public abstract class ClientSharedUtils {
   public static String toString(final ByteBuffer buffer) {
     if (buffer != null) {
       StringBuilder sb = new StringBuilder();
-      final int len = buffer.limit();
-      for (int i = 0; i < len; i++) {
+      final int len = buffer.remaining();
+      for (int i = buffer.position(); i < len; i++) {
         // terminate with ... for large number of bytes
         if (i > 128 * 1024) {
           sb.append(" ...");

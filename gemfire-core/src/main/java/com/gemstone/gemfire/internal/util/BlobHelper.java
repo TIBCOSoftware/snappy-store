@@ -113,7 +113,7 @@ public class BlobHelper {
       // serialize into an expanding direct ByteBuffer
       result = new ByteBufferDataOutput(version).serialize(obj);
     }
-    endSerialization(start, result.size());
+    endSerialization(start, result.channelSize());
     return result;
   }
 

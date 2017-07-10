@@ -27,17 +27,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
-import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.control.RebalanceOperation;
 import com.gemstone.gemfire.cache.control.ResourceManager;
 import com.gemstone.gemfire.cache.execute.FunctionService;
-import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
@@ -81,6 +83,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeGetStat
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeSmartConnectorOpMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.SecurityUtils;
+import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.store.CustomRowsResultSet;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
@@ -101,7 +104,6 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.StatementRoutinePermission;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.LockingPolicy;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialBlob;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
@@ -1723,20 +1725,48 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
+  private static void assignBucketsToPartitions(final PartitionedRegion pr) {
+    ExecutorService executor = pr.getCache().getDistributionManager()
+        .getFunctionExcecutor();
+    int numBuckets = pr.getTotalNumberOfBuckets();
+    Future<?>[] bucketCreates = new Future[numBuckets];
+    for (int i = 0; i < numBuckets; i++) {
+      final int bucketId = i;
+      bucketCreates[i] = executor.submit((Callable<Object>)() -> {
+        // this method will return quickly if the bucket already exists
+        return pr.createBucket(bucketId, 0, null);
+      });
+    }
+    Throwable failure = null;
+    for (int i = 0; i < numBuckets; i++) {
+      try {
+        bucketCreates[i].get();
+      } catch (InterruptedException ie) {
+        pr.getCancelCriterion().checkCancelInProgress(ie);
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        pr.getCancelCriterion().checkCancelInProgress(e);
+        failure = e.getCause();
+      }
+    }
+    if (failure != null) {
+      throw new GemFireXDRuntimeException(failure);
+    }
+  }
+
   private static void CREATE_ALL_BUCKETS_INTERNAL(LocalRegion region,
       String tableName) throws SQLException {
     if (region.getAttributes().getPartitionAttributes() != null) {
       // force creation of all buckets in the region
-      // final PartitionedRegion pr = (PartitionedRegion)region;
       try {
-        PartitionRegionHelper.assignBucketsToPartitions(region);
+        assignBucketsToPartitions((PartitionedRegion)region);
         GfxdIndexManager indexManager = (GfxdIndexManager) region.getIndexUpdater();
         if (indexManager != null) {
           List<GemFireContainer> indexContainers = indexManager.getIndexContainers();
             if (indexContainers != null) {
               for (GemFireContainer indexContainer : indexContainers) {
                 if (indexContainer.isGlobalIndex()) {
-                  PartitionRegionHelper.assignBucketsToPartitions(indexContainer.getRegion());
+                  assignBucketsToPartitions((PartitionedRegion)indexContainer.getRegion());
                 }
               }
             }

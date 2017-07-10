@@ -1383,24 +1383,17 @@ public class DistributionAdvisor  {
       getLogWriter().fine("Intelligent Messaging Disabled");
       return getDefaultDistributionMembers();
     }
-    THashSet recipients = null;
+    THashSet recipients = new THashSet(4);
     Profile[] locProfiles = this.profiles; // grab current profiles
 //    getLogWriter().fine("adviseFilter: " + locProfiles.length + " to consider, f=" + f);
     for (int i = 0; i < locProfiles.length; i++) {
       Profile profile = locProfiles[i];
 //      getLogWriter().fine("adviseFilter; considering " + profile);
       if (f == null || f.include(profile)) {
-        if (recipients == null) {
-          recipients = new THashSet();
-        }
         recipients.add(profile.getDistributedMember());
       }
     }
-    if (recipients == null) {
-      return Collections.emptySet();
-    } else {
-      return recipients;
-    }
+    return recipients;
   }
 
   /**

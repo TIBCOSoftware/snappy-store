@@ -58,7 +58,6 @@ import com.gemstone.gemfire.internal.cache.persistence.BytesAndBits;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 
 /**
  * An oplog used for overflow-only regions.
@@ -276,8 +275,7 @@ class OverflowOplog implements CompactableOplog {
       result = previous.consumeWriteBuf();
     }
     if (result == null) {
-      result = DirectBufferAllocator.instance().allocate(
-          Integer.getInteger("WRITE_BUF_SIZE", 32768), "OVERFLOWOPLOG");
+      result = ByteBuffer.allocateDirect(Integer.getInteger("WRITE_BUF_SIZE", 32768));
     }
     return result;
   }
@@ -1409,9 +1407,16 @@ class OverflowOplog implements CompactableOplog {
       this.value = null;
     }
 
-    private void write(ByteBuffer buffer, final int byteLength) throws IOException {
-      final int position = buffer.position();
+    private void write(ByteBuffer buffer) throws IOException {
       ByteBuffer bb = getOLF().writeBuf;
+      if (!this.value.buffer.writeSerializationHeader(buffer, bb)) {
+        flush();
+        if (!this.value.buffer.writeSerializationHeader(buffer, bb)) {
+          throw new IllegalStateException("Overflow: failed to write header for " +
+              this.value.buffer + " -- write buffer with limit = " +
+              bb.limit() + " too small?");
+        }
+      }
       int bytesThisTime;
       while ((bytesThisTime = buffer.remaining()) > 0) {
         boolean needsFlush = false;
@@ -1434,13 +1439,8 @@ class OverflowOplog implements CompactableOplog {
         bb.put(buffer);
         if (needsFlush) {
           flush();
-          // restore the limit to original
-          buffer.limit(byteLength);
         }
       }
-      // rewind the incoming buffer back to the start
-      if (position == 0) buffer.rewind();
-      else buffer.position(position);
     }
 
     public void initialize(DiskEntry.Helper.ValueWrapper value,
@@ -1460,9 +1460,11 @@ class OverflowOplog implements CompactableOplog {
       int valueLength = 0;
       if (this.needsValue && (valueLength = this.value.size()) > 0) {
         try {
-          write(this.value.getBufferRetain(), valueLength);
+          write(this.value.getBufferRetain());
         } finally {
           this.value.release();
+          // done with value so clear it immediately
+          clear();
         }
       }
       return valueLength;
