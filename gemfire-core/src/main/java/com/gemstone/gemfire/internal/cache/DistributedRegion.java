@@ -3293,10 +3293,6 @@ public class DistributedRegion extends LocalRegion implements
     return (mapEntry == null || (mapEntry.isRemoved() && !mapEntry.isTombstone()));
   }
 
-  protected boolean readFromOldMap(RegionEntry mapEntry) {
-    return this.getCache().snapshotEnabled();
-  }
-
   /**
    * Serialize the entries into byte[] chunks, calling proc for each one. proc
    * args: the byte[] chunk and an int indicating whether it is the last chunk

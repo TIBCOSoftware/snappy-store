@@ -1927,9 +1927,7 @@ public class InitialImageOperation  {
       final LogWriterI18n logger = dm.getLoggerI18n();
       final boolean lclAbortTest = abortTest;
       if (lclAbortTest) abortTest = false;
-
       logger.info(LocalizedStrings.DEBUG, "processing GII for "+regionPath);
-
       boolean sendFailureMessage = true;
       try {
         Assert.assertTrue(this.regionPath != null, "Region path is null.");
@@ -1938,6 +1936,7 @@ public class InitialImageOperation  {
           return;
         }
 
+        // This thread will wait for all running transaction before the actual data transfer.
         waitForRunningTXs(rgn, dm);
          
         // can simulate gc tombstone in middle of packing
@@ -2073,7 +2072,7 @@ public class InitialImageOperation  {
 
             final RegionVersionHolder holderToSend = holderToSync;
 
-
+          // Start a transaction which will capture correct region snapshot.
           if (rgn.getCache().snapshotEnabled()) {
             txManager = rgn.getCache().getCacheTransactionManager();
             txManager.begin(IsolationLevel.SNAPSHOT, null);
@@ -2225,12 +2224,37 @@ public class InitialImageOperation  {
       }
     }
 
+
+    /**
+     * GII operation will wait if there are some running transaction after
+     * StateFlush message. This method will make GII wait till all those transactions
+     * are finished.
+     */
     protected void waitForRunningTXs(DistributedRegion rgn, DistributionManager dm) {
       final TXManagerImpl txMgr = rgn.getCache().getCacheTransactionManager();
+      List<TXState> txnInProgress = new ArrayList<>();
       for (TXStateProxy proxy : txMgr.getHostedTransactionsInProgress()) {
         final TXState txState = proxy.getLocalTXState();
         if (txState != null && txState.isInProgress()) {
-         // Come back here later when iterator is fixed
+          txState.lockTXState();
+          if (txState.isInProgress()) {
+            txnInProgress.add(txState);
+          }
+        }
+      }
+
+      // Still holding the TXState lock
+      CountDownLatch latch = new CountDownLatch(txnInProgress.size());
+      for (TXState txState : txnInProgress) {
+        txState.addGIILatch(latch);
+        txState.unlockTXState();
+      }
+      if (txnInProgress.size() > 0) {
+        try {
+          latch.await();
+        } catch (InterruptedException e) {
+          // Doing nothing special
+          Thread.currentThread().interrupt();
         }
       }
     }
