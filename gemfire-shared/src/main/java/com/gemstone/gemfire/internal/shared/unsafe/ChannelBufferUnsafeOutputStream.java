@@ -79,7 +79,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    * efficiently. If reducing this, then consider the logic in
    * {@link ChannelBufferUnsafeDataOutputStream#writeUTF(String)} carefully.
    */
-  protected static final int MIN_BUFFER_SIZE = 10;
+  protected static final int MIN_BUFFER_SIZE = 32;
 
   public ChannelBufferUnsafeOutputStream(WritableByteChannel channel) {
     this(channel, ChannelBufferOutputStream.DEFAULT_BUFFER_SIZE);
@@ -217,6 +217,19 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final void writeInt(int v) throws IOException {
+    long addrPos = this.addrPosition;
+    if ((this.addrLimit - addrPos) < 4) {
+      flushBufferBlocking(this.buffer);
+      addrPos = this.addrPosition;
+    }
+    this.addrPosition = putInt(addrPos, v);
+  }
+
   public final int position() {
     return (int)(this.addrPosition - this.baseAddress);
   }
@@ -249,10 +262,6 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     flush();
     this.addrPosition = this.addrLimit = 0;
     releaseBuffer();
-  }
-
-  public final boolean validBuffer() {
-    return this.addrLimit != 0;
   }
 
   protected final void releaseBuffer() {
@@ -289,5 +298,15 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
       }
       resetBufferPositions();
     }
+  }
+
+  /** Write an integer in big-endian format on given off-heap address. */
+  protected static long putInt(long addrPos, final int v) {
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putInt(null, addrPos, Integer.reverseBytes(v));
+    } else {
+      Platform.putInt(null, addrPos, v);
+    }
+    return addrPos + 4;
   }
 }

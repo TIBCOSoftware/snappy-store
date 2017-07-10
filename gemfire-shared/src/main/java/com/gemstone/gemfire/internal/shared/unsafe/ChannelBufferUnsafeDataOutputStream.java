@@ -92,19 +92,6 @@ public class ChannelBufferUnsafeDataOutputStream extends
    * {@inheritDoc}
    */
   @Override
-  public final void writeInt(int v) throws IOException {
-    long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) < 4) {
-      flushBufferBlocking(this.buffer);
-      addrPos = this.addrPosition;
-    }
-    this.addrPosition = putInt(addrPos, v);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
   public final void writeLong(long v) throws IOException {
     long addrPos = this.addrPosition;
     if ((this.addrLimit - addrPos) < 8) {
@@ -283,16 +270,6 @@ public class ChannelBufferUnsafeDataOutputStream extends
       Platform.putShort(null, addrPos, (short)v);
     }
     return addrPos + 2;
-  }
-
-  /** Write an integer in big-endian format on given off-heap address. */
-  protected static long putInt(long addrPos, final int v) {
-    if (ClientSharedUtils.isLittleEndian) {
-      Platform.putInt(null, addrPos, Integer.reverseBytes(v));
-    } else {
-      Platform.putInt(null, addrPos, v);
-    }
-    return addrPos + 4;
   }
 
   /** Write a long in big-endian format on given off-heap address. */
