@@ -4,6 +4,7 @@ import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,6 +38,9 @@ import com.pivotal.gemfirexd.internal.engine.management.NetworkServerConnectionS
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
+import org.apache.log4j.Appender;
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.Logger;
 
 public class MemberStatisticsMessage extends MemberExecutorMessage {
 
@@ -85,6 +89,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
     memberStatsMap.put("userDir", getUserDir());
+    memberStatsMap.put("logFile", getLogFile());
     memberStatsMap.put("processId", getProcessId());
     memberStatsMap.put("locator", isLocator());
     memberStatsMap.put("dataServer", isDataServer());
@@ -177,6 +182,21 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   private String getUserDir(){
     return System.getProperty("user.dir");
+  }
+
+  private String getLogFile() {
+    Logger rootLogger = Logger.getRootLogger();
+    Appender appender;
+    if (rootLogger != null) {
+      Enumeration<?> e = rootLogger.getAllAppenders();
+      while (e.hasMoreElements()) {
+        appender = (Appender)e.nextElement();
+        if (appender instanceof FileAppender) {
+          return ((FileAppender)appender).getFile();
+        }
+      }
+    }
+    return "";
   }
 
   private String getProcessId(){
