@@ -14,24 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/*
- * Changes for SnappyData distributed computational and data platform.
- *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you
- * may not use this file except in compliance with the License. You
- * may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied. See the License for the specific language governing
- * permissions and limitations under the License. See accompanying
- * LICENSE file.
- */
 
 package com.gemstone.gemfire.cache;
 
@@ -163,11 +145,7 @@ public class PartitionAttributesFactory<K,V>
 
   public static final long RECOVERY_DELAY_DEFAULT = -1;
 
-  /**
-   * default startup recovery delay is 3mins to avoid deadlock
-   * with create buckets (SNAP-1541)
-   */
-  public static final long STARTUP_RECOVERY_DELAY_DEFAULT = 180000;
+  public static final long STARTUP_RECOVERY_DELAY_DEFAULT = 0;
 
   /**
    * Creates a new instance of PartitionAttributesFactory ready to create a

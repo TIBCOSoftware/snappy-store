@@ -24,6 +24,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
@@ -559,8 +560,9 @@ public class PRHARedundancyProvider
       this.prRegion.checkReadiness();
 
       Bucket toCreate = this.prRegion.getRegionAdvisor().getBucket(bucketId);
-      
-      synchronized(toCreate.getBucketAdvisor().getProxyBucketRegion().getFullPath()) {
+      final ReentrantLock redundancyLock = toCreate.getBucketAdvisor().redundancyLock;
+      redundancyLock.lock();
+      try {
       if(!finishIncompleteCreation) {
         bucketPrimary = 
           this.prRegion.getBucketPrimary(bucketId);
@@ -716,7 +718,9 @@ public class PRHARedundancyProvider
           return bucketPrimary;
          } // almost done
       } // for
-      } // synchronized(ProxyBucketRegion.path)
+      } finally {
+        redundancyLock.unlock();
+      }
     }
     catch (CancelException e) {
       //Fix for 43544 - We don't need to elect a primary
