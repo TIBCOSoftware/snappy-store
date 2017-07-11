@@ -87,6 +87,7 @@ allprojects {
 
     if (rootProject.name == 'snappy-store') {
       subprojectBase = ':'
+      version = PRODUCT_VERSION
     } else {
       subprojectBase = ':snappy-store:'
       // gitCmd = "git --git-dir=${project(':snappy-store').projectDir}/.git --work-tree=${project(':snappy-store').projectDir}"
@@ -142,7 +143,6 @@ allprojects {
   }
 
   group = 'io.snappydata'
-  version = PRODUCT_VERSION
 
   apply plugin: 'java'
   apply plugin: 'maven'
