@@ -4116,7 +4116,7 @@ public class ResultColumnList extends QueryTreeNodeVector
 				}else{
 					if(cd.isAutoincAlways()){
 						GemFireStore ms = Misc.getMemStore();
-						if (ms != null && ms.isSnappyStore() && sourceRSRCL.size() == size) {
+						if (ms.isSnappyStore() && sourceRSRCL.size() == size) {
 						  TableDescriptor td = cd.getTableDescriptor();
 						  if (td != null && ms.getExternalCatalog().isColumnTable(
 						    td.getSchemaName(), td.getName(), true)) {
