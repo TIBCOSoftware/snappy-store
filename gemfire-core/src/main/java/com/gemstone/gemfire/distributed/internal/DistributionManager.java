@@ -75,6 +75,7 @@ import com.gemstone.gemfire.distributed.internal.membership.MemberAttributes;
 import com.gemstone.gemfire.distributed.internal.membership.MemberFactory;
 import com.gemstone.gemfire.distributed.internal.membership.MembershipManager;
 import com.gemstone.gemfire.distributed.internal.membership.NetView;
+import com.gemstone.gemfire.distributed.internal.membership.jgroup.JGroupMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -790,8 +791,6 @@ public final class DistributionManager
     }
     @Override
     public String cancelInProgress() {
-      checkFailure();
-
       // remove call to validateDM() to fix bug 38356
       
       if (dm.shutdownMsgSent) {
@@ -1537,7 +1536,7 @@ public final class DistributionManager
     StringBuffer sb = new StringBuffer();
     Object leadObj = v.getLeadMember();
     InternalDistributedMember lead = leadObj==null? null
-                            : new InternalDistributedMember(v.getLeadMember());
+                            : new InternalDistributedMember((JGroupMember)v.getLeadMember());
     sb.append("[");
     Iterator it = v.iterator();
     while (it.hasNext()) {
@@ -4354,7 +4353,7 @@ public final class DistributionManager
    * Return the function message-processing executor 
    */
   @Override
-  public Executor getFunctionExcecutor() {
+  public ExecutorService getFunctionExcecutor() {
     if (this.functionExecutionThread != null) {
       return this.functionExecutionThread;
     } else {

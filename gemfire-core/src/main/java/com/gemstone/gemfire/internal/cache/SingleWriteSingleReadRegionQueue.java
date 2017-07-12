@@ -1121,7 +1121,6 @@ public class SingleWriteSingleReadRegionQueue implements RegionQueue
     protected class Stopper extends CancelCriterion {
       @Override
       public String cancelInProgress() {
-        checkFailure();
         GemFireCacheImpl gfc = SingleReadWriteMetaRegion.this.getCache();
         assert gfc!=null;
 

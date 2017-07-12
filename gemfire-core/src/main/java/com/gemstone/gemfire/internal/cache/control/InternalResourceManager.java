@@ -74,7 +74,7 @@ public class InternalResourceManager implements ResourceManager {
   private Map<ResourceType, Set<ResourceListener>> listeners = new HashMap<ResourceType, Set<ResourceListener>>();
   
   private final ScheduledExecutorService scheduledExecutor;
-  private final ScheduledExecutorService recoveryExecutor;
+  private final ScheduledThreadPoolExecutor recoveryExecutor;
   private final ExecutorService notifyExecutor;
   
   //The set of in progress rebalance operations.
@@ -135,6 +135,8 @@ public class InternalResourceManager implements ResourceManager {
       }
     };
     recoveryExecutor = new ScheduledThreadPoolExecutor(1, recoveryFactory);
+    recoveryExecutor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+    recoveryExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
 
     // Initialize the load probe
     try {

@@ -4776,7 +4776,7 @@ public class OffHeapTest extends JdbcTestBase {
 
   }
   
-  public void testBug50432() throws Exception {
+  public void _testBug50432() throws Exception {
     
     Connection conn = TestUtil.getConnection();
 

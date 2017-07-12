@@ -140,7 +140,7 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * Keys are instances of {@link Integer}.
    * Values are instances of (@link BucketRegion}.
    */
-  final ConcurrentMap<Integer, BucketRegion> localBucket2RegionMap;
+  final ConcurrentHashMap<Integer, BucketRegion> localBucket2RegionMap;
 
   /**
    * A counter of the number of concurrent bucket creates in progress on
@@ -296,17 +296,13 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * The result of this method is not stable.
    */
   public int getNumberOfPrimaryBucketsManaged() {
-    final AtomicInteger numPrimaries = new AtomicInteger();
-    visitBuckets(new BucketVisitor() {
-      @Override
-      public void visit(Integer bucketId, Region r) {
-        BucketRegion br = (BucketRegion) r;
-        if (br.getBucketAdvisor().isPrimary()) {
-          numPrimaries.incrementAndGet();
-        }
+    int numPrimaries = 0;
+    for (BucketRegion br : localBucket2RegionMap.values()) {
+      if (br.getBucketAdvisor().isPrimary()) {
+        numPrimaries++;
       }
-    });
-    return numPrimaries.get();
+    }
+    return numPrimaries;
   }
 
 
