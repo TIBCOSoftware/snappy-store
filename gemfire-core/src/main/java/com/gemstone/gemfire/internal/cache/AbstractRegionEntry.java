@@ -386,7 +386,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     return true;
   }
 
-  public static void serializeForEntry(InitialImageOperation.Entry dst,
+  private static void serializeForEntry(InitialImageOperation.Entry dst,
       Object v) {
     try {
       HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT);
