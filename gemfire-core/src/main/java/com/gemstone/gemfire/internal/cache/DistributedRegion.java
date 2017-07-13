@@ -3320,8 +3320,6 @@ public class DistributedRegion extends LocalRegion implements
     }
 
     DistributionManager dm = (DistributionManager)getDistributionManager();
-    TXState txState = TXManagerImpl.getCurrentTXState() != null ?
-        TXManagerImpl.getCurrentTXState().getLocalTXState() : null;
 
     List<InitialImageOperation.Entry> chunkEntries = null;
     chunkEntries = new InitialImageVersionedEntryList(
@@ -3350,9 +3348,6 @@ public class DistributedRegion extends LocalRegion implements
         it = this.entries.regionEntries().iterator();
       } else {
         it = getBestLocalIterator(includeValues);
-      }
-      if( txState != null ){
-        it = new TXState.SnapshotEnabledIterator(it, txState, this);
       }
       do {
         try {

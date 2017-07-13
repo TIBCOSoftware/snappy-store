@@ -53,8 +53,9 @@ import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
+import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
+import com.gemstone.gemfire.internal.cache.locks.ReentrantReadWriteWriteShareLock;
 import com.gemstone.gemfire.internal.cache.partitioned.*;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientTombstoneMessage;
@@ -71,7 +72,6 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 
@@ -103,6 +103,17 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private static final ThreadLocal<BucketRegionIndexCleaner> bucketRegionIndexCleaner = 
       new ThreadLocal<BucketRegionIndexCleaner>() ;
 
+
+
+  /**
+   * A read/write lock to prevent making this bucket not primary while a write
+   * is in progress on the bucket.
+   */
+  private final ReentrantReadWriteWriteShareLock snapshotGIILock = new ReentrantReadWriteWriteShareLock();
+
+  private final Object giiLockOwner = new Object();
+
+  private boolean giiLevelLockForSnapshot = true;
 
   /**
    * Contains size in bytes of the values stored
@@ -285,6 +296,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     Assert.assertTrue(internalRegionArgs.getPartitionedRegion() != null);
     this.redundancy = internalRegionArgs.getPartitionedRegionBucketRedundancy();
     this.partitionedRegion = internalRegionArgs.getPartitionedRegion();
+
+    if((this.getPartitionedRegion().needsBatching() || this.isInternalColumnTable()) &&
+        cache.snapshotEnabled()){
+      this.giiLevelLockForSnapshot = true;
+    }
   }
   
   // Attempt to direct the GII process to the primary first
@@ -1153,6 +1169,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       throw new CacheClosedException("Cache is shutting down");
     }
 
+    if (giiLevelLockForSnapshot) {
+      snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiLockOwner);
+    }
+
     final Object key = event.getKey();
     waitUntilLocked(key); // it might wait for long time
 
@@ -1261,13 +1281,33 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
+  public void doLockForGII() {
+    if (giiLevelLockForSnapshot) {
+      final LogWriterI18n logger = getCache().getLoggerI18n();
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Trying take an exclusive shared snapshotGIILock on bucket");
+      this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiLockOwner);
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully took exclusive shared lock on snapshotGIILock");
+    }
+  }
+
+  public void doUnlockAfterGII() {
+    if (giiLevelLockForSnapshot) {
+      final LogWriterI18n logger = getCache().getLoggerI18n();
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Trying to unlock snapshotGIILock on bucket");
+      this.snapshotGIILock.releaseLock(LockMode.EX, false, giiLockOwner);
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully unlocked snapshotGIILock");
+    }
+  }
+
   /**
    * Release the lock on the bucket that makes the bucket
    * stay the primary during a write.
    */
   private void endLocalWrite(EntryEventImpl event) {
     doUnlockForPrimary();
-
+    if (giiLevelLockForSnapshot) {
+      this.snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiLockOwner);
+    }
     removeAndNotifyKey(event.getKey());
   }
 

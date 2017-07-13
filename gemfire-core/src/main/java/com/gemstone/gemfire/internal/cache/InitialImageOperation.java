@@ -1936,9 +1936,7 @@ public class InitialImageOperation  {
           return;
         }
 
-        // This thread will wait for all running transaction before the actual data transfer.
-        waitForRunningTXs(rgn, dm);
-         
+
         // can simulate gc tombstone in middle of packing
         if (internalAfterReceivedRequestImage != null && internalAfterReceivedRequestImage.getRegionName().equals(rgn.getName())) {
           internalAfterReceivedRequestImage.run();
@@ -2008,7 +2006,6 @@ public class InitialImageOperation  {
         }
         final ImageState imgState = rgn.getImageState();
         boolean markedOngoingGII = false;
-        TXManagerImpl txManager = null;
         try {
           boolean recoveringForLostMember = (this.lostMemberVersionID != null);
           RegionVersionHolder holderToSync = null;
@@ -2072,14 +2069,7 @@ public class InitialImageOperation  {
 
             final RegionVersionHolder holderToSend = holderToSync;
 
-          // Start a transaction which will capture correct region snapshot.
-          if (rgn.getCache().snapshotEnabled()) {
-            txManager = rgn.getCache().getCacheTransactionManager();
-            txManager.begin(IsolationLevel.SNAPSHOT, null);
-          }
-
-
-          boolean finished = rgn.chunkEntries(sender, CHUNK_SIZE_IN_BYTES, !keysOnly, versionVector,
+            boolean finished = rgn.chunkEntries(sender, CHUNK_SIZE_IN_BYTES, !keysOnly, versionVector,
                 (HashSet)this.unfinishedKeys, unfinishedKeysOnly, flowControl, new TObjectIntProcedure() {
               int msgNum = txMsgNum;
 
@@ -2154,8 +2144,8 @@ public class InitialImageOperation  {
             ((HARegion)rgn).endServingGIIRequest();
           }
           flowControl.unregister();
-          if( txManager != null ){
-            txManager.commit();
+          if (rgn instanceof BucketRegion) {
+            ((BucketRegion)rgn).doUnlockAfterGII();
           }
         }
         // This should never happen in production code!!!!
@@ -2220,41 +2210,6 @@ public class InitialImageOperation  {
         
         if (internalAfterSentImageReply != null && regionPath.endsWith(internalAfterSentImageReply.getRegionName())) {
           internalAfterSentImageReply.run();
-        }
-      }
-    }
-
-
-    /**
-     * GII operation will wait if there are some running transaction after
-     * StateFlush message. This method will make GII wait till all those transactions
-     * are finished.
-     */
-    protected void waitForRunningTXs(DistributedRegion rgn, DistributionManager dm) {
-      final TXManagerImpl txMgr = rgn.getCache().getCacheTransactionManager();
-      List<TXState> txnInProgress = new ArrayList<>();
-      for (TXStateProxy proxy : txMgr.getHostedTransactionsInProgress()) {
-        final TXState txState = proxy.getLocalTXState();
-        if (txState != null && txState.isInProgress()) {
-          txState.lockTXState();
-          if (txState.isInProgress()) {
-            txnInProgress.add(txState);
-          }
-        }
-      }
-
-      // Still holding the TXState lock
-      CountDownLatch latch = new CountDownLatch(txnInProgress.size());
-      for (TXState txState : txnInProgress) {
-        txState.addGIILatch(latch);
-        txState.unlockTXState();
-      }
-      if (txnInProgress.size() > 0) {
-        try {
-          latch.await();
-        } catch (InterruptedException e) {
-          // Doing nothing special
-          Thread.currentThread().interrupt();
         }
       }
     }
@@ -2846,6 +2801,17 @@ public class InitialImageOperation  {
       return this.targetReinitialized ? DistributionManager.WAITING_POOL_EXECUTOR :
                                 DistributionManager.HIGH_PRIORITY_EXECUTOR;
     }
+
+    /**
+     * GII operation will wait if there are some running transaction after
+     * StateFlush message. This method will make GII wait till all those transactions
+     * are finished.
+     */
+    protected void waitForRunningTXs(DistributedRegion rgn) {
+     // Wait for all write operations to get over.
+     BucketRegion bucketRegion = (BucketRegion)rgn;
+     bucketRegion.doLockForGII();
+    }
     
     @Override  
     protected void process(final DistributionManager dm) {
@@ -2861,6 +2827,10 @@ public class InitialImageOperation  {
         if (rgn == null) {
           return;
         }
+        logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Waiting for running transactions");
+        waitForRunningTXs(rgn);
+        logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Waiting for running transactions over");
+
         if (!rgn.getGenerateVersionTag() || (rvv = rgn.getVersionVector()) == null) {
           logger.fine(this + " non-persistent proxy region, nothing to do. Just reply");
           // allow finally block to send a failure message

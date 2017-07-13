@@ -2280,6 +2280,11 @@ public class PRHARedundancyProvider
         departures.getAndSet(true);
         notify();
       }
+
+      if(this.bucketToMonitor.isHosting()){
+        BucketRegion br = bucketToMonitor.getHostedBucketRegion();
+        br.doUnlockAfterGII();
+      }
     }
 
     /**
