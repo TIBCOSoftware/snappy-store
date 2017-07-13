@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -111,8 +110,6 @@ public final class TXState implements TXStateInterface {
 
   /** the set of regions that will be committed or rolled back */
   private TXRegionState[] finalizeRegions = ZERO_REGIONS;
-
-  private CountDownLatch giiLatch = null;
 
   /** hashing strategy used for {@link #regions} to allow search using region */
   @SuppressWarnings("serial")
@@ -1276,10 +1273,6 @@ public final class TXState implements TXStateInterface {
       }
     } finally {
       if (this.txLocked.compareAndSet(true, false)) {
-        // giiLatch not null means GII request received during this transaction.
-        if (giiLatch != null) {
-          giiLatch.countDown();
-        }
         unlockTXState();
       }
       cleanupTXRS(this.finalizeRegions, lockPolicy, writeMode, commit, true,
@@ -3841,7 +3834,7 @@ public final class TXState implements TXStateInterface {
 
   // Writer should add old entry with tombstone with region version in the common map
   // wait till writer has written to common old entry map.
-  public Object getOldVersionedEntry(LocalRegion dataRegion, Object key, RegionEntry re) {
+  private Object getOldVersionedEntry(LocalRegion dataRegion, Object key, RegionEntry re) {
     Object oldEntry = getCache().readOldEntry(dataRegion, key, snapshot,
         true, re, this);
     if (oldEntry != null) {
@@ -4105,37 +4098,5 @@ public final class TXState implements TXStateInterface {
   }
   public boolean containsRegionEntryReference(RegionEntry re) {
     return regionEntryRef.contains(re);
-  }
-
-  public void addGIILatch(CountDownLatch latch) {
-    this.giiLatch = latch;
-  }
-
-  public static class SnapshotEnabledIterator implements Iterator<RegionEntry> {
-
-    Iterator<RegionEntry> innerIterator;
-    TXState txState;
-    LocalRegion dataRegion;
-
-    public SnapshotEnabledIterator(Iterator<RegionEntry> it, TXState tx, LocalRegion region) {
-      this.innerIterator = it;
-      this.txState = tx;
-      this.dataRegion = region;
-    }
-
-    @Override
-    public boolean hasNext() {
-      return innerIterator.hasNext();
-    }
-
-    @Override
-    public RegionEntry next() {
-      RegionEntry regionEntry = innerIterator.next();
-      if (dataRegion.getVersionVector() != null && !txState.checkEntryVersion(dataRegion, regionEntry)) {
-        return (RegionEntry)txState.getOldVersionedEntry(dataRegion, regionEntry.getKey(), regionEntry);
-      } else {
-        return regionEntry;
-      }
-    }
   }
 }
