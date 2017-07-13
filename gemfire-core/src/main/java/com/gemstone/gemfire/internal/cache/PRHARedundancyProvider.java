@@ -24,6 +24,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
@@ -62,6 +63,7 @@ import com.gemstone.gemfire.internal.concurrent.AL;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.org.jgroups.util.StringId;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 /**
  * This class provides the redundancy management for partitioned region. It will
@@ -538,7 +540,6 @@ public class PRHARedundancyProvider
     // (very expensive) bucket lock or the (somewhat expensive) monitor on this
     earlySufficientStoresCheck(partitionName);
 
-    synchronized(this) {
       if (this.prRegion.getCache().isCacheAtShutdownAll()) {
         throw new CacheClosedException("Cache is shutting down");
       }
@@ -549,7 +550,7 @@ public class PRHARedundancyProvider
           this.prRegion.bucketStringForLogs(bucketId));
     }
     Collection<InternalDistributedMember> acceptedMembers = new ArrayList<InternalDistributedMember>(); // ArrayList<DataBucketStores>
-    Set <InternalDistributedMember> excludedMembers = new HashSet<InternalDistributedMember>();
+    ObjectOpenHashSet<InternalDistributedMember> excludedMembers = new ObjectOpenHashSet<>();
     ArrayListWithClearState<InternalDistributedMember> failedMembers = new ArrayListWithClearState<InternalDistributedMember>();
     final long timeOut = System.currentTimeMillis() + computeTimeout();
     BucketMembershipObserver observer = null;
@@ -559,7 +560,9 @@ public class PRHARedundancyProvider
       this.prRegion.checkReadiness();
 
       Bucket toCreate = this.prRegion.getRegionAdvisor().getBucket(bucketId);
-      
+      final ReentrantLock redundancyLock = toCreate.getBucketAdvisor().redundancyLock;
+      redundancyLock.lock();
+      try {
       if(!finishIncompleteCreation) {
         bucketPrimary = 
           this.prRegion.getBucketPrimary(bucketId);
@@ -715,6 +718,9 @@ public class PRHARedundancyProvider
           return bucketPrimary;
          } // almost done
       } // for
+      } finally {
+        redundancyLock.unlock();
+      }
     }
     catch (CancelException e) {
       //Fix for 43544 - We don't need to elect a primary
@@ -784,7 +790,6 @@ public class PRHARedundancyProvider
         }
       }
     }
-    } // synchronized(this)
   }
 
   /**
@@ -1391,7 +1396,7 @@ public class PRHARedundancyProvider
     
     // Convert peers to DataStoreBuckets
     ArrayList<DataStoreBuckets> stores = this.prRegion.getRegionAdvisor()
-        .adviseFilteredDataStores(new HashSet<InternalDistributedMember>(candidates));
+        .adviseFilteredDataStores(new ObjectOpenHashSet<>(candidates));
     
     final DM dm = this.prRegion.getDistributionManager();
     // Add ourself as a candidate, if appropriate

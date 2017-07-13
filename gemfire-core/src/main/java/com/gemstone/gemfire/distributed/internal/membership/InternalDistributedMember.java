@@ -24,7 +24,6 @@ import com.gemstone.gemfire.distributed.Role;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.ProfileId;
 import com.gemstone.gemfire.distributed.internal.membership.jgroup.GFJGBasicAdapter;
-import com.gemstone.gemfire.distributed.internal.membership.jgroup.GFJGPeerAdapter;
 import com.gemstone.gemfire.distributed.internal.membership.jgroup.JGroupMember;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
@@ -33,6 +32,7 @@ import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientResolverUtils;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.org.jgroups.stack.IpAddress;
 
@@ -73,7 +73,7 @@ public final class InternalDistributedMember
 {
   private final static long serialVersionUID = -2785249969777296507L;
   
-  protected NetMember ipAddr; // the underlying member object, e.g. from JGroups
+  protected JGroupMember ipAddr; // the underlying member object, e.g. from JGroups
   // private IpAddress ipAddr;
 
   /**
@@ -179,8 +179,8 @@ public final class InternalDistributedMember
     this.groups = MemberAttributes.DEFAULT.getGroups();
     this.vmViewId = MemberAttributes.DEFAULT.getVmViewId();
     this.durableClientAttributes = MemberAttributes.DEFAULT.getDurableClientAttributes();
-    if (this.ipAddr instanceof JGroupMember) {
-      ((JGroupMember)this.ipAddr).getAddress().setProcessId(this.vmPid);
+    if (this.ipAddr != null) {
+      this.ipAddr.getAddress().setProcessId(this.vmPid);
     }
     try {
       if (SocketCreator.resolve_dns) {
@@ -227,7 +227,8 @@ public final class InternalDistributedMember
     this.name = attr.getName();
     this.groups = attr.getGroups();
     this.durableClientAttributes = attr.getDurableClientAttributes();
-    this.ipAddr = MemberFactory.newNetMember(i, p, splitBrainEnabled, canBeCoordinator, attr);
+    this.ipAddr = (JGroupMember)MemberFactory.newNetMember(i, p, splitBrainEnabled,
+        canBeCoordinator, attr);
     this.hostName = SocketCreator.resolve_dns? SocketCreator.getHostName(i) : i.getHostAddress();
 //    checkHostName();
   }
@@ -239,7 +240,7 @@ public final class InternalDistributedMember
    * direct-port and other information).
    * @param m
    */
-  public InternalDistributedMember(NetMember m) {
+  public InternalDistributedMember(JGroupMember m) {
     ipAddr = m;
 
     MemberAttributes attr = m.getAttributes();
@@ -258,7 +259,7 @@ public final class InternalDistributedMember
       this.groups = attr.getGroups();
       this.durableClientAttributes = attr.getDurableClientAttributes();
     }
-    final IpAddress addr = ((JGroupMember)m).getAddress();
+    final IpAddress addr = m.getAddress();
     this.version = addr.getVersionOrdinal();
     this.versionObj = Version.fromOrdinalOrCurrent(version);
     cachedToString = null;
@@ -292,10 +293,10 @@ public final class InternalDistributedMember
    * @throws UnknownHostException if the given hostname cannot be resolved
    */
   public InternalDistributedMember(String i, int p) throws UnknownHostException {
-    ipAddr = MemberFactory.newNetMember(i, p);
+    ipAddr = (JGroupMember)MemberFactory.newNetMember(i, p);
     defaultToCurrentHost();
     this.vmKind = DistributionManager.NORMAL_DM_TYPE;
-    GFJGBasicAdapter.insertDefaultGemFireAttributes(((JGroupMember)ipAddr).getAddress());
+    GFJGBasicAdapter.insertDefaultGemFireAttributes(ipAddr.getAddress());
   }
 
   /**
@@ -321,9 +322,9 @@ public final class InternalDistributedMember
    * @throws UnknownHostException if the given hostname cannot be resolved
    */
   public InternalDistributedMember(String i, int p, String n, String u) throws UnknownHostException {
-    ipAddr = MemberFactory.newNetMember(i, p);
+    ipAddr = (JGroupMember)MemberFactory.newNetMember(i, p);
     defaultToCurrentHost();
-    GFJGBasicAdapter.insertDefaultGemFireAttributes(((JGroupMember)ipAddr).getAddress());
+    GFJGBasicAdapter.insertDefaultGemFireAttributes(ipAddr.getAddress());
     this.name = n;
     this.uniqueTag = u;
   }
@@ -345,7 +346,7 @@ public final class InternalDistributedMember
    *          the membership listening port
    */
   public InternalDistributedMember(InetAddress i, int p) {
-    ipAddr = MemberFactory.newNetMember(i, p);
+    ipAddr = (JGroupMember)MemberFactory.newNetMember(i, p);
     defaultToCurrentHost();
   }
 
@@ -371,7 +372,7 @@ public final class InternalDistributedMember
   public InternalDistributedMember(InetAddress addr,
                                    int p,
                                    boolean isCurrentHost) {
-    ipAddr = MemberFactory.newNetMember(addr, p);
+    ipAddr = (JGroupMember)MemberFactory.newNetMember(addr, p);
     if (isCurrentHost) {
       defaultToCurrentHost();
     }
@@ -408,7 +409,7 @@ public final class InternalDistributedMember
     return ipAddr.getIpAddress();
   }
 
-  public NetMember getNetMember() {
+  public JGroupMember getNetMember() {
     return ipAddr;
   }
 
@@ -704,14 +705,10 @@ public final class InternalDistributedMember
     final InetAddress myAddr = getIpAddress();
     final InetAddress otherAddr = m.getIpAddress();
 
-    // Discard null cases
-    if (myAddr == null && otherAddr == null) {
-        return true;
+    // Discard null case
+    if (myAddr == null) {
+      return otherAddr == null;
     }
-    else if (myAddr == null || otherAddr == null) {
-      return false;
-    }
-    
     if(!myAddr.equals(otherAddr)) {
       return false;
     }
@@ -751,12 +748,9 @@ public final class InternalDistributedMember
   }
 
   @Override
-  public int hashCode()
-  {
-    int result = 0;
-     result = result + ipAddr.getIpAddress().hashCode();
-    result = result + getPort();
-    return result;
+  public int hashCode() {
+    return ClientResolverUtils.addIntToHashOpt(
+        ipAddr.getIpAddress().hashCode(), getPort());
   }
 
   private String shortName(String hostname)
@@ -837,8 +831,7 @@ public final class InternalDistributedMember
         }
         // for split-brain and security debugging we need to know if the
         // member has the "can't be coordinator" bit set
-//        JGroupMember jgm = (JGroupMember)ipAddr;
-//        if (!jgm.getAddress().canBeCoordinator()) {
+//        if (!ipAddr.getAddress().canBeCoordinator()) {
 //          sb.append("<p>");
 //        }
         sb.append(")");
@@ -974,9 +967,9 @@ public final class InternalDistributedMember
 
      readVersion(flags, in);
 
-     ipAddr = MemberFactory.newNetMember(inetAddr, port, sbEnabled, elCoord,
+     ipAddr = (JGroupMember)MemberFactory.newNetMember(inetAddr, port, sbEnabled, elCoord,
          new MemberAttributes(dcPort, vmPid, vmKind, vmViewId, name, groups, durableClientAttributes));
-     ((JGroupMember)ipAddr).getAddress().setVersionOrdinal(this.version);
+     ipAddr.getAddress().setVersionOrdinal(this.version);
 
      Assert.assertTrue(this.vmKind > 0);
      // [sumedh] loner VMs will have port as zero if no GFE client is connected
@@ -1107,8 +1100,8 @@ public final class InternalDistributedMember
 
     MemberAttributes attr = new MemberAttributes(this.dcPort, this.vmPid,
         this.vmKind, this.vmViewId, this.name, this.groups, this.durableClientAttributes);
-    ipAddr = MemberFactory.newNetMember(inetAddr, port, sbEnabled, elCoord, attr);
-    ((JGroupMember)ipAddr).getAddress().setVersionOrdinal(this.version);
+    ipAddr = (JGroupMember)MemberFactory.newNetMember(inetAddr, port, sbEnabled, elCoord, attr);
+    ipAddr.getAddress().setVersionOrdinal(this.version);
 
     synchPayload();
 
@@ -1193,7 +1186,7 @@ public final class InternalDistributedMember
 
      MemberAttributes attr = new MemberAttributes(this.dcPort, this.vmPid,
          this.vmKind, this.vmViewId, this.name, this.groups, this.durableClientAttributes);
-     ipAddr = MemberFactory.newNetMember(inetAddr, port, sbEnabled, elCoord, attr);
+     ipAddr = (JGroupMember)MemberFactory.newNetMember(inetAddr, port, sbEnabled, elCoord, attr);
 
      synchPayload();
    }

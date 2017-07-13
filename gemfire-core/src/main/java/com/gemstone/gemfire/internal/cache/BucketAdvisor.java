@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gemstone.gemfire.CancelException;
@@ -104,6 +105,9 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * synchronized(this). 
    */
   private DistributedMemberLock primaryLock;
+
+  /** Local lock used by PRHARedundancyProvider */
+  protected final ReentrantLock redundancyLock;
 
   //private static final byte MASK_HOSTING       = 1; // 0001 
   //private static final byte MASK_VOLUNTEERING  = 2; // 0010
@@ -203,6 +207,7 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
     super(bucket);
     this.regionAdvisor = regionAdvisor;
     this.pRegion = this.regionAdvisor.getPartitionedRegion();
+    this.redundancyLock = new ReentrantLock();
     resetParentAdvisor(bucket.getId());
   }
   

@@ -439,6 +439,7 @@ public interface GfxdConstants {
           Attribute.CONFIG_SCRIPTS,
           Attribute.DEFAULT_INITIAL_CAPACITY_PROP,
           Attribute.DEFAULT_RECOVERY_DELAY_PROP,
+          DEFAULT_STARTUP_RECOVERY_DELAY_PROP,
           Attribute.DUMP_TIME_STATS_FREQ,
           Attribute.ENABLE_STATS,
           Attribute.ENABLE_TIMESTATS,
