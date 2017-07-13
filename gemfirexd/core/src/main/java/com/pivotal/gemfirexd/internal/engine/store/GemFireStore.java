@@ -108,7 +108,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCl
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
-import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl.NetworkInterfaceImpl;
@@ -1160,7 +1159,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
       FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
-      FunctionService.registerFunction(new SnappyRemoveCachedObjectsFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
       if (logger.fineEnabled()) {
