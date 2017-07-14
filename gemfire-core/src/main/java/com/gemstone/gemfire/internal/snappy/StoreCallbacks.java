@@ -38,6 +38,8 @@ public interface StoreCallbacks {
 
   List<String> getInternalTableSchemas();
 
+  boolean isColumnTable(String qualifiedName);
+
   int getHashCodeSnappy(Object dvd, int numPartitions);
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);

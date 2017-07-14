@@ -45,6 +45,11 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public boolean isColumnTable(String qualifiedName) {
+      return false;
+    }
+
+    @Override
     public int getHashCodeSnappy(Object dvd, int numPartitions) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());

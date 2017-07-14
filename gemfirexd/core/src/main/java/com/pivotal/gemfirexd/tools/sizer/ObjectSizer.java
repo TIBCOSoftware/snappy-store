@@ -996,7 +996,7 @@ public class ObjectSizer {
   }
 
   private static final Pattern columnTableRegex =
-      Pattern.compile(StoreCallbacks.SHADOW_SCHEMA_NAME + "(.*)" +
+      Pattern.compile(".*" + StoreCallbacks.SHADOW_SCHEMA_NAME + "(.*)" +
           StoreCallbacks.SHADOW_TABLE_SUFFIX);
   private Boolean isColumnTable(String fullyQualifiedTable) {
     return columnTableRegex.matcher(fullyQualifiedTable).matches();
