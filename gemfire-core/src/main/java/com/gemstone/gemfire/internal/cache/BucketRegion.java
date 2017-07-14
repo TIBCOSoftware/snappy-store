@@ -19,13 +19,7 @@ package com.gemstone.gemfire.internal.cache;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -104,16 +98,15 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       new ThreadLocal<BucketRegionIndexCleaner>() ;
 
 
-
   /**
-   * A read/write lock to prevent making this bucket not primary while a write
-   * is in progress on the bucket.
+   * A read/write lock to prevent writing to the bucket when GII from this bucket is in progress
    */
-  private final ReentrantReadWriteWriteShareLock snapshotGIILock = new ReentrantReadWriteWriteShareLock();
+  private final ReentrantReadWriteWriteShareLock snapshotGIILock
+      = new ReentrantReadWriteWriteShareLock();
 
-  private final Object giiLockOwner = new Object();
+  private final Object giiLockForSIOwner = new Object();
 
-  private boolean giiLevelLockForSnapshot = true;
+  private boolean lockGIIForSnapshot = Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
 
   /**
    * Contains size in bytes of the values stored
@@ -299,7 +292,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
     if((this.getPartitionedRegion().needsBatching() || this.isInternalColumnTable()) &&
         cache.snapshotEnabled()){
-      this.giiLevelLockForSnapshot = true;
+      this.lockGIIForSnapshot = true;
     }
   }
   
@@ -1169,10 +1162,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       throw new CacheClosedException("Cache is shutting down");
     }
 
-    if (giiLevelLockForSnapshot) {
-      snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiLockOwner);
-    }
-
     final Object key = event.getKey();
     waitUntilLocked(key); // it might wait for long time
 
@@ -1216,6 +1205,15 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
     
     return true;
+  }
+
+  public void doUnlockForPrimary() {
+    Lock activeWriteLock = this.getBucketAdvisor().getActiveWriteLock();
+    activeWriteLock.unlock();
+    Lock parentLock = this.getBucketAdvisor().getParentActiveWriteLock();
+    if(parentLock!= null){
+      parentLock.unlock();
+    }
   }
 
   private boolean lockPrimaryStateReadLock(boolean tryLock) {
@@ -1268,36 +1266,82 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         }
       }
     }
-    
+
     return true;
   }
 
-  public void doUnlockForPrimary() {
-    Lock activeWriteLock = this.getBucketAdvisor().getActiveWriteLock();
-    activeWriteLock.unlock();
-    Lock parentLock = this.getBucketAdvisor().getParentActiveWriteLock();
-    if(parentLock!= null){
-      parentLock.unlock();
+  public void takeSnapshotGIIReadLock() {
+    if (lockGIIForSnapshot) {
+      final LogWriterI18n logger = getCache().getLoggerI18n();
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Taking readonly snapshotGIILock on bucket " + this.getName());
+      snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiLockForSIOwner);
     }
   }
 
-  public void doLockForGII() {
-    if (giiLevelLockForSnapshot) {
+  public void releaseSnapshotGIIReadLock() {
+    if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Trying take an exclusive shared snapshotGIILock on bucket");
-      this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiLockOwner);
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully took exclusive shared lock on snapshotGIILock");
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Releasing readonly snapshotGIILock on bucket " + this.getName());
+      this.snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiLockForSIOwner);
     }
   }
 
-  public void doUnlockAfterGII() {
-    if (giiLevelLockForSnapshot) {
+  public void takeSnapshotGIIWriteLock() {
+    if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Trying to unlock snapshotGIILock on bucket");
-      this.snapshotGIILock.releaseLock(LockMode.EX, false, giiLockOwner);
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully unlocked snapshotGIILock");
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Taking exclusive snapshotGIILock on bucket " + this.getName());
+      this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiLockForSIOwner);
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully took exclusive lock on bucket " + this.getName());
     }
   }
+
+  public void releaseSnapshotGIIWriteLock() {
+    if (lockGIIForSnapshot) {
+      final LogWriterI18n logger = getCache().getLoggerI18n();
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Releasing exclusive snapshotGIILock on bucket " + this.getName());
+      this.snapshotGIILock.releaseLock(LockMode.EX, false, giiLockForSIOwner);
+      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Released exclusive snapshotGIILock on bucket " + this.getName());
+    }
+  }
+
+  private BucketRegion companionRegion;
+
+  private final Object companionRegionSync = new Object();
+
+  /**
+   * Corresponding BucketRegion from shadow table if its a row buffer &
+   * bucket from row buffer if its a shadow table. This method should always be
+   * called in conjuction with PartitionedRegion.needsBatching
+   *
+   * @return
+   */
+  public BucketRegion companionRegion() {
+    if (companionRegion != null) {
+      return companionRegion;
+    }
+    if (!this.getPartitionedRegion().needsBatching() && !this.getPartitionedRegion().
+        getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+      return companionRegion; // Return null for regions not associated with column tables
+    }
+    synchronized (companionRegionSync) {
+      if (this.getPartitionedRegion().
+          getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+        PartitionedRegion leaderReagion = ColocationHelper.getLeaderRegion(this.getPartitionedRegion());
+        this.companionRegion = leaderReagion.getDataStore().getLocalBucketById(this.getId());
+
+      } else {
+        List<PartitionedRegion> childRegions =
+            ColocationHelper.getColocatedChildRegions(this.getPartitionedRegion());
+        Optional<PartitionedRegion> shadowTable = childRegions.stream().filter(childRegion ->
+            childRegion.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)).findFirst();
+        this.companionRegion = shadowTable.map(pr ->
+            pr.getDataStore().getLocalBucketById(this.getId())).orElseGet(null);
+
+      }
+    }
+    return companionRegion;
+  }
+
 
   /**
    * Release the lock on the bucket that makes the bucket
@@ -1305,9 +1349,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    */
   private void endLocalWrite(EntryEventImpl event) {
     doUnlockForPrimary();
-    if (giiLevelLockForSnapshot) {
-      this.snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiLockOwner);
-    }
     removeAndNotifyKey(event.getKey());
   }
 

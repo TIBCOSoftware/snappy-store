@@ -2145,7 +2145,7 @@ public class InitialImageOperation  {
           }
           flowControl.unregister();
           if (rgn instanceof BucketRegion) {
-            ((BucketRegion)rgn).doUnlockAfterGII();
+            ((BucketRegion)rgn).releaseSnapshotGIIWriteLock();
           }
         }
         // This should never happen in production code!!!!
@@ -2810,7 +2810,7 @@ public class InitialImageOperation  {
     protected void waitForRunningTXs(DistributedRegion rgn) {
      // Wait for all write operations to get over.
      BucketRegion bucketRegion = (BucketRegion)rgn;
-     bucketRegion.doLockForGII();
+     bucketRegion.takeSnapshotGIIWriteLock();
     }
     
     @Override  
@@ -2827,9 +2827,7 @@ public class InitialImageOperation  {
         if (rgn == null) {
           return;
         }
-        logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Waiting for running transactions");
         waitForRunningTXs(rgn);
-        logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Waiting for running transactions over");
 
         if (!rgn.getGenerateVersionTag() || (rvv = rgn.getVersionVector()) == null) {
           logger.fine(this + " non-persistent proxy region, nothing to do. Just reply");

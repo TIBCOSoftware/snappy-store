@@ -2288,7 +2288,7 @@ public class PRHARedundancyProvider
 
       if(this.bucketToMonitor.isHosting()){
         BucketRegion br = bucketToMonitor.getHostedBucketRegion();
-        br.doUnlockAfterGII();
+        br.releaseSnapshotGIIWriteLock();
       }
     }
 
