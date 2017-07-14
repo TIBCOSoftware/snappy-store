@@ -149,6 +149,9 @@ public class GenericStatement
         private static final Pattern INSERT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile(".*INSERT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        private static final Pattern DML_TABLE_PATTERN =
+            Pattern.compile("^\\s*(INSERT|UPDATE|DELETE)\\s+.*",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern PUT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile(".*PUT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -604,7 +607,7 @@ public class GenericStatement
 				}
 				catch (StandardException | AssertFailure ex) {
           //wait till the query hint is examined before throwing exceptions or
-          if (routeQuery) {
+          if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
             if (STREAMING_DDL_PREFIX.matcher(source).matches()) {
               cc.markAsDDLForSnappyUse(true);
             }
@@ -688,7 +691,7 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery) {
+						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }
@@ -757,7 +760,7 @@ public class GenericStatement
 
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery) {
+						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }

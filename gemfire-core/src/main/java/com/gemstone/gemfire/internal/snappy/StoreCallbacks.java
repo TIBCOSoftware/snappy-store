@@ -46,8 +46,6 @@ public interface StoreCallbacks {
 
   public String snappyInternalSchemaName();
 
-  void cleanUpCachedObjects(String table, Boolean sentFromExternalCluster);
-
   void registerRelationDestroyForHiveStore();
 
   void performConnectorOp(Object ctx);

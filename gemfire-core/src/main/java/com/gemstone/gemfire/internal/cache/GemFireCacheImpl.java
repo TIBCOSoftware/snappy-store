@@ -517,7 +517,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    * Time interval after which oldentries cleaner thread run
    */
   public static long OLD_ENTRIES_CLEANER_TIME_INTERVAL = Long.getLong("gemfire" +
-      ".snapshot-oldentries-cleaner-time-interval", 60000);
+      ".snapshot-oldentries-cleaner-time-interval", 30000);
 
 
   /**
@@ -544,7 +544,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
-  public long getOldEntryRemovalPerid() {
+  public long getOldEntryRemovalPeriod() {
     return OLD_ENTRIES_CLEANER_TIME_INTERVAL;
   }
   // For each entry this should be in sync
