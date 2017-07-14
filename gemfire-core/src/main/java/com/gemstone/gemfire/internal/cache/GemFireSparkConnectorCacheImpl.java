@@ -30,6 +30,10 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
     return new GemFireSparkConnectorCacheImpl(pf, gfeGridMappings, system, cacheConfig).init();
   }
 
+  @Override
+  public boolean hasPool() {
+    return true;
+  }
 
   @Override
   protected GemFireCacheImpl init() {
