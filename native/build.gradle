@@ -57,7 +57,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   if (osName == 'lin') {
     // get the OS installation flavour
     String flavour = ''
-    if (project.hasProperty('linuxFlavour')) {
+    if (rootProject.hasProperty('linuxFlavour')) {
       flavour = linuxFlavour
     } else {
       def out = new ByteArrayOutputStream()
@@ -328,7 +328,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
         into "${productDir}/include"
       }
 
-      if (project.hasProperty('copyTo')) {
+      if (rootProject.hasProperty('copyTo')) {
         copy {
           from productDir
           into copyTo
