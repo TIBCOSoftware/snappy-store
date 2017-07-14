@@ -104,7 +104,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private final ReentrantReadWriteWriteShareLock snapshotGIILock
       = new ReentrantReadWriteWriteShareLock();
 
-  private final Object giiLockForSIOwner = new Object();
+  private final Object giiReadLockForSIOwner = new Object();
+  private final Object giiWriteLockForSIOwner = new Object();
 
   private boolean lockGIIForSnapshot = Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
 
@@ -1274,7 +1275,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Taking readonly snapshotGIILock on bucket " + this.getName());
-      snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiLockForSIOwner);
+      snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiReadLockForSIOwner);
     }
   }
 
@@ -1282,7 +1283,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Releasing readonly snapshotGIILock on bucket " + this.getName());
-      this.snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiLockForSIOwner);
+      this.snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiReadLockForSIOwner);
     }
   }
 
@@ -1290,7 +1291,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Taking exclusive snapshotGIILock on bucket " + this.getName());
-      this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiLockForSIOwner);
+      this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully took exclusive lock on bucket " + this.getName());
     }
   }
@@ -1299,7 +1300,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Releasing exclusive snapshotGIILock on bucket " + this.getName());
-      this.snapshotGIILock.releaseLock(LockMode.EX, false, giiLockForSIOwner);
+      
+      if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
+        this.snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
+      }
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Released exclusive snapshotGIILock on bucket " + this.getName());
     }
   }

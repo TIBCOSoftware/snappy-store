@@ -2828,6 +2828,9 @@ public class InitialImageOperation  {
           return;
         }
         waitForRunningTXs(rgn);
+        if (internalAfterGIILock != null && internalAfterGIILock.getRegionName().equals(rgn.getName())) {
+          internalAfterGIILock.run();
+        }
 
         if (!rgn.getGenerateVersionTag() || (rvv = rgn.getVersionVector()) == null) {
           logger.fine(this + " non-persistent proxy region, nothing to do. Just reply");
@@ -4568,6 +4571,7 @@ public class InitialImageOperation  {
   private static GIITestHook internalDuringApplyDelta;
   private static GIITestHook internalBeforeCleanExpiredTombstones;
   private static GIITestHook internalAfterSavedRVVEnd;
+  private static GIITestHook internalAfterGIILock;
 
   /**
    * For test purpose to be used in ImageProcessor
@@ -4596,7 +4600,8 @@ public class InitialImageOperation  {
     AfterReceivedImageReply,
     DuringApplyDelta,
     BeforeCleanExpiredTombstones,
-    AfterSavedRVVEnd
+    AfterSavedRVVEnd,
+    AfterGIILock
   }
   
   public static GIITestHook getGIITestHookForCheckingPurpose(final GIITestHookType type) {
@@ -4631,6 +4636,8 @@ public class InitialImageOperation  {
       return internalBeforeCleanExpiredTombstones;
     case AfterSavedRVVEnd: // 13
       return internalAfterSavedRVVEnd;
+    case AfterGIILock: // 14
+      return internalAfterGIILock;
     default:
       throw new RuntimeException("Illegal test hook type");
     }
@@ -4694,6 +4701,10 @@ public class InitialImageOperation  {
       assert internalAfterSavedRVVEnd == null;
       internalAfterSavedRVVEnd = callback;
       break;
+      case AfterGIILock: // 14
+      assert internalAfterGIILock == null;
+        internalAfterGIILock = callback;
+      break;
     default:
       throw new RuntimeException("Illegal test hook type");
     }
@@ -4713,7 +4724,8 @@ public class InitialImageOperation  {
     internalAfterReceivedImageReply != null ||
     internalDuringApplyDelta != null ||
     internalBeforeCleanExpiredTombstones != null ||
-    internalAfterSavedRVVEnd != null);
+    internalAfterSavedRVVEnd != null ||
+    internalAfterGIILock != null);
   }
 
   public static void resetGIITestHook(final GIITestHookType type, final boolean setNull) {
@@ -4832,6 +4844,14 @@ public class InitialImageOperation  {
         }
       }
       break;
+    case AfterGIILock: // 14
+      if (internalAfterGIILock != null) {
+        internalAfterGIILock.reset();
+        if (setNull) {
+          internalAfterGIILock = null;
+        }
+      }
+      break;
     default:
       throw new RuntimeException("Illegal test hook type");
     }
@@ -4854,6 +4874,7 @@ public class InitialImageOperation  {
     internalDuringApplyDelta = null;
     internalBeforeCleanExpiredTombstones = null;
     internalAfterSavedRVVEnd = null;
+    internalAfterGIILock = null;
   }
 }
 
