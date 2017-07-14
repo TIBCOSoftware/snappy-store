@@ -79,4 +79,10 @@ public interface LRUClockNode {
    *
   public void resetRefCount(NewLRUClockHand lruList);
   */
+
+  /**
+   * Is the in-memory value for this node is null
+   * @return true or false
+   */
+  public boolean isValueNull();
 }

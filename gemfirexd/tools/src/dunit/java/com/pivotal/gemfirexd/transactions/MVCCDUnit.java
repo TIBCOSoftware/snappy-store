@@ -32,6 +32,7 @@ import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.*;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
@@ -50,7 +51,32 @@ public class MVCCDUnit extends DistributedSQLTestBase {
   }
 
 
+  @Override
+  public void setUp() throws Exception {
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+    invokeInEveryVM(new SerializableRunnable() {
+      @Override
+      public void run() {
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+      }
+    });
+    super.setUp();
+  }
+
+  @Override
+  public void tearDown2() throws Exception {
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+    invokeInEveryVM(new SerializableRunnable() {
+      @Override
+      public void run() {
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+      }
+    });
+    super.tearDown2();
+  }
+
   public void testSnapshotInsertAPI() throws Exception {
+    
     startVMs(1, 2);
     Properties props = new Properties();
     final Connection conn = TestUtil.getConnection(props);
@@ -58,7 +84,6 @@ public class MVCCDUnit extends DistributedSQLTestBase {
 
     clientSQLExecute(1, "create table " + regionName + " (intcol int not null, text varchar" +
         "(100) not null) replicate persistent enable concurrency checks");
-
 
     VM server1 = this.serverVMs.get(0);
     VM server2 = this.serverVMs.get(1);
@@ -286,6 +311,7 @@ public class MVCCDUnit extends DistributedSQLTestBase {
 
 
   public void testMixedOperations() throws Exception {
+    
     startVMs(1, 2);
     Properties props = new Properties();
     final Connection conn = TestUtil.getConnection(props);
@@ -416,9 +442,11 @@ public class MVCCDUnit extends DistributedSQLTestBase {
   }
 
   public void testMixedOperationsGII() throws Exception {
+    
     startVMs(1, 2);
     Properties props = new Properties();
     final Connection conn = TestUtil.getConnection(props);
+
     Statement st1 = conn.createStatement();
 
     clientSQLExecute(1, "create table " + regionName + " (intcol int not null, text varchar" +
@@ -548,6 +576,7 @@ public class MVCCDUnit extends DistributedSQLTestBase {
   }
 
   public void testMixedOperationsServerRestart() throws Exception {
+    
     startVMs(1, 2);
     Properties props = new Properties();
     final Connection conn = TestUtil.getConnection(props);
@@ -702,6 +731,7 @@ public class MVCCDUnit extends DistributedSQLTestBase {
   // start the stopped server
   // check if all values are coming.
   public void testMixedOperationsDeltaGII() throws Exception {
+    
     startVMs(1, 2);
     createDiskStore(true,1);
     Properties props = new Properties();
@@ -1017,6 +1047,7 @@ public class MVCCDUnit extends DistributedSQLTestBase {
 
 
   public void testParallelTransactionsUsingTestHook() throws Exception {
+    
     startVMs(1, 2);
     Properties props = new Properties();
     final Connection conn = TestUtil.getConnection(props);
@@ -1051,10 +1082,10 @@ public class MVCCDUnit extends DistributedSQLTestBase {
               boolean success = true;
               try {
                 Connection conn1 = TestUtil.getConnection();
-                Statement stmt1 = conn.createStatement();
+                Statement stmt1 = conn1.createStatement();
                 GemFireCacheImpl.getInstance().waitOnScanTestHook();
                 for (int i = 6; i < 11; i++) {
-                  stmt.execute("insert into " + regionName + " values(" + i + ",'test" + i + "')");
+                  stmt1.execute("insert into " + regionName + " values(" + i + ",'test" + i + "')");
                 }
                 GemFireCacheImpl.getInstance().notifyRowScanTestHook();
               }catch(SQLException sqlex) {
@@ -1081,7 +1112,7 @@ public class MVCCDUnit extends DistributedSQLTestBase {
                boolean success  = true;
               try {
                 Connection conn1 = TestUtil.getConnection();
-                Statement stmt1 = conn.createStatement();
+                Statement stmt1 = conn1.createStatement();
                 Thread.sleep(2000);
                 ResultSet rs =  stmt1.executeQuery("select * from " + regionName);
                 int cnt=0;

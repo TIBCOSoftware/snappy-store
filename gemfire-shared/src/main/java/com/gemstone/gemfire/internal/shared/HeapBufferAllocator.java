@@ -66,11 +66,16 @@ public final class HeapBufferAllocator extends BufferAllocator {
     assert required > 0 : "expand: unexpected required = " + required;
 
     final byte[] bytes = buffer.array();
-    final int currentUsed = buffer.capacity();
-    final int newLength = BufferAllocator.expandedSize(currentUsed, required);
-    final byte[] newBytes = new byte[newLength];
-    System.arraycopy(bytes, buffer.arrayOffset(), newBytes, 0, currentUsed);
-    return ByteBuffer.wrap(newBytes);
+    final int currentUsed = buffer.limit();
+    if (currentUsed + required > buffer.capacity()) {
+      final int newLength = BufferAllocator.expandedSize(currentUsed, required);
+      final byte[] newBytes = new byte[newLength];
+      System.arraycopy(bytes, buffer.arrayOffset(), newBytes, 0, currentUsed);
+      return ByteBuffer.wrap(newBytes).order(buffer.order());
+    } else {
+      buffer.limit(currentUsed + required);
+      return buffer;
+    }
   }
 
   @Override

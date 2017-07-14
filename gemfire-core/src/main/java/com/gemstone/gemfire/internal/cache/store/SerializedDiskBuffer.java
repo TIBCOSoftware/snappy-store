@@ -52,9 +52,9 @@ import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
  * <li>If a caller does choose to invoke {@link #release()} then it must
  * have a corresponding {@link #retain()} call else it may lead to
  * premature release of the data and start returning empty data.
- * Likewise the {@link #size()} method is not expected to be consistent with
- * {@link #write} calls if an intervening {@link #release()} call happened to
- * release the underlying buffer due to more {@link #release()}s.</li>
+ * Likewise the {@link #channelSize()} method is not expected to be consistent
+ * with {@link #write} calls if an intervening {@link #release()} call happened
+ * to release the underlying buffer due to more {@link #release()}s.</li>
  * </ul>
  */
 public abstract class SerializedDiskBuffer extends ByteBufferReference {
@@ -125,6 +125,10 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
     }
   }
 
+  /**
+   * Get as buffer to write to disk. Callers must ensure {@link #release()}
+   * is invoked in all paths after the write is done (or fails).
+   */
   public SerializedDiskBuffer getDiskBufferRetain() {
     return retain() ? this : null;
   }
@@ -142,6 +146,22 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
    * {@link com.gemstone.gemfire.DataSerializer#writeObject}.
    */
   public abstract void write(OutputStreamChannel channel) throws IOException;
+
+  /**
+   * Write the serialization header separately if required.
+   */
+  public boolean writeSerializationHeader(ByteBuffer src,
+      ByteBuffer writeBuf) throws IOException {
+    return true;
+  }
+
+  /**
+   * The total number of bytes that will be written to a channel
+   * by {@link #write(OutputStreamChannel)}.
+   */
+  public int channelSize() {
+    return size();
+  }
 
   /**
    * For direct ByteBuffers, returns the size (in bytes) of the used data in

@@ -226,7 +226,9 @@ public class GfxdEvictionCriteria implements EvictionCriteria<Object, Object> {
       return false;
     }
     finally {
-      region.getLogWriterI18n().fine("Getting called finally");
+      if (region.getLogWriterI18n().fineEnabled()) {
+        region.getLogWriterI18n().fine("Getting called finally");
+      }
       stats.incEvaluations();
       stats.endEvaluation(startTime, 0);
     }

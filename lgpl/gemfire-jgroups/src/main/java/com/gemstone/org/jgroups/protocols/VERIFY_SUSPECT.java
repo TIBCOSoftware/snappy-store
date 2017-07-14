@@ -29,6 +29,7 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -42,7 +43,7 @@ public class VERIFY_SUSPECT extends Protocol implements Runnable {
     protected             long timeout=2000;   // number of millisecs to wait for an are-you-dead msg
     private             int num_msgs=1;     // number of are-you-alive msgs and i-am-not-dead responses (for redundancy)
     // GemStoneAddition: accesses to suspect all synchronized on the instance.
-    final Hashtable     suspects=new Hashtable();  // keys=Addresses, vals=time in mcses since added
+    final ConcurrentHashMap suspects=new ConcurrentHashMap();  // keys=Addresses, vals=time in mcses since added
     boolean suspectsAdded; // GemStoneAddition - bug #44857, guarded by suspects
     private Thread timer=null; // GemStoneAddition - synchronized(this) to access
     static final String name="VERIFY_SUSPECT";

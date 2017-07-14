@@ -39,8 +39,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serializable;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,10 +54,6 @@ import com.gemstone.gemfire.admin.jmx.Agent;
 import com.gemstone.gemfire.admin.jmx.AgentConfig;
 import com.gemstone.gemfire.admin.jmx.AgentFactory;
 import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.cache.client.PoolFactory;
-import com.gemstone.gemfire.cache.client.PoolManager;
-import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersRequest;
-import com.gemstone.gemfire.cache.client.internal.locator.GetAllServersResponse;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -70,9 +64,7 @@ import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
-import com.gemstone.gemfire.distributed.internal.tcpserver.TcpClient;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ClassPathLoader;
@@ -81,7 +73,6 @@ import com.gemstone.gemfire.internal.GemFireLevel;
 import com.gemstone.gemfire.internal.HostStatSampler.StatsSamplerCallback;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
-import com.gemstone.gemfire.internal.admin.remote.DistributionLocatorId;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -117,7 +108,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCl
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
-import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl.NetworkInterfaceImpl;
@@ -762,7 +752,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
-    String remoteGemFireLocators = null;
+   
     // install the GemFireXD specific thread dump signal (URG) handler
     try {
       SigThreadDumpHandler.install();
@@ -881,15 +871,12 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         Attribute.SERVER_GROUPS, GfxdConstants.GFXD_SERVER_GROUPS);
     isLocator = PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
         GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
-    remoteGemFireLocators = PropertyUtil.findAndGetProperty(props, DistributionConfig
-                    .REMOTE_LOCATORS_NAME, DistributionConfig.GEMFIRE_PREFIX +
-            DistributionConfig.REMOTE_LOCATORS_NAME);
-   /*
-    if (remoteGemFireLocators != null) {
-      props.remove(DistributionConfig.REMOTE_LOCATORS_NAME);
-      props.remove(DistributionConfig.GEMFIRE_PREFIX + DistributionConfig.REMOTE_LOCATORS_NAME);
-    }
-    */
+
+
+    Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
+        GemFireSparkConnectorCacheFactory.gfeGridNamePrefix);
+    Map<String, String> gfeGridPoolProps = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
+        GemFireSparkConnectorCacheFactory.gfeGridPropsPrefix);
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,
@@ -1081,26 +1068,17 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
       try {
         CacheFactory c = null;
-        PoolFactory pf = null;
-        if(remoteGemFireLocators != null) {
-          pf = PoolManager.createFactory();
-          pf.setReadTimeout(30000);
-          this.configurePool(pf, remoteGemFireLocators);
-          c = new GemFireSparkConnectorCacheFactory(dsProps);
+        if (!gfeGridMappings.isEmpty()) {
+          c = new GemFireSparkConnectorCacheFactory(dsProps, gfeGridMappings, gfeGridPoolProps);
         } else {
           c = new CacheFactory(dsProps);
         }
-
         if (this.persistingDD) {
           c.setPdxPersistent(true);
           c.setPdxDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
         }
-        if (pf != null) {
-          this.gemFireCache = (GemFireCacheImpl) ((GemFireSparkConnectorCacheFactory)c).create(pf);
-        } else {
-          this.gemFireCache = (GemFireCacheImpl)c.create();
-        }
 
+        this.gemFireCache = (GemFireCacheImpl)c.create();
         this.gemFireCache.getLogger().info(
             "GemFire Cache successfully created.");
       } catch (CacheExistsException ex) {
@@ -1181,7 +1159,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
       FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
-      FunctionService.registerFunction(new SnappyRemoveCachedObjectsFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
       if (logger.fineEnabled()) {
@@ -1363,99 +1340,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
-  private void configurePool(PoolFactory pf, String remoteLocators) {
-    StringTokenizer remoteLocatorsTokenizer = new StringTokenizer(remoteLocators, ",");
-    DistributionLocatorId[] locators = new DistributionLocatorId[remoteLocatorsTokenizer
-            .countTokens()];
-    int i = 0;
-    while (remoteLocatorsTokenizer.hasMoreTokens()) {
-      locators[i++] = new DistributionLocatorId(remoteLocatorsTokenizer.nextToken());
-    }
-    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-        "The locators are after creation " +
-            locators + " pf is " + pf + " size " + locators.length + " remote locators " +
-            remoteLocators);
 
-
-    List<ServerLocation> servers = new ArrayList<ServerLocation>();
-    for(DistributionLocatorId locator : locators) {
-      try {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT, "The locator is 1st instance " +
-            locator);
-        InetSocketAddress addr = new InetSocketAddress(locator.getHost(), locator.getPort());
-        GetAllServersRequest req = new GetAllServersRequest("");
-        Object res = TcpClient.requestToServer(addr.getAddress(), addr.getPort(), req, 2000);
-        if (res != null) {
-          servers.addAll((List<ServerLocation>) ((GetAllServersResponse) res).getServers());
-        }
-      }catch(Exception e) {
-        System.out.println("Unable to get remote gfe servers from locator = " + locator);
-      }
-    }
-
-    List<ServerLocation> prefServers = null;
-    if (servers.size() > 0) {
-      String sparkIp = System.getenv("SPARK_LOCAL_IP");
-      String hostName = null;
-      try {
-        hostName = sparkIp != null ? InetAddress.getByName(sparkIp).getCanonicalHostName() :
-                InetAddress.getLocalHost().getCanonicalHostName();
-      } catch ( Exception e) {
-        hostName = "";
-      }
-      int spacing = servers.size() / 3;
-      if (spacing != 0) {
-        prefServers = new ArrayList<ServerLocation>();
-        ServerLocation localServer = null;
-        for(int j = 0 ; j < servers.size(); ++j) {
-          ServerLocation sl = servers.get(j);
-          if (localServer == null && sl.getHostName().equals(hostName)) {
-            localServer = sl;
-          } else {
-            if (j + 1 % spacing == 0) {
-              prefServers.add(servers.get(j));
-            }
-          }
-        }
-        if(localServer != null) {
-          if(prefServers.size() < 3) {
-            prefServers.add(0, localServer);
-          } else {
-            prefServers.set(0, localServer);
-          }
-        }
-      } else {
-        // bring local server if any to start position
-        int localServerIndex = -1;
-        for(int j = 0 ; j < servers.size(); ++j) {
-          ServerLocation sl = servers.get(j);
-          if (localServerIndex == -1 && sl.getHostName().equals(hostName)) {
-            localServerIndex = j;
-            break;
-          }
-        }
-        if (localServerIndex != -1) {
-          ServerLocation local = servers.remove(localServerIndex);
-          servers.add(0, local);
-        }
-        prefServers = servers;
-      }
-
-      for (ServerLocation srvr: prefServers ) {
-        pf.addServer(srvr.getHostName(), srvr.getPort());
-      }
-    } else {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT, "The locators are " +
-          locators + " pf is " + pf + " length " + locators.length);
-
-      for (DistributionLocatorId locator : locators) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT, "The locator is 2nd instance " +
-            locator + " pf is " + pf);
-
-        pf.addLocator(locator.getBindAddress(), locator.getPort());
-      }
-    }
-  }
 
 
   /**
@@ -2502,6 +2387,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.databaseName.equalsIgnoreCase("snappydata")) {
         this.snappyStore = true;
         this.database.setdisableStatementOptimizationToGenericPlan();
+        gemFireCache.DEFAULT_SNAPSHOT_ENABLED = true;
+        gemFireCache.startOldEntryCleanerService();
       }
     }
     ClientSharedUtils.setThriftDefault(this.snappyStore);

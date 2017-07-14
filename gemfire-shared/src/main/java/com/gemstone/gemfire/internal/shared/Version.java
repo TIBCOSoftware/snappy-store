@@ -192,6 +192,8 @@ public final class Version implements Comparable<Version> {
   public static final Version GFE_75 = new Version("GFE", "7.5", (byte)7,
       (byte)5, (byte)0, (byte)0, GFE_75_ORDINAL);
 
+
+
   private static final byte GFXD_10_ORDINAL = 25;
 
   public static final Version GFXD_10 = new Version("GFXD", "1.0", (byte)1,
@@ -227,11 +229,17 @@ public final class Version implements Comparable<Version> {
   public static final Version GFXD_20 = new Version("GFXD", "2.0",
       (byte)2, (byte)0, (byte)0, (byte)0, GFXD_20_ORDINAL, GFE_75);
 
+  private static final byte GFE_80_ORDINAL = GFXD_14_ORDINAL;
+  public static final Version GFE_80 = new Version("GFE", "8.0", (byte)8,
+      (byte)0, (byte)0, (byte)0, GFE_80_ORDINAL, false /* overwrite */);
+
   private static final byte GFXD_155_ORDINAL = 32;
 
   /** GemFire version is at 7.1 for compatibility with external clusters. */
   public static final Version GFXD_155 = new Version("GFXD", "1.5.5",
-      (byte)1, (byte)5, (byte)5, (byte)0, GFXD_155_ORDINAL, GFE_71);
+      (byte)1, (byte)5, (byte)5, (byte)0, GFXD_155_ORDINAL, GFE_80);
+
+
 
   /**
    * This constant must be set to the most current version of GFE/GFXD.
@@ -283,6 +291,11 @@ public final class Version implements Comparable<Version> {
   /** Creates a new instance of <code>Version</code> */
   private Version(String product, String name, byte major, byte minor,
       byte release, byte patch, byte ordinal) {
+    this(product, name, major, minor, release, patch, ordinal, true /* overwrite*/);
+  }
+  /** Creates a new instance of <code>Version</code> */
+  private Version(String product, String name, byte major, byte minor,
+      byte release, byte patch, byte ordinal, boolean overwrite) {
     this.productName = product;
     this.name = name;
     this.majorVersion = major;
@@ -293,7 +306,7 @@ public final class Version implements Comparable<Version> {
     this.methodSuffix = this.productName + "_" + this.majorVersion + "_"
         + this.minorVersion + "_" + this.release + "_" + this.patch;
     this.gemfireVersion = null;
-    if (ordinal != TOKEN_ORDINAL) {
+    if (overwrite && ordinal != TOKEN_ORDINAL) {
       VALUES[this.ordinal] = this;
     }
   }

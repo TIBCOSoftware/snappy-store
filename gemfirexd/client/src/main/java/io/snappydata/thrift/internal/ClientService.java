@@ -89,12 +89,6 @@ public final class ClientService extends ReentrantLock implements LobService {
   static final int NUM_TXFLAGS = TransactionAttribute.values().length;
 
   /**
-   * If true then use <code>TFramedTransport</code> for the thrift client,
-   * else the default is to use non-framed transport.
-   */
-  public static final String THRIFT_USE_FRAMED_TRANSPORT = "framed-transport";
-
-  /**
    * Stores tri-state for TransactionAttributes:
    * <p>
    * 0 for unset, -1 for false, 1 for true
@@ -376,7 +370,7 @@ public final class ClientService extends ReentrantLock implements LobService {
       binaryProtocol = Boolean.parseBoolean(props
           .remove(ClientAttribute.THRIFT_USE_BINARY_PROTOCOL));
       framedTransport = Boolean.parseBoolean(props
-          .remove(THRIFT_USE_FRAMED_TRANSPORT));
+          .remove(ClientAttribute.THRIFT_USE_FRAMED_TRANSPORT));
       useSSL = Boolean.parseBoolean(props.remove(ClientAttribute.SSL));
       // set SSL properties (csv format) into SSL params in SocketParameters
       propValue = props.remove(ClientAttribute.THRIFT_SSL_PROPERTIES);
@@ -462,14 +456,20 @@ public final class ClientService extends ReentrantLock implements LobService {
 
         TTransport inTransport, outTransport;
         TProtocol inProtocol, outProtocol;
-        final SnappyTSocket socket = new SnappyTSocket(
-            hostAddr.resolveHost(), hostAddr.getPort(), connArgs.clientID,
-            getServerType().isThriftSSL(), true, ThriftUtils
-            .isThriftSelectorServer(), readTimeout, socketParams);
-        if (this.framedTransport) {
-          inTransport = outTransport = new TFramedTransport(socket);
+        final TTransport transport;
+        if (getServerType().isThriftSSL()) {
+          transport = new SnappyTSSLSocket(hostAddr.resolveHost(),
+              hostAddr.getPort(), readTimeout, socketParams);
         } else {
-          inTransport = outTransport = socket;
+          transport = new SnappyTSocket(
+              hostAddr.resolveHost(), hostAddr.getPort(), connArgs.clientID,
+              false, true, ThriftUtils.isThriftSelectorServer(),
+              readTimeout, socketParams);
+        }
+        if (this.framedTransport) {
+          inTransport = outTransport = new TFramedTransport(transport);
+        } else {
+          inTransport = outTransport = transport;
         }
         if (getServerType().isThriftBinaryProtocol()) {
           inProtocol = new TBinaryProtocolDirect(inTransport,

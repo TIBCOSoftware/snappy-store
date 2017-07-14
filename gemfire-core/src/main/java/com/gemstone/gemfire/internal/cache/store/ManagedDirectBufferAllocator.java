@@ -18,9 +18,7 @@ package com.gemstone.gemfire.internal.cache.store;
 
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -63,11 +61,7 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
       "SNAPPYDATA_DIRECT_STORE_OBJECTS";
 
   public static final String DIRECT_STORE_DATA_FRAME_OUTPUT =
-      "DIRECT_STORE_DATA_FRAME_OUTPUT";
-
-  public static final List<String> nonEvictingOwners = new ArrayList<String>() {{
-    add(DIRECT_STORE_DATA_FRAME_OUTPUT);
-  }};
+      "DIRECT_" + STORE_DATA_FRAME_OUTPUT;
 
   public static ManagedDirectBufferAllocator instance() {
     return instance;
@@ -154,24 +148,30 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
   public ByteBuffer expand(ByteBuffer buffer, int required, String owner) {
     assert required > 0 : "expand: unexpected required = " + required;
 
-    final int currentUsed = buffer.capacity();
-    final int newLength = UnsafeHolder.getAllocationSize(
-        BufferAllocator.expandedSize(currentUsed, required));
-    final int delta = newLength - currentUsed;
-    // expect original owner to be ManagedDirectBufferAllocator
-    if (reserveMemory(owner, delta, false) ||
-        tryEvictData(owner, delta)) {
-      try {
-        return UnsafeHolder.reallocateDirectBuffer(buffer, newLength,
-            FreeBufferBase.class, freeBufferFactory(owner));
-      } catch (IllegalStateException ise) {
-        // un-reserve the delta bytes
-        CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
-            owner, delta, true);
-        throw ise;
+    final int currentUsed = buffer.limit();
+    final int currentCapacity = buffer.capacity();
+    if (currentUsed + required > currentCapacity) {
+      final int newLength = UnsafeHolder.getAllocationSize(
+          BufferAllocator.expandedSize(currentUsed, required));
+      final int delta = newLength - currentCapacity;
+      // expect original owner to be ManagedDirectBufferAllocator
+      if (reserveMemory(owner, delta, false) ||
+          tryEvictData(owner, delta)) {
+        try {
+          return UnsafeHolder.reallocateDirectBuffer(buffer, newLength,
+              FreeBufferBase.class, freeBufferFactory(owner));
+        } catch (IllegalStateException ise) {
+          // un-reserve the delta bytes
+          CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
+              owner, delta, true);
+          throw ise;
+        }
+      } else {
+        throw lowMemoryException("expand", delta);
       }
     } else {
-      throw lowMemoryException("expand", delta);
+      buffer.limit(currentUsed + required);
+      return buffer;
     }
   }
 

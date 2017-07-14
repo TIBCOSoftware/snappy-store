@@ -124,10 +124,9 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
   @Override
   public synchronized void write(
       OutputStreamChannel channel) throws IOException {
-    final ByteBuffer buffer = this.buffer;
+    final ByteBuffer buffer = this.buffer.duplicate();
     if (buffer != null) {
       write(channel, buffer);
-      buffer.rewind();
     } else {
       channel.write(DSCODE.NULL);
     }

@@ -1680,7 +1680,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
         localHost.getCanonicalHostName(), netPort, null, new Properties());
 
     // check new connection opened on second server
-    assertNumConnections(-2, -1, 1);
+    assertNumConnections(-3, -1, 1);
     assertNumConnections(1, -1, 2);
 
     // Some sanity checks for DB meta-data
@@ -1705,7 +1705,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertEquals(s, resultStr);
     assertFalse(rs.next());
 
-    assertNumConnections(-2, -1, 1);
+    assertNumConnections(-3, -1, 1);
     assertNumConnections(1, -1, 2);
 
     // now a third connection
@@ -1715,14 +1715,14 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     // Some sanity checks for DB meta-data
     checkDBMetadata(conn3, url, url2);
 
-    assertNumConnections(-3, -1, 1);
+    assertNumConnections(-4, -1, 1);
     assertNumConnections(-2, -1, 2);
 
     // close the first connection
     conn.close();
 
     // check connection closed on first server
-    assertNumConnections(-3, -2, 1);
+    assertNumConnections(-4, -2, 1);
     assertNumConnections(-2, -1, 2);
 
     PreparedStatement pstmt3 = conn3
@@ -1768,7 +1768,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     pstmt.execute();
 
     // check connections opened on second server
-    assertNumConnections(-3, -2, 1);
+    assertNumConnections(-4, -2, 1);
     // no failover for conn3 yet since no operation has been performed
     assertNumConnections(-2, -1, 2);
 
@@ -1816,7 +1816,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertFalse(rs.next());
 
     // check connections opened on second server
-    assertNumConnections(-3, -2, 1);
+    assertNumConnections(-4, -2, 1);
     assertNumConnections(-3, -1, 2);
 
     removeExpectedException(new int[] { 1 }, new int[] { 1, 2, 3 },
@@ -1854,7 +1854,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertFalse(rs.next());
 
     // check connection opened on second server
-    assertNumConnections(-3, -2, 1);
+    assertNumConnections(-4, -2, 1);
     assertNumConnections(-4, -1, 2);
 
     // now drop the table and close the connections
@@ -1862,17 +1862,17 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     stmt.close();
     conn2.close();
 
-    assertNumConnections(-3, -2, 1);
+    assertNumConnections(-4, -2, 1);
     assertNumConnections(-4, -2, 2);
 
     conn.close();
 
-    assertNumConnections(-3, -2, 1);
+    assertNumConnections(-4, -2, 1);
     assertNumConnections(-4, -3, 2);
 
     conn3.close();
 
-    assertNumConnections(-3, -2, 1);
+    assertNumConnections(-4, -2, 1);
     assertNumConnections(-4, -4, 2);
   }
 

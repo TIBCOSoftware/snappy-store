@@ -29,6 +29,8 @@ public interface StoreCallbacks {
 
   String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
 
+  String SHADOW_SCHEMA_SEPARATOR = "____";
+
   void registerTypes();
 
   Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
@@ -43,8 +45,6 @@ public interface StoreCallbacks {
   public String columnBatchTableName(String tableName);
 
   public String snappyInternalSchemaName();
-
-  void cleanUpCachedObjects(String table, Boolean sentFromExternalCluster);
 
   void registerRelationDestroyForHiveStore();
 
@@ -83,6 +83,8 @@ public interface StoreCallbacks {
   long getStoragePoolSize(boolean offHeap);
   long getExecutionPoolUsedMemory(boolean offHeap);
   long getExecutionPoolSize(boolean offHeap);
+
+  boolean shouldStopRecovery();
 
   /**
    * Get the number of bytes used for off-heap storage for given object name.

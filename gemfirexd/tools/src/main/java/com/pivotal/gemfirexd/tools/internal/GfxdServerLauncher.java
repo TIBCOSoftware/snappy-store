@@ -701,15 +701,16 @@ public class GfxdServerLauncher extends CacheServerLauncher {
         evictPercent = Integer.parseInt(evictHeapStr.substring(
             evictHeapStr.indexOf('=') + 1).trim());
       }
-      
-      if (jvmVendor != null
-          && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
-        vmArgs.add("-XX:+UseParNewGC");
-        vmArgs.add("-XX:+UseConcMarkSweepGC");
-        vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
-        vmArgs.add("-XX:+CMSClassUnloadingEnabled");
-        vmArgs.add("-XX:NewRatio=2");
-      }
+    }
+    if (jvmVendor != null
+        && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
+      vmArgs.add("-XX:+UseParNewGC");
+      vmArgs.add("-XX:+UseConcMarkSweepGC");
+      vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
+      vmArgs.add("-XX:+CMSClassUnloadingEnabled");
+      vmArgs.add("-XX:-DontCompileHugeMethods");
+      vmArgs.add("-XX:+UnlockDiagnosticVMOptions");
+      vmArgs.add("-XX:ParGCCardsPerStrideChunk=4k");
     }
 
     // If heap and off-heap sizes were both specified, then the critical and

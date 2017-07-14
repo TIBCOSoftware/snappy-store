@@ -69,11 +69,6 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public void cleanUpCachedObjects(String table,
-        Boolean sentFromExternalCluster) {
-    }
-
-    @Override
     public void registerRelationDestroyForHiveStore() {
     }
 
@@ -138,6 +133,11 @@ public abstract class CallbackFactoryProvider {
     @Override
     public long getExecutionPoolSize(boolean offHeap) {
       return 0;
+    }
+
+    @Override
+    public boolean shouldStopRecovery() {
+      return false;
     }
 
     @Override

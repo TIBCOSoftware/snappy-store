@@ -28,6 +28,7 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
 import com.gemstone.gemfire.internal.cache.PlaceHolderDiskRegion;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 
 
 /**
@@ -57,6 +58,9 @@ public static final boolean debug = Boolean.getBoolean("gemfire.verbose-lru-cloc
 public static LogWriterI18n logWriter;
 
 static private final int maxEntries;
+
+private boolean snappyStore =
+    CallbackFactoryProvider.getStoreCallbacks().isSnappyStore();
 
 static {
   String squelch = System.getProperty("gemfire.lru.maxSearchEntries");
@@ -244,6 +248,18 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
         continue;
       }
 
+      // Checking whether this entry is outside lock ,
+      // so that we won;t attempt to evict an entry whose
+      // faultIn is in process
+      // TODO Remove SnappyStore check after 0.9 . Added this check to
+      // reduce regression cycles
+      if (snappyStore && (aNode.isValueNull()|| aNode.testEvicted())) {
+        if (debug) {
+          logWriter
+              .info(LocalizedStrings.NewLRUClockHand_DISCARDING_EVICTED_ENTRY);
+        }
+        continue;
+      }
       // If this Entry is part of a transaction, skip it since
       // eviction should not cause commit conflicts
       synchronized (aNode) {
@@ -467,6 +483,11 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
 
     public int getState() {
       return 0;
+    }
+
+    @Override
+    public boolean isValueNull() {
+      return false; // Guard nodes can never be null
     }
   }
 }

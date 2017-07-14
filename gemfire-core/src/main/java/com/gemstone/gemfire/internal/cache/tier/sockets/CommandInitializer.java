@@ -273,6 +273,7 @@ public class CommandInitializer {
     // PutAll is changed to chunk responses back to the client
     gfe75Commands.put(MessageType.PUTALL, PutAll75.getCommand());
     ALL_COMMANDS.put(Version.GFE_75, gfe75Commands);
+    ALL_COMMANDS.put(Version.GFE_80, gfe75Commands);
   }
 
   public static Map<Integer,Command> getCommands(Version version) {

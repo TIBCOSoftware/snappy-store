@@ -73,7 +73,7 @@ public interface ExternalCatalog {
   /**
    * Get the metadata for all external hive tables (including all their columns).
    */
-  public List<ExternalTableMetaData> getNonStoreTables(boolean skipLocks);
+  public List<ExternalTableMetaData> getHiveTables(boolean skipLocks);
 
   /**
    * Returns the meta data of the Hive Table

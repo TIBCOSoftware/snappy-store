@@ -22,6 +22,7 @@ import java.net.*;
 import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
+import com.gemstone.gemfire.internal.shared.ClientResolverUtils;
 
 /** Stub represents an ip address and port.
 
@@ -73,10 +74,13 @@ public class Stub implements Externalizable, DataSerializable
   @Override
   public int hashCode() {
     // do not use viewID in hashCode because it is changed after creating a stub
+    return ClientResolverUtils.addIntToHashOpt(port, inAddr.hashCode());
+    /*
     int result = 0;
     // result += inAddr.hashCode(); // useless
     result += port;
     return result;
+    */
   }
   
   public void setViewID(int viewID) {

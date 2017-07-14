@@ -293,7 +293,7 @@ public interface DM extends ReplySender {
   /**
    * Return the function message-processing executor 
    */
-  public Executor getFunctionExcecutor();
+  public ExecutorService getFunctionExcecutor();
 
   /**
    * gets this distribution manager's message-processing executor
