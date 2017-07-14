@@ -1207,14 +1207,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     return true;
   }
 
-  public void doUnlockForPrimary() {
-    Lock activeWriteLock = this.getBucketAdvisor().getActiveWriteLock();
-    activeWriteLock.unlock();
-    Lock parentLock = this.getBucketAdvisor().getParentActiveWriteLock();
-    if(parentLock!= null){
-      parentLock.unlock();
-    }
-  }
 
   private boolean lockPrimaryStateReadLock(boolean tryLock) {
     Lock activeWriteLock = this.getBucketAdvisor().getActiveWriteLock();
@@ -1266,8 +1258,16 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         }
       }
     }
-
     return true;
+  }
+
+  public void doUnlockForPrimary() {
+    Lock activeWriteLock = this.getBucketAdvisor().getActiveWriteLock();
+    activeWriteLock.unlock();
+    Lock parentLock = this.getBucketAdvisor().getParentActiveWriteLock();
+    if(parentLock!= null){
+      parentLock.unlock();
+    }
   }
 
   public void takeSnapshotGIIReadLock() {
