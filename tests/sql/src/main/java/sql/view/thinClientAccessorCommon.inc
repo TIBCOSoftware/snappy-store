@@ -20,14 +20,6 @@ hydra.VmPrms-extraVMArgs   = fcn "hydra.TestConfigFcns.duplicate
                                   (\"-Xmx256m \", ${clientHosts}, true)"
                              ncf;
                              
-hydra.Prms-derbyServerClassPath = "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derbynet.jar";
-
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derby.jar";
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derbynet.jar";
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derbyclient.jar";
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derbytools.jar";
-hydra.VmPrms-extraClassPaths        += $JTESTS;
-
 hydra.Prms-manageDerbyServer = true;
 
 hydra.Prms-totalTaskTimeSec           = 600;

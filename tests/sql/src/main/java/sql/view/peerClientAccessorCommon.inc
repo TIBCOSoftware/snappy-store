@@ -8,14 +8,7 @@ hydra.VmPrms-extraClassPaths        += $GEMFIRE/../product-gfxd/lib/gemfirexd.ja
 hydra.VmPrms-extraClassPaths        += $GEMFIRE/../product-gfxd/lib/gemfirexd-tools.jar;
 hydra.VmPrms-extraClassPaths        += $GEMFIRE/../product-gfxd/lib/jline-1.0.jar;
                              
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derby.jar";
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derbynet.jar";
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derbyclient.jar";
-hydra.VmPrms-extraClassPaths        +=   "/gcm/where/java/derby/derby-10.8.2.2/jars/insane/derbytools.jar";
-hydra.VmPrms-extraClassPaths        += $JTESTS;
- 
 hydra.Prms-manageDerbyServer = true;
-hydra.Prms-extraDerbyServerVMArgs += " -Xmx1024m -Dderby.storage.pageCacheSize=32000 -Dderby.locks.waitTimeout=30 -Dderby.locks.deadlockTimeout=20 ";
 hydra.Prms-totalTaskTimeSec           = 600;
 hydra.Prms-maxResultWaitSec           = 480;
 hydra.Prms-maxCloseTaskResultWaitSec  = 300;
