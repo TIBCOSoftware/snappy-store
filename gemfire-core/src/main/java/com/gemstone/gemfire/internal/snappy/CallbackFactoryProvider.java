@@ -68,12 +68,6 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public String snappyInternalSchemaName() {
-      throw new UnsupportedOperationException("unexpected invocation for "
-          + toString());
-    }
-
-    @Override
     public void registerRelationDestroyForHiveStore() {
     }
 

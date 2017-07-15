@@ -46,8 +46,6 @@ public interface StoreCallbacks {
 
   public String columnBatchTableName(String tableName);
 
-  public String snappyInternalSchemaName();
-
   void registerRelationDestroyForHiveStore();
 
   void performConnectorOp(Object ctx);
