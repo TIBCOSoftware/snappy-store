@@ -66,7 +66,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDumpLocalResultMess
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction.QueryCancelFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.distributed.ReferencedKeyCheckerMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.ResultHolder;
-import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction.SnappyRemoveCachedObjectsFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.StatementCloseExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.*;
@@ -202,7 +201,6 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
     registerSqlSerializable(LeadNodeExecutionContext.class);
     registerSqlSerializable(LeadNodeExecutorMsg.class);
     registerSqlSerializable(SnappyResultHolder.class);
-    registerSqlSerializable(SnappyRemoveCachedObjectsFunctionArgs.class);
     registerSqlSerializable(SnappyRegionStatsCollectorResult.class);
     registerSqlSerializable(MemberStatisticsMessage.class);
     registerSqlSerializable(LeadNodeSmartConnectorOpContext.class);
