@@ -33,11 +33,8 @@ import com.gemstone.gemfire.cache.partition.PartitionListener;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
-import com.gemstone.gemfire.distributed.internal.AtomicLongWithTerminalState;
-import com.gemstone.gemfire.distributed.internal.DirectReplyProcessor;
+import com.gemstone.gemfire.distributed.internal.*;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
-import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
@@ -1287,11 +1284,16 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  public void takeSnapshotGIIWriteLock() {
+  MembershipListener giiListener = null;
+
+  public void takeSnapshotGIIWriteLock(MembershipListener listener) {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Taking exclusive snapshotGIILock on bucket " + this.getName());
       this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
+      getBucketAdvisor()
+              .addMembershipListenerAndAdviseGeneric(listener);
+      this.giiListener = listener; // Set the listener only after taking the write lock.
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully took exclusive lock on bucket " + this.getName());
     }
   }
@@ -1300,8 +1302,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Releasing exclusive snapshotGIILock on bucket " + this.getName());
-      
+
       if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
+        getBucketAdvisor().removeMembershipListener(giiListener);
+        this.giiListener = null;
         this.snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
       }
       logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Released exclusive snapshotGIILock on bucket " + this.getName());
