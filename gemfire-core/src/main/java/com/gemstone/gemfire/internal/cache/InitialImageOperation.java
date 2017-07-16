@@ -4541,7 +4541,7 @@ public class InitialImageOperation  {
     
   }
 
-  public static final boolean TRACE_GII = true;// Boolean.getBoolean("gemfire.GetInitialImage.TRACE_GII");
+  public static final boolean TRACE_GII = Boolean.getBoolean("gemfire.GetInitialImage.TRACE_GII");
   public static final boolean TRACE_GII_FINER = TRACE_GII || Boolean.getBoolean("gemfire.GetInitialImage.TRACE_GII_FINER");
   public static boolean FORCE_FULL_GII = Boolean.getBoolean("gemfire.GetInitialImage.FORCE_FULL_GII");
   

@@ -1271,7 +1271,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   public void takeSnapshotGIIReadLock() {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Taking readonly snapshotGIILock on bucket " + this.getName());
+      if (logger.fineEnabled()) {
+        logger.fine("Taking readonly snapshotGIILock on bucket " + this.getName());
+      }
       snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiReadLockForSIOwner);
     }
   }
@@ -1279,36 +1281,45 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   public void releaseSnapshotGIIReadLock() {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Releasing readonly snapshotGIILock on bucket " + this.getName());
+      if (logger.fineEnabled()) {
+        logger.fine("Releasing readonly snapshotGIILock on bucket " + this.getName());
+      }
       this.snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiReadLockForSIOwner);
     }
   }
 
-  MembershipListener giiListener = null;
+  private MembershipListener giiListener = null;
 
   public void takeSnapshotGIIWriteLock(MembershipListener listener) {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Taking exclusive snapshotGIILock on bucket " + this.getName());
+      if (logger.fineEnabled()) {
+        logger.fine("Taking exclusive snapshotGIILock on bucket " + this.getName());
+      }
       this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
       getBucketAdvisor()
               .addMembershipListenerAndAdviseGeneric(listener);
       this.giiListener = listener; // Set the listener only after taking the write lock.
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Succesfully took exclusive lock on bucket " + this.getName());
+      if (logger.fineEnabled()) {
+        logger.fine("Succesfully took exclusive lock on bucket " + this.getName());
+      }
     }
   }
 
   public void releaseSnapshotGIIWriteLock() {
     if (lockGIIForSnapshot) {
       final LogWriterI18n logger = getCache().getLoggerI18n();
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Releasing exclusive snapshotGIILock on bucket " + this.getName());
-
+      if (logger.fineEnabled()) {
+        logger.fine("Releasing exclusive snapshotGIILock on bucket " + this.getName());
+      }
       if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
         getBucketAdvisor().removeMembershipListener(giiListener);
         this.giiListener = null;
         this.snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
       }
-      logger.info(LocalizedStrings.DEBUG, "SNAPSHOTGII : Released exclusive snapshotGIILock on bucket " + this.getName());
+      if (logger.fineEnabled()) {
+        logger.fine("Released exclusive snapshotGIILock on bucket " + this.getName());
+      }
     }
   }
 

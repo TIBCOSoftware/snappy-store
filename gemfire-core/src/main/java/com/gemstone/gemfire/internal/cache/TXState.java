@@ -4064,7 +4064,6 @@ public final class TXState implements TXStateInterface {
   public void recordVersionForSnapshot(Object member, long version, Region region) {
     queue.add(new VersionInformation(member, version, region));
     Boolean wasPresent = writeRegions.putIfAbsent(region, true);
-
     // Handle both row buffer and column tables together , when column  table
     // insert is transactional , both of them can have data inserted from a transaction
     // and it might lead to deadlock.
