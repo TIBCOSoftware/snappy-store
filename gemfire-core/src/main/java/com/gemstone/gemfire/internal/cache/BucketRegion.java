@@ -1270,21 +1270,33 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public void takeSnapshotGIIReadLock() {
     if (lockGIIForSnapshot) {
-      final LogWriterI18n logger = getCache().getLoggerI18n();
-      if (logger.fineEnabled()) {
-        logger.fine("Taking readonly snapshotGIILock on bucket " + this.getName());
+      if (this.getPartitionedRegion().
+              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+        BucketRegion bufferRegion = getBufferRegion();
+        bufferRegion.takeSnapshotGIIReadLock();
+      } else {
+        final LogWriterI18n logger = getCache().getLoggerI18n();
+        if (logger.fineEnabled()) {
+          logger.fine("Taking readonly snapshotGIILock on bucket " + this);
+        }
+        snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiReadLockForSIOwner);
       }
-      snapshotGIILock.attemptLock(LockMode.READ_ONLY, -1, giiReadLockForSIOwner);
     }
   }
 
   public void releaseSnapshotGIIReadLock() {
     if (lockGIIForSnapshot) {
-      final LogWriterI18n logger = getCache().getLoggerI18n();
-      if (logger.fineEnabled()) {
-        logger.fine("Releasing readonly snapshotGIILock on bucket " + this.getName());
+      if (this.getPartitionedRegion().
+              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+        BucketRegion bufferRegion = getBufferRegion();
+        bufferRegion.releaseSnapshotGIIReadLock();
+      } else {
+        final LogWriterI18n logger = getCache().getLoggerI18n();
+        if (logger.fineEnabled()) {
+          logger.fine("Releasing readonly snapshotGIILock on bucket " + this.getName());
+        }
+        snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiReadLockForSIOwner);
       }
-      this.snapshotGIILock.releaseLock(LockMode.READ_ONLY, false, giiReadLockForSIOwner);
     }
   }
 
@@ -1292,73 +1304,65 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public void takeSnapshotGIIWriteLock(MembershipListener listener) {
     if (lockGIIForSnapshot) {
-      final LogWriterI18n logger = getCache().getLoggerI18n();
-      if (logger.fineEnabled()) {
-        logger.fine("Taking exclusive snapshotGIILock on bucket " + this.getName());
-      }
-      this.snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
-      getBucketAdvisor()
-              .addMembershipListenerAndAdviseGeneric(listener);
-      this.giiListener = listener; // Set the listener only after taking the write lock.
-      if (logger.fineEnabled()) {
-        logger.fine("Succesfully took exclusive lock on bucket " + this.getName());
+      if (this.getPartitionedRegion().
+              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+        BucketRegion bufferRegion = getBufferRegion();
+        bufferRegion.takeSnapshotGIIWriteLock(listener);
+      } else {
+        final LogWriterI18n logger = getCache().getLoggerI18n();
+        if (logger.fineEnabled()) {
+          logger.fine("Taking exclusive snapshotGIILock on bucket " + this.getName());
+        }
+        snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
+        getBucketAdvisor()
+                .addMembershipListenerAndAdviseGeneric(listener);
+        this.giiListener = listener; // Set the listener only after taking the write lock.
+        if (logger.fineEnabled()) {
+          logger.fine("Succesfully took exclusive lock on bucket " + this.getName());
+        }
       }
     }
   }
 
   public void releaseSnapshotGIIWriteLock() {
     if (lockGIIForSnapshot) {
-      final LogWriterI18n logger = getCache().getLoggerI18n();
-      if (logger.fineEnabled()) {
-        logger.fine("Releasing exclusive snapshotGIILock on bucket " + this.getName());
-      }
-      if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
-        getBucketAdvisor().removeMembershipListener(giiListener);
-        this.giiListener = null;
-        this.snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
-      }
-      if (logger.fineEnabled()) {
-        logger.fine("Released exclusive snapshotGIILock on bucket " + this.getName());
+      if (this.getPartitionedRegion().
+              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+        BucketRegion bufferRegion = getBufferRegion();
+        bufferRegion.releaseSnapshotGIIWriteLock();
+      } else {
+        final LogWriterI18n logger = getCache().getLoggerI18n();
+        if (logger.fineEnabled()) {
+          logger.fine("Releasing exclusive snapshotGIILock on bucket " + this.getName());
+        }
+        if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
+          getBucketAdvisor().removeMembershipListener(giiListener);
+          this.giiListener = null;
+          snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
+        }
+        if (logger.fineEnabled()) {
+          logger.fine("Released exclusive snapshotGIILock on bucket " + this.getName());
+        }
       }
     }
   }
 
-  private BucketRegion companionRegion;
-
-  private final Object companionRegionSync = new Object();
+  private BucketRegion bufferRegion;
+  private final Object bufferRegionSync = new Object();
 
   /**
-   * Corresponding BucketRegion from shadow table if its a row buffer &
-   * bucket from row buffer if its a shadow table. This method should always be
-   * called in conjuction with PartitionedRegion.needsBatching
-   *
+   * Corresponding bucket from row buffer if its a shadow table.
    * @return
    */
-  public BucketRegion companionRegion() {
-    if (companionRegion != null) {
-      return companionRegion;
-    }
-    if (!this.getPartitionedRegion().needsBatching() && !this.getPartitionedRegion().
-        getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
-      return companionRegion; // Return null for regions not associated with column tables
-    }
-    synchronized (companionRegionSync) {
-      if (this.getPartitionedRegion().
-          getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
-        PartitionedRegion leaderReagion = ColocationHelper.getLeaderRegion(this.getPartitionedRegion());
-        this.companionRegion = leaderReagion.getDataStore().getLocalBucketById(this.getId());
-
-      } else {
-        List<PartitionedRegion> childRegions =
-            ColocationHelper.getColocatedChildRegions(this.getPartitionedRegion());
-        Optional<PartitionedRegion> shadowTable = childRegions.stream().filter(childRegion ->
-            childRegion.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)).findFirst();
-        this.companionRegion = shadowTable.map(pr ->
-            pr.getDataStore().getLocalBucketById(this.getId())).orElseGet(null);
-
+  public BucketRegion getBufferRegion() {
+    synchronized (bufferRegionSync) {
+      if (bufferRegion != null) {
+        return bufferRegion;
       }
+      PartitionedRegion leaderReagion = ColocationHelper.getLeaderRegion(this.getPartitionedRegion());
+      this.bufferRegion = leaderReagion.getDataStore().getLocalBucketById(this.getId());
     }
-    return companionRegion;
+    return bufferRegion;
   }
 
 

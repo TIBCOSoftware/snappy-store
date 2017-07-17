@@ -4064,19 +4064,9 @@ public final class TXState implements TXStateInterface {
   public void recordVersionForSnapshot(Object member, long version, Region region) {
     queue.add(new VersionInformation(member, version, region));
     Boolean wasPresent = writeRegions.putIfAbsent(region, true);
-    // Handle both row buffer and column tables together , when column  table
-    // insert is transactional , both of them can have data inserted from a transaction
-    // and it might lead to deadlock.
     if (wasPresent == null) {
       if (region instanceof BucketRegion) {
-        BucketRegion br = (BucketRegion)region;
-        BucketRegion companionRegion = br.companionRegion();
-        if (companionRegion != null) {
-          Boolean alreadyLocked = writeRegions.putIfAbsent(companionRegion, true);
-          if (alreadyLocked == null) {
-            companionRegion.takeSnapshotGIIReadLock();
-          }
-        }
+        BucketRegion br = (BucketRegion) region;
         br.takeSnapshotGIIReadLock();
       }
     }
