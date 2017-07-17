@@ -314,6 +314,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         // set RC isolation level by default
         conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       } else {
+        String user = props.getProperty(Attribute.USERNAME_ATTR, "");
+        String pass = props.getProperty(Attribute.PASSWORD_ATTR, "");
+        logger.info("ABS SDSI.openConn(): " + user + ", " + pass);
         conn = (EngineConnection)InternalDriver.activeDriver()
             .connect(protocol, props, Converters.getJdbcIsolation(
                 snappydataConstants.DEFAULT_TRANSACTION_ISOLATION));

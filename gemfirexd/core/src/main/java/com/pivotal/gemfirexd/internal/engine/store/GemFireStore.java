@@ -2347,7 +2347,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       // just log the warning messages, during hive client initialization
       // as it generates hundreds of line of logs which are of no use.
       // Once the initialization is done, restore the logging level.
-      bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
+      // bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
 
       if (this.externalCatalog == null) {
         synchronized (this) {

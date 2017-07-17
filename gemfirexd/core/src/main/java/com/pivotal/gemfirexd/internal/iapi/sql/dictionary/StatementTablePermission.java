@@ -42,6 +42,7 @@ package com.pivotal.gemfirexd.internal.iapi.sql.dictionary;
 
 import com.pivotal.gemfirexd.internal.catalog.UUID;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -134,7 +135,9 @@ public class StatementTablePermission extends StatementPermission
 	{
 		DataDictionary dd = lcc.getDataDictionary();
 	
-		if( ! hasPermissionOnTable( dd, authorizationId, forGrant))
+		if( ! hasPermissionOnTable( dd, authorizationId, forGrant) && !getTableDescriptor(dd)
+				.getSchemaName()
+				.equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE))
 		{
 			TableDescriptor td = getTableDescriptor( dd);
 			throw StandardException.newException( forGrant ? SQLState.AUTH_NO_TABLE_PERMISSION_FOR_GRANT
