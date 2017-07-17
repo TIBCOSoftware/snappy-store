@@ -85,15 +85,18 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
 
   @Override
   public void tearDown2() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
-    invokeInEveryVM(new SerializableRunnable() {
-      @Override
-      public void run() {
-        System.clearProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION");
-        System.clearProperty("snappydata.snapshot.isolation.gii.lock");
-      }
-    });
-    super.tearDown2();
+    try {
+      System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+      invokeInEveryVM(new SerializableRunnable() {
+        @Override
+        public void run() {
+          System.clearProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION");
+          System.clearProperty("snappydata.snapshot.isolation.gii.lock");
+        }
+      });
+    } finally {
+      super.tearDown2();
+    }
   }
 
   public static void createPR(String partitionedRegionName, Integer redundancy,
@@ -158,6 +161,17 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     r.getCache().getCacheTransactionManager().commit();
   }
 
+  private void readSomeValues(int numValues) {
+    final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    final Region r = cache.getRegion(regionName);
+    r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    Map<Integer, Integer> m = new HashMap();
+    for (int i = 0; i < numValues; i++) {
+      r.get(i);
+    }
+    r.getCache().getCacheTransactionManager().commit();
+  }
+
   public void testSnapshotGII_concurrentWrites() throws Exception {
 
     startVMs(0, 2);
@@ -212,7 +226,7 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void testSnapshotGII_killDestination() throws Exception {
+  public void testSnapshotGII_concurrentReads() throws Exception {
 
     startVMs(0, 2);
     Properties props = new Properties();
@@ -230,6 +244,60 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         putSomeValues(500);
+      }
+    });
+
+    blockGII(-2, InitialImageOperation.GIITestHookType.BeforeRequestRVV);
+
+    restartServerVMNums(new int[]{2}, 0, null, null);
+
+    server2 = this.serverVMs.get(1);
+
+    AsyncInvocation ai2 = server1.invokeAsync(new SerializableRunnable() {
+      @Override
+      public void run() {
+        readSomeValues(500);
+      }
+    });
+
+    // Create the PR region
+    server2.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+
+    waitForGIICallbackStarted(-2, InitialImageOperation.GIITestHookType.BeforeRequestRVV);
+
+    unblockGII(-2, InitialImageOperation.GIITestHookType.BeforeRequestRVV);
+
+    // Wait for the PR to get initialized and GII completes on the lone bucket
+    waitForRegionInit(-2);
+
+    ai2.join();
+
+    RegionVersionVector rvv1 = getRVV(-1);
+    RegionVersionVector rvv2 = getRVV(-2);
+
+    if(!rvv1.logicallySameAs(rvv2)) {
+      fail("RVVS don't match. provider=" +rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
+    }
+  }
+
+  public void testSnapshotGII_killDestination() throws Exception {
+
+    startVMs(0, 2);
+    Properties props = new Properties();
+    final Connection conn = TestUtil.getConnection(props);
+    conn.createStatement();
+
+    VM server1 = this.serverVMs.get(0);
+    VM server2 = this.serverVMs.get(1);
+    stopVMNums(-2);
+
+    server1.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+
+    // Put some values to initialize buckets
+    server1.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        putSomeValues(100);
       }
     });
 
@@ -258,6 +326,14 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
       }
     });
 
+    server1.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+        final Region r = cache.getRegion(regionName);
+        assertEquals("After GII request node crashed region put not successful", 500, r.size());
+      }
+    });
   }
 
   public void blockGII(int vmNum, InitialImageOperation.GIITestHookType type) throws Exception {
