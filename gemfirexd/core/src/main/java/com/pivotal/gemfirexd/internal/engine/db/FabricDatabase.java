@@ -618,10 +618,19 @@ public final class FabricDatabase implements ModuleControl,
     // remove Hive store's own tables
     gfDBTablesMap.remove(
         Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
-    // tables in SNAPPYSYS_INTERNAL
-    List<String> internalColumnTablesList =
-        gfDBTablesMap.remove(com.gemstone.gemfire.internal.snappy.
-            CallbackFactoryProvider.getStoreCallbacks().snappyInternalSchemaName());
+    // CachedBatch tables (earlier stored in SNAPPYSYS_INTERNAL)
+    List<String> internalColumnTablesList = new LinkedList<>();
+    List<String> internalColumnTablesListPerSchema = new LinkedList<>();
+    for (Map.Entry<String, List<String>> e : gfDBTablesMap.entrySet()) {
+      for (String t : e.getValue()) {
+        if (CallbackFactoryProvider.getStoreCallbacks().isColumnTable(e.getKey() + "." + t)) {
+            internalColumnTablesListPerSchema.add(t);
+        }
+      }
+      e.getValue().removeAll(internalColumnTablesListPerSchema);
+      internalColumnTablesList.addAll(internalColumnTablesListPerSchema);
+      internalColumnTablesListPerSchema.clear();
+    }
     // creating a set here just for lookup, will not consume too much
     // memory as size limited by no of tables
     Set<String> internalColumnTablesSet = new HashSet<>();
