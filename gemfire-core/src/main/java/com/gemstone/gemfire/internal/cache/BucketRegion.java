@@ -1352,9 +1352,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   /**
    * Corresponding bucket from row buffer if its a shadow table.
+   *
    * @return
    */
   public BucketRegion getBufferRegion() {
+    if (bufferRegion != null) {
+      return bufferRegion;
+    }
     synchronized (bufferRegionSync) {
       if (bufferRegion != null) {
         return bufferRegion;
