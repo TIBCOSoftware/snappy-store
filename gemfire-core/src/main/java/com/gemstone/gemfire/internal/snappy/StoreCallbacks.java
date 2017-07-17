@@ -38,13 +38,13 @@ public interface StoreCallbacks {
 
   List<String> getInternalTableSchemas();
 
+  boolean isColumnTable(String qualifiedName);
+
   int getHashCodeSnappy(Object dvd, int numPartitions);
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
   public String columnBatchTableName(String tableName);
-
-  public String snappyInternalSchemaName();
 
   void registerRelationDestroyForHiveStore();
 
