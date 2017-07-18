@@ -192,6 +192,7 @@ public abstract class ThriftUtils {
           length);
     } else if (nonBlockingTransport != null) {
       try {
+        final int position = buffer.position();
         while (length > 0) {
           int numWrittenBytes = nonBlockingTransport.write(buffer);
           if (numWrittenBytes > 0) {
@@ -204,7 +205,8 @@ public abstract class ThriftUtils {
             throw new EOFException("Socket channel closed in write.");
           }
         }
-        buffer.flip();
+        // move back to original position
+        buffer.position(position);
       } catch (IOException e) {
         throw new TTransportException(e instanceof EOFException
             ? TTransportException.END_OF_FILE : TTransportException.UNKNOWN);

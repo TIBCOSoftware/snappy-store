@@ -2103,13 +2103,8 @@ public final class GemFireXDUtils {
           + constraintType + " violation for (" + msg + "), oldValue=("
           + oldValue + ") index=" + indexName, eee);
     }
-    StandardException se = StandardException.newException(
-        SQLState.NOT_IMPLEMENTED, eee, constraintType, indexName);
-    // don't report constraint violations to logs by default
-    if (!GemFireXDUtils.TraceExecution) {
-      se.setReport(StandardException.REPORT_NEVER);
-    }
-    return se;
+    return StandardException.newException(SQLState.NOT_IMPLEMENTED,
+        eee, "Modification of partitioning column in PUT INTO");
   }
 
   public static StandardException newDuplicateEntryViolation(String indexName,

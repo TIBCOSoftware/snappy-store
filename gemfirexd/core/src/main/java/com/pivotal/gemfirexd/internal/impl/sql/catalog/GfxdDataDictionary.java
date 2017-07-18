@@ -1769,6 +1769,20 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+      // ALTER_SNAPPY_TABLE
+      String[] arg_names = new String[] { "TABLE_IDENT", "IS_ADD_COL", "COL_NAME", "COL_DATATYPE", "COL_IS_NULLABLE"};
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
+              DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+              DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
+              DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+              DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+              DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
+      super.createSystemProcedureOrFunction("ALTER_SNAPPY_TABLE",
+              sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
+              newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
       // GET_SNAPPY_TABLE_STATS
       String[] arg_names = new String[] { "STATS_OBJECT"};
       TypeDescriptor[] arg_types = new TypeDescriptor[] {

@@ -15,7 +15,7 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
  */
 public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
 
-  public static final String gfeGridPropPrefix =   "spark.gemfire-grid";
+
   private Map<String, String> gfeGridMappings = null;
 
   public GemFireSparkConnectorCacheImpl(PoolFactory pf, Map<String, String> gfeGridMappings,
@@ -30,6 +30,10 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
     return new GemFireSparkConnectorCacheImpl(pf, gfeGridMappings, system, cacheConfig).init();
   }
 
+  @Override
+  public boolean hasPool() {
+    return true;
+  }
 
   @Override
   protected GemFireCacheImpl init() {

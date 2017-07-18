@@ -36,21 +36,6 @@ public abstract class CancelCriterion
 //    * <p>
 //    * In particular, a {@link DistributionManager} returns a non-null result if
 //    * message distribution has been terminated.
-  
-  /**
-   * Use this utility  function in your implementation of cancelInProgress()
-   * and cancelled() to indicate a system failure
-   * 
-   * @return failure string if system failure has occurred
-   */
-  protected final String checkFailure() {
-    Throwable tilt = SystemFailure.getFailure();
-    if (tilt != null) {
-      // Allocate no objects here!
-      return SystemFailure.JVM_CORRUPTION;
-    }
-    return null;
-  }
 
   /**
    * See if the current operation is being cancelled.  If so, it either

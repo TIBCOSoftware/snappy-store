@@ -36,6 +36,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
@@ -2410,6 +2411,13 @@ public final class GemFireTransaction extends RawTransaction implements
   }
 
   public void abort(boolean abortParent) throws StandardException {
+    try {
+      doAbort(abortParent);
+    } catch (CancelException ignored) {
+    }
+  }
+
+  private void doAbort(boolean abortParent) throws StandardException {
 
     if (GemFireXDUtils.TraceTranVerbose) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN_VERBOSE,
@@ -2468,6 +2476,13 @@ public final class GemFireTransaction extends RawTransaction implements
   }
 
   public void internalCleanup() throws StandardException {
+    try {
+      doInternalCleanup();
+    } catch (CancelException ignored) {
+    }
+  }
+
+  private void doInternalCleanup() throws StandardException {
 
     // if we have already committed or closed the TX then ignore abort
     if (this.state != ACTIVE) {

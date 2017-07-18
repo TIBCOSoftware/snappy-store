@@ -59,7 +59,7 @@ public class HiveTablesVTI extends GfxdVTITemplate
       ExternalCatalog hiveCatalog = Misc.getMemStore().getExternalCatalog();
       if (hiveCatalog != null) {
         try {
-          this.tableMetas = hiveCatalog.getNonStoreTables(true).iterator();
+          this.tableMetas = hiveCatalog.getHiveTables(true).iterator();
         } catch (Exception e) {
           // log and move on
           logger.warn("ERROR in retrieving Hive tables: " + e.toString());

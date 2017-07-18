@@ -592,7 +592,6 @@ public class LocalRegion extends AbstractRegion
       // ---
       // This grossness is necessary because there are instances where the
       // region can exist without having a cache (XML creation)
-      checkFailure();
       Cache c = LocalRegion.this.getCache();
       if (c == null) {
         return LocalizedStrings.LocalRegion_THE_CACHE_IS_NOT_AVAILABLE.toLocalizedString();
@@ -609,7 +608,6 @@ public class LocalRegion extends AbstractRegion
       // ---
       // This grossness is necessary because there are instances where the
       // region can exist without having a cache (XML creation)
-      checkFailure();
       Cache c = LocalRegion.this.getCache();
       if (c == null) {
         return new CacheClosedException("No cache", e);

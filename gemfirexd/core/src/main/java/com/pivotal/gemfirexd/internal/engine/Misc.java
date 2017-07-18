@@ -1336,7 +1336,7 @@ public abstract class Misc {
     return str;
   }
 
-  public static String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+  public static final String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
 
   public static boolean isSnappyHiveMetaTable(String schemaName) {
     return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);

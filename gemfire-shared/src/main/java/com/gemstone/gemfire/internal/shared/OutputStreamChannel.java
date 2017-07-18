@@ -80,6 +80,17 @@ public abstract class OutputStreamChannel extends OutputStream implements
   public abstract int write(ByteBuffer src) throws IOException;
 
   /**
+   * Writes an <code>int</code> value, which is comprised of four bytes,
+   * to the output stream in big-endian format
+   * compatible with {@link java.io.DataOutput#writeInt(int)}.
+   *
+   * @param v the <code>int</code> value to be written.
+   * @throws IOException if an I/O error occurs.
+   * @see java.io.DataOutput#writeInt(int)
+   */
+  public abstract void writeInt(int v) throws IOException;
+
+  /**
    * Common base method to write a given ByteBuffer source via an intermediate
    * direct byte buffer owned by the implementation of this class (if required).
    */

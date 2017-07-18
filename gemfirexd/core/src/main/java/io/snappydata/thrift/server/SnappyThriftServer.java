@@ -115,8 +115,9 @@ public final class SnappyThriftServer {
       }
     }
 
-    serverTransport = new SnappyTServerSocket(bindAddress,
-        useSSL, true, true, socketParams);
+    serverTransport = useSSL
+        ? SnappyTSSLServerSocketFactory.getServerSocket(bindAddress, socketParams)
+        : new SnappyTServerSocket(bindAddress, false, true, true, socketParams);
     hostAddress = bindAddress.getAddress().toString();
 
     final TProcessor processor;

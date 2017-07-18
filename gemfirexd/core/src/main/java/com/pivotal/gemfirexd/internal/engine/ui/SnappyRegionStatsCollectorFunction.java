@@ -81,7 +81,8 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           LocalRegion r = container.getRegion();
           if (managementService != null && r != null ) {
             RegionMXBean bean = managementService.getLocalRegionMBean(r.getFullPath());
-            if (bean != null && !(r.getFullPath().startsWith("/SNAPPY_HIVE_METASTORE/"))) {
+            if (bean != null && !(r.getFullPath().startsWith(
+                "/" + Misc.SNAPPY_HIVE_METASTORE + '/'))) {
               SnappyRegionStats dataCollector = collectDataFromBean(r, bean);
               if (dataCollector.isColumnTable()) {
                 cachBatchStats.put(dataCollector.getRegionName(), dataCollector);

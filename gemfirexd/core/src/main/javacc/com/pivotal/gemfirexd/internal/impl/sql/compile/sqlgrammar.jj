@@ -1112,6 +1112,9 @@ public class SQLParser
 		  case INTEGER:
 		  case INT:
 		  case SMALLINT:
+		  case SHORT:
+		  case BYTE:
+		  case TINYINT:
 		  case LONGINT:
 		  case FLOAT:
 		  case REAL:
@@ -1142,6 +1145,9 @@ public class SQLParser
 				  case BIT:
 					retval = true;
 					break;
+				  default:
+				    retval = true;
+				    break;
 				}
 				break;
 			}
@@ -2600,6 +2606,7 @@ TOKEN [IGNORE_CASE] :
 |	<BIT: "bit">
 |	<BOTH: "both">
 |	<BY: "by">
+|	<BYTE: "byte">
 |	<CASCADE: "cascade">
 |	<CASCADED: "cascaded">
 |	<CASE: "case">
@@ -2741,6 +2748,7 @@ TOKEN [IGNORE_CASE] :
 |	<SELECT: "select">
 |	<SESSION_USER: "session_user">
 |	<SET: "set">
+|	<SHORT: "short">
 |	<SMALLINT: "smallint">
 |	<SOME: "some">
 |	<SPACE: "space">
@@ -2756,6 +2764,7 @@ TOKEN [IGNORE_CASE] :
 |	<TEMPORARY: "temporary">
 |	<TIMEZONE_HOUR: "timezone_hour">
 |	<TIMEZONE_MINUTE: "timezone_minute">
+|	<TINYINT: "tinyint">
 |	<TO: "to">
 |	<TRANSACTION: "transaction">
 |	<TRANSLATE: "translate">
@@ -5056,7 +5065,7 @@ dataTypeCommon() throws StandardException :
 	typeDescriptor = datetimeType()
 | <BOOLEAN>
 {
-	checkInternalFeature(TypeId.BOOLEAN_NAME);
+	// checkInternalFeature(TypeId.BOOLEAN_NAME);
 	typeDescriptor = new DataTypeDescriptor(TypeId.BOOLEAN_ID, true);
 }
 |
@@ -5386,6 +5395,11 @@ exactIntegerType() throws StandardException :
 	{
 		return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.BIGINT);
 	}
+|
+	(<SHORT> | <TINYINT> | <BYTE> )
+	{
+		return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.SMALLINT);
+	}
 }
 
 /*
@@ -5496,6 +5510,10 @@ longSubType() throws StandardException :
 		throw StandardException.newException(SQLState.NOT_IMPLEMENTED, TypeId.NATIONAL_LONGVARCHAR_NAME);
 		// return DataTypeDescriptor.getBuiltInDataTypeDescriptor(TypeId.NATIONAL_LONGVARCHAR_NAME);
 	}
+|
+    {
+        return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.BIGINT);
+    }
 }
 
 /*
@@ -7996,7 +8014,10 @@ miscBuiltins() throws StandardException :
 		        lookAhead.kind == INTEGER ||
 		        lookAhead.kind == INT || 
 		        lookAhead.kind == SMALLINT ||
+		        lookAhead.kind == BYTE ||
+		        lookAhead.kind == SHORT ||
 		        lookAhead.kind == LONGINT ||
+		        lookAhead.kind == TINYINT ||
                 lookAhead.kind == YEAR ||
                 lookAhead.kind == MONTH ||
                 lookAhead.kind == DAY ||
@@ -8037,6 +8058,9 @@ miscBuiltins() throws StandardException :
 		getToken(1).kind == INT || 
 		getToken(1).kind == SMALLINT ||
 		getToken(1).kind == LONGINT ||
+		getToken(1).kind == SHORT ||
+		getToken(1).kind == TINYINT ||
+		getToken(1).kind == BYTE ||
                 getToken(1).kind == YEAR ||
                 getToken(1).kind == MONTH ||
                 getToken(1).kind == DAY ||
@@ -14539,7 +14563,7 @@ literal() throws StandardException :
 |
 	tok = booleanLiteral()
 	{
-		checkInternalFeature(tok.image);
+		// checkInternalFeature(tok.image);
 		return (ValueNode) nodeFactory.getNode(
 									C_NodeTypes.BOOLEAN_CONSTANT_NODE,
 									StringUtil.SQLEqualsIgnoreCase(tok.image, "true") ?
@@ -17605,6 +17629,7 @@ reservedKeyword() :
 |	tok = <BIT>
 |	tok = <BOTH>
 |	tok = <BY>
+|	tok = <BYTE>
 |	tok = <CASCADE>
 |	tok = <CASCADED>
 |	tok = <CASE>
@@ -17747,6 +17772,7 @@ reservedKeyword() :
 |	tok = <SELECT>
 |	tok = <SESSION_USER>
 |	tok = <SET>
+|	tok = <SHORT>
 |	tok = <SMALLINT>
 |	tok = <SOME>
 |	tok = <SPACE>
@@ -17761,6 +17787,7 @@ reservedKeyword() :
 |	tok = <TEMPORARY>
 |	tok = <TIMEZONE_HOUR>
 |	tok = <TIMEZONE_MINUTE>
+|	tok = <TINYINT>
 |	tok = <TO>
 |	tok = <TRAILING>
 |	tok = <TRANSACTION>
