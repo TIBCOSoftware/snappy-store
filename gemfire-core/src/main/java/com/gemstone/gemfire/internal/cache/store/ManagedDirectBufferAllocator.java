@@ -48,21 +48,6 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
   private static final UnsafeHolder.FreeMemoryFactory freeStoreBufferFactory =
       FreeStoreBuffer::new;
 
-  /**
-   * Overhead of allocation on off-heap memory is kept fixed at 8 even though
-   * actual overhead will be dependent on the malloc implementation.
-   */
-  public static final int DIRECT_OBJECT_OVERHEAD = 8;
-
-  /**
-   * The owner of direct buffers that are stored in Regions and tracked in UMM.
-   */
-  public static final String DIRECT_STORE_OBJECT_OWNER =
-      "SNAPPYDATA_DIRECT_STORE_OBJECTS";
-
-  public static final String DIRECT_STORE_DATA_FRAME_OUTPUT =
-      "DIRECT_" + STORE_DATA_FRAME_OUTPUT;
-
   public static ManagedDirectBufferAllocator instance() {
     return instance;
   }
@@ -77,12 +62,6 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
     return (((((com.sun.management.OperatingSystemMXBean)
         ManagementFactory.getOperatingSystemMXBean())
         .getTotalPhysicalMemorySize() << 2) / 5 + 7) >>> 3) << 3;
-  }
-
-  public ManagedDirectBufferAllocator initialize() {
-    this.logger = initLogger();
-    DirectBufferAllocator.setInstance(this);
-    return this;
   }
 
   private Logger initLogger() {
@@ -100,7 +79,8 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
     return reserveMemory(objectName, requiredSpace, true);
   }
 
-  public LowMemoryException lowMemoryException(String op, int required) {
+  @Override
+  public RuntimeException lowMemoryException(String op, int required) {
     Set<DistributedMember> m = Collections.singleton(
         GemFireCacheImpl.getExisting().getMyId());
     StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
@@ -135,7 +115,7 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
     // calculate total size required as per allocation size (aligned to 8 bytes)
     // and the direct object overhead
     final int totalSize = UnsafeHolder.getAllocationSize(size) +
-        DIRECT_OBJECT_OVERHEAD;
+        DirectBufferAllocator.DIRECT_OBJECT_OVERHEAD;
     if (reserveMemory(objectName, totalSize, false) ||
         tryEvictData(objectName, totalSize)) {
       return UnsafeHolder.allocateDirectBuffer(size, factory);
@@ -175,6 +155,7 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
     }
   }
 
+  @Override
   public void changeOwnerToStorage(ByteBuffer buffer, int capacity,
       Consumer<String> changeOwner) {
     try {
