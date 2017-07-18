@@ -161,6 +161,9 @@ public class GenericStatement
         private static final Pattern EXECUTION_ENGINE_STORE_HINT =
             Pattern.compile(".*\\bEXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s*\\b.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    	private static final Pattern ALTER_TABLE_COLUMN =
+			Pattern.compile("\\s*ALTER\\s+TABLE?.*\\s+(ADD|DROP)\\s+COLUMN\\s+.*",
+				Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 
 	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
@@ -596,7 +599,8 @@ public class GenericStatement
 					if (routeQuery && (
 							INSERT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
 							PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
-              FUNCTION_DDL_PREFIX.matcher(source).matches() )) {
+                      FUNCTION_DDL_PREFIX.matcher(source).matches() ||
+						ALTER_TABLE_COLUMN.matcher(source).matches())) {
 						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc,
