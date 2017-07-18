@@ -7,13 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
@@ -187,7 +181,8 @@ public class MemberLogsMessage extends MemberExecutorMessage {
         return name.toLowerCase().startsWith(logFileName.toLowerCase());
       }
     });
-    Arrays.sort(files);
+    // sort files in descending order
+    Arrays.sort(files, new LogFileComparator(false));
     return files;
   }
 
@@ -218,7 +213,6 @@ public class MemberLogsMessage extends MemberExecutorMessage {
       Long startIndexOfFile = sum;
       Long endIndexOfFile = sum + fileLengths[i];
 
-      // todo: log debug statement
       logger.debug("Processing file " + files[i] + ", with start index = " + startIndexOfFile +
           ", end index = " + endIndex);
 
@@ -357,4 +351,42 @@ public class MemberLogsMessage extends MemberExecutorMessage {
   public byte getGfxdID() {
     return MEMBER_LOGS_MESSAGE;
   }
+
+  /** Comparator to sort log files by file name as human expect */
+  private class LogFileComparator implements Comparator<File> {
+
+    private Boolean isAsceding;
+
+    LogFileComparator(){
+      this.isAsceding = true;
+    }
+
+    LogFileComparator(Boolean asc){
+      this.isAsceding = asc;
+    }
+
+    @Override
+    public int compare(File f1, File f2) {
+      int n1 = extractNumber(f1.getName());
+      int n2 = extractNumber(f2.getName());
+
+      return isAsceding ? (n1 - n2) : (n2 - n1);
+    }
+
+    private int extractNumber(String name) {
+      int i;
+      try {
+        int s = name.indexOf(".log") + 5;
+
+        String number = name.substring(s);
+        i = Integer.parseInt(number);
+      } catch (Exception e) {
+        // if filename does not match the format
+        // then default to 0
+        i = 0;
+      }
+      return i;
+    }
+  }
+
 }
