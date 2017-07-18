@@ -135,9 +135,9 @@ public class StatementTablePermission extends StatementPermission
 	{
 		DataDictionary dd = lcc.getDataDictionary();
 	
-		if( ! hasPermissionOnTable( dd, authorizationId, forGrant) && !getTableDescriptor(dd)
-				.getSchemaName()
-				.equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE))
+		if( ! hasPermissionOnTable( dd, authorizationId, forGrant) && !(getTableDescriptor(dd)
+				.getSchemaName().equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE) && this.privType ==
+				Authorizer.SELECT_PRIV))
 		{
 			TableDescriptor td = getTableDescriptor( dd);
 			throw StandardException.newException( forGrant ? SQLState.AUTH_NO_TABLE_PERMISSION_FOR_GRANT

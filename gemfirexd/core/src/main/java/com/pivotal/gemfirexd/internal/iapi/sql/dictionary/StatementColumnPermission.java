@@ -127,9 +127,8 @@ public class StatementColumnPermission extends StatementTablePermission
                 }
                 // GemStone changes END
 
-		if( hasPermissionOnTable(dd, authorizationId, forGrant) || getTableDescriptor(dd)
-				.getSchemaName()
-				.equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE))
+		if( hasPermissionOnTable(dd, authorizationId, forGrant) || checkHivePermission
+				(getTableDescriptor(dd)))
 			return;
 		FormatableBitSet permittedColumns = null;
 		if( ! forGrant)
@@ -171,6 +170,11 @@ public class StatementColumnPermission extends StatementTablePermission
 												  td.getName());
 		}
 	} // end of check
+
+	private boolean checkHivePermission(TableDescriptor td) throws StandardException {
+		return td.getSchemaName().equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE) &&
+				this.privType == Authorizer.SELECT_PRIV;
+	}
 
 	/**
 	 * Add one user's set of permitted columns to a list of permitted columns.
