@@ -855,6 +855,11 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
       this.openMode = openMode;
     }
 
+    // For snapshot we need to compare the version with snapshot
+    // and if the version is in the snapshot then check if it is
+    // NonLocalRowLocation so that we know if it is in the oldEntryMap
+    // Then we need to check if any entry with higher version than this exists
+    // in the snapshot
     public static final RowLocation isRowLocationValidForTransaction(
         final RowLocation rl, final TXId rlTXId, final TXStateInterface tx,
         final int openMode) {
@@ -917,6 +922,19 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
             tx != null ? tx.getTransactionId() : "(null)", Integer
                 .toHexString(openMode), localBucketSet);
       }
+      // TODO: check here is rowlocaion is valid for snapshot case
+      // get the snapshot
+      // check if the entry is present in snapshot
+      // check if it is NonLocal
+      // check if any higher version entry exists in oldEntryMap
+      if (tx != null && tx.isSnapshot()) {
+        TXState state = tx.getLocalTXState();
+        if (state != null && state.checkEntryVersion(container.getRegion(), rowloc.getRegionEntry())) {
+
+        }
+      }
+
+
       if ((rlTXId = rowloc.getTXId()) != null) {
         // below will tell whether RowLocation has to be skipped for this
         // transaction and also unwrap a TX deleted row if required

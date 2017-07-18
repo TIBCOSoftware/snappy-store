@@ -1967,7 +1967,8 @@ public class EntryEventImpl extends KeyInfo implements
       }
     }
     final IndexUpdater indexUpdater = this.region.getIndexUpdater();
-    if (indexUpdater != null && this.txState == null) {
+
+    if (indexUpdater != null && (this.txState == null || this.txState.isSnapshot())) {
       final LocalRegion indexRegion;
       if (owner != null) {
         indexRegion = owner;

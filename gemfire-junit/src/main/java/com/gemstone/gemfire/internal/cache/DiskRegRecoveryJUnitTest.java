@@ -24,9 +24,11 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Iterator;
 
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.Scope;
 import com.gemstone.gemfire.internal.Assert;
@@ -41,7 +43,8 @@ import com.gemstone.gemfire.internal.Assert;
 public class DiskRegRecoveryJUnitTest extends DiskRegionTestingBase
 {
   DiskRegionProperties diskProps = new DiskRegionProperties();
-  
+
+
   private static int EMPTY_RVV_SIZE = 6;
 
 //  private static final boolean debug = false;
@@ -69,6 +72,213 @@ public class DiskRegRecoveryJUnitTest extends DiskRegionTestingBase
   
   boolean proceedWithRolling, rollingDone, verifiedOplogs;
   final Object verifiedSync = new Object();
+
+
+
+  public void testDiskRegRecoverySnapshot()
+  {
+    /**
+     * STEP 1
+     */
+    diskProps.setPersistBackup(true);
+    diskProps.setRegionName("RecoveryTestRegion");
+    region = DiskRegionHelperFactory.getSyncPersistOnlyRegion(cache, diskProps, Scope.LOCAL);
+    verifyOplogSizeZeroAfterRecovery(region);
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    // for recovery test:
+    boolean shouldCommit = true;
+    try {
+      region.put("100", new byte[1024]);
+    }
+    catch (Exception ex) {
+      shouldCommit = false;
+      ex.printStackTrace();
+      fail("FAILED WHILE PUT:" + ex.toString());
+    } finally {
+      if (shouldCommit)
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+      else
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().rollback();
+    }
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    try {
+      region.put("100", new byte[2048]);
+      //region.put("200", new byte[1024]);
+      shouldCommit = false;
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      try {
+        Thread.sleep(60000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      fail("FAILED WHILE PUT:" + ex.toString());
+    } finally {
+      if (shouldCommit)
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+      else
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().rollback();
+    }
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
+    TXState txState = txstate.getLocalTXState();
+    Iterator itr = txstate.getLocalEntriesIterator(null, false, false, true, (LocalRegion)region);
+    //  Verifying the get operation:
+    int num = 0;
+    while (itr.hasNext()) {
+      RegionEntry re = (RegionEntry)itr.next();
+      logWriter.info("txitr : re.getVersionStamp() " + re.getVersionStamp().getRegionVersion());
+      if (!re.isTombstone()) {
+        num++;
+        byte[] val = (byte[])re._getValue();
+        assertEquals(1024, val.length);
+        for (int i=0; i < 1024; i++) {
+          assertEquals(0, val[i]);
+        }
+      }
+    }
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+    //getByteArrVal("100", region, 1024);
+
+    int origSize = region.size();
+    /**
+     * close the cache after that create it again and then put few more values
+     */
+    if (cache != null) {
+      cache.close();
+    }
+
+    /**
+     * STEP 2: create the cache and region with the same name
+     */
+    try {
+      try {
+        cache = createCache();
+      }
+      catch (Exception e) {
+        fail(" failure in creation of cache due to " + e);
+      }
+      //Create region
+      diskProps.setPersistBackup(true);
+      diskProps.setRegionName("RecoveryTestRegion");
+      region = DiskRegionHelperFactory.getSyncPersistOnlyRegion(cache,
+          diskProps, Scope.LOCAL);
+      assertEquals(origSize, region.size());
+      //Verifying the get operation:
+      //getByteArrVal("100", region, 2048);
+
+      GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      txstate = TXManagerImpl.getCurrentTXState();
+      txState = txstate.getLocalTXState();
+      itr = txstate.getLocalEntriesIterator(null, false, false, true, (LocalRegion)region);
+      //  Verifying the get operation:
+      num = 0;
+      while (itr.hasNext()) {
+        RegionEntry re = (RegionEntry)itr.next();
+        logWriter.info("txitr : re.getVersionStamp() " + re.getVersionStamp().getRegionVersion());
+        if (!re.isTombstone()) {
+          num++;
+          byte[] val = (byte[])re.getValueInVMOrDiskWithoutFaultIn((LocalRegion)region);
+          assertEquals(1024, val.length);
+          for (int i=0; i < 1024; i++) {
+            assertEquals(0, val[i]);
+          }
+        }
+      }
+      GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+
+    }
+    catch (Exception e) {
+      logWriter.error("exception not expected", e);
+      fail("failed while (in STEP 2) creating the cache and/or region"
+          + e.toString());
+    }
+    closeDown();  // closes disk file which will flush all buffers
+
+  }
+
+  /**
+   * in this case row is deleted from oldEntryMap
+   */
+  public void testDiskRegRecoverySnapshotRollback()
+  {
+    /**
+     * STEP 1
+     */
+    diskProps.setPersistBackup(true);
+    diskProps.setRegionName("RecoveryTestRegion");
+    region = DiskRegionHelperFactory.getSyncPersistOnlyRegion(cache, diskProps, Scope.LOCAL);
+    verifyOplogSizeZeroAfterRecovery(region);
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    // for recovery test:
+    boolean shouldCommit = true;
+    try {
+      region.put("100", new byte[1024]);
+    }
+    catch (Exception ex) {
+      shouldCommit = false;
+      ex.printStackTrace();
+      fail("FAILED WHILE PUT:" + ex.toString());
+    } finally {
+      if (shouldCommit)
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+      else
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().rollback();
+    }
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    try {
+      region.put("100", new byte[2048]);
+      //region.put("200", new byte[1024]);
+      shouldCommit = false;
+    } catch (Exception ex) {
+      ex.printStackTrace();
+      try {
+        Thread.sleep(60000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      fail("FAILED WHILE PUT:" + ex.toString());
+    } finally {
+      if (shouldCommit)
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+      else
+        GemFireCacheImpl.getInstance().getCacheTransactionManager().rollback();
+    }
+
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
+    TXState txState = txstate.getLocalTXState();
+    Iterator itr = txstate.getLocalEntriesIterator(null, false, false, true, (LocalRegion)region);
+    //  Verifying the get operation:
+    int num = 0;
+    while (itr.hasNext()) {
+      RegionEntry re = (RegionEntry)itr.next();
+      logWriter.info("txitr : re.getVersionStamp() " + re.getVersionStamp().getRegionVersion());
+      if (!re.isTombstone()) {
+        num++;
+        byte[] val = (byte[])re._getValue();
+        assertEquals(1024, val.length);
+        for (int i=0; i < 1024; i++) {
+          assertEquals(0, val[i]);
+        }
+      }
+    }
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+    //getByteArrVal("100", region, 1024);
+
+    closeDown();  // closes disk file which will flush all buffers
+
+  }
 
   /**
    * Disk region recovery test for Persist only with sync writes. Test has four
@@ -528,6 +738,17 @@ public class DiskRegRecoveryJUnitTest extends DiskRegionTestingBase
     // val should be an unitialized array of bytes of length 1024
     assertEquals(1024, val.length);
     for (int i=0; i < 1024; i++) {
+      assertEquals(0, val[i]);
+    }
+  }
+
+  private void getByteArrVal(String key, Region region, int size)
+  {
+    byte[] val = (byte[])region.get(key);
+    //verify that the retrieved byte[] equals to the value put initially.
+    // val should be an unitialized array of bytes of length 1024
+    assertEquals(size, val.length);
+    for (int i=0; i < size; i++) {
       assertEquals(0, val[i]);
     }
   }

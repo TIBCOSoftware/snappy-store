@@ -177,7 +177,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   private final long beginTime;
 
   /** True if operations related to transactions have to be logged globally. */
-  private static boolean VERBOSE = VERBOSE_ON();
+  private static boolean VERBOSE = true;//VERBOSE_ON();
   private static boolean VERBOSEVERBOSE = VERBOSEVERBOSE_ON();
   public static boolean LOG_FINE = VERBOSE | VERBOSEVERBOSE;
   public static boolean LOG_FINEST = VERBOSEVERBOSE;

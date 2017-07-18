@@ -337,7 +337,7 @@ public class LocalRegion extends AbstractRegion
   public static final ReadEntryUnderLock READ_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj).getValue((LocalRegion)context);
+      return ((RegionEntry)lockObj).getValue((LocalRegion)context);
     }
   };
 
@@ -345,7 +345,7 @@ public class LocalRegion extends AbstractRegion
     @Retained
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj)._getValueRetain((LocalRegion)context,
+      return ((RegionEntry)lockObj)._getValueRetain((LocalRegion)context,
           false);
     }
   };
@@ -353,7 +353,7 @@ public class LocalRegion extends AbstractRegion
   public static final ReadEntryUnderLock READ_TOKEN = new ReadEntryUnderLock() {
     public final Token readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj).getValueAsToken();
+      return ((RegionEntry)lockObj).getValueAsToken();
     }
   };
 
@@ -361,14 +361,14 @@ public class LocalRegion extends AbstractRegion
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, int iContext, boolean allowTombstones) {
       return ((LocalRegion)context)
-          .getREValueForTXRead((AbstractRegionEntry)lockObj);
+          .getREValueForTXRead((RegionEntry)lockObj);
     }
   };
 
   public static final ReadEntryUnderLock GET_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, int iContext, boolean allowTombstones) {
-      return ((LocalRegion)context).getEntryValue((AbstractRegionEntry)lockObj);
+      return ((LocalRegion)context).getEntryValue((RegionEntry)lockObj);
     }
   };
 
