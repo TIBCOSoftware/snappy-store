@@ -36,6 +36,7 @@ import javax.annotation.Nonnull;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.control.RebalanceOperation;
 import com.gemstone.gemfire.cache.control.ResourceManager;
