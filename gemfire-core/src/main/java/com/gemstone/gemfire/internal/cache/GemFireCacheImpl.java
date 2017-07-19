@@ -568,7 +568,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
     }
 
-    if(oldRe == null) {
+    if (oldRe == null) {
       return;
     }
 
@@ -610,13 +610,13 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     // create an even with Op CREATE
     // onEvent and postEvent can be called
     // Later we can optimize it
-    final IndexUpdater indexUpdater = region.getIndexUpdater();
+/*    final IndexUpdater indexUpdater = region.getIndexUpdater();
     if (indexUpdater != null) {
       EntryEventImpl event = EntryEventImpl.create(region, Operation.CREATE, oldRe.getKey(),
           oldRe._getValue(), null, false, region.getMyId());
       indexUpdater.onEvent(region, event, oldRe);
       indexUpdater.postEvent(region, event, oldRe, true);
-    }
+    }*/
 
     if (getLoggerI18n().fineEnabled()) {
       getLoggerI18n().info(LocalizedStrings.DEBUG, "For key  " + oldRe.getKeyCopy() + " " +

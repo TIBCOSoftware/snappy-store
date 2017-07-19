@@ -1182,11 +1182,6 @@ public final class TXState implements TXStateInterface {
             }
             ((LocalRegion)vi.region).getVersionVector().
                 recordVersionForSnapshot((VersionSource)vi.member, vi.version, null);
-
-            if(((LocalRegion)vi.region).getDiskRegion()!=null) {
-              ((LocalRegion)vi.region).getDiskRegion().getRegionVersionVector().
-                  recordVersionForSnapshot((VersionSource)vi.member, vi.version, null);
-            }
           }
         } finally {
           cache.releaseWriteLockOnSnapshotRvv();

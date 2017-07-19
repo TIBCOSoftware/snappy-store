@@ -2461,6 +2461,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
         GfxdSystemProcedureMessage.SysProcMethod.setNanoTimerType, false, true);
   }
 
+  // TODO: send to all nodes after doing local commit
   public static void COMMIT_SNAPSHOT_TXID(String txId) throws SQLException, StandardException {
     TXStateInterface txState = null;
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
@@ -2499,6 +2500,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
+  //TODO: send to all nodes after doing local commit
   public static void ROLLBACK_SNAPSHOT_TXID(String txId) throws SQLException, StandardException {
     TXStateInterface txState = null;
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
@@ -2508,7 +2510,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       StringTokenizer st = new StringTokenizer(txId, ":");
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+            "in procedure ROLLBACK_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
                 + " TxManager " + TXManagerImpl.getCurrentTXId()
                 + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
       }
@@ -2531,7 +2533,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure COMMIT_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+          "in procedure ROLLBACK_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
               + " TxManager " + TXManagerImpl.getCurrentTXId()
               + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
@@ -2575,7 +2577,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure GET_SNAPSHOT_TXID() SURANJAN for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+          "in procedure START_SNAPSHOT_TXID() SURANJAN for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
               + " TxManager " + TXManagerImpl.getCurrentTXId()
               + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
@@ -2587,10 +2589,11 @@ public class GfxdSystemProcedures extends SystemProcedures {
       txid[0] = "null";
     }
     /*// tc commit will clear all the artifacts but will not commit actual txState
-    // that should be committed in COMMIT procedure
+    // that should be committed in COMMIT procedure*/
+    // start may be called on different conn
     tc.resetActiveTXState(true);
     TXManagerImpl.getOrCreateTXContext().clearTXState();
-    TXManagerImpl.snapshotTxState.set(null);*/
+    TXManagerImpl.snapshotTxState.set(null);
   }
 
   public static void USE_SNAPSHOT_TXID(String txId) throws SQLException {

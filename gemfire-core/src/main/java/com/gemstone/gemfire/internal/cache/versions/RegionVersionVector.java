@@ -800,15 +800,15 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
       forPrinting = memberToVersionSnapshot;
     }
 
-    if (logger!= null && logger.fineEnabled()) {
+    if (logger!= null && logger.fineEnabled() || DEBUG) {
       String regionpath = "";
       if (event != null && event.getRegion() != null) {
         regionpath = event.getRegion().getFullPath();
       }
-      logger.fine("Recorded version: " + version + " for member " + member + " in the snapshot region : " +
-              regionpath + " the snapshot is " + forPrinting +
-              " it contains version after recording "
-              + forPrinting.get(member).contains(version));
+      logger.info(LocalizedStrings.DEBUG, "Recorded version: " + version + " for member " + member + " in the snapshot region : " +
+          regionpath + " the snapshot is " + forPrinting +
+          " it contains version after recording "
+          + forPrinting.get(member).contains(version));
     }
   }
 
