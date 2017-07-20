@@ -750,7 +750,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
     if (cache != null && !cache.snapshotEnabled()) {
       return;
     }
-    TXStateInterface tx = event != null ? event.getTXState() : TXManagerImpl.getCurrentTXState();
+    TXStateInterface tx = event != null ? event.getTXState() : null;//TXManagerImpl.getCurrentTXState();
     // Here we need to record the version directly if the event is being applied from GIIed txState.
     // This breaks the atomicity?
 

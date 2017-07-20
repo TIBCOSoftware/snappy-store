@@ -2471,7 +2471,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       StringTokenizer st = new StringTokenizer(txId, ":");
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+            "in procedure COMMIT_SNAPSHOT_TXID() SURANJAN " + txId + " for connid " + tc.getConnectionID()
                 + " TxManager " + TXManagerImpl.getCurrentTXId()
                 + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
       }
@@ -2494,7 +2494,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure COMMIT_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+          "in procedure COMMIT_SNAPSHOT_TXID() SURANJAN afer commit" + txId + " for connid " + tc.getConnectionID()
               + " TxManager " + TXManagerImpl.getCurrentTXId()
               + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
@@ -2510,7 +2510,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       StringTokenizer st = new StringTokenizer(txId, ":");
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure ROLLBACK_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+            "in procedure ROLLBACK_SNAPSHOT_TXID() SURANJAN " + txId + " for connid " + tc.getConnectionID()
                 + " TxManager " + TXManagerImpl.getCurrentTXId()
                 + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
       }
@@ -2533,7 +2533,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure ROLLBACK_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+          "in procedure ROLLBACK_SNAPSHOT_TXID() SURANJAN afer commit" + txId + " for connid " + tc.getConnectionID()
               + " TxManager " + TXManagerImpl.getCurrentTXId()
               + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
@@ -2591,9 +2591,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
     /*// tc commit will clear all the artifacts but will not commit actual txState
     // that should be committed in COMMIT procedure*/
     // start may be called on different conn
-    tc.resetActiveTXState(true);
-    TXManagerImpl.getOrCreateTXContext().clearTXState();
-    TXManagerImpl.snapshotTxState.set(null);
+    //tc.resetActiveTXState(true);
+    //TXManagerImpl.getOrCreateTXContext().clearTXState();
+    //TXManagerImpl.snapshotTxState.set(null);
   }
 
   public static void USE_SNAPSHOT_TXID(String txId) throws SQLException {
@@ -2608,7 +2608,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     if (state == null) {
       if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure USE_SNAPSHOT_TXID() creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+          "in procedure USE_SNAPSHOT_TXID() SURANJAN creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
               + " txId  " +txId);
       }
       // if state is null then create txstate and use
@@ -2622,7 +2622,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     if (TXManagerImpl.snapshotTxState.get() != null) {
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure USE_SNAPSHOT_TXID(), for txid  " + txId1 + " txState : " + state + " connId" + tc.getConnectionID());
+            "in procedure USE_SNAPSHOT_TXID() SURANJAN for txid  " + txId1 + " txState : " + state + " connId" + tc.getConnectionID());
       }
     }
   }
