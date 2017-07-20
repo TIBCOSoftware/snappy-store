@@ -33,8 +33,12 @@ import com.gemstone.gemfire.cache.partition.PartitionListener;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
-import com.gemstone.gemfire.distributed.internal.*;
+import com.gemstone.gemfire.distributed.internal.AtomicLongWithTerminalState;
+import com.gemstone.gemfire.distributed.internal.DirectReplyProcessor;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
+import com.gemstone.gemfire.distributed.internal.DistributionManager;
+import com.gemstone.gemfire.distributed.internal.DistributionStats;
+import com.gemstone.gemfire.distributed.internal.MembershipListener;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
@@ -45,6 +49,7 @@ import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
 import com.gemstone.gemfire.internal.cache.locks.ReentrantReadWriteWriteShareLock;
 import com.gemstone.gemfire.internal.cache.partitioned.*;
@@ -63,6 +68,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 
@@ -94,17 +100,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private static final ThreadLocal<BucketRegionIndexCleaner> bucketRegionIndexCleaner = 
       new ThreadLocal<BucketRegionIndexCleaner>() ;
 
-
-  /**
-   * A read/write lock to prevent writing to the bucket when GII from this bucket is in progress
-   */
-  private final ReentrantReadWriteWriteShareLock snapshotGIILock
-      = new ReentrantReadWriteWriteShareLock();
-
-  private final Object giiReadLockForSIOwner = new Object();
-  private final Object giiWriteLockForSIOwner = new Object();
-
-  private boolean lockGIIForSnapshot = Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
 
   /**
    * Contains size in bytes of the values stored
@@ -262,6 +257,19 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   public final ReentrantReadWriteLock columnBatchFlushLock =
       new ReentrantReadWriteLock();
 
+
+  /**
+   * A read/write lock to prevent writing to the bucket when GII from this bucket is in progress
+   */
+  private final ReentrantReadWriteWriteShareLock snapshotGIILock
+      = new ReentrantReadWriteWriteShareLock();
+
+  private final Object giiReadLockForSIOwner = new Object();
+  private final Object giiWriteLockForSIOwner = new Object();
+
+  private boolean lockGIIForSnapshot =
+      Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
+
   public final AtomicLong5 getEventSeqNum() {
     return eventSeqNum;
   }
@@ -287,11 +295,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     Assert.assertTrue(internalRegionArgs.getPartitionedRegion() != null);
     this.redundancy = internalRegionArgs.getPartitionedRegionBucketRedundancy();
     this.partitionedRegion = internalRegionArgs.getPartitionedRegion();
-
-    if((this.getPartitionedRegion().needsBatching() || this.isInternalColumnTable()) &&
-        cache.snapshotEnabled()){
-      this.lockGIIForSnapshot = true;
-    }
   }
   
   // Attempt to direct the GII process to the primary first
@@ -344,7 +347,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       } else {
         super.initialize(snapshotInputStream, imageTarget, internalRegionArgs);
       }
-      
+
       success = true;
     } finally {
       if(!success) {
@@ -818,7 +821,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         }
       }
     }
-
     return success;
   }
 
@@ -1205,7 +1207,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     return true;
   }
 
-
   private boolean lockPrimaryStateReadLock(boolean tryLock) {
     Lock activeWriteLock = this.getBucketAdvisor().getActiveWriteLock();
     Lock parentLock = this.getBucketAdvisor().getParentActiveWriteLock();
@@ -1256,6 +1257,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         }
       }
     }
+    
     return true;
   }
 
@@ -1268,10 +1270,52 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
+  private boolean readLockEnabled() {
+    if (lockGIIForSnapshot) { // test hook
+      return true;
+    }
+    if ((this.getPartitionedRegion().needsBatching() ||
+        this.getPartitionedRegion().isInternalColumnTable()) &&
+        cache.snapshotEnabled()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private boolean writeLockEnabled() {
+    if (lockGIIForSnapshot) { // test hook
+      return true;
+    }
+    if ((isRowBuffer() || this.getPartitionedRegion().isInternalColumnTable()) &&
+        cache.snapshotEnabled()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private volatile Boolean rowBuffer = false;
+
+  public boolean isRowBuffer() {
+    final Boolean rowBuffer = this.rowBuffer;
+    if (rowBuffer || this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+      return rowBuffer;
+    }
+    boolean isRowBuffer = false;
+    List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(this.getPartitionedRegion());
+    for (PartitionedRegion pr : childRegions) {
+      isRowBuffer |= pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+    }
+    this.rowBuffer = isRowBuffer;
+    return isRowBuffer;
+  }
+
+
   public void takeSnapshotGIIReadLock() {
-    if (lockGIIForSnapshot) {
+    if (readLockEnabled()) {
       if (this.getPartitionedRegion().
-              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+          getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
         BucketRegion bufferRegion = getBufferRegion();
         bufferRegion.takeSnapshotGIIReadLock();
       } else {
@@ -1284,10 +1328,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
+
   public void releaseSnapshotGIIReadLock() {
-    if (lockGIIForSnapshot) {
+    if (readLockEnabled()) {
       if (this.getPartitionedRegion().
-              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+          getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
         BucketRegion bufferRegion = getBufferRegion();
         bufferRegion.releaseSnapshotGIIReadLock();
       } else {
@@ -1303,9 +1348,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private MembershipListener giiListener = null;
 
   public void takeSnapshotGIIWriteLock(MembershipListener listener) {
-    if (lockGIIForSnapshot) {
+    if (writeLockEnabled()) {
       if (this.getPartitionedRegion().
-              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+          getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
         BucketRegion bufferRegion = getBufferRegion();
         bufferRegion.takeSnapshotGIIWriteLock(listener);
       } else {
@@ -1315,7 +1360,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         }
         snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
         getBucketAdvisor()
-                .addMembershipListenerAndAdviseGeneric(listener);
+            .addMembershipListenerAndAdviseGeneric(listener);
         this.giiListener = listener; // Set the listener only after taking the write lock.
         if (logger.fineEnabled()) {
           logger.fine("Succesfully took exclusive lock on bucket " + this.getName());
@@ -1325,9 +1370,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   public void releaseSnapshotGIIWriteLock() {
-    if (lockGIIForSnapshot) {
+    if (writeLockEnabled()) {
       if (this.getPartitionedRegion().
-              getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+          getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
         BucketRegion bufferRegion = getBufferRegion();
         bufferRegion.releaseSnapshotGIIWriteLock();
       } else {
@@ -1369,13 +1414,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     return bufferRegion;
   }
 
-
   /**
    * Release the lock on the bucket that makes the bucket
    * stay the primary during a write.
    */
   private void endLocalWrite(EntryEventImpl event) {
     doUnlockForPrimary();
+
     removeAndNotifyKey(event.getKey());
   }
 
