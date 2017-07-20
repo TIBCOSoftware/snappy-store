@@ -135,9 +135,8 @@ public class StatementTablePermission extends StatementPermission
 	{
 		DataDictionary dd = lcc.getDataDictionary();
 	
-		if( ! hasPermissionOnTable( dd, authorizationId, forGrant) && !(getTableDescriptor(dd)
-				.getSchemaName().equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE) && this.privType ==
-				Authorizer.SELECT_PRIV))
+		if( ! hasPermissionOnTable( dd, authorizationId, forGrant) && !isSelectOnHiveMetastore
+				(getTableDescriptor(dd)))
 		{
 			TableDescriptor td = getTableDescriptor( dd);
 			throw StandardException.newException( forGrant ? SQLState.AUTH_NO_TABLE_PERMISSION_FOR_GRANT
@@ -148,6 +147,11 @@ public class StatementTablePermission extends StatementPermission
 												  td.getName());
 		}
 	} // end of check
+
+	protected boolean isSelectOnHiveMetastore(TableDescriptor td) throws StandardException {
+		return td.getSchemaName().equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE) &&
+				this.privType == Authorizer.SELECT_PRIV;
+	}
 
 	protected TableDescriptor getTableDescriptor(DataDictionary dd)  throws StandardException
 	{
