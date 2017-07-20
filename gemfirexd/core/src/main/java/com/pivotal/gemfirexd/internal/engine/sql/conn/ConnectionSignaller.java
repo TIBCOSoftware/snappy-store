@@ -29,6 +29,7 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -239,6 +240,9 @@ public final class ConnectionSignaller extends Thread {
           break;
         }
       }
+      // This clears the pending references of the offheap.
+      // Kept this call here to avoid creating a new thread. 
+      UnsafeHolder.releasePendingReferences();
     }
     if (GemFireXDUtils.TraceConnectionSignaller) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONNECTION_SIGNALLER,
