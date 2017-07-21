@@ -40,8 +40,12 @@
 
 package com.pivotal.gemfirexd.internal.impl.sql.execute;
 
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
@@ -60,6 +64,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TupleDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ViewDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.SYSTABLEPERMSRowFactory;
+import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
 import java.util.Arrays;
 import java.util.List;
@@ -222,20 +227,48 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 									List grantees)
 		throws StandardException
 	{
+		doExecuteGrantRevoke(activation, grant, grantees, columnBitSets, actionAllowed, true, td);
+		GemFireStore ms = Misc.getMemStore();
+		// TODO ashetkar Get a better way to check if security is enabled.
+		if (ms.isSnappyStore() && "LDAP".equalsIgnoreCase(ms.getBootProperty(Attribute.AUTH_PROVIDER))
+			&& ms.getExternalCatalog().isColumnTable(td.getSchemaName(), td.getName(), true)) {
+			String cbTable = CallbackFactoryProvider.getStoreCallbacks().columnBatchTableName(td
+					.getName());
+			DataDictionary dd = activation.getLanguageConnectionContext().getDataDictionary();
+			TableDescriptor ttd = dd.getTableDescriptor(cbTable, td.getSchemaDescriptor(), activation
+					.getLanguageConnectionContext().getTransactionExecute());
+			doExecuteGrantRevoke(activation, grant, grantees, new FormatableBitSet[0], null, false,
+					ttd);
+		}
+	}
+
+	private void doExecuteGrantRevoke( Activation activation,
+			boolean grant,
+			List grantees,
+			FormatableBitSet[] columnBitSets,
+			boolean[] actionAllowed,
+			boolean checkOwnership,
+			TableDescriptor td)
+			throws StandardException
+	{
 		LanguageConnectionContext lcc = activation.getLanguageConnectionContext();
 		DataDictionary dd = lcc.getDataDictionary();
 		String currentUser = lcc.getAuthorizationId();
 		TransactionController tc = lcc.getTransactionExecute();
 		SchemaDescriptor sd = td.getSchemaDescriptor();
-		
+
 // GemStone changes BEGIN
 		dd.startWriting(lcc);
 		this.schemaName = sd.getSchemaName();
+		if (checkOwnership)
 		this.tableName = td.getName();
 // GemStone changes END
 		// Check that the current user has permission to grant the privileges.
+// GemStone changes BEGIN
+		if (checkOwnership)
+// GemStone changes END
 		checkOwnership( currentUser, td, sd, dd, lcc, grant);
-		
+
 		DataDescriptorGenerator ddg = dd.getDataDescriptorGenerator();
 
 		TablePermsDescriptor tablePermsDesc =
