@@ -1442,6 +1442,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
           throw PublicAPI.wrapStandardException(se);
         }
       }
+    } else {
+      throw Util.generateCsSQLException(SQLState.LANG_TABLE_NOT_FOUND, tableName);
     }
 
     final GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.
