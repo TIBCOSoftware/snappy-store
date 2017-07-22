@@ -209,9 +209,12 @@ public final class ConnectionSignaller extends Thread {
           changeList.clear();
         }
 
+        // This clears the pending references of the offheap.
+        // Kept this call here to avoid creating a new thread.
+        UnsafeHolder.releasePendingReferences();
+
         // invoke the finalizer reference queue
         FinalizeObject.getServerHolder().invokePendingFinalizers();
-
       } catch (InterruptedException ie) {
         SystemFailure.checkFailure();
         // Some interruption other than shutdown has caused it so exit.
@@ -240,10 +243,7 @@ public final class ConnectionSignaller extends Thread {
           break;
         }
       }
-      // This clears the pending references of the offheap.
-      // Kept this call here to avoid creating a new thread. 
-      UnsafeHolder.releasePendingReferences();
-    }
+     }
     if (GemFireXDUtils.TraceConnectionSignaller) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONNECTION_SIGNALLER,
           "thread ending.");
