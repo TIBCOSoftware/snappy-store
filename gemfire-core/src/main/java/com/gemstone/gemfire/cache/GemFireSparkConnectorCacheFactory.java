@@ -173,7 +173,7 @@ public class GemFireSparkConnectorCacheFactory extends CacheFactory {
       }
     } else {
       for (DistributionLocatorId locator : locators) {
-        pf.addLocator(locator.getBindAddress(), locator.getPort());
+        pf.addLocator(locator.getHost().getHostName(), locator.getPort());
       }
     }
     return pf;
