@@ -243,7 +243,7 @@ public final class ConnectionSignaller extends Thread {
           break;
         }
       }
-     }
+    }
     if (GemFireXDUtils.TraceConnectionSignaller) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONNECTION_SIGNALLER,
           "thread ending.");
