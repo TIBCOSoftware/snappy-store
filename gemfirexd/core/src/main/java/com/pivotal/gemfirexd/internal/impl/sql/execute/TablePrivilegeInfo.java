@@ -44,7 +44,10 @@ import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeClearCacheMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -66,6 +69,8 @@ import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.SYSTABLEPERMSRowFactory;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -228,19 +233,57 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 		throws StandardException
 	{
 		doExecuteGrantRevoke(activation, grant, grantees, columnBitSets, actionAllowed, true, td);
-		GemFireStore ms = Misc.getMemStore();
+
 		// TODO ashetkar Get a better way to check if security is enabled.
-		if (ms.isSnappyStore() && "LDAP".equalsIgnoreCase(ms.getBootProperty(Attribute.AUTH_PROVIDER))
-			&& ms.getExternalCatalog().isColumnTable(td.getSchemaName(), td.getName(), true)) {
-			String cbTable = CallbackFactoryProvider.getStoreCallbacks().columnBatchTableName(td
-					.getName());
-			DataDictionary dd = activation.getLanguageConnectionContext().getDataDictionary();
-			TableDescriptor ttd = dd.getTableDescriptor(cbTable, td.getSchemaDescriptor(), activation
-					.getLanguageConnectionContext().getTransactionExecute());
-			doExecuteGrantRevoke(activation, grant, grantees, new FormatableBitSet[0], null, false,
-					ttd);
-		}
-	}
+		GemFireStore ms = Misc.getMemStore();
+		if (ms.isSnappyStore() &&
+        ("LDAP".equalsIgnoreCase(ms.getBootProperty(Attribute.AUTH_PROVIDER)) ||
+            "LDAP".equalsIgnoreCase(ms.getBootProperty(Attribute.SERVER_AUTH_PROVIDER)))) {
+		  if (ms.getExternalCatalog().isColumnTable(td.getSchemaName(), td.getName(), true)) {
+		    String cbTable =
+            CallbackFactoryProvider.getStoreCallbacks().columnBatchTableName(td.getName());
+		    DataDictionary dd = activation.getLanguageConnectionContext().getDataDictionary();
+		    TableDescriptor ttd = dd.getTableDescriptor(cbTable, td.getSchemaDescriptor(), activation
+            .getLanguageConnectionContext().getTransactionExecute());
+		    doExecuteGrantRevoke(activation, grant, grantees, new FormatableBitSet[0], null, false,
+            ttd);
+		  }
+
+		  if (!grant && Misc.getLeadNodeNoThrow() != null && !Misc.getLeadNodeNoThrow().isEmpty()) {
+		    boolean clearedCache = false;
+		    try {
+		      GfxdListResultCollector collector = new GfxdListResultCollector();
+		      LeadNodeClearCacheMessage msg = new LeadNodeClearCacheMessage(collector);
+		      msg.executeFunction();
+		      List result = collector.getResult();
+		      if (result != null) {
+		        for (Object oneResult : result) {
+		          clearedCache = (Boolean)oneResult;
+		        }
+		      }
+		    } catch (SQLException se) {
+		      if (SanityManager.DEBUG) {
+		        if (GemFireXDUtils.TraceAuthentication) {
+		          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,
+                  (grant ? " grant column permissions "
+                      : "revoke column permissions ")
+                      + GemFireXDUtils.addressOf(this)
+                      + " table="
+                      + td.getDescriptorName()
+                      + " grantees="
+                      + grantees
+                      + " columnBitSets="
+                      + Arrays.toString(columnBitSets)
+                      + " Exception=" + se.getMessage());
+		        }
+		      }
+		    }
+		    if (!clearedCache) {
+		      addWarningIfPrivilegeNotRevoked(activation, grant, false, grantees.toString());
+		    }
+		  }
+    }
+  }
 
 	private void doExecuteGrantRevoke( Activation activation,
 			boolean grant,

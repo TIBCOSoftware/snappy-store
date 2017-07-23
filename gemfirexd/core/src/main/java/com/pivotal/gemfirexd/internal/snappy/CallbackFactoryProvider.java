@@ -80,7 +80,10 @@ public abstract class CallbackFactoryProvider {
     public void publishColumnTableStats() {
     }
 
-
+    @Override
+    public Boolean clearCache() {
+      return false;
+    }
   };
 
   public static ClusterCallbacks getClusterCallbacks() {
