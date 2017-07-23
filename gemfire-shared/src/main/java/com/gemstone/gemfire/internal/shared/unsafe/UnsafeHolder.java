@@ -324,7 +324,6 @@ public abstract class UnsafeHolder {
       cleaner.clean();
       cleaner.clear();
     }
-    releasePendingReferences();
   }
 
   public static void releasePendingReferences() {
