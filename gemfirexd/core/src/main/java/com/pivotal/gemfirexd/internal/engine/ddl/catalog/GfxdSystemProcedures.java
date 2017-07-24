@@ -1442,6 +1442,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
           throw PublicAPI.wrapStandardException(se);
         }
       }
+    } else {
+      throw Util.generateCsSQLException(SQLState.LANG_TABLE_NOT_FOUND, tableName);
     }
 
     final GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.
@@ -1569,7 +1571,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
         LeadNodeSmartConnectorOpContext.OpType.CREATE_TABLE,
         tableIdentifier, provider, userSpecifiedSchema, schemaDDL,
         mode.getBytes(1, (int)mode.length()), options.getBytes(1, (int)options.length()),
-        isBuiltIn, false, null, null, null, null, null, null);
+        isBuiltIn, false, null, null, null, null,
+            null, null, false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1583,7 +1586,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.DROP_TABLE,
         tableIdentifier, null, null, null, null, null, true, ifExists,
-        null, null, null, null, null, null);
+        null, null, null, null, null, null,false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1602,7 +1605,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
         LeadNodeSmartConnectorOpContext.OpType.CREATE_INDEX,
         tableIdentifier, null, null, null, null,
         options.getBytes(1, (int)options.length()), true, false,
-        indexIdentifier, indexColumns.getBytes(1, (int)indexColumns.length()), null, null, null, null);
+        indexIdentifier, indexColumns.getBytes(1, (int)indexColumns.length()), null, null, null, null ,false, null, null, false);
 
     sendConnectorOpToLead(ctx);
 
@@ -1618,7 +1621,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.DROP_INDEX,
         null, null, null, null, null, null, true, ifExists,
-        indexIdentifier, null, null, null, null, null);
+        indexIdentifier, null, null, null, null, null, false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1632,7 +1635,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.CREATE_UDF,
         null, null, null, null, null, null, true, false, null, null,
-        db, functionName, className, jarURI);
+        db, functionName, className, jarURI,false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1646,7 +1649,24 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.DROP_UDF,
         null, null, null, null, null, null, true, false, null, null,
-        db, functionName, null, null);
+        db, functionName, null, null, false, null, null, false);
+
+    sendConnectorOpToLead(ctx);
+  }
+
+  public static void ALTER_SNAPPY_TABLE(String tableIdentifier, Boolean addOrDropCol,
+                                        String columnName, String columnType,
+                                        Boolean columnNullable) throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+              "executing ALTER_SNAPPY_TABLE ");
+    }
+
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+            LeadNodeSmartConnectorOpContext.OpType.ALTER_TABLE,
+            tableIdentifier, null, null, null, null,
+            null, true, false, null, null,
+            null, null, null, null, addOrDropCol, columnName, columnType, columnNullable);
 
     sendConnectorOpToLead(ctx);
   }
