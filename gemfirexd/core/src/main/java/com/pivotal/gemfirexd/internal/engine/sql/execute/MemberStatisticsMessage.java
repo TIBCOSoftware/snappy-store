@@ -26,6 +26,8 @@ import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.process.PidUnavailableException;
+import com.gemstone.gemfire.internal.process.ProcessUtils;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
@@ -43,7 +45,7 @@ import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 
 public class MemberStatisticsMessage extends MemberExecutorMessage {
-
+  private Logger logger = Logger.getLogger(MemberStatisticsMessage.class);
   private static final long MBFactor = 1024 * 1024;
 
   private GemFireCacheImpl gemFireCache;
@@ -200,8 +202,13 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   }
 
   private String getProcessId(){
-    String[] processDetails = ManagementFactory.getRuntimeMXBean().getName().split("@");
-    return processDetails[0];
+    String processId = "";
+    try {
+      processId = Integer.toString(ProcessUtils.identifyPid());
+    } catch (PidUnavailableException e) {
+      logger.warn("Process ID NOT AVAILABLE..", e);
+    }
+    return processId;
   }
 
   /**
