@@ -60,8 +60,10 @@ public class LeadNodeClearCacheMessage extends MemberExecutorMessage<Object> {
   protected void executeFunction(boolean enableStreaming)
       throws StandardException, SQLException {
     try {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-          "LeadNodeClearCacheMessage.executeFunction: ", new Throwable());
+      if (GemFireXDUtils.TraceQuery) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+            "LeadNodeClearCacheMessage.executeFunction: ", new Throwable());
+      }
       super.executeFunction(enableStreaming);
     } catch (RuntimeException re) {
       throw LeadNodeExecutorMsg.handleLeadNodeException(re);
