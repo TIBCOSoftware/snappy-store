@@ -1330,7 +1330,7 @@ public class CacheServerLauncher  {
         }
         if ((state != WAITING && state != RUNNING) || msg == null) {
           buffer.append(" - ").append(LocalizedStrings
-                  .CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS.toLocalizedString());
+              .CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS.toLocalizedString());
         }
       }
       return buffer.toString();
