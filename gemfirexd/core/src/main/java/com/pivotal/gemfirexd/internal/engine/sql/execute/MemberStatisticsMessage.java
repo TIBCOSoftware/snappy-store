@@ -28,6 +28,7 @@ import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.process.PidUnavailableException;
 import com.gemstone.gemfire.internal.process.ProcessUtils;
+import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
@@ -202,13 +203,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   }
 
   private String getProcessId(){
-    String processId = "";
-    try {
-      processId = Integer.toString(ProcessUtils.identifyPid());
-    } catch (PidUnavailableException e) {
-      logger.warn("Process ID NOT AVAILABLE..", e);
-    }
-    return processId;
+    return Integer.toString(NativeCalls.getInstance().getProcessId());
   }
 
   /**
