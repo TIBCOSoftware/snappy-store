@@ -33,9 +33,6 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdFunctionMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.MemberExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.LogFileUtils;
-import org.apache.log4j.Appender;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Logger;
 
 
 public class MemberLogsMessage extends MemberExecutorMessage {
@@ -43,6 +40,8 @@ public class MemberLogsMessage extends MemberExecutorMessage {
   private String memberId;
   private Long offset;
   private Long byteLength;
+  private String logFileName;
+  private File logDirectory;
 
   /** Default constructor for deserialization. Not to be invoked directly. */
   public MemberLogsMessage() {
@@ -82,6 +81,22 @@ public class MemberLogsMessage extends MemberExecutorMessage {
     this.byteLength = byteLength;
   }
 
+  public String getLogFileName() {
+    return logFileName;
+  }
+
+  public void setLogFileName(String logFileName) {
+    this.logFileName = logFileName;
+  }
+
+  public File getLogDirectory() {
+    return logDirectory;
+  }
+
+  public void setLogDirectory(File logDirectory) {
+    this.logDirectory = logDirectory;
+  }
+
   @Override
   protected void execute() throws Exception {
 
@@ -92,32 +107,13 @@ public class MemberLogsMessage extends MemberExecutorMessage {
     Map logDetailsMap = new HashMap();
     logDetailsMap.put("id", memberId);
     logDetailsMap.put("name", ids.getName());
-    logDetailsMap.put("userDir", getUserDir());
-    logDetailsMap.put("logFile", getLogFile());
+    logDetailsMap.put("userDir", this.logDirectory);
+    logDetailsMap.put("logFile", this.logFileName);
     logDetailsMap.put("logData",
-        LogFileUtils.getLog(new File(getUserDir()), getLogFile(), this.offset, this.byteLength));
+        LogFileUtils.getLog(this.logDirectory, this.logFileName, this.offset, this.byteLength));
 
     lastResult(logDetailsMap);
 
-  }
-
-  private String getUserDir(){
-    return System.getProperty("user.dir");
-  }
-
-  private String getLogFile() {
-    Logger rootLogger = Logger.getRootLogger();
-    Appender appender;
-    if (rootLogger != null) {
-      Enumeration<?> e = rootLogger.getAllAppenders();
-      while (e.hasMoreElements()) {
-        appender = (Appender)e.nextElement();
-        if (appender instanceof FileAppender) {
-          return ((FileAppender)appender).getFile();
-        }
-      }
-    }
-    return "";
   }
 
   @Override
@@ -144,6 +140,8 @@ public class MemberLogsMessage extends MemberExecutorMessage {
     this.memberId = DataSerializer.readString(in);
     this.offset = DataSerializer.readObject(in);
     this.byteLength = DataSerializer.readObject(in);
+    this.logFileName = DataSerializer.readString(in);
+    this.logDirectory = DataSerializer.readFile(in);
   }
 
   @Override
@@ -151,7 +149,9 @@ public class MemberLogsMessage extends MemberExecutorMessage {
     super.toData(out);
     DataSerializer.writeString(this.memberId, out);
     DataSerializer.writeObject(this.offset , out);
-    DataSerializer.writeObject(byteLength, out);
+    DataSerializer.writeObject(this.byteLength, out);
+    DataSerializer.writeString(this.logFileName, out);
+    DataSerializer.writeFile(this.logDirectory, out);
   }
 
   @Override
