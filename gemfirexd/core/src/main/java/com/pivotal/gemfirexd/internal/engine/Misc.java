@@ -67,6 +67,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -761,6 +762,11 @@ public abstract class Misc {
     } else {
       return 0;
     }
+  }
+
+  public static boolean isSecurityEnabled() {
+    return "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.AUTH_PROVIDER)) ||
+        "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.SERVER_AUTH_PROVIDER));
   }
 
   // added by jing for processing the exception

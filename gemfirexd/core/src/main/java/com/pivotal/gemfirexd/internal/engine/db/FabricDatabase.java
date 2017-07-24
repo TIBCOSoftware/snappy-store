@@ -1839,6 +1839,16 @@ public final class FabricDatabase implements ModuleControl,
     return this.authenticationService;
   }
 
+  /**
+   * @throws com.gemstone.gemfire.cache.CacheClosedException if store is null
+   * @return
+   */
+  public static AuthenticationServiceBase getAuthenticationServiceBase() {
+    return (AuthenticationServiceBase)Monitor.findServiceModule(
+        Misc.getMemStoreBooting().getDatabase(), AuthenticationService.MODULE,
+        GfxdConstants.AUTHENTICATION_SERVICE);
+  }
+
   public final AuthenticationService getPeerAuthenticationService() {
 
     // Expected to find one - Sanity check being done at
