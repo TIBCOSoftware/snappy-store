@@ -206,6 +206,7 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
     registerSqlSerializable(LeadNodeSmartConnectorOpContext.class);
     registerSqlSerializable(LeadNodeSmartConnectorOpMsg.class);
     registerSqlSerializable(LeadNodeGetStatsMessage.class);
+    registerSqlSerializable(LeadNodeClearCacheMessage.class);
     // ProjectionRow is registered without creating an instance since it
     // requires GemFireCacheImpl instance in RawValue statics
     DSFIDFactory.registerGemFireXDClass(PROJECTION_ROW, ProjectionRow.class);

@@ -232,7 +232,7 @@ public abstract class Misc {
     }
   }
 
-  public static Set<DistributedMember> getLeadNode() {
+  public static Set<DistributedMember> getLeadNodeNoThrow() {
     GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
     InternalDistributedSystem ids = Misc.getDistributedSystem();
     if (ids.isLoner()) {
@@ -249,9 +249,17 @@ public abstract class Misc {
         return Collections.unmodifiableSet(s);
       }
     }
-    throw new NoDataStoreAvailableException(LocalizedStrings
-        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
-        .toLocalizedString("SnappyData Lead Node"));
+    return null;
+  }
+
+  public static Set<DistributedMember> getLeadNode() {
+    Set<DistributedMember> leads = getLeadNodeNoThrow();
+    if (leads == null) {
+      throw new NoDataStoreAvailableException(LocalizedStrings
+          .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
+          .toLocalizedString("SnappyData Lead Node"));
+    }
+    return leads;
   }
 
   /**
