@@ -480,19 +480,39 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
-    if (refresh || externalTableMetaData.get() == null) {
+    ExternalTableMetaData metaData;
+    if (refresh || (metaData = externalTableMetaData.get()) == null) {
+      // for column store, get the row buffer table name
+      String schemaName = this.schemaName;
+      String tableName = this.tableName;
+      if (isColumnStore()) {
+        String fullName = getRowBufferTableName(this.qualifiedName);
+        int schemaIndex = fullName.indexOf('.');
+        schemaName = fullName.substring(0, schemaIndex);
+        tableName = fullName.substring(schemaIndex + 1);
+      }
       // containers are created during initialization, ignore them
       externalTableMetaData.compareAndSet(null,
           Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
-              this.schemaName, this.tableName, true));
+              schemaName, tableName, true));
       if (isPartitioned()) {
-        ExternalTableMetaData metaData = externalTableMetaData.get();
+        metaData = externalTableMetaData.get();
         ((PartitionedRegion)this.region).setColumnBatchSizes(
             metaData.columnBatchSize, metaData.columnMaxDeltaRows,
             GfxdConstants.SNAPPY_MIN_COLUMN_DELTA_ROWS);
+        return metaData;
       }
+      return externalTableMetaData.get();
+    } else {
+      return metaData;
     }
-    return externalTableMetaData.get();
+  }
+
+  public static String getRowBufferTableName(String columnBatchTableName) {
+    String tableName = columnBatchTableName.replace(
+        StoreCallbacks.SHADOW_SCHEMA_NAME_WITH_SEPARATOR, "");
+    return tableName.substring(0, tableName.length() -
+        StoreCallbacks.SHADOW_TABLE_SUFFIX.length());
   }
 
   public boolean cachesGlobalIndex() {
@@ -5055,6 +5075,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     return isPartitioned() && ((PartitionedRegion)this.region).needsBatching();
   }
 
+  public final boolean isColumnStore() {
+    // latter check is not useful currently since only column tables use
+    // object store, but still added the check for possible future use
+    // (e.g. local index table on column store)
+    return isObjectStore() &&
+        this.tableName.endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+  }
+
   public final boolean isOffHeap() {
     final LocalRegion region = this.region;
     if (region != null) {
@@ -5819,7 +5847,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
 
     @Override
-    public Object apply(EntryEvent<?, ?> event) {      
+    public Object apply(EntryEvent<?, ?> event) {
       return apply(event.getRegion(), event.getKey(),
           ((EntryEventImpl)event).getOldValueAsOffHeapDeserializedOrRaw(),
           event.getTransactionId() == null);

@@ -285,8 +285,13 @@ public interface DiskEntry extends RegionEntry {
             return null;
           }
 
-          return dr.getDiskStore().getSerializedDataWithoutLock(dr, did,
+          Object v = dr.getDiskStore().getSerializedDataWithoutLock(dr, did,
               faultin);
+          if (!faultin && (v instanceof SerializedDiskBuffer)) {
+            // convert to on-heap form to avoid buildup of off-heap data
+            ((SerializedDiskBuffer)v).copyToHeap("NO_FAULTIN");
+          }
+          return v;
         }
       } finally {
         if (syncObj == did) {

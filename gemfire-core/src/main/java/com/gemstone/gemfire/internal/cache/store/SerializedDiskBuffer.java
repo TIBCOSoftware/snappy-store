@@ -126,6 +126,13 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   }
 
   /**
+   * Copy any off-heap data to heap. Not thread-safe and should
+   * be invoked before handing out to other threads.
+   */
+  public void copyToHeap(String owner) {
+  }
+
+  /**
    * Get as buffer to write to disk. Callers must ensure {@link #release()}
    * is invoked in all paths after the write is done (or fails).
    */

@@ -329,4 +329,6 @@ public interface GfxdSerializable extends GfxdDSFID {
   byte COLUMN_FORMAT_KEY = 114;
 
   byte COLUMN_FORMAT_VALUE = 115;
+
+  byte COLUMN_FORMAT_DELTA = 116;
 }
