@@ -774,7 +774,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     TXState localState = this.localTXState;
     checkTXState();
     // check that commit is invoked only from the coordinator
-    if (!isCoordinator()) {
+    if (!isCoordinator() && !isSnapshot()) {
       throw new IllegalTransactionStateException(
           LocalizedStrings.TXManagerImpl_FINISH_NODE_NOT_COORDINATOR
               .toLocalizedString(getCoordinator()));
@@ -3814,6 +3814,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     markDirty();
 
     if (isSnapshot()) {
+      addAffectedRegion(region);
       region.getSharedDataView().postPutAll(putAllOp, successfulPuts, region);
       return;
     }

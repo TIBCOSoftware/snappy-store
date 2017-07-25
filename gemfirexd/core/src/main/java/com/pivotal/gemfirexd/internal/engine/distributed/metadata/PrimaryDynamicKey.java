@@ -56,7 +56,7 @@ public class PrimaryDynamicKey implements DynamicKey {
   /**
    * Returns the object present in the Parameter wrapped by a
    * DataValueDescriptor. It is invoked from CompositeDynamicKey
-   * {@link CompositeDynamicKey#getEvaluatedPrimaryKey(Activation, GemFireContainer)}
+   * {@link CompositeDynamicKey#getEvaluatedPrimaryKey}
    * 
    * @param activation
    * @return

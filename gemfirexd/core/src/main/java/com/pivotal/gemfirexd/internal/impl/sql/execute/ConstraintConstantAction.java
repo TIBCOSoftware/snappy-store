@@ -44,6 +44,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.execute;
 import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.BucketAdvisor;
+import com.gemstone.gemfire.internal.cache.ColocationHelper;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
 import com.gemstone.gemfire.internal.cache.partitioned.RegionAdvisor;
@@ -274,7 +275,8 @@ public abstract class ConstraintConstantAction extends DDLSingleTableConstantAct
 			
 			if(partitionColIndexInRefKeyForSelectiveCheck != null && !tc.skipLocks()) {
 			      //Take region lock so that no rebalance occurs during constraint check
-			      RecoveryLock recoveryLock = refTablePR.getRecoveryLock();
+			      RecoveryLock recoveryLock = ColocationHelper.getLeaderRegion(refTablePR)
+			          .getRecoveryLock();
 			      recoveryLock.lock();
 			      //check if all the hosted buckets have primary
 			      int bucketIDWithNoPrimary = checkIfAllHostedBucketsHavePrimary(refTablePR);

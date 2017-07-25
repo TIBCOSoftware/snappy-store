@@ -36,13 +36,15 @@ dependencies {
   compile 'commons-pool:commons-pool:1.6'
   compile 'commons-dbcp:commons-dbcp:1.4'
   compile "jline:jline:${jlineVersion}"
-  compile "org.apache.thrift:libthrift:${thriftVersion}"
+  compile("org.apache.thrift:libthrift:${thriftVersion}") {
+    exclude(group: 'org.slf4j', module: 'slf4j-api')
+  }
   compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
-  compile "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
+  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   // use dunit support from snappydata
   if (subprojectBase == ':') {
-    testCompile 'io.snappydata:dunit:1.0.4-3'
+    testCompile 'io.snappydata:dunit:1.0.3.4'
   } else {
     testCompile project(':dunit')
   }

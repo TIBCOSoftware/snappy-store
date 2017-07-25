@@ -1794,13 +1794,14 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		/* Original code
 		final int numberOfTableTypesInDerby = 4;
 		*/
-		final int numberOfTableTypesInDerby = 6;
+		final int numberOfTableTypesInDerby = 9;
 		//GemStone changes END
 
 		if (types == null)  {// null means all types 
 			types = new String[] {"TABLE","VIEW","SYNONYM","SYSTEM TABLE"
 			/* GemStone changes BEGIN */, "COLUMN TABLE",
-			"EXTERNAL TABLE" /* GemStone changes END */};
+			"EXTERNAL TABLE", "STREAM TABLE", "SAMPLE TABLE", "TOPK TABLE"
+			/* GemStone changes END */};
 		}
 		String[] typeParams = new String[numberOfTableTypesInDerby];
 		for (int i=0; i < numberOfTableTypesInDerby;i++)
@@ -1819,13 +1820,15 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			//GemStone changes BEGIN
 			else if ("COLUMN TABLE".equals(types[i]) ||
 			    "COLUMN_TABLE".equals(types[i])) // In case we treat it like SYSTEM_TABLE
-			    typeParams[4] = "C";
-			else if ("EXTERNAL TABLE".equals(types[i]) ||
-			    "STREAM TABLE".equals(types[i]) ||
-			    "SAMPLE TABLE".equals(types[i]) ||
-			    "TOPK TABLE".equals(types[i])) {
-			    typeParams[5] = "E";
-			}
+			    typeParams[4] = "COLUMN";
+			else if ("EXTERNAL TABLE".equals(types[i]))
+			    typeParams[5] = "EXTERNAL";
+			else if ("STREAM TABLE".equals(types[i]))
+			    typeParams[6] = "STREAM";
+			else if ("SAMPLE TABLE".equals(types[i]))
+			    typeParams[7] = "SAMPLE";
+			else if ("TOPK TABLE".equals(types[i]))
+			    typeParams[8] = "TOPK";
 			//GemStone changes END
 			// If user puts in other types we simply ignore.
 			}

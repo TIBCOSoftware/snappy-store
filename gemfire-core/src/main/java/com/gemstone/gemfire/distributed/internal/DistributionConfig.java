@@ -1989,7 +1989,10 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
 
   /** The prefix used for Gemfire properties set through java system properties */
   public static final String GEMFIRE_PREFIX = "gemfire.";
-  
+
+  /** The prefix used for SnappyData properties set through java system properties */
+  public static final String SNAPPY_PREFIX = "snappydata.store.";
+
   /** For the "custom-" prefixed properties */
   public static final String USERDEFINED_PREFIX_NAME = "custom-";
   

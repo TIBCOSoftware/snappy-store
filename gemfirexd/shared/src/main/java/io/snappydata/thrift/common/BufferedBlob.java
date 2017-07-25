@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.SQLException;
 
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
+import io.snappydata.thrift.BlobChunk;
 
 /**
  * Enhancement to the {@link Blob} to allow obtaining the contents
@@ -34,13 +34,11 @@ import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 public interface BufferedBlob extends Blob {
 
   /**
-   * Get the entire contents of the {@link Blob} as a {@link ByteBuffer}.
-   * If the returned buffer is a direct ByteBuffer then one of the callers
-   * must take care to either release it explicitly after use (e.g. using
-   * {@link UnsafeHolder#releaseIfDirectBuffer}) or ensure that there is enough
-   * memory to allow direct ByteBuffers to be cleaned only after a GC cycle
-   * (which may be delayed since a direct ByteBuffer will cause
-   * no significant GC pressure).
+   * Get the entire contents of the {@link Blob} as a {@link BlobChunk}
+   * having last==true. The underlying ByteBuffer is released once the
+   * {@link BlobChunk} is written using thrift API, else caller should invoke
+   * {@link BlobChunk#releaseBuffer()} explicitly to eagerly release any
+   * direct ByteBuffers.
    */
-  ByteBuffer getAsBuffer() throws SQLException;
+  BlobChunk getAsLastChunk() throws SQLException;
 }

@@ -632,15 +632,6 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     }
 
     final ArrayList<String> vmArgs = new ArrayList<String>();
-    
-    // increase the default perm gen size
-    if (this.maxPermGenSize == null 
-        && jvmVendor != null 
-        && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
-      this.maxPermGenSize = MAX_PERM_SIZE + MAX_PERM_DEFAULT;
-      vmArgs.add(this.maxPermGenSize);
-    }
-
     // If either the max heap or initial heap is null, set the one that is null
     // equal to the one that isn't.
     if (this.maxHeapSize == null) {
@@ -710,15 +701,16 @@ public class GfxdServerLauncher extends CacheServerLauncher {
         evictPercent = Integer.parseInt(evictHeapStr.substring(
             evictHeapStr.indexOf('=') + 1).trim());
       }
-      
-      if (jvmVendor != null
-          && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
-        vmArgs.add("-XX:+UseParNewGC");
-        vmArgs.add("-XX:+UseConcMarkSweepGC");
-        vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
-        vmArgs.add("-XX:+CMSClassUnloadingEnabled");
-        vmArgs.add("-XX:NewRatio=2");
-      }
+    }
+    if (jvmVendor != null
+        && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
+      vmArgs.add("-XX:+UseParNewGC");
+      vmArgs.add("-XX:+UseConcMarkSweepGC");
+      vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
+      vmArgs.add("-XX:+CMSClassUnloadingEnabled");
+      vmArgs.add("-XX:-DontCompileHugeMethods");
+      vmArgs.add("-XX:+UnlockDiagnosticVMOptions");
+      vmArgs.add("-XX:ParGCCardsPerStrideChunk=4k");
     }
 
     // If heap and off-heap sizes were both specified, then the critical and

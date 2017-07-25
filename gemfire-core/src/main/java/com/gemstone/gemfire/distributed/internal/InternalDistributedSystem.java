@@ -1024,7 +1024,6 @@ public final class InternalDistributedSystem
   protected final class Stopper extends CancelCriterion {
     @Override
     public String cancelInProgress() {
-      checkFailure();
       if (dm == null) {
         return "No dm";
       }

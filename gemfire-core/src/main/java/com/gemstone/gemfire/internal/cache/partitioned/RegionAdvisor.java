@@ -70,6 +70,7 @@ import com.gemstone.gemfire.internal.concurrent.Q;
 import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashSet;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public final class RegionAdvisor extends CacheDistributionAdvisor {
 
@@ -1554,18 +1555,13 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
    */
   public ArrayList<DataStoreBuckets> adviseFilteredDataStores(final Set<InternalDistributedMember> memberFilter)
   {
-    final HashMap<InternalDistributedMember, Integer> memberToPrimaryCount = new HashMap<InternalDistributedMember, Integer>();
-    for(int i=0; i<this.buckets.length; i++) {
-      ProxyBucketRegion pbr = this.buckets[i];
+    final Object2IntOpenHashMap<InternalDistributedMember> memberToPrimaryCount =
+        new Object2IntOpenHashMap<>();
+    for (ProxyBucketRegion pbr : this.buckets) {
       // quick dirty check
       InternalDistributedMember p=pbr.getBucketAdvisor().basicGetPrimaryMember(); 
       if (p!=null) {
-        Integer count = memberToPrimaryCount.get(p);
-        if (count != null) { 
-          memberToPrimaryCount.put(p, Integer.valueOf(count.intValue() + 1));
-        } else {
-          memberToPrimaryCount.put(p, Integer.valueOf(1));
-        }
+        memberToPrimaryCount.addTo(p, 1);
       }
     }
     
@@ -1575,11 +1571,7 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
         if (profile instanceof PartitionProfile) {
           PartitionProfile p = (PartitionProfile)profile;
           if(memberFilter.contains(p.getDistributedMember())) {
-            Integer priCount = memberToPrimaryCount.get(p.getDistributedMember());
-            int primaryCount = 0;
-            if (priCount != null) {
-              primaryCount = priCount.intValue();
-            }
+            int primaryCount = memberToPrimaryCount.getInt(p.getDistributedMember());
             ds.add(new DataStoreBuckets(p.getDistributedMember(), p.numBuckets, primaryCount, p.localMaxMemory));
           }
         }

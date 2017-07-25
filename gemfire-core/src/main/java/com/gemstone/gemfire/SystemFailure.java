@@ -285,7 +285,8 @@ public final class SystemFailure {
       return !message.contains("Unable to acquire") &&
           !message.contains("error while calling spill") &&
           !message.contains("enough memory for aggregation") &&
-          !message.contains("enough memory to grow");
+          !message.contains("enough memory to grow") &&
+          !message.contains("Direct buffer");
     } else {
       return false;
     }

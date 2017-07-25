@@ -638,8 +638,7 @@ public class AndJunctionQueryInfo extends JunctionQueryInfo {
     if (rgn.getAttributes().getDataPolicy().withPartitioning()) {
       final PartitionedRegion pr = (PartitionedRegion)rgn;
       // Check if resolver is defined
-      final GfxdPartitionResolver spr = (GfxdPartitionResolver)pr
-          .getPartitionResolver();
+      final GfxdPartitionResolver spr = GemFireXDUtils.getResolver(pr);
 
       final LogWriter logger = Misc.getCacheLogWriter();
       if (spr != null) {

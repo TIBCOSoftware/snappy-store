@@ -108,7 +108,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCl
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
-import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl.NetworkInterfaceImpl;
@@ -753,7 +752,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     float evictionHeapPercent = -1.0f;
     float criticalOffHeapPercent = -1.0f;
     float evictionOffHeapPercent = -1.0f;
-
+   
     // install the GemFireXD specific thread dump signal (URG) handler
     try {
       SigThreadDumpHandler.install();
@@ -872,6 +871,12 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         Attribute.SERVER_GROUPS, GfxdConstants.GFXD_SERVER_GROUPS);
     isLocator = PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
         GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
+
+
+    Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
+        GemFireSparkConnectorCacheFactory.gfeGridNamePrefix);
+    Map<String, String> gfeGridPoolProps = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
+        GemFireSparkConnectorCacheFactory.gfeGridPropsPrefix);
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,
@@ -1062,12 +1067,18 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       }
 
       try {
-        CacheFactory c = new CacheFactory(dsProps);
+        CacheFactory c = null;
+        if (!gfeGridMappings.isEmpty()) {
+          c = new GemFireSparkConnectorCacheFactory(dsProps, gfeGridMappings, gfeGridPoolProps);
+        } else {
+          c = new CacheFactory(dsProps);
+        }
         if (this.persistingDD) {
           c.setPdxPersistent(true);
           c.setPdxDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
         }
-        this.gemFireCache = (GemFireCacheImpl) c.create();
+
+        this.gemFireCache = (GemFireCacheImpl)c.create();
         this.gemFireCache.getLogger().info(
             "GemFire Cache successfully created.");
       } catch (CacheExistsException ex) {
@@ -1148,7 +1159,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
       FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
-      FunctionService.registerFunction(new SnappyRemoveCachedObjectsFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
       if (logger.fineEnabled()) {
@@ -1329,6 +1339,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           == ContainerHandle.MODE_OPEN_FOR_LOCK_ONLY);
     }
   }
+
+
+
 
   /**
    * Start executor if any of the accessor is a driver.
@@ -2374,6 +2387,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.databaseName.equalsIgnoreCase("snappydata")) {
         this.snappyStore = true;
         this.database.setdisableStatementOptimizationToGenericPlan();
+        gemFireCache.DEFAULT_SNAPSHOT_ENABLED = true;
+        gemFireCache.startOldEntryCleanerService();
       }
     }
     ClientSharedUtils.setThriftDefault(this.snappyStore);

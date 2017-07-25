@@ -26,6 +26,7 @@ import com.gemstone.org.jgroups.oswego.concurrent.CyclicBarrier;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
+import io.snappydata.test.dunit.SerializableRunnable;
 
 
 public class SnapshotTransactionTest  extends JdbcTestBase {
@@ -45,8 +46,22 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     return "fine";
   }
 
+  @Override
+  protected void setUp() throws Exception {
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+    super.setUp();
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+    super.tearDown();
+
+  }
+
   public void testRVVSnapshotContains() throws Exception {
     Connection conn = getConnection();
+
     PartitionAttributesFactory paf = new PartitionAttributesFactory();
     PartitionAttributes prAttr = paf.setTotalNumBuckets(1).create();
     AttributesFactory attr = new AttributesFactory();
@@ -87,6 +102,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
   public void testSnapshotInsertTableAPI() throws Exception {
     Connection conn = getConnection();
+
     PartitionAttributesFactory paf = new PartitionAttributesFactory();
     PartitionAttributes prAttr = paf.setTotalNumBuckets(1).create();
     AttributesFactory attr = new AttributesFactory();
@@ -161,6 +177,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
 
   public void testSnapshotInsertAPI() throws Exception {
+
     Connection conn = getConnection();
     PartitionAttributesFactory paf = new PartitionAttributesFactory();
     PartitionAttributes prAttr = paf.setTotalNumBuckets(1).create();
@@ -235,7 +252,6 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
   }
 
   public void testSnapshotPutAllAPI() throws Exception {
-
     Connection conn = getConnection();
     PartitionAttributesFactory paf = new PartitionAttributesFactory();
     PartitionAttributes prAttr = paf.setTotalNumBuckets(1).create();

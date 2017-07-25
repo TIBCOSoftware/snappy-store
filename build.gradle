@@ -39,7 +39,7 @@ allprojects {
   ext {
     scalaBinaryVersion = '2.11'
     scalaVersion = scalaBinaryVersion + '.8'
-    snappySparkVersion = '2.0.2.3'
+    sparkVersion = '2.0.0'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
     slf4jVersion = '1.7.21'
@@ -78,7 +78,7 @@ allprojects {
 
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
-    PRODUCT_MAINT = '4'
+    PRODUCT_MAINT = '5'
     PRODUCT_CLASSIFIER = ''
     PRODUCT_RELEASE_STAGE = ''
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"
@@ -87,11 +87,11 @@ allprojects {
 
     if (rootProject.name == 'snappy-store') {
       subprojectBase = ':'
-      gitCmd = "git --git-dir=${rootDir}/.git --work-tree=${rootDir}"
     } else {
       subprojectBase = ':snappy-store:'
-      gitCmd = "git --git-dir=${project(':snappy-store').projectDir}/.git --work-tree=${project(':snappy-store').projectDir}"
+      // gitCmd = "git --git-dir=${project(':snappy-store').projectDir}/.git --work-tree=${project(':snappy-store').projectDir}"
     }
+    gitCmd = "git --git-dir=${rootDir}/.git --work-tree=${rootDir}"
 
     gitBranch = "${gitCmd} rev-parse --abbrev-ref HEAD".execute().text.trim()
     commitId = "${gitCmd} rev-parse HEAD".execute().text.trim()
@@ -128,7 +128,7 @@ allprojects {
     productDir = file("${rootProject.buildDir}/store")
     locDir = 'com/pivotal/gemfirexd/internal/loc'
     clientMsgOutDir = "${project(subprojectBase + 'gemfirexd-core').buildDir}/client/${locDir}"
-    if (!project.hasProperty('sanity')) {
+    if (!rootProject.hasProperty('sanity')) {
       isSane = 'true'
     } else {
       isSane = sanity
@@ -531,10 +531,27 @@ subprojects {
 
     def single = System.getProperty('dunit.single')
     if (single == null || single.length() == 0) {
-      include '**/*DUnitTest.class'
-      include '**/*DUnit.class'
-      exclude '**/NCJ*DUnit.class'
-      exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
+      single = rootProject.hasProperty('dunit.single') ?
+          rootProject.property('dunit.single') : null
+    }
+    if (single == null || single.length() == 0) {
+      def dunitTests = fileTree(dir: testClassesDir,
+          includes: ['**/*DUnitTest.class', '**/*DUnit.class'],
+          excludes: ['**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
+      FileTree includeTestFiles = dunitTests
+      int dunitFrom = rootProject.hasProperty('dunit.from') ?
+          getLast(includeTestFiles, rootProject.property('dunit.from')) : 0
+      int dunitTo = rootProject.hasProperty('dunit.to') ?
+          getLast(includeTestFiles, rootProject.property('dunit.to')) : includeTestFiles.size()
+
+      int begin = dunitFrom != -1 ? dunitFrom : 0
+      int end = dunitTo != -1 ? dunitTo : includeTestFiles.size()
+      def filteredSet = includeTestFiles.drop(begin).take(end-begin+1).collect {f -> "**/" + f.name}
+      if (begin != 0 || end != includeTestFiles.size()) {
+        println("Picking tests :")
+        filteredSet.each { a -> println(a) }
+      }
+      include filteredSet
     } else {
       include single
     }
@@ -627,7 +644,7 @@ subprojects {
     tasks.withType(Test).each { test ->
       test.configure {
 
-        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxPermSize=128M',
+        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError',
                    '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC',
                    '-XX:CMSInitiatingOccupancyFraction=50',
                    '-XX:+CMSClassUnloadingEnabled', '-ea']
@@ -768,6 +785,12 @@ subprojects {
         }
       }
     }
+  }
+}
+
+int getLast(includeTestFiles, pattern) {
+  includeTestFiles.findLastIndexOf {
+    File f -> f.name.indexOf(pattern) >= 0
   }
 }
 
@@ -995,7 +1018,7 @@ task buildAll {
 }
 check.mustRunAfter buildAll
 task precheckin {
-  if (project.hasProperty('gfxd')) {
+  if (rootProject.hasProperty('gfxd')) {
     dependsOn cleanAll, buildAll, check
   }
 }

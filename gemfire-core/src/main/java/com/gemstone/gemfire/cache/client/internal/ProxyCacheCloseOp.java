@@ -56,7 +56,7 @@ public class ProxyCacheCloseOp {
 
     @Override
     protected void sendMessage(Connection cnx) throws Exception {
-      HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT);
+      HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT_GFE);
       byte[] secureBytes = null;
       hdos.writeLong(cnx.getConnectionID());
       Object userId = UserAttributes.userAttributes.get().getServerToId().get(cnx.getServer());

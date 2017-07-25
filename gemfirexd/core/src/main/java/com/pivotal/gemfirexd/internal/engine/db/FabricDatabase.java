@@ -618,10 +618,19 @@ public final class FabricDatabase implements ModuleControl,
     // remove Hive store's own tables
     gfDBTablesMap.remove(
         Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
-    // tables in SNAPPYSYS_INTERNAL
-    List<String> internalColumnTablesList =
-        gfDBTablesMap.remove(com.gemstone.gemfire.internal.snappy.
-            CallbackFactoryProvider.getStoreCallbacks().snappyInternalSchemaName());
+    // CachedBatch tables (earlier stored in SNAPPYSYS_INTERNAL)
+    List<String> internalColumnTablesList = new LinkedList<>();
+    List<String> internalColumnTablesListPerSchema = new LinkedList<>();
+    for (Map.Entry<String, List<String>> e : gfDBTablesMap.entrySet()) {
+      for (String t : e.getValue()) {
+        if (CallbackFactoryProvider.getStoreCallbacks().isColumnTable(e.getKey() + "." + t)) {
+            internalColumnTablesListPerSchema.add(t);
+        }
+      }
+      e.getValue().removeAll(internalColumnTablesListPerSchema);
+      internalColumnTablesList.addAll(internalColumnTablesListPerSchema);
+      internalColumnTablesListPerSchema.clear();
+    }
     // creating a set here just for lookup, will not consume too much
     // memory as size limited by no of tables
     Set<String> internalColumnTablesSet = new HashSet<>();
@@ -1130,6 +1139,12 @@ public final class FabricDatabase implements ModuleControl,
                 + "having sequenceId=" + qEntry.getSequenceId());
           }
         }
+        if (previousLevel != Integer.MAX_VALUE) {
+          GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge) logger);
+          bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.info("Done hive meta-store initialization");
+          previousLevel = Integer.MAX_VALUE;
+        }
       // commenting out for snap-585
       /*}*/
 
@@ -1537,12 +1552,14 @@ public final class FabricDatabase implements ModuleControl,
           Misc.isSnappyHiveMetaTable(currentSchema))
       {
         GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
+        bridgeLogger.info("Starting hive meta-store initialization");
         previousLevel = bridgeLogger.getLevel();
         bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
       } else if (previousLevel != Integer.MAX_VALUE &&
             Misc.isSnappyHiveMetaTable(lastCurrentSchema)) {
           GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
-           bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.setLevel(previousLevel);
+          bridgeLogger.info("Done hive meta-store initialization");
           previousLevel = Integer.MAX_VALUE;
       }
       // set the default schema masquerading as the user

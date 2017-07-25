@@ -40,7 +40,7 @@ public final class MsgChannelDestreamer
 
   MsgChannelDestreamer(Connection conn, SocketChannel channel,
       int bufferSize) {
-    super(channel, bufferSize, false);
+    super(channel, bufferSize);
     this.conn = conn;
   }
 

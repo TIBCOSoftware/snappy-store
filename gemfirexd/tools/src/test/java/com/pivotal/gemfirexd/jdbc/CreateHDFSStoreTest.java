@@ -2874,7 +2874,8 @@ public void testIteratorReturnsRemovedQueueEvents() throws Exception {
   delete(new File("./myhdfs"));
 }
 
-public void testforcefilerollover() throws Exception {
+// SNAP-1706
+public void _testforcefilerollover() throws Exception {
   
   Connection conn = TestUtil.getConnection();
   Statement st = conn.createStatement();

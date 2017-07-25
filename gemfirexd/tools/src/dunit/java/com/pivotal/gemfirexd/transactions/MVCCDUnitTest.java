@@ -49,6 +49,30 @@ public class MVCCDUnitTest extends DistributedSQLTestBase {
     return " replicate persistent ";
   }
 
+  @Override
+  public void setUp() throws Exception {
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+    invokeInEveryVM(new SerializableRunnable() {
+      @Override
+      public void run() {
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+      }
+    });
+    super.setUp();
+  }
+
+  @Override
+  public void tearDown2() throws Exception {
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+    invokeInEveryVM(new SerializableRunnable() {
+      @Override
+      public void run() {
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+      }
+    });
+    super.tearDown2();
+  }
+
   public void testSnapshotInsertAPI() throws Exception {
     startVMs(1, 2);
     Properties props = new Properties();

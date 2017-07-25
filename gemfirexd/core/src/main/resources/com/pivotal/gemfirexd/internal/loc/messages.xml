@@ -3853,6 +3853,16 @@ Guide.
                 <text>Locking skipped due to skip-locks connection attribute for: {0}</text>
                 <arg>value</arg>
            </msg>
+            <msg>
+                <name>X0Z36.S</name>
+                <text>Exception occurred in creating custom partition resolver for '{0}'.</text>
+                <arg>name</arg>
+            </msg>
+            <msg>
+                <name>X0Z37.S</name>
+                <text>Exception occurred in creating row encoder for '{0}'.</text>
+                <arg>name</arg>
+            </msg>
 <!-- GemStone changes END -->
         </family>
 
@@ -4536,14 +4546,14 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
             </msg>
 <!-- GemStone changes BEGIN -->
             <msg>
-                <name>XCL54</name>
+                <name>XCL54.T</name>
                 <text>Query/DML/DDL '{0}' canceled due to low memory on member '{1}'. Try reducing the search space by adding more filter conditions to the where clause.</text>
                 <arg>query</arg>
                 <arg>memberid</arg>
             </msg>
             
             <msg>
-                <name>XCL56.S</name>
+                <name>XCL56.T</name>
                 <text>The statement has been cancelled due to a user request.</text>
             </msg>
             <msg>

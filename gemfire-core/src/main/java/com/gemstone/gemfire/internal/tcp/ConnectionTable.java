@@ -409,8 +409,8 @@ public final class ConnectionTable  {
         c.getCancelCriterion());
     final int numProcessors = Runtime.getRuntime().availableProcessors();
     final int numConnections = Math.max(DistributionManager.MAX_PR_THREADS_SET,
-        // default limit of 16-32 connections per server
-        Math.min(Math.max(numProcessors, 16), 32));
+        // SNAP-1682
+        Math.max(32, DistributionManager.MAX_PR_THREADS));
     this.connectionPool.setMaxTotalPerKey(numConnections);
     this.connectionPool.setMaxIdlePerKey(numConnections);
     this.connectionPool.setTestOnBorrow(true);
@@ -825,7 +825,13 @@ public final class ConnectionTable  {
 
   public final void releasePooledConnection(Connection conn) {
     if (conn.isPooled() && this.connectionPool != null) {
-      this.connectionPool.returnObject(new ConnKey(conn.remoteId), conn);
+      try {
+        this.connectionPool.returnObject(new ConnKey(conn.remoteId), conn);
+      } catch (RuntimeException re) {
+        // log any exception in returning to pool and move on
+        getLogger().warning(LocalizedStrings.DEBUG,
+            "Unexpected exception in returning connection to pool " + re);
+      }
     }
   }
 

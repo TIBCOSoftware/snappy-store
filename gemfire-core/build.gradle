@@ -79,7 +79,7 @@ dependencies {
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
   provided "com.esotericsoftware:kryo-shaded:${kryoVersion}"
-  provided "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
+  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compile group: 'org.apache.hbase', name: 'hbase-protocol', version: hbaseVersion
   compile(group: 'org.apache.hbase', name: 'hbase-common', version: hbaseVersion) {
@@ -108,7 +108,7 @@ dependencies {
     exclude(group: 'commons-io', module: 'commons-io')
   }
   compile "io.netty:netty-all:${nettyAllVersion}"
-  compile 'javax.ws.rs:jsr311-api:1.1.1'
+  compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
   compile 'org.cloudera.htrace:htrace-core:2.05'
   compile 'org.apache.htrace:htrace-core:3.2.0-incubating'
   compile 'org.codehaus.jackson:jackson-mapper-asl:1.9.13'

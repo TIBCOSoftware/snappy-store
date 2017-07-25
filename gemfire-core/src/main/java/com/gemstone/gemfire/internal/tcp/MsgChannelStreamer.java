@@ -70,7 +70,7 @@ public final class MsgChannelStreamer extends ChannelBufferUnsafeDataOutputStrea
       DMStats stats, Version remoteVersion) throws SocketException {
     // apply the VM.maxDirectMemory() limit for these on-the-fly streamers
     super(firstConn.getSocket().getChannel(),
-        firstConn.owner.getConduit().tcpBufferSize, false);
+        firstConn.owner.getConduit().tcpBufferSize);
     this.msg = msg;
     this.directReply = directReply;
     this.connections = connections;

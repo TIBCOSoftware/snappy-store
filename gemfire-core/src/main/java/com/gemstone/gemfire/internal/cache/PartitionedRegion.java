@@ -2716,10 +2716,11 @@ public class PartitionedRegion extends LocalRegion implements
     }
     if (logger.fineEnabled()) {
       if (txProxy == null) {
-        logger.fine("PR.sendMsgByBucket:bucket "+bucketId+"'s currentTarget is " + currentTarget);
-      }
-      else {
-        logger.fine("PR.sendMsgByBucket:bucket "+bucketId+"'s currentTargets are " + currentTargets);
+        logger.fine("PR.sendMsgByBucket:bucket "+ bucketId + "'s currentTarget is "+
+                currentTarget);
+      } else {
+        logger.fine("PR.sendMsgByBucket:bucket "+bucketId+"'s currentTargets are " +
+                currentTargets);
       }
     }
 
@@ -2732,7 +2733,7 @@ public class PartitionedRegion extends LocalRegion implements
     if (prMsg.getTXState() != null && prMsg.getLockingPolicy() == LockingPolicy.SNAPSHOT) {
       final RegionAdvisor ra = getRegionAdvisor();
       ProxyBucketRegion pbr = ra.getProxyBucketArray()[bucketId];
-      ((TXStateProxy)prMsg.getTXState()).addAffectedRegion(pbr);
+      prMsg.getTXState().getProxy().addAffectedRegion(pbr);
     }
   }
 
@@ -7237,7 +7238,10 @@ public class PartitionedRegion extends LocalRegion implements
               }
               // KN: If DiskIterator has been initialized then we need to change
               // the current bucket id and the current bucket region accordingly
-              // as otherwise there will be a mismatch
+              // as otherwise there will be a mismatch.
+              // The keepDiskMap flag aggregates overflowed entries across
+              // BucketRegions and so this diskIterator is a single one across
+              // entire PR (local buckets) so this needs to be set explicitly.
               if (this.diskIteratorInitialized
                   && !(val instanceof NonLocalRegionEntry)) {
                 setCurrRegionAndBucketId(val);
@@ -7376,7 +7380,6 @@ public class PartitionedRegion extends LocalRegion implements
     }
 
     private Set<RegionEntry> getBucketEntries(final int bucketId) {
-      Integer buck = Integer.valueOf(bucketId);
       final int retryAttempts = calcRetry();
       Set<RegionEntry> entries = null;
       int count = 0;
@@ -7429,11 +7432,14 @@ public class PartitionedRegion extends LocalRegion implements
             snoozer = new RetryTimeKeeper(retryTimeout);
           }
           InternalDistributedMember oldNode = nod;
-          nod = getNodeForBucketRead(buck.intValue());
+          nod = getNodeForBucketRead(bucketId);
           if (nod != null && nod.equals(oldNode)) {
             if (snoozer.overMaximum()) {
               checkReadiness();
-              throw new TimeoutException(LocalizedStrings.PartitionedRegion_ATTEMPT_TO_ACQUIRE_PRIMARY_NODE_FOR_READ_ON_BUCKET_0_TIMED_OUT_IN_1_MS.toLocalizedString(new Object[]{getBucketName(buck.intValue()), Integer.valueOf(snoozer.getRetryTime())}));
+              throw new TimeoutException(LocalizedStrings
+                  .PartitionedRegion_ATTEMPT_TO_ACQUIRE_PRIMARY_NODE_FOR_READ_ON_BUCKET_0_TIMED_OUT_IN_1_MS
+                  .toLocalizedString(new Object[]{getBucketName(bucketId),
+                      snoozer.getRetryTime()}));
             }
             snoozer.waitToRetryNode();
           }

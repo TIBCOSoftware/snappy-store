@@ -20,7 +20,6 @@ package com.gemstone.gemfire.internal.concurrent.unsafe;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
-
 import sun.misc.Unsafe;
 
 /**
@@ -47,7 +46,7 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
    */
   @Override
   public boolean compareAndSet(T obj, long expect, long update) {
-    return unsafe.compareAndSwapLong(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapLong(obj, offset, expect, update);
   }
 
   /**
@@ -56,7 +55,7 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
   @Override
   public boolean weakCompareAndSet(T obj, long expect, long update) {
     // same as strong version
-    return unsafe.compareAndSwapLong(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapLong(obj, offset, expect, update);
   }
 
   /**
@@ -64,7 +63,7 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
    */
   @Override
   public void set(T obj, long newValue) {
-    unsafe.putLongVolatile(obj, this.offset, newValue);
+    unsafe.putLongVolatile(obj, offset, newValue);
   }
 
   /**
@@ -72,7 +71,7 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
    */
   @Override
   public void lazySet(T obj, long newValue) {
-    unsafe.putOrderedLong(obj, this.offset, newValue);
+    unsafe.putOrderedLong(obj, offset, newValue);
   }
 
   /**
@@ -80,16 +79,23 @@ public final class UnsafeAtomicLongFieldUpdater<T> extends
    */
   @Override
   public long get(T obj) {
-    return unsafe.getLongVolatile(obj, this.offset);
+    return unsafe.getLongVolatile(obj, offset);
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final long getAndSet(T obj, long newValue) {
+    return unsafe.getAndSetLong(obj, offset, newValue);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public final long getAndAdd(T obj, final long delta) {
-    long v;
-    do {
-      v = unsafe.getLongVolatile(obj, this.offset);
-    } while(!unsafe.compareAndSwapLong(obj, this.offset, v, v + delta));
-    return v;
+    return unsafe.getAndAddLong(obj, offset, delta);
   }
 
   @Override
