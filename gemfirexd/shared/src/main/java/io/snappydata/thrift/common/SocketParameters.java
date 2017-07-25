@@ -64,6 +64,7 @@ public class SocketParameters extends
   }
 
   public static Param findSSLParameterByPropertyName(String propertyName) {
+    Param.init();
     Param p = sslParamsMap.get(propertyName
         .toLowerCase(java.util.Locale.ENGLISH));
     if (p != null) {
@@ -145,6 +146,7 @@ public class SocketParameters extends
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keyStore = value;
+        params.isKeyStoreSet = true;
       }
     },
     SSL_KEYSTORE_TYPE("keystore-type", true) {
@@ -169,6 +171,7 @@ public class SocketParameters extends
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.trustStore = value;
+        params.isTrustStoreSet = true;
       }
     },
     SSL_TRUSTSTORE_TYPE("truststore-type", true) {
@@ -199,6 +202,9 @@ public class SocketParameters extends
       } else {
         paramsMap.put(propertyName, this);
       }
+    }
+
+    static void init() {
     }
 
     public abstract void setParameter(SocketParameters params, String value);

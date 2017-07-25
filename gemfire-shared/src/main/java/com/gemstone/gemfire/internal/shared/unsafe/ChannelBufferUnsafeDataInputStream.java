@@ -67,8 +67,8 @@ public class ChannelBufferUnsafeDataInputStream extends
   }
 
   public ChannelBufferUnsafeDataInputStream(ReadableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) {
-    super(channel, bufferSize, useUnsafeAllocation);
+      int bufferSize) {
+    super(channel, bufferSize);
   }
 
   /**

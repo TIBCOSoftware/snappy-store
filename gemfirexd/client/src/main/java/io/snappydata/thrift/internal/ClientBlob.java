@@ -44,6 +44,7 @@ import java.sql.Blob;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+import com.gemstone.gemfire.internal.shared.ByteBufferReference;
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.pivotal.gemfirexd.internal.shared.common.io.DynamicByteArrayOutputStream;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
@@ -51,7 +52,6 @@ import io.snappydata.thrift.BlobChunk;
 import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.BufferedBlob;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
-import io.snappydata.thrift.common.ThriftUtils;
 import io.snappydata.thrift.snappydataConstants;
 
 public final class ClientBlob extends ClientLobBase implements BufferedBlob {
@@ -61,7 +61,7 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
   private int baseChunkSize;
   private long initOffset;
   private final boolean freeForStream;
-  private boolean skipCurrentChunkClean;
+  private boolean hasBufferOwnership = true;
 
   ClientBlob(ClientService service) {
     super(service);
@@ -91,7 +91,7 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
       HostConnection source, boolean freeForStream) throws SQLException {
     super(service, firstChunk.last ? snappydataConstants.INVALID_ID
         : firstChunk.lobId, source);
-    this.baseChunkSize = firstChunk.chunk.remaining();
+    this.baseChunkSize = firstChunk.size();
     this.currentChunk = firstChunk;
     this.freeForStream = freeForStream;
     long length = -1;
@@ -104,11 +104,20 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
     this.length = (int)length;
   }
 
-  public ClientBlob(ByteBuffer buffer) {
+  public ClientBlob(ByteBuffer buffer, boolean transferOwnership) {
     super(null);
     this.currentChunk = new BlobChunk(buffer, true);
     this.streamedInput = false;
     this.length = buffer.remaining();
+    this.freeForStream = false;
+    this.hasBufferOwnership = transferOwnership;
+  }
+
+  public ClientBlob(ByteBufferReference reference) {
+    super(null);
+    this.currentChunk = new BlobChunk(reference, true);
+    this.streamedInput = false;
+    this.length = reference.size();
     this.freeForStream = false;
   }
 
@@ -165,10 +174,10 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
   @Override
   protected void clear() {
     final BlobChunk chunk = this.currentChunk;
-    if (chunk != null && !this.skipCurrentChunkClean) {
-      ThriftUtils.releaseBlobChunk(chunk);
+    if (chunk != null && this.hasBufferOwnership) {
+      this.currentChunk = null;
+      chunk.releaseBuffer();
     }
-    this.currentChunk = null;
     // don't need to do anything to close MemInputStream yet
     this.dataStream = null;
   }
@@ -229,17 +238,18 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
             SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, "java.sql.Blob");
       }
     } else if ((chunk = this.currentChunk) != null) {
-      ByteBuffer buffer = chunk.chunk;
+      ByteBuffer buffer = chunk.getBufferRetain();
       // check if it lies outside the current chunk
       if (chunk.lobId != snappydataConstants.INVALID_ID &&
           (offset < chunk.offset ||
               (offset + length) > (chunk.offset + buffer.remaining()))) {
         // fetch new chunk
         try {
+          chunk.releaseBuffer();
           this.currentChunk = chunk = service.getBlobChunk(
               getLobSource(true, "Blob.readBytes"), chunk.lobId, offset,
               Math.max(baseChunkSize, length), false);
-          buffer = chunk.chunk;
+          buffer = chunk.getBufferRetain();
         } catch (SnappyException se) {
           throw ThriftExceptionUtil.newSQLException(se);
         }
@@ -252,8 +262,10 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
       if (length > 0) {
         buffer.get(b, boffset, length);
         buffer.position(bpos);
+        chunk.releaseBuffer();
         return length;
       } else {
+        chunk.releaseBuffer();
         return -1; // end of data
       }
     } else {
@@ -265,14 +277,19 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
    * {@inheritDoc}
    */
   @Override
-  public ByteBuffer getAsBuffer() throws SQLException {
+  public BlobChunk getAsLastChunk() throws SQLException {
     BlobChunk chunk = this.currentChunk;
     if (chunk != null && chunk.last && chunk.offset == 0) {
-      // the first and only chunk whose ownership is handed over to caller
-      this.skipCurrentChunkClean = true;
-      return chunk.chunk;
+      if (this.hasBufferOwnership) {
+        this.hasBufferOwnership = false;
+        // the first and only chunk whose ownership is handed over to caller
+        return chunk;
+      } else {
+        // don't own the buffer so return a copy
+        return new BlobChunk(chunk);
+      }
     } else {
-      return ByteBuffer.wrap(getBytes(1, (int)length()));
+      return new BlobChunk(ByteBuffer.wrap(getBytes(1, (int)length())), true);
     }
   }
 
@@ -532,7 +549,7 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
       } else if ((chunk = currentChunk) != null) {
         long coffset = this.blobOffset - chunk.offset;
         if (coffset >= 0 && coffset < Integer.MAX_VALUE) {
-          int remaining = chunk.chunk.remaining() - (int)coffset;
+          int remaining = chunk.size() - (int)coffset;
           if (remaining >= 0) {
             return remaining;
           }

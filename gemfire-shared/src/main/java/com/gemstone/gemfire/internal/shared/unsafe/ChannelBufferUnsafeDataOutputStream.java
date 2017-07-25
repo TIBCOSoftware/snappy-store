@@ -47,14 +47,8 @@ public class ChannelBufferUnsafeDataOutputStream extends
   }
 
   public ChannelBufferUnsafeDataOutputStream(WritableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) {
-    super(channel, bufferSize, useUnsafeAllocation);
-  }
-
-  public ChannelBufferUnsafeDataOutputStream(
-      ChannelBufferUnsafeOutputStream other, WritableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) throws IOException {
-    super(other, channel, bufferSize, useUnsafeAllocation);
+      int bufferSize) {
+    super(channel, bufferSize);
   }
 
   /**
@@ -92,19 +86,6 @@ public class ChannelBufferUnsafeDataOutputStream extends
   @Override
   public final void writeChar(int v) throws IOException {
     writeShort(v);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final void writeInt(int v) throws IOException {
-    long addrPos = this.addrPosition;
-    if ((this.addrLimit - addrPos) < 4) {
-      flushBufferBlocking(this.buffer);
-      addrPos = this.addrPosition;
-    }
-    this.addrPosition = putInt(addrPos, v);
   }
 
   /**
@@ -289,16 +270,6 @@ public class ChannelBufferUnsafeDataOutputStream extends
       Platform.putShort(null, addrPos, (short)v);
     }
     return addrPos + 2;
-  }
-
-  /** Write an integer in big-endian format on given off-heap address. */
-  protected static long putInt(long addrPos, final int v) {
-    if (ClientSharedUtils.isLittleEndian) {
-      Platform.putInt(null, addrPos, Integer.reverseBytes(v));
-    } else {
-      Platform.putInt(null, addrPos, v);
-    }
-    return addrPos + 4;
   }
 
   /** Write a long in big-endian format on given off-heap address. */

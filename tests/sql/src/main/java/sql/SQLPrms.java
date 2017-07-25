@@ -642,9 +642,12 @@ public class SQLPrms extends BasePrms{
     SQLBB.getBB().getSharedMap().put(SQLPrms.HDFS_TRIGGER, StrTriggerName);
     return triggerStmt.toArray(new String[triggerStmt.size()]);
   }
-  
- 
- 
+
+  /** (boolean) whether snapshotIsolation is enabled.
+   *  default is true;.
+   */
+   public static Long isSnapshotEnabled;
+
   /** (boolean) whether a record is manipulated only by the thread which creates it.
    *  default is true;.
    */

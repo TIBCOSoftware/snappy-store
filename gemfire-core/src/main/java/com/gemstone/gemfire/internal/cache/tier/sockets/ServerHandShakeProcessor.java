@@ -161,7 +161,7 @@ public class ServerHandShakeProcessor {
   public static void refuse(OutputStream out, String message, byte exception)
       throws IOException {
 
-    HeapDataOutputStream hdos = new HeapDataOutputStream(32, Version.CURRENT);
+    HeapDataOutputStream hdos = new HeapDataOutputStream(32, Version.CURRENT_GFE);
     DataOutputStream dos = new DataOutputStream(hdos);
     // Write refused reply
     dos.writeByte(exception);
@@ -195,7 +195,7 @@ public class ServerHandShakeProcessor {
   protected static void writeServerMember(DistributedMember member,
       DataOutputStream dos) throws IOException {
 
-    Version v = Version.CURRENT;
+    Version v = Version.CURRENT_GFE;
     if (dos instanceof VersionedDataStream) {
       v = ((VersionedDataStream) dos).getVersion();
     }

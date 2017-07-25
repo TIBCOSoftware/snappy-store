@@ -481,11 +481,12 @@ public class InitialImageOperation  {
           processor.enableSevereAlertProcessing();
           m.severeAlertEnabled = true;
         }
-      
-        // do not remove the following log statement
-        this.region.getCache().getLoggerI18n().info(
-            LocalizedStrings.InitialImageOperation_REGION_0_REQUESTING_INITIAL_IMAGE_FROM_1,
-            new Object[] { this.region.getName(), recipient });
+        if (!LocalRegion.isMetaTable(this.region.getFullPath())) {
+          // do not remove the following log statement
+          this.region.getCache().getLoggerI18n().info(
+                  LocalizedStrings.InitialImageOperation_REGION_0_REQUESTING_INITIAL_IMAGE_FROM_1,
+                  new Object[]{this.region.getName(), recipient});
+        }
 
         dm.putOutgoing(m);
         this.region.cache.getCancelCriterion().checkCancelInProgress(null);
@@ -557,17 +558,20 @@ public class InitialImageOperation  {
           if (this.region.getLogWriterI18n().infoEnabled()) {
             if (this.gotImage) {
               // TODO add localizedString
-              this.region.getLogWriterI18n().info(LocalizedStrings.DEBUG,
-                  this.region.getName() + " is done getting image from "
-                      + recipient + ". isDeltaGII is " + this.isDeltaGII
-                      + " rvv is " + this.region.getVersionVector());
+              if (!LocalRegion.isMetaTable(this.region.getFullPath())) {
+                this.region.getLogWriterI18n().info(LocalizedStrings.DEBUG,
+                        this.region.getName() + " is done getting image from "
+                        + recipient + ". isDeltaGII is " + this.isDeltaGII
+                        + " rvv is " + this.region.getVersionVector());
+              }
             } else {
               // TODO add localizedString
               this.region.getLogWriterI18n().info(LocalizedStrings.DEBUG, this.region.getName() + " failed to get image from " + recipient);
             }
           }
           if (this.region.dataPolicy.withPersistence()
-              && this.region.getLogWriterI18n().infoEnabled()) {
+              && this.region.getLogWriterI18n().infoEnabled()
+              && !LocalRegion.isMetaTable(this.region.getFullPath())) {
             this.region.getLogWriterI18n().info(
                     LocalizedStrings.InitialImageOperation_REGION_0_INITIALIZED_PERSISTENT_REGION_WITH_ID_1_FROM_2,
                     new Object[] {this.region.getName(),

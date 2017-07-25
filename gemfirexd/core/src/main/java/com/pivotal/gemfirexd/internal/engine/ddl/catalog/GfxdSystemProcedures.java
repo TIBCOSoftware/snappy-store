@@ -27,17 +27,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
-import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.control.RebalanceOperation;
 import com.gemstone.gemfire.cache.control.ResourceManager;
 import com.gemstone.gemfire.cache.execute.FunctionService;
-import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
@@ -81,6 +83,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeGetStat
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeSmartConnectorOpMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.SecurityUtils;
+import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.store.CustomRowsResultSet;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
@@ -101,7 +104,6 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.StatementRoutinePermission;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.LockingPolicy;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialBlob;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
@@ -1440,6 +1442,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
           throw PublicAPI.wrapStandardException(se);
         }
       }
+    } else {
+      throw Util.generateCsSQLException(SQLState.LANG_TABLE_NOT_FOUND, tableName);
     }
 
     final GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.
@@ -1567,7 +1571,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
         LeadNodeSmartConnectorOpContext.OpType.CREATE_TABLE,
         tableIdentifier, provider, userSpecifiedSchema, schemaDDL,
         mode.getBytes(1, (int)mode.length()), options.getBytes(1, (int)options.length()),
-        isBuiltIn, false, null, null, null, null, null, null);
+        isBuiltIn, false, null, null, null, null,
+            null, null, false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1581,7 +1586,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.DROP_TABLE,
         tableIdentifier, null, null, null, null, null, true, ifExists,
-        null, null, null, null, null, null);
+        null, null, null, null, null, null,false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1600,7 +1605,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
         LeadNodeSmartConnectorOpContext.OpType.CREATE_INDEX,
         tableIdentifier, null, null, null, null,
         options.getBytes(1, (int)options.length()), true, false,
-        indexIdentifier, indexColumns.getBytes(1, (int)indexColumns.length()), null, null, null, null);
+        indexIdentifier, indexColumns.getBytes(1, (int)indexColumns.length()), null, null, null, null ,false, null, null, false);
 
     sendConnectorOpToLead(ctx);
 
@@ -1616,7 +1621,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.DROP_INDEX,
         null, null, null, null, null, null, true, ifExists,
-        indexIdentifier, null, null, null, null, null);
+        indexIdentifier, null, null, null, null, null, false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1630,7 +1635,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.CREATE_UDF,
         null, null, null, null, null, null, true, false, null, null,
-        db, functionName, className, jarURI);
+        db, functionName, className, jarURI,false, null, null, false);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1644,7 +1649,24 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
         LeadNodeSmartConnectorOpContext.OpType.DROP_UDF,
         null, null, null, null, null, null, true, false, null, null,
-        db, functionName, null, null);
+        db, functionName, null, null, false, null, null, false);
+
+    sendConnectorOpToLead(ctx);
+  }
+
+  public static void ALTER_SNAPPY_TABLE(String tableIdentifier, Boolean addOrDropCol,
+                                        String columnName, String columnType,
+                                        Boolean columnNullable) throws SQLException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+              "executing ALTER_SNAPPY_TABLE ");
+    }
+
+    LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+            LeadNodeSmartConnectorOpContext.OpType.ALTER_TABLE,
+            tableIdentifier, null, null, null, null,
+            null, true, false, null, null,
+            null, null, null, null, addOrDropCol, columnName, columnType, columnNullable);
 
     sendConnectorOpToLead(ctx);
   }
@@ -1723,20 +1745,48 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
+  private static void assignBucketsToPartitions(final PartitionedRegion pr) {
+    ExecutorService executor = pr.getCache().getDistributionManager()
+        .getFunctionExcecutor();
+    int numBuckets = pr.getTotalNumberOfBuckets();
+    Future<?>[] bucketCreates = new Future[numBuckets];
+    for (int i = 0; i < numBuckets; i++) {
+      final int bucketId = i;
+      bucketCreates[i] = executor.submit((Callable<Object>)() -> {
+        // this method will return quickly if the bucket already exists
+        return pr.createBucket(bucketId, 0, null);
+      });
+    }
+    Throwable failure = null;
+    for (int i = 0; i < numBuckets; i++) {
+      try {
+        bucketCreates[i].get();
+      } catch (InterruptedException ie) {
+        pr.getCancelCriterion().checkCancelInProgress(ie);
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        pr.getCancelCriterion().checkCancelInProgress(e);
+        failure = e.getCause();
+      }
+    }
+    if (failure != null) {
+      throw new GemFireXDRuntimeException(failure);
+    }
+  }
+
   private static void CREATE_ALL_BUCKETS_INTERNAL(LocalRegion region,
       String tableName) throws SQLException {
     if (region.getAttributes().getPartitionAttributes() != null) {
       // force creation of all buckets in the region
-      // final PartitionedRegion pr = (PartitionedRegion)region;
       try {
-        PartitionRegionHelper.assignBucketsToPartitions(region);
+        assignBucketsToPartitions((PartitionedRegion)region);
         GfxdIndexManager indexManager = (GfxdIndexManager) region.getIndexUpdater();
         if (indexManager != null) {
           List<GemFireContainer> indexContainers = indexManager.getIndexContainers();
             if (indexContainers != null) {
               for (GemFireContainer indexContainer : indexContainers) {
                 if (indexContainer.isGlobalIndex()) {
-                  PartitionRegionHelper.assignBucketsToPartitions(indexContainer.getRegion());
+                  assignBucketsToPartitions((PartitionedRegion)indexContainer.getRegion());
                 }
               }
             }
@@ -2413,29 +2463,51 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   public static void COMMIT_SNAPSHOT_TXID(String txId) throws SQLException, StandardException {
-    StringTokenizer st = new StringTokenizer(txId, ":");
-    if (GemFireXDUtils.TraceExecution) {
-      LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-      GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID());
+    TXStateInterface txState = null;
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction) lcc.getTransactionExecute();
+
+    if (!txId.equals("null")) {
+      StringTokenizer st = new StringTokenizer(txId, ":");
+      if (GemFireXDUtils.TraceExecution) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+                + " TxManager " + TXManagerImpl.getCurrentTXId()
+                + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+      }
+
+      long memberId = Long.parseLong(st.nextToken());
+      int uniqId = Integer.parseInt(st.nextToken());
+      TXId txId1 = TXId.valueOf(memberId, uniqId);
+
+      txState = tc.getTransactionManager().getHostedTXState(txId1);
     }
 
-    long memberId = Long.parseLong(st.nextToken());
-    int uniqId = Integer.parseInt(st.nextToken());
-    TXId txId1 = TXId.valueOf(memberId, uniqId);
-    TXStateInterface txState = Misc.getGemFireCache().getCacheTransactionManager().getHostedTXState(txId1);
-    Misc.getGemFireCache().getCacheTransactionManager().masqueradeAs(txState);
-    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    tc.clearActiveTXState(false, true);
+    // this is being done because txState is being shared across conn
+    if (txState != null && txState.isInProgress()) {
+      tc.getTransactionManager().masqueradeAs(txState);
+      tc.getTransactionManager().commit();
+    } else {
+      TXManagerImpl.snapshotTxState.set(null);
+      TXManagerImpl.getOrCreateTXContext().clearTXState();
+    }
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure COMMIT_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+    }
   }
 
-  public static void GET_SNAPSHOT_TXID(String[] txid) throws SQLException {
+  public static void GET_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     if (GemFireXDUtils.TraceExecution) {
-      LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-      GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "in procedure GET_SNAPSHOT_TXID() SURANJAN for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
-      + " TxManager " + TXManagerImpl.getCurrentTXId());
+      + " TxManager " + TXManagerImpl.getCurrentTXId()
+      + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
 
     //Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
@@ -2443,11 +2515,16 @@ public class GfxdSystemProcedures extends SystemProcedures {
     //GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     //tc.setActiveTXState(TXManagerImpl.snapshotTxState.get(), false);
 
-    if (TXManagerImpl.snapshotTxState.get() != null) {
-      txid[0] = TXManagerImpl.snapshotTxState.get().getTransactionId().stringFormat();
+    TXStateInterface tx = TXManagerImpl.snapshotTxState.get();
+    if ( tx != null) {
+      txid[0] = tx.getTransactionId().stringFormat();
     } else {
       txid[0] = "null";
     }
+    // tc commit will clear all the artifacts but will not commit actual txState
+    // that should be committed in COMMIT procedure
+    tc.resetActiveTXState(true);
+    TXManagerImpl.getOrCreateTXContext().clearTXState();
     TXManagerImpl.snapshotTxState.set(null);
   }
 
@@ -2458,14 +2535,20 @@ public class GfxdSystemProcedures extends SystemProcedures {
     TXId txId1 = TXId.valueOf(memberId, uniqId);
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
-    TXStateInterface state = Misc.getGemFireCache().getCacheTransactionManager().getHostedTXState(txId1);
+    TXStateInterface state = tc.getTransactionManager().getHostedTXState(txId1);
 
     if (state == null) {
+      if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure USE_SNAPSHOT_TXID() creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+              + " txId  " +txId);
+      }
       // if state is null then create txstate and use
-      state =  Misc.getGemFireCache().getCacheTransactionManager().getOrCreateHostedTXState(txId1,
+      state =  tc.getTransactionManager().getOrCreateHostedTXState(txId1,
           com.gemstone.gemfire.internal.cache.locks.LockingPolicy.SNAPSHOT, true);
     }
-    Misc.getGemFireCache().getCacheTransactionManager().masqueradeAs(state);
+    tc.getTransactionManager().masqueradeAs(state);
+    TXManagerImpl.snapshotTxState.set(state);
     tc.setActiveTXState(state, false);
     // If already then throw exception?
     if (TXManagerImpl.snapshotTxState.get() != null) {

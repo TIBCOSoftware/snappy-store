@@ -93,7 +93,7 @@ public class TcpClient {
   public static Object requestToServer(InetAddress addr, int port, Object request, int timeout) throws IOException, ClassNotFoundException {
     return requestToServer(addr, port, request, timeout, true);
   }
-  
+
   public static Object requestToServer(InetAddress addr, int port, Object request, int timeout, boolean replyExpected) throws IOException, ClassNotFoundException {
     IpAddress ipAddr;
     if (addr == null) {
@@ -105,8 +105,8 @@ public class TcpClient {
     // Get the GemFire version of the TcpServer first, before sending any other request.
     short serverVersion = getServerVersion(ipAddr, REQUEST_TIMEOUT).shortValue();
 
-    if (serverVersion > Version.CURRENT_ORDINAL) {
-      serverVersion = Version.CURRENT_ORDINAL;
+    if (serverVersion > Version.CURRENT_GFE_ORDINAL) {
+      serverVersion = Version.CURRENT_GFE_ORDINAL;
     }
 
     // establish the old GossipVersion for the server
@@ -121,7 +121,7 @@ public class TcpClient {
     sock.setSoTimeout(timeout);
     try {
       DataOutputStream out=new DataOutputStream(sock.getOutputStream());
-      if (serverVersion < Version.CURRENT_ORDINAL) {
+      if (serverVersion < Version.CURRENT_GFE_ORDINAL) {
         out = new VersionedDataOutputStream(out,
             Version.fromOrdinalCheck(serverVersion, false));
       }
@@ -148,7 +148,7 @@ public class TcpClient {
     } catch (UnsupportedGFXDVersionException ex) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Remote TcpServer version: " + serverVersion
-                + " is higher than local version: " + Version.CURRENT_ORDINAL
+                + " is higher than local version: " + Version.CURRENT_GFE_ORDINAL
                 + ". This is never expected as remoteVersion");
       }
       return null;

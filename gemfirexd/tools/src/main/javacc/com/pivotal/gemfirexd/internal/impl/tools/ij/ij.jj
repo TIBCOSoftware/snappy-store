@@ -2489,8 +2489,9 @@ throws SQLException
 		[ <IN> schema=identifier() ]
 	{
 		if(t!=null) {
-// GemStone changes: Addition of "COLUMN TABLE", "EXTERNAL TABLE" below
-		    types = new String[] { "TABLE", "SYSTEM TABLE", "COLUMN TABLE", "EXTERNAL TABLE" };
+// GemStone changes: Addition of "COLUMN TABLE", "EXTERNAL TABLE" etc below
+		    types = new String[] { "TABLE", "SYSTEM TABLE", "COLUMN TABLE",
+		        "EXTERNAL TABLE", "STREAM TABLE", "SAMPLE TABLE", "TOPK TABLE" };
 		}
 		else if(v!=null)
 			types = new String[] { "VIEW" };

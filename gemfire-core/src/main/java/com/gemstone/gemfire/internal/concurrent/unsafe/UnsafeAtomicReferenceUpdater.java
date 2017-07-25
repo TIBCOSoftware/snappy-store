@@ -74,7 +74,7 @@ public final class UnsafeAtomicReferenceUpdater<T, V> extends
    */
   @Override
   public boolean compareAndSet(T obj, V expect, V update) {
-    return unsafe.compareAndSwapObject(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapObject(obj, offset, expect, update);
   }
 
   /**
@@ -83,7 +83,7 @@ public final class UnsafeAtomicReferenceUpdater<T, V> extends
   @Override
   public boolean weakCompareAndSet(T obj, V expect, V update) {
     // same as strong one
-    return unsafe.compareAndSwapObject(obj, this.offset, expect, update);
+    return unsafe.compareAndSwapObject(obj, offset, expect, update);
   }
 
   /**
@@ -91,7 +91,7 @@ public final class UnsafeAtomicReferenceUpdater<T, V> extends
    */
   @Override
   public void set(T obj, V newValue) {
-    unsafe.putObjectVolatile(obj, this.offset, newValue);
+    unsafe.putObjectVolatile(obj, offset, newValue);
   }
 
   /**
@@ -99,7 +99,7 @@ public final class UnsafeAtomicReferenceUpdater<T, V> extends
    */
   @Override
   public void lazySet(T obj, V newValue) {
-    unsafe.putOrderedObject(obj, this.offset, newValue);
+    unsafe.putOrderedObject(obj, offset, newValue);
   }
 
   /**
@@ -108,6 +108,15 @@ public final class UnsafeAtomicReferenceUpdater<T, V> extends
   @SuppressWarnings("unchecked")
   @Override
   public V get(T obj) {
-    return (V)unsafe.getObjectVolatile(obj, this.offset);
+    return (V)unsafe.getObjectVolatile(obj, offset);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @SuppressWarnings("unchecked")
+  @Override
+  public final V getAndSet(T obj, V newValue) {
+    return (V)unsafe.getAndSetObject(obj, offset, newValue);
   }
 }

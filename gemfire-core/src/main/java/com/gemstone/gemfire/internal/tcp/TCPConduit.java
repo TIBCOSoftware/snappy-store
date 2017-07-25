@@ -1183,7 +1183,10 @@ public class TCPConduit implements Runnable {
   }
 
   public final void releasePooledConnection(Connection conn) {
-    this.conTable.releasePooledConnection(conn);
+    final ConnectionTable conTable = this.conTable;
+    if (conTable != null) {
+      conTable.releasePooledConnection(conn);
+    }
   }
 //   /**
 //    * Send a message.

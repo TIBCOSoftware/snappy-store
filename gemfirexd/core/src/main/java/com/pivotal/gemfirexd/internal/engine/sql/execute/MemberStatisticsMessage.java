@@ -1,5 +1,6 @@
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
+import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
@@ -24,6 +25,7 @@ import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
@@ -75,10 +77,15 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     // Members clients stats
     NetworkServerConnectionStats clientConnectionStats = getMemberClientConnectionStats(ids);
 
+    // Memory Stats
+    Map<String, Long> memoryStats = this.getMemoryStatistics();
+
     Map memberStatsMap = new HashMap();
     memberStatsMap.put("id", memberId);
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
+    memberStatsMap.put("userDir", getUserDir());
+    memberStatsMap.put("processId", getProcessId());
     memberStatsMap.put("locator", isLocator());
     memberStatsMap.put("dataServer", isDataServer());
     memberStatsMap.put("activeLead", isActiveLead(ids.getDistributedMember()));
@@ -91,10 +98,24 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
     memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
     memberStatsMap.put("diskStoreName", getDiskStoreName());
-    memberStatsMap.put("storagePoolUsed",getStoragePoolUsed());
-    memberStatsMap.put("storagePoolSize",getStoragePoolSize());
-    memberStatsMap.put("executionPoolUsed",getExecutionPoolUsed());
-    memberStatsMap.put("executionPoolSize",getExecutionPoolSize());
+
+    memberStatsMap.put("heapStoragePoolUsed", memoryStats.get("heapStoragePoolUsed"));
+    memberStatsMap.put("heapStoragePoolSize", memoryStats.get("heapStoragePoolSize"));
+    memberStatsMap.put("heapExecutionPoolUsed", memoryStats.get("heapExecutionPoolUsed"));
+    memberStatsMap.put("heapExecutionPoolSize", memoryStats.get("heapExecutionPoolSize"));
+    memberStatsMap.put("offHeapStoragePoolUsed", memoryStats.get("offHeapStoragePoolUsed"));
+    memberStatsMap.put("offHeapStoragePoolSize", memoryStats.get("offHeapStoragePoolSize"));
+    memberStatsMap.put("offHeapExecutionPoolUsed", memoryStats.get("offHeapExecutionPoolUsed"));
+    memberStatsMap.put("offHeapExecutionPoolSize", memoryStats.get("offHeapExecutionPoolSize"));
+
+    memberStatsMap.put("heapMemorySize", ( memoryStats.get("heapStoragePoolSize") +
+                                           memoryStats.get("heapExecutionPoolSize")));
+    memberStatsMap.put("heapMemoryUsed", ( memoryStats.get("heapStoragePoolUsed") +
+                                           memoryStats.get("heapExecutionPoolUsed")));
+    memberStatsMap.put("offHeapMemorySize", ( memoryStats.get("offHeapStoragePoolSize") +
+                                              memoryStats.get("offHeapExecutionPoolSize")));
+    memberStatsMap.put("offHeapMemoryUsed", ( memoryStats.get("offHeapStoragePoolUsed") +
+                                              memoryStats.get("offHeapExecutionPoolUsed")));
 
     lastResult(memberStatsMap);
   }
@@ -152,6 +173,15 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     } catch (UnknownHostException ex) {
       return ManagementConstants.DEFAULT_HOST_NAME;
     }
+  }
+
+  private String getUserDir(){
+    return System.getProperty("user.dir");
+  }
+
+  private String getProcessId(){
+    String[] processDetails = ManagementFactory.getRuntimeMXBean().getName().split("@");
+    return processDetails[0];
   }
 
   /**
@@ -228,16 +258,64 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   }
 
   public long getStoragePoolUsed() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getStoragePoolUsedMemory();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolUsedMemory(false) +
+        callbacks.getStoragePoolUsedMemory(true);
   }
+
   public long getStoragePoolSize() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getStoragePoolSize();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolSize(false) +
+        callbacks.getStoragePoolSize(true);
   }
+
   public long getExecutionPoolUsed() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolUsedMemory();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getExecutionPoolUsedMemory(false) +
+        callbacks.getExecutionPoolUsedMemory(true);
   }
+
   public long getExecutionPoolSize() {
-    return  com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider.getStoreCallbacks().getExecutionPoolSize();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getExecutionPoolSize(false) +
+        callbacks.getExecutionPoolSize(true);
+  }
+
+  public long getOffHeapMemorySize() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolSize(true) +  callbacks.getExecutionPoolSize(true);
+  }
+
+  public long getOffHeapMemoryUsed() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolUsedMemory(true) +  callbacks.getExecutionPoolUsedMemory(true);
+  }
+
+  public long getHeapMemorySize() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolSize(false) +  callbacks.getExecutionPoolSize(false);
+  }
+
+  public long getHeapMemoryUsed() {
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+    return callbacks.getStoragePoolUsedMemory(false) +  callbacks.getExecutionPoolUsedMemory(false);
+  }
+
+  private Map<String, Long> getMemoryStatistics() {
+    Map memoryStats = new HashMap<String, Long>();
+    StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+
+    memoryStats.put("heapStoragePoolSize", callbacks.getStoragePoolSize(false));
+    memoryStats.put("heapStoragePoolUsed", callbacks.getStoragePoolUsedMemory(false));
+    memoryStats.put("heapExecutionPoolSize", callbacks.getExecutionPoolSize(false));
+    memoryStats.put("heapExecutionPoolUsed", callbacks.getExecutionPoolUsedMemory(false));
+
+    memoryStats.put("offHeapStoragePoolSize", callbacks.getStoragePoolSize(true));
+    memoryStats.put("offHeapStoragePoolUsed", callbacks.getStoragePoolUsedMemory(true));
+    memoryStats.put("offHeapExecutionPoolSize", callbacks.getExecutionPoolSize(true));
+    memoryStats.put("offHeapExecutionPoolUsed", callbacks.getExecutionPoolUsedMemory(true));
+
+    return memoryStats;
   }
 
   private NetworkServerConnectionStats getMemberClientConnectionStats(InternalDistributedSystem system){

@@ -3741,9 +3741,18 @@ public final class TXState implements TXStateInterface {
    * @see InternalDataView#postPutAll(DistributedPutAllOperation,
    *      VersionedObjectList, LocalRegion)
    */
-  public void postPutAll(DistributedPutAllOperation putallOp,
+  public void postPutAll(DistributedPutAllOperation putAllOp,
       VersionedObjectList successfulPuts, LocalRegion region) {
     // nothing to be done here
+    final LogWriterI18n logger = region.getLogWriterI18n();
+    if (isSnapshot()) {
+      if (logger.fineEnabled()) {
+        logger.info(LocalizedStrings.DEBUG, "TXState: in postPutAll with tx " + this);
+      }
+      getProxy().addAffectedRegion(region);
+      region.getSharedDataView().postPutAll(putAllOp, successfulPuts, region);
+      return;
+    }
   }
 
   /**
@@ -3881,9 +3890,8 @@ public final class TXState implements TXStateInterface {
     final LogWriterI18n logger = ((LocalRegion)region).getLogWriterI18n();
 
     for (VersionInformation obj : this.queue) {
-      if (id == ((VersionInformation)obj).member && (version == (
-          (VersionInformation)obj).version) &&
-          region == ((VersionInformation)obj).region)
+      if (id == obj.member && (version == obj.version) &&
+          region == obj.region)
 
         if (TXStateProxy.LOG_FINE) {
           logger.info(LocalizedStrings.DEBUG, " The version found in the current tx : " + this);

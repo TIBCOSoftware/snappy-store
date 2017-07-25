@@ -612,6 +612,11 @@ public abstract class FabricServiceImpl implements FabricService {
     }
     if (this.previousServerStatus == State.RUNNING) {
       this.serverstatus = State.RUNNING;
+      // if started from command-line then change the status in the file too
+      CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+      if (launcher != null) {
+        launcher.running(Misc.getDistributedSystem(), true);
+      }
     }
     this.previousServerStatus = State.UNINITIALIZED;
   }
@@ -620,7 +625,7 @@ public abstract class FabricServiceImpl implements FabricService {
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public synchronized final void notifyRunning() {
+  public final void notifyRunning() {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
           "Accepting RUNNING notification");
@@ -632,12 +637,12 @@ public abstract class FabricServiceImpl implements FabricService {
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public synchronized final void notifyStop(boolean reconnecting) {
+  public final void notifyStop(boolean reconnecting) {
     if (GemFireXDUtils.TraceFabricServiceBoot && SanityManager.isFinerEnabled) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
           "Accepting STOPPED notification");
     }
-    serverstatus = reconnecting? State.RECONNECTING : State.STOPPED;
+    serverstatus = reconnecting ? State.RECONNECTING : State.STOPPED;
     FabricServiceUtils.clearSystemProperties(monitorlite, sysProps);
   }
 

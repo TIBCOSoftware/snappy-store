@@ -95,8 +95,6 @@ public abstract class GfxdPartitionResolver implements
 
   protected GfxdPartitionResolver masterResolver;
 
-  protected DistributionDescriptor distributionDesc;
-
   protected String[] partitionColumnNames;
 
   protected volatile GemFireContainer globalIndexContainer;
@@ -380,12 +378,7 @@ public abstract class GfxdPartitionResolver implements
 
   public abstract int getPartitioningColumnIndex(String partitionColumn);
 
-  public void setDistributionDescriptor(DistributionDescriptor distributionDesc) {
-    this.distributionDesc = distributionDesc;
-  }
-
-  public final DistributionDescriptor getDistributionDescriptor() {
-    return this.distributionDesc;
+  public void updateDistributionDescriptor(DistributionDescriptor desc) {
   }
 
   public int getPartitioningColumnsCount() {

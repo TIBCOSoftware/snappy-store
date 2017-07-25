@@ -36,11 +36,11 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.internal.cache.Checkpoint;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
 import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
@@ -705,7 +705,7 @@ public final class GemFireTransaction extends RawTransaction implements
    *          DOCUMENT ME!
    * @param dynamic_info
    *          DOCUMENT ME!
-   * @param fc
+   * @param act
    *          DOCUMENT ME!
    * 
    * @return DOCUMENT ME!
@@ -2258,7 +2258,7 @@ public final class GemFireTransaction extends RawTransaction implements
       }
       try {
         TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
-        if (tx != gfTx) {
+        if (tx != gfTx && !tx.isSnapshot()) {
           context = this.txManager.commit(tx, this.connectionID, commitPhase,
               context, false);
         }
@@ -2411,6 +2411,13 @@ public final class GemFireTransaction extends RawTransaction implements
   }
 
   public void abort(boolean abortParent) throws StandardException {
+    try {
+      doAbort(abortParent);
+    } catch (CancelException ignored) {
+    }
+  }
+
+  private void doAbort(boolean abortParent) throws StandardException {
 
     if (GemFireXDUtils.TraceTranVerbose) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN_VERBOSE,
@@ -2452,7 +2459,7 @@ public final class GemFireTransaction extends RawTransaction implements
             && this.connectionID.longValue() >= 0) {
           // In case, the tx is started by gemfire layer for snapshot, it should be rollbacked by gemfire layer.
           TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
-          if (tx != gfTx) {
+          if (tx != gfTx && !tx.isSnapshot()) {
             this.txManager.rollback(tx, this.connectionID, false);
             setTXState(null);
           }
@@ -2469,6 +2476,13 @@ public final class GemFireTransaction extends RawTransaction implements
   }
 
   public void internalCleanup() throws StandardException {
+    try {
+      doInternalCleanup();
+    } catch (CancelException ignored) {
+    }
+  }
+
+  private void doInternalCleanup() throws StandardException {
 
     // if we have already committed or closed the TX then ignore abort
     if (this.state != ACTIVE) {

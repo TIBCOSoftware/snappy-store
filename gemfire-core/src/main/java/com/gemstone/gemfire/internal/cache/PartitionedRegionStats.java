@@ -169,7 +169,8 @@ public class PartitionedRegionStats {
 
   //Column table Stats
   private static final int prNumRowsInColumnBatches;
-  
+  private static final int prOffHeapSizeInBytes;
+
   static {
     final boolean largerIsBetter = true;
     StatisticsTypeFactory f = StatisticsTypeFactoryImpl.singleton();
@@ -550,8 +551,10 @@ public class PartitionedRegionStats {
               "prNumRowsInColumnBatches",
               "total number of rows which are part of column batches.",
               "entries", false),
-
-
+        f.createLongCounter(
+            "prOffHeapSizeInBytes",
+            "total bytes occupied by off-heap in the partitioned region",
+            "bytes", false),
       });
     
     bucketCountId = type.nameToId("bucketCount");
@@ -650,6 +653,7 @@ public class PartitionedRegionStats {
     
     prMetaDataSentCountId = type.nameToId("prMetaDataSentCount");
     prNumRowsInColumnBatches = type.nameToId("prNumRowsInColumnBatches");
+    prOffHeapSizeInBytes = type.nameToId("prOffHeapSizeInBytes");
   }
   
   private final Statistics stats;
@@ -1235,5 +1239,13 @@ type, name /* fixes bug 42343 */);
 
   public long getPRNumRowsInColumnBatches() {
     return this.stats.getLong(prNumRowsInColumnBatches);
+  }
+
+  public void setOffHeapSizeInBytes(long value) {
+    this.stats.setLong(prOffHeapSizeInBytes, value);
+  }
+
+  public long getOffHeapSizeInBytes() {
+    return this.stats.getLong(prOffHeapSizeInBytes);
   }
 }

@@ -51,6 +51,7 @@ import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.LocatorService;
 import io.snappydata.thrift.ServerType;
 import io.snappydata.thrift.SnappyException;
+import io.snappydata.thrift.common.SnappyTSSLSocket;
 import io.snappydata.thrift.common.SnappyTSocket;
 import io.snappydata.thrift.common.SocketParameters;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
@@ -369,13 +370,17 @@ final class ControlConnection {
                 SanityManager.TraceClientConn ? new Throwable() : null);
           }
 
-          final SnappyTSocket socket = new SnappyTSocket(controlAddr, null,
-              getServerType().isThriftSSL(), true, ThriftUtils
-              .isThriftSelectorServer(), this.socketParams);
-          if (this.framedTransport) {
-            inTransport = outTransport = new TFramedTransport(socket);
+          final TTransport transport;
+          if (getServerType().isThriftSSL()) {
+            transport = new SnappyTSSLSocket(controlAddr, this.socketParams);
           } else {
-            inTransport = outTransport = socket;
+            transport = new SnappyTSocket(controlAddr, null, false, true,
+                ThriftUtils.isThriftSelectorServer(), this.socketParams);
+          }
+          if (this.framedTransport) {
+            inTransport = outTransport = new TFramedTransport(transport);
+          } else {
+            inTransport = outTransport = transport;
           }
           if (getServerType().isThriftBinaryProtocol()) {
             inProtocol = new TBinaryProtocol(inTransport);

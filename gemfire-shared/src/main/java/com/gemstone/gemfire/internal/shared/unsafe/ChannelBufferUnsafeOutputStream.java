@@ -79,33 +79,16 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
    * efficiently. If reducing this, then consider the logic in
    * {@link ChannelBufferUnsafeDataOutputStream#writeUTF(String)} carefully.
    */
-  protected static final int MIN_BUFFER_SIZE = 10;
+  protected static final int MIN_BUFFER_SIZE = 32;
 
   public ChannelBufferUnsafeOutputStream(WritableByteChannel channel) {
-    this(channel, ChannelBufferOutputStream.DEFAULT_BUFFER_SIZE, false);
+    this(channel, ChannelBufferOutputStream.DEFAULT_BUFFER_SIZE);
   }
 
   public ChannelBufferUnsafeOutputStream(WritableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) {
+      int bufferSize) {
     super(channel);
-    this.baseAddress = allocateBuffer(bufferSize, useUnsafeAllocation);
-    resetBufferPositions();
-  }
-
-  public ChannelBufferUnsafeOutputStream(
-      ChannelBufferUnsafeOutputStream other, WritableByteChannel channel,
-      int bufferSize, boolean useUnsafeAllocation) throws IOException {
-    super(channel);
-    final ByteBuffer buffer = other.buffer;
-    if (buffer != null) {
-      other.flush();
-      other.buffer = null;
-      buffer.clear();
-      this.buffer = buffer;
-      this.baseAddress = other.baseAddress;
-    } else {
-      this.baseAddress = allocateBuffer(bufferSize, useUnsafeAllocation);
-    }
+    this.baseAddress = allocateBuffer(bufferSize);
     resetBufferPositions();
   }
 
@@ -123,19 +106,16 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     this.addrLimit = this.baseAddress + this.buffer.limit();
   }
 
-  protected long allocateBuffer(int bufferSize,
-      boolean useUnsafeAllocation) {
+  protected long allocateBuffer(int bufferSize) {
     // expect minimum bufferSize of 10 bytes
     if (bufferSize < MIN_BUFFER_SIZE) {
       throw new IllegalArgumentException(
           "ChannelBufferUnsafeDataOutputStream: buffersize=" + bufferSize
               + " too small (minimum " + MIN_BUFFER_SIZE + ')');
     }
-    final ByteBuffer buffer = useUnsafeAllocation
-        // use Platform.allocate which does not have the smallish limit used
-        // by ByteBuffer.allocateDirect -- see sun.misc.VM.maxDirectMemory()
-        ? UnsafeHolder.allocateDirectBuffer(bufferSize)
-        : ByteBuffer.allocateDirect(bufferSize);
+    // use allocator which will restrict total allocated size
+    final ByteBuffer buffer = DirectBufferAllocator.instance().allocate(
+        bufferSize, "CHANNELOUTPUT");
     // set the order to native explicitly to skip any byte order conversions
     buffer.order(ByteOrder.nativeOrder());
     this.buffer = buffer;
@@ -237,6 +217,19 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final void writeInt(int v) throws IOException {
+    long addrPos = this.addrPosition;
+    if ((this.addrLimit - addrPos) < 4) {
+      flushBufferBlocking(this.buffer);
+      addrPos = this.addrPosition;
+    }
+    this.addrPosition = putInt(addrPos, v);
+  }
+
   public final int position() {
     return (int)(this.addrPosition - this.baseAddress);
   }
@@ -271,15 +264,11 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     releaseBuffer();
   }
 
-  public final boolean validBuffer() {
-    return this.addrLimit != 0;
-  }
-
   protected final void releaseBuffer() {
     final ByteBuffer buffer = this.buffer;
     if (buffer != null) {
       this.buffer = null;
-      UnsafeHolder.releaseDirectBuffer(buffer);
+      DirectBufferAllocator.instance().release(buffer);
     }
   }
 
@@ -309,5 +298,15 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
       }
       resetBufferPositions();
     }
+  }
+
+  /** Write an integer in big-endian format on given off-heap address. */
+  protected static long putInt(long addrPos, final int v) {
+    if (ClientSharedUtils.isLittleEndian) {
+      Platform.putInt(null, addrPos, Integer.reverseBytes(v));
+    } else {
+      Platform.putInt(null, addrPos, v);
+    }
+    return addrPos + 4;
   }
 }

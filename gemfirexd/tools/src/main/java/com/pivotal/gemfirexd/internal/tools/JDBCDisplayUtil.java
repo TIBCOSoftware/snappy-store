@@ -276,9 +276,9 @@ public class JDBCDisplayUtil {
 			rs.close(); // let the result set go away
 		}
 		else {
-      if (displayCount) {
-        DisplayUpdateCount(out, stmt.getUpdateCount(), indentLevel);
-      }
+			if (displayCount) {
+			    DisplayUpdateCount(out, stmt.getUpdateCount(), indentLevel);
+			}
 		}
 
 		ShowWarnings(out,stmt);

@@ -21,7 +21,7 @@ plugins {
 
 dependencies {
   provided "org.apache.thrift:libthrift:${thriftVersion}"
-  provided "io.snappydata:snappy-spark-unsafe_${scalaBinaryVersion}:${snappySparkVersion}"
+  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compile project(subprojectBase + 'gemfirexd-shared')
 }
@@ -53,13 +53,13 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
 }
 
 compileJava {
-  dependsOn project(subprojectBase + 'gemfirexd-core').jar
   dependsOn generatePropertiesFiles
 }
 
 archivesBaseName = 'snappydata-store-client'
 
 jar {
+  dependsOn subprojectBase + 'gemfirexd-core:doSplit'
   baseName = 'snappydata-store-client'
   manifest {
     attributes = getManifest('gemfirexdclient', '*',
@@ -77,8 +77,6 @@ shadowJar {
   classifier = ''
   // avoid conflict with the older incompatible thrift versions
   relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
-  // avoid conflict with upstream spark-unsafe
-  relocate 'org.apache.spark.unsafe', 'io.snappydata.org.apache.spark.unsafe'
 
   configurations = [ project.configurations.runtime, project.configurations.provided ]
 

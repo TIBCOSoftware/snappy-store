@@ -912,8 +912,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           return convertBytesAndBitsIntoObject(bb);
         } catch (IllegalArgumentException e) {
           count++;
-          this.logger.info(LocalizedStrings.DEBUG,
-              "DiskRegion: Tried " + count
+          this.logger.info(LocalizedStrings.DEBUG, "DiskRegion: Tried " + count
                   + ", getBytesAndBitsWithoutLock returns wrong byte array: "
                   + bb);
           ex = e;
@@ -997,7 +996,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   }
 
   // CLEAR_BB was added in reaction to bug 41306
-  private final BytesAndBits CLEAR_BB = new BytesAndBits(
+  static final BytesAndBits CLEAR_BB = new BytesAndBits(
       DiskEntry.Helper.NULL_BUFFER, (byte) 0);
 
   /**
