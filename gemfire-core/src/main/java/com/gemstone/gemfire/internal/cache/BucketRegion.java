@@ -1384,9 +1384,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
           logger.fine("Releasing exclusive snapshotGIILock on bucket " + this.getName());
         }
         if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
-          getBucketAdvisor().removeMembershipListener(giiListener);
-          this.giiListener = null;
           snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
+          if (this.giiListener != null) {
+            getBucketAdvisor().removeMembershipListener(giiListener);
+            this.giiListener = null;
+          }
         }
         if (logger.fineEnabled()) {
           logger.fine("Released exclusive snapshotGIILock on bucket " + this.getName());
