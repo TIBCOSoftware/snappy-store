@@ -25,15 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.GemFireIOException;
 import com.gemstone.gemfire.InvalidDeltaException;
-import com.gemstone.gemfire.cache.CacheWriter;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.CustomEvictionAttributes;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.EntryExistsException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.TimeoutException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.query.IndexMaintenanceException;
 import com.gemstone.gemfire.cache.query.QueryException;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
@@ -2272,7 +2264,7 @@ RETRY_LOOP:
           oldRe.setUpdateInProgress(true);
           if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
-            owner.getCache().addOldEntry(oldRe, owner, oldSize);
+            owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
           }
         }
         txRemoveOldIndexEntry(Operation.DESTROY, re);
@@ -2336,7 +2328,7 @@ RETRY_LOOP:
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
           if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp()!=null && re.getVersionStamp()
             .asVersionTag().getEntryVersion()>0*/) {
-            owner.getCache().addOldEntry(oldRe, owner, 0);
+            owner.getCache().addOldEntry(oldRe, re, owner, 0);
           }
 
         }
@@ -3959,6 +3951,9 @@ RETRY_LOOP:
                   // check if the event is loaded from HDFS and bucket is secondary then don't set
                   
                   setOldValueInEvent(event, re, cacheWrite, requireOldValue);
+                  if (shouldCopyOldEntry(owner, event) && re.getVersionStamp() != null ) {
+                    checkConflict(owner, event, re);
+                  }
                   if (!continueUpdate(re, event, ifOld, replaceOnClient)) {
                     return null;
                   }
@@ -3980,20 +3975,21 @@ RETRY_LOOP:
                     RegionEntry oldRe = null;
                     try {
                       final int oldSize = event.getLocalRegion().calculateRegionEntryValueSize(re);
-                      if (shouldCopyOldEntry(owner, event) && re.getVersionStamp() != null && re
-                          .getVersionStamp().asVersionTag().getEntryVersion() > 0) {
+                      if (shouldCopyOldEntry(owner, event) && re.getVersionStamp() != null ) {
                         // we need to do the same for secondary as well.
                         // need to set the version information.
-
-                        oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, event.getRegion(), true);
-                        oldRe.setUpdateInProgress(true);
+                        if (re.getVersionStamp().asVersionTag().getEntryVersion() > 0) {
+                          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, event.getRegion(), true);
+                          oldRe.setUpdateInProgress(true);
+                          checkConflict(owner, event, re);
+                        }
                         // need to put old entry in oldEntryMap for MVCC
-                        owner.getCache().addOldEntry(oldRe, owner, oldSize);
-
+                        owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
                       }
                       if ((cacheWrite && event.getOperation().isUpdate()) // if there is a cacheWriter, type of event has already been set
                           || !re.isRemoved()
                           || replaceOnClient) {
+                        // We should conflict here if the version of region entry is not present in the snapshot
                         updateEntry(event, requireOldValue, oldValueForDelta, re, oldSize);
                       } else {
                         // create
@@ -4144,6 +4140,24 @@ RETRY_LOOP:
     return result;
   }
 
+  private void checkConflict(LocalRegion owner, EntryEventImpl event, RegionEntry re) {
+    if (owner.isUsedForPartitionedRegionBucket() && !((BucketRegion)owner).getBucketAdvisor().isPrimary()) {
+      return;
+    }
+    // Don't do conflict detection on secondary.
+    if (event.getTXState() != null && event.getTXState().isSnapshot()) {
+      TXState localState = event.getTXState().getLocalTXState();
+      if(!firstEntry(re)) {
+        if (!localState.checkEntryVersion(event.getRegion(), re)) {
+          throw new ConflictException("The value has been changed.");
+        }
+      }
+    }
+  }
+
+  private boolean firstEntry(RegionEntry re) {
+    return (re.getVersionStamp().getEntryVersion() == 0) && re.isRemoved();
+  }
 
   private boolean shouldCopyOldEntry(LocalRegion owner, EntryEventImpl event) {
     return owner.getCache().snapshotEnabled() &&
@@ -4380,9 +4394,11 @@ RETRY_LOOP:
       if (shouldCopyOldEntry(_getOwner(), event) /*&& re.getVersionStamp() != null && re.getVersionStamp()
         .asVersionTag().getEntryVersion() > 0*/) {
         // we need to do the same for secondary as well.
+        // check Conflict
+        checkConflict(_getOwner(), event, re);
         oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, event.getRegion(), true);
         oldRe.setUpdateInProgress(true);
-        _getOwner().getCache().addOldEntry(oldRe, _getOwner(), oldSize);
+        _getOwner().getCache().addOldEntry(oldRe, re, _getOwner(), oldSize);
       }
       processVersionTag(re, event);
 
@@ -4555,7 +4571,7 @@ RETRY_LOOP:
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
           if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
-            owner.getCache().addOldEntry(oldRe, owner, oldSize);
+            owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
           }
         }
 

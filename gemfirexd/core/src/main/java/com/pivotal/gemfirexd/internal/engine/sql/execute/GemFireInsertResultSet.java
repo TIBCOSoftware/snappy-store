@@ -22,14 +22,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.internal.cache.CachedDeserializableFactory;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.VMIdAdvisor;
 
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
+import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -134,7 +137,15 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
         .getIndexUpdater() : null);
     final LanguageConnectionContext lcc = this.activation
         .getLanguageConnectionContext();
-    final TXStateInterface tx = this.gfContainer.getActiveTXState(this.tran);
+
+    TXStateInterface tx = this.gfContainer.getActiveTXState(this.tran);
+    if (false && tx == null /*&& this.gfContainer.isRowBuffer()*/) {
+      this.tran.getTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      ((GemFireTransaction)lcc.getTransactionExecute()).setActiveTXState(TXManagerImpl.getCurrentTXState(), true);
+      this.tran.setImplicitSnapshotTxStarted(true);
+    }
+    tx = this.gfContainer.getActiveTXState(this.tran);
+
     if (sqim != null && !this.isPutDML) {
       sqim.fireStatementTriggers(TriggerEvent.BEFORE_INSERT, lcc, this.tran, tx);
     }

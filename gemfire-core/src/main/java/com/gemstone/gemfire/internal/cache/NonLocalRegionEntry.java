@@ -23,6 +23,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheWriterException;
 import com.gemstone.gemfire.cache.EntryEvent;
@@ -46,7 +47,7 @@ import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.shared.Version;
 
-public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
+public class NonLocalRegionEntry implements RegionEntry, VersionStamp, DataSerializable {
   protected long lastModified;
   protected boolean isRemoved;
   protected Object key;
@@ -304,6 +305,9 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
 
   public final Object getValue(RegionEntryContext context) {
+    if (Token.isRemoved(this.value)) {
+      return null;
+    }
     return this.value;
   }
   

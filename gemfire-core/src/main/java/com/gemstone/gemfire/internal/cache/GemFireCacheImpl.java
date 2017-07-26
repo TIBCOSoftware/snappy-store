@@ -549,8 +549,21 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
   // For each entry this should be in sync
 
-  public void addOldEntry(RegionEntry oldRe, LocalRegion region, int oldSize) {
-    if(!snapshotEnabled()) {
+  public void addOldEntry(RegionEntry oldRe, RegionEntry newEntry, LocalRegion region, int oldSize) {
+    if (!snapshotEnabled()) {
+      return;
+    }
+
+    // Insert specific case
+    // just add the newEntry in TXState for rollback.
+    if (region.getTXState() != null) {
+      TXState txState = region.getTXState().getLocalTXState();
+      if (txState != null) {
+        txState.addCommittedRegionEntryReference(oldRe == null ? Token.TOMBSTONE : oldRe, newEntry, region);
+      }
+    }
+
+    if (oldRe == null) {
       return;
     }
 
@@ -585,11 +598,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
     }
 
-    for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
-      if (txProxy.getLocalTXState() != null) {
-        txProxy.getLocalTXState().addRegionEntryReference(oldRe);
-      }
-    }
     if (getLoggerI18n().fineEnabled()) {
       getLoggerI18n().info(LocalizedStrings.DEBUG, "For key  " + oldRe.getKeyCopy() + " " +
           "the entries are " + snapshot.get(oldRe.getKeyCopy()));
