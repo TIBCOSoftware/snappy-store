@@ -81,6 +81,7 @@ import com.pivotal.gemfirexd.internal.engine.procedure.DistributedProcedureCallF
 import com.pivotal.gemfirexd.internal.engine.procedure.ProcedureChunkMessage;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.GemFireRegionSizeResultSet;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.IdentityValueManager;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.MemberLogsMessage;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.MemberStatisticsMessage;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.CompactExecRow;
@@ -203,6 +204,7 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
     registerSqlSerializable(SnappyResultHolder.class);
     registerSqlSerializable(SnappyRegionStatsCollectorResult.class);
     registerSqlSerializable(MemberStatisticsMessage.class);
+    registerSqlSerializable(MemberLogsMessage.class);
     registerSqlSerializable(LeadNodeSmartConnectorOpContext.class);
     registerSqlSerializable(LeadNodeSmartConnectorOpMsg.class);
     registerSqlSerializable(LeadNodeGetStatsMessage.class);
