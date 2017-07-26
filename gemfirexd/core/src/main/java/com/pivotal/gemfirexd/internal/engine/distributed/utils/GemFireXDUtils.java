@@ -242,11 +242,11 @@ public final class GemFireXDUtils {
     }
     try {
       if (defaultStartupRecoveryDelayStr != null) {
-        defaultStartupRecoveryDelay = Long.parseLong(defaultStartupRecoveryDelayStr);
+        setDefaultStartupRecoveryDelay(Long.parseLong(defaultStartupRecoveryDelayStr));
       }
       else {
-        defaultStartupRecoveryDelay = PartitionAttributesFactory
-            .STARTUP_RECOVERY_DELAY_DEFAULT;
+        setDefaultStartupRecoveryDelay(PartitionAttributesFactory
+            .STARTUP_RECOVERY_DELAY_DEFAULT);
       }
     } catch (Exception ex) {
       throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
@@ -2103,13 +2103,8 @@ public final class GemFireXDUtils {
           + constraintType + " violation for (" + msg + "), oldValue=("
           + oldValue + ") index=" + indexName, eee);
     }
-    StandardException se = StandardException.newException(
-        SQLState.NOT_IMPLEMENTED, eee, constraintType, indexName);
-    // don't report constraint violations to logs by default
-    if (!GemFireXDUtils.TraceExecution) {
-      se.setReport(StandardException.REPORT_NEVER);
-    }
-    return se;
+    return StandardException.newException(SQLState.NOT_IMPLEMENTED,
+        eee, "Modification of partitioning column in PUT INTO");
   }
 
   public static StandardException newDuplicateEntryViolation(String indexName,
@@ -2218,9 +2213,13 @@ public final class GemFireXDUtils {
   public static long getDefaultRecoveryDelay() {
     return defaultRecoveryDelay;
   }
-  
+
   public static long getDefaultStartupRecoveryDelay() {
     return defaultStartupRecoveryDelay;
+  }
+
+  public static void setDefaultStartupRecoveryDelay(long delay) {
+    defaultStartupRecoveryDelay = delay;
   }
 
   public static int getDefaultInitialCapacity() {

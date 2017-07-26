@@ -149,6 +149,9 @@ public class GenericStatement
         private static final Pattern INSERT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile(".*INSERT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        private static final Pattern DML_TABLE_PATTERN =
+            Pattern.compile("^\\s*(INSERT|UPDATE|DELETE)\\s+.*",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern PUT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile(".*PUT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -158,6 +161,9 @@ public class GenericStatement
         private static final Pattern EXECUTION_ENGINE_STORE_HINT =
             Pattern.compile(".*\\bEXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s*\\b.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    	private static final Pattern ALTER_TABLE_COLUMN =
+			Pattern.compile("\\s*ALTER\\s+TABLE?.*\\s+(ADD|DROP)\\s+COLUMN\\s+.*",
+				Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 
 	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
@@ -593,7 +599,8 @@ public class GenericStatement
 					if (routeQuery && (
 							INSERT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
 							PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
-              FUNCTION_DDL_PREFIX.matcher(source).matches() )) {
+                      FUNCTION_DDL_PREFIX.matcher(source).matches() ||
+						ALTER_TABLE_COLUMN.matcher(source).matches())) {
 						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc,
@@ -604,7 +611,7 @@ public class GenericStatement
 				}
 				catch (StandardException | AssertFailure ex) {
           //wait till the query hint is examined before throwing exceptions or
-          if (routeQuery) {
+          if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
             if (STREAMING_DDL_PREFIX.matcher(source).matches()) {
               cc.markAsDDLForSnappyUse(true);
             }
@@ -688,7 +695,7 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery) {
+						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }
@@ -757,7 +764,7 @@ public class GenericStatement
 
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery) {
+						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }

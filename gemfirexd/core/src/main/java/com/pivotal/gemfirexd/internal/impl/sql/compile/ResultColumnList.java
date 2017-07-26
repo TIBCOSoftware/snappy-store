@@ -47,6 +47,8 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 import com.pivotal.gemfirexd.internal.catalog.types.DefaultInfoImpl;
+import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.ClassName;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -4113,6 +4115,14 @@ public class ResultColumnList extends QueryTreeNodeVector
 
 				}else{
 					if(cd.isAutoincAlways()){
+						GemFireStore ms = Misc.getMemStore();
+						if (ms.isSnappyStore() && sourceRSRCL.size() == size) {
+						  TableDescriptor td = cd.getTableDescriptor();
+						  if (td != null && ms.getExternalCatalog().isColumnTable(
+						    td.getSchemaName(), td.getName(), true)) {
+						      throw StandardException.newException(SQLState.LANG_DB2_INVALID_COLS_SPECIFIED);
+						  }
+						}
 						throw StandardException.newException(SQLState.LANG_AI_CANNOT_MODIFY_AI,
 									rc.getName());
 					}

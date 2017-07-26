@@ -92,4 +92,8 @@ public class OffHeapWanTest extends WanTest {
 	  throw new GemFireXDRuntimeException(ie);
 	}
   }
+
+  public void testDBSynchronizerForSkipListenerPR() throws Exception {
+    // do nothing .. // SNAP-1586
+  }
 }
