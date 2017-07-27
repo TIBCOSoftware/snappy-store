@@ -669,6 +669,11 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
         this.localExceptions.initializeFrom(vh);
       }
     } else {
+      if (mbr.equals(this.myId)) {
+        RegionVersionHolder<T> vh = otherHolder;
+        long version = vh.version;
+        updateLocalVersion(version);
+      }
       // holders must be modified under synchronization
       h.initializeFrom(otherHolder);
     }
@@ -1752,7 +1757,8 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
 
   //TODO: Suranjan Could there be a case where we are reinitializing and localVersion is getting incremented
   public void reInitializeSnapshotRvv() {
-    if (GemFireCacheImpl.getInstance().snapshotEnabled()) {
+    final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    if (cache != null && cache.snapshotEnabled()) {
       synchronized (this.memberToVersionSnapshot) {
         LogWriterI18n logger = getLoggerI18n();
         if (DEBUG && logger != null) {
