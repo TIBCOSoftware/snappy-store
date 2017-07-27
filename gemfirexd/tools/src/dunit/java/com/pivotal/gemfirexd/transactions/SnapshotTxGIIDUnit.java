@@ -222,7 +222,7 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     RegionVersionVector rvv1 = getRVV(-1);
     RegionVersionVector rvv2 = getRVV(-2);
 
-    if (!rvv1.logicallySameAs(rvv2)) {
+    if(!rvv1.logicallySameAs(rvv2)) {
       fail("RVVS don't match. provider=" + rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
     }
   }
@@ -276,7 +276,7 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     RegionVersionVector rvv1 = getRVV(-1);
     RegionVersionVector rvv2 = getRVV(-2);
 
-    if (!rvv1.logicallySameAs(rvv2)) {
+    if(!rvv1.logicallySameAs(rvv2)) {
       fail("RVVS don't match. provider=" + rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
     }
   }
