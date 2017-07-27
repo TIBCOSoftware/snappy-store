@@ -77,28 +77,37 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   
   // non pk based update
   private void checkNonPKBasedUpdate(Statement st1) throws Exception {
-  st1.execute("truncate table t1");
-  st1.execute("insert into t1 values (1, 1, 1)");
-  Thread.sleep(5000);
-  st1.execute("update t1 set col2 = 2");
-  Thread.sleep(7000);
-  st1.execute("select col1 from t1");
-  ResultSet rs1 = st1.getResultSet();
-  assertTrue(rs1.next());
+    st1.execute("truncate table t1");
+    st1.execute("insert into t1 values (1, 1, 1)");
+    Thread.sleep(5000);
+    st1.execute("update t1 set col2 = 2");
+    long then = System.currentTimeMillis();
+    Thread.sleep(7000);
+    // after parallel run this can cause issue..3 seconds of wait and row is gone.
+    st1.execute("select col1 from t1");
+    long delta = System.currentTimeMillis() - then;
+    if (delta < 9000) {
+      ResultSet rs1 = st1.getResultSet();
+      assertTrue(rs1.next());
+    }
   }
   
   // pk based update
   private void checkPKBasedUpdate(Statement st1) throws Exception {
-  st1.execute("truncate table t1");
-  st1.execute("insert into t1 values (1, 1, 1)");
-  Thread.sleep(5000);
-  st1.execute("update t1 set col2 = 2 where col1 = 1");
-  Thread.sleep(7000);
-  st1.execute("select col1 from t1 where col1 = 1");
-  ResultSet rs1 = st1.getResultSet();
-  assertTrue(rs1.next());
-  assertEquals(1, rs1.getInt(1));
-  assertFalse(rs1.next());
+    st1.execute("truncate table t1");
+    st1.execute("insert into t1 values (1, 1, 1)");
+    Thread.sleep(5000);
+    st1.execute("update t1 set col2 = 2 where col1 = 1");
+    long then = System.currentTimeMillis();
+    Thread.sleep(7000);
+    st1.execute("select col1 from t1 where col1 = 1");
+    long delta = System.currentTimeMillis() - then;
+    ResultSet rs1 = st1.getResultSet();
+    if (delta < 9000) {
+      assertTrue(rs1.next());
+      assertEquals(1, rs1.getInt(1));
+      assertFalse(rs1.next());
+    }
   }
   
   private void basicEntryExpirationTest(Connection conn, boolean idletime,

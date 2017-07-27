@@ -250,9 +250,7 @@ public abstract class Misc {
         return Collections.unmodifiableSet(s);
       }
     }
-    throw new NoDataStoreAvailableException(LocalizedStrings
-        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
-        .toLocalizedString("SnappyData Lead Node"));
+    throw new NoMemberFoundException("SnappyData Lead node is not available");
   }
 
   /**
