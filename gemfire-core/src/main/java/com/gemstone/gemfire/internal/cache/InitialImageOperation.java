@@ -235,10 +235,16 @@ public class InitialImageOperation  {
   private boolean hasLockedBucket = false;
 
   private void unlockTargetBucketLock(InternalDistributedMember recipient) {
-    if (region instanceof BucketRegion && hasLockedBucket) {
-      this.region.getDistributionManager().getLoggerI18n().info(LocalizedStrings.DEBUG, "Processing SnapshotBucketLockReleaseProcessor to "+ recipient);
-      SnapshotBucketLockReleaseMessage.send(recipient, this.region.getDistributionManager(), region.getFullPath());
-      this.region.getDistributionManager().getLoggerI18n().info(LocalizedStrings.DEBUG, "Processing SnapshotBucketLockReleaseProcessor done "+ recipient);
+    if (hasLockedBucket) {
+      LogWriterI18n logger = this.region.getDistributionManager().getLoggerI18n();
+      logger.info(LocalizedStrings.DEBUG, "Processing SnapshotBucketLockReleaseProcessor to " + recipient);
+      try {
+        SnapshotBucketLockReleaseMessage.send(recipient,
+            this.region.getDistributionManager(), region.getFullPath());
+        logger.info(LocalizedStrings.DEBUG, "Processing SnapshotBucketLockReleaseProcessor done " + recipient);
+      } catch (Throwable t) {
+        logger.warning(LocalizedStrings.DEBUG, t);
+      }
     }
   }
 
@@ -290,12 +296,15 @@ public class InitialImageOperation  {
 
     InternalDistributedMember prevRecipient = null;
 
+    this.region.getLogWriterI18n().info(LocalizedStrings.DEBUG,
+        "InitialImageOperation starts for " + this.region.getFullPath() + ", Recipients are " + recipients);
     for (Iterator itr = recipients.iterator(); !this.gotImage && itr.hasNext();) {
       // if we got a partial image from the previous recipient, then clear it
 
       if(prevRecipient != null ){
         unlockTargetBucketLock(prevRecipient);
       }
+
       InternalDistributedMember recipient = (InternalDistributedMember)itr.next();
       prevRecipient = recipient;
 //      log.info("InitialImageOperation for " + this.region.getFullPath() + " targeting " + recipient);

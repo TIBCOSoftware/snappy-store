@@ -1347,6 +1347,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private MembershipListener giiListener = null;
 
+  private volatile boolean snapshotGIILocked = false;
+
   public boolean takeSnapshotGIIWriteLock(MembershipListener listener) {
     if (writeLockEnabled()) {
       if (this.getPartitionedRegion().
@@ -1361,6 +1363,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
         getBucketAdvisor()
             .addMembershipListenerAndAdviseGeneric(listener);
+        snapshotGIILocked = true;
         this.giiListener = listener; // Set the listener only after taking the write lock.
         if (logger.fineEnabled()) {
           logger.fine("Succesfully took exclusive lock on bucket " + this.getName());
@@ -1383,11 +1386,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         if (logger.fineEnabled()) {
           logger.fine("Releasing exclusive snapshotGIILock on bucket " + this.getName());
         }
-        if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
-          snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
-          if (this.giiListener != null) {
+        if (this.snapshotGIILock.hasExclusiveLock(giiWriteLockForSIOwner, null)) {
+          if (snapshotGIILocked) {
+            snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
             getBucketAdvisor().removeMembershipListener(giiListener);
             this.giiListener = null;
+            snapshotGIILocked = false;
           }
         }
         if (logger.fineEnabled()) {

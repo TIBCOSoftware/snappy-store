@@ -92,6 +92,7 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
         public void run() {
           System.clearProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION");
           System.clearProperty("snappydata.snapshot.isolation.gii.lock");
+          InitialImageOperation.resetAllGIITestHooks();
         }
       });
     } finally {
@@ -383,6 +384,66 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     });
 
     server1.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+        final Region r = cache.getRegion(regionName);
+        assertEquals("After GII request failed for region , " +
+            "put not successful", 500, r.size());
+      }
+    });
+  }
+
+  public void testSnapshotGII_failedForOneServer() throws Exception {
+
+    startVMs(0, 3);
+    Properties props = new Properties();
+    final Connection conn = TestUtil.getConnection(props);
+    conn.createStatement();
+
+    VM server0 = this.serverVMs.get(0);
+    VM server1 = this.serverVMs.get(1);
+    VM server2 = this.serverVMs.get(2);
+    stopVMNums(-2);
+
+    server0.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+    //server2.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+
+    // Put some values to initialize buckets
+    server0.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        putSomeValues(100);
+      }
+    });
+
+    blockGII(-2, InitialImageOperation.GIITestHookType.NoGIITrigger);
+
+    blockGII(-2, InitialImageOperation.GIITestHookType.AfterCalculatedUnfinishedOps);
+
+    restartServerVMNums(new int[]{2}, 0, null, null);
+
+    server1 = this.serverVMs.get(1);
+
+
+    // Create the PR region
+    server1.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+
+    waitForGIICallbackStarted(-2, InitialImageOperation.GIITestHookType.AfterCalculatedUnfinishedOps);
+
+    unblockGII(-2, InitialImageOperation.GIITestHookType.AfterCalculatedUnfinishedOps);
+
+    unblockGII(-2, InitialImageOperation.GIITestHookType.NoGIITrigger);
+
+
+    server0.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        putSomeValues(500);
+      }
+    });
+
+    server0.invoke(new SerializableRunnable() {
       @Override
       public void run() {
         final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
