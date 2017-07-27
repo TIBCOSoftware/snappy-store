@@ -162,6 +162,16 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     r.getCache().getCacheTransactionManager().commit();
   }
 
+  private void putSomeUncommittedValues(int numValues) {
+    final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    final Region r = cache.getRegion(regionName);
+    r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    Map<Integer, Integer> m = new HashMap();
+    for (int i = 0; i < numValues; i++) {
+      r.put(i, i);
+    }
+  }
+
   private void readSomeValues(int numValues) {
     final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
     final Region r = cache.getRegion(regionName);
@@ -334,6 +344,39 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
         assertEquals("After GII request node crashed region put not successful", 500, r.size());
       }
     });
+  }
+
+  public void testSnapshotGII_ServerDownWithInProgressTx() throws Exception {
+
+    startVMs(0, 2);
+    Properties props = new Properties();
+    final Connection conn = TestUtil.getConnection(props);
+    conn.createStatement();
+
+    VM server1 = this.serverVMs.get(0);
+    VM server2 = this.serverVMs.get(1);
+
+    server1.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+    server2.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+
+    // Put some values to initialize buckets
+    server2.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        putSomeUncommittedValues(100);
+      }
+    });
+    stopVMNums(-2);
+    restartServerVMNums(new int[]{2}, 0, null, null);
+    server2.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+    // Wait for the PR to get initialized and GII completes on the lone bucket
+    waitForRegionInit(-2);
+    RegionVersionVector rvv1 = getRVV(-1);
+    RegionVersionVector rvv2 = getRVV(-2);
+
+    if(!rvv1.logicallySameAs(rvv2)) {
+      fail("RVVS don't match. provider=" + rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
+    }
   }
 
   public void testSnapshotGII_noGIIOption() throws Exception {
