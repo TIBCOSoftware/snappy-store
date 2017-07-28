@@ -4,19 +4,14 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLTransactionRollbackException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.gemstone.gemfire.cache.AttributesFactory;
-import com.gemstone.gemfire.cache.IsolationLevel;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.PartitionAttributesFactory;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionFactory;
-import com.gemstone.gemfire.cache.RegionShortcut;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.cache.versions.DiskRegionVersionVector;
@@ -25,6 +20,7 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.org.jgroups.oswego.concurrent.CyclicBarrier;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
 import io.snappydata.test.dunit.SerializableRunnable;
 
@@ -56,7 +52,527 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
   public void tearDown() throws Exception {
     System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
     super.tearDown();
+  }
 
+
+  public void testCommitWithConflicts() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    st.execute("create schema tran");
+    st.execute("Create table tran.t1 (c1 int not null , c2 int not null, "
+        + "primary key(c1)) replicate persistent enable concurrency checks" +getSuffix());
+    conn.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    st.execute("insert into tran.t1 values (10, 1)");
+
+    Cache cache = Misc.getGemFireCache();
+    final TXManagerImpl txMgrImpl = (TXManagerImpl)cache
+        .getCacheTransactionManager();
+
+    final Region<Object, Object> r = Misc.getRegionForTable("TRAN.T1", true);
+    final Object key = getGemFireKey(10, r);
+    this.gotConflict = false;
+    Thread thread = new Thread(new Runnable() {
+
+      @Override
+      public void run() {
+        assertNotNull(r);
+        txMgrImpl.begin(IsolationLevel.SNAPSHOT, null);
+        try {
+          r.put(key, new SQLInteger(20)); // create a conflict here.
+          fail("expected a conflict here");
+        } catch (ConflictException ce) {
+          gotConflict = true;
+        }
+        assertNull(r.get(key));
+        TXStateInterface txi = txMgrImpl.internalSuspend();
+        assertNotNull(txi);
+
+        txMgrImpl.resume(txi);
+        txMgrImpl.commit();
+      }
+    });
+    thread.start();
+    thread.join();
+    txMgrImpl.commit();
+    conn.commit();
+    st.close();
+
+    assertTrue("expected conflict", this.gotConflict);
+    this.gotConflict = false;
+
+    // Important : Remove the key - value pair.
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    r.destroy(key);
+    txMgrImpl.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    Statement st2 = conn.createStatement();
+    st2.execute("insert into tran.t1 values (10, 10)");
+    txMgrImpl.commit();
+    conn.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    ResultSet rs = st2.executeQuery("select * from tran.t1");
+    int numRow = 0;
+    while (rs.next()) {
+      numRow++;
+      assertEquals("Primary Key coloumns should be 10 ", 10, rs.getInt(1));
+      assertEquals("Second columns should be 10 , ", 10, rs.getInt(2));
+    }
+    assertEquals("ResultSet should have two rows ", 1, numRow);
+    txMgrImpl.commit();
+
+    rs.close();
+    st2.close();
+    conn.commit();
+    conn.close();
+  }
+
+  public void testConflictWrite() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    ResultSet rs;
+    int numRows = 0;
+    st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate persistent enable concurrency checks " + getSuffix());
+    conn.commit();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for (int i = 0; i < 10; i++) {
+      st.execute("insert into t1 values (" + i + ", " + i + ")");
+    }
+
+    Cache cache = Misc.getGemFireCache();
+    final TXManagerImpl txMgrImpl = (TXManagerImpl)cache
+        .getCacheTransactionManager();
+    this.gotConflict = false;
+
+    Thread thread = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Connection newConn = TestUtil.getConnection();
+          Statement st2 = newConn.createStatement();
+          txMgrImpl.begin(IsolationLevel.SNAPSHOT, null);
+          try {
+            for (int i = 8; i < 10; i++) {
+              st2.execute("insert into t1 values (" + i + ", " + i + ")");
+            }
+            fail("expected a conflict here");
+          } catch (ConflictException ce) {
+            gotConflict = true;
+          } catch (SQLException se) {
+            if (!(se.getCause() instanceof ConflictException)) {
+              threadEx = se;
+              se.printStackTrace();
+            } else {
+              txMgrImpl.rollback();
+              newConn.rollback();
+            }
+          }
+        } catch (Throwable t) {
+          threadEx = t;
+          fail("unexpected exception", t);
+        }
+      }
+    });
+    thread.start();
+    thread.join();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+    conn.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 >= 0");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain 10 rows ", 10, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+  }
+
+  public void testSnapshotGet() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    ResultSet rs;
+    int numRows = 0;
+    st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate persistent enable concurrency checks " + getSuffix());
+    conn.commit();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for (int i = 0; i < 10; i++) {
+      st.execute("insert into t1 values (" + i + ", " + i + ")");
+    }
+
+    Cache cache = Misc.getGemFireCache();
+    final TXManagerImpl txMgrImpl = (TXManagerImpl)cache
+        .getCacheTransactionManager();
+    this.gotConflict = false;
+
+    Thread thread = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Connection newConn = TestUtil.getConnection();
+          Statement st2 = newConn.createStatement();
+          txMgrImpl.begin(IsolationLevel.SNAPSHOT, null);
+          for(int i=0; i< 10; i++) {
+            ResultSet rs = st2.executeQuery("Select * from t1 where t1.c1 = " + i + "");
+            int num = 0;
+            while (rs.next()) {
+              num++;
+            }
+            assertEquals(0, num);
+            rs.close();
+          }
+        } catch (Throwable t) {
+          threadEx = t;
+          fail("unexpected exception", t);
+        }
+
+      }
+    });
+    thread.start();
+    thread.join();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+    conn.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 >= 0");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain 10 rows ", 10, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+    rs.close();
+    st.close();
+    conn.close();
+  }
+
+  public void testSnapshotGetAll() throws Exception {
+
+  }
+
+  public void testSnapshotCommitLocalIndexMultiThread() throws Exception {
+
+  }
+
+  public void testSnapshotRollbackLocalIndexMultiThread() throws Exception {
+
+  }
+
+  // Add conflict for write now
+  // do simple region.get
+  // do single region.getAll
+  // do put/destroy and check if it is transactional.
+
+  // Add snapshot for primary based read and getAll
+
+  /**
+   * in this case row is deleted from oldEntryMap
+   */
+  public void testSnapshotInsertRollback() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    ResultSet rs;
+    int numRows = 0;
+    st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate persistent enable concurrency checks " + getSuffix());
+    conn.commit();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for (int i = 0; i < 10; i++) {
+      st.execute("insert into t1 values (" + i + ", " + i + ")");
+    }
+
+    conn.commit();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for (int i = 10; i < 20; i++) {
+      st.execute("insert into t1 values (" + i + ", " + i + ")");
+    }
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().rollback();
+    conn.rollback();
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 > 9");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain 0 rows ", 0, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+    // assert region size
+    // assert getAll/get
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    conn.commit();
+    conn.close();
+
+  }
+    /**
+     * in this case row is deleted from oldEntryMap
+     */
+  public void testSnapshotUpdateRollback() throws Exception {
+    Connection conn= getConnection();
+    Statement st = conn.createStatement();
+    ResultSet rs;
+    int numRows = 0;
+    st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate persistent enable concurrency checks "+getSuffix());
+    conn.commit();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for(int i=0; i< 100; i++) {
+      st.execute("insert into t1 values (" + i + ", " +i + ")");
+    }
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+    conn.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for(int i=100; i< 200; i++) {
+      st.execute("insert into t1 values (" + i + ", " +i + ")");
+    }
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().rollback();
+    conn.rollback();
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 > 100");
+    numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain 0 rows ", 0, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c1 > 100");
+    numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain 0 rows ", 0, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    st.execute("update t1 set c2 = 20 where c1 >50");
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().rollback();
+    conn.rollback();
+
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 = 20");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+      getLogger().info("The value is " + rs.getInt(1) + " " + rs.getInt(2));
+    }
+    assertEquals("ResultSet should contain 1 rows ", 1, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    st.execute("update t1 set c2 = 20 where c1 >= 50");
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 = 20");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+      getLogger().info("The value is " + rs.getInt(1) + " " + rs.getInt(2));
+    }
+    assertEquals("ResultSet should contain 1 rows ", 51, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    conn.commit();
+    conn.close();
+  }
+
+  public void testDeleteRollback() throws Exception {
+    Connection conn= getConnection();
+    Statement st = conn.createStatement();
+    ResultSet rs;
+    int numRows = 0;
+    st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate persistent enable concurrency checks "+getSuffix());
+    st.execute("Create index c2Index on t1(c2)");
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for(int i=0; i< 100; i++) {
+      st.execute("insert into t1 values (" + i + ", " +i + ")");
+    }
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    st.execute("delete from t1 where c1 = 10");
+    Misc.getGemFireCache().getCacheTransactionManager().rollback();
+    conn.rollback();
+
+    Thread.sleep(10000);
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c1 = 10");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 1, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 = 10");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 1, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    conn.commit();
+    conn.close();
+  }
+
+  public void testCommitWithIndex() throws Exception {
+    Connection conn= getConnection();
+    Statement st = conn.createStatement();
+    st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate persistent enable concurrency checks "+getSuffix());
+    st.execute("Create index c2Index on t1(c2)");
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+
+    for(int i=0; i< 100; i++) {
+      st.execute("insert into t1 values (" + i + ", " +i + ")");
+      //st.execute("insert into t1 values (20, 20)");
+    }
+
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit(); // commit two rows.
+
+    st.execute("update t1 set c2 = 20 where c1 =10");
+    conn.commit();
+
+    Thread.sleep(10000);
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    ResultSet rs = st.executeQuery("Select * from t1 where t1.c2 = 10");
+    int numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 0, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 = 20");
+    numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 2, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    conn.commit();
+    conn.close();
+  }
+
+  public void testRollbackWithIndex() throws Exception {
+    Connection conn= getConnection();
+    Statement st = conn.createStatement();
+    st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate persistent enable concurrency checks "+getSuffix());
+    st.execute("Create index c2Index on t1(c2)");
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for(int i=0; i< 100; i++) {
+      st.execute("insert into t1 values (" + i + ", " +i + ")");
+    }
+
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for(int i=100; i< 200; i++) {
+      st.execute("insert into t1 values (" + i + ", " +i + ")");
+    }
+    Misc.getGemFireCache().getCacheTransactionManager().rollback();
+    conn.rollback();
+
+    Thread.sleep(10000);
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    ResultSet rs = st.executeQuery("Select * from t1 where t1.c2 >= 100");
+    int numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 0, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    st.execute("update t1 set c2 = 20 where c1 =10");
+    Misc.getGemFireCache().getCacheTransactionManager().rollback();
+    conn.rollback();
+
+    Thread.sleep(10000);
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    rs = st.executeQuery("Select * from t1 where t1.c2 = 20");
+    numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 1, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    conn.commit();
+    conn.close();
   }
 
   public void testRVVSnapshotContains() throws Exception {
@@ -99,6 +615,82 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     System.out.println("SKSK Contains " + rvv.contains(id1, 758));
 
   }
+
+  public void _testSnapshotInsertTableWithRollbackAPI() throws Exception {
+    Connection conn = getConnection();
+
+    PartitionAttributesFactory paf = new PartitionAttributesFactory();
+    PartitionAttributes prAttr = paf.setTotalNumBuckets(1).create();
+    AttributesFactory attr = new AttributesFactory();
+    attr.setConcurrencyChecksEnabled(true);
+    attr.setPartitionAttributes(prAttr);
+    final Region r = GemFireCacheImpl.getInstance().createRegion("t1", attr.create());
+
+    r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    r.put(1,1);
+    r.put(2,2);
+    // even before commit it should be visible
+    assertEquals(1, r.get(1));
+    assertEquals(2, r.get(2));
+    r.getCache().getCacheTransactionManager().commit();
+
+    //take an snapshot again//gemfire level
+    // gemfirexd needs to call this to take snapshot
+    r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    // read the entries
+    assertEquals(1, r.get(1));// get don't need to take from snapshot
+    assertEquals(2, r.get(2));// get don't need to take from snapshot
+
+    //itr will work on a snapshot.
+    TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
+    Iterator txitr = txstate.getLocalEntriesIterator(null, false, false, true, (LocalRegion)r);
+
+    Iterator itr = ((LocalRegion)r).getSharedDataView().getLocalEntriesIterator(null, false, false, true, (LocalRegion)r);
+
+    // after this start another insert in a separate thread and those put shouldn't be visible
+    Runnable run = new Runnable() {
+      @Override
+      public void run() {
+        ((LocalRegion)r).put(3,3);
+        ((LocalRegion)r).put(4,4);
+      }
+    };
+    Thread t = new Thread(run);
+    t.start();
+    t.join();
+
+    int num = 0;
+    while (txitr.hasNext()) {
+      RegionEntry re = (RegionEntry)txitr.next();
+      if(!re.isTombstone())
+        num++;
+    }
+    assertEquals(2, num);
+    // should be visible if read directly from region
+    num = 0;
+    while (itr.hasNext()) {
+      RegionEntry re = (RegionEntry)itr.next();
+      if(!re.isTombstone())
+        num++;
+    }
+    assertEquals(4, num);
+    r.getCache().getCacheTransactionManager().commit();
+
+    // take new snapshot and all the data should be visisble
+    r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    //itr will work on a snapshot. not other ops
+    txstate = TXManagerImpl.getCurrentTXState();
+    txitr = txstate.getLocalEntriesIterator(null, false, false, true, (LocalRegion)r);
+    num = 0;
+    while (txitr.hasNext()) {
+      RegionEntry re = (RegionEntry)txitr.next();
+      if(!re.isTombstone())
+        num++;
+    }
+    assertEquals(4, num);
+    r.getCache().getCacheTransactionManager().commit();
+  }
+
 
   public void testSnapshotInsertTableAPI() throws Exception {
     Connection conn = getConnection();
@@ -608,6 +1200,89 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     conn.commit();
     conn.close();
   }
+
+  // only insert operations to ignore
+  public void testReadWriteSnapshotOnPartitionedTable() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    st.execute("Create table t1 (c1 int not null , c2 int not null, "
+        + "primary key(c1)) partition by column (c1) enable concurrency checks "+getSuffix());
+    conn = getConnection();
+    st = conn.createStatement();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    st.execute("insert into t1 values (10, 10)");
+    st.execute("insert into t1 values (20, 20)");
+    conn.commit();
+
+    ResultSet rs = st.executeQuery("Select * from t1");
+    int numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    // withing tx also the row count should be 2
+    assertEquals("ResultSet should contain two row ", 2, numRows);
+
+    rs = st.executeQuery("Select * from t1 where c1=10");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    // withing tx also the row count should be 1
+    assertEquals("ResultSet should contain one row ", 1, numRows);
+    //conn.commit(); // commit two rows.
+
+    rs = st.executeQuery("Select * from t1");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 2, numRows);
+
+    st.execute("delete from t1 where c1=10");
+
+    rs = st.executeQuery("Select * from t1 ");
+    doInsertOpsInTx();
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain one row ", 1, numRows);
+
+    st.execute("truncate table t1");
+
+    st.execute("insert into t1 values (10, 10)");
+    st.execute("insert into t1 values (20, 20)");
+    st.execute("delete from t1 where c1=10");
+
+    rs = st.executeQuery("Select * from t1 where c1 = 30");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain one row ", 0, numRows);
+
+    rs = st.executeQuery("Select * from t1 where c1 > 1");
+    doInsertOpsInTx();
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain one row ", 1, numRows);
+    rs = st.executeQuery("Select * from t1 where c2 > 20");
+    numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain one row ", 7, numRows);
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    //conn.commit();
+    conn.close();
+  }
+
 
   // only insert operations to ignore
   public void testReadSnapshotOnPartitionedTable() throws Exception {
@@ -1319,8 +1994,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     long version = 0l;
 
     Map<String, Map<VersionSource,RegionVersionHolder>> expectedSnapshot = txState
-        .getCurrentRvvSnapShot
-            (region);
+        .getCurrentRvvSnapShot();
     version = expectedSnapshot.get(region.getFullPath()).values().iterator().next()
         .getVersion();
     return version;

@@ -2461,8 +2461,8 @@ public final class GemFireTransaction extends RawTransaction implements
           TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
           if (tx != gfTx && !tx.isSnapshot()) {
             this.txManager.rollback(tx, this.connectionID, false);
-            setTXState(null);
           }
+          setTXState(null);
         }
       }
 
@@ -3693,9 +3693,28 @@ public final class GemFireTransaction extends RawTransaction implements
               }
             }
             else {
-              TXManagerImpl.getOrCreateTXContext().clearTXState();
-              // don't mark TX as active yet
-              return;
+              TXStateInterface snapshotTXState = TXManagerImpl.getCurrentSnapshotTXState();
+              if (snapshotTXState != null) {
+                if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery
+                    || GemFireXDUtils.TraceNCJ) {
+                  SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+                      "GemFireTransaction#reattachTransaction: for " + tran
+                          + " setting gfe tx to snapshot tx" + snapshotTXState, new Throwable("SKSK TXSTATE TO NULL") );
+                }
+                //TXManagerImpl.getOrCreateTXContext().clearTXState();
+                // don't mark TX as active yet
+                return;
+              } else {
+                if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery
+                    || GemFireXDUtils.TraceNCJ) {
+                  SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+                      "GemFireTransaction#reattachTransaction: for " + tran
+                          + " setting gfe tx to null", new Throwable("SKSK TXSTATE TO NULL") );
+                }
+                TXManagerImpl.getOrCreateTXContext().clearTXState();
+                // don't mark TX as active yet
+                return;
+              }
             }
           }
           else if (tx != TXStateProxy.TX_NOT_SET

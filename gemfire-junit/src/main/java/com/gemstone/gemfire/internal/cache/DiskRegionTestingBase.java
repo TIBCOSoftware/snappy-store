@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
 
+import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import junit.framework.TestCase;
 
 import com.gemstone.gemfire.LogWriter;
@@ -75,7 +76,7 @@ public class DiskRegionTestingBase extends TestCase
   static {
     props.setProperty("mcast-port", "0");
     props.setProperty("locators", "");
-    props.setProperty("log-level", "config"); // to keep diskPerf logs smaller
+    props.setProperty("log-level", "fine"); // to keep diskPerf logs smaller
     props.setProperty("statistic-sampling-enabled", "true");
     props.setProperty("enable-time-statistics", "true");
     props.setProperty("statistic-archive-file", "stats.gfs");
@@ -183,7 +184,7 @@ public class DiskRegionTestingBase extends TestCase
   protected Cache createCache() {
     // useful for debugging:
 //    props.put(DistributionConfig.LOG_FILE_NAME, "diskRegionTestingBase_system.log");
-//    props.put(DistributionConfig.LOG_LEVEL_NAME, getGemFireLogLevel());
+    //props.put(DistributionConfig.LOG_LEVEL_NAME, "fine");
     cache = new CacheFactory(props).create();
     ds = cache.getDistributedSystem();
     logWriter = cache.getLogger();
@@ -248,7 +249,7 @@ public class DiskRegionTestingBase extends TestCase
 
   protected static void closeDiskStores() {
     if (cache != null) {
-      ((GemFireCacheImpl)cache).closeDiskStores();
+      ((GemFireCacheImpl)cache).closeAppDiskStores();
     }
   }
 

@@ -2031,9 +2031,11 @@ public final class Oplog implements CompactableOplog {
         if (EntryBits.isWithVersions(userBits)) {
           tag = readVersionsFromOplog(dis);
           // Update the RVV with the new entry
-          if (drs != null) {
-            drs.recordRecoveredVersionTag(tag);
-          }
+          // why is this required? RVV has been already recovered above?
+          // in case of crf I understand, as RVV is not present but for krf it may not be required.
+          //if (drs != null) {
+            //drs.recordRecoveredVersionTag(tag);
+          //}
         }
         // read last modified time for no-versions case
         else if (EntryBits.isLastModifiedTime(userBits)) {
@@ -7542,6 +7544,10 @@ public final class Oplog implements CompactableOplog {
       
       Long diskRegionID = regionEntry.getKey();
       AbstractDiskRegion dr = regionEntry.getValue();
+      //1. disk rvv is recorded when entry is being written to disk
+      // snapshot rvv is updated at the time of commit/rollback
+      // we need to either update disk rvv at the time of commit
+      // or persist the snapshot rvv.
       RegionVersionVector rvv = dr.getRegionVersionVector();
       if (rvv == null) {
         continue;
@@ -7572,7 +7578,19 @@ public final class Oplog implements CompactableOplog {
       } else {
         InternalDataSerializer.writeBoolean(dr.getRVVTrusted(), out);
         //Otherwise, we will write the version and exception list for each member
-        Map<VersionSource, RegionVersionHolder> memberToVersion = rvv.getMemberToVersion();
+        // we can get the snapshot here to write.
+        // Other way could be to write memberToVersion here but write snapshotRVV at the time of each commit
+        // That can be done in a separate diskstore i.e oldEntries diskstore
+        // ofr the time beign they will store committed entry too
+        // we can work on using the already written data in region oplog later.
+        //Map<VersionSource, RegionVersionHolder> memberToVersion = rvv.getMemberToVersion();
+        Map<VersionSource, RegionVersionHolder> memberToVersion = rvv.getSnapShotOfMemberVersion();
+
+        if (DiskStoreImpl.TRACE_WRITES) {
+          this.logger.info(LocalizedStrings.DEBUG, "SKSK serializeRVVs: isGCRVV="+gcRVV+" drId="+diskRegionID
+              +" rvv="+ memberToVersion +" oplog#" + getOplogId(), new Throwable("SKSK"));
+        }
+
         InternalDataSerializer.writeUnsignedVL(memberToVersion.size(), out);
         for(Map.Entry<VersionSource, RegionVersionHolder> memberEntry : memberToVersion.entrySet()) {
 

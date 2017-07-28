@@ -314,7 +314,8 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
    */
   @Override
   public DataValueDescriptor getClone() {
-    throw new UnsupportedOperationException("unexpected invocation");
+    return this;
+    //throw new UnsupportedOperationException("unexpected invocation");
   }
 
   /**
@@ -322,7 +323,8 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
    */
   @Override
   public DataValueDescriptor recycle() {
-    throw new UnsupportedOperationException("unexpected invocation");
+    return this;
+    //throw new UnsupportedOperationException("unexpected invocation");
   }
 
   /**

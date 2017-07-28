@@ -48,6 +48,8 @@ import com.gemstone.gemfire.cache.TransactionException;
 import com.gemstone.gemfire.cache.TransactionWriter;
 import com.gemstone.gemfire.cache.TransactionWriterException;
 import com.gemstone.gemfire.cache.UnsupportedOperationInTransactionException;
+import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
+import com.gemstone.gemfire.cache.query.internal.index.IndexManager;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
@@ -71,6 +73,7 @@ import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
+import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
 import com.gemstone.gemfire.internal.concurrent.MapCallback;
@@ -106,7 +109,9 @@ public final class TXState implements TXStateInterface {
   // in this VM.
   private final ConcurrentTHashSet<TXRegionState> regions;
 
-  private final BlockingQueue<RegionEntry> regionEntryRef = new LinkedBlockingQueue<RegionEntry>();
+  private final BlockingQueue<Object> committedEntryReference = new LinkedBlockingQueue<Object>();
+  private final BlockingQueue<RegionEntry> unCommittedEntryReference = new LinkedBlockingQueue<RegionEntry>();
+  private final BlockingQueue<LocalRegion> regionReference = new LinkedBlockingQueue<LocalRegion>();
 
   static final TXRegionState[] ZERO_REGIONS = new TXRegionState[0];
 
@@ -428,9 +433,9 @@ public final class TXState implements TXStateInterface {
   //TODO: Suranjan, FOR RC: We should set create snapshot and set it in every stmt.
   public void takeSnapshot() {
     this.snapshot = getCache().getSnapshotRVV();
-    if (TXStateProxy.LOG_FINE) {
+    if (true || TXStateProxy.LOG_FINE) {
       this.txManager.getLogger().info(LocalizedStrings.DEBUG,
-          " The snapshot taken in txStats is " + this.snapshot);
+          " The snapshot taken in txStats is " + this.snapshot, new Throwable("SKSKS begin"));
     }
   }
 
@@ -855,20 +860,56 @@ public final class TXState implements TXStateInterface {
     if (this.state.isClosed()) {
       return;
     }
+    if (true || TXStateProxy.LOG_FINE) {
+      this.txManager.getLogger().info(LocalizedStrings.DEBUG,
+          " SKSKS Rolling back " + this, new Throwable("SKSKS rollback"));
+    }
     // lock the TXRegionStates against GII and TXState
     lockTXRSAndTXState();
-
+    TransactionException cleanEx = null;
     final TransactionObserver observer = getObserver();
     if (observer != null) {
       observer.duringIndividualRollback(this.proxy, callbackArg);
       try {
         cleanup(false, observer);
+
       } finally {
         observer.afterIndividualRollback(this.proxy, callbackArg);
+      }
+
+      try {
+        rollBackUncommittedEntries();
+      } catch (Throwable t) {
+        Error err;
+        if (t instanceof Error && SystemFailure.isJVMFailureError(
+            err = (Error)t)) {
+          SystemFailure.initiateFailure(err);
+          // If this ever returns, rethrow the error. We're poisoned
+          // now, so don't let this thread continue.
+          throw err;
+        }
+        cleanEx = processCleanupException(t, cleanEx);
+      } finally {
+
       }
     }
     else {
       cleanup(false, null);
+      try {
+        rollBackUncommittedEntries();
+      } catch (Throwable t) {
+        Error err;
+        if (t instanceof Error && SystemFailure.isJVMFailureError(
+            err = (Error)t)) {
+          SystemFailure.initiateFailure(err);
+          // If this ever returns, rethrow the error. We're poisoned
+          // now, so don't let this thread continue.
+          throw err;
+        }
+        cleanEx = processCleanupException(t, cleanEx);
+      } finally {
+
+      }
     }
   }
 
@@ -1117,43 +1158,7 @@ public final class TXState implements TXStateInterface {
         }
       }
 
-      // No need to check for snapshot if we want to enable it for RC.
-      if (cache.snapshotEnabled()) {
-        if (isSnapshot() || cache.snapshotEnabledForTX()) {
-          // first take a lock at cache level so that we don't go into deadlock or sort array before
-          // This is for tx RC, for snapshot just record all the versions from the queue
-          cache.acquireWriteLockOnSnapshotRvv();
-          try {
-            for (VersionInformation vi : queue) {
-              if (TXStateProxy.LOG_FINE) {
-                logger.info(LocalizedStrings.DEBUG, "Recording version " + vi + " from snapshot to " +
-                    "region.");
-              }
-              ((LocalRegion)vi.region).getVersionVector().
-                  recordVersionForSnapshot((VersionSource)vi.member, vi.version, null);
-            }
-          } finally {
-            cache.releaseWriteLockOnSnapshotRvv();
-          }
-        } else {
-          // doing it for tx and non tx case.
-          // tx may not record version in snapshot so non tx reads while taking
-          // snapshot may miss it. in case of commit just copy the rvv to snapshot so that
-          // any future non tx read will get all the entries
-          cache.acquireWriteLockOnSnapshotRvv();
-          try {
-            for (TXRegionState txr : finalRegions) {
-              final LocalRegion dataRegion = txr.region;
-              final RegionVersionVector<?> rvv = dataRegion.getVersionVector();
-              if (rvv != null) {
-                rvv.reInitializeSnapshotRvv();
-              }
-            }
-          } finally {
-            cache.releaseWriteLockOnSnapshotRvv();
-          }
-        }
-      }
+      publishRecordedVersions();
       if (reuseEV) {
         cbEvent.release();
       }
@@ -1162,6 +1167,49 @@ public final class TXState implements TXStateInterface {
       }
     }
     return eventsToFree;
+  }
+
+  private void publishRecordedVersions() {
+    final TXRegionState[] finalRegions = this.finalizeRegions;
+    GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
+    final LogWriterI18n logger = getTxMgr().getLogger();
+    // No need to check for snapshot if we want to enable it for RC.
+    if (cache.snapshotEnabled()) {
+      if (isSnapshot() || cache.snapshotEnabledForTX()) {
+        // first take a lock at cache level so that we don't go into deadlock or sort array before
+        // This is for tx RC, for snapshot just record all the versions from the queue
+        cache.acquireWriteLockOnSnapshotRvv();
+        try {
+          for (VersionInformation vi : queue) {
+            if (TXStateProxy.LOG_FINE) {
+              logger.info(LocalizedStrings.DEBUG, "Recording version " + vi + " from snapshot to " +
+                  "region.");
+            }
+            ((LocalRegion)vi.region).getVersionVector().
+                recordVersionForSnapshot((VersionSource)vi.member, vi.version, null);
+          }
+        } finally {
+          cache.releaseWriteLockOnSnapshotRvv();
+        }
+      } else {
+        // doing it for tx and non tx case.
+        // tx may not record version in snapshot so non tx reads while taking
+        // snapshot may miss it. in case of commit just copy the rvv to snapshot so that
+        // any future non tx read will get all the entries
+        cache.acquireWriteLockOnSnapshotRvv();
+        try {
+          for (TXRegionState txr : finalRegions) {
+            final LocalRegion dataRegion = txr.region;
+            final RegionVersionVector<?> rvv = dataRegion.getVersionVector();
+            if (rvv != null) {
+              rvv.reInitializeSnapshotRvv();
+            }
+          }
+        } finally {
+          cache.releaseWriteLockOnSnapshotRvv();
+        }
+      }
+    }
   }
 
   final void initBaseEventOffsetsForCommit() {
@@ -1343,6 +1391,21 @@ public final class TXState implements TXStateInterface {
         txrs.applyChangesEnd(txrs.region, commit);
       }
     }
+    try {
+      //rollBackUncommittedEntries();
+    } catch (Throwable t) {
+      Error err;
+      if (t instanceof Error && SystemFailure.isJVMFailureError(
+          err = (Error)t)) {
+        SystemFailure.initiateFailure(err);
+        // If this ever returns, rethrow the error. We're poisoned
+        // now, so don't let this thread continue.
+        throw err;
+      }
+      cleanEx = processCleanupException(t, cleanEx);
+    } finally {
+
+    }
     //gotBucketLocks = false;
 
     if (observer != null) {
@@ -1357,6 +1420,106 @@ public final class TXState implements TXStateInterface {
     if (cleanEx != null) {
       throw cleanEx;
     }
+  }
+
+  private void rollBackUncommittedEntries() throws RegionClearedException {
+    //rollback can be done locally for snapshot just as commit is done
+
+    // we need to take entry lock on primary otherwise the following can happen
+    // on primary : we replace uncommitted entry with committed entry
+    // on primary new write comes, which goes to secondary
+    // on secondary : we replace the new entry with old committed entry
+
+    // to avoid this we can compare the version? or keep the uncommitted RE reference too in
+    // the txState.
+
+    Iterator<RegionEntry> itr1 = unCommittedEntryReference.iterator();
+    Iterator<Object> itr2 = committedEntryReference.iterator();
+    Iterator<LocalRegion> itr3 = regionReference.iterator();
+
+    GemFireCacheImpl.getInstance().getLogger().info("SKKS rolling back the changes.. " + unCommittedEntryReference.size()
+        + " " + committedEntryReference.size() + " " + regionReference.size());
+    RegionEntry uncommitted;
+    RegionEntry committed;
+    VersionStamp originalStamp, stamp;
+    VersionTag originalStampAsTag;
+    EntryEventImpl event = EntryEventImpl.createVersionTagHolder();
+    while (itr1.hasNext() && itr2.hasNext()) {
+      uncommitted = itr1.next();
+      Object entr = itr2.next();
+      if (!(entr instanceof Token)) {
+        committed = (RegionEntry)entr;
+      }
+      else {
+        committed = null;
+      }
+      LocalRegion region = itr3.next();
+      synchronized (uncommitted) {
+        if (committed != null) {
+          originalStamp = committed.getVersionStamp();
+
+          stamp = uncommitted.getVersionStamp();
+          if (stamp.getEntryVersion() > originalStamp.getEntryVersion() + 1) {
+            // some modification has already happened, this is secondary and the change must have come through primary.
+            // this can't happen the update on secondary will fail with conflict exception
+            // which should lead to rollback
+            // TODO: TEST
+            // actually this should never happen!
+            continue;
+            // in this case do we need to update the index ?
+          }
+
+          originalStampAsTag = null;
+          if (originalStamp != null) {
+            originalStampAsTag = originalStamp.asVersionTag();
+          }
+          if (stamp != null && originalStampAsTag != null) {
+            stamp.setVersions(originalStampAsTag);
+            stamp.setMemberID(originalStampAsTag.getMemberID());
+          }
+          event.setVersionTag(originalStampAsTag);
+          event.setRegion(region);
+          // we need to do this under the region entry lock
+          // This has to handle index changes too.
+          // set originRemote so that version is not generated but used from event
+          //Suranjan TODO: This case can lead to two copies of same row in the index.
+          // as one will be pointing two RE in RegionMap
+          // and other will be pointing to oldRe in oldReMap.
+          //How to make it atomic? Not supporting for rowtable.
+          event.setOriginRemote(true);
+          event.setNewValue(committed._getValue());
+          if (uncommitted.isTombstone()) {
+            event.setOperation(Operation.CREATE);
+            event.putNewEntry(region, uncommitted);
+          } else {
+            event.setOperation(Operation.UPDATE);
+            event.setEntryLastModified(uncommitted.getLastModified());
+            event.setPutDML(true);
+            final int oldSize = region.calculateRegionEntryValueSize(uncommitted);
+            event.putExistingEntry(region, uncommitted, oldSize);
+            //uncommitted.setValueWithTombstoneCheck(committed._getValue(), event);
+          }
+        } else {
+          // we need to just delete the entry in regionMap and set the version back
+          originalStampAsTag = VersionTag.create(uncommitted.getVersionStamp().
+              asVersionTag().getMemberID());
+          event.setVersionTag(originalStampAsTag);
+          event.setRegion(region);
+          event.setOriginRemote(true);
+          event.setOperation(Operation.DESTROY);
+          uncommitted.destroy(region, event, false, true, null, false, false);
+        }
+      }
+
+      // also to make sure that it happens only if the version of uncommited hasn't changed.
+      // so we will have to store the version of uncommitted too?
+      // We can get it from version that we store in TXState. We need to map RE with the version
+      // What if multiple updates on same RE.
+      GemFireCacheImpl.getInstance().getLogger().info("SKKS rolling back the changes.. ");
+    }
+    // we need to take RVV lock and record the recorded version in the snapshot so that
+    // there are no unnecessary exceptions recorded due to rollback
+    publishRecordedVersions();
   }
 
   public void cleanupCachedLocalState(boolean hasListeners) {
@@ -2303,11 +2466,19 @@ public final class TXState implements TXStateInterface {
    *         acquisition
    */
   static final Object lockEntryForRead(final LockingPolicy lockPolicy,
-      final RegionEntry entry, final Object key, final LocalRegion dataRegion,
+      RegionEntry entry, final Object key, final LocalRegion dataRegion,
       final TXId txId, final TXState txState, final int iContext,
       final boolean markPending, final boolean allowTombstones,
       final Boolean checkForTXFinish, final ReadEntryUnderLock reader) {
     final LockMode mode = lockPolicy.getReadLockMode();
+    if (lockPolicy == LockingPolicy.SNAPSHOT) {
+      if (dataRegion.getVersionVector() != null) {
+        if (!checkEntryVersion(txState, dataRegion, entry)) {
+          entry = (RegionEntry)getOldVersionedEntry(txState, dataRegion, key, entry);
+        }
+      }
+    }
+
     final Object lockResult = lockPolicy.lockForRead(entry, mode, txId,
         dataRegion, iContext, null, allowTombstones, reader);
     if (lockResult != LockingPolicy.Locked) {
@@ -3783,7 +3954,7 @@ public final class TXState implements TXStateInterface {
       final LogWriterI18n logger = region.getLogWriterI18n();
       logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
           + region.getFullPath() + " RegionEntry(" + re + ") checkTX="
-          + checkTX);
+          + checkTX, new Throwable("SKSK Index"));
     }
     if (checkTX) {
       final Object key = re.getKey();
@@ -3892,6 +4063,54 @@ public final class TXState implements TXStateInterface {
     }
   }
 
+  // Writer should add old entry with tombstone with region version in the common map
+  // wait till writer has written to common old entry map.
+  private static Object getOldVersionedEntry(TXState tx,LocalRegion dataRegion, Object key, RegionEntry re) {
+
+    Object oldEntry = dataRegion.getCache().readOldEntry(dataRegion, key, tx.getCurrentSnapshot(),
+        true, re, tx);
+    if (oldEntry != null) {
+      return oldEntry;
+    } else {
+      // wait till it is populated..
+      // The update/destroy guy can update the region version first and then modify the RE
+      // later copy it to running tx so that when tx misses the entry it is sure that
+      // it will be copied by writer thread
+      // If we copy first and then update the region version and RE then there is a window where
+      // concurrent tx can miss the old entry.
+      // 1. Copy of the old value
+      // 2. New tx starts and takes the snapshot
+      // 3. old tx increments the regionVersion
+      // 4. New tx scans and misses the changed RE as its version is higher than the snapshot.
+      // 5. old tx changes the RE
+
+      // For Transaction NONE we can get locally. For tx isolation level RC/RR
+      // we will have to get from a common DS.
+      oldEntry = dataRegion.getCache().readOldEntry(dataRegion, key, tx.getCurrentSnapshot(), true, re, tx);
+      int numtimes = 0;
+      while (oldEntry == null) {
+        if (TXStateProxy.LOG_FINE) {
+          LogWriterI18n logger = dataRegion.getLogWriterI18n();
+          logger.info(LocalizedStrings.DEBUG, " Waiting for older entry for this snapshot to arrive " +
+              "for key " + key + " re " + re + " for region " + dataRegion.getFullPath());
+        }
+        try {
+          //TODO: Suranjan Should we wait indefinitely? or throw warning and return the current entry.
+          // As
+          if (numtimes < 10) {
+            Thread.sleep(10);
+            numtimes++;
+          } else {
+            Thread.sleep(100 * numtimes);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        oldEntry = dataRegion.getCache().readOldEntry(dataRegion, key, tx.getCurrentSnapshot(), true, re, tx);
+      }
+      return oldEntry;
+    }
+  }
   /**
    * Test to see if this vector has seen the given version.
    * It should also include any changes done by this tx.
@@ -3973,6 +4192,46 @@ public final class TXState implements TXStateInterface {
     return true;
   }
 
+  public static boolean checkEntryVersion(TXStateInterface tx, Region region, RegionEntry entry) {
+    if (tx.isSnapshot() && ((LocalRegion)region).concurrencyChecksEnabled) {
+      VersionStamp stamp = entry.getVersionStamp();
+      VersionSource id = stamp.getMemberID();
+      final LogWriterI18n logger = ((LocalRegion)region).getLogWriterI18n();
+
+      if (id == null) {
+        if (((LocalRegion)region).getVersionVector().isDiskVersionVector()) {
+          id = ((LocalRegion)region).getDiskStore().getDiskStoreID();
+        } else {
+          id = InternalDistributedSystem.getAnyInstance().getDistributedMember();
+        }
+        if (TXStateProxy.LOG_FINEST) {
+          logger.info(LocalizedStrings.DEBUG, "checkEntryVersion: for region "
+              + region.getFullPath() + " RegionEntry(" + entry + ")" + " id not set in Entry, setting id to: " +
+              id);
+        }
+      }
+      // if rvv is not present then
+      TXState state = tx.getLocalTXState();
+      if (state.getCurrentRvvSnapShot() != null) {
+        if (state.isVersionInSnapshot(region, id, stamp.getRegionVersion())) {
+          if (TXStateProxy.LOG_FINEST) {
+            logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
+                + region.getFullPath() + " RegionEntry(" + entry  + ") with version " + stamp
+                .getRegionVersion() + " id: " + id + " , returning true.");
+          }
+          return true;
+        }
+      }
+      if (TXStateProxy.LOG_FINE) {
+        logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
+            + region.getFullPath() + " RegionEntry(" + entry + ") with version " + stamp
+            .getRegionVersion() + " id: " + id + " , returning false.");
+      }
+      return false;
+    }
+    return true;
+  }
+
   public Map<String, Map<VersionSource, RegionVersionHolder>> getCurrentSnapshot() {
     return snapshot;
   }
@@ -3982,7 +4241,7 @@ public final class TXState implements TXStateInterface {
    * This method is only for test purpose to check the current Rvv
    * @param region
    */
-  public Map<String, Map<VersionSource,RegionVersionHolder>> getCurrentRvvSnapShot(Region region) {
+  public Map<String, Map<VersionSource,RegionVersionHolder>> getCurrentRvvSnapShot() {
 
     if (snapshot != null) {
       return snapshot;
@@ -4112,10 +4371,11 @@ public final class TXState implements TXStateInterface {
     }
   }
 
-  public void addRegionEntryReference(RegionEntry re) {
-    regionEntryRef.add(re);
+  public void addCommittedRegionEntryReference(Object re, RegionEntry newRe, LocalRegion region) {
+    GemFireCacheImpl.getInstance().getLogger().info("SKSK Adding the entry to reference : " + re);
+    committedEntryReference.add(re);
+    unCommittedEntryReference.add(newRe);
+    regionReference.add(region);
   }
-  public boolean containsRegionEntryReference(RegionEntry re) {
-    return regionEntryRef.contains(re);
-  }
+
 }

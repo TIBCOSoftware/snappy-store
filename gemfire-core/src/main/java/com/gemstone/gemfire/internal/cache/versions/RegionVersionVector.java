@@ -47,6 +47,7 @@ import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
@@ -62,7 +63,7 @@ import com.gemstone.gemfire.internal.util.concurrent.CopyOnWriteHashMap;
  */
 public abstract class RegionVersionVector<T extends VersionSource<?>> implements DataSerializableFixedID, MembershipListener {
   
-  public static boolean DEBUG = Boolean.getBoolean("gemfire.VersionVector.VERBOSE");
+  public static boolean DEBUG = true;//Boolean.getBoolean("gemfire.VersionVector.VERBOSE");
   
   
   
@@ -675,7 +676,17 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
         updateLocalVersion(version);
       }
       // holders must be modified under synchronization
+      LogWriterI18n logger = getLoggerI18n();
+      logger.info(LocalizedStrings.DEBUG, "The update local version is " + this.localVersion.get() +
+          " other version holder " + otherHolder.version
+          + " my holder is " + h);
+      if (mbr.equals(this.myId)) {
+        updateLocalVersion(otherHolder.version);
+      }
       h.initializeFrom(otherHolder);
+      logger.info(LocalizedStrings.DEBUG, "The update local version is after change of local version and initialization" +
+          " " + this.localVersion.get() + " other version holder " + otherHolder.version
+          + " my holder is " + h);
     }
   }
 
@@ -744,35 +755,38 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
     if (cache != null && !cache.snapshotEnabled()) {
       return;
     }
-    if (event != null) {
-      // Here we need to record the version directly if the event is being applied from GIIed txState.
-      // This breaks the atomicity?
-      TXStateInterface tx = event.getTXState();
+    TXStateInterface tx = event != null ? event.getTXState() : null;//TXManagerImpl.getCurrentTXState();
+    // Here we need to record the version directly if the event is being applied from GIIed txState.
+    // This breaks the atomicity?
 
-      if (tx != null) {
-        if (!tx.isSnapshot() && !cache.snapshotEnabledForTX()) {
-          return;
+    if (tx != null) {
+      if (!tx.isSnapshot() && !cache.snapshotEnabledForTX()) {
+        return;
+      }
+      boolean committed = false;
+      if (tx instanceof TXState) {
+        committed = ((TXState)tx).isCommitted();
+      }
+      if (committed) {
+        if (logger.fineEnabled()) {
+          logger.fine("Directly recording version: " + version + " for member " + member + "in the snapshot tx " +
+              " region " + event.getRegion() + " for tx " + tx + " as it is committed.");
         }
-        boolean committed = false;
-        if (tx instanceof TXState) {
-          committed = ((TXState)tx).isCommitted();
-        }
-        if (committed) {
-          if (logger.fineEnabled()) {
-            logger.fine("Directly recording version: " + version + " for member " + member + "in the snapshot tx " +
-                    " region " + event.getRegion() + " for tx " + tx + " as it is committed.");
-          }
-        } else {
+      } else {
+        // event is null but tx is not , coming from oplog for diskrvv..version is already recorded
+        // in tx, so no need to record.
+        if (event != null) {
           tx.recordVersionForSnapshot(member, version, event.getRegion());
           if (logger.fineEnabled()) {
             logger.fine("Recording version:" +
-                    version + " for member " + member + " in the snapshot tx " +
-                    " region " + event.getRegion() + " for tx:" + tx);
+                version + " for member " + member + " in the snapshot tx " +
+                " region " + event.getRegion() + " for tx:" + tx);
           }
-          return;
         }
+        return;
       }
     }
+    // if it is recovery then we shouldn't record.
 
     RegionVersionHolder<T> holder;
     Map<T, RegionVersionHolder<T>> forPrinting;
@@ -791,15 +805,15 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
       forPrinting = memberToVersionSnapshot;
     }
 
-    if (logger!= null && logger.fineEnabled()) {
+    if (logger!= null && logger.fineEnabled() || DEBUG) {
       String regionpath = "";
       if (event != null && event.getRegion() != null) {
         regionpath = event.getRegion().getFullPath();
       }
-      logger.fine("Recorded version: " + version + " for member " + member + " in the snapshot region : " +
-              regionpath + " the snapshot is " + forPrinting +
-              " it contains version after recording "
-              + forPrinting.get(member).contains(version));
+      logger.info(LocalizedStrings.DEBUG, "Recorded version: " + version + " for member " + member + " in the snapshot region : " +
+          regionpath + " the snapshot is " + forPrinting +
+          " it contains version after recording "
+          + forPrinting.get(member).contains(version));
     }
   }
 
@@ -860,7 +874,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
     //Update the version holder
     if (DEBUG && logger != null) {
       logger.info(LocalizedStrings.DEBUG, "recording rv" + version + " for " + mbr + " rvv " + this.memberToVersion + " contains " +
-          this.memberToVersion.get(member).contains(version));
+          this.memberToVersion.get(member).contains(version), new Throwable("SKSKS RVV"));
     }
     // record Version in snapshot too.
     recordVersionForSnapshot(member, version, event);
