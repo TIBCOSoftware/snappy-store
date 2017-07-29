@@ -82,6 +82,8 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.NoneAuthenticationServiceImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.tools.planexporter.CreateXML;
@@ -763,8 +765,10 @@ public abstract class Misc {
   }
 
   public static boolean isSecurityEnabled() {
-    return "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.AUTH_PROVIDER)) ||
-        "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.SERVER_AUTH_PROVIDER));
+    AuthenticationServiceBase authService = AuthenticationServiceBase.getPeerAuthenticationService();
+    return authService != null && !(authService instanceof NoneAuthenticationServiceImpl) &&
+        ("LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.AUTH_PROVIDER)) ||
+        "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.SERVER_AUTH_PROVIDER)));
   }
 
   // added by jing for processing the exception
