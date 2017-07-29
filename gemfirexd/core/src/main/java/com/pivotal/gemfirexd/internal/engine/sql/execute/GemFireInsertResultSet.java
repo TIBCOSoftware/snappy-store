@@ -29,6 +29,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.VMIdAdvisor;
 
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
@@ -139,9 +140,10 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
         .getLanguageConnectionContext();
 
     TXStateInterface tx = this.gfContainer.getActiveTXState(this.tran);
+    // TOOD: decide on autocommit or this flag: Discuss
     if (false && tx == null /*&& this.gfContainer.isRowBuffer()*/) {
       this.tran.getTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
-      ((GemFireTransaction)lcc.getTransactionExecute()).setActiveTXState(TXManagerImpl.getCurrentTXState(), true);
+      ((GemFireTransaction)lcc.getTransactionExecute()).setActiveTXState(TXManagerImpl.getCurrentTXState(), false);
       this.tran.setImplicitSnapshotTxStarted(true);
     }
     tx = this.gfContainer.getActiveTXState(this.tran);

@@ -94,13 +94,49 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
   }
 
-  public void testAutoCommitWithRCConflict() throws Exception {
+  // Currently autcommit is disabled
+  public void _testBatchInsertAutoCommitWithConflict() throws Exception {
     Connection conn= getConnection();
     Statement st = conn.createStatement();
-    st.execute("Create table tran.t1 (c1 int not null , c2 int not null, primary key(c1)) replicate"+getSuffix());
-    conn.commit();
-    conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
-    conn.setAutoCommit(true);
+    st.execute("Create table tran.t1 (c1 int not null , c2 int not null, primary key(c1))" +
+        " replicate persistent enable concurrency checks"+getSuffix());
+    String stmtString = "";
+    for (int i = 0; i < 5; i++) {
+      stmtString = "insert into tran.t1"  + " values(" + i + "," + i + ")";
+      st.addBatch(stmtString);
+    }
+    st.executeBatch();
+
+    for (int i = 4; i < 10; i++) {
+      stmtString = "insert into tran.t1"  + " values(" + i + "," + i + ")";
+      st.addBatch(stmtString);
+    }
+    try {
+      st.executeBatch();
+    } catch (Exception e) {
+      //e.printStackTrace();
+      // will get primary key exception
+    }
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    ResultSet rs = st.executeQuery("Select * from tran.t1");
+    int numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 5, numRows);
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    Region r = Misc.getRegionForTable("TRAN.T1", true);
+    assert (r.size() == 5);
+  }
+
+  //auto commit is disabled.
+  public void _testAutoCommitWithConflict() throws Exception {
+    Connection conn= getConnection();
+    Statement st = conn.createStatement();
+    st.execute("Create table tran.t1 (c1 int not null , c2 int not null, primary key(c1)) " +
+        "replicate persistent enable concurrency checks"+getSuffix());
+
     final TXManagerImpl txMgrImpl = (TXManagerImpl)Misc.getGemFireCache()
         .getCacheTransactionManager();
     // Region r= cache.getRegion("APP/T1");
@@ -113,18 +149,27 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
       public void run() {
         assertNotNull(r);
         txMgrImpl.begin(IsolationLevel.SNAPSHOT, null);
-        r.put(key, new SQLInteger(20)); // create a conflict here.
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+
+        r.put(key, new SQLInteger(10)); // create a conflict here.
         TXStateInterface txi = txMgrImpl.internalSuspend();
         assertNotNull(txi);
+        try {
+          Thread.sleep(10000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         txMgrImpl.resume(txi);
         txMgrImpl.commit();
       }
     });
     thread.start();
-    thread.join();
-
-
     st.execute("insert into tran.t1 values (10, 20)");
+    thread.join();
 
     //st.execute("insert into t1 values (20, 20)");
 
@@ -134,27 +179,22 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     while (rs.next()) {
       numRows++;
     }
-    assertEquals("ResultSet should contain two rows ", 1, numRows);
+    assertEquals("ResultSet should contain 0 rows ", 0, numRows);
 
     rs.close();
-   // conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
-    //Misc.getGemFireCache().getCacheTransactionManager().commit();
-    conn.commit();
-
-    // Close connection, resultset etc...
-
     st.close();
     conn.close();
   }
 
 
-  public void testAutoCommitWithIndexRC() throws Exception {
+  // index test now not valid
+  public void _testAutoCommitWithIndexSnapshot() throws Exception {
     Connection conn= getConnection();
     Statement st = conn.createStatement();
     st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate"+getSuffix());
-    conn.commit();
-    conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
-    conn.setAutoCommit(true);
+    //conn.commit();
+    //conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
+    //conn.setAutoCommit(true);
 
     st.execute("insert into t1 values (10, 10)");
 
@@ -169,9 +209,9 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     assertEquals("ResultSet should contain two rows ", 1, numRows);
 
     rs.close();
-    conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
+    //conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
     Misc.getGemFireCache().getCacheTransactionManager().commit();
-    conn.commit();
+    //conn.commit();
 
     // Close connection, resultset etc...
 
@@ -179,7 +219,8 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     conn.close();
   }
 
-  public void testAutoCommitWithIndex() throws Exception {
+  //index test not valid
+  public void _testAutoCommitWithIndex() throws Exception {
     Connection conn= getConnection();
     Statement st = conn.createStatement();
     st.execute("Create table t1 (c1 int not null , c2 int not null, primary key(c1)) replicate"+getSuffix());
@@ -198,7 +239,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     while (rs.next()) {
       numRows++;
     }
-    assertEquals("ResultSet should contain two rows ", 1, numRows);
+    assertEquals("ResultSet should contain 1 row ", 1, numRows);
     Misc.getGemFireCache().getCacheTransactionManager().commit();
     conn.commit();
 

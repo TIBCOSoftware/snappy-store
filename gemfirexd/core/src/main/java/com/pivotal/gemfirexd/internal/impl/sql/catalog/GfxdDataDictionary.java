@@ -504,7 +504,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
               "Cannot execute DDL statements in the middle of transaction "
                   + "that has data changes "
-                  + "(commit or rollback the transaction first)");
+                  + "(commit or rollback the transaction first) " + tx);
         }
       }
     }

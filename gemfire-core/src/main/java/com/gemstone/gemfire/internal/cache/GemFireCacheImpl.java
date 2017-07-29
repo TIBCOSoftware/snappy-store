@@ -653,7 +653,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         return null;
       }
       for (RegionEntry value : entries) {
-        if (txState.checkEntryVersion(region, value)) {
+        if (TXState.checkEntryInSnapshot(txState, region, value)) {
           oldEntries.add(value);
         }
       }
@@ -721,8 +721,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                 boolean entryFoundInTxState = false;
                 for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
                   TXState txState = txProxy.getLocalTXState();
-                  if (re.isUpdateInProgress() || (txState != null && !txState.isCommitted() && txState.checkEntryVersion
-                          (region, re))) {
+                  if (re.isUpdateInProgress() || (txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+                      (txState, region, re))) {
                     entryFoundInTxState = true;
                     break;
                   }

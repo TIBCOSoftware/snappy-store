@@ -47,7 +47,7 @@ import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.shared.Version;
 
-public class NonLocalRegionEntry implements RegionEntry, VersionStamp, DataSerializable {
+public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   protected long lastModified;
   protected boolean isRemoved;
   protected Object key;

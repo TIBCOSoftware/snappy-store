@@ -598,7 +598,8 @@ public final class TransactionResourceImpl
 					** rollback in the cleanupOnError above, but we still
 					** may hold locks from the stmt.
 					*/
-					if (autoCommit && rollbackOnAutoCommit)
+
+					if (autoCommit && rollbackOnAutoCommit || ((GemFireTransaction)lcc.getTransactionExecute()).getImplcitSnapshotTxStarted())
 					{
 						se.setSeverity(ExceptionSeverity.TRANSACTION_SEVERITY);
 					}

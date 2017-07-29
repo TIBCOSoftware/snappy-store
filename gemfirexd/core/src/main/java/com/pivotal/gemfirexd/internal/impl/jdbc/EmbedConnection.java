@@ -3142,7 +3142,8 @@ public abstract class EmbedConnection implements EngineConnection
 	 */
 	protected final void commitIfNeeded() throws SQLException 
     {
-		if (autoCommit && needCommit) 
+		if ((autoCommit && needCommit) ||
+				((GemFireTransaction)getTR().getLcc().getTransactionExecute()).getImplcitSnapshotTxStarted())
         {
             try
             {
@@ -3174,7 +3175,8 @@ public abstract class EmbedConnection implements EngineConnection
 	 */
 	protected final void commitIfAutoCommit() throws SQLException 
     {
-		if (autoCommit) 
+		if (autoCommit ||
+				((GemFireTransaction)getLanguageConnection().getTransactionExecute()).getImplcitSnapshotTxStarted())
         {
             try
             {

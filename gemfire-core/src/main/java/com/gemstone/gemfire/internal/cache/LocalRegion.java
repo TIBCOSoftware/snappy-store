@@ -875,6 +875,8 @@ public class LocalRegion extends AbstractRegion
     }
 
     this.testCallable = internalRegionArgs.getTestCallable();
+    this.snapshotEnabledRegion = cache.snapshotEnabled() && this.concurrencyChecksEnabled
+        && !isUsedForMetaRegion;
     
   }
 

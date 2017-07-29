@@ -48,6 +48,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -2260,10 +2261,14 @@ public final class GemFireTransaction extends RawTransaction implements
       try {
         TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
         // commit if implicitely snapshot tx was started
-        if ((tx != gfTx && !tx.isSnapshot())|| (tx.isSnapshot() && implicitSnapshotTxStarted)) {
+        if ((tx != gfTx && !tx.isSnapshot()) || (tx.isSnapshot() && implicitSnapshotTxStarted)) {
           context = this.txManager.commit(tx, this.connectionID, commitPhase,
               context, false);
-          implicitSnapshotTxStarted = false;
+
+          if (tx.isSnapshot() && implicitSnapshotTxStarted) {
+            implicitSnapshotTxStarted = false;
+            this.txManager.snapshotTxState.set(null);
+          }
         }
         if (commitPhase != TXManagerImpl.PHASE_ONE_COMMIT) {
           postComplete(commitflag, true);
@@ -2464,7 +2469,10 @@ public final class GemFireTransaction extends RawTransaction implements
           TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
           if ((tx.isSnapshot() && implicitSnapshotTxStarted) || (tx != gfTx && !tx.isSnapshot())) {
             this.txManager.rollback(tx, this.connectionID, false);
-            implicitSnapshotTxStarted = false;
+            if (tx.isSnapshot() && implicitSnapshotTxStarted) {
+              implicitSnapshotTxStarted = false;
+              this.txManager.snapshotTxState.set(null);
+            }
           }
           setTXState(null);
         }
@@ -3853,6 +3861,9 @@ public final class GemFireTransaction extends RawTransaction implements
     this.implicitSnapshotTxStarted = implicitSnapshotTxStarted;
   }
 
+  public boolean getImplcitSnapshotTxStarted() {
+    return this.implicitSnapshotTxStarted;
+  }
   /**
    * Extension to {@link GfxdLocalLockService.DistributedLockOwner} that uses
    * the current ID of the {@link GemFireTransaction} instead of thread ID.

@@ -2262,7 +2262,7 @@ RETRY_LOOP:
         if (owner.getCache().snapshotEnabledForTX()) {
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
           oldRe.setUpdateInProgress(true);
-          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+          if (owner.snapshotEnabledRegion /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
             owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
           }
@@ -2326,7 +2326,7 @@ RETRY_LOOP:
         }
         if (owner.getCache().snapshotEnabledForTX()) {
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp()!=null && re.getVersionStamp()
+          if (owner.snapshotEnabledRegion /*&& re.getVersionStamp()!=null && re.getVersionStamp()
             .asVersionTag().getEntryVersion()>0*/) {
             owner.getCache().addOldEntry(oldRe, re, owner, 0);
           }
@@ -3951,7 +3951,7 @@ RETRY_LOOP:
                   // check if the event is loaded from HDFS and bucket is secondary then don't set
                   
                   setOldValueInEvent(event, re, cacheWrite, requireOldValue);
-                  if (shouldCopyOldEntry(owner, event) && re.getVersionStamp() != null ) {
+                  if (owner.snapshotEnabledRegion && re.getVersionStamp() != null ) {
                     checkConflict(owner, event, re);
                   }
                   if (!continueUpdate(re, event, ifOld, replaceOnClient)) {
@@ -3975,7 +3975,7 @@ RETRY_LOOP:
                     RegionEntry oldRe = null;
                     try {
                       final int oldSize = event.getLocalRegion().calculateRegionEntryValueSize(re);
-                      if (shouldCopyOldEntry(owner, event) && re.getVersionStamp() != null ) {
+                      if (owner.snapshotEnabledRegion && re.getVersionStamp() != null ) {
                         // we need to do the same for secondary as well.
                         // need to set the version information.
                         if (re.getVersionStamp().asVersionTag().getEntryVersion() > 0) {
@@ -4141,6 +4141,8 @@ RETRY_LOOP:
   }
 
   private void checkConflict(LocalRegion owner, EntryEventImpl event, RegionEntry re) {
+    //TODO: Make it property based and return oldValue taken from OldREgionEntry if confict and not
+    // throwing conflictexception
     if (owner.isUsedForPartitionedRegionBucket() && !((BucketRegion)owner).getBucketAdvisor().isPrimary()) {
       return;
     }
@@ -4148,7 +4150,7 @@ RETRY_LOOP:
     if (event.getTXState() != null && event.getTXState().isSnapshot()) {
       TXState localState = event.getTXState().getLocalTXState();
       if(!firstEntry(re)) {
-        if (!localState.checkEntryVersion(event.getRegion(), re)) {
+        if (!TXState.checkEntryInSnapshot(localState, event.getRegion(), re)) {
           throw new ConflictException("The value has been changed.");
         }
       }
@@ -4159,10 +4161,10 @@ RETRY_LOOP:
     return (re.getVersionStamp().getEntryVersion() == 0) && re.isRemoved();
   }
 
-  private boolean shouldCopyOldEntry(LocalRegion owner, EntryEventImpl event) {
+/*  private boolean shouldCopyOldEntry(LocalRegion owner, EntryEventImpl event) {
     return owner.getCache().snapshotEnabled() &&
         owner.concurrencyChecksEnabled && !owner.isUsedForMetaRegion();
-  }
+  }*/
 
   /**
    * If the value in the VM is still REMOVED_PHASE1 Token, then the operation
@@ -4391,7 +4393,7 @@ RETRY_LOOP:
     boolean retVal = false;
     try {
       final int oldSize = _getOwner().calculateRegionEntryValueSize(re);
-      if (shouldCopyOldEntry(_getOwner(), event) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+      if (_getOwner().snapshotEnabledRegion /*&& re.getVersionStamp() != null && re.getVersionStamp()
         .asVersionTag().getEntryVersion() > 0*/) {
         // we need to do the same for secondary as well.
         // check Conflict
@@ -4569,7 +4571,7 @@ RETRY_LOOP:
         // as there is a race.
         if (owner.getCache().snapshotEnabledForTX()) {
           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-          if (shouldCopyOldEntry(owner, null) /*&& re.getVersionStamp() != null && re.getVersionStamp()
+          if (owner.snapshotEnabledRegion /*&& re.getVersionStamp() != null && re.getVersionStamp()
             .asVersionTag().getEntryVersion() > 0*/) {
             owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
           }
