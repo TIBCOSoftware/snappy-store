@@ -504,7 +504,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
               "Cannot execute DDL statements in the middle of transaction "
                   + "that has data changes "
-                  + "(commit or rollback the transaction first)");
+                  + "(commit or rollback the transaction first) " + tx);
         }
       }
     }
@@ -1634,9 +1634,26 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
         String[] argNames = new String[]{"txId"};
         TypeDescriptor[] argTypes = new TypeDescriptor[]{
             DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
+        super.createSystemProcedureOrFunction("START_SNAPSHOT_TXID", sysUUID,
+            argNames,argTypes, 1, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
+            tc, GFXD_SYS_PROC_CLASSNAME, true);
+      }
+
+      {
+        String[] argNames = new String[]{"txId"};
+        TypeDescriptor[] argTypes = new TypeDescriptor[]{
+            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
         super.createSystemProcedureOrFunction("COMMIT_SNAPSHOT_TXID", sysUUID,
             argNames,argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
             tc, GFXD_SYS_PROC_CLASSNAME, false);
+      }
+      {
+        String[] argNames = new String[]{"txId"};
+        TypeDescriptor[] argTypes = new TypeDescriptor[]{
+            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
+        super.createSystemProcedureOrFunction("ROLLBACK_SNAPSHOT_TXID", sysUUID,
+            argNames,argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
+            tc, GFXD_SYS_PROC_CLASSNAME, true);
       }
       {
         String[] argNames = new String[] { "txId"};
