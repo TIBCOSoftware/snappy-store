@@ -37,14 +37,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.InternalGemFireException;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.DiskAccessException;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
 import com.gemstone.gemfire.cache.hdfs.internal.AbstractBucketRegionQueue;
@@ -54,15 +58,7 @@ import com.gemstone.gemfire.cache.query.internal.CqStateImpl;
 import com.gemstone.gemfire.cache.query.internal.DefaultQueryService;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
-import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.DistributionMessage;
-import com.gemstone.gemfire.distributed.internal.HighPriorityDistributionMessage;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.MessageWithReply;
-import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.ReplyMessage;
-import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
+import com.gemstone.gemfire.distributed.internal.*;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
@@ -76,6 +72,7 @@ import com.gemstone.gemfire.internal.cache.InitialImageFlowControl.FlowControlPe
 import com.gemstone.gemfire.internal.cache.ha.HAContainerWrapper;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
+import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistenceAdvisor;
 import com.gemstone.gemfire.internal.cache.tier.InterestType;
@@ -1926,7 +1923,7 @@ public class InitialImageOperation  {
       final LogWriterI18n logger = dm.getLoggerI18n();
       final boolean lclAbortTest = abortTest;
       if (lclAbortTest) abortTest = false;
-            
+      logger.info(LocalizedStrings.DEBUG, "processing GII for "+regionPath);
       boolean sendFailureMessage = true;
       try {
         Assert.assertTrue(this.regionPath != null, "Region path is null.");
@@ -1934,7 +1931,8 @@ public class InitialImageOperation  {
         if (rgn == null) {
           return;
         }
-         
+
+
         // can simulate gc tombstone in middle of packing
         if (internalAfterReceivedRequestImage != null && internalAfterReceivedRequestImage.getRegionName().equals(rgn.getName())) {
           internalAfterReceivedRequestImage.run();
@@ -2066,6 +2064,7 @@ public class InitialImageOperation  {
                 flowControl, fid, seriesNum, numSeries);
 
             final RegionVersionHolder holderToSend = holderToSync;
+
             boolean finished = rgn.chunkEntries(sender, CHUNK_SIZE_IN_BYTES, !keysOnly, versionVector,
                 (HashSet)this.unfinishedKeys, unfinishedKeysOnly, flowControl, new TObjectIntProcedure() {
               int msgNum = txMsgNum;
@@ -2141,6 +2140,9 @@ public class InitialImageOperation  {
             ((HARegion)rgn).endServingGIIRequest();
           }
           flowControl.unregister();
+          if (rgn instanceof BucketRegion) {
+            ((BucketRegion)rgn).releaseSnapshotGIIWriteLock();
+          }
         }
         // This should never happen in production code!!!!
         
@@ -2795,6 +2797,20 @@ public class InitialImageOperation  {
       return this.targetReinitialized ? DistributionManager.WAITING_POOL_EXECUTOR :
                                 DistributionManager.HIGH_PRIORITY_EXECUTOR;
     }
+
+    /**
+     * GII operation will wait if there are some running transaction after
+     * StateFlush message. This method will make GII wait till all those transactions
+     * are finished.
+     */
+    protected void waitForRunningTXs(DistributedRegion rgn,
+                                     InternalDistributedMember sender) {
+     // Wait for all write operations to get over.
+     BucketRegion bucketRegion = (BucketRegion)rgn;
+      InitializingBucketMembershipObserver listener =
+              new InitializingBucketMembershipObserver(bucketRegion, ((BucketRegion) rgn).cache, sender);
+     bucketRegion.takeSnapshotGIIWriteLock(listener);
+    }
     
     @Override  
     protected void process(final DistributionManager dm) {
@@ -2810,6 +2826,15 @@ public class InitialImageOperation  {
         if (rgn == null) {
           return;
         }
+
+        if( rgn instanceof BucketRegion) {
+          waitForRunningTXs(rgn, getSender());
+        }
+
+        if (internalAfterGIILock != null && internalAfterGIILock.getRegionName().equals(rgn.getName())) {
+          internalAfterGIILock.run();
+        }
+
         if (!rgn.getGenerateVersionTag() || (rvv = rgn.getVersionVector()) == null) {
           logger.fine(this + " non-persistent proxy region, nothing to do. Just reply");
           // allow finally block to send a failure message
@@ -4549,6 +4574,7 @@ public class InitialImageOperation  {
   private static GIITestHook internalDuringApplyDelta;
   private static GIITestHook internalBeforeCleanExpiredTombstones;
   private static GIITestHook internalAfterSavedRVVEnd;
+  private static GIITestHook internalAfterGIILock;
 
   /**
    * For test purpose to be used in ImageProcessor
@@ -4577,7 +4603,8 @@ public class InitialImageOperation  {
     AfterReceivedImageReply,
     DuringApplyDelta,
     BeforeCleanExpiredTombstones,
-    AfterSavedRVVEnd
+    AfterSavedRVVEnd,
+    AfterGIILock
   }
   
   public static GIITestHook getGIITestHookForCheckingPurpose(final GIITestHookType type) {
@@ -4612,6 +4639,8 @@ public class InitialImageOperation  {
       return internalBeforeCleanExpiredTombstones;
     case AfterSavedRVVEnd: // 13
       return internalAfterSavedRVVEnd;
+    case AfterGIILock: // 14
+      return internalAfterGIILock;
     default:
       throw new RuntimeException("Illegal test hook type");
     }
@@ -4675,6 +4704,10 @@ public class InitialImageOperation  {
       assert internalAfterSavedRVVEnd == null;
       internalAfterSavedRVVEnd = callback;
       break;
+      case AfterGIILock: // 14
+      assert internalAfterGIILock == null;
+        internalAfterGIILock = callback;
+      break;
     default:
       throw new RuntimeException("Illegal test hook type");
     }
@@ -4694,7 +4727,8 @@ public class InitialImageOperation  {
     internalAfterReceivedImageReply != null ||
     internalDuringApplyDelta != null ||
     internalBeforeCleanExpiredTombstones != null ||
-    internalAfterSavedRVVEnd != null);
+    internalAfterSavedRVVEnd != null ||
+    internalAfterGIILock != null);
   }
 
   public static void resetGIITestHook(final GIITestHookType type, final boolean setNull) {
@@ -4813,6 +4847,14 @@ public class InitialImageOperation  {
         }
       }
       break;
+    case AfterGIILock: // 14
+      if (internalAfterGIILock != null) {
+        internalAfterGIILock.reset();
+        if (setNull) {
+          internalAfterGIILock = null;
+        }
+      }
+      break;
     default:
       throw new RuntimeException("Illegal test hook type");
     }
@@ -4835,6 +4877,53 @@ public class InitialImageOperation  {
     internalDuringApplyDelta = null;
     internalBeforeCleanExpiredTombstones = null;
     internalAfterSavedRVVEnd = null;
+    internalAfterGIILock = null;
+  }
+
+  /**
+   * Monitors distributed membership for a given bucket for which GII is in progress
+   * and a write lock is successfully taken.
+   */
+  private static class InitializingBucketMembershipObserver implements MembershipListener {
+    final BucketRegion bucketToMonitor;
+
+    final LogWriter logger;
+    InternalDistributedMember requestingMember;
+
+    public InitializingBucketMembershipObserver(BucketRegion b, GemFireCacheImpl cache,
+                                                InternalDistributedMember member) {
+      this.bucketToMonitor = b;
+      this.logger = cache.getLogger();
+      this.requestingMember = member;
+    }
+
+    public void memberJoined(InternalDistributedMember id) {
+      if (logger.fineEnabled()) {
+        logger.fine("InitializingBucketMembershipObserver for bucket " + this.bucketToMonitor
+            + " member joined " + id);
+      }
+    }
+
+    public void memberSuspect(InternalDistributedMember id,
+        InternalDistributedMember whoSuspected) {
+    }
+
+    public void memberDeparted(InternalDistributedMember id, boolean crashed) {
+      if (logger.fineEnabled()) {
+        logger.fine("InitializingBucketMembershipObserver for bucket " + this.bucketToMonitor
+            + " member departed " + id);
+      }
+      // Only release the lock iff requesting member has parted
+      if (this.bucketToMonitor.isHosting() && id.equals(requestingMember)) {
+        BucketRegion br = bucketToMonitor.getHostedBucketRegion();
+        br.releaseSnapshotGIIWriteLock();
+      }
+    }
+
+    @Override
+    public void quorumLost(Set<InternalDistributedMember> failures,
+        List<InternalDistributedMember> remaining) {
+    }
+
   }
 }
-

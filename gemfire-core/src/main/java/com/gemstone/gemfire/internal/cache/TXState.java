@@ -25,9 +25,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
@@ -130,6 +132,8 @@ public final class TXState implements TXStateInterface {
   volatile State state;
 
   Map<String, Map<VersionSource,RegionVersionHolder>> snapshot;
+
+  private final Map<Region, Boolean> writeRegions = new ConcurrentHashMap<>();
 
   /*
   private TXLockRequest locks = null;
@@ -609,6 +613,7 @@ public final class TXState implements TXStateInterface {
       if (addAffectedRegion) {
         txState.getProxy().addAffectedRegion(r, checkTXState);
       }
+
       return txr;
     }
 
@@ -1301,6 +1306,13 @@ public final class TXState implements TXStateInterface {
         // release all pending read locks, if any
         pendingReadLocksCleanup(lockPolicy, null, null);
       }
+
+      writeRegions.keySet().stream().filter(region ->
+          region instanceof BucketRegion
+      ).forEach(region ->
+          ((BucketRegion)region).releaseSnapshotGIIReadLock()
+      );
+
     } finally {
       if (this.txLocked.compareAndSet(true, false)) {
         unlockTXState();
@@ -4182,8 +4194,15 @@ public final class TXState implements TXStateInterface {
   }
 
   @Override
-  public void recordVersionForSnapshot(Object member, long version, Region region ) {
+  public void recordVersionForSnapshot(Object member, long version, Region region) {
     queue.add(new VersionInformation(member, version, region));
+    Boolean wasPresent = writeRegions.putIfAbsent(region, true);
+    if (wasPresent == null) {
+      if (region instanceof BucketRegion) {
+        BucketRegion br = (BucketRegion) region;
+        br.takeSnapshotGIIReadLock();
+      }
+    }
   }
 
   class VersionInformation {
