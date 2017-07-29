@@ -868,8 +868,6 @@ public final class TXState implements TXStateInterface {
           throw err;
         }
         cleanEx = processCleanupException(t, cleanEx);
-      } finally {
-
       }
     }
     else {
@@ -886,11 +884,10 @@ public final class TXState implements TXStateInterface {
           throw err;
         }
         cleanEx = processCleanupException(t, cleanEx);
-      } finally {
-
       }
     }
   }
+
 
   public final void flushPendingOps(final DM dm) {
     this.proxy.flushPendingOps(dm);
