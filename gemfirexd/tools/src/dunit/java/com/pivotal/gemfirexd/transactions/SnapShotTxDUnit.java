@@ -736,8 +736,9 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
 
         assertEquals(1, r.get(1));
         assertEquals(2, r.get(2));
-        assertEquals(3, r.get(3));
-        assertEquals(4, r.get(4));
+        // non tx put so no conflict
+        assertEquals(6, r.get(3));
+        assertEquals(8, r.get(4));
       }
     });
 
@@ -750,8 +751,8 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
         r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
         assertEquals(1, r.get(1));
         assertEquals(2, r.get(2));
-        assertEquals(3, r.get(3));
-        assertEquals(4, r.get(4));
+        assertEquals(6, r.get(3));
+        assertEquals(8, r.get(4));
 
         TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
         Iterator txitr = txstate.getLocalEntriesIterator(null, false, false, true, (LocalRegion)r);
