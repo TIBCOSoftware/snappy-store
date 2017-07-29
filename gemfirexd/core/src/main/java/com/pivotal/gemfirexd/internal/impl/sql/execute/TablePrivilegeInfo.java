@@ -229,7 +229,6 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 	{
 		doExecuteGrantRevoke(activation, grant, grantees, columnBitSets, actionAllowed, true, td);
 		GemFireStore ms = Misc.getMemStore();
-		// TODO ashetkar Get a better way to check if security is enabled.
 		if (ms.isSnappyStore() && Misc.isSecurityEnabled()
 			&& ms.getExternalCatalog().isColumnTable(td.getSchemaName(), td.getName(), true)) {
 			String cbTable = CallbackFactoryProvider.getStoreCallbacks().columnBatchTableName(td
