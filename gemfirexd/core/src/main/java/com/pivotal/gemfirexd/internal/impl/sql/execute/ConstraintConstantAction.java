@@ -278,16 +278,19 @@ public abstract class ConstraintConstantAction extends DDLSingleTableConstantAct
 			      RecoveryLock recoveryLock = ColocationHelper.getLeaderRegion(refTablePR)
 			          .getRecoveryLock();
 			      recoveryLock.lock();
-			      //check if all the hosted buckets have primary
-			      int bucketIDWithNoPrimary = checkIfAllHostedBucketsHavePrimary(refTablePR);
-			      if(bucketIDWithNoPrimary == -1 ) {
+			      int bucketIDWithNoPrimary = 0;
+			      try {
+			        //check if all the hosted buckets have primary
+			        bucketIDWithNoPrimary = checkIfAllHostedBucketsHavePrimary(refTablePR);
+			        if (bucketIDWithNoPrimary == -1) {
 			          ((GemFireTransaction)tc).setRegionRecoveryLock(recoveryLock);
-			      }else {
-			        recoveryLock.unlock();
-			        throw StandardException.newException(SQLState.GFXD_PRIMARY_NOT_PRESENT_FOR_BUCKET,
-			            bucketIDWithNoPrimary, Misc.getFullTableNameFromRegionPath(refTablePR.getFullPath()));
+			        } else {
+			          throw StandardException.newException(SQLState.GFXD_PRIMARY_NOT_PRESENT_FOR_BUCKET,
+			              bucketIDWithNoPrimary, Misc.getFullTableNameFromRegionPath(refTablePR.getFullPath()));
+			        }
+			      } finally {
+			        if (bucketIDWithNoPrimary != -1) recoveryLock.unlock();
 			      }
-			      
 			 }
 // GemStone changes END
 

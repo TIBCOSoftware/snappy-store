@@ -2384,6 +2384,7 @@ public final class GemFireTransaction extends RawTransaction implements
             "postComplete: flag=" + commitflag + ", commitOrAbort="
                 + commitOrAbort + " for TX " + toString());
       }
+      releaseRegionLock();
       if ((commitflag & Transaction.KEEP_LOCKS) == 0) {
         releaseAllLocksOnly(true, true);
         setIdleState();
@@ -2874,7 +2875,16 @@ public final class GemFireTransaction extends RawTransaction implements
         .append(lcc != null && lcc.isConnectionForRemote()).toString();
   }
 
+  private void releaseRegionLock() {
+    RecoveryLock regionRecLock = this.regionRecoveryLock;
+    if (regionRecLock != null) {
+      regionRecLock.unlock();
+      this.regionRecoveryLock = null;
+    }
+  }
+
   public void releaseAllLocks(boolean force, boolean removeRef) {
+    releaseRegionLock();
     waitForPendingRC();
     releaseAllLocksOnly(force, removeRef);
   }
@@ -2896,14 +2906,7 @@ public final class GemFireTransaction extends RawTransaction implements
         // free any distributed lock resources after container drop
         lockSet.freeLockResources();
       }
-      RecoveryLock regionRecLock = this.regionRecoveryLock;
-      if(regionRecLock != null) {
-        regionRecLock.unlock();
-        this.regionRecoveryLock = null;
-      }
-      
     }
-    
   }
 
   @Override

@@ -1755,7 +1755,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
                     "Invoked localClear.RecoveryLock.unlock with locked="
                         + locked.get() + " for " + xact);
               }
-              if (locked.get()) {
+              if (locked.compareAndSet(true, false)) {
                 try {
                   rl.unlock();
                 } catch (Exception e) {
@@ -1775,7 +1775,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             @Override
             public Compensation generateUndo(Transaction xact,
                 LimitObjectInput in) throws StandardException, IOException {
-              return null;
+              // release the lock in any case if it has been acquired
+              return this;
             }
           });
         }
