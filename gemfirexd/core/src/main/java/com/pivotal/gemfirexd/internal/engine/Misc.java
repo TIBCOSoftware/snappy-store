@@ -67,6 +67,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -81,6 +82,8 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.NoneAuthenticationServiceImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.tools.planexporter.CreateXML;
@@ -759,6 +762,13 @@ public abstract class Misc {
     } else {
       return 0;
     }
+  }
+
+  public static boolean isSecurityEnabled() {
+    AuthenticationServiceBase authService = AuthenticationServiceBase.getPeerAuthenticationService();
+    return authService != null && !(authService instanceof NoneAuthenticationServiceImpl) &&
+        ("LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.AUTH_PROVIDER)) ||
+        "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.SERVER_AUTH_PROVIDER)));
   }
 
   // added by jing for processing the exception

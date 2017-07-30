@@ -36,6 +36,7 @@ import javax.annotation.Nonnull;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.control.RebalanceOperation;
 import com.gemstone.gemfire.cache.control.ResourceManager;
@@ -44,14 +45,7 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.NanoTimer;
-import com.gemstone.gemfire.internal.cache.BucketAdvisor;
-import com.gemstone.gemfire.internal.cache.DistributedRegion;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gnu.trove.THashSet;
@@ -2471,7 +2465,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       StringTokenizer st = new StringTokenizer(txId, ":");
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure COMMIT_SNAPSHOT_TXID() " + txId + " for connid " + tc.getConnectionID()
+            "in procedure COMMIT_SNAPSHOT_TXID()  " + txId + " for connid " + tc.getConnectionID()
                 + " TxManager " + TXManagerImpl.getCurrentTXId()
                 + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
       }
@@ -2489,12 +2483,60 @@ public class GfxdSystemProcedures extends SystemProcedures {
       tc.getTransactionManager().masqueradeAs(txState);
       tc.getTransactionManager().commit();
     } else {
+      TXStateInterface state = TXManagerImpl.snapshotTxState.get();
+      if (state != null) {
+        Misc.getGemFireCache().getCacheTransactionManager().removeHostedTXState(state.getTransactionId(), Boolean.TRUE);
+      }
+      if (GemFireXDUtils.TraceExecution) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "in procedure COMMIT_SNAPSHOT_TXID()  afer commit" + txId + " for connid " + tc.getConnectionID()
+                + " TxManager " + TXManagerImpl.getCurrentTXId()
+                + " snapshot tx : " + TXManagerImpl.snapshotTxState.get() + " else part. ");
+      }
       TXManagerImpl.snapshotTxState.set(null);
       TXManagerImpl.getOrCreateTXContext().clearTXState();
     }
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure COMMIT_SNAPSHOT_TXID() afer commit" + txId + " for connid " + tc.getConnectionID()
+          "in procedure COMMIT_SNAPSHOT_TXID()  afer commit" + txId + " for connid " + tc.getConnectionID()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+    }
+  }
+
+  public static void ROLLBACK_SNAPSHOT_TXID(String txId) throws SQLException, StandardException {
+    TXStateInterface txState = null;
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction) lcc.getTransactionExecute();
+
+    if (!txId.equals("null")) {
+      StringTokenizer st = new StringTokenizer(txId, ":");
+      if (GemFireXDUtils.TraceExecution) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "in procedure ROLLBACK_SNAPSHOT_TXID()  " + txId + " for connid " + tc.getConnectionID()
+                + " TxManager " + TXManagerImpl.getCurrentTXId()
+                + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+      }
+
+      long memberId = Long.parseLong(st.nextToken());
+      int uniqId = Integer.parseInt(st.nextToken());
+      TXId txId1 = TXId.valueOf(memberId, uniqId);
+
+      txState = tc.getTransactionManager().getHostedTXState(txId1);
+    }
+
+    tc.clearActiveTXState(false, true);
+    // this is being done because txState is being shared across conn
+    if (txState != null && txState.isInProgress()) {
+      tc.getTransactionManager().masqueradeAs(txState);
+      tc.getTransactionManager().rollback();
+    } else {
+      TXManagerImpl.snapshotTxState.set(null);
+      TXManagerImpl.getOrCreateTXContext().clearTXState();
+    }
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure ROLLBACK_SNAPSHOT_TXID()  afer commit" + txId + " for connid " + tc.getConnectionID()
               + " TxManager " + TXManagerImpl.getCurrentTXId()
               + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
@@ -2505,7 +2547,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure GET_SNAPSHOT_TXID() SURANJAN for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+          "in procedure GET_SNAPSHOT_TXID()  for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
       + " TxManager " + TXManagerImpl.getCurrentTXId()
       + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
@@ -2528,6 +2570,35 @@ public class GfxdSystemProcedures extends SystemProcedures {
     TXManagerImpl.snapshotTxState.set(null);
   }
 
+  public static void START_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {
+    assert(TXManagerImpl.getCurrentSnapshotTXState() == null);
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
+    tc.setActiveTXState(TXManagerImpl.snapshotTxState.get(), false);
+
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure START_SNAPSHOT_TXID()  for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
+    }
+
+    TXStateInterface tx = TXManagerImpl.snapshotTxState.get();
+    if ( tx != null) {
+      txid[0] = tx.getTransactionId().stringFormat();
+    } else {
+      txid[0] = "null";
+    }
+    /*// tc commit will clear all the artifacts but will not commit actual txState
+    // that should be committed in COMMIT procedure*/
+    // start may be called on different conn
+    //tc.resetActiveTXState(true);
+    //TXManagerImpl.getOrCreateTXContext().clearTXState();
+    //TXManagerImpl.snapshotTxState.set(null);
+  }
+
   public static void USE_SNAPSHOT_TXID(String txId) throws SQLException {
     StringTokenizer st = new StringTokenizer(txId, ":");
     long memberId = Long.parseLong(st.nextToken());
@@ -2540,7 +2611,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     if (state == null) {
       if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure USE_SNAPSHOT_TXID() creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+          "in procedure USE_SNAPSHOT_TXID()  creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
               + " txId  " +txId);
       }
       // if state is null then create txstate and use
@@ -2554,7 +2625,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     if (TXManagerImpl.snapshotTxState.get() != null) {
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure USE_SNAPSHOT_TXID(), for txid  " + txId1 + " txState : " + state + " connId" + tc.getConnectionID());
+            "in procedure USE_SNAPSHOT_TXID()  for txid  " + txId1 + " txState : " + state + " connId" + tc.getConnectionID());
       }
     }
   }

@@ -25,7 +25,9 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
-import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
+import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
 
 /**
  * A class that holds parameters for operations to be done do for LeadNodeSmartConnectorOpMsg
@@ -53,6 +55,9 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
   private String functionName; // for udf
   private String className; // for udf
   private String jarURI; // for udf
+
+  private String user; // for security
+  private String authToken; // for security
 
   private Boolean addOrDropCol; // for alter table
   private String columnName; // for alter table
@@ -97,6 +102,11 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     this.functionName = functionName;
     this.className = className;
     this.jarURI = jarURI;
+    LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
+    if (lcc != null) {
+      this.user = ((GenericLanguageConnectionContext)lcc).getUserName();
+      this.authToken = ((GenericLanguageConnectionContext)lcc).getAuthToken();
+    }
     this.addOrDropCol = addOrDropCol;
     this.columnName = columnName;
     this.columnDataType = columnDataType;
@@ -130,6 +140,8 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     DataSerializer.writeString(functionName, out);
     DataSerializer.writeString(className, out);
     DataSerializer.writeString(jarURI, out);
+    DataSerializer.writeString(this.user, out);
+    DataSerializer.writeString(this.authToken, out);
     DataSerializer.writeBoolean(addOrDropCol, out);
     DataSerializer.writeString(columnName, out);
     DataSerializer.writeString(columnDataType, out);
@@ -153,6 +165,8 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
     this.functionName = DataSerializer.readString(in);
     this.className = DataSerializer.readString(in);
     this.jarURI = DataSerializer.readString(in);
+    this.user = DataSerializer.readString(in);
+    this.authToken = DataSerializer.readString(in);
     this.addOrDropCol = DataSerializer.readBoolean(in);
     this.columnName = DataSerializer.readString(in);
     this.columnDataType = DataSerializer.readString(in);
@@ -213,6 +227,10 @@ public final class LeadNodeSmartConnectorOpContext implements GfxdSerializable {
   public String getClassName() { return className; }
 
   public String getjarURI() { return jarURI; }
+
+  public String getUserName() { return this.user; }
+
+  public String getAuthToken() { return this.authToken; }
 
   public Boolean getAddOrDropCol() { return addOrDropCol; }
 

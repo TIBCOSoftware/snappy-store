@@ -53,7 +53,6 @@ import java.util.Set;
 // GemStone changes BEGIN
 import java.util.Properties;
 
-import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
@@ -129,7 +128,6 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
-import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
@@ -274,6 +272,7 @@ public final class GenericLanguageConnectionContext
     protected Authorizer authorizer;
 	protected String userName = null; //The name the user connects with.
 	                                  //May still be quoted.
+	private String authToken = null;
 	protected String currentRole;
 	protected SchemaDescriptor	sd;
 
@@ -381,6 +380,7 @@ public final class GenericLanguageConnectionContext
 	 LanguageConnectionFactory lcf,
 	 Database db,
 	 String userName,
+	 String authToken,
 	 int instanceNumber,
 	 String drdaID,
 // GemStone changes BEGIN
@@ -406,6 +406,7 @@ public final class GenericLanguageConnectionContext
 		connFactory =  lcf;
         this.db = db;
 		this.userName = userName;
+		this.authToken = authToken;
 		this.instanceNumber = instanceNumber;
 		this.drdaID = drdaID;
 		this.dbname = dbname;
@@ -1423,6 +1424,16 @@ public final class GenericLanguageConnectionContext
 	public int getUniqueSavepointID()
 	{
 		return nextSavepointId-1;
+	}
+
+	public String getUserName()
+	{
+		return this.userName;
+	}
+
+	public String getAuthToken()
+	{
+		return this.authToken;
 	}
 
 	/**

@@ -919,6 +919,10 @@ public final class GfxdConnectionWrapper {
       tran.setActiveTXState(tx, true);
       return;
     }
+    if (tx.isSnapshot()) {
+      tran.setActiveTXState(tx, false);
+      return;
+    }
     if (currentIsolationLevel != Connection.TRANSACTION_NONE) {
       // tx boundaries are changing, so this is definitely a new transaction
       // On data store node we should be calling tx.commit while changing

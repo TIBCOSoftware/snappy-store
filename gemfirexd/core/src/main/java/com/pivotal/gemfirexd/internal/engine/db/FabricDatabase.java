@@ -1718,6 +1718,7 @@ public final class FabricDatabase implements ModuleControl,
 
   public LanguageConnectionContext setupConnection(ContextManager cm,
                                                    String user,
+                                                   String authToken,
                                                    String drdaID,
                                                    String dbname,
                                                    long connectionID,
@@ -1731,7 +1732,7 @@ public final class FabricDatabase implements ModuleControl,
     // push a database shutdown context
     // we also need to push a language connection context.
     LanguageConnectionContext lctx = lcf.newLanguageConnectionContext(cm, tc,
-        lf, this, user, drdaID, connectionID, isRemote, dbname);
+        lf, this, user, authToken, drdaID, connectionID, isRemote, dbname);
 
     // push the context that defines our class factory
     pushClassFactoryContext(cm, lcf.getClassFactory());
@@ -1836,6 +1837,16 @@ public final class FabricDatabase implements ModuleControl,
     }
 
     return this.authenticationService;
+  }
+
+  /**
+   * @throws com.gemstone.gemfire.cache.CacheClosedException if store is null
+   * @return
+   */
+  public static AuthenticationServiceBase getAuthenticationServiceBase() {
+    return (AuthenticationServiceBase)Monitor.findServiceModule(
+        Misc.getMemStoreBooting().getDatabase(), AuthenticationService.MODULE,
+        GfxdConstants.AUTHENTICATION_SERVICE);
   }
 
   public final AuthenticationService getPeerAuthenticationService() {
