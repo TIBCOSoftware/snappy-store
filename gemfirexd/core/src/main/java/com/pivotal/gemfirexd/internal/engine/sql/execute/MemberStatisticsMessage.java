@@ -1,6 +1,5 @@
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
-import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
@@ -26,8 +25,6 @@ import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.process.PidUnavailableException;
-import com.gemstone.gemfire.internal.process.ProcessUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.stats50.VMStats50;
@@ -46,7 +43,7 @@ import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 
 public class MemberStatisticsMessage extends MemberExecutorMessage {
-  private Logger logger = Logger.getLogger(MemberStatisticsMessage.class);
+
   private static final long MBFactor = 1024 * 1024;
 
   private GemFireCacheImpl gemFireCache;
