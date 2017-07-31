@@ -211,7 +211,9 @@ public final class GatewayReceiverImpl implements GatewayReceiver {
   }
   
   public void stop() {
-    receiver.stop();
+    if (receiver != null) {
+      receiver.stop();
+    }
 
 //    InternalDistributedSystem system = ((GemFireCacheImpl) this.cache)
 //        .getDistributedSystem();
