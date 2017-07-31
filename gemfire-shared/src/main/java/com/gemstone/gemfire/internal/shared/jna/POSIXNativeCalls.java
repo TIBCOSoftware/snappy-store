@@ -114,6 +114,7 @@ class POSIXNativeCalls extends NativeCalls {
   public static native int mlockall(int flags);
 
   private static final int EPERM = 1;
+  private static final int ESRCH = 3;
   private static final int ENOMEM = 12;
   private static final int ENOSPC = 28;
 
@@ -246,8 +247,10 @@ class POSIXNativeCalls extends NativeCalls {
     try {
       return kill(processId, 0) == 0;
     } catch (LastErrorException le) {
-      if (le.getErrorCode() == EPERM) {
-        // Process exists; it probably belongs to another user (bug 27698).
+      int errorCode = le.getErrorCode();
+      if (errorCode == EPERM || errorCode == ESRCH) {
+        // EPERM: Process exists; it probably belongs to another user (bug 27698).
+        // ESRCH: No process could be found but it might exist
         return true;
       }
     }
