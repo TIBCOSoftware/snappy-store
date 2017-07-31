@@ -1432,6 +1432,8 @@ public interface LanguageConnectionContext extends Context {
   public void setExecuteLocally(Set<Integer> bucketIds, Region<?, ?> region,
       boolean dbSync, Checkpoint cp);
 
+  public void clearExecuteLocally();
+
   public Set<Integer> getBucketIdsForLocalExecution();
   
   public Region<?, ?> getRegionForBucketSet();
