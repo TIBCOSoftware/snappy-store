@@ -1347,12 +1347,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private MembershipListener giiListener = null;
 
-  public void takeSnapshotGIIWriteLock(MembershipListener listener) {
+  private volatile boolean snapshotGIILocked = false;
+
+  public boolean takeSnapshotGIIWriteLock(MembershipListener listener) {
     if (writeLockEnabled()) {
       if (this.getPartitionedRegion().
           getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
         BucketRegion bufferRegion = getBufferRegion();
-        bufferRegion.takeSnapshotGIIWriteLock(listener);
+        return bufferRegion.takeSnapshotGIIWriteLock(listener);
       } else {
         final LogWriterI18n logger = getCache().getLoggerI18n();
         if (logger.fineEnabled()) {
@@ -1361,11 +1363,15 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         snapshotGIILock.attemptLock(LockMode.EX, -1, giiWriteLockForSIOwner);
         getBucketAdvisor()
             .addMembershipListenerAndAdviseGeneric(listener);
+        snapshotGIILocked = true;
         this.giiListener = listener; // Set the listener only after taking the write lock.
         if (logger.fineEnabled()) {
           logger.fine("Succesfully took exclusive lock on bucket " + this.getName());
         }
+        return true;
       }
+    } else {
+      return false;
     }
   }
 
@@ -1380,10 +1386,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         if (logger.fineEnabled()) {
           logger.fine("Releasing exclusive snapshotGIILock on bucket " + this.getName());
         }
-        if (this.snapshotGIILock.getOwnerId(null) == giiWriteLockForSIOwner) {
-          getBucketAdvisor().removeMembershipListener(giiListener);
-          this.giiListener = null;
-          snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
+        if (this.snapshotGIILock.hasExclusiveLock(giiWriteLockForSIOwner, null)) {
+          if (snapshotGIILocked) {
+            snapshotGIILock.releaseLock(LockMode.EX, false, giiWriteLockForSIOwner);
+            getBucketAdvisor().removeMembershipListener(giiListener);
+            this.giiListener = null;
+            snapshotGIILocked = false;
+          }
         }
         if (logger.fineEnabled()) {
           logger.fine("Released exclusive snapshotGIILock on bucket " + this.getName());

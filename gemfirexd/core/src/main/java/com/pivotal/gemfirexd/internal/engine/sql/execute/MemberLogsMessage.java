@@ -55,6 +55,11 @@ public class MemberLogsMessage extends MemberExecutorMessage {
 
   private MemberLogsMessage(final MemberLogsMessage other) {
     super(other);
+    this.memberId = other.getMemberId();
+    this.logFileName = other.getLogFileName();
+    this.logDirectory = other.getLogDirectory();
+    this.byteLength = other.getByteLength();
+    this.offset = other.getOffset();
   }
 
   public String getMemberId() {
