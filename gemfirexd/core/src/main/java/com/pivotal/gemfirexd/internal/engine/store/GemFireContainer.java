@@ -6468,6 +6468,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     long totalOverhead = 0L;
     try {
       sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes, retEstimates, null);
+      Misc.getCacheLogWriter().info("Computing initial index overhead of region " +
+          "" + baseTableContainerName + " for index " + this.getName()) ;
       for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
         long[] value = (long[]) e.getValue()[0];
         sum += value[0]; //constantOverhead
@@ -6479,14 +6481,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (askMemoryManager) {
           // Only acquire memory while initial index creation. Rest all index accounting will be done by
           // region put/delete
+          Misc.getCacheLogWriter().info("Total overhead computed="+ sum + "intialAccounting="+intialAccounting);
           baseRegion.acquirePoolMemory(0, sum - intialAccounting,
               false, null, false);
           intialAccounting = sum;
           sizeAccountedByIndex.set(sum);
         }
         totalRows = rowCount;
-       /* System.out.println("Index Name = " + this.getQualifiedTableName() +
-                " Index Stats" + sizeAccountedByIndex.get() + " And rowCount " + totalRows);*/
       }
 
       if (!isDestroy) {
