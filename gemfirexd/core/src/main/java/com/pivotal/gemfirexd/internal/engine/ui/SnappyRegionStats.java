@@ -134,4 +134,11 @@ public class SnappyRegionStats implements DataSerializable {
     this.isColumnTable = in.readBoolean();
     this.isReplicatedTable = in.readBoolean();
   }
+
+  @Override
+  public String toString() {
+    return "RegionStats for " + regionName + ": totalSize=" + totalSize +
+        " sizeInMemory=" + sizeInMemory + " rowCount=" + rowCount +
+        " isColumnTable=" + isColumnTable + " isReplicatedTable=" + isReplicatedTable;
+  }
 }

@@ -4861,6 +4861,11 @@ public final class GenericLanguageConnectionContext
 	  if (bucketIds == null && GemFireXDUtils.isSet(this.gfxdFlags, BUCKET_RETENTION_FOR_LOCAL_EXECUTION) ) {
 		  return;
 	  }
+	  forceSetExecuteLocally(bucketIds, region, dbSync, cp);
+  }
+
+  private void forceSetExecuteLocally(Set<Integer> bucketIds, Region<?, ?> region,
+      boolean dbSync, Checkpoint cp) {
 
     if (SanityManager.TraceSingleHop) {
       SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,
@@ -4872,6 +4877,11 @@ public final class GenericLanguageConnectionContext
     this.bucketSetForRegion = region;
     this.dbSyncToBeDone = dbSync;
     this.chkPoint = cp;
+  }
+
+  @Override
+  public void clearExecuteLocally() {
+    forceSetExecuteLocally(null, null, false, null);
   }
 
 

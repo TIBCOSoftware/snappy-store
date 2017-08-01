@@ -14382,7 +14382,7 @@ public class LocalRegion extends AbstractRegion
   }
 
   protected long calculateEntryOverhead(RegionEntry entry) {
-    if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
+    if (entryOverHead == -1L && !this.reservedTable() && needAccounting()) {
       synchronized (this) {
         if (entryOverHead == -1L) {
           entryOverHead = getEntryOverhead(entry);

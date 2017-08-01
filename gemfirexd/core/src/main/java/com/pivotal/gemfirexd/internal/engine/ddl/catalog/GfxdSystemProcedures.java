@@ -2478,6 +2478,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
 
     tc.clearActiveTXState(false, true);
+    lcc.clearExecuteLocally();
     // this is being done because txState is being shared across conn
     if (txState != null && txState.isInProgress()) {
       tc.getTransactionManager().masqueradeAs(txState);
@@ -2526,6 +2527,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
 
     tc.clearActiveTXState(false, true);
+    lcc.clearExecuteLocally();
     // this is being done because txState is being shared across conn
     if (txState != null && txState.isInProgress()) {
       tc.getTransactionManager().masqueradeAs(txState);

@@ -480,19 +480,39 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
-    if (refresh || externalTableMetaData.get() == null) {
+    ExternalTableMetaData metaData;
+    if (refresh || (metaData = externalTableMetaData.get()) == null) {
+      // for column store, get the row buffer table name
+      String schemaName = this.schemaName;
+      String tableName = this.tableName;
+      if (isColumnStore()) {
+        String fullName = getRowBufferTableName(this.qualifiedName);
+        int schemaIndex = fullName.indexOf('.');
+        schemaName = fullName.substring(0, schemaIndex);
+        tableName = fullName.substring(schemaIndex + 1);
+      }
       // containers are created during initialization, ignore them
       externalTableMetaData.compareAndSet(null,
           Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
-              this.schemaName, this.tableName, true));
+              schemaName, tableName, true));
       if (isPartitioned()) {
-        ExternalTableMetaData metaData = externalTableMetaData.get();
+        metaData = externalTableMetaData.get();
         ((PartitionedRegion)this.region).setColumnBatchSizes(
             metaData.columnBatchSize, metaData.columnMaxDeltaRows,
             GfxdConstants.SNAPPY_MIN_COLUMN_DELTA_ROWS);
+        return metaData;
       }
+      return externalTableMetaData.get();
+    } else {
+      return metaData;
     }
-    return externalTableMetaData.get();
+  }
+
+  public static String getRowBufferTableName(String columnBatchTableName) {
+    String tableName = columnBatchTableName.replace(
+        StoreCallbacks.SHADOW_SCHEMA_NAME_WITH_SEPARATOR, "");
+    return tableName.substring(0, tableName.length() -
+        StoreCallbacks.SHADOW_TABLE_SUFFIX.length());
   }
 
   public boolean cachesGlobalIndex() {
@@ -1735,7 +1755,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
                     "Invoked localClear.RecoveryLock.unlock with locked="
                         + locked.get() + " for " + xact);
               }
-              if (locked.get()) {
+              if (locked.compareAndSet(true, false)) {
                 try {
                   rl.unlock();
                 } catch (Exception e) {
@@ -1755,7 +1775,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             @Override
             public Compensation generateUndo(Transaction xact,
                 LimitObjectInput in) throws StandardException, IOException {
-              return null;
+              // release the lock in any case if it has been acquired
+              return this;
             }
           });
         }
@@ -5055,6 +5076,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     return isPartitioned() && ((PartitionedRegion)this.region).needsBatching();
   }
 
+  public final boolean isColumnStore() {
+    // latter check is not useful currently since only column tables use
+    // object store, but still added the check for possible future use
+    // (e.g. local index table on column store)
+    return isObjectStore() &&
+        this.tableName.endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+  }
+
   public final boolean isOffHeap() {
     final LocalRegion region = this.region;
     if (region != null) {
@@ -5819,7 +5848,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
 
     @Override
-    public Object apply(EntryEvent<?, ?> event) {      
+    public Object apply(EntryEvent<?, ?> event) {
       return apply(event.getRegion(), event.getKey(),
           ((EntryEventImpl)event).getOldValueAsOffHeapDeserializedOrRaw(),
           event.getTransactionId() == null);
@@ -6468,6 +6497,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     long totalOverhead = 0L;
     try {
       sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes, retEstimates, null);
+      Misc.getCacheLogWriter().info("Computing initial index overhead of region " +
+          "" + baseTableContainerName + " for index " + this.getName()) ;
       for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
         long[] value = (long[]) e.getValue()[0];
         sum += value[0]; //constantOverhead
@@ -6479,14 +6510,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (askMemoryManager) {
           // Only acquire memory while initial index creation. Rest all index accounting will be done by
           // region put/delete
+          Misc.getCacheLogWriter().info("Total overhead computed="+ sum + "intialAccounting="+intialAccounting);
           baseRegion.acquirePoolMemory(0, sum - intialAccounting,
               false, null, false);
           intialAccounting = sum;
           sizeAccountedByIndex.set(sum);
         }
         totalRows = rowCount;
-       /* System.out.println("Index Name = " + this.getQualifiedTableName() +
-                " Index Stats" + sizeAccountedByIndex.get() + " And rowCount " + totalRows);*/
       }
 
       if (!isDestroy) {

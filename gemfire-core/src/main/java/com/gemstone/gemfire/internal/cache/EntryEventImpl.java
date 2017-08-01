@@ -1147,9 +1147,15 @@ public class EntryEventImpl extends KeyInfo implements
     LocalRegion originalRegion = this.region;
     try {
       if (originalRegion instanceof BucketRegion) {
-        this.region = ((BucketRegion)this.region).getPartitionedRegion();
+        this.region = originalRegion.getPartitionedRegion();
       }
       basicSetNewValue(this.delta.apply(this));
+      // clear delta after apply so full value gets sent to others
+      // including GII sources which may not have the old value
+      // (currently only cleared for SerializedDiskBuffers)
+      if (this.delta instanceof SerializedDiskBuffer) {
+        this.delta = null;
+      }
     } finally {
       this.region = originalRegion;
     }
