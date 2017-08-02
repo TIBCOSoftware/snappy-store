@@ -1547,7 +1547,7 @@ public class CacheServerLauncher  {
       }
       writePidToFile(status);
       if (status.state != WAITING) {
-        System.out.println(status);TC
+        System.out.println(status);
       } else {
         System.out.println(status.shortStatus() + ": " +
             LocalizedStrings.CacheServerLauncher_MEMBER_WAITING.toLocalizedString());
