@@ -1547,10 +1547,10 @@ public class CacheServerLauncher  {
       }
       writePidToFile(status);
       if (status.state != WAITING) {
-        System.out.println(status);
+        System.out.println(status);TC
       } else {
-        System.out.println(status.shortStatus() + ": Member disk state is not the most current. " +
-            "Waiting for disk recovery from other members. Refer to log file for details");
+        System.out.println(status.shortStatus() + ": " +
+            LocalizedStrings.CacheServerLauncher_MEMBER_WAITING.toLocalizedString());
       }
 
     }
