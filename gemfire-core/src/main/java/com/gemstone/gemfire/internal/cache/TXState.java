@@ -1476,7 +1476,7 @@ public final class TXState implements TXStateInterface {
       // so we will have to store the version of uncommitted too?
       // We can get it from version that we store in TXState. We need to map RE with the version
       // What if multiple updates on same RE.
-      GemFireCacheImpl.getInstance().getLogger().info("SKKS rolling back the changes.. ");
+      // GemFireCacheImpl.getInstance().getLogger().info("SKKS rolling back the changes.. ");
     }
     // we need to take RVV lock and record the recorded version in the snapshot so that
     // there are no unnecessary exceptions recorded due to rollback

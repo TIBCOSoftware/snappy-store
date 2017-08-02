@@ -1226,11 +1226,8 @@ public class EntryEventImpl extends KeyInfo implements
   }
 
   public final boolean hasTX() {
-    return this.txState != null && this.txState != TXStateProxy.TX_NOT_SET;
-  }
-
-  public final boolean hasTXSet() {
-    return this.txState != TXStateProxy.TX_NOT_SET;
+    final TXStateInterface txState = getTXState();
+    return txState != null && !txState.isSnapshot();
   }
 
   public final void setTXState(final TXStateInterface tx) {
@@ -1973,7 +1970,8 @@ public class EntryEventImpl extends KeyInfo implements
       }
     }
     final IndexUpdater indexUpdater = this.region.getIndexUpdater();
-    if (indexUpdater != null && this.txState == null) {
+    final TXStateInterface txState = getTXState();
+    if (indexUpdater != null && (txState == null || txState.isSnapshot())) {
       final LocalRegion indexRegion;
       if (owner != null) {
         indexRegion = owner;
