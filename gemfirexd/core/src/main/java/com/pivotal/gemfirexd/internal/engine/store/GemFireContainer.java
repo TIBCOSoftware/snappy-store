@@ -1952,7 +1952,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           && (indexManager = (GfxdIndexManager)r.getIndexUpdater()) != null) {
         indexManager.drop(tran);
       }
-      if(r == null){
+      if (this.skipListMap != null) {
         releaseIndexMemory();
       }
     }
