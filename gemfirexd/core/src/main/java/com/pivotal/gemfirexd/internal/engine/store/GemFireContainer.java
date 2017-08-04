@@ -6510,8 +6510,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (askMemoryManager) {
           // Only acquire memory while initial index creation. Rest all index accounting will be done by
           // region put/delete
-          Misc.getCacheLogWriter().info("Total overhead computed="+ sum + "intialAccounting="+intialAccounting);
-          baseRegion.acquirePoolMemory(0, sum - intialAccounting,
+          Misc.getCacheLogWriter().info("Total overhead computed = "+ sum + " intialAccounting="+intialAccounting);
+          // Negative value means index is being recreated. Kind of hackish but safe and wont stop server from crashing due to
+          // assertion error
+          long totalMemToBeAsked = sum - intialAccounting < 0 ? sum : (sum - intialAccounting);
+          baseRegion.acquirePoolMemory(0, totalMemToBeAsked,
               false, null, false);
           intialAccounting = sum;
           sizeAccountedByIndex.set(sum);
