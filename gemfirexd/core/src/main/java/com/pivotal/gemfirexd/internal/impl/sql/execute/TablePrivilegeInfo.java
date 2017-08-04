@@ -231,6 +231,9 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 		doExecuteGrantRevoke(activation, grant, grantees, columnBitSets, actionAllowed, true, td);
 		GemFireStore ms = Misc.getMemStore();
 		ExternalCatalog ec = ms.getExternalCatalog(); // This may be null during restart
+		if (ec == null && !Misc.initialDDLReplayInProgress()) {
+			throw new IllegalStateException("External catalog not initialized.");
+		}
 		String cbTable = CallbackFactoryProvider.getStoreCallbacks().columnBatchTableName(td
 				.getName());
 		if (ms.isSnappyStore() && Misc.isSecurityEnabled() && ((ec != null && ec.isColumnTable(td
