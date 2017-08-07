@@ -1436,6 +1436,7 @@ public final class FabricDatabase implements ModuleControl,
         for (GemFireContainer c : allIndexes) {
           if (c.isLocalIndex()) {
             c.getSkipListMap().clear();
+            c.resetInitialAccounting();
           }
         }
       }

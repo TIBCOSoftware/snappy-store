@@ -99,7 +99,10 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("freeMemory", getFreeMemory());
     memberStatsMap.put("totalMemory", getTotalMemory());
     memberStatsMap.put("usedMemory", getUsedMemory());
-    memberStatsMap.put("cpuActive", getHostCpuUsage());
+
+    int cpuActive = getHostCpuUsage();
+    memberStatsMap.put("cpuActive", cpuActive >= 0 ? cpuActive : 0);
+
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
     memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
     memberStatsMap.put("diskStoreName", getDiskStoreName());
