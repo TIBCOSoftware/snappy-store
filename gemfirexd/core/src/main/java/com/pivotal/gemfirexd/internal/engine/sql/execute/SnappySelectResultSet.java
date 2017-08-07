@@ -22,11 +22,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
+import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeExecutorMsg;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -192,6 +194,11 @@ public final class SnappySelectResultSet
       this.setCurrentRow(this.currentRow);
       return this.currentRow;
     } catch(Exception ex) {
+      try {
+        Misc.checkIfCacheClosing(ex);
+      } catch(CacheClosedException cacheCloseException) {
+        throw cacheCloseException;
+      }
       throw Misc.processFunctionException("SnappySelectResultSet:getNextRow ", ex, null, null);
     }
   }
@@ -207,6 +214,11 @@ public final class SnappySelectResultSet
         try {
           this.currentResultHolder = (SnappyResultHolder)srhIterator.next();
         } catch (Exception ex) {
+          try {
+            Misc.checkIfCacheClosing(ex);
+          } catch(CacheClosedException cacheCloseException) {
+            throw cacheCloseException;
+          }
           throw Misc.processFunctionException("SnappySelectResultSet:next",
               ex, null, null);
         }
