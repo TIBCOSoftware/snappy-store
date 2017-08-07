@@ -6484,6 +6484,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+  public void resetInitialAccounting(){
+    intialAccounting = 0;
+  }
+
   public void accountIndexMemory(boolean askMemoryManager, boolean isDestroy) {
     if (!doAccounting()) {
       return;
@@ -6510,7 +6514,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (askMemoryManager) {
           // Only acquire memory while initial index creation. Rest all index accounting will be done by
           // region put/delete
-          Misc.getCacheLogWriter().info("Total overhead computed="+ sum + "intialAccounting="+intialAccounting);
+          Misc.getCacheLogWriter().info("Total overhead computed = "+ sum + " intialAccounting = "+intialAccounting);
           baseRegion.acquirePoolMemory(0, sum - intialAccounting,
               false, null, false);
           intialAccounting = sum;
