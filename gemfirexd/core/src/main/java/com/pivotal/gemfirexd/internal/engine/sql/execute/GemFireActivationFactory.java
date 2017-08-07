@@ -82,7 +82,8 @@ public class GemFireActivationFactory {
     }
 
     if (doRoute) {
-      actvn = new PrepStatementSnappyActivation(st, _lcc, qi, true);
+      actvn = new PrepStatementSnappyActivation(st, _lcc, qi, true,
+          qi.isUpdate() || qi.isDelete());
     }
     else if (qi.isPrimaryKeyBased()) {
       if (qi.isSelect() || qi.isSelectForUpdateQuery()) {

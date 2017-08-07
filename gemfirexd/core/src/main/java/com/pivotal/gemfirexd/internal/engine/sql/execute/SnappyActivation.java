@@ -31,7 +31,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.metadata.TableQueryInfo
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
-import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultSet;
@@ -40,9 +39,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.NoPutResultSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.TemporaryRowHolder;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.impl.sql.GenericParameterValueSet;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
-import com.pivotal.gemfirexd.internal.impl.sql.GenericParameter;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.BaseActivation;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -50,13 +47,9 @@ import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
-import java.util.StringTokenizer;
 import java.util.Vector;
-
-import static java.sql.Types.*;
 
 /**
  * Activation implementation for getting results from lead node.
@@ -64,17 +57,19 @@ import static java.sql.Types.*;
 public class SnappyActivation extends BaseActivation {
 
   private String sql;
-  boolean returnRows;
-  boolean isPrepStmt;
+  private boolean returnRows;
+  private boolean isPrepStmt;
+  private boolean isUpdateOrDelete;
 
   public SnappyActivation(LanguageConnectionContext lcc, ExecPreparedStatement eps, 
-      boolean returnRows,  boolean isPrepStmt) {
+      boolean returnRows,  boolean isPrepStmt, boolean isUpdateOrDelete) {
     super(lcc);
     sql = eps.getSource();
     this.preStmt = eps;
     this.returnRows = returnRows;
     this.connectionID = lcc.getConnectionId();
     this.isPrepStmt = isPrepStmt;
+    this.isUpdateOrDelete = isUpdateOrDelete;
   }
 
   public void initialize_pvs() throws StandardException {
@@ -97,12 +92,9 @@ public class SnappyActivation extends BaseActivation {
           preparedResult[index + 1], preparedResult[index + 2], preparedResult[index + 2] == 1);
     }
 
-    boolean hasReturnParameter = false;
-    pvs = (GenericParameterValueSet)lcc
-        .getLanguageFactory()
-        .newParameterValueSet(
-            lcc.getLanguageConnectionFactory().getClassFactory()
-                .getClassInspector(), numberOfParameters, hasReturnParameter);
+    pvs = lcc.getLanguageFactory().newParameterValueSet(
+            lcc.getLanguageConnectionFactory().getClassFactory().getClassInspector(),
+        numberOfParameters, false);
     pvs.initialize(types);
     if (preStmt instanceof GenericPreparedStatement) {
       GenericPreparedStatement gps = (GenericPreparedStatement)preStmt;
@@ -123,7 +115,7 @@ public class SnappyActivation extends BaseActivation {
 
   public final int[] prepare() throws StandardException {
     try {
-      SnappyPrepareResultSet rs = createPreapreResultSet(0);
+      SnappyPrepareResultSet rs = createPreapreResultSet();
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
             "SnappyActivation.prepare: Created SnappySelectResultSet: " + rs);
@@ -143,13 +135,13 @@ public class SnappyActivation extends BaseActivation {
       }
       throw gfxdrtex;
     } catch (IOException ioex) {
-      throw StandardException.newException(ioex.getMessage(), (Throwable)ioex);
+      throw StandardException.newException(ioex.getMessage(), ioex);
     }
   }
 
   public final ResultSet execute() throws StandardException {
     try {
-      SnappySelectResultSet rs = createResultSet(0);
+      SnappySelectResultSet rs = createResultSet();
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
             "SnappyActivation.execute: Created SnappySelectResultSet: " + rs);
@@ -182,37 +174,38 @@ public class SnappyActivation extends BaseActivation {
     return null;
   }
 
-  protected SnappySelectResultSet createResultSet(int resultsetNumber)
+  private SnappySelectResultSet createResultSet()
       throws StandardException {
-    return new SnappySelectResultSet(this, this.returnRows);
+    if (isUpdateOrDelete) {
+      return new SnappyUpdateDeleteResultSet(this, this.returnRows);
+    } else {
+      return new SnappySelectResultSet(this, this.returnRows);
+    }
   }
 
-  protected SnappyPrepareResultSet createPreapreResultSet(int resultsetNumber)
+  private SnappyPrepareResultSet createPreapreResultSet()
       throws StandardException {
     return new SnappyPrepareResultSet(this);
   }
 
-  protected void executeWithResultSet(SnappySelectResultSet rs)
+  private void executeWithResultSet(SnappySelectResultSet rs)
       throws StandardException {
     boolean enableStreaming = this.lcc.streamingEnabled();
-    GfxdResultCollector<Object> rc = null;
-    rc = getResultCollector(enableStreaming, rs);
+    GfxdResultCollector<Object> rc = getResultCollector(enableStreaming, rs);
     executeOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
-        .getCurrentSchemaName(), this.pvs, this.isPrepStmt);
+        .getCurrentSchemaName(), this.pvs, this.isPrepStmt, this.isUpdateOrDelete);
   }
 
-  protected void prepareWithResultSet(SnappyPrepareResultSet rs)
+  private void prepareWithResultSet(SnappyPrepareResultSet rs)
       throws StandardException {
     boolean enableStreaming = this.lcc.streamingEnabled();
-    GfxdResultCollector<Object> rc = null;
-    rc = getPrepareResultCollector(rs);
+    GfxdResultCollector<Object> rc = getPrepareResultCollector(rs);
     prepareOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
-        .getCurrentSchemaName(), this.pvs);
+        .getCurrentSchemaName(), this.pvs, this.isUpdateOrDelete);
   }
 
-  protected GfxdResultCollector<Object> getResultCollector(
-      final boolean enableStreaming, final SnappySelectResultSet rs)
-      throws StandardException {
+  private GfxdResultCollector<Object> getResultCollector(final boolean enableStreaming,
+      final SnappySelectResultSet rs) throws StandardException {
     final GfxdResultCollector<Object> rc;
     if (enableStreaming) {
       rc = new GfxdQueryStreamingResultCollector();
@@ -223,8 +216,7 @@ public class SnappyActivation extends BaseActivation {
     return rc;
   }
 
-  protected GfxdResultCollector<Object> getPrepareResultCollector(
-      final SnappyPrepareResultSet rs)
+  private GfxdResultCollector<Object> getPrepareResultCollector(final SnappyPrepareResultSet rs)
       throws StandardException {
     final GfxdResultCollector<Object> rc = new GfxdQueryResultCollector();
     rs.setupRC(rc);
@@ -311,22 +303,21 @@ public class SnappyActivation extends BaseActivation {
 
   public void postConstructor() throws StandardException {
     throw new UnsupportedOperationException("SnappyActivation::postConstructor: not implemented");
-
   }
 
   public void setResultDescription(GenericResultDescription resultDescription) {
     this.resultDescription = resultDescription;
   }
 
-  public static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc, String sql,
-      boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
-      boolean isPreparedStatement)
+  public static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc,
+      String sql, boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
+      boolean isPreparedStatement, boolean isUpdateOrDelete)
       throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
-        isPreparedStatement, false);
+        isPreparedStatement, false, isUpdateOrDelete);
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
     } catch (SQLException se) {
@@ -335,14 +326,14 @@ public class SnappyActivation extends BaseActivation {
     }
   }
 
-  public static void prepareOnLeadNode(SnappyPrepareResultSet rs, GfxdResultCollector<Object> rc, String sql,
-      boolean enableStreaming, long connId, String schema, ParameterValueSet pvs)
-      throws StandardException {
+  private static void prepareOnLeadNode(SnappyPrepareResultSet rs, GfxdResultCollector<Object> rc,
+      String sql, boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
+      boolean isUpdateOrDelete) throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
-        true, true);
+        true, true, isUpdateOrDelete);
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
     } catch (SQLException se) {
@@ -372,7 +363,7 @@ public class SnappyActivation extends BaseActivation {
                         " ,isColumnTable=" + isColumnTable);
               }
               if (isColumnTable) {
-                return isColumnTable;
+                return true;
               }
             }
           }
