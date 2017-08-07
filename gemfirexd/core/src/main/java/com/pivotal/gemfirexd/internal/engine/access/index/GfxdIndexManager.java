@@ -651,7 +651,11 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       // No constraint checking for destroy since that is done by
       // ReferencedKeyCheckerMessage if required.
       // Also check if foreign key constraint check is really required.
-      final TXStateInterface tx = event.getTXState(owner);
+      TXStateInterface tx = event.getTXState(owner);
+      if (tx != null && tx.isSnapshot()) {
+        tx = null;
+      }
+
       final RowLocation rl = entry instanceof RowLocation ? (RowLocation)entry
           : null;
       final boolean skipDistribution;
@@ -1044,7 +1048,10 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
     final Operation op = event.getOperation();
     //try {
-    final TXStateInterface tx = event.getTXState(owner);
+    TXStateInterface tx = event.getTXState(owner);
+    if (tx != null && tx.isSnapshot()) {
+      tx = null;
+    }
     if (success && tx == null /* txnal ops will update this at commit */) {
       if (!(op.isUpdate() && event.hasDelta())) {
         this.container.updateNumRows(op.isDestroy());

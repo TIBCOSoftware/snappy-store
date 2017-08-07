@@ -914,13 +914,13 @@ public final class GfxdConnectionWrapper {
     }
     final int reqIsolationLevel = tx.getIsolationLevel()
         .getJdbcIsolationLevel();
+    if (tx.isSnapshot()) {
+      tran.setActiveTXState(tx, false);
+      return;
+    }
     if (reqIsolationLevel == currentIsolationLevel) {
       // GFE TX could have changed so set the new one in the GFXD transaction
       tran.setActiveTXState(tx, true);
-      return;
-    }
-    if (tx.isSnapshot()) {
-      tran.setActiveTXState(tx, false);
       return;
     }
     if (currentIsolationLevel != Connection.TRANSACTION_NONE) {

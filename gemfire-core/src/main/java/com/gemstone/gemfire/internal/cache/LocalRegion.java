@@ -875,9 +875,6 @@ public class LocalRegion extends AbstractRegion
     }
 
     this.testCallable = internalRegionArgs.getTestCallable();
-    this.snapshotEnabledRegion = cache.snapshotEnabled() && this.concurrencyChecksEnabled
-        && !isUsedForMetaRegion;
-    
   }
 
   private HdfsRegionManager initHDFSManager() {
@@ -14535,10 +14532,14 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
+  //why is always false?
   public boolean isInternalColumnTable() {
     return isInternalColumnTable;
   }
 
   private boolean isInternalColumnTable = false;
 
+  public boolean isSnapshotEnabledRegion() {
+    return (getCache().snapshotEnabledForTest() && !isUsedForMetaRegion() && concurrencyChecksEnabled);
+  }
 }

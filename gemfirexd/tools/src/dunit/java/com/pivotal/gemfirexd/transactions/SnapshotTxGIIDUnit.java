@@ -72,11 +72,11 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
 
   @Override
   public void setUp() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
     invokeInEveryVM(new SerializableRunnable() {
       @Override
       public void run() {
-        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
         System.setProperty("snappydata.snapshot.isolation.gii.lock", "true");
       }
     });
@@ -86,11 +86,11 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
   @Override
   public void tearDown2() throws Exception {
     try {
-      System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+      System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
       invokeInEveryVM(new SerializableRunnable() {
         @Override
         public void run() {
-          System.clearProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION");
+          System.clearProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST");
           System.clearProperty("snappydata.snapshot.isolation.gii.lock");
           InitialImageOperation.resetAllGIITestHooks();
         }
@@ -450,7 +450,7 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     stopVMNums(-2);
 
     server0.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
-    //server2.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
+    //server2.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{tableName, 2, 1});
 
     // Put some values to initialize buckets
     server0.invoke(new SerializableRunnable() {
