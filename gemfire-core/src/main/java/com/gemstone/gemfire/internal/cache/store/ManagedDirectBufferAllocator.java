@@ -49,6 +49,7 @@ public final class ManagedDirectBufferAllocator extends DirectBufferAllocator {
       FreeStoreBuffer::new;
 
   public static ManagedDirectBufferAllocator instance() {
+    DirectBufferAllocator.setInstance(instance);
     return instance;
   }
 

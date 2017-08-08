@@ -18,6 +18,7 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URL;
@@ -1065,7 +1066,19 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
       this.memorySize = memorySize;
       if (memorySize > 0) {
-        this.bufferAllocator = DirectBufferAllocator.instance().initialize();
+        try {
+          Class clazz = Class.forName("com.gemstone.gemfire.internal.cache.store.ManagedDirectBufferAllocator");
+          Method method = clazz.getDeclaredMethod("instance");
+          this.bufferAllocator = (DirectBufferAllocator)method.invoke(null);
+        } catch (ClassNotFoundException e) {
+          throw new IllegalArgumentException("The property memory-size is not supported in SnappyData OSS version.");
+        } catch (NoSuchMethodException e) {
+          throw new IllegalStateException("Could not configure buffer allocator.", e);
+        } catch (IllegalAccessException e) {
+          throw new IllegalStateException("Could not configure buffer allocator.", e);
+        } catch (InvocationTargetException e) {
+          throw new IllegalStateException("Could not configure buffer allocator.", e);
+        }
       } else {
         // the allocation sizes will be initialized from the heap size
         this.bufferAllocator = HeapBufferAllocator.instance();
