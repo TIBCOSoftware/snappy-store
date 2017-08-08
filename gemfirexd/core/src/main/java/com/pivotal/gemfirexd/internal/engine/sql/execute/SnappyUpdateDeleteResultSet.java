@@ -17,44 +17,37 @@
 
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
-import com.pivotal.gemfirexd.internal.engine.Misc;
-import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
 
 public final class SnappyUpdateDeleteResultSet extends SnappySelectResultSet {
 
-  private boolean firstAccess = true;
+  private int rowCount = -1;
 
   public SnappyUpdateDeleteResultSet(Activation ac, boolean returnRows) {
     super(ac, returnRows);
   }
 
-  public ExecRow getNextRow() throws StandardException {
-    try {
-      if (firstAccess) {
-        int sum = 0;
-        ExecRow superRow;
-        while ((superRow = super.getNextRow()) != null) {
-          DataValueDescriptor dvd = superRow.getLastColumn();
-          sum += dvd.getInt();
-        }
-        ValueRow vrow = new ValueRow(1);
-        vrow.setColumn(1, new SQLInteger(sum));
-        this.setCurrentRow(vrow);
+  @Override
+  public boolean returnsRows() {
+    return false;
+  }
 
-        return vrow;
-      } else {
-        return null;
+  @Override
+  public int modifiedRowCount() {
+    if (rowCount < 0) {
+      rowCount = 0;
+      try {
+        ExecRow row;
+        while ((row = getNextRow()) != null) {
+          rowCount += row.getLastColumn().getInt();
+        }
+      } catch (Exception ex) {
+        throw GemFireXDRuntimeException.newRuntimeException("Update or Delete on Snappy", ex);
       }
-    } catch(Exception ex) {
-      throw Misc.processFunctionException("SnappyUpdateDeleteResultSet:getNextRow ", ex, null,
-          null);
-    } finally {
-      firstAccess = false;
     }
+
+    return rowCount;
   }
 }
