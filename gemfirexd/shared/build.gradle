@@ -22,17 +22,24 @@ dependencies {
   compile project(subprojectBase + 'gemfire-shared')
 }
 
+ext {
+  isEnterprise = 'false'
+}
+
 // Creates the version properties file and writes it to the resources dir
 task createVersionPropertiesFile(dependsOn: 'processResources') {
   def propertiesDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal")
   outputs.file "${propertiesDir}/GemFireXDVersion.properties"
   inputs.dir compileJava.destinationDir
+  if (rootProject.hasProperty('snappydata.enterprise')) {
+    isEnterprise = 'true'
+  }
 
   doLast {
     def props = [
       'Product-Name'      : PRODUCT_NAME,
       'Product-Version'   : version,
-      'Enterprise-Edition': true,
+      'Enterprise-Edition': isEnterprise,
       'Build-Id'          : System.env.USER + ' ' + buildNumber,
       'Build-Date'        : buildDate,
       'Build-Platform'    : "${osName.getName()} ${osVersion} ${osArch}",

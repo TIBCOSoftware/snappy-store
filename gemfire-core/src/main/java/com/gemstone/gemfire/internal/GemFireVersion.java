@@ -77,6 +77,9 @@ public class GemFireVersion {
   /** Constant for the build Java version Resource Property entry */
   private static final String BUILD_JAVA_VERSION = "Build-Java-Version";
 
+  /** Constant for the GemFire enterprise edition Resource Property entry */
+  private static final String ENTERPRISE_EDITION = "Enterprise-Edition";
+
   ////////////////////  Instance Fields  ////////////////////
 
   /** The name of the properties resource used to load this instance */
@@ -128,6 +131,9 @@ public class GemFireVersion {
 
   /** The version of Java that was used to build GemFire */
   private String buildJavaVersion;
+
+  /** If the product is enterprise edition or not */
+  private boolean enterpriseEdition;
 
   ////////////////////  Static Methods  ////////////////////
 
@@ -445,6 +451,7 @@ public class GemFireVersion {
     if (this.productReleaseStage == null) {
       this.productReleaseStage = "";
     }
+    this.enterpriseEdition = Boolean.parseBoolean(props.getProperty(ENTERPRISE_EDITION, "false"));
     // below setting for GemFireXD is to indicate the underlying GemFire
     // version being used in GemFireXD product; for GemFire this will not
     // be set and instead this.productVersion is used where required
@@ -799,5 +806,14 @@ public class GemFireVersion {
 
   public void setNativeVersion(String nativeVersion) {
     this.nativeVersion = nativeVersion;
+  }
+
+  public static boolean isEnterpriseEdition() {
+    GemFireVersion v = getInstance();
+    if (v.error != null) {
+      return false;
+    } else {
+      return v.enterpriseEdition;
+    }
   }
 }
