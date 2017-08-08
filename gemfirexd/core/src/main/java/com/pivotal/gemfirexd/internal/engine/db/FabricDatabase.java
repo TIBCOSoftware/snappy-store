@@ -618,10 +618,19 @@ public final class FabricDatabase implements ModuleControl,
     // remove Hive store's own tables
     gfDBTablesMap.remove(
         Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
-    // tables in SNAPPYSYS_INTERNAL
-    List<String> internalColumnTablesList =
-        gfDBTablesMap.remove(com.gemstone.gemfire.internal.snappy.
-            CallbackFactoryProvider.getStoreCallbacks().snappyInternalSchemaName());
+    // CachedBatch tables (earlier stored in SNAPPYSYS_INTERNAL)
+    List<String> internalColumnTablesList = new LinkedList<>();
+    List<String> internalColumnTablesListPerSchema = new LinkedList<>();
+    for (Map.Entry<String, List<String>> e : gfDBTablesMap.entrySet()) {
+      for (String t : e.getValue()) {
+        if (CallbackFactoryProvider.getStoreCallbacks().isColumnTable(e.getKey() + "." + t)) {
+            internalColumnTablesListPerSchema.add(t);
+        }
+      }
+      e.getValue().removeAll(internalColumnTablesListPerSchema);
+      internalColumnTablesList.addAll(internalColumnTablesListPerSchema);
+      internalColumnTablesListPerSchema.clear();
+    }
     // creating a set here just for lookup, will not consume too much
     // memory as size limited by no of tables
     Set<String> internalColumnTablesSet = new HashSet<>();
@@ -1427,6 +1436,7 @@ public final class FabricDatabase implements ModuleControl,
         for (GemFireContainer c : allIndexes) {
           if (c.isLocalIndex()) {
             c.getSkipListMap().clear();
+            c.resetInitialAccounting();
           }
         }
       }
@@ -1709,6 +1719,7 @@ public final class FabricDatabase implements ModuleControl,
 
   public LanguageConnectionContext setupConnection(ContextManager cm,
                                                    String user,
+                                                   String authToken,
                                                    String drdaID,
                                                    String dbname,
                                                    long connectionID,
@@ -1722,7 +1733,7 @@ public final class FabricDatabase implements ModuleControl,
     // push a database shutdown context
     // we also need to push a language connection context.
     LanguageConnectionContext lctx = lcf.newLanguageConnectionContext(cm, tc,
-        lf, this, user, drdaID, connectionID, isRemote, dbname);
+        lf, this, user, authToken, drdaID, connectionID, isRemote, dbname);
 
     // push the context that defines our class factory
     pushClassFactoryContext(cm, lcf.getClassFactory());
@@ -1827,6 +1838,16 @@ public final class FabricDatabase implements ModuleControl,
     }
 
     return this.authenticationService;
+  }
+
+  /**
+   * @throws com.gemstone.gemfire.cache.CacheClosedException if store is null
+   * @return
+   */
+  public static AuthenticationServiceBase getAuthenticationServiceBase() {
+    return (AuthenticationServiceBase)Monitor.findServiceModule(
+        Misc.getMemStoreBooting().getDatabase(), AuthenticationService.MODULE,
+        GfxdConstants.AUTHENTICATION_SERVICE);
   }
 
   public final AuthenticationService getPeerAuthenticationService() {

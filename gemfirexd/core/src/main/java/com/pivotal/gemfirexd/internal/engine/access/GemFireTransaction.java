@@ -36,6 +36,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
@@ -47,6 +48,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -325,6 +327,7 @@ public final class GemFireTransaction extends RawTransaction implements
   // after commit and rollback generate a new one and send it to the client
   // so that client are aware of the new txid on return of commit and rollback.
   private TXId nextTxID;
+  private boolean implicitSnapshotTxStarted;
 
   /**
    * Create a new {@link GemFireTransaction} object.
@@ -2257,9 +2260,15 @@ public final class GemFireTransaction extends RawTransaction implements
       }
       try {
         TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
-        if (tx != gfTx && !tx.isSnapshot()) {
+        // commit if implicitely snapshot tx was started
+        if ((tx != gfTx && !tx.isSnapshot()) || (tx.isSnapshot() && implicitSnapshotTxStarted)) {
           context = this.txManager.commit(tx, this.connectionID, commitPhase,
               context, false);
+
+          if (tx.isSnapshot() && implicitSnapshotTxStarted) {
+            implicitSnapshotTxStarted = false;
+            this.txManager.snapshotTxState.set(null);
+          }
         }
         if (commitPhase != TXManagerImpl.PHASE_ONE_COMMIT) {
           postComplete(commitflag, true);
@@ -2383,6 +2392,7 @@ public final class GemFireTransaction extends RawTransaction implements
             "postComplete: flag=" + commitflag + ", commitOrAbort="
                 + commitOrAbort + " for TX " + toString());
       }
+      releaseRegionLock();
       if ((commitflag & Transaction.KEEP_LOCKS) == 0) {
         releaseAllLocksOnly(true, true);
         setIdleState();
@@ -2410,6 +2420,13 @@ public final class GemFireTransaction extends RawTransaction implements
   }
 
   public void abort(boolean abortParent) throws StandardException {
+    try {
+      doAbort(abortParent);
+    } catch (CancelException ignored) {
+    }
+  }
+
+  private void doAbort(boolean abortParent) throws StandardException {
 
     if (GemFireXDUtils.TraceTranVerbose) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN_VERBOSE,
@@ -2451,10 +2468,14 @@ public final class GemFireTransaction extends RawTransaction implements
             && this.connectionID.longValue() >= 0) {
           // In case, the tx is started by gemfire layer for snapshot, it should be rollbacked by gemfire layer.
           TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
-          if (tx != gfTx && !tx.isSnapshot()) {
+          if ((tx.isSnapshot() && implicitSnapshotTxStarted) || (tx != gfTx && !tx.isSnapshot())) {
             this.txManager.rollback(tx, this.connectionID, false);
-            setTXState(null);
+            if (tx.isSnapshot() && implicitSnapshotTxStarted) {
+              implicitSnapshotTxStarted = false;
+              this.txManager.snapshotTxState.set(null);
+            }
           }
+          setTXState(null);
         }
       }
 
@@ -2468,6 +2489,13 @@ public final class GemFireTransaction extends RawTransaction implements
   }
 
   public void internalCleanup() throws StandardException {
+    try {
+      doInternalCleanup();
+    } catch (CancelException ignored) {
+    }
+  }
+
+  private void doInternalCleanup() throws StandardException {
 
     // if we have already committed or closed the TX then ignore abort
     if (this.state != ACTIVE) {
@@ -2859,7 +2887,16 @@ public final class GemFireTransaction extends RawTransaction implements
         .append(lcc != null && lcc.isConnectionForRemote()).toString();
   }
 
+  private void releaseRegionLock() {
+    RecoveryLock regionRecLock = this.regionRecoveryLock;
+    if (regionRecLock != null) {
+      regionRecLock.unlock();
+      this.regionRecoveryLock = null;
+    }
+  }
+
   public void releaseAllLocks(boolean force, boolean removeRef) {
+    releaseRegionLock();
     waitForPendingRC();
     releaseAllLocksOnly(force, removeRef);
   }
@@ -2881,14 +2918,7 @@ public final class GemFireTransaction extends RawTransaction implements
         // free any distributed lock resources after container drop
         lockSet.freeLockResources();
       }
-      RecoveryLock regionRecLock = this.regionRecoveryLock;
-      if(regionRecLock != null) {
-        regionRecLock.unlock();
-        this.regionRecoveryLock = null;
-      }
-      
     }
-    
   }
 
   @Override
@@ -3520,7 +3550,7 @@ public final class GemFireTransaction extends RawTransaction implements
 
   @Override
   public final boolean isTransactional() {
-    return (this.isolationLevel != IsolationLevel.NONE);
+    return (this.isolationLevel != IsolationLevel.NONE) || implicitSnapshotTxStarted;
   }
 
   public final TXStateInterface getSuspendedTXState() {
@@ -3678,9 +3708,28 @@ public final class GemFireTransaction extends RawTransaction implements
               }
             }
             else {
-              TXManagerImpl.getOrCreateTXContext().clearTXState();
-              // don't mark TX as active yet
-              return;
+              TXStateInterface snapshotTXState = TXManagerImpl.getCurrentSnapshotTXState();
+              if (snapshotTXState != null) {
+                if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery
+                    || GemFireXDUtils.TraceNCJ) {
+                  SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+                      "GemFireTransaction#reattachTransaction: for " + tran
+                          + " setting gfe tx to snapshot tx" + snapshotTXState);
+                }
+                //TXManagerImpl.getOrCreateTXContext().clearTXState();
+                // don't mark TX as active yet
+                return;
+              } else {
+                if (GemFireXDUtils.TraceTran || GemFireXDUtils.TraceQuery
+                    || GemFireXDUtils.TraceNCJ) {
+                  SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
+                      "GemFireTransaction#reattachTransaction: for " + tran
+                          + " setting gfe tx to null");
+                }
+                TXManagerImpl.getOrCreateTXContext().clearTXState();
+                // don't mark TX as active yet
+                return;
+              }
             }
           }
           else if (tx != TXStateProxy.TX_NOT_SET
@@ -3811,6 +3860,13 @@ public final class GemFireTransaction extends RawTransaction implements
     return fc;
   }
 
+  public void setImplicitSnapshotTxStarted(boolean implicitSnapshotTxStarted) {
+    this.implicitSnapshotTxStarted = implicitSnapshotTxStarted;
+  }
+
+  public boolean getImplcitSnapshotTxStarted() {
+    return this.implicitSnapshotTxStarted;
+  }
   /**
    * Extension to {@link GfxdLocalLockService.DistributedLockOwner} that uses
    * the current ID of the {@link GemFireTransaction} instead of thread ID.

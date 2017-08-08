@@ -45,6 +45,11 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public boolean isColumnTable(String qualifiedName) {
+      return false;
+    }
+
+    @Override
     public int getHashCodeSnappy(Object dvd, int numPartitions) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
@@ -58,12 +63,6 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public String columnBatchTableName(String tableName) {
-      throw new UnsupportedOperationException("unexpected invocation for "
-          + toString());
-    }
-
-    @Override
-    public String snappyInternalSchemaName() {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }

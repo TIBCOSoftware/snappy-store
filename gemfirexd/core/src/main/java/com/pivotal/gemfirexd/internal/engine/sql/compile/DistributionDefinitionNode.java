@@ -33,6 +33,7 @@ import com.gemstone.gemfire.cache.RegionAttributes;
 
 import com.gemstone.gemfire.internal.cache.EvictionAttributesImpl;
 import com.gemstone.gemfire.internal.cache.PartitionAttributesImpl;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -744,6 +745,12 @@ public class DistributionDefinitionNode extends TableElementNode {
               || tgt.getType().getScale() != src.getType().getScale()
               || tgt.getType().getMaximumWidth() != src.getType()
               .getMaximumWidth()) {
+            // SQLChar types can be collocated
+            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                && DataTypeDescriptor.isCharacterStreamAssignable(tgt.getType().getJDBCTypeId())
+                && DataTypeDescriptor.isCharacterStreamAssignable(src.getType().getJDBCTypeId())) {
+              continue;
+            }
           /*
           * if( !tgt.getType().equals(src.getType()) ) {
           *

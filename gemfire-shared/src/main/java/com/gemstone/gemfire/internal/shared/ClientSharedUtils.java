@@ -1287,7 +1287,33 @@ public abstract class ClientSharedUtils {
     return cre.newRunTimeException(message, cause);
   }
 
+  // Convert log4j.Level to java.util.logging.Level
+  public static Level converToJavaLogLevel(org.apache.log4j.Level log4jLevel) {
+    Level javaLevel = Level.INFO;
+    if (log4jLevel != null) {
+      if (log4jLevel == org.apache.log4j.Level.ERROR) {
+        javaLevel = Level.SEVERE;
+      } else if (log4jLevel == org.apache.log4j.Level.WARN) {
+        javaLevel = Level.WARNING;
+      } else if (log4jLevel == org.apache.log4j.Level.INFO) {
+        javaLevel = Level.INFO;
+      } else if (log4jLevel == org.apache.log4j.Level.TRACE) {
+        javaLevel = Level.FINE;
+      } else if (log4jLevel == org.apache.log4j.Level.DEBUG) {
+        javaLevel = Level.ALL;
+      } else if (log4jLevel == org.apache.log4j.Level.OFF) {
+        javaLevel = Level.OFF;
+      }
+    }
+    return javaLevel;
+  }
+
   public static void initLog4J(String logFile,
+      Level level) throws IOException {
+    initLog4J(logFile, null, level);
+  }
+
+  public static void initLog4J(String logFile, Properties userProps,
       Level level) throws IOException {
     // set the log file location
     Properties props = new Properties();
@@ -1351,6 +1377,9 @@ public abstract class ClientSharedUtils {
         }
         props.putAll(setProps);
       }
+    }
+    if (userProps != null) {
+      props.putAll(userProps);
     }
     LogManager.resetConfiguration();
     PropertyConfigurator.configure(props);

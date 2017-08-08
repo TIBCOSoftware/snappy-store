@@ -65,6 +65,24 @@ public final class ByteBufferDataInput
     this.buffer.get(b, off, len);
   }
 
+  public void read(ByteBuffer target) {
+    final int limit = this.buffer.limit();
+    final int position = this.buffer.position();
+    final int targetRemaining = target.remaining();
+
+    if ((limit - position) > targetRemaining) {
+      // reduce limit
+      this.buffer.limit(targetRemaining + position);
+      try {
+        target.put(this.buffer);
+      } finally {
+        this.buffer.limit(limit);
+      }
+    } else {
+      target.put(this.buffer);
+    }
+  }
+
   @Override
   public int skipBytes(int n) throws IOException {
     final ByteBuffer buffer = this.buffer;

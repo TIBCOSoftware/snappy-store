@@ -874,9 +874,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
 
     Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
-        GemFireSparkConnectorCacheFactory.gfeGridNamePrefix);
+        GemFireSparkConnectorCacheImpl.gfeGridNamePrefix);
     Map<String, String> gfeGridPoolProps = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
-        GemFireSparkConnectorCacheFactory.gfeGridPropsPrefix);
+        GemFireSparkConnectorCacheImpl.gfeGridPropsPrefix);
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,

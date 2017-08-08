@@ -1147,9 +1147,15 @@ public class EntryEventImpl extends KeyInfo implements
     LocalRegion originalRegion = this.region;
     try {
       if (originalRegion instanceof BucketRegion) {
-        this.region = ((BucketRegion)this.region).getPartitionedRegion();
+        this.region = originalRegion.getPartitionedRegion();
       }
       basicSetNewValue(this.delta.apply(this));
+      // clear delta after apply so full value gets sent to others
+      // including GII sources which may not have the old value
+      // (currently only cleared for SerializedDiskBuffers)
+      if (this.delta instanceof SerializedDiskBuffer) {
+        this.delta = null;
+      }
     } finally {
       this.region = originalRegion;
     }
@@ -1220,11 +1226,8 @@ public class EntryEventImpl extends KeyInfo implements
   }
 
   public final boolean hasTX() {
-    return this.txState != null && this.txState != TXStateProxy.TX_NOT_SET;
-  }
-
-  public final boolean hasTXSet() {
-    return this.txState != TXStateProxy.TX_NOT_SET;
+    final TXStateInterface txState = getTXState();
+    return txState != null && !txState.isSnapshot();
   }
 
   public final void setTXState(final TXStateInterface tx) {
@@ -1967,7 +1970,8 @@ public class EntryEventImpl extends KeyInfo implements
       }
     }
     final IndexUpdater indexUpdater = this.region.getIndexUpdater();
-    if (indexUpdater != null && this.txState == null) {
+    final TXStateInterface txState = getTXState();
+    if (indexUpdater != null && (txState == null || txState.isSnapshot())) {
       final LocalRegion indexRegion;
       if (owner != null) {
         indexRegion = owner;

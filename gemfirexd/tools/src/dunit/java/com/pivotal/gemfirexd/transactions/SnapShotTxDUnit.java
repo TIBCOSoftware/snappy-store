@@ -673,7 +673,8 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
 
   }
 
-  public void testNoConflict() throws Exception {
+  // There would be conflict now after write write conflict detection
+  public void testConflict() throws Exception {
     
     startVMs(0, 2);
     Properties props = new Properties();
@@ -733,8 +734,9 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
 
         r.getCache().getCacheTransactionManager().commit();
 
-        assertEquals(2, r.get(1));
-        assertEquals(4, r.get(2));
+        assertEquals(1, r.get(1));
+        assertEquals(2, r.get(2));
+        // non tx put so no conflict
         assertEquals(6, r.get(3));
         assertEquals(8, r.get(4));
       }
@@ -747,8 +749,8 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
         //take an snapshot again//gemfire level
         final Region r = cache.getRegion(regionName);
         r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
-        assertEquals(2, r.get(1));
-        assertEquals(4, r.get(2));
+        assertEquals(1, r.get(1));
+        assertEquals(2, r.get(2));
         assertEquals(6, r.get(3));
         assertEquals(8, r.get(4));
 

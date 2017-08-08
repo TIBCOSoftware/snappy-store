@@ -337,7 +337,7 @@ public class LocalRegion extends AbstractRegion
   public static final ReadEntryUnderLock READ_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj).getValue((LocalRegion)context);
+      return ((RegionEntry)lockObj).getValue((LocalRegion)context);
     }
   };
 
@@ -345,7 +345,7 @@ public class LocalRegion extends AbstractRegion
     @Retained
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj)._getValueRetain((LocalRegion)context,
+      return ((RegionEntry)lockObj)._getValueRetain((LocalRegion)context,
           false);
     }
   };
@@ -353,7 +353,7 @@ public class LocalRegion extends AbstractRegion
   public static final ReadEntryUnderLock READ_TOKEN = new ReadEntryUnderLock() {
     public final Token readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj).getValueAsToken();
+      return ((RegionEntry)lockObj).getValueAsToken();
     }
   };
 
@@ -361,14 +361,14 @@ public class LocalRegion extends AbstractRegion
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, int iContext, boolean allowTombstones) {
       return ((LocalRegion)context)
-          .getREValueForTXRead((AbstractRegionEntry)lockObj);
+          .getREValueForTXRead((RegionEntry)lockObj);
     }
   };
 
   public static final ReadEntryUnderLock GET_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, int iContext, boolean allowTombstones) {
-      return ((LocalRegion)context).getEntryValue((AbstractRegionEntry)lockObj);
+      return ((LocalRegion)context).getEntryValue((RegionEntry)lockObj);
     }
   };
 
@@ -376,7 +376,7 @@ public class LocalRegion extends AbstractRegion
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, final int iContext, boolean allowTombstones) {
       return ((LocalRegion)context).getDeserialized(
-          (AbstractRegionEntry)lockObj, (iContext & DESER_UPDATE_STATS) != 0,
+          (RegionEntry)lockObj, (iContext & DESER_UPDATE_STATS) != 0,
           (iContext & DESER_DISABLE_COPY_ON_READ) != 0,
           (iContext & DESER_PREFER_CD) != 0);
     }
@@ -875,6 +875,8 @@ public class LocalRegion extends AbstractRegion
     }
 
     this.testCallable = internalRegionArgs.getTestCallable();
+    this.snapshotEnabledRegion = cache.snapshotEnabled() && this.concurrencyChecksEnabled
+        && !isUsedForMetaRegion;
     
   }
 
@@ -2673,7 +2675,7 @@ public class LocalRegion extends AbstractRegion
 
   protected Region.Entry<?, ?> txGetEntryForIterator(KeyInfo keyInfo,
       boolean access, final TXStateInterface tx, boolean allowTombstones) {
-    final AbstractRegionEntry re = (AbstractRegionEntry)keyInfo.getKey();
+    final RegionEntry re = (RegionEntry)keyInfo.getKey();
     return txGetEntry(re, re.getKey(), access, tx, allowTombstones);
   }
 
@@ -14380,7 +14382,7 @@ public class LocalRegion extends AbstractRegion
   }
 
   protected long calculateEntryOverhead(RegionEntry entry) {
-    if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
+    if (entryOverHead == -1L && !this.reservedTable() && needAccounting()) {
       synchronized (this) {
         if (entryOverHead == -1L) {
           entryOverHead = getEntryOverhead(entry);

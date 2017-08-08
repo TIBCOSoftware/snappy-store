@@ -11673,6 +11673,11 @@ StatementNode gatewaySenderDefinition() throws StandardException :
 {
     
    <GATEWAYSENDER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <REMOTEDSID > remoteDsId = simpleValueSpecification_int()
     (  populateGatewaySenderAttributes(attrs))*
@@ -11723,6 +11728,11 @@ StatementNode asyncEventListenerDefinition() throws StandardException :
 {
     
    <ASYNCLISTENER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <LISTENERCLASS>  listenerClass = string()
    <INITPARAMS>  initParams = string()   
@@ -11772,6 +11782,11 @@ StatementNode dropAsyncEventListenerStatement() throws StandardException :
     
    <ASYNCLISTENER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
@@ -11799,6 +11814,11 @@ StatementNode dropGatewaySenderStatement() throws StandardException :
     
    <GATEWAYSENDER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    
@@ -11820,6 +11840,11 @@ StatementNode dropGatewayReceiverStatement() throws StandardException :
 {
 	String id  = null;
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	Boolean onlyIfExists = Boolean.FALSE;
 // GemStone changes END
 }
@@ -11851,7 +11876,12 @@ gatewayReceiverDefinition() throws StandardException :
 	String id  = null;
 }
 {
-	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true) 
+	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+	{
+       CompilerContext cc = getCompilerContext();
+       cc.markAsDDLForSnappyUse(false);
+       cc.setForcedDDLrouting(false);
+    }
 	[ <LEFT_PAREN>
      ( populateGatewarReceiverAttributes(attrs) )*
 	 <RIGHT_PAREN>

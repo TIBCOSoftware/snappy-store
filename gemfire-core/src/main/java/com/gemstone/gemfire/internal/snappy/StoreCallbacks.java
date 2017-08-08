@@ -31,6 +31,8 @@ public interface StoreCallbacks {
 
   String SHADOW_SCHEMA_SEPARATOR = "____";
 
+  String SHADOW_SCHEMA_NAME_WITH_SEPARATOR = SHADOW_SCHEMA_NAME + SHADOW_SCHEMA_SEPARATOR;
+
   void registerTypes();
 
   Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
@@ -38,13 +40,13 @@ public interface StoreCallbacks {
 
   List<String> getInternalTableSchemas();
 
+  boolean isColumnTable(String qualifiedName);
+
   int getHashCodeSnappy(Object dvd, int numPartitions);
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
   public String columnBatchTableName(String tableName);
-
-  public String snappyInternalSchemaName();
 
   void registerRelationDestroyForHiveStore();
 

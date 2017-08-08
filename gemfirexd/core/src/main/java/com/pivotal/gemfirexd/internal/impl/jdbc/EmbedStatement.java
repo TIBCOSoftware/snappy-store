@@ -2291,7 +2291,7 @@ public class EmbedStatement extends ConnectionChild
 						  a.reset(false);
 						}
 						if (!distribute)
-						  if (!origAutoCommit) {
+						  if (!origAutoCommit && !tran.getImplcitSnapshotTxStarted()) {
 						    if (!tran.isTransactional() && !isPreparedBatch && (act == null || !(act instanceof LockTableConstantAction))) {
 						      tran.releaseAllLocks(
 						          false, false);
