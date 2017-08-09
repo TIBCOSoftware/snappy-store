@@ -2989,7 +2989,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     DistributionAdvisor advisor = null;
     long viewVersion = -1;
     if (dataRegion != null) {
-      if (hasPossibleRecipients) {
+      if (hasPossibleRecipients && !isSnapshot()) {
         advisor = dataRegion.getDistributionAdvisor();
         viewVersion = advisor.startOperation();
         if (LOG_VERSIONS) {

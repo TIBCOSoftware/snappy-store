@@ -1,5 +1,6 @@
 package com.pivotal.gemfirexd.transactions;
 
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLTransactionRollbackException;
@@ -774,7 +775,8 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
           }
           stmt.executeBatch();
         } catch (Exception e) {
-          exception[0] = e;
+          if(!(e instanceof BatchUpdateException))
+            exception[0] = e;
           e.printStackTrace();
         }
       }
@@ -820,9 +822,7 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
         stmt.addBatch(stmtString);
       }
       stmt.executeBatch();
-      //fail("Expected some exception, primary key violation");
     } catch (Exception e) {
-      // fail with some exception
     }
 
     server1.invoke(
@@ -871,13 +871,13 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
       while (rs.next()) {
         num++;
       }
-      assertTrue("Expected 50 but was " + num, num == 50);
+      assertTrue("Expected 100 but was " + num, num == 100);
 
     } catch (Exception e) {
       exception[0] = e;
       e.printStackTrace();
     }
-    if (exception != null) {
+    if (exception[0] != null) {
       throw exception[0];
     }
   }
@@ -988,7 +988,8 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
           }
           stmt.executeBatch();
         } catch (Exception e) {
-          exception[0] = e;
+          if(!(e instanceof BatchUpdateException))
+            exception[0] = e;
           e.printStackTrace();
         }
       }
@@ -1034,9 +1035,10 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
         stmt.addBatch(stmtString);
       }
       stmt.executeBatch();
-      //fail("Expected some exception, primary key violation");
     } catch (Exception e) {
-      // fail with some exception
+      if (!(e instanceof BatchUpdateException))
+        exception[0] = e;
+      e.printStackTrace();
     }
 
     server1.invoke(
@@ -1084,13 +1086,13 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
       while (rs.next()) {
         num++;
       }
-      assertTrue("Expected 50 but was " + num, num == 100);
+      assertTrue("Expected 100 but was " + num, num == 100);
 
     } catch (Exception e) {
       exception[0] = e;
       e.printStackTrace();
     }
-    if (exception != null) {
+    if (exception[0] != null) {
       throw exception[0];
     }
 
@@ -1104,7 +1106,7 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
       while (rs.next()) {
         num++;
       }
-      assertTrue("Expected 50 but was " + num, num == 100);
+      assertTrue("Expected 100 but was " + num, num == 100);
 
     } catch (Exception e) {
       exception[0] = e;
@@ -1123,7 +1125,7 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
       while (rs.next()) {
         num++;
       }
-      assertTrue("Expected 50 but was " + num, num == 100);
+      assertTrue("Expected 100 but was " + num, num == 100);
 
     } catch (Exception e) {
       exception[0] = e;
