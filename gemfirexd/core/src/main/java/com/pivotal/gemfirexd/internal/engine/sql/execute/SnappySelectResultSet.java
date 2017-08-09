@@ -193,12 +193,8 @@ public class SnappySelectResultSet
       nextExecRow();
       this.setCurrentRow(this.currentRow);
       return this.currentRow;
-    } catch(Exception ex) {
-      try {
-        Misc.checkIfCacheClosing(ex);
-      } catch(CacheClosedException cacheCloseException) {
-        throw cacheCloseException;
-      }
+    } catch (Exception ex) {
+      Misc.checkIfCacheClosing(ex);
       throw Misc.processFunctionException("SnappySelectResultSet:getNextRow ", ex, null, null);
     }
   }
@@ -214,13 +210,9 @@ public class SnappySelectResultSet
         try {
           this.currentResultHolder = (SnappyResultHolder)srhIterator.next();
         } catch (Exception ex) {
-          try {
-            Misc.checkIfCacheClosing(ex);
-          } catch(CacheClosedException cacheCloseException) {
-            throw cacheCloseException;
-          }
+          Misc.checkIfCacheClosing(ex);
           throw Misc.processFunctionException("SnappySelectResultSet:next",
-              ex, null, null);
+                  ex, null, null);
         }
         // set the metadata which is sent in only the first resultHolder
         if (this.currentResultHolder != null) {
