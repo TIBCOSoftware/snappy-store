@@ -25,7 +25,7 @@ class ColumnTableExecutionEngineRule extends ExecutionEngineRule {
 
   @Override
   protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo,ExecutionRuleContext context) {
-    if (SnappyActivation.isColumnTable(qInfo, false)) {
+    if (SnappyActivation.isColumnTable(qInfo, true)) {
       return ExecutionEngine.SPARK;
     }
     return ExecutionEngine.NOT_DECIDED;
