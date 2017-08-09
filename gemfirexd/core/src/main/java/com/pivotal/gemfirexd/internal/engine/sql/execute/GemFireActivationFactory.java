@@ -72,7 +72,7 @@ public class GemFireActivationFactory {
     if (qi.isSelect() && qi.isPreparedStatementQuery()) {
       boolean routeQuery = Misc.getMemStore().isSnappyStore() && _lcc.isQueryRoutingEnabled();
       if (routeQuery) {
-        doRoute = SnappyActivation.isColumnTable((DMLQueryInfo) qi, false);
+        doRoute = SnappyActivation.isColumnTable((DMLQueryInfo) qi, true);
         if (GemFireXDUtils.TraceQuery) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
               "GemFireActivationFactory. Not prepared statement. SQL=" + st.getSource()
@@ -82,7 +82,8 @@ public class GemFireActivationFactory {
     }
 
     if (doRoute) {
-      actvn = new PrepStatementSnappyActivation(st, _lcc, qi, true);
+      actvn = new PrepStatementSnappyActivation(st, _lcc, qi, true,
+          qi.isUpdate() || qi.isDelete());
     }
     else if (qi.isPrimaryKeyBased()) {
       if (qi.isSelect() || qi.isSelectForUpdateQuery()) {
