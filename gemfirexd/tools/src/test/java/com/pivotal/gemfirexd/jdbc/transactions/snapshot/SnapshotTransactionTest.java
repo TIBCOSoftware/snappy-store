@@ -130,7 +130,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     Misc.getGemFireCache().getCacheTransactionManager().commit();
 
     Region r = Misc.getRegionForTable("TRAN.T1", true);
-    assert (r.size() == 5);
+    assert (r.size() == 10);
   }
 
   //auto commit is disabled.
