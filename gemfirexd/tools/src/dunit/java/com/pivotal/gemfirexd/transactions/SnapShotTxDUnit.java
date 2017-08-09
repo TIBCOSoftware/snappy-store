@@ -238,6 +238,7 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
             num++;
         }
         assertEquals(4, num);
+        r.getCache().getCacheTransactionManager().commit();
       }
     });
   }
@@ -372,6 +373,7 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
             num++;
         }
         assertEquals(4, num);
+        r.getCache().getCacheTransactionManager().commit();
       }
     });
   }

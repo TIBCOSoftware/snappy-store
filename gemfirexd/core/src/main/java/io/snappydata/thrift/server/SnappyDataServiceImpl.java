@@ -2824,6 +2824,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             flags, false);
       }
       conn.commit();
+      LanguageConnectionContext lcc = conn.getLanguageConnectionContext();
+      if (lcc != null) {
+        lcc.clearExecuteLocally();
+      }
       // JDBC starts a new transaction immediately; we need to set the isolation
       // explicitly to NONE to avoid that
       if (!startNewTransaction) {
@@ -2851,6 +2855,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             flags, false);
       }
       conn.rollback();
+      LanguageConnectionContext lcc = conn.getLanguageConnectionContext();
+      if (lcc != null) {
+        lcc.clearExecuteLocally();
+      }
       // JDBC starts a new transaction immediately; we need to set the isolation
       // explicitly to NONE to avoid that
       if (!startNewTransaction) {

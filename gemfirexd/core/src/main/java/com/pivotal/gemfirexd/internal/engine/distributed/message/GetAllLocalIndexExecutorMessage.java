@@ -343,7 +343,7 @@ public class GetAllLocalIndexExecutorMessage extends
                 } finally {
                   if (lcc != null) {
                     lcc.setFlags(oldLCCFlags);
-                    lcc.setExecuteLocally(null, null, false, null);
+                    lcc.clearExecuteLocally();
                   }
                   // reset cached TXState
                   if (tc != null) {

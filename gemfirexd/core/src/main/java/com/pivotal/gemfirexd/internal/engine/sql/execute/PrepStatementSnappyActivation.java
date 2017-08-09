@@ -27,41 +27,37 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLClob;
-import com.pivotal.gemfirexd.internal.impl.sql.compile.Token;
-import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
-import java.util.List;
 
 public class PrepStatementSnappyActivation extends GemFireSelectDistributionActivation {
-
-  volatile AbstractGemFireResultSet currentRS = null;
   private String sql;
-  boolean returnRows;
+  private boolean returnRows;
+  private boolean isUpdateOrDelete;
 
-  public PrepStatementSnappyActivation(ExecPreparedStatement eps,
-      LanguageConnectionContext _lcc,
-      DMLQueryInfo qi,
-      boolean returnRows) throws StandardException {
+  public PrepStatementSnappyActivation(ExecPreparedStatement eps, LanguageConnectionContext _lcc,
+      DMLQueryInfo qi, boolean returnRows, boolean isUpdateOrDelete) throws StandardException {
     super(eps, _lcc, qi);
     sql = eps.getSource();
     this.returnRows = returnRows;
     this.connectionID = lcc.getConnectionId();
+    this.isUpdateOrDelete = isUpdateOrDelete;
   }
 
   @Override
   protected SnappySelectResultSet createResultSet(int resultsetNumber)
       throws StandardException {
-    return new SnappySelectResultSet(this, this.returnRows);
+    if (isUpdateOrDelete) {
+      return new SnappyUpdateDeleteResultSet(this, this.returnRows);
+    } else {
+      return new SnappySelectResultSet(this, this.returnRows);
+    }
   }
 
   @Override
   protected void executeWithResultSet(AbstractGemFireResultSet rs)
       throws StandardException {
     boolean enableStreaming = this.lcc.streamingEnabled();
-    GfxdResultCollector<Object> rc = null;
-    rc = getResultCollector(enableStreaming, rs);
+    GfxdResultCollector<Object> rc = getResultCollector(enableStreaming, rs);
 
     if (this.pvs != null) {
       if (GemFireXDUtils.TraceQuery) {
@@ -71,12 +67,12 @@ public class PrepStatementSnappyActivation extends GemFireSelectDistributionActi
       }
       SnappyActivation.executeOnLeadNode((SnappySelectResultSet)rs, rc,
           this.sql, enableStreaming, this.getConnectionID(), lcc.getCurrentSchemaName(),
-          this.pvs, true);
+          this.pvs, true, this.isUpdateOrDelete);
     } else {
       throw StandardException.newException(
-          SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-          "Not a prepared statement. Sql=" + this.sql + " ,isPrepStmt=" +
-              this.getIsPrepStmntQuery() + " ,pvs=" + this.pvs);
+          SQLState.LANG_UNEXPECTED_USER_EXCEPTION, "Not a prepared statement. Sql=" + this.sql +
+              " ,isUpdateOrDelete=" + this.isUpdateOrDelete + " ,isPrepStmt=" +
+              this.getIsPrepStmntQuery() + " ,pvs is NULL");
     }
   }
 

@@ -1636,7 +1636,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
             DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
         super.createSystemProcedureOrFunction("START_SNAPSHOT_TXID", sysUUID,
             argNames,argTypes, 1, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
-            tc, GFXD_SYS_PROC_CLASSNAME, true);
+            tc, GFXD_SYS_PROC_CLASSNAME, false);
       }
 
       {
@@ -1653,7 +1653,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
             DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
         super.createSystemProcedureOrFunction("ROLLBACK_SNAPSHOT_TXID", sysUUID,
             argNames,argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
-            tc, GFXD_SYS_PROC_CLASSNAME, true);
+            tc, GFXD_SYS_PROC_CLASSNAME, false);
       }
       {
         String[] argNames = new String[] { "txId"};
