@@ -679,7 +679,7 @@ public final class FabricDatabase implements ModuleControl,
       List<String> tablesMissingColumnBuffer = new LinkedList<>();
       for (String storeTable : storeEntry.getValue()) {
         if (Misc.getMemStoreBooting().getExternalCatalog().
-            isColumnTable(storeEntry.getKey(), storeTable, false)) {
+            isColumnTable(storeEntry.getKey(), storeTable, true)) {
           String columnBatchTable = com.gemstone.gemfire.
               internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
               columnBatchTableName(storeEntry.getKey() + "." + storeTable);
