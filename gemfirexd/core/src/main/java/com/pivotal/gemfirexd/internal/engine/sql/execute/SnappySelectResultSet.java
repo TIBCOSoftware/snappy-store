@@ -49,7 +49,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ResultSetStatisticsVisito
 /**
  * Holds the resultSet obtained from lead node execution.
  */
-public final class SnappySelectResultSet
+public class SnappySelectResultSet
     extends AbstractGemFireResultSet implements NoPutResultSet {
 
   private ExecRow currentRow;

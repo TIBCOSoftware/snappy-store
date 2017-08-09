@@ -42,6 +42,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.execute;
 
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.Attribute;
+import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -229,15 +230,21 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 	{
 		doExecuteGrantRevoke(activation, grant, grantees, columnBitSets, actionAllowed, true, td);
 		GemFireStore ms = Misc.getMemStore();
-		if (ms.isSnappyStore() && Misc.isSecurityEnabled()
-			&& ms.getExternalCatalog().isColumnTable(td.getSchemaName(), td.getName(), true)) {
+		if (ms.isSnappyStore() && Misc.isSecurityEnabled()) {
 			String cbTable = CallbackFactoryProvider.getStoreCallbacks().columnBatchTableName(td
 					.getName());
-			DataDictionary dd = activation.getLanguageConnectionContext().getDataDictionary();
-			TableDescriptor ttd = dd.getTableDescriptor(cbTable, td.getSchemaDescriptor(), activation
-					.getLanguageConnectionContext().getTransactionExecute());
-			doExecuteGrantRevoke(activation, grant, grantees, new FormatableBitSet[0], null, false,
-					ttd);
+			ExternalCatalog ec = ms.getExternalCatalog(); // This may be null during restart
+			if (ec == null && !Misc.initialDDLReplayInProgress()) {
+				throw new IllegalStateException("External catalog not initialized.");
+			}
+			if ((ec != null && ec.isColumnTable(td.getSchemaName(), td.getName(), true)) || Misc
+					.getRegion(cbTable,false, true) != null) {
+				DataDictionary dd = activation.getLanguageConnectionContext().getDataDictionary();
+				TableDescriptor ttd = dd.getTableDescriptor(cbTable, td.getSchemaDescriptor(), activation
+						.getLanguageConnectionContext().getTransactionExecute());
+				doExecuteGrantRevoke(activation, grant, grantees, new FormatableBitSet[0], null, false,
+						ttd);
+			}
 		}
 	}
 
