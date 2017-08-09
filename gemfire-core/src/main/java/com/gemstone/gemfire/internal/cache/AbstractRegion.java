@@ -180,8 +180,6 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
   
   protected volatile boolean concurrencyChecksEnabled;
 
-  protected boolean snapshotEnabledRegion;
-
   protected boolean earlyAck;
 
   protected final boolean isPdxTypesRegion;
@@ -2248,4 +2246,5 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     }
     return criteria;
   }
+
 }

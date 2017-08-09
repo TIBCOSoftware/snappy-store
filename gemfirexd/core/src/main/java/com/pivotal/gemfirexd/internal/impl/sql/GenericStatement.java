@@ -101,7 +101,6 @@ import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
-import org.apache.commons.lang.exception.ExceptionUtils;
 
 //GemStone changes BEGIN
 
@@ -149,11 +148,8 @@ public class GenericStatement
         private static final Pattern INSERT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile(".*INSERT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern INSERT_TABLE_PATTERN =
-            Pattern.compile("^\\s*(INSERT)\\s+.*",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern UPDATE_DELETE_TABLE_PATTERN =
-            Pattern.compile("^\\s*(UPDATE|DELETE)\\s+.*",
+        private static final Pattern DML_TABLE_PATTERN =
+            Pattern.compile("^\\s*(INSERT|UPDATE|DELETE)\\s+.*",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern PUT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile(".*PUT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
@@ -618,13 +614,12 @@ public class GenericStatement
 				}
 				catch (StandardException | AssertFailure ex) {
           //wait till the query hint is examined before throwing exceptions or
-          if (routeQuery && !INSERT_TABLE_PATTERN.matcher(source).matches()) {
+          if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
             if (STREAMING_DDL_PREFIX.matcher(source).matches()) {
               cc.markAsDDLForSnappyUse(true);
             }
-            boolean isUpdateOrDelete = UPDATE_DELETE_TABLE_PATTERN.matcher(source).matches();
             return getPreparedStatementForSnappy(false, statementContext, lcc,
-                cc.isMarkedAsDDLForSnappyUse(), checkCancellation, isUpdateOrDelete);
+                cc.isMarkedAsDDLForSnappyUse(), checkCancellation, false);
           }
           throw ex;
 				}
@@ -703,13 +698,12 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery && !INSERT_TABLE_PATTERN.matcher(source).matches()) {
+						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }
-                                                       boolean isUpdateOrDelete = UPDATE_DELETE_TABLE_PATTERN.matcher(source).matches();
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                  checkCancellation, isUpdateOrDelete);
+                  checkCancellation, false);
 						}
 						throw ex;
 					}
@@ -773,13 +767,12 @@ public class GenericStatement
 
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery && !INSERT_TABLE_PATTERN.matcher(source).matches()) {
+						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
                                                        if (observer != null) {
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }
-                                                       boolean isUpdateOrDelete = UPDATE_DELETE_TABLE_PATTERN.matcher(source).matches();
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                  checkCancellation, isUpdateOrDelete);
+                  checkCancellation, false);
 						}
 						throw ex;
 					}

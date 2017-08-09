@@ -596,7 +596,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     this.isJCA = false;
     if (flags == null) {
       this.lockPolicy = LockingPolicy.fromIsolationLevel(isolationLevel, false);
-      this.enableBatching = ENABLE_BATCHING;
+      this.enableBatching = (this.lockPolicy == LockingPolicy.SNAPSHOT)? false: ENABLE_BATCHING;
       this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT)?  true: false;
     }
     else {
@@ -606,7 +606,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         this.enableBatching = false;
       }
       else {
-        this.enableBatching = ENABLE_BATCHING;
+        this.enableBatching = (this.lockPolicy == LockingPolicy.SNAPSHOT)? false: ENABLE_BATCHING;
       }
       this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) ? true :
           flags.contains(TransactionFlag.SYNC_COMMITS);
@@ -739,8 +739,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   public final boolean batchingEnabled() {
     final TXManagerImpl.TXContext context;
-    return this.enableBatching || ((context = TXManagerImpl.currentTXContext())
-        != null && context.forceBatching);
+    return !isSnapshot() && (this.enableBatching || ((context = TXManagerImpl.currentTXContext())
+        != null && context.forceBatching));
   }
 
   public final boolean skipBatchFlushOnCoordinator() {
@@ -2989,7 +2989,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     DistributionAdvisor advisor = null;
     long viewVersion = -1;
     if (dataRegion != null) {
-      if (hasPossibleRecipients) {
+      if (hasPossibleRecipients && !isSnapshot()) {
         advisor = dataRegion.getDistributionAdvisor();
         viewVersion = advisor.startOperation();
         if (LOG_VERSIONS) {

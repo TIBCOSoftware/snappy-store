@@ -3270,7 +3270,7 @@ public final class GemFireTransaction extends RawTransaction implements
       }
       final GemFireTransaction tran = (GemFireTransaction)lcc
           .getTransactionExecute();
-      if (tran != null && tran.state != ACTIVE) {
+      if (tran != null && ((TXManagerImpl.getCurrentSnapshotTXState() != null) || tran.state != ACTIVE)) {
         try {
           tran.setActiveStateForTransaction();
         } catch (StandardException se) {
