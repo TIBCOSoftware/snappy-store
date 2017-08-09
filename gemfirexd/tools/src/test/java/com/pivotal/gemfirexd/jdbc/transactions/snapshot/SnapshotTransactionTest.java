@@ -2,6 +2,7 @@ package com.pivotal.gemfirexd.jdbc.transactions.snapshot;
 
 import java.io.IOException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -43,13 +44,13 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
   @Override
   protected void setUp() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
     super.setUp();
   }
 
   @Override
   public void tearDown() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
     super.tearDown();
   }
 
@@ -95,11 +96,12 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
   }
 
   // Currently autcommit is disabled
-  public void _testBatchInsertAutoCommitWithConflict() throws Exception {
+  public void testBatchInsertAutoCommitWithConflict() throws Exception {
     Connection conn= getConnection();
     Statement st = conn.createStatement();
-    st.execute("Create table tran.t1 (c1 int not null , c2 int not null, primary key(c1))" +
-        " replicate persistent enable concurrency checks"+getSuffix());
+
+    st.execute("Create table tran.t1 (c1 int not null , c2 int not null, primary key(c1)) partition by column(c1) buckets 7 redundancy 1" +
+        "  persistent enable concurrency checks"+getSuffix());
     String stmtString = "";
     for (int i = 0; i < 5; i++) {
       stmtString = "insert into tran.t1"  + " values(" + i + "," + i + ")";
@@ -107,14 +109,14 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     }
     st.executeBatch();
 
-    for (int i = 4; i < 10; i++) {
+    for (int i = 9; i >4 ; i--) {
       stmtString = "insert into tran.t1"  + " values(" + i + "," + i + ")";
       st.addBatch(stmtString);
     }
     try {
       st.executeBatch();
     } catch (Exception e) {
-      //e.printStackTrace();
+      e.printStackTrace();
       // will get primary key exception
     }
     Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
@@ -123,11 +125,12 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     while (rs.next()) {
       numRows++;
     }
-    assertEquals("ResultSet should contain two rows ", 5, numRows);
+    //execute batch with autocommit commits one by one
+    assertEquals("ResultSet should contain 10 rows ", 10, numRows);
     Misc.getGemFireCache().getCacheTransactionManager().commit();
 
     Region r = Misc.getRegionForTable("TRAN.T1", true);
-    assert (r.size() == 5);
+    assert (r.size() == 10);
   }
 
   //auto commit is disabled.
@@ -218,6 +221,56 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     st.close();
     conn.close();
   }
+
+
+  public void testDeleteCommitSnapshot() throws Exception {
+    Connection conn= getConnection();
+    Statement st = conn.createStatement();
+    st.execute("Create table t1 (c1 int not null , c2 int not null, c3 bigint generated always as identity) partition by column(c3) "+getSuffix());
+    conn.commit();
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    for(int i=0;i<1000;i++)
+      st.execute("insert into t1 (c1, c2) values (" + i + " ," +i +")");
+
+    conn.commit();
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    ResultSet rs = st.executeQuery("Select * from t1 ");
+    int numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain 1000 row ", 1000, numRows);
+    conn.commit();
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+
+    for(int i=0; i < 500; i++) {
+      Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      st.execute("delete from t1 where c1 = " + i);
+      conn.commit();
+      Misc.getGemFireCache().getCacheTransactionManager().commit();
+    }
+
+    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+     rs = st.executeQuery("Select * from t1 ");
+     numRows = 0;
+    while (rs.next()) {
+      numRows++;
+    }
+    assertEquals("ResultSet should contain 500 row ", 500, numRows);
+    conn.commit();
+    Misc.getGemFireCache().getCacheTransactionManager().commit();
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    conn.close();
+  }
+
 
   //index test not valid
   public void _testAutoCommitWithIndex() throws Exception {
@@ -929,6 +982,28 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     }
     assertEquals("ResultSet should contain two row ", 2, numRows);
     //assert that old value is returned
+  }
+
+  public void testSnapshotAgainstPrepStmt() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    st.execute("Create table tran.t1 (c1 int not null , c2 int not null, "
+        + "primary key(c1)) partition by column (c1) enable concurrency checks " + getSuffix());
+
+    //conn.commit();
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    st.execute("insert into tran.t1 values (10, 1)");
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+
+
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    Statement st2 = conn.createStatement();
+    //String sql =
+    st.executeQuery("select * from tran.t1");
+    //PreparedStatement pst = conn.prepareStatement(sql);
+    //pst.executeQuery();
+    GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
   }
 
   public void _testSnapshotAgainstMultipleTable() throws Exception {
@@ -1723,7 +1798,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
 
   // only insert operations to ignore
-  public void SURtestReadSnapshotOnPartitionedTableInConcurrency() throws Exception {
+  public void _testReadSnapshotOnPartitionedTableInConcurrency() throws Exception {
     Connection conn = getConnection();
     GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
     Statement st = conn.createStatement();

@@ -20,6 +20,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.concurrent.Callable;
@@ -53,11 +54,11 @@ public class MVCCDUnit extends DistributedSQLTestBase {
 
   @Override
   public void setUp() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
     invokeInEveryVM(new SerializableRunnable() {
       @Override
       public void run() {
-        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
       }
     });
     super.setUp();
@@ -65,11 +66,11 @@ public class MVCCDUnit extends DistributedSQLTestBase {
 
   @Override
   public void tearDown2() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
     invokeInEveryVM(new SerializableRunnable() {
       @Override
       public void run() {
-        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
       }
     });
     super.tearDown2();
@@ -1146,8 +1147,206 @@ public class MVCCDUnit extends DistributedSQLTestBase {
         return true;
       }
     });
+  }
 
+  // test for default jdbc snapshot insert
 
+  public void testDefaultJDBCSnapshotInsert() throws Exception {
+    final Exception[] exception = new Exception[1];
+    startVMs(1, 2);
+    Properties props = new Properties();
+    final Connection conn = TestUtil.getConnection(props);
+    clientSQLExecute(1, "create table " + regionName + " (intcol int not null, text varchar" +
+        "(100) not null) partition by column(intcol)  buckets 7 redundancy 1 persistent enable concurrency checks");
 
+    VM server1 = this.serverVMs.get(0);
+    VM server2 = this.serverVMs.get(1);
+    server1.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        TXManagerImpl txMgr = GemFireCacheImpl.getExisting()
+            .getCacheTransactionManager();
+        txMgr.setObserver(new TransactionObserverAdapter() {
+          Object lock1 = new Object();
+          Object lock2 = new Object();
+          volatile boolean alreadyWaiting= false;
+          @Override
+          public void duringIndividualCommit(TXStateProxy tx,
+              Object callbackArg) {
+
+            if (callbackArg == "test") {
+              synchronized (lock1) {
+                lock1.notify();
+              }
+              return;
+            }
+            if(!alreadyWaiting) {
+              alreadyWaiting = true;
+              try {
+                synchronized (lock1) {
+                  lock1.wait();
+                }
+              } catch (InterruptedException ie) {
+                // ignore
+              }
+            }
+          }
+
+          public void notifyCommit() {
+            synchronized (lock1) {
+              lock1.notify();
+            }
+          }
+        });
+      }
+    });
+
+    server2.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        TXManagerImpl txMgr = GemFireCacheImpl.getExisting()
+            .getCacheTransactionManager();
+        txMgr.setObserver(new TransactionObserverAdapter() {
+          Object lock1 = new Object();
+          Object lock2 = new Object();
+          volatile boolean alreadyWaiting= false;
+
+          @Override
+          public void duringIndividualCommit(TXStateProxy tx,
+              Object callbackArg) {
+
+            if (callbackArg == "test") {
+              synchronized (lock1) {
+                lock1.notify();
+              }
+              return;
+            }
+            // don't wait for read commit/ otherwise deadlock.
+            if(!alreadyWaiting) {
+              alreadyWaiting = true;
+              try {
+                synchronized (lock1) {
+                  lock1.wait();
+                }
+              } catch (InterruptedException ie) {
+                // ignore
+              }
+            }
+          }
+
+          public void notifyCommit() {
+            synchronized (lock1) {
+              lock1.notify();
+            }
+          }
+        });
+      }
+    });
+
+    Thread t = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          final Connection conn = TestUtil.getConnection();
+          Statement stmt = conn.createStatement();
+          for (int i = 0; i < 5; i++) {
+            String stmtString = "insert into " + regionName + " values(" + i + ",'test" + i + "')";
+            stmt.addBatch(stmtString);
+          }
+          stmt.executeBatch();
+        } catch (Exception e) {
+          exception[0] = e;
+          e.printStackTrace();
+        }
+      }
+    });
+    t.start();
+    Thread.sleep(1000);
+
+    server1.invoke(
+        new SerializableRunnable() {
+          @Override
+          public void run() {
+            try {
+              Connection conn2 = TestUtil.getConnection();
+              Statement stmt2 = conn2.createStatement();
+              ResultSet rs = stmt2.executeQuery("select * from " + regionName);
+              assert (!rs.next());
+            } catch (Exception e) {
+              exception[0] = e;
+              e.printStackTrace();
+            }
+          }
+        });
+    server2.invoke(
+        new SerializableRunnable() {
+          @Override
+          public void run() {
+            try {
+              Connection conn2 = TestUtil.getConnection();
+              Statement stmt2 = conn2.createStatement();
+              ResultSet rs = stmt2.executeQuery("select * from " + regionName);
+              assert (!rs.next());
+            } catch (Exception e) {
+              exception[0] = e;
+              e.printStackTrace();
+            }
+          }
+        });
+
+    server1.invoke(
+        new SerializableRunnable() {
+          @Override
+          public void run() {
+            try {
+              Collection<TXStateProxy> proxies = Misc.getGemFireCache().getCacheTransactionManager().getHostedTransactionsInProgress();
+              for (TXStateProxy tx : proxies) {
+                if (tx.isSnapshot()) {
+                  final TransactionObserver observer = tx.getObserver();
+                  observer.duringIndividualCommit(tx, "test");
+                }
+              }
+            } catch (Exception e) {
+              exception[0] = e;
+            }
+          }
+        });
+
+    server2.invoke(
+        new SerializableRunnable() {
+          @Override
+          public void run() {
+            try {
+              Collection<TXStateProxy> proxies = Misc.getGemFireCache().getCacheTransactionManager().getHostedTransactionsInProgress();
+              for (TXStateProxy tx : proxies) {
+                if (tx.isSnapshot()) {
+                  final TransactionObserver observer = tx.getObserver();
+                  observer.duringIndividualCommit(tx, "test");
+                }
+              }
+            } catch (Exception e) {
+              exception[0] = e;
+            }
+          }
+        });
+
+    t.join();
+
+    try {
+      Statement stmt2 = conn.createStatement();
+      ResultSet rs = stmt2.executeQuery("select * from " + regionName);
+      int num = 0;
+      while (rs.next()) {
+        num++;
+      }
+      assertTrue(num == 5);
+
+    } catch (Exception e) {
+      exception[0] = e;
+      e.printStackTrace();
+    }
+    if (exception[0] != null) {
+      throw exception[0];
+    }
   }
 }

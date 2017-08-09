@@ -407,15 +407,16 @@ public class MemHeapScanController implements MemScanController, RowCountable,
         restoreBatching = this.localTXState.getProxy().remoteBatching(true);
       }
     }
-    else if (Misc.getGemFireCache().snapshotEnabled()) {
+    else if (this.gfContainer.isRowBuffer() ||
+        (region.getCache().snapshotEnabledForTest() && region.getConcurrencyChecksEnabled())) {
+
       // Start snapshot tx only for read operations.but not for read_only mode
-      boolean forReadOnly = (this.openMode & GfxdConstants
-          .SCAN_OPENMODE_FOR_READONLY_LOCK) != 0;
+      //boolean forReadOnly = (this.openMode & GfxdConstants
+      //    .SCAN_OPENMODE_FOR_READONLY_LOCK) != 0;
       if (region.getConcurrencyChecksEnabled() &&
-          region.getCache().snapshotEnabled() &&
           (region.getCache().getCacheTransactionManager().getTXState() == null)
-          && (this.forUpdate == 0)
-          && !forReadOnly) {
+          /*&& (this.forUpdate == 0)*/
+          /*&& !forReadOnly*/) {
 
         if (GemFireXDUtils.TraceQuery) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -565,7 +566,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
       // clear the txState so that other thread local is cleared.
       TXManagerImpl.getOrCreateTXContext().clearTXState();
       // gemfire tx shouldn't be cleared in case of row buffer scan
-      if (!(this.getGemFireContainer().isRowBuffer() && lcc.isSkipConstraintChecks())) {
+      if (!(this.getGemFireContainer().isRowBuffer() /*&& lcc.isSkipConstraintChecks()*/)) {
         if (GemFireXDUtils.TraceQuery) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
               "MemHeapScanController::positionAtInitScan bucketSet: " + " lcc.isSkipConstraintChecks " + lcc.isSkipConstraintChecks() +

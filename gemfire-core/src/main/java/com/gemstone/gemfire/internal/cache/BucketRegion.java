@@ -3387,4 +3387,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     
   }
 
+  @Override
+  public boolean isSnapshotEnabledRegion() {
+    // concurrency checks is by default true in column table
+    return super.isSnapshotEnabledRegion() ||
+        (getPartitionedRegion().needsBatching() || getPartitionedRegion().columnTable());
+
+  }
+
 }

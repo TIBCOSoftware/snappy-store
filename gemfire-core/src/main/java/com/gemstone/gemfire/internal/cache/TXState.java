@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
@@ -401,7 +400,7 @@ public final class TXState implements TXStateInterface {
 
     // We don't know the semantics for RR, so ideally there shouldn't be snapshot for it.
     // Need to disable it.
-    if (getCache().snapshotEnabled() && (isSnapshot() || getCache().snapshotEnabledForTX())) {
+    if (isSnapshot() && getCache().snapshotEnabled()) {
       takeSnapshot();
     } else {
       this.snapshot = null;
@@ -1151,7 +1150,7 @@ public final class TXState implements TXStateInterface {
     final LogWriterI18n logger = getTxMgr().getLogger();
     // No need to check for snapshot if we want to enable it for RC.
     if (cache.snapshotEnabled()) {
-      if (isSnapshot() || cache.snapshotEnabledForTX()) {
+      if (isSnapshot() || cache.snapshotEnabledForTest()) {
         // first take a lock at cache level so that we don't go into deadlock or sort array before
         // This is for tx RC, for snapshot just record all the versions from the queue
         //TODO: this is performance issue: Need to make the lock granular at region level.
@@ -3973,7 +3972,7 @@ public final class TXState implements TXStateInterface {
   }
 
   private boolean shouldGetOldEntry(LocalRegion region) {
-    return (region.getCache().snapshotEnabled() && (isSnapshot() || region.getCache().snapshotEnabledForTX()));
+    return region.isSnapshotEnabledRegion();
   }
 
   // Writer should add old entry with tombstone with region version in the common map

@@ -224,8 +224,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   public boolean DEFAULT_SNAPSHOT_ENABLED = SystemProperties.getServerInstance().getBoolean(
       "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", false);
 
-  private final boolean DEFAULT_SNAPSHOT_ENABLED_TX = SystemProperties.getServerInstance().getBoolean(
-      "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TX", false);
+  private final boolean DEFAULT_SNAPSHOT_ENABLED_TEST = SystemProperties.getServerInstance().getBoolean(
+      "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", false);
 
   /**
    * Property set to true if resource manager heap percentage is set and query monitor is required
@@ -1423,12 +1423,12 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   public boolean snapshotEnabled() {
     // if rowstore return false
     // if snappy return true
-    return DEFAULT_SNAPSHOT_ENABLED;
+    return snapshotEnabledForTest() || DEFAULT_SNAPSHOT_ENABLED;
   }
 
-  public boolean snapshotEnabledForTX() {
+  public boolean snapshotEnabledForTest() {
     // snapshot should be enabled and if LockingPolicy is RC/RR then it should not be disabled
-    return snapshotEnabled() &&  DEFAULT_SNAPSHOT_ENABLED_TX;
+    return DEFAULT_SNAPSHOT_ENABLED_TEST;
   }
 
   // currently it will wait for a long time
