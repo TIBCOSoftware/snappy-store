@@ -57,9 +57,11 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   private Iterator<ValueRow> execRows;
   private DataTypeDescriptor[] dtds;
   private boolean hasMetadata;
+  private boolean isUpdateOrDelete;
 
-  public SnappyResultHolder(SparkSQLExecute exec) {
+  public SnappyResultHolder(SparkSQLExecute exec, Boolean isUpdateOrDelete) {
     this.exec = exec;
+    this.isUpdateOrDelete = isUpdateOrDelete;
   }
 
   /** for deserialization */
@@ -153,15 +155,23 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   }
 
   private void makeTemplateDVDArr() {
-    dtds = new DataTypeDescriptor[colTypes.length];
-    DataValueDescriptor[] dvds = new DataValueDescriptor[colTypes.length];
-    for (int i = 0; i < colTypes.length; i++) {
-      int typeId = colTypes[i];
-      DataValueDescriptor dvd = getNewNullDVD(typeId, i, dtds,
-          precisions[i], scales[i]);
-      dvds[i] = dvd;
+    if (this.isUpdateOrDelete) {
+      DataValueDescriptor[] dvds = new DataValueDescriptor[1];
+      dvds[0] = new SQLInteger();
+      dtds = new DataTypeDescriptor[1];
+      dtds[0] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.INTEGER, false);
+      this.templateDVDRow = dvds;
+    } else {
+      dtds = new DataTypeDescriptor[colTypes.length];
+      DataValueDescriptor[] dvds = new DataValueDescriptor[colTypes.length];
+      for (int i = 0; i < colTypes.length; i++) {
+        int typeId = colTypes[i];
+        DataValueDescriptor dvd = getNewNullDVD(typeId, i, dtds,
+            precisions[i], scales[i]);
+        dvds[i] = dvd;
+      }
+      this.templateDVDRow = dvds;
     }
-    this.templateDVDRow = dvds;
   }
 
   public String[] getColumnNames() {

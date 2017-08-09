@@ -101,7 +101,6 @@ import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
-import org.apache.commons.lang.exception.ExceptionUtils;
 
 //GemStone changes BEGIN
 
@@ -230,12 +229,12 @@ public class GenericStatement
 	}
 
 	// GemStone changes BEGIN
-	private GenericPreparedStatement getPreparedStatementForSnappy(
-			boolean commitNestedTransaction, StatementContext statementContext,
-			LanguageConnectionContext lcc, boolean isDDL,
-			boolean checkCancellation) throws StandardException {
+	private GenericPreparedStatement getPreparedStatementForSnappy(boolean commitNestedTransaction,
+			StatementContext statementContext, LanguageConnectionContext lcc, boolean isDDL,
+			boolean checkCancellation, boolean isUpdateOrDelete) throws StandardException {
       GenericPreparedStatement gps = preparedStmt;
-      GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL, isPreparedStatement() && !isDDL);
+      GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL, isPreparedStatement() && !isDDL,
+          isUpdateOrDelete);
       gps.setActivationClass(ac);
       gps.incrementVersionCounter();
       gps.makeValid();
@@ -248,8 +247,8 @@ public class GenericStatement
 
      if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-          "GenericStatement.getPreparedStatementForSnappy: Created SnappyActivation for sql: " + this.getSource()
-           + " ,isDDL=" + isDDL);
+          "GenericStatement.getPreparedStatementForSnappy: Created SnappyActivation for sql: " +
+              this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDelete=" + isUpdateOrDelete);
 	 }
      if (checkCancellation) {
        Misc.checkMemory(thresholdListener, statementText, -1);
@@ -608,7 +607,7 @@ public class GenericStatement
 						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc,
-                  cc.isMarkedAsDDLForSnappyUse(), checkCancellation);
+                  cc.isMarkedAsDDLForSnappyUse(), checkCancellation, false);
 						}
 					}
 					qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
@@ -620,7 +619,7 @@ public class GenericStatement
               cc.markAsDDLForSnappyUse(true);
             }
             return getPreparedStatementForSnappy(false, statementContext, lcc,
-                cc.isMarkedAsDDLForSnappyUse(), checkCancellation);
+                cc.isMarkedAsDDLForSnappyUse(), checkCancellation, false);
           }
           throw ex;
 				}
@@ -633,7 +632,7 @@ public class GenericStatement
                                      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                    }
 				    return getPreparedStatementForSnappy(false, statementContext, lcc, true,
-                checkCancellation);
+                checkCancellation, false);
 				}
 				//GemStone changes END
 				parseTime = getCurrentTimeMillis(lcc);
@@ -704,7 +703,7 @@ public class GenericStatement
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                  checkCancellation);
+                  checkCancellation, false);
 						}
 						throw ex;
 					}
@@ -773,7 +772,7 @@ public class GenericStatement
                                                          observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                        }
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                  checkCancellation);
+                  checkCancellation, false);
 						}
 						throw ex;
 					}
@@ -812,18 +811,14 @@ public class GenericStatement
                                             if (cc.getExecutionEngine() == ExecutionEngine.SPARK
                                                 || engineArbiter.getExecutionEngine((DMLQueryInfo)qinfo) == ExecutionEngine.SPARK
                                                 /*|| engineArbiter.getExecutionEngine(qt, this, routeQuery) == ExecutionEngine.SPARK*/) {
-                                              if (qinfo.isSelect()) {
+                                              boolean isUpdateOrDelete = qinfo.isUpdate() || qinfo.isDelete();
+                                              if (qinfo.isSelect() || isUpdateOrDelete) {
                                                 if (observer != null) {
                                                   observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
                                                 }
                                                 return getPreparedStatementForSnappy(true,
-                                                    statementContext, lcc, false, checkCancellation);
-
-                                              } else if (qinfo.isUpdate() || qinfo.isDelete()) {
-                                                // Temporarily using the below sqlstate as this unsupported operation
-                                                // will be supported soon in future
-                                                throw StandardException.newException(SQLState.LANG_INVALID_OPERATION_ON_VIEW,
-                                                    "UPDATE/DELETE (Column Table) ", qinfo.getFullTableName());
+                                                    statementContext, lcc, false,
+                                                    checkCancellation, isUpdateOrDelete);
                                               }
                                             }
                                           }
@@ -933,7 +928,7 @@ public class GenericStatement
               observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
             }
             return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                checkCancellation);
+                checkCancellation, false);
           }
 // GemStone changes END
 					lcc.commitNestedTransaction();
