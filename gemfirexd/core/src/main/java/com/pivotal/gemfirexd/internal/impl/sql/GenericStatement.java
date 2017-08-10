@@ -806,7 +806,7 @@ public class GenericStatement
                                           // Only rerouting selects to lead node. Inserts will be handled separately.
                                           // The below should be connection specific.
                                           if ((routeQuery && qinfo != null && qinfo.isDML()
-                                              && !isPreparedStatement() && cc.getExecutionEngine() != ExecutionEngine.STORE)) {
+                                              && cc.getExecutionEngine() != ExecutionEngine.STORE)) {
                                             // order is important. cost should be last criteria
                                             if (cc.getExecutionEngine() == ExecutionEngine.SPARK
                                                 || engineArbiter.getExecutionEngine((DMLQueryInfo)qinfo) == ExecutionEngine.SPARK
