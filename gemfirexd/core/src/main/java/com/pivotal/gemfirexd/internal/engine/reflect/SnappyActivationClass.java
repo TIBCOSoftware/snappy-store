@@ -17,8 +17,6 @@
 
 package com.pivotal.gemfirexd.internal.engine.reflect;
 
-import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.PrepStatementSnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.loader.GeneratedClass;

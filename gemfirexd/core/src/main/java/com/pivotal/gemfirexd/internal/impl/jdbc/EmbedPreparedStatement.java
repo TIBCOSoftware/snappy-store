@@ -69,7 +69,6 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.PrepStatementSnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.BrokeredConnectionControl;
@@ -1339,7 +1338,7 @@ public abstract class EmbedPreparedStatement
 					}
 				}
 
-				if (rMetaData == null && !(a instanceof SnappyActivation || a instanceof PrepStatementSnappyActivation))
+				if (rMetaData == null && !(a instanceof SnappyActivation))
 				{
 					Activation act = null;
 					if (this.getActivation() != null) {
@@ -1349,7 +1348,7 @@ public abstract class EmbedPreparedStatement
 							act = this.getActivation();
 						}
 					}
-					if (act instanceof PrepStatementSnappyActivation || act instanceof  SnappyActivation) {
+					if (act instanceof  SnappyActivation) {
 						rMetaData = null;
 					} else {
 						ResultDescription resd = preparedStatement.getResultDescription();
