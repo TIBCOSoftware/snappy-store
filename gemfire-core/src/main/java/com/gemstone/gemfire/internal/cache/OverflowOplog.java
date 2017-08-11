@@ -1444,9 +1444,9 @@ class OverflowOplog implements CompactableOplog {
           buffer.limit(byteLength);
         }
       }
-  // rewind the incoming buffer back to the start
-  if (position == 0) buffer.rewind();
-  else buffer.position(position);
+      // rewind the incoming buffer back to the start
+      if (position == 0) buffer.rewind();
+      else buffer.position(position);
   }
 
     public void initialize(DiskEntry.Helper.ValueWrapper value,
