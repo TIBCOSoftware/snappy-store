@@ -621,7 +621,6 @@ public abstract class FabricServiceImpl implements FabricService {
       this.serverstatus = State.RUNNING;
       // if started from command-line then change the status in the file too
       notifyRunningInLauncher();
-
     }
     this.previousServerStatus = State.UNINITIALIZED;
   }
