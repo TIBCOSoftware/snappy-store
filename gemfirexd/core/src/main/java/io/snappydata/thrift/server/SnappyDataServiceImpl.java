@@ -1716,7 +1716,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       checkSystemFailure(t);
       throw SnappyException(t);
     } finally {
-      if (conn != null && attrs.isSetBucketIds()) {
+      if (conn != null && attrs != null && attrs.isSetBucketIds()) {
         conn.getLanguageConnectionContext().setExecuteLocally(
             null, null, false, null);
       }
@@ -1812,7 +1812,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (stmt != null && sqls != null && sqls.size() > 1) {
         stmt.forceClearBatch();
       }
-      if (conn != null && attrs.isSetBucketIds()) {
+      if (conn != null && attrs != null && attrs.isSetBucketIds()) {
         conn.getLanguageConnectionContext().setExecuteLocally(
             null, null, false, null);
       }
@@ -1868,7 +1868,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       checkSystemFailure(t);
       throw SnappyException(t);
     } finally {
-      if (conn != null && attrs.isSetBucketIds()) {
+      if (conn != null && (attrs != null && attrs.isSetBucketIds())) {
         conn.getLanguageConnectionContext().setExecuteLocally(
             null, null, false, null);
       }
@@ -2418,7 +2418,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         connHolder.clearActiveStatement(pstmt);
       }
-      if (conn != null && attrs.isSetBucketIds()) {
+      if (conn != null && attrs != null && attrs.isSetBucketIds()) {
         conn.getLanguageConnectionContext().setExecuteLocally(
             null, null, false, null);
       }
@@ -2491,7 +2491,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         connHolder.clearActiveStatement(pstmt);
       }
-      if (conn != null && attrs.isSetBucketIds()) {
+      if (conn != null && attrs != null && attrs.isSetBucketIds()) {
         conn.getLanguageConnectionContext().setExecuteLocally(
             null, null, false, null);
       }
@@ -2549,7 +2549,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         connHolder.clearActiveStatement(pstmt);
       }
-      if (conn != null && attrs.isSetBucketIds()) {
+      if (conn != null && attrs != null && attrs.isSetBucketIds()) {
         conn.getLanguageConnectionContext().setExecuteLocally(
             null, null, false, null);
       }
@@ -2627,7 +2627,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         connHolder.clearActiveStatement(pstmt);
       }
-      if (conn != null && attrs.isSetBucketIds()) {
+      if (conn != null && attrs != null && attrs.isSetBucketIds()) {
         conn.getLanguageConnectionContext().setExecuteLocally(
             null, null, false, null);
       }

@@ -1407,7 +1407,8 @@ class OverflowOplog implements CompactableOplog {
       this.value = null;
     }
 
-    private void write(ByteBuffer buffer) throws IOException {
+    private void write(ByteBuffer buffer, final int byteLength) throws IOException {
+      final int position = buffer.position();
       ByteBuffer bb = getOLF().writeBuf;
       if (!this.value.buffer.writeSerializationHeader(buffer, bb)) {
         flush();
@@ -1439,8 +1440,13 @@ class OverflowOplog implements CompactableOplog {
         bb.put(buffer);
         if (needsFlush) {
           flush();
+          // restore the limit to original
+          buffer.limit(byteLength);
         }
       }
+      // rewind the incoming buffer back to the start
+      if (position == 0) buffer.rewind();
+      else buffer.position(position);
     }
 
     public void initialize(DiskEntry.Helper.ValueWrapper value,
@@ -1460,7 +1466,7 @@ class OverflowOplog implements CompactableOplog {
       int valueLength = 0;
       if (this.needsValue && (valueLength = this.value.size()) > 0) {
         try {
-          write(this.value.getBufferRetain());
+          write(this.value.getBufferRetain(), valueLength);
         } finally {
           this.value.release();
           // done with value so clear it immediately

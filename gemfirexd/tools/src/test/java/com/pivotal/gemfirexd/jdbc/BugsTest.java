@@ -107,7 +107,7 @@ public class BugsTest extends JdbcTestBase {
     super(name);
   }
 
-  public void testGEMXD_3_TMG16663_IndexRecoveryNPE() throws Exception {
+  public void testGEMXD_3_IndexRecoveryNPE() throws Exception {
     Connection conn = TestUtil.getConnection();
     Statement st = conn.createStatement();
     st.execute("Create table ODS.POSTAL_ADDRESS("
