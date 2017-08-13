@@ -5846,7 +5846,7 @@ public abstract class EmbedResultSet extends ConnectionChild
     public final boolean isNull(int columnIndex) throws SQLException {
         try {
             this.isValid(columnIndex);
-            return this.currentRow.isNull(columnIndex) !=
+            return this.currentRow.isNull(columnIndex) ==
                 RowFormatter.OFFSET_AND_WIDTH_IS_NULL;
             /* (original code)
             DataValueDescriptor dvd = getColumn(columnIndex);
