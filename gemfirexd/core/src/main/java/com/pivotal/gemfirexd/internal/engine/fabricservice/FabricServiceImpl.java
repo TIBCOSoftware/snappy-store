@@ -629,7 +629,7 @@ public abstract class FabricServiceImpl implements FabricService {
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public final void notifyRunning() {
+  public void notifyRunning() {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
           "Accepting RUNNING notification");
