@@ -1072,11 +1072,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
           this.bufferAllocator = (DirectBufferAllocator)method.invoke(null);
         } catch (ClassNotFoundException e) {
           throw new IllegalArgumentException("The property memory-size is not supported in SnappyData OSS version.");
-        } catch (NoSuchMethodException e) {
-          throw new IllegalStateException("Could not configure buffer allocator.", e);
-        } catch (IllegalAccessException e) {
-          throw new IllegalStateException("Could not configure buffer allocator.", e);
-        } catch (InvocationTargetException e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
           throw new IllegalStateException("Could not configure buffer allocator.", e);
         }
       } else {

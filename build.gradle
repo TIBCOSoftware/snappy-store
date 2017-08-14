@@ -59,7 +59,7 @@ allprojects {
     derbyVersion = '10.12.1.1'
     hbaseVersion = '0.98.17-hadoop2'
     guavaVersion = '14.0.1'
-    nettyAllVersion = '4.0.29.Final'
+    nettyAllVersion = '4.0.42.Final'
     jlineVersion = '2.14.2'
     //hbaseVersion = '0.94.4-gemfire-r45047'
     //hadoopVersion = '2.2.0-gphd-3.1.0.0'
