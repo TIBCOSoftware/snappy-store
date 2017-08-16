@@ -778,7 +778,7 @@ RETRYLOOP:
       } finally {
         releaseWriteLock();
         // This means rehash has happened
-        if(oldCapacity > 0 && oldCapacity < MAXIMUM_CAPACITY){
+        if (oldCapacity > 0 && oldCapacity < MAXIMUM_CAPACITY) {
           accountMapOverhead(oldCapacity);
         }
       }
@@ -879,7 +879,7 @@ RETRYLOOP:
       } finally {
         releaseWriteLock();
         // This means rehash has happened
-        if(oldCapacity > 0 && oldCapacity < MAXIMUM_CAPACITY){
+        if (oldCapacity > 0 && oldCapacity < MAXIMUM_CAPACITY) {
           accountMapOverhead(oldCapacity);
         }
       }
