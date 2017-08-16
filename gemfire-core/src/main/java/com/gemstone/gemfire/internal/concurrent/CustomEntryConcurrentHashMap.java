@@ -746,10 +746,11 @@ RETRYLOOP:
     final V put(final K key, final int hash, final V value,
         final boolean onlyIfAbsent) {
       attemptWriteLock(-1);
+      int oldCapacity = -1;
       try {
         int c = this.count;
         if (c++ > this.threshold) {
-          rehash();
+          oldCapacity = rehash();
         }
         final HashEntry<K, V>[] tab = this.table;
         final int index = hash & (tab.length - 1);
@@ -776,6 +777,10 @@ RETRYLOOP:
         return oldValue;
       } finally {
         releaseWriteLock();
+        // This means rehash has happened
+        if(oldCapacity > 0 && oldCapacity < MAXIMUM_CAPACITY){
+          accountMapOverhead(oldCapacity);
+        }
       }
     }
 
@@ -784,6 +789,7 @@ RETRYLOOP:
     final <C, P> V create(final K key, final int hash,
         final MapCallback<K, V, C, P> valueCreator, final C context,
         final P createParams, final boolean lockForRead) {
+      int oldCapacity = -1;
       // TODO: This can be optimized by having a special lock implementation
       // that will allow upgrade from read to write lock atomically. This can
       // cause a deadlock if two readers try to simultaneously upgrade, so the
@@ -820,7 +826,7 @@ RETRYLOOP:
       try {
         int c = this.count;
         if (c++ > this.threshold) {
-          rehash();
+          oldCapacity = rehash();
         }
         final HashEntry<K, V>[] tab = this.table;
         final int index = hash & (tab.length - 1);
@@ -872,6 +878,10 @@ RETRYLOOP:
         }
       } finally {
         releaseWriteLock();
+        // This means rehash has happened
+        if(oldCapacity > 0 && oldCapacity < MAXIMUM_CAPACITY){
+          accountMapOverhead(oldCapacity);
+        }
       }
     }
 
@@ -906,24 +916,26 @@ RETRYLOOP:
           null, true, false);
     }
 
-// End GemStone additions
-
-    final void rehash() {
-      final HashEntry<K, V>[] oldTable = this.table;
-      final int oldCapacity = oldTable.length;
-      if (oldCapacity >= MAXIMUM_CAPACITY) {
-        return;
-      }
-
+    final void accountMapOverhead(int oldCapacity) {
       // update the acquired memory storage; this will always increase
       // monotonically. Not throwing any exception if memory could not be allocated from
       // memory manager as this is the last step of a region operation.
-      if (LocalRegion.regionPath.get() != null){
+      if (LocalRegion.regionPath.get() != null) {
         CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
             LocalRegion.regionPath.get(),
             oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE,
             null, true, false);
         LocalRegion.regionPath.remove();
+      }
+    }
+
+// End GemStone additions
+
+    final int rehash() {
+      final HashEntry<K, V>[] oldTable = this.table;
+      final int oldCapacity = oldTable.length;
+      if (oldCapacity >= MAXIMUM_CAPACITY) {
+        return oldCapacity;
       }
 
       /*
@@ -1024,6 +1036,7 @@ RETRYLOOP:
         }
       }
       this.table = newTable;
+      return oldCapacity;
     }
 
     /**
