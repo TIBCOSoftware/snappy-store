@@ -607,7 +607,9 @@ public class GenericStatement
 						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc,
-                  cc.isMarkedAsDDLForSnappyUse(), checkCancellation, false);
+                  cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
+                  (PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
+                      INSERT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches()));
 						}
 					}
 					qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);

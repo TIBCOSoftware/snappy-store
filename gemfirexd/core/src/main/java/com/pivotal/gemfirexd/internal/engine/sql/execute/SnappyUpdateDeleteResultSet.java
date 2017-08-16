@@ -40,7 +40,7 @@ public final class SnappyUpdateDeleteResultSet extends SnappySelectResultSet {
       rowCount = 0;
       try {
         ExecRow row;
-        while ((row = getNextRow()) != null) {
+        while ((row = getNextRow()) != null && row.nColumns() > 0) {
           rowCount += row.getLastColumn().getInt();
         }
       } catch (Exception ex) {
