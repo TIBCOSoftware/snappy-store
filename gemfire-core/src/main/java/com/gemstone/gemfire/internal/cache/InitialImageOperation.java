@@ -2237,7 +2237,7 @@ public class InitialImageOperation  {
 //          logger.fine("RequestImageMessage: wrapping up, sendFailureMessage = " 
 //              + sendFailureMessage);
 //        }
-        if (giiRegion != null && giiRegion instanceof BucketRegion) {
+        if (giiRegion instanceof BucketRegion) {
           ((BucketRegion)giiRegion).releaseSnapshotGIIWriteLock();
         }
         if (sendFailureMessage) {
