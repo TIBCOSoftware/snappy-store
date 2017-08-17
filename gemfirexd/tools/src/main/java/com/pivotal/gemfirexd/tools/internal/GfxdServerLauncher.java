@@ -709,6 +709,8 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
       vmArgs.add("-XX:+CMSClassUnloadingEnabled");
       vmArgs.add("-XX:-DontCompileHugeMethods");
+      // reduce the compile threshold for generated code of low latency jobs
+      vmArgs.add("-XX:CompileThreshold=2000");
       vmArgs.add("-XX:+UnlockDiagnosticVMOptions");
       vmArgs.add("-XX:ParGCCardsPerStrideChunk=4k");
     }

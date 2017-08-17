@@ -51,6 +51,7 @@ import com.gemstone.gemfire.internal.shared.ReverseListIterator;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import io.snappydata.ResultSetWithNull;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.ColumnValueConverter;
 import io.snappydata.thrift.common.Converters;
@@ -59,8 +60,9 @@ import io.snappydata.thrift.common.ThriftExceptionUtil;
 /**
  * Implementation of {@link ResultSet} for JDBC client.
  */
+@SuppressWarnings("WeakerAccess")
 public final class ClientResultSet extends ClientFetchColumnValue implements
-    ResultSet {
+    ResultSetWithNull {
 
   private final ClientStatement statement;
   private final StatementAttrs attrs;
@@ -362,6 +364,15 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     } finally {
       reset();
     }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final boolean isNull(int columnIndex) throws SQLException {
+    final Row currentRow = checkValidColumn(columnIndex);
+    return currentRow.isNull(columnIndex - 1);
   }
 
   /**
@@ -1325,6 +1336,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public int getType() throws SQLException {
     checkClosed();
 
+    // noinspection MagicConstant
     return Converters.getJdbcResultSetType(this.attrs.resultSetType);
   }
 
