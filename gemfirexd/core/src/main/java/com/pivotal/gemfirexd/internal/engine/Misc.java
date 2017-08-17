@@ -771,6 +771,12 @@ public abstract class Misc {
         "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.SERVER_AUTH_PROVIDER)));
   }
 
+  /* Returns true if LDAP Security is Enabled */
+  public static boolean checkAuthProviderProps(Properties props) {
+    return ("LDAP".equalsIgnoreCase(props.getProperty(Attribute.AUTH_PROVIDER, "")) ||
+        "LDAP".equalsIgnoreCase(props.getProperty(Attribute.SERVER_AUTH_PROVIDER, "")));
+  }
+
   // added by jing for processing the exception
   public static StandardException processFunctionException(String op,
       final Throwable thr, DistributedMember member, Region<?, ?> region) {
