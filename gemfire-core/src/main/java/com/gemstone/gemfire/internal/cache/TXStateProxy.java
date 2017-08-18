@@ -596,8 +596,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     this.isJCA = false;
     if (flags == null) {
       this.lockPolicy = LockingPolicy.fromIsolationLevel(isolationLevel, false);
-      this.enableBatching = (this.lockPolicy == LockingPolicy.SNAPSHOT)? false: ENABLE_BATCHING;
-      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT)?  true: false;
+      this.enableBatching = (this.lockPolicy != LockingPolicy.SNAPSHOT) && ENABLE_BATCHING;
+      this.syncCommits = this.lockPolicy == LockingPolicy.SNAPSHOT;
     }
     else {
       this.lockPolicy = LockingPolicy.fromIsolationLevel(isolationLevel,
@@ -606,10 +606,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         this.enableBatching = false;
       }
       else {
-        this.enableBatching = (this.lockPolicy == LockingPolicy.SNAPSHOT)? false: ENABLE_BATCHING;
+        this.enableBatching = (this.lockPolicy != LockingPolicy.SNAPSHOT) && ENABLE_BATCHING;
       }
-      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) ? true :
-          flags.contains(TransactionFlag.SYNC_COMMITS);
+      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) || flags.contains(TransactionFlag.SYNC_COMMITS);
     }
     this.inconsistentThr = null;
 

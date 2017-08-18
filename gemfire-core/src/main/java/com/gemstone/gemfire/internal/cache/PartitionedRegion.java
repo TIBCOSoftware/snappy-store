@@ -2542,6 +2542,8 @@ public class PartitionedRegion extends LocalRegion implements
     if (this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
       this.columnStoreTable = true;
       return true;
+    } else {
+      this.columnStoreTable = false;
     }
     return false;
   }
