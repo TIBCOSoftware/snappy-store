@@ -225,8 +225,6 @@ task createClassSizeCatalog {
 
 compileJava.dependsOn generatePropertiesFiles
 
-// TODO: SW: manifest generation, check previous GemFireXD.xml
-
 // external javadocs
 javadoc {
   include 'com/pivotal/gemfirexd/auth/callback/*.java'
