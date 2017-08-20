@@ -152,6 +152,11 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void logMemoryStats() {
     }
+
+    @Override
+    public boolean isEnterpriseEdition() {
+      return false;
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

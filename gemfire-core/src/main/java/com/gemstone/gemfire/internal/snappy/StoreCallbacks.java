@@ -102,4 +102,6 @@ public interface StoreCallbacks {
    * Log the used memory breakdown as maintained by the MemoryManager.
    */
   void logMemoryStats();
+
+  boolean isEnterpriseEdition();
 }

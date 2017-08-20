@@ -1065,13 +1065,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             callbacks.getStoragePoolSize(true);
       }
       this.memorySize = memorySize;
-      if (memorySize > 0) {
+      if (memorySize > 0 && CallbackFactoryProvider.getStoreCallbacks().isEnterpriseEdition()) {
         try {
           Class clazz = Class.forName("com.gemstone.gemfire.internal.cache.store.ManagedDirectBufferAllocator");
           Method method = clazz.getDeclaredMethod("instance");
           this.bufferAllocator = (DirectBufferAllocator)method.invoke(null);
         } catch (ClassNotFoundException e) {
-          throw new IllegalArgumentException("The property memory-size is not supported in SnappyData OSS version.");
+          throw new IllegalArgumentException("The property memory-size is not supported in " +
+              "SnappyData OSS version.");
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
           throw new IllegalStateException("Could not configure buffer allocator.", e);
         }
