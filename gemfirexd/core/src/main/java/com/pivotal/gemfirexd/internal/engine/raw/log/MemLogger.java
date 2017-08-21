@@ -20,6 +20,7 @@ package com.pivotal.gemfirexd.internal.engine.raw.log;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.internal.cache.Conflatable;
 import com.gemstone.gemfire.internal.cache.EventID;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -92,19 +93,42 @@ public class MemLogger implements Logger {
     MemOperation operation = null;
     try {
       if (this.doList != null) {
+        Throwable failure = null;
         for (int index = 0; index < this.doList.size(); ++index) {
           operation = this.doList.get(index);
-          operation.doMe(this.xact, null, null);
+          try {
+            operation.doMe(this.xact, null, null);
+          } catch (Throwable t) {
+            Error err;
+            if (t instanceof Error && SystemFailure.isJVMFailureError(
+                err = (Error)t)) {
+              SystemFailure.initiateFailure(err);
+              // If this ever returns, rethrow the error. We're poisoned
+              // now, so don't let this thread continue.
+              throw err;
+            }
+            // Whenever you catch Error or Throwable, you must also
+            // check for fatal JVM error (see above).  However, there is
+            // _still_ a possibility that you are dealing with a cascading
+            // error condition, so you also need to check to see if the JVM
+            // is still usable:
+            SystemFailure.checkFailure();
+
+            // move to next operation and record the failure
+            Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(t);
+            failure = t;
+          }
+        }
+        if (failure != null) {
+          if (failure instanceof StandardException) {
+            throw (StandardException)failure;
+          } else {
+            Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(failure);
+            throw StandardException.newException(SQLState.LOG_DO_ME_FAIL, failure,
+                operation);
+          }
         }
       }
-    } catch (StandardException e) {
-      throw e;
-    } catch (Exception e) {
-      if (GemFireXDUtils.nodeFailureException(e)) {
-        Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(e);
-      }
-      throw StandardException.newException(SQLState.LOG_DO_ME_FAIL, e,
-          operation);
     } finally {
       clear();
     }
@@ -187,15 +211,16 @@ public class MemLogger implements Logger {
    * operations are successful.
    * 
    */
-  public void undo(RawTransaction t, TransactionId undoId,
+  public void undo(RawTransaction tran, TransactionId undoId,
       LogInstant undoStopAt, LogInstant undoStartAt) throws StandardException {
     MemOperation operation = null;
     Compensation undo = null;
-    try {
-      if (this.undoList != null) {
-        for (int index = this.undoList.size() - 1; index >= 0; --index) {
-          operation = this.undoList.get(index);
-          undo = operation.generateUndo(t, null);
+    if (this.undoList != null) {
+      Throwable failure = null;
+      for (int index = this.undoList.size() - 1; index >= 0; --index) {
+        operation = this.undoList.get(index);
+        try {
+          undo = operation.generateUndo(tran, null);
           if (undo != null) {
             if (SanityManager.DEBUG) {
               if (GemFireXDUtils.TraceTran) {
@@ -204,18 +229,38 @@ public class MemLogger implements Logger {
                     + operation);
               }
             }
-            undo.doMe(t, null, null);
+            undo.doMe(tran, null, null);
           }
+        } catch (Throwable t) {
+          Error err;
+          if (t instanceof Error && SystemFailure.isJVMFailureError(
+              err = (Error)t)) {
+            SystemFailure.initiateFailure(err);
+            // If this ever returns, rethrow the error. We're poisoned
+            // now, so don't let this thread continue.
+            throw err;
+          }
+          // Whenever you catch Error or Throwable, you must also
+          // check for fatal JVM error (see above).  However, there is
+          // _still_ a possibility that you are dealing with a cascading
+          // error condition, so you also need to check to see if the JVM
+          // is still usable:
+          SystemFailure.checkFailure();
+
+          // move to next operation and record the failure
+          Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(t);
+          failure = t;
         }
       }
-    } catch (StandardException e) {
-      throw e;
-    } catch (Exception e) {
-      if (GemFireXDUtils.nodeFailureException(e)) {
-        Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(e);
+      if (failure != null) {
+        if (failure instanceof StandardException) {
+          throw (StandardException)failure;
+        } else {
+          Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(failure);
+          throw StandardException.newException(SQLState.LOG_UNDO_FAILED, failure, tran,
+              operation, undo);
+        }
       }
-      throw StandardException.newException(SQLState.LOG_UNDO_FAILED, e, t,
-          operation, undo);
     }
   }
 

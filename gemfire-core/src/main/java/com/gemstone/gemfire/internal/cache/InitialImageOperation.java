@@ -1969,9 +1969,11 @@ public class InitialImageOperation  {
       if (lclAbortTest) abortTest = false;
       logger.info(LocalizedStrings.DEBUG, "processing GII for "+regionPath);
       boolean sendFailureMessage = true;
+      DistributedRegion giiRegion = null;
       try {
         Assert.assertTrue(this.regionPath != null, "Region path is null.");
         final DistributedRegion rgn = (DistributedRegion)getGIIRegion(dm, this.regionPath, this.targetReinitialized);
+        giiRegion = rgn;
         if (rgn == null) {
           return;
         }
@@ -2184,9 +2186,7 @@ public class InitialImageOperation  {
             ((HARegion)rgn).endServingGIIRequest();
           }
           flowControl.unregister();
-          if (rgn instanceof BucketRegion) {
-            ((BucketRegion)rgn).releaseSnapshotGIIWriteLock();
-          }
+
         }
         // This should never happen in production code!!!!
         
@@ -2237,6 +2237,9 @@ public class InitialImageOperation  {
 //          logger.fine("RequestImageMessage: wrapping up, sendFailureMessage = " 
 //              + sendFailureMessage);
 //        }
+        if (giiRegion instanceof BucketRegion) {
+          ((BucketRegion)giiRegion).releaseSnapshotGIIWriteLock();
+        }
         if (sendFailureMessage) {
           // if we get here then send reply possibly with an exception
           ReplyException rex = null;

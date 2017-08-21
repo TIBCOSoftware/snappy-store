@@ -21,8 +21,6 @@
 
 package com.pivotal.gemfirexd.internal.engine.access;
 
-import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.GEMFIRE_TRANSACTION_BYTE_SOURCE;
-
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -48,7 +46,6 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -99,25 +96,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConglomerateDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
-import com.pivotal.gemfirexd.internal.iapi.store.access.AccessFactoryGlobals;
-import com.pivotal.gemfirexd.internal.iapi.store.access.BackingStoreHashtable;
-import com.pivotal.gemfirexd.internal.iapi.store.access.ColumnOrdering;
-import com.pivotal.gemfirexd.internal.iapi.store.access.ConglomerateController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.DatabaseInstant;
-import com.pivotal.gemfirexd.internal.iapi.store.access.DynamicCompiledOpenConglomInfo;
-import com.pivotal.gemfirexd.internal.iapi.store.access.FileResource;
-import com.pivotal.gemfirexd.internal.iapi.store.access.GroupFetchScanController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.Qualifier;
-import com.pivotal.gemfirexd.internal.iapi.store.access.RowLocationRetRowSource;
-import com.pivotal.gemfirexd.internal.iapi.store.access.RowSource;
-import com.pivotal.gemfirexd.internal.iapi.store.access.ScanController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.SortController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.SortCostController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.SortObserver;
-import com.pivotal.gemfirexd.internal.iapi.store.access.StaticCompiledOpenConglomInfo;
-import com.pivotal.gemfirexd.internal.iapi.store.access.StoreCostController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.XATransactionController;
+import com.pivotal.gemfirexd.internal.iapi.store.access.*;
 import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.Conglomerate;
 import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.MethodFactory;
 import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.ScanControllerRowSource;
@@ -125,15 +104,7 @@ import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.ScanManager
 import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.Sort;
 import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.SortFactory;
 import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.TransactionManager;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.Compensation;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.ContainerHandle;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.ContainerKey;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.GlobalTransactionId;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.LockingPolicy;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.Loggable;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.Page;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.StreamContainerHandle;
-import com.pivotal.gemfirexd.internal.iapi.store.raw.Transaction;
+import com.pivotal.gemfirexd.internal.iapi.store.raw.*;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.data.DataFactory;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.data.RawContainerHandle;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.log.LogFactory;
@@ -154,6 +125,8 @@ import com.pivotal.gemfirexd.internal.impl.store.raw.xact.TransactionTable;
 import com.pivotal.gemfirexd.internal.impl.store.raw.xact.XactId;
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+
+import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.GEMFIRE_TRANSACTION_BYTE_SOURCE;
 
 /**
  * This class implements a {@link TransactionManager} to control a transaction
@@ -3482,10 +3455,11 @@ public final class GemFireTransaction extends RawTransaction implements
 
   private boolean checkTXStateAgainstThreadLocal(final TXStateInterface myTX) {
     if (myTX != TXStateProxy.TX_NOT_SET && this.txManager != null) {
-      return myTX == TXManagerImpl.getCurrentTXState()
+      final TXStateInterface currentTX = TXManagerImpl.getCurrentTXState();
+      return myTX == currentTX
+          || (currentTX != null && !currentTX.isInProgress())
           || (myTX != null && !myTX.isInProgress());
-    }
-    else {
+    } else {
       return true;
     }
   }

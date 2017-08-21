@@ -163,6 +163,7 @@ public class NetAgent extends Agent {
             if (exceptionOpeningSocket_ == null) {
                 socket_.setTcpNoDelay(true); // disables nagles algorithm
 // GemStone changes BEGIN
+                socket_.setSoLinger(false, 0);
                 // now set below after getting the InputStream
                 /*
                 socket_.setKeepAlive(true); // PROTOCOL Manual: TCP/IP connection allocation rule #2
@@ -279,6 +280,7 @@ public class NetAgent extends Agent {
         // Set TCP/IP Socket Properties
         try {
             socket_.setSoTimeout(loginTimeout * 1000);
+            socket_.setSoLinger(false, 0);
         } catch (java.net.SocketException e) {
             try {
                 socket_.close();
@@ -334,6 +336,7 @@ public class NetAgent extends Agent {
 
           // Set TCP/IP Socket Properties
           socket_.setTcpNoDelay(true); // disables nagles algorithm
+          socket_.setSoLinger(false, 0);
           try {
             rawSocketInputStream_ = socket_.getInputStream();
             rawSocketOutputStream_ = socket_.getOutputStream();
