@@ -267,7 +267,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private final Object giiReadLockForSIOwner = new Object();
   private final Object giiWriteLockForSIOwner = new Object();
 
-  private boolean lockGIIForSnapshot =
+  private final boolean lockGIIForSnapshot =
       Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
 
   public final AtomicLong5 getEventSeqNum() {
@@ -1295,20 +1295,23 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  private volatile Boolean rowBuffer = false;
+  private volatile Boolean rowBuffer = null;
 
   public boolean isRowBuffer() {
     final Boolean rowBuffer = this.rowBuffer;
-    if (rowBuffer || this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+    if (rowBuffer != null) {
       return rowBuffer;
     }
-    boolean isRowBuffer = false;
-    List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(this.getPartitionedRegion());
+    List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(
+        this.getPartitionedRegion());
     for (PartitionedRegion pr : childRegions) {
-      isRowBuffer |= pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+      if (pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+        this.rowBuffer = true;
+        return true;
+      }
     }
-    this.rowBuffer = isRowBuffer;
-    return isRowBuffer;
+    this.rowBuffer = false;
+    return false;
   }
 
 

@@ -3381,8 +3381,11 @@ public abstract class EmbedConnection implements EngineConnection
 				info.remove(Attribute.SOFT_UPGRADE_NO_FEATURE_CHECK);
 			}
 			
-			// try to start the service if it doesn't already exist
-			GemFireStore store = Misc.getMemStoreBootingNoThrow();
+			// Try to start the service if it doesn't already exist.
+			// Skip boot if internal connection property is set.
+			boolean booted = Boolean.parseBoolean(info.getProperty(Attribute.INTERNAL_CONNECTION));
+			GemFireStore store = booted ? Misc.getMemStoreBooting()
+			    : Misc.getMemStoreBootingNoThrow();
 			if (store == null && !Monitor.startPersistentService(dbname, info)) {
 				// a false indicates the monitor cannot handle a service
 				// of the type indicated by the protocol within the name.

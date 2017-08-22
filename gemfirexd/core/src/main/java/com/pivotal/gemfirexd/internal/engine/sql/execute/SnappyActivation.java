@@ -193,7 +193,7 @@ public class SnappyActivation extends BaseActivation {
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = getResultCollector(enableStreaming, rs);
     executeOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
-        .getCurrentSchemaName(), this.pvs, this.isPrepStmt, this.isUpdateOrDelete);
+        .getCurrentSchemaName(), this.pvs, this.isPrepStmt, this.isUpdateOrDelete, this.lcc);
   }
 
   private void prepareWithResultSet(SnappyPrepareResultSet rs)
@@ -201,7 +201,7 @@ public class SnappyActivation extends BaseActivation {
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = getPrepareResultCollector(rs);
     prepareOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
-        .getCurrentSchemaName(), this.pvs, this.isUpdateOrDelete);
+        .getCurrentSchemaName(), this.pvs, this.isUpdateOrDelete, this.lcc);
   }
 
   private GfxdResultCollector<Object> getResultCollector(final boolean enableStreaming,
@@ -311,13 +311,17 @@ public class SnappyActivation extends BaseActivation {
 
   public static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc,
       String sql, boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
-      boolean isPreparedStatement, boolean isUpdateOrDelete)
+      boolean isPreparedStatement, boolean isUpdateOrDelete, LanguageConnectionContext lcc)
       throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
         isPreparedStatement, false, isUpdateOrDelete);
+    // release all locks before sending the message else it can lead to deadlocks
+    if (lcc != null) {
+      lcc.getTransactionExecute().releaseAllLocks(true, true);
+    }
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
     } catch (SQLException se) {
@@ -328,12 +332,15 @@ public class SnappyActivation extends BaseActivation {
 
   private static void prepareOnLeadNode(SnappyPrepareResultSet rs, GfxdResultCollector<Object> rc,
       String sql, boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
-      boolean isUpdateOrDelete) throws StandardException {
+      boolean isUpdateOrDelete, LanguageConnectionContext lcc) throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
         true, true, isUpdateOrDelete);
+    if (lcc != null) {
+      lcc.getTransactionExecute().releaseAllLocks(true, true);
+    }
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
     } catch (SQLException se) {
