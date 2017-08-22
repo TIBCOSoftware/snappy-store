@@ -2554,11 +2554,6 @@ public class GfxdSystemProcedures extends SystemProcedures {
       + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
 
-    //Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
-    //LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-    //GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
-    //tc.setActiveTXState(TXManagerImpl.snapshotTxState.get(), false);
-
     TXStateInterface tx = TXManagerImpl.snapshotTxState.get();
     String txId;
     if ( tx != null) {
@@ -2568,8 +2563,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
     // tc commit will clear all the artifacts but will not commit actual txState
     // that should be committed in COMMIT procedure
-    tc.resetActiveTXState(true);
-    TXManagerImpl.getOrCreateTXContext().clearTXState();
+    tc.clearActiveTXState(true, true);
+    //tc.resetActiveTXState(true);
     TXManagerImpl.snapshotTxState.set(null);
     return txId;
   }
