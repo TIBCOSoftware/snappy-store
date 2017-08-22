@@ -47,7 +47,7 @@ import java.io.*;
  * @see com.gemstone.gemfire.cache.CacheTransactionManager#getTransactionId
  */
 public final class TXId extends ExternalizableDSFID implements TransactionId,
-    ClusterUUID {
+    ClusterUUID, Comparable<TXId> {
 
   private static final long serialVersionUID = -3534280936282486380L;
 
@@ -198,5 +198,14 @@ public final class TXId extends ExternalizableDSFID implements TransactionId,
   @Override
   public Version[] getSerializationVersions() {
     return null;
+  }
+
+  @Override
+  public int compareTo(TXId other) {
+    int compare = (memberId > other.memberId) ? 1 : 0;
+    if (compare == 0) {
+      compare = (uniqId == other.uniqId) ? 0 : -1;
+    }
+    return compare;
   }
 }

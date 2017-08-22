@@ -1790,11 +1790,8 @@ public class DistributedRegion extends LocalRegion implements
           final TXRegionState[] orderedTXRegionState = pendingTXStates
               .toArray(new TXRegionState[pendingTXStates.size()]);
 
-          Arrays.sort(orderedTXRegionState, (t1, t2) -> {
-            final int o1 = System.identityHashCode(t1);
-            final int o2 = System.identityHashCode(t2);
-            return (o1 < o2) ? -1 : ((o1 == o2) ? 0 : 1);
-          });
+          Arrays.sort(orderedTXRegionState,
+              Comparator.comparing(t -> t.getTXState().getTransactionId()));
 
           final ArrayList<TXRegionState> inProgressTXStates =
               new ArrayList<TXRegionState>();
