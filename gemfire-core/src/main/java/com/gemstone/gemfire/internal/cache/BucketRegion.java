@@ -1295,23 +1295,20 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  private volatile Boolean rowBuffer = null;
+  private volatile Boolean rowBuffer = false;
 
   public boolean isRowBuffer() {
     final Boolean rowBuffer = this.rowBuffer;
-    if (rowBuffer != null) {
+    if (rowBuffer || this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
       return rowBuffer;
     }
-    List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(
-        this.getPartitionedRegion());
+    boolean isRowBuffer = false;
+    List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(this.getPartitionedRegion());
     for (PartitionedRegion pr : childRegions) {
-      if (pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
-        this.rowBuffer = true;
-        return true;
-      }
+      isRowBuffer |= pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
     }
-    this.rowBuffer = false;
-    return false;
+    this.rowBuffer = isRowBuffer;
+    return isRowBuffer;
   }
 
 
