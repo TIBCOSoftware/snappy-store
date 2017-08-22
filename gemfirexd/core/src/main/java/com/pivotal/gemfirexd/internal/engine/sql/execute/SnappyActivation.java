@@ -18,6 +18,7 @@
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -30,6 +31,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.TableQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
@@ -315,6 +317,8 @@ public class SnappyActivation extends BaseActivation {
       throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
+    Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "The sql to be executed" +
+        " on lead node is : " + sql);
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
         isPreparedStatement, false, isUpdateOrDelete);
@@ -365,6 +369,34 @@ public class SnappyActivation extends BaseActivation {
               if (isColumnTable) {
                 return true;
               }
+            }
+          }
+        }
+      }
+    }
+    if (GemFireXDUtils.TraceQuery) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+          "SnappyActivation.isColumnTable: return false");
+    }
+    return false;
+  }
+
+  public static boolean isColumnTable(DMLQueryInfo dmlQueryInfo) {
+    if (dmlQueryInfo != null) {
+      List<GemFireContainer> allContainers = dmlQueryInfo.getContainerList();
+      boolean isColumnTable = false;
+      if (allContainers != null) {
+        for (GemFireContainer container : allContainers) {
+          if (null != container) {
+            isColumnTable = container.isRowBuffer();
+            if (GemFireXDUtils.TraceQuery) {
+              String tabName = container.getSchemaName() + container.getTableName();
+              SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+                  "SnappyActivation.isColumnTable: table-name=" + tabName +
+                      " ,isColumnTable=" + isColumnTable);
+            }
+            if (isColumnTable) {
+              return true;
             }
           }
         }

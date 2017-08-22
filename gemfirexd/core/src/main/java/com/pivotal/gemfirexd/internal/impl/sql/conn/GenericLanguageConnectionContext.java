@@ -62,6 +62,7 @@ import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgumen
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -3229,7 +3230,10 @@ public final class GenericLanguageConnectionContext
 	 */
 	public void setIsolationLevel(int isolationLevel) throws StandardException
 	{
-        
+
+		if (Misc.getMemStore().isSnappyStore() && isQueryRoutingEnabled() &&
+				ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL != isolationLevel)
+			throw StandardException.newException(SQLState.SNAPPY_TX_DISALLOWED_WITH_ROUTE_QUERY_DISABLED);
 		StatementContext stmtCtxt = getStatementContext();
 		if (stmtCtxt!= null && stmtCtxt.inTrigger())
 			throw StandardException.newException(SQLState.LANG_NO_XACT_IN_TRIGGER, getTriggerExecutionContext().toString());
