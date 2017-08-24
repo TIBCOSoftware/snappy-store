@@ -140,7 +140,7 @@ public final class GfxdWaitingReplyProcessor extends
             superProcess = false;
             return;
           }
-          setResponseCode(responseCode);
+          setResponseCode(responseCode, reply.getSender());
           if (waiting) {
             checkWaiters();
           }
@@ -176,5 +176,11 @@ public final class GfxdWaitingReplyProcessor extends
       }
     }
     checkWaiters();
+  }
+
+  @Override
+  public String toString() {
+    return super.toString() + " responseCode=" + getResponseCode() +
+        " from " + getResponseMember();
   }
 }

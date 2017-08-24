@@ -117,7 +117,7 @@ public class SendQueueOperation {
       ReplyException rex = null;
       boolean ignored = false;
       try {
-        GemFireCacheImpl gfc = (GemFireCacheImpl)CacheFactory.getInstance(dm.getSystem());
+        GemFireCacheImpl gfc = GemFireCacheImpl.getExisting();
         final LocalRegion lclRgn = gfc.getRegionByPathForProcessing(this.regionPath);
         if (lclRgn != null) {
           lclRgn.waitOnInitialization();
