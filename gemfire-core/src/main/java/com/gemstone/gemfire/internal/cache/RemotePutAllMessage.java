@@ -287,7 +287,7 @@ public final class RemotePutAllMessage extends
     if (failures != null && failures.size() > 0) {
       throw new RemoteOperationException(
           LocalizedStrings.RemotePutMessage_FAILED_SENDING_0
-              .toLocalizedString(this));
+              .toLocalizedString(toString() + " to " + failures));
     }
     return p;
   }
