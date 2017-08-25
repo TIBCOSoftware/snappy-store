@@ -1255,24 +1255,22 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     StringBuilder otherMembers = new StringBuilder();
     String tableName = Misc.getFullTableNameFromRegionPath(regionPath);
     if (GemFireStore.DDL_STMTS_REGION.equals(tableName)) {
-      tableName = "DataDictionary";
+      tableName = "DataDictionary at location " + myId.directory;
     }
     else {
-      tableName = "table " + tableName;
+      tableName = "Table " + tableName + " at location " + myId.directory;
     }
     for (PersistentMemberID otherId : membersToWaitFor) {
-      otherMembers.append("\n [DiskId: ")
+      otherMembers.append("\n [" + otherId.host + "]");
+      otherMembers.append(" [DiskId: ")
           .append(otherId.diskStoreId.toUUID().toString())
           .append(", Location: ").append(otherId.directory).append(']');
     }
     if (missingBuckets != null && missingBuckets.size() > 0) {
       message = LocalizedResource.getMessage("FS_WAITING_MESSAGE_BUCKETS",
-          tableName, missingBuckets.toString(), myId.diskStoreId.toUUID()
-              .toString(), myId.directory, otherMembers.toString());
-    }
-    else {
+          tableName, missingBuckets.toString(), otherMembers.toString());
+    } else {
       message = LocalizedResource.getMessage("FS_WAITING_MESSAGE", tableName,
-          myId.diskStoreId.toUUID().toString(), myId.directory,
           otherMembers.toString());
     }
     super.setWaitingStatus(regionPath, membersToWaitFor, missingBuckets, myId,
