@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -15,19 +15,20 @@
  * LICENSE file.
  */
 
-package com.pivotal.gemfirexd.internal.impl.sql.rules;
+package io.snappydata;
 
-import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
+/**
+ * Extends {@link ResultSet} with a pre-operation "isNull" method unlike
+ * "wasNull" that can be invoked only after reading the value.
+ */
+public interface ResultSetWithNull extends ResultSet {
 
-class ColumnTableExecutionEngineRule extends ExecutionEngineRule {
-
-  @Override
-  protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo,ExecutionRuleContext context) {
-    if (SnappyActivation.isColumnTable(qInfo, true)) {
-      return ExecutionEngine.SPARK;
-    }
-    return ExecutionEngine.NOT_DECIDED;
-  }
+  /**
+   * Return whether the current value at given index is null or not
+   * even before invoking any getter method.
+   */
+  boolean isNull(int columnIndex) throws SQLException;
 }

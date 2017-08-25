@@ -267,7 +267,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private final Object giiReadLockForSIOwner = new Object();
   private final Object giiWriteLockForSIOwner = new Object();
 
-  private boolean lockGIIForSnapshot =
+  private final boolean lockGIIForSnapshot =
       Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
 
   public final AtomicLong5 getEventSeqNum() {
@@ -3385,6 +3385,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     
      return ServerPingMessage.send(cache, hostingservers);
     
+  }
+
+  @Override
+  public boolean isSnapshotEnabledRegion() {
+    // concurrency checks is by default true in column table
+    return super.isSnapshotEnabledRegion() ||
+        (getPartitionedRegion().needsBatching() || getPartitionedRegion().columnTable());
+
   }
 
 }

@@ -1029,8 +1029,6 @@ public final class TXManagerImpl implements CacheTransactionManager,
    *
    */
   public void commit() throws TransactionException {
-
-    TXStateInterface st = getTXState();
     commit(getTXState(), null, FULL_COMMIT, null, false);
     // set the txState set in the cache also to null
     snapshotTxState.set(null);

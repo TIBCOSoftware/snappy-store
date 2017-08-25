@@ -767,8 +767,13 @@ public abstract class Misc {
   public static boolean isSecurityEnabled() {
     AuthenticationServiceBase authService = AuthenticationServiceBase.getPeerAuthenticationService();
     return authService != null && !(authService instanceof NoneAuthenticationServiceImpl) &&
-        ("LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.AUTH_PROVIDER)) ||
-        "LDAP".equalsIgnoreCase(getMemStore().getBootProperty(Attribute.SERVER_AUTH_PROVIDER)));
+        checkAuthProvider(getMemStore().getBootProperties());
+  }
+
+  /* Returns true if LDAP Security is Enabled */
+  public static boolean checkAuthProvider(Map map) {
+    return "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.AUTH_PROVIDER, "").toString()) ||
+        "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.SERVER_AUTH_PROVIDER, "").toString());
   }
 
   // added by jing for processing the exception

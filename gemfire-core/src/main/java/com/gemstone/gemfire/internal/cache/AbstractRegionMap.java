@@ -2259,14 +2259,6 @@ RETRY_LOOP:
         else {
           cbEvent = null;
         }
-        if (owner.getCache().snapshotEnabledForTX()) {
-          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-          oldRe.setUpdateInProgress(true);
-          if (owner.snapshotEnabledRegion /*&& re.getVersionStamp() != null && re.getVersionStamp()
-            .asVersionTag().getEntryVersion() > 0*/) {
-            owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
-          }
-        }
         txRemoveOldIndexEntry(Operation.DESTROY, re);
         boolean clearOccured = false;
         try {
@@ -2323,14 +2315,6 @@ RETRY_LOOP:
         }
         else {
           cbEvent = null;
-        }
-        if (owner.getCache().snapshotEnabledForTX()) {
-          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-          if (owner.snapshotEnabledRegion /*&& re.getVersionStamp()!=null && re.getVersionStamp()
-            .asVersionTag().getEntryVersion()>0*/) {
-            owner.getCache().addOldEntry(oldRe, re, owner, 0);
-          }
-
         }
         try {
           EntryEventImpl txEvent = null;
@@ -3951,7 +3935,7 @@ RETRY_LOOP:
                   // check if the event is loaded from HDFS and bucket is secondary then don't set
                   
                   setOldValueInEvent(event, re, cacheWrite, requireOldValue);
-                  if (owner.snapshotEnabledRegion && re.getVersionStamp() != null ) {
+                  if (owner.isSnapshotEnabledRegion() && re.getVersionStamp() != null ) {
                     checkConflict(owner, event, re);
                   }
                   if (!continueUpdate(re, event, ifOld, replaceOnClient)) {
@@ -3975,7 +3959,7 @@ RETRY_LOOP:
                     RegionEntry oldRe = null;
                     try {
                       final int oldSize = event.getLocalRegion().calculateRegionEntryValueSize(re);
-                      if (owner.snapshotEnabledRegion && re.getVersionStamp() != null ) {
+                      if (owner.isSnapshotEnabledRegion() && re.getVersionStamp() != null ) {
                         // we need to do the same for secondary as well.
                         // need to set the version information.
                         if (re.getVersionStamp().asVersionTag().getEntryVersion() > 0) {
@@ -4149,9 +4133,9 @@ RETRY_LOOP:
     // Don't do conflict detection on secondary.
     if (event.getTXState() != null && event.getTXState().isSnapshot()) {
       TXState localState = event.getTXState().getLocalTXState();
-      if(!firstEntry(re)) {
+      if (!firstEntry(re)) {
         if (!TXState.checkEntryInSnapshot(localState, event.getRegion(), re)) {
-          throw new ConflictException("The value has been changed.");
+          throw new ConflictException("The value has changed.");
         }
       }
     }
@@ -4393,7 +4377,7 @@ RETRY_LOOP:
     boolean retVal = false;
     try {
       final int oldSize = _getOwner().calculateRegionEntryValueSize(re);
-      if (_getOwner().snapshotEnabledRegion /*&& re.getVersionStamp() != null && re.getVersionStamp()
+      if (_getOwner().isSnapshotEnabledRegion() /*&& re.getVersionStamp() != null && re.getVersionStamp()
         .asVersionTag().getEntryVersion() > 0*/) {
         // we need to do the same for secondary as well.
         // check Conflict
@@ -4567,16 +4551,6 @@ RETRY_LOOP:
       boolean clearOccured = false;
       boolean isCreate = false;
       try {
-        // Put the copy to into common place instead of all the running tx.
-        // as there is a race.
-        if (owner.getCache().snapshotEnabledForTX()) {
-          oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, owner, true);
-          if (owner.snapshotEnabledRegion /*&& re.getVersionStamp() != null && re.getVersionStamp()
-            .asVersionTag().getEntryVersion() > 0*/) {
-            owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
-          }
-        }
-
         re.setValue(owner, re.prepareValueForCache(owner, newValue, !putOp.isCreate(), false));
         if (putOp.isCreate()) {
           isCreate = true;

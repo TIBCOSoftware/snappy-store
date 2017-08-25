@@ -56,6 +56,7 @@ import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.locks.DLockService;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -87,7 +88,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
-import com.pivotal.gemfirexd.internal.engine.locks.DefaultGfxdLockable;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
@@ -241,8 +241,8 @@ public final class FabricDatabase implements ModuleControl,
 
   private DirFile tempDir;
 
-  private final DefaultGfxdLockable hiveClientObject = new DefaultGfxdLockable(
-      "HiveMetaStoreClient", GfxdConstants.TRACE_DDLOCK);
+  // private final DefaultGfxdLockable hiveClientObject = new DefaultGfxdLockable(
+  //    "HiveMetaStoreClient", GfxdConstants.TRACE_DDLOCK);
 
   /**
    * flag for tests to avoid precompiling SPS descriptors to reduce unit test
@@ -530,18 +530,18 @@ public final class FabricDatabase implements ModuleControl,
         // Take write lock on data dictionary. Because of this all the servers will will initiate their
         // hive client one by one. This is important as we have downgraded the ISOLATION LEVEL from
         // SERIALIZABLE to REPEATABLE READ
-        boolean writeLockTaken = false;
+        final String hiveClientObject = "HiveMetaStoreClient";
+        final DLockService lockService = memStore.getDDLLockService();
+        final boolean writeLockTaken = lockService.lock(hiveClientObject,
+            GfxdLockSet.MAX_LOCKWAIT_VAL, -1);
         try {
           //writeLockTaken = this.dd.lockForWriting(tc, false);
           // Changed from ddlLockObject
-          writeLockTaken = GemFireXDUtils.lockObject(hiveClientObject, null, true, false, tc,
-              GfxdLockSet.MAX_LOCKWAIT_VAL);
           this.memStore.initExternalCatalog();
-        }
-        finally {
+        } finally {
           if (writeLockTaken) {
             //this.dd.unlockAfterWriting(tc, false);
-            GemFireXDUtils.unlockObject(hiveClientObject, null, true, false, tc);
+            lockService.unlock(hiveClientObject);
           }
         }
       }
@@ -1436,6 +1436,7 @@ public final class FabricDatabase implements ModuleControl,
         for (GemFireContainer c : allIndexes) {
           if (c.isLocalIndex()) {
             c.getSkipListMap().clear();
+            c.resetInitialAccounting();
           }
         }
       }

@@ -80,27 +80,33 @@ public final class MemIndexRefresh extends MemOperation {
   public void doMe(Transaction xact, LogInstant instant, LimitObjectInput in)
       throws StandardException, IOException {
     final GemFireTransaction tc = (GemFireTransaction)xact;
-    // ignore during abort if no LCC in current context
-    if (Misc.getLanguageConnectionContext() != null) {
-      this.indexManager.refreshIndexListAndConstriantDesc(!this.lockGIIDone,
-          false, tc);
-      if (this.dropColumnPos > 0) {
-        // update the column positions for indexes (#47156)
-        for (GemFireContainer index : this.indexManager.getAllIndexes()) {
-          GemFireXDUtils.dropColumnAdjustColumnPositions(
-              index.getBaseColumnPositions(), this.dropColumnPos);
-          final ExtraIndexInfo indexInfo = index.getExtraIndexInfo();
-          if (indexInfo != null) {
-            indexInfo.dropColumnForPrimaryKeyFormatter(this.dropColumnPos);
+    try {
+      // ignore during abort if no LCC in current context
+      if (Misc.getLanguageConnectionContext() != null) {
+        this.indexManager.refreshIndexListAndConstriantDesc(!this.lockGIIDone,
+            false, tc);
+        if (this.dropColumnPos > 0) {
+          // update the column positions for indexes (#47156)
+          for (GemFireContainer index : this.indexManager.getAllIndexes()) {
+            GemFireXDUtils.dropColumnAdjustColumnPositions(
+                index.getBaseColumnPositions(), this.dropColumnPos);
+            final ExtraIndexInfo indexInfo = index.getExtraIndexInfo();
+            if (indexInfo != null) {
+              indexInfo.dropColumnForPrimaryKeyFormatter(this.dropColumnPos);
+            }
           }
         }
       }
-    }
-    if (this.lockGIIDone) {
-      this.indexManager.unlockForGII(true, tc);
-    }
-    if (this.unlockForIndexGII) {
-      this.indexManager.unlockForIndexGII(true, tc);
+    } finally {
+      try {
+        if (this.lockGIIDone) {
+          this.indexManager.unlockForGII(true, tc);
+        }
+      } finally {
+        if (this.unlockForIndexGII) {
+          this.indexManager.unlockForIndexGII(true, tc);
+        }
+      }
     }
   }
 

@@ -1217,9 +1217,6 @@ public final class RegionEntryUtils {
                   || bytes[2] != GfxdDataSerializable.DDL_REGION_VALUE) {
                 return bytes;
               } else {
-                  // TODO: SW: this should be avoided completely for objects
-                  // that have not changed serialization as per
-                  // SerializationVersions
                 in.initialize(bytes, 0, bytesLen, version);
                 hdos.clearForReuse();
                 // register GemFireXD types explicitly for offline mode

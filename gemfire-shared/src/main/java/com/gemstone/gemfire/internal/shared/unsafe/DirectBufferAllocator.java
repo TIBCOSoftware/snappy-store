@@ -18,6 +18,7 @@
 package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.nio.ByteBuffer;
+import java.util.function.Consumer;
 
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
 
@@ -27,6 +28,21 @@ import com.gemstone.gemfire.internal.shared.BufferAllocator;
  */
 public class DirectBufferAllocator extends BufferAllocator {
 
+  /**
+   * Overhead of allocation on off-heap memory is kept fixed at 8 even though
+   * actual overhead will be dependent on the malloc implementation.
+   */
+  public static final int DIRECT_OBJECT_OVERHEAD = 8;
+
+  /**
+   * The owner of direct buffers that are stored in Regions and tracked in UMM.
+   */
+  public static final String DIRECT_STORE_OBJECT_OWNER =
+      "SNAPPYDATA_DIRECT_STORE_OBJECTS";
+
+  public static final String DIRECT_STORE_DATA_FRAME_OUTPUT =
+      "DIRECT_" + STORE_DATA_FRAME_OUTPUT;
+
   private static final DirectBufferAllocator globalInstance =
       new DirectBufferAllocator();
 
@@ -34,6 +50,11 @@ public class DirectBufferAllocator extends BufferAllocator {
 
   public static DirectBufferAllocator instance() {
     return instance;
+  }
+
+  public DirectBufferAllocator initialize() {
+    DirectBufferAllocator.setInstance(this);
+    return this;
   }
 
   public static synchronized void setInstance(DirectBufferAllocator allocator) {
@@ -45,6 +66,15 @@ public class DirectBufferAllocator extends BufferAllocator {
   }
 
   protected DirectBufferAllocator() {
+  }
+
+  public RuntimeException lowMemoryException(String op, int required) {
+    return new RuntimeException();
+  }
+
+  public void changeOwnerToStorage(ByteBuffer buffer, int capacity,
+      Consumer<String> changeOwner) {
+    return;
   }
 
   @Override

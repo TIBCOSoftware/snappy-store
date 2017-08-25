@@ -2544,32 +2544,29 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
-  public static void GET_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {
+  public static String GET_SNAPSHOT_TXID() throws SQLException, StandardException {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure GET_SNAPSHOT_TXID()  for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+          "in function GET_SNAPSHOT_TXID()  for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
       + " TxManager " + TXManagerImpl.getCurrentTXId()
       + " snapshot tx : " + TXManagerImpl.snapshotTxState.get());
     }
 
-    //Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
-    //LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-    //GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
-    //tc.setActiveTXState(TXManagerImpl.snapshotTxState.get(), false);
-
     TXStateInterface tx = TXManagerImpl.snapshotTxState.get();
+    String txId;
     if ( tx != null) {
-      txid[0] = tx.getTransactionId().stringFormat();
+      txId = tx.getTransactionId().stringFormat();
     } else {
-      txid[0] = "null";
+      txId = "null";
     }
     // tc commit will clear all the artifacts but will not commit actual txState
     // that should be committed in COMMIT procedure
-    tc.resetActiveTXState(true);
-    TXManagerImpl.getOrCreateTXContext().clearTXState();
+    tc.clearActiveTXState(true, true);
+    //tc.resetActiveTXState(true);
     TXManagerImpl.snapshotTxState.set(null);
+    return txId;
   }
 
   public static void START_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {

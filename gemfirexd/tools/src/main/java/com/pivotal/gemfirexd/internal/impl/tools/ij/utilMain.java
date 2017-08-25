@@ -94,7 +94,8 @@ public class utilMain implements java.security.PrivilegedAction {
 	private LocalizedOutput out = null;
 	private Properties connAttributeDefaults;
 	private Hashtable ignoreErrors;
-	private static final Pattern pattern = Pattern.compile("gemfirexd|gfxd", Pattern.CASE_INSENSITIVE);
+	private static final Pattern pattern = Pattern.compile("gemfirexd|gfxd",
+	    Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 	/**
 	 * True if to display the error code when
 	 * displaying a SQLException.
@@ -125,7 +126,7 @@ public class utilMain implements java.security.PrivilegedAction {
 
 	private final int numTimesToRun;
 
-	private static String basePrompt = "gfxd";
+	static String basePrompt = "gfxd";
 
 	public static void setBasePrompt(String prompt) {
 		if (prompt != null && prompt.trim().length() >= 3 && prompt.trim().length() <= 10) {
@@ -1075,7 +1076,7 @@ public class utilMain implements java.security.PrivilegedAction {
 	}
 
 	public static String convertGfxdMessageToSnappy(String message) {
-		if (getPrompt(true, "").contains("snappy")) {
+		if (basePrompt.contains("snappy")) {
 			return pattern.matcher(message).replaceAll("SnappyData");
 		} else {
 			return message;

@@ -2510,6 +2510,7 @@ public class PartitionedRegion extends LocalRegion implements
 
 
   private volatile Boolean columnBatching;
+  private volatile Boolean columnStoreTable;
   public boolean needsBatching() {
     final Boolean columnBatching = this.columnBatching;
     if (columnBatching != null) {
@@ -2529,6 +2530,20 @@ public class PartitionedRegion extends LocalRegion implements
       this.columnBatching = needsBatching;
       return needsBatching;
     }
+  }
+
+  public boolean columnTable() {
+    final Boolean columnTable = this.columnStoreTable;
+    if (columnTable != null) {
+      return columnTable;
+    }
+    // Find all the child region and see if they anyone of them has name ending
+    // with _SHADOW_
+    if (this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+      this.columnStoreTable = true;
+      return true;
+    }
+    return false;
   }
 
   private void handleSendOrWaitException(Exception ex,
@@ -8510,8 +8525,6 @@ public class PartitionedRegion extends LocalRegion implements
   }
 
   public void checkForColocatedChildren(boolean skipShadowPRs) {
-    // TODO: SW: check with Yogesh as to how destroy region handles colocated
-    // shadow region
     List<PartitionedRegion> listOfChildRegions = ColocationHelper
         .getColocatedChildRegions(this);
     if (listOfChildRegions.size() != 0) {

@@ -596,6 +596,13 @@ public abstract class FabricServiceImpl implements FabricService {
     }
   }
 
+  private void notifyRunningInLauncher() {
+    CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+    if (launcher != null) {
+      launcher.running(Misc.getDistributedSystem(), true);
+    }
+  }
+
   /**
    * This method invoked from GemFire to end notify waiting for another JVM to
    * initialize for disk GII after a previous call to {@link #notifyWaiting}.
@@ -613,10 +620,7 @@ public abstract class FabricServiceImpl implements FabricService {
     if (this.previousServerStatus == State.RUNNING) {
       this.serverstatus = State.RUNNING;
       // if started from command-line then change the status in the file too
-      CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
-      if (launcher != null) {
-        launcher.running(Misc.getDistributedSystem(), true);
-      }
+      notifyRunningInLauncher();
     }
     this.previousServerStatus = State.UNINITIALIZED;
   }
@@ -625,12 +629,14 @@ public abstract class FabricServiceImpl implements FabricService {
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public final void notifyRunning() {
+  public void notifyRunning() {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
           "Accepting RUNNING notification");
     }
     serverstatus = State.RUNNING;
+    // if started from command-line then change the status in the file too
+    notifyRunningInLauncher();
   }
 
   /**
