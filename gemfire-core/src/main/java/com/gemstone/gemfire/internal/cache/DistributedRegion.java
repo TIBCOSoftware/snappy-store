@@ -1801,6 +1801,7 @@ public class DistributedRegion extends LocalRegion implements
           for (TXRegionState txrs : orderedTXRegionState) {
             TXState txState = txrs.getTXState();
             int txOrder = 0;
+            getLogWriterI18n().info(LocalizedStrings.DEBUG, "Locking txState = " + txState);
             txState.lockTXState();
             if (txState.isInProgress() && (txOrder = is.getFinishedTXOrder(
                 txState.getTransactionId())) == 0) {

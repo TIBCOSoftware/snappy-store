@@ -202,10 +202,14 @@ public final class TXId extends ExternalizableDSFID implements TransactionId,
 
   @Override
   public int compareTo(TXId other) {
-    int compare = (memberId > other.memberId) ? 1 : 0;
-    if (compare == 0) {
-      compare = (uniqId == other.uniqId) ? 0 : -1;
-    }
-    return compare;
+    long thisValue = memberId + uniqId;
+    long otherValue = other.memberId + other.uniqId;
+    if (thisValue > otherValue)
+      return 1;
+    else if (thisValue < otherValue)
+      return -1;
+    else
+      return 0;
+
   }
 }
