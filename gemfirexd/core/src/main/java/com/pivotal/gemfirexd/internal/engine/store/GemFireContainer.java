@@ -475,6 +475,17 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     initTableFlags();
   }
 
+  private ExternalCatalog waitForNodeInit() {
+    ExternalCatalog ret;
+    int cnt = -1;
+    // This will be called by the putter thread and this thread should
+    // assume that external catalog will eventually become non-null
+    while((ret = Misc.getMemStore().getExternalCatalog()) == null) {
+      GemFireXDUtils.sleepForRetry(cnt++);
+    }
+    return ret;
+  }
+
   public void invalidateHiveMetaData() {
     externalTableMetaData.set(null);
   }
@@ -491,9 +502,12 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         schemaName = fullName.substring(0, schemaIndex);
         tableName = fullName.substring(schemaIndex + 1);
       }
+      ExternalCatalog extcat = Misc.getMemStore().getExternalCatalog();
+      if (extcat == null && Misc.initialDDLReplayInProgress()) {
+        extcat = waitForNodeInit();
+      }
       // containers are created during initialization, ignore them
-      externalTableMetaData.compareAndSet(null,
-          Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
+      externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
               schemaName, tableName, true));
       if (isPartitioned()) {
         metaData = externalTableMetaData.get();
