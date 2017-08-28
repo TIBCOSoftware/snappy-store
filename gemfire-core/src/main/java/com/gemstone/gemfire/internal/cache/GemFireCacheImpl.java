@@ -568,11 +568,11 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
 
     final String regionPath = region.getFullPath();
-    // ask for pool memory befor continuing
+    // ask for pool memory before continuing
     if (!region.reservedTable() && region.needAccounting()) {
       region.calculateEntryOverhead(oldRe);
       LocalRegion.regionPath.set(region.getFullPath());
-      region.acquirePoolMemory(0, oldSize, false, null, true);
+      region.acquirePoolMemory(0, oldSize, true, null, true);
     }
 
     if(getLoggerI18n().fineEnabled()) {
@@ -708,6 +708,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
+  public void runOldEntriesCleanerThread(){
+    new OldEntriesCleanerThread().run();
+  }
+
   class OldEntriesCleanerThread implements Runnable {
     // Keep each entry alive for atleast 5 mins.
     public void run() {
@@ -737,7 +741,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                   // free the allocated memory
                   if (!region.reservedTable() && region.needAccounting()) {
                     int size = region.calculateRegionEntryValueSize(re);
-                    region.freePoolMemory(size, false);
+                    region.freePoolMemory(size, true);
                   }
                 }
               }
