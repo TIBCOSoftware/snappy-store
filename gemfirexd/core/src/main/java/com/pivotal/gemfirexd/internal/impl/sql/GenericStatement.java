@@ -822,7 +822,10 @@ public class GenericStatement
                                                     checkCancellation, isUpdateOrDelete);
                                               }
                                             }
-                                          }
+                                          } else if (qinfo != null && qinfo.isDML() &&
+																							invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
+																						throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
+																					}
 
                                           if (observer != null && qinfo != null && qinfo.isSelect()) {
                                             observer.testExecutionEngineDecision(qinfo, ExecutionEngine.STORE, this.statementText);
@@ -1266,11 +1269,9 @@ public class GenericStatement
 		return preparedStmt;
 	}
 
-	private boolean txOnColumnTableQuery(LanguageConnectionContext lcc, QueryInfo qinfo) {
-		return Misc.getMemStore().isSnappyStore() && !lcc.isQueryRoutingEnabled() &&
-        lcc.getCurrentIsolationLevel() != ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL &&
-        qinfo!= null && qinfo.isDML() &&
-        SnappyActivation.isColumnTable((DMLQueryInfo)qinfo);
+	public boolean invalidQueryOnColumnTable(LanguageConnectionContext _lcc,
+			DMLQueryInfo qi) {
+		return !Misc.routeQuery(_lcc) && SnappyActivation.isColumnTable(qi);
 	}
 
 	private boolean shouldSkipMemoryChecks(StatementNode qt) {

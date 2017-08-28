@@ -319,6 +319,8 @@ public final class GenericLanguageConnectionContext
 	// scan isolationlevel
 	protected int prepareIsolationLevel = ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
 
+	private boolean autoCommit = false;
+
 	// Whether or not to write executing statement info to db2j.log
 	private boolean logStatementText;
 	private boolean logQueryPlan;
@@ -3332,6 +3334,14 @@ public final class GenericLanguageConnectionContext
 			return prepareIsolationLevel;
 		else
 			return ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
+	}
+
+	public void setAutoCommit(boolean autoCommit) {
+		this.autoCommit = autoCommit;
+	}
+
+	public boolean getAutoCommit() {
+		return autoCommit;
 	}
 
 	/**

@@ -5421,11 +5421,7 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
             </msg>
             <msg>
                 <name>XJ218.S</name>
-                <text>Transaction isolation level other than 'NONE' is not supported with query routing enabled. Set connection property 'route-query' to false to use transaction isolation level other than 'NONE'</text>
-            </msg>
-            <msg>
-                <name>XJ219.S</name>
-                <text>Transaction isolation levels other than 'NONE' not supported for queries on column tables</text>
+                <text>Operations on column tables are not supported when query routing is disabled or autocommit is false</text>
             </msg>
 
         </family>

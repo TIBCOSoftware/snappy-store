@@ -812,6 +812,10 @@ public interface LanguageConnectionContext extends Context {
 	 */
 	public int getCurrentIsolationLevel();
 
+	public void setAutoCommit(boolean autoCommit);
+
+	public boolean getAutoCommit();
+
 	/**
 	 * Get the current isolation level in DB2 format.
 	 *

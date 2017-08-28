@@ -1317,8 +1317,8 @@ public class EmbedStatement extends ConnectionChild
 					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	protected boolean routeQueryEnabled(CompilerContext cc) {
-		String stmt = cc != null? cc.getGeneralizedQueryString():SQLText;
-		return Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingEnabled()
+		String stmt = cc != null? cc.getGeneralizedQueryString() : SQLText;
+		return Misc.routeQuery(lcc)
         && (!EXECUTION_ENGINE_STORE_HINT.matcher(stmt).matches());
 	}
 
