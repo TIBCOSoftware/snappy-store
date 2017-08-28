@@ -822,9 +822,7 @@ public class GenericStatement
                                                     checkCancellation, isUpdateOrDelete);
                                               }
                                             }
-                                          } else if (txOnColumnTableQuery(lcc, qinfo)) {
-																						throw StandardException.newException(SQLState.SNAPPY_TX_DISALLOWED_ON_COLUMN_TABLES);
-																					}
+                                          }
 
                                           if (observer != null && qinfo != null && qinfo.isSelect()) {
                                             observer.testExecutionEngineDecision(qinfo, ExecutionEngine.STORE, this.statementText);
