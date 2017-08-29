@@ -4150,6 +4150,8 @@ public final class GenericLanguageConnectionContext
 
 	private static final int BUCKET_RETENTION_FOR_LOCAL_EXECUTION = 0x8000;
 
+	private static final int SNAPPY_INTERNAL_CONNECTION = 0x10000;
+
   private static final int FLAGS_DEFAULT = 0x0;
 
   /** flags that cannot be changed via {@link #setFlags(int)} */
@@ -4994,6 +4996,17 @@ public final class GenericLanguageConnectionContext
 	@Override
 	public boolean isQueryRoutingEnabled() {
 		return GemFireXDUtils.isSet(this.gfxdFlags, ROUTE_QUERY);
+	}
+
+	@Override
+	public void setSnappyInternalConnection(boolean internalConnection) {
+		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, SNAPPY_INTERNAL_CONNECTION,
+				internalConnection);
+	}
+
+	@Override
+	public boolean isSnappyInternalConnection() {
+		return GemFireXDUtils.isSet(this.gfxdFlags, SNAPPY_INTERNAL_CONNECTION);
 	}
 
 	@Override

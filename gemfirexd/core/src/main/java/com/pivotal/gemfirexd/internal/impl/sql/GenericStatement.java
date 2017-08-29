@@ -1271,7 +1271,7 @@ public class GenericStatement
 
 	public boolean invalidQueryOnColumnTable(LanguageConnectionContext _lcc,
 			DMLQueryInfo qi) {
-		return !Misc.routeQuery(_lcc) && SnappyActivation.isColumnTable(qi);
+		return !Misc.routeQuery(_lcc) && !_lcc.isSnappyInternalConnection() && SnappyActivation.isColumnTable(qi);
 	}
 
 	private boolean shouldSkipMemoryChecks(StatementNode qt) {

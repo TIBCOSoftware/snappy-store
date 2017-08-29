@@ -746,6 +746,8 @@ public interface GfxdConstants {
   final String GFXD_QUERY_HDFS = GFXD_PREFIX + Attribute.QUERY_HDFS;
 
   final String GFXD_ROUTE_QUERY = GFXD_PREFIX + Attribute.ROUTE_QUERY;
+
+  final String INTERNAL_CONNECTION = GFXD_PREFIX + Attribute.INTERNAL_CONNECTION;
   /*
    * @see Attribute.NCJ_BATCH_SIZE
    */
