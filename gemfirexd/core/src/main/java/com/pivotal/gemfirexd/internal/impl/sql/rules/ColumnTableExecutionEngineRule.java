@@ -19,7 +19,6 @@ package com.pivotal.gemfirexd.internal.impl.sql.rules;
 
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
-import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 
 class ColumnTableExecutionEngineRule extends ExecutionEngineRule {

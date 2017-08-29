@@ -350,41 +350,6 @@ public class SnappyActivation extends BaseActivation {
     }
   }
 
-//  public static boolean isColumnTable(DMLQueryInfo dmlQueryInfo, boolean skipLocks) {
-//    if (dmlQueryInfo != null) {
-//      ExternalCatalog extCatalog = Misc.getMemStore().getExternalCatalog();
-//      if (extCatalog != null) {
-//        List<TableQueryInfo> allTables = dmlQueryInfo.getTableQueryInfoList();
-//        if (allTables != null) {
-//          for (TableQueryInfo t : allTables) {
-//            if (null != t) {
-//              LocalRegion region = t.getRegion();
-//              // don't try to query hive for system tables etc
-//              if (region != null && region.getScope().isLocal()) {
-//                continue;
-//              }
-//              String tabName = t.getFullTableName();
-//              boolean isColumnTable = extCatalog.isColumnTable(t.getSchemaName(), t.getTableName(), skipLocks);
-//              if (GemFireXDUtils.TraceQuery) {
-//                SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-//                    "SnappyActivation.isColumnTable: table-name=" + tabName +
-//                        " ,isColumnTable=" + isColumnTable);
-//              }
-//              if (isColumnTable) {
-//                return true;
-//              }
-//            }
-//          }
-//        }
-//      }
-//    }
-//    if (GemFireXDUtils.TraceQuery) {
-//      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-//          "SnappyActivation.isColumnTable: return false");
-//    }
-//    return false;
-//  }
-
   public static boolean isColumnTable(DMLQueryInfo dmlQueryInfo) {
     if (dmlQueryInfo != null) {
       List<GemFireContainer> allContainers = dmlQueryInfo.getContainerList();
