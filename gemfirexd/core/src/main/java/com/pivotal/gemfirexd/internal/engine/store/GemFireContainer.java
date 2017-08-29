@@ -475,12 +475,12 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     initTableFlags();
   }
 
-  private ExternalCatalog waitForNodeInit() {
+  private ExternalCatalog waitForHiveCatalogInit() {
     ExternalCatalog ret;
     int cnt = -1;
-    // This will be called by the putter thread and this thread should
-    // assume that external catalog will eventually become non-null
-    while((ret = Misc.getMemStore().getExternalCatalog()) == null) {
+    // Retrying after sleep of some millisecs to reduce the worst case
+    // of delaying that put for a large period of time
+    while((ret = Misc.getMemStore().getExternalCatalog()) == null && cnt <= 20) {
       GemFireXDUtils.sleepForRetry(cnt++);
     }
     return ret;
@@ -503,8 +503,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         tableName = fullName.substring(schemaIndex + 1);
       }
       ExternalCatalog extcat = Misc.getMemStore().getExternalCatalog();
-      if (extcat == null && Misc.initialDDLReplayInProgress()) {
-        extcat = waitForNodeInit();
+      if (extcat == null) {
+        extcat = waitForHiveCatalogInit();
+        if (extcat == null) {
+          throw new TimeoutException("The snappy catalog in hive metastore is not accessible");
+        }
       }
       // containers are created during initialization, ignore them
       externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
