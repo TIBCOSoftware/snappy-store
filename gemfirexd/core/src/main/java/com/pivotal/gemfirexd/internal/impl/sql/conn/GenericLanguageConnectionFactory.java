@@ -64,7 +64,6 @@ import java.util.Dictionary;
 import java.io.Serializable;
 
 import com.gemstone.gnu.trove.THashMap;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.sql.GeneralizedStatement;
 import com.pivotal.gemfirexd.internal.iapi.db.Database;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
