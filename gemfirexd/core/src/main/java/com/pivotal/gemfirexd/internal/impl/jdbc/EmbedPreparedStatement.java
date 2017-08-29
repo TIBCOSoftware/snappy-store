@@ -161,8 +161,7 @@ public abstract class EmbedPreparedStatement
                         }
 
                         if (routeQueryEnabled(null)) {
-                        	execFlags = GemFireXDUtils.set(execFlags,
-															GenericStatement.ROUTE_QUERY, true);
+                          execFlags = GemFireXDUtils.set(execFlags, GenericStatement.ROUTE_QUERY, true);
                         }
 			try {
 			    preparedStatement = lcc.prepareInternalStatement

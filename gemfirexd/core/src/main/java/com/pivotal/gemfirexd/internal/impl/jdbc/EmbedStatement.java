@@ -1205,9 +1205,8 @@ public class EmbedStatement extends ConnectionChild
             }
 
             if (routeQueryEnabled(cc)) {
-							execFlags = GemFireXDUtils.set(execFlags,
-									GenericStatement.ROUTE_QUERY, true);
-						}
+              execFlags = GemFireXDUtils.set(execFlags, GenericStatement.ROUTE_QUERY, true);
+            }
 
             preparedStatement = lcc.prepareInternalStatement(lcc
                 .getDefaultSchema(), cc != null? cc.getGeneralizedQueryString():SQLText,                
@@ -1312,15 +1311,15 @@ public class EmbedStatement extends ConnectionChild
     }
    }
 
-	protected static final Pattern EXECUTION_ENGINE_STORE_HINT =
-			Pattern.compile(".*\\bEXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s*\\b.*",
-					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  protected static final Pattern EXECUTION_ENGINE_STORE_HINT =
+    Pattern.compile(".*\\bEXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s*\\b.*",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
-	protected boolean routeQueryEnabled(CompilerContext cc) {
-		String stmt = cc != null? cc.getGeneralizedQueryString() : SQLText;
-		return Misc.routeQuery(lcc)
-        && (!EXECUTION_ENGINE_STORE_HINT.matcher(stmt).matches());
-	}
+  protected boolean routeQueryEnabled(CompilerContext cc) {
+    String stmt = cc != null? cc.getGeneralizedQueryString() : SQLText;
+    return Misc.routeQuery(lcc)
+      && (!EXECUTION_ENGINE_STORE_HINT.matcher(stmt).matches());
+  }
 
 	private void validateParameterizedData(PreparedStatement preparedStatement)
       throws StandardException {

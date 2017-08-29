@@ -1521,7 +1521,7 @@ public abstract class DMLQueryInfo extends AbstractQueryInfo implements Visitor 
     return this.driverTqi != null ? this.driverTqi.getRegion() : null;
   }
 
-  TableQueryInfo getDriverTableQueryInfo() {
+  public TableQueryInfo getDriverTableQueryInfo() {
     if (this.driverTqi == UNINITIALIZED) {
       throw new AssertionError("SelectQueryInfo#getDriverTableQueryInfo: init not invoked!");
     }

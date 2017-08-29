@@ -2087,10 +2087,10 @@ public abstract class EmbedConnection implements EngineConnection
 	public void setAutoCommit(boolean autoCommit, boolean isInit) throws SQLException {
 	  if (isInit) {
 	    this.autoCommit = autoCommit;
-			final LanguageConnectionContext lcc = getLanguageConnection();
-			if (lcc == null) {
-				throw Util.noCurrentConnection();
-			}
+	    final LanguageConnectionContext lcc = getLanguageConnection();
+	    if (lcc == null) {
+	    	throw Util.noCurrentConnection();
+	    }
 	  } else {
 	    setAutoCommit(autoCommit);
 	  }

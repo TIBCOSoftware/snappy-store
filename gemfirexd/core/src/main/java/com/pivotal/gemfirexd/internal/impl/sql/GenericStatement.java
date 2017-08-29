@@ -823,9 +823,9 @@ public class GenericStatement
                                               }
                                             }
                                           } else if (qinfo != null && qinfo.isDML() &&
-																							invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
-																						throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
-																					}
+                                              invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
+                                            throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
+                                          }
 
                                           if (observer != null && qinfo != null && qinfo.isSelect()) {
                                             observer.testExecutionEngineDecision(qinfo, ExecutionEngine.STORE, this.statementText);

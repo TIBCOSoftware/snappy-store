@@ -271,8 +271,8 @@ public final class TransactionResourceImpl
 		this.routeQuery = getPropertyValue(
 		    Attribute.ROUTE_QUERY,
 		    GfxdConstants.GFXD_ROUTE_QUERY, info, false);
-		this.snappyInternalConnection = getPropertyValue(Attribute.INTERNAL_CONNECTION,
-				GfxdConstants.INTERNAL_CONNECTION, info, false);
+                this.snappyInternalConnection = getPropertyValue(Attribute.INTERNAL_CONNECTION,
+                    GfxdConstants.INTERNAL_CONNECTION, info, false);
 		this.defaultPersistent = getPropertyValue(
 		    Attribute.DEFAULT_PERSISTENT, GfxdConstants.GFXD_PREFIX
 			+ Attribute.DEFAULT_PERSISTENT, info, false);
