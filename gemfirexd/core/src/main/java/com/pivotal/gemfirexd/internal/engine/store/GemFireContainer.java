@@ -480,7 +480,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     int cnt = -1;
     // Retrying after sleep of some millisecs to reduce the worst case
     // of delaying that put for a large period of time
-    while((ret = Misc.getMemStore().getExternalCatalog()) == null && cnt <= 20) {
+    while ((ret = Misc.getMemStore().getExternalCatalog()) == null
+        && cnt < GfxdConstants.HA_NUM_RETRIES) {
       GemFireXDUtils.sleepForRetry(cnt++);
     }
     return ret;
