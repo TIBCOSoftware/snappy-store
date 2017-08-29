@@ -1823,13 +1823,13 @@ public class EntryEventImpl extends KeyInfo implements
       if (this.memoryTracker != null) {
         owner.acquirePoolMemory(oldSize,
                 event.getNewValueBucketSize(),
-                true,
+                false,
                 this.memoryTracker,
                 true);
       } else {
         owner.delayedAcquirePoolMemory(oldSize,
                 event.getNewValueBucketSize(),
-                true,
+                false,
                 true);
       }
     } else {
