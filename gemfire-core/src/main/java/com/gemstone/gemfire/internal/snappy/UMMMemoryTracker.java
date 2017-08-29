@@ -35,7 +35,7 @@ public class UMMMemoryTracker {
   private String firstAllocationObject;
 
   private int totalOperationsExpected;
-  private int totalMemoryAllocated;
+  private long totalMemoryAllocated = 0L;
 
   public UMMMemoryTracker(long ID, int totalOperationsExpected){
     this.ID = ID;
@@ -50,7 +50,7 @@ public class UMMMemoryTracker {
   public void setMemoryUsed(long memoryUsed) {
     this.memoryUsed = memoryUsed;
   }
-  public int getTotalMemoryAllocated() {
+  public long getTotalMemoryAllocated() {
     return totalMemoryAllocated;
   }
   public void setTotalMemoryAllocated(int totalMemoryAllocated) {

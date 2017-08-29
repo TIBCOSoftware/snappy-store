@@ -1159,7 +1159,7 @@ public abstract class Converters {
       } else if (c == Float.class) {
         setFloat(row, columnPosition, (Float)o);
       } else if (c == Integer.class) {
-        setInteger(row, (Integer)o, columnPosition);
+        setInteger(row, columnPosition, (Integer)o);
       } else if (c == Byte.class) {
         setByte(row, columnPosition, (Byte)o);
       } else if (c == Short.class) {
