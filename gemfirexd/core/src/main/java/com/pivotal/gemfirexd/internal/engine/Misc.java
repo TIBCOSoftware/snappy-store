@@ -1359,10 +1359,10 @@ public abstract class Misc {
   public static boolean routeQuery(LanguageConnectionContext lcc) {
     int isolationLevel = lcc.getCurrentIsolationLevel();
     final boolean autoCommit = lcc.getAutoCommit();
-    SanityManager.DEBUG_PRINT("config", "sdeshmukh lcc.isQueryRoutingEnabled() = "
-    + lcc.isQueryRoutingEnabled() + " isolationLevel = " + isolationLevel +
+    SanityManager.DEBUG_PRINT("config", "sdeshmukh lcc.isQueryRoutingFlagTrue() = "
+    + lcc.isQueryRoutingFlagTrue() + " isolationLevel = " + isolationLevel +
     " autoCommit = " + autoCommit + " internalConnection = " + lcc.isSnappyInternalConnection());
-    return Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingEnabled() &&
+    return Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingFlagTrue() &&
         (isolationLevel == ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL ||
             autoCommit);
   }

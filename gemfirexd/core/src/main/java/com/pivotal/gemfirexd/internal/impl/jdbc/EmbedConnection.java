@@ -3393,7 +3393,7 @@ public abstract class EmbedConnection implements EngineConnection
 			// Try to start the service if it doesn't already exist.
 			// Skip boot if internal connection property is set.
 			boolean booted = Boolean.parseBoolean(info.getProperty(
-			    Attribute.INTERNAL_CONNECTION));
+					com.pivotal.gemfirexd.Attribute.INTERNAL_CONNECTION));
 			GemFireStore store = booted ? Misc.getMemStoreBooting()
 			    : Misc.getMemStoreBootingNoThrow();
 			if (store == null && !Monitor.startPersistentService(dbname, info)) {

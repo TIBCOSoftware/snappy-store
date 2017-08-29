@@ -38,16 +38,13 @@ import com.gemstone.gemfire.distributed.internal.ReplyException;
 import com.gemstone.gemfire.distributed.internal.ReplyMessage;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gnu.trove.TLongHashSet;
 import com.gemstone.gnu.trove.TLongObjectHashMap;
 import com.gemstone.gnu.trove.TLongProcedure;
-import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
-import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue.QueueValue;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionWrapper;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
@@ -302,7 +299,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
         oldContext = lcc.getContextObject();
         lcc.setContextObject(ddl.getAdditionalArgs());
         lcc.setDefaultPersistent(ddl.defaultPersistent());
-        lcc.setQueryRouting(false);
+        lcc.setQueryRoutingFlag(false);
         // also the DDL ID
         tran.setDDLId(ddlId);
         wrapper.enableOpLogger();

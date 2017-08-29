@@ -822,9 +822,6 @@ public class GenericStatement
                                                     checkCancellation, isUpdateOrDelete);
                                               }
                                             }
-                                          } else if (qinfo != null && qinfo.isDML() &&
-                                              invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
-                                            throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
                                           }
 
                                           if (observer != null && qinfo != null && qinfo.isSelect()) {
@@ -833,6 +830,10 @@ public class GenericStatement
 
                                           if (qinfo != null && qinfo.isInsert()) {
                                             qinfo = handleInsertAndInsertSubSelect(qinfo, qt);
+                                          }
+
+                                          if (qinfo != null && qinfo.isDML() && invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
+                                            throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
                                           }
 
                                           //Even if  i == 1, but if the top query contains replicated table
@@ -1271,7 +1272,21 @@ public class GenericStatement
 
 	public boolean invalidQueryOnColumnTable(LanguageConnectionContext _lcc,
 			DMLQueryInfo qi) {
-		return !Misc.routeQuery(_lcc) && !_lcc.isSnappyInternalConnection() && SnappyActivation.isColumnTable(qi);
+		boolean isColumnTable = SnappyActivation.isColumnTable(qi);
+		// check subqueries
+		List<SubQueryInfo> subQinfoList = qi.getSubqueryInfoList();
+		if (!isColumnTable && subQinfoList.size() > 0) {
+			for (SubQueryInfo sq : subQinfoList) {
+				isColumnTable = SnappyActivation.isColumnTable(sq);
+				if(isColumnTable)
+					break;
+			}
+		}
+		// additional step for insertAsSubSelect
+		if (!isColumnTable && qi.isInsertAsSubSelect()) {
+			isColumnTable = SnappyActivation.isColumnTable(((InsertQueryInfo)qi).getSubSelectQueryInfo());
+		}
+		return isColumnTable && !Misc.routeQuery(_lcc) && !_lcc.isSnappyInternalConnection();
 	}
 
 	private boolean shouldSkipMemoryChecks(StatementNode qt) {

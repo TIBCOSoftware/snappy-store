@@ -4988,13 +4988,13 @@ public final class GenericLanguageConnectionContext
   }
 
 	@Override
-	public void setQueryRouting(boolean routeQuery) {
+	public void setQueryRoutingFlag(boolean routeQuery) {
 		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, ROUTE_QUERY,
 				routeQuery);
 	}
 
 	@Override
-	public boolean isQueryRoutingEnabled() {
+	public boolean isQueryRoutingFlagTrue() {
 		return GemFireXDUtils.isSet(this.gfxdFlags, ROUTE_QUERY);
 	}
 

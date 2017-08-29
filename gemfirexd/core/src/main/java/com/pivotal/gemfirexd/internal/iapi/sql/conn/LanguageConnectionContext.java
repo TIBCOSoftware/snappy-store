@@ -1501,9 +1501,9 @@ public interface LanguageConnectionContext extends Context {
    * Query routing will be attempted only when this flag is true
    * @param routeQuery
    */
-   void setQueryRouting(boolean routeQuery);
+   void setQueryRoutingFlag(boolean routeQuery);
 
-   boolean isQueryRoutingEnabled();
+   boolean isQueryRoutingFlagTrue();
 
    void setSnappyInternalConnection(boolean internalConnection);
 
