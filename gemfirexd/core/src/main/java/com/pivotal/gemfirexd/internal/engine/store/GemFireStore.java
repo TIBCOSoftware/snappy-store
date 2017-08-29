@@ -1068,7 +1068,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
       try {
         CacheFactory c = null;
-        if (!gfeGridMappings.isEmpty()) {
+        if (!(gfeGridMappings.isEmpty() && gfeGridPoolProps.isEmpty())) {
           c = new GemFireSparkConnectorCacheFactory(dsProps, gfeGridMappings, gfeGridPoolProps);
         } else {
           c = new CacheFactory(dsProps);
