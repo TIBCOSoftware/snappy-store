@@ -832,7 +832,9 @@ public class GenericStatement
                                             qinfo = handleInsertAndInsertSubSelect(qinfo, qt);
                                           }
 
-                                          if (qinfo != null && qinfo.isDML() && invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
+                                          if (Misc.getMemStore().isSnappyStore() &&
+                                              qinfo != null && qinfo.isDML() &&
+                                              invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
                                             throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
                                           }
 
