@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
@@ -88,7 +106,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   static final byte POSDUP = 0x10;
   static final byte PERSISTENT_TAG = 0x20;
   static final byte HAS_CALLBACKARG = 0x40;
-  static final byte HAS_TAILKEY = (byte)0x80;
+  static final byte HAS_BATCHUUID = (byte)0x80;
 
   // flags for CachedDeserializable; additional flags can be combined
   // with these if required
@@ -423,16 +441,16 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       else {
         this.callbackArg = null;
       }
-      if ((this.flags & HAS_TAILKEY) != 0) {
-        this.tailKey = InternalDataSerializer.readSignedVL(in);
+      this.tailKey = InternalDataSerializer.readSignedVL(in);
+      if ((this.flags & HAS_BATCHUUID) != 0) {
+        this.batchUUID = InternalDataSerializer.readVLHighLow(in);
       }
-      this.batchUUID = InternalDataSerializer.readSignedVL(in);
     }
 
     @Override
     public String toString() {
       StringBuilder sb = new StringBuilder(50);
-      sb.append("(").append(getKey()).append(",").
+      sb.append("(op=").append(getOp()).append(',').append(getKey()).append(",").
         append(getValue()).append(",").
         append(getOldValue());
       if (this.bucketId > 0) {
@@ -448,8 +466,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       if (callbackArg != null) {
         sb.append(",callbackArg=").append(callbackArg);
       }
-      final long batchUUID = this.batchUUID;
-      if (batchUUID != BucketRegion.INVALID_UUID) {
+      if (BucketRegion.isValidUUID(batchUUID)) {
         sb.append(",uuid=").append(batchUUID);
       }
       sb.append(")");
@@ -516,7 +533,10 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       //TODO: Yogesh, this should be conditional,
       // make sure that we sent it on wire only 
       // when parallel wan is enabled
-      bits |= HAS_TAILKEY;
+      // bits |= HAS_TAILKEY;
+      final long batchUUID = this.batchUUID;
+      if (BucketRegion.isValidUUID(batchUUID)) bits |= HAS_BATCHUUID;
+
       out.writeByte(bits);
 
       if (this.filterRouting != null) {
@@ -533,7 +553,9 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         DataSerializer.writeObject(this.callbackArg, out);
       }
       InternalDataSerializer.writeSignedVL(this.tailKey, out);
-      InternalDataSerializer.writeSignedVL(this.batchUUID, out);
+      if (BucketRegion.isValidUUID(batchUUID)) {
+        InternalDataSerializer.writeVLHighLow(batchUUID, out);
+      }
     }
 
     /**

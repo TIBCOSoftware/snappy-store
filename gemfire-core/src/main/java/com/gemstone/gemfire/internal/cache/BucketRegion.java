@@ -14,6 +14,25 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.DataOutput;
@@ -767,8 +786,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.
     // anyway batchUUID will be invalid in that case.
-    if (this.batchUUID != INVALID_UUID && doFlush &&
-        getBucketAdvisor().isPrimary()) {
+    if (isValidUUID(this.batchUUID) && doFlush && getBucketAdvisor().isPrimary()) {
       // need to flush the region
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
@@ -804,7 +822,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
           getCache().waitOnRvvSnapshotTestHook();
         }
         // create new batchUUID
-        generateAndSetBatchIDIfNULL(true);
+        generateAndSetBatchIDIfInvalid(true);
 
         success = true;
       } finally {
@@ -833,10 +851,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (getBucketAdvisor().isPrimary()) {
       long batchUUIDToUse;
       if (event.getPutAllOperation() != null) { //isPutAll op
-        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
+        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
         // loose check on size, not very strict
       } else if (size() >= getPartitionedRegion().getColumnMaxDeltaRows()) {
-        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
+        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache()
               .getLoggerI18n()
@@ -844,7 +862,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                   + "(NON PUTALL operation) as " + this.batchUUID);
         }
       } else {
-        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
+        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
       }
       event.setBatchUUID(batchUUIDToUse);
     } else {
@@ -859,7 +877,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  private synchronized long generateAndSetBatchIDIfNULL(boolean resetBatchId) {
+  private synchronized long generateAndSetBatchIDIfInvalid(boolean resetBatchId) {
     if (resetBatchId) {
       this.batchUUID = INVALID_UUID;
       return this.batchUUID;
@@ -884,6 +902,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       }
       return buid;
     }
+  }
+
+  public static boolean isValidUUID(long uuid) {
+    return uuid != BucketRegion.INVALID_UUID;
   }
 
   private Set createColumnBatchAndPutInColumnTable() {
