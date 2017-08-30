@@ -137,6 +137,7 @@ import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
@@ -1233,8 +1234,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     startColocatedJmxManagerLocator();
 
     startMemcachedServer();
+    addMemoryManagerStats();
 
     return this;
+  }
+
+  private void addMemoryManagerStats() {
+    MemoryManagerStats stats = new MemoryManagerStats(this.getDistributedSystem(), "MemoryManagerStats");
+    CallbackFactoryProvider.getStoreCallbacks().initMemoryStats(stats);
   }
 
   private void startMemcachedServer() {

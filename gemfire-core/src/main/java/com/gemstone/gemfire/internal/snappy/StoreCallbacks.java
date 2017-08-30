@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public interface StoreCallbacks {
 
@@ -102,4 +103,9 @@ public interface StoreCallbacks {
    * Log the used memory breakdown as maintained by the MemoryManager.
    */
   void logMemoryStats();
+
+  /**
+   * Initializes different memory manager related stats
+   */
+  void initMemoryStats(MemoryManagerStats stats);
 }

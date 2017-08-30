@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public abstract class CallbackFactoryProvider {
 
@@ -151,6 +152,10 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public void logMemoryStats() {
+    }
+
+    @Override
+    public void initMemoryStats(MemoryManagerStats stats) {
     }
   };
 
