@@ -161,7 +161,8 @@ public class MemoryManagerStats implements MemoryManagerStatsOps {
 
   @Override
   public long getStoragePoolSize(boolean offHeap) {
-    return offHeap ? stats.getLong(offHeapStoragePoolSizeId) : stats.getLong(heapStoragePoolSizeId);
+    return offHeap ? stats.getLong(offHeapStoragePoolSizeId) :
+        stats.getLong(heapStoragePoolSizeId);
   }
 
   @Override
@@ -192,6 +193,12 @@ public class MemoryManagerStats implements MemoryManagerStatsOps {
   }
 
   @Override
+  public long getExecutionPoolSize(boolean offHeap) {
+    return offHeap ? stats.getLong(offHeapExecutionPoolSizeId) :
+        stats.getLong(heapExecutionPoolSizeId);
+  }
+
+  @Override
   public void incStorageMemoryUsed(boolean offHeap, long delta) {
     if (offHeap) {
       this.stats.incLong(offHeapStorageMemoryUsedId, delta);
@@ -207,6 +214,12 @@ public class MemoryManagerStats implements MemoryManagerStatsOps {
     } else {
       this.stats.incLong(heapStorageMemoryUsedId, -delta);
     }
+  }
+
+  @Override
+  public long getStorageMemoryUsed(boolean offHeap) {
+    return offHeap ? stats.getLong(offHeapStorageMemoryUsedId) :
+        stats.getLong(heapStorageMemoryUsedId);
   }
 
   @Override
@@ -228,12 +241,24 @@ public class MemoryManagerStats implements MemoryManagerStatsOps {
   }
 
   @Override
+  public long getExecutionMemoryUsed(boolean offHeap) {
+    return offHeap ? stats.getLong(offHeapExecutionPoolMemoryUsedId) :
+        stats.getLong(heapExecutionPoolMemoryUsedId);
+  }
+
+  @Override
   public void incNumFailedStorageRequest(boolean offHeap) {
     if (offHeap) {
       this.stats.incInt(numFailedOffHeapStorageRequestId, 1);
     } else {
       this.stats.incInt(numFailedHeapStorageRequestId, 1);
     }
+  }
+
+  @Override
+  public int getNumFailedStorageRequest(boolean offHeap) {
+    return offHeap ? stats.getInt(numFailedOffHeapStorageRequestId) :
+        stats.getInt(numFailedHeapStorageRequestId);
   }
 
   @Override
@@ -246,12 +271,24 @@ public class MemoryManagerStats implements MemoryManagerStatsOps {
   }
 
   @Override
-  public void incFailedEvictionRequest(boolean offHeap) {
+  public int getNumFailedExecutionRequest(boolean offHeap) {
+    return offHeap ? stats.getInt(numFailedOffHeapExecutionRequestId) :
+        stats.getInt(numFailedHeapExecutionRequestId);
+  }
+
+  @Override
+  public void incNumFailedEvictionRequest(boolean offHeap) {
     if (offHeap) {
       this.stats.incInt(failedOffHeapEvictionRequestsId, 1);
     } else {
       this.stats.incInt(failedHeapEvictionRequestsId, 1);
     }
+  }
+
+  @Override
+  public int getNumFailedEvictionRequest(boolean offHeap) {
+    return offHeap ? stats.getInt(failedOffHeapEvictionRequestsId) :
+        stats.getInt(failedHeapEvictionRequestsId);
   }
 
   @Override
