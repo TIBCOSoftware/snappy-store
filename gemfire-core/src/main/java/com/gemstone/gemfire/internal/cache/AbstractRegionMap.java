@@ -856,7 +856,6 @@ abstract class AbstractRegionMap implements RegionMap {
         }
         
         @Retained @Released Object value = oldRe._getValueRetain((RegionEntryContext) ((AbstractRegionMap) rm)._getOwnerObject(), true);
-        
         try {
           if (value == Token.NOT_AVAILABLE) {
             // fix for bug 43993
@@ -895,11 +894,14 @@ abstract class AbstractRegionMap implements RegionMap {
             tombstones.put(re.getVersionStamp().asVersionTag(), re);
           }
         }
+
         LocalRegion.regionPath.set(_getOwner().getFullPath());
          int valueSize  = _getOwner().calculateRegionEntryValueSize(re);
         _getOwner().calculateEntryOverhead(re);
-        //Always take the value size from recovery thread.
-        _getOwner().acquirePoolMemory(0, 0, true, null, false);
+        // Always take the value size from recovery thread.
+        if (!re.isTombstone()) {
+          _getOwner().acquirePoolMemory(0, 0, true, null, false);
+        }
         _getOwner().updateSizeOnCreate(re.getRawKey(), valueSize);
       }
       // Since lru was not being done during recovery call it now.
