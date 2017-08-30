@@ -45,6 +45,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 public abstract class GfxdReplyMessageProcessor extends DirectReplyProcessor {
 
   private GfxdResponseCode responseCode;
+  private DistributedMember responseMember;
 
   private HashMap<DistributedMember, ReplyException> exceptions;
 
@@ -78,6 +79,7 @@ public abstract class GfxdReplyMessageProcessor extends DirectReplyProcessor {
    */
   public synchronized Set<DistributedMember> reset() {
     this.responseCode = GfxdResponseCode.GRANT(1);
+    this.responseMember = null;
     this.exception = null;
     this.exceptions = null;
     return virtualReset();
@@ -85,19 +87,26 @@ public abstract class GfxdReplyMessageProcessor extends DirectReplyProcessor {
 
   protected abstract Set<DistributedMember> virtualReset();
 
-  public final synchronized void setResponseCode(GfxdResponseCode code) {
+  public final synchronized void setResponseCode(GfxdResponseCode code,
+      DistributedMember member) {
     if (!this.responseCode.isException()) {
       if (code.isException() || code.isTimeout()) {
         this.responseCode = code;
+        this.responseMember = member;
       }
       else if (code.isWaiting() && this.responseCode.isGrant()) {
         this.responseCode = code;
+        this.responseMember = member;
       }
     }
   }
 
   public final GfxdResponseCode getResponseCode() {
     return this.responseCode;
+  }
+
+  public final DistributedMember getResponseMember() {
+    return this.responseMember;
   }
 
   public final ReplyException getReplyException() {

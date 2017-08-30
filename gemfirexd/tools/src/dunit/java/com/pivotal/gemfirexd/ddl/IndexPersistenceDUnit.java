@@ -578,36 +578,38 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
       File[] files = currDir.listFiles();
       getGlobalLogger().info("current dir is: " + currDir.getCanonicalPath());
 
-      for (File f : files) {
-        if (f.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
-          getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
-          f.delete();
-        }
-        if (f.isDirectory()) {
-          File newDir = new File(f.getCanonicalPath());
-          File[] newFiles = newDir.listFiles();
-          for (File nf : newFiles) {
-            if (nf.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
-              getGlobalLogger().info(
-                  "deleting file: " + nf + " from dir: " + newDir);
-              nf.delete();
+      if (files != null) {
+        for (File f : files) {
+          if (f.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
+            getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
+            f.delete();
+          }
+          if (f.isDirectory()) {
+            File newDir = new File(f.getCanonicalPath());
+            File[] newFiles = newDir.listFiles();
+            for (File nf : newFiles) {
+              if (nf.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
+                getGlobalLogger().info(
+                    "deleting file: " + nf + " from dir: " + newDir);
+                nf.delete();
+              }
             }
           }
         }
-      }
-      for (File f : files) {
-        if (f.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
-          getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
-          f.delete();
-        }
-        if (f.isDirectory()) {
-          File newDir = new File(f.getCanonicalPath());
-          File[] newFiles = newDir.listFiles();
-          for (File nf : newFiles) {
-            if (nf.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
-              getGlobalLogger().info(
-                  "deleting file: " + nf + " from dir: " + newDir);
-              nf.delete();
+        for (File f : files) {
+          if (f.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
+            getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
+            f.delete();
+          }
+          if (f.isDirectory()) {
+            File newDir = new File(f.getCanonicalPath());
+            File[] newFiles = newDir.listFiles();
+            for (File nf : newFiles) {
+              if (nf.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
+                getGlobalLogger().info(
+                    "deleting file: " + nf + " from dir: " + newDir);
+                nf.delete();
+              }
             }
           }
         }

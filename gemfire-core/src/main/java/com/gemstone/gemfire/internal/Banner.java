@@ -78,7 +78,7 @@ public class Banner {
 
     out.println(SEPERATOR);
     out.println();
-    out.println("  Copyright (c) 2016 SnappyData, Inc. All rights reserved.");
+    out.println("  Copyright (c) 2017 SnappyData, Inc. All rights reserved.");
     out.println();
     out.println("  Licensed under the Apache License, Version 2.0 (the \"License\"); you");
     out.println("  may not use this file except in compliance with the License. You");
@@ -147,7 +147,11 @@ public class Banner {
             && !key.startsWith(DistributionConfigImpl.SECURITY_SYSTEM_PREFIX
             + DistributionConfig.SECURITY_PREFIX_NAME)
             && !key.toLowerCase().contains("password") /* bug 45381 */) {
-          out.println("    " + key + " = " + me.getValue());
+          String val = me.getValue().toString();
+          if (key.toLowerCase().contains("sun.java.command")) { // SNAP-1660
+            val = val.replaceAll("password=\\S+", "password=********");
+          }
+          out.println("    " + key + " = " + val);
         } else {
           out.println("    " + key + " = " + "********");
         }
