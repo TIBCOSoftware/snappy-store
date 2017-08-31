@@ -475,6 +475,18 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     initTableFlags();
   }
 
+  private ExternalCatalog waitForHiveCatalogInit() {
+    ExternalCatalog ret;
+    int cnt = -1;
+    // Retrying after sleep of some millisecs to reduce the worst case
+    // of delaying that put for a large period of time
+    while ((ret = Misc.getMemStore().getExternalCatalog()) == null
+        && cnt < GfxdConstants.HA_NUM_RETRIES) {
+      GemFireXDUtils.sleepForRetry(cnt++);
+    }
+    return ret;
+  }
+
   public void invalidateHiveMetaData() {
     externalTableMetaData.set(null);
   }
@@ -491,12 +503,19 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         schemaName = fullName.substring(0, schemaIndex);
         tableName = fullName.substring(schemaIndex + 1);
       }
+      ExternalCatalog extcat = Misc.getMemStore().getExternalCatalog();
+      if (extcat == null) {
+        extcat = waitForHiveCatalogInit();
+        if (extcat == null) {
+          throw new TimeoutException("The snappy catalog in hive metastore is not accessible");
+        }
+      }
       // containers are created during initialization, ignore them
-      externalTableMetaData.compareAndSet(null,
-          Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
+      externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
               schemaName, tableName, true));
       if (isPartitioned()) {
         metaData = externalTableMetaData.get();
+        if (metaData == null) return null;
         ((PartitionedRegion)this.region).setColumnBatchSizes(
             metaData.columnBatchSize, metaData.columnMaxDeltaRows,
             GfxdConstants.SNAPPY_MIN_COLUMN_DELTA_ROWS);

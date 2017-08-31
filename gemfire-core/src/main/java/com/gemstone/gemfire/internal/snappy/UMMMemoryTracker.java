@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -35,7 +35,7 @@ public class UMMMemoryTracker {
   private String firstAllocationObject;
 
   private int totalOperationsExpected;
-  private int totalMemoryAllocated;
+  private long totalMemoryAllocated = 0L;
 
   public UMMMemoryTracker(long ID, int totalOperationsExpected){
     this.ID = ID;
@@ -50,7 +50,7 @@ public class UMMMemoryTracker {
   public void setMemoryUsed(long memoryUsed) {
     this.memoryUsed = memoryUsed;
   }
-  public int getTotalMemoryAllocated() {
+  public long getTotalMemoryAllocated() {
     return totalMemoryAllocated;
   }
   public void setTotalMemoryAllocated(int totalMemoryAllocated) {

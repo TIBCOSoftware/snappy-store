@@ -456,6 +456,7 @@ public interface GfxdConstants {
           Attribute.SYS_HDFS_ROOT_DIR,
           Attribute.TABLE_DEFAULT_PARTITIONED,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.COLLATE,
+          com.pivotal.gemfirexd.internal.iapi.reference.Attribute.INTERNAL_CONNECTION,
           Attribute.COLLATION,
           Attribute.CREATE_ATTR,
           Attribute.DISABLE_STREAMING,

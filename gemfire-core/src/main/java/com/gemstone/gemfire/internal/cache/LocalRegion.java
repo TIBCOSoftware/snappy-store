@@ -736,9 +736,8 @@ public class LocalRegion extends AbstractRegion
     Assert.assertTrue(regionName != null, "regionName must not be null");
     this.sharedDataView = buildDataView();
     this.regionName = regionName;
-    if (regionName.toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
-      this.isInternalColumnTable = true;
-    }
+    this.isInternalColumnTable = regionName.toUpperCase().endsWith(
+        StoreCallbacks.SHADOW_TABLE_SUFFIX);
     this.parentRegion = parentRegion;
     this.fullPath = calcFullPath(regionName, parentRegion);
     final GemFireCacheImpl.StaticSystemCallbacks sysCb =
@@ -2394,16 +2393,6 @@ public class LocalRegion extends AbstractRegion
       throw new InternalGemFireError("unexpected call to newUUID for "
           + toString());
     }
-  }
-
-  /**
-   * Get a new unique java UUID that is guaranteed to be unique in the
-   * distributed system for this region.
-   */
-  public final UUID newJavaUUID() throws IllegalStateException {
-    long msb = newUUID(true);
-    long lsb = rand.nextLong();
-    return new UUID(msb, lsb);
   }
 
   /**
@@ -14532,12 +14521,11 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  //why is always false?
   public boolean isInternalColumnTable() {
     return isInternalColumnTable;
   }
 
-  private boolean isInternalColumnTable = false;
+  private final boolean isInternalColumnTable;
 
   public boolean isSnapshotEnabledRegion() {
     return (getCache().snapshotEnabledForTest() && !isUsedForMetaRegion() && concurrencyChecksEnabled);

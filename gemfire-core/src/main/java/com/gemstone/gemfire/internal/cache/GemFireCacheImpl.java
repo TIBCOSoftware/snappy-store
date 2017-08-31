@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
@@ -568,15 +586,15 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
 
     final String regionPath = region.getFullPath();
-    // ask for pool memory befor continuing
+    // ask for pool memory before continuing
     if (!region.reservedTable() && region.needAccounting()) {
       region.calculateEntryOverhead(oldRe);
       LocalRegion.regionPath.set(region.getFullPath());
-      region.acquirePoolMemory(0, oldSize, false, null, true);
+      region.acquirePoolMemory(0, oldSize, true, null, true);
     }
 
     if(getLoggerI18n().fineEnabled()) {
-      getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + regionPath + " adding " +
+      getLoggerI18n().fine("For region  " + regionPath + " adding " +
           oldRe + " to oldEntrMap");
     }
 
@@ -599,7 +617,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
 
     if (getLoggerI18n().fineEnabled()) {
-      getLoggerI18n().info(LocalizedStrings.DEBUG, "For key  " + oldRe.getKeyCopy() + " " +
+      getLoggerI18n().fine("For key  " + oldRe.getKeyCopy() + " " +
           "the entries are " + snapshot.get(oldRe.getKeyCopy()));
     }
   }
@@ -624,7 +642,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       RegionEntry oldRegionEntry = NonLocalRegionEntry.newEntry(re.getKeyCopy(), Token.TOMBSTONE,
           (LocalRegion)region, re.getVersionStamp().asVersionTag());
       if (getLoggerI18n().fineEnabled()) {
-        getLoggerI18n().info(LocalizedStrings.DEBUG, "Returning TOMBSTONE");
+        getLoggerI18n().fine("Returning TOMBSTONE");
       }
       return oldRegionEntry;
     } else {
@@ -632,7 +650,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       Map<Object, BlockingQueue<RegionEntry>> regionMap = oldEntryMap.get(regionPath);
       if (regionMap == null) {
         if (getLoggerI18n().fineEnabled()) {
-          getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
+          getLoggerI18n().fine("For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
               "are entries present in the region" +
               " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
               ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + "against the key " + entryKey +
@@ -644,7 +662,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       BlockingQueue<RegionEntry> entries = regionMap.get(entryKey);
       if (entries == null) {
         if (getLoggerI18n().fineEnabled()) {
-        getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
+        getLoggerI18n().fine("For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
             "are entries present in the region" +
             " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
             ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + " the entries are " + entries + " against the key " + entryKey +
@@ -669,7 +687,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         }
       }
       if (getLoggerI18n().fineEnabled()) {
-        getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region +
+        getLoggerI18n().fine("For region  " + region +
             " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
             ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + " the entries are " + entries +
             "against the key " + entryKey +
@@ -708,6 +726,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
+  public void runOldEntriesCleanerThread(){
+    new OldEntriesCleanerThread().run();
+  }
+
   class OldEntriesCleanerThread implements Runnable {
     // Keep each entry alive for atleast 5 mins.
     public void run() {
@@ -729,7 +751,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                 }
                 if (!entryFoundInTxState) {
                   if (getLoggerI18n().fineEnabled()) {
-                    getLoggerI18n().info(LocalizedStrings.DEBUG,
+                    getLoggerI18n().fine(
                         "OldEntriesCleanerThread : Removing the entry " + re + " entry update in progress : " +
                             re.isUpdateInProgress());
                   }
@@ -737,7 +759,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                   // free the allocated memory
                   if (!region.reservedTable() && region.needAccounting()) {
                     int size = region.calculateRegionEntryValueSize(re);
-                    region.freePoolMemory(size, false);
+                    region.freePoolMemory(size, true);
                   }
                 }
               }
@@ -750,7 +772,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             if (entry.getValue().size() == 0) {
               regionEntryMap.remove(entry.getKey());
               if (getLoggerI18n().fineEnabled()) {
-                getLoggerI18n().info(LocalizedStrings.DEBUG,
+                getLoggerI18n().fine(
                     "OldEntriesCleanerThread : Removing the map against the key " + entry.getKey());
               }
             }
@@ -759,7 +781,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
       catch (Exception e) {
         if (getLoggerI18n().warningEnabled()) {
-          getLoggerI18n().info(LocalizedStrings.DEBUG,
+          getLoggerI18n().warning(LocalizedStrings.DEBUG,
               "OldEntriesCleanerThread : Error occured while cleaning the oldentries map.Actual " +
                   "Exception:", e);
         }
@@ -1066,14 +1088,17 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
       this.memorySize = memorySize;
       if (memorySize > 0) {
+        if (!GemFireVersion.isEnterpriseEdition()) {
+          throw new IllegalArgumentException("The off-heap column store (enabled by property " +
+              "memory-size) is not supported in SnappyData OSS version.");
+        }
         try {
           Class clazz = Class.forName("com.gemstone.gemfire.internal.cache.store.ManagedDirectBufferAllocator");
           Method method = clazz.getDeclaredMethod("instance");
           this.bufferAllocator = (DirectBufferAllocator)method.invoke(null);
-        } catch (ClassNotFoundException e) {
-          throw new IllegalArgumentException("The property memory-size is not supported in SnappyData OSS version.");
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-          throw new IllegalStateException("Could not configure buffer allocator.", e);
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+            InvocationTargetException e) {
+          throw new IllegalStateException("Could not configure managed buffer allocator.", e);
         }
       } else {
         // the allocation sizes will be initialized from the heap size

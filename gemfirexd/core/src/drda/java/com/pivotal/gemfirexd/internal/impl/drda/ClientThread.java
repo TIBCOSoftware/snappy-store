@@ -99,6 +99,7 @@ final class ClientThread extends Thread {
                           clientSocket.setKeepAlive(false);
                         }
                         clientSocket.setTcpNoDelay(true);
+                        clientSocket.setSoLinger(false, 0);
                         /* (original code)
                         clientSocket.setKeepAlive(parent.getKeepAlive());
                         */

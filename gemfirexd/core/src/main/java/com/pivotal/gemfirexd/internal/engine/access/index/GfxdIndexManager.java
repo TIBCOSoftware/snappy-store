@@ -4397,8 +4397,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       }
       if (needToAcquireWriteLockOnGIILock) {
         if (lockForGII) {
-          lockForGII(holdIndexLock, tc);
-          giiLockAcquired = true;
+          giiLockAcquired = lockForGII(holdIndexLock, tc);
         }
       }
 
@@ -4447,7 +4446,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           lcc, null, null);
     } finally {
       if (!holdIndexLock) {
-        unlockForGII(holdIndexLock, tc);
+        unlockForGII(false, tc);
       }
       if (tableLockAcquired) {
         gfc.closeForEndTransaction(tc, false);
