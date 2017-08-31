@@ -2003,7 +2003,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String fileName, String columnDelimiter, String characterDelimiter,
       String codeset, short replace, short lockTable, int numThreads,
       short caseSensitiveNames, String importClassName, String errorFile)
-      throws SQLException {
+      throws SQLException, StandardException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_TABLE_EX procedure");
     Connection conn = getDefaultConn();
     try {
       // not sure whether this is also a bug in Derby or not,
@@ -2055,7 +2057,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String insertColumnList, String columnIndexes, String fileName,
       String columnDelimiter, String characterDelimiter, String codeset,
       short replace, short lockTable, int numThreads, short caseSensitiveNames,
-      String importClassName, String errorFile) throws SQLException {
+      String importClassName, String errorFile) throws SQLException, StandardException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_DATA_EX procedure");
     Connection conn = getDefaultConn();
     try {
       // tableName and schemaName need to be case insensitive.
@@ -2106,7 +2110,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String tableName, String fileName, String columnDelimiter,
       String characterDelimiter, String codeset, short replace,
       short lockTable, int numThreads, short caseSensitiveNames,
-      String importClassName, String errorFile) throws SQLException {
+      String importClassName, String errorFile) throws SQLException, StandardException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_TABLE_LOBS_FROM_EXTFILE procedure");
     Connection conn = getDefaultConn();
     try {
       // tableName and schemaName need to be case insensitive.
@@ -2159,7 +2165,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String fileName, String columnDelimiter, String characterDelimiter,
       String codeset, short replace, short lockTable, int numThreads,
       short caseSensitiveNames, String importClassName, String errorFile)
-      throws SQLException {
+      throws SQLException, StandardException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_DATA_LOBS_FROM_EXTFILE procedure");
     Connection conn = getDefaultConn();
     try {
       // tableName and schemaName need to be case insensitive.

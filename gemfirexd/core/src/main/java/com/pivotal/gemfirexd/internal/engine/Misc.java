@@ -1362,4 +1362,13 @@ public abstract class Misc {
         (lcc.getCurrentIsolationLevel() == ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL ||
             lcc.getAutoCommit());
   }
+
+  public static void invalidSnappyDataFeature(String featureDescription)
+      throws StandardException {
+    if(getMemStore().isSnappyStore()) {
+      throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
+          featureDescription + " is not supported in SnappyData. " +
+              "This feature is supported when product is started in rowstore mode");
+    }
+  }
 }
