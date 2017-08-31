@@ -19,9 +19,9 @@ package com.gemstone.gemfire.internal.snappy;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public interface StoreCallbacks {
 
@@ -35,7 +35,7 @@ public interface StoreCallbacks {
 
   void registerTypes();
 
-  Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
+  Set<Object> createColumnBatch(BucketRegion region, long batchID,
       int bucketID);
 
   List<String> getInternalTableSchemas();
@@ -46,7 +46,7 @@ public interface StoreCallbacks {
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
-  public String columnBatchTableName(String tableName);
+  String columnBatchTableName(String tableName);
 
   void registerRelationDestroyForHiveStore();
 
@@ -102,4 +102,9 @@ public interface StoreCallbacks {
    * Log the used memory breakdown as maintained by the MemoryManager.
    */
   void logMemoryStats();
+
+  /**
+   * Initializes different memory manager related stats
+   */
+  void initMemoryStats(MemoryManagerStats stats);
 }

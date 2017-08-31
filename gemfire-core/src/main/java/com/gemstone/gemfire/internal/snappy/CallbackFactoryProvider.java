@@ -20,9 +20,9 @@ package com.gemstone.gemfire.internal.snappy;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public abstract class CallbackFactoryProvider {
 
@@ -34,7 +34,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
+    public Set<Object> createColumnBatch(BucketRegion region, long batchID,
         int bucketID) {
       return null;
     }
@@ -151,6 +151,10 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public void logMemoryStats() {
+    }
+
+    @Override
+    public void initMemoryStats(MemoryManagerStats stats) {
     }
   };
 

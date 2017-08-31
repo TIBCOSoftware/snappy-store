@@ -14,6 +14,25 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.DataOutput;
@@ -49,7 +68,6 @@ import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
 import com.gemstone.gemfire.internal.cache.locks.ReentrantReadWriteWriteShareLock;
 import com.gemstone.gemfire.internal.cache.partitioned.*;
@@ -68,7 +86,6 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 
@@ -250,9 +267,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private volatile AtomicLong5 eventSeqNum = null;
 
-  static final UUID zeroUUID = new UUID(0, 0);
+  public static final long INVALID_UUID = VMIdAdvisor.INVALID_ID;
 
-  private volatile UUID batchUUID = null;
+  private volatile long batchUUID = INVALID_UUID;
 
   public final ReentrantReadWriteLock columnBatchFlushLock =
       new ReentrantReadWriteLock();
@@ -768,8 +785,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // we may have to use region.size so that no state
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.
-    // anyway batchUUID will be null in that case.
-    if (this.batchUUID != null && doFlush && getBucketAdvisor().isPrimary()) {
+    // anyway batchUUID will be invalid in that case.
+    if (isValidUUID(this.batchUUID) && doFlush && getBucketAdvisor().isPrimary()) {
       // need to flush the region
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
@@ -805,7 +822,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
           getCache().waitOnRvvSnapshotTestHook();
         }
         // create new batchUUID
-        generateAndSetBatchIDIfNULL(true);
+        generateAndSetBatchIDIfInvalid(true);
 
         success = true;
       } finally {
@@ -832,12 +849,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // PUTALL
     boolean resetBatchId = false;
     if (getBucketAdvisor().isPrimary()) {
-      UUID batchUUIDToUse;
+      long batchUUIDToUse;
       if (event.getPutAllOperation() != null) { //isPutAll op
-        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
+        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
         // loose check on size, not very strict
       } else if (size() >= getPartitionedRegion().getColumnMaxDeltaRows()) {
-        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
+        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache()
               .getLoggerI18n()
@@ -845,7 +862,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                   + "(NON PUTALL operation) as " + this.batchUUID);
         }
       } else {
-        batchUUIDToUse = generateAndSetBatchIDIfNULL(resetBatchId);
+        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
       }
       event.setBatchUUID(batchUUIDToUse);
     } else {
@@ -860,20 +877,21 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  private synchronized UUID generateAndSetBatchIDIfNULL(boolean resetBatchId) {
+  private synchronized long generateAndSetBatchIDIfInvalid(boolean resetBatchId) {
     if (resetBatchId) {
-      this.batchUUID = null;
+      this.batchUUID = INVALID_UUID;
       return this.batchUUID;
     }
-    final UUID buid = this.batchUUID;
-    if (buid == null || buid.equals(zeroUUID)) {
-      this.batchUUID = partitionedRegion.newJavaUUID();
+    final long buid = this.batchUUID;
+    if (buid == INVALID_UUID) {
+      this.batchUUID = partitionedRegion.newUUID(false);
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
             .getLoggerI18n()
             .fine("Setting the batchUUID for PRIMARY bucket "  + this.getId() +  " (PUT/PUTALL operation)," +
                 " created the batchUUID as " + this.batchUUID);
       }
+      return this.batchUUID;
     } else {
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
@@ -882,8 +900,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
                 " continuing the same batchUUID as " + this.batchUUID);
 
       }
+      return buid;
     }
-    return this.batchUUID;
+  }
+
+  public static boolean isValidUUID(long uuid) {
+    return uuid != BucketRegion.INVALID_UUID;
   }
 
   private Set createColumnBatchAndPutInColumnTable() {

@@ -741,7 +741,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
           + HeapEvictor.EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP
           + "=true");
     }
-
+    vmArgs.add("-Dorg.codehaus.janino.source_debugging.enable=true");
     vmArgs.addAll(incomingVMArgs);
     processedDefaultGCParams = true;
 

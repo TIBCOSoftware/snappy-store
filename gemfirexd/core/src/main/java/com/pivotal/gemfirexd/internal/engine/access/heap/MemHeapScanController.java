@@ -379,7 +379,6 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
     boolean restoreBatching = false;
     if (this.txState != null) {
-      // TODO: Suranjan take snapshot, each time we open a scan controller.
       this.txId = this.txState.getTransactionId();
       this.lockPolicy = this.txState.getLockingPolicy();
       if (this.forUpdate != 0) {
@@ -406,7 +405,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
             .getReadLocksForScanContext(this.lcc);
         restoreBatching = this.localTXState.getProxy().remoteBatching(true);
       }
-    }
+    }// if fc is null then the query is from snappy side.
     else if (this.gfContainer.isRowBuffer() ||
         (region.getCache().snapshotEnabledForTest() && region.getConcurrencyChecksEnabled())) {
 
@@ -566,7 +565,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
       // clear the txState so that other thread local is cleared.
       TXManagerImpl.getOrCreateTXContext().clearTXState();
       // gemfire tx shouldn't be cleared in case of row buffer scan
-      if (!(this.getGemFireContainer().isRowBuffer() /*&& lcc.isSkipConstraintChecks()*/)) {
+      if (!(this.getGemFireContainer().isRowBuffer() && (fc == null))) {
         if (GemFireXDUtils.TraceQuery) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
               "MemHeapScanController::positionAtInitScan bucketSet: " + " lcc.isSkipConstraintChecks " + lcc.isSkipConstraintChecks() +

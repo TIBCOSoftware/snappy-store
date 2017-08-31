@@ -80,6 +80,7 @@ import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
@@ -1353,5 +1354,12 @@ public abstract class Misc {
 
   public static boolean isSnappyHiveMetaTable(String schemaName) {
     return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);
+  }
+
+  public static boolean routeQuery(LanguageConnectionContext lcc) {
+    return Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingFlagTrue() &&
+        // if isolation level is not NONE, autocommit should be true to enable query routing
+        (lcc.getCurrentIsolationLevel() == ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL ||
+            lcc.getAutoCommit());
   }
 }

@@ -62,6 +62,7 @@ import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgumen
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -317,6 +318,8 @@ public final class GenericLanguageConnectionContext
 	// if unspecified, the statement won't be prepared with a specific 
 	// scan isolationlevel
 	protected int prepareIsolationLevel = ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
+
+	private boolean autoCommit = false;
 
 	// Whether or not to write executing statement info to db2j.log
 	private boolean logStatementText;
@@ -3229,7 +3232,6 @@ public final class GenericLanguageConnectionContext
 	 */
 	public void setIsolationLevel(int isolationLevel) throws StandardException
 	{
-        
 		StatementContext stmtCtxt = getStatementContext();
 		if (stmtCtxt!= null && stmtCtxt.inTrigger())
 			throw StandardException.newException(SQLState.LANG_NO_XACT_IN_TRIGGER, getTriggerExecutionContext().toString());
@@ -3332,6 +3334,14 @@ public final class GenericLanguageConnectionContext
 			return prepareIsolationLevel;
 		else
 			return ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
+	}
+
+	public void setAutoCommit(boolean autoCommit) {
+		this.autoCommit = autoCommit;
+	}
+
+	public boolean getAutoCommit() {
+		return autoCommit;
 	}
 
 	/**
@@ -4139,6 +4149,8 @@ public final class GenericLanguageConnectionContext
 	private static final int DEFAULT_PERSISTENT = 0x4000;
 
 	private static final int BUCKET_RETENTION_FOR_LOCAL_EXECUTION = 0x8000;
+
+	private static final int SNAPPY_INTERNAL_CONNECTION = 0x10000;
 
   private static final int FLAGS_DEFAULT = 0x0;
 
@@ -4976,14 +4988,25 @@ public final class GenericLanguageConnectionContext
   }
 
 	@Override
-	public void setQueryRouting(boolean routeQuery) {
+	public void setQueryRoutingFlag(boolean routeQuery) {
 		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, ROUTE_QUERY,
 				routeQuery);
 	}
 
 	@Override
-	public boolean isQueryRoutingEnabled() {
+	public boolean isQueryRoutingFlagTrue() {
 		return GemFireXDUtils.isSet(this.gfxdFlags, ROUTE_QUERY);
+	}
+
+	@Override
+	public void setSnappyInternalConnection(boolean internalConnection) {
+		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, SNAPPY_INTERNAL_CONNECTION,
+				internalConnection);
+	}
+
+	@Override
+	public boolean isSnappyInternalConnection() {
+		return GemFireXDUtils.isSet(this.gfxdFlags, SNAPPY_INTERNAL_CONNECTION);
 	}
 
 	@Override
