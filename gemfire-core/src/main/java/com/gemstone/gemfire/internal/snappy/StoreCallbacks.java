@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -19,7 +19,6 @@ package com.gemstone.gemfire.internal.snappy;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 
@@ -35,7 +34,7 @@ public interface StoreCallbacks {
 
   void registerTypes();
 
-  Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
+  Set<Object> createColumnBatch(BucketRegion region, long batchID,
       int bucketID);
 
   List<String> getInternalTableSchemas();
@@ -46,7 +45,7 @@ public interface StoreCallbacks {
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
-  public String columnBatchTableName(String tableName);
+  String columnBatchTableName(String tableName);
 
   void registerRelationDestroyForHiveStore();
 

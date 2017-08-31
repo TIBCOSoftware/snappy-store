@@ -2396,16 +2396,6 @@ public class LocalRegion extends AbstractRegion
   }
 
   /**
-   * Get a new unique java UUID that is guaranteed to be unique in the
-   * distributed system for this region.
-   */
-  public final UUID newJavaUUID() throws IllegalStateException {
-    long msb = newUUID(true);
-    long lsb = rand.nextLong();
-    return new UUID(msb, lsb);
-  }
-
-  /**
    * Reset the UUID to given start value. It will return a value starting from
    * the value provided to this method and the next call to
    * {@link #newUUID(boolean)} will return a value greater than it.
