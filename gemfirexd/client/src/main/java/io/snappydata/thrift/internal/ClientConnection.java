@@ -258,9 +258,9 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     super.lock();
     try {
       checkClosedConnection();
-      if(getTransactionIsolation() == TRANSACTION_NONE) {
+      if (getTransactionIsolation() == TRANSACTION_NONE) {
         service.commitTransaction(service.getCurrentHostConnection(), true, null);
-      }else{
+      } else {
         service.commitTransaction(txHost, true, null);
       }
       initTXHost(service);
@@ -280,9 +280,9 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     super.lock();
     try {
       checkClosedConnection();
-      if(getTransactionIsolation() == TRANSACTION_NONE) {
+      if (getTransactionIsolation() == TRANSACTION_NONE) {
         service.rollbackTransaction(service.getCurrentHostConnection(), true, null);
-      }else{
+      } else {
         service.rollbackTransaction(txHost, true, null);
       }
       initTXHost(service);
