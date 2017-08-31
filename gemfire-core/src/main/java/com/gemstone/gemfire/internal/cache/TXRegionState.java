@@ -153,13 +153,22 @@ public final class TXRegionState extends ReentrantLock {
     this.expiryReadLock = r.getTxEntryExpirationReadLock();
     this.isValid = true;
 
-    if (r.isInitialized() || !r.getImageState().addPendingTXRegionState(this)) {
+    if (!r.isInitialized() && r.getImageState().lockPendingTXRegionStates(true, false)) {
+      try {
+        if (!r.getImageState().addPendingTXRegionState(this)) {
+          this.pendingTXOps = null;
+          this.pendingTXLockFlags = null;
+        } else {
+          this.pendingTXOps = new ArrayList<Object>();
+          this.pendingTXLockFlags = new TIntArrayList();
+        }
+      } finally {
+        r.getImageState().unlockPendingTXRegionStates(true);
+      }
+
+    } else {
       this.pendingTXOps = null;
       this.pendingTXLockFlags = null;
-    }
-    else {
-      this.pendingTXOps = new ArrayList<Object>();
-      this.pendingTXLockFlags = new TIntArrayList();
     }
   }
 
