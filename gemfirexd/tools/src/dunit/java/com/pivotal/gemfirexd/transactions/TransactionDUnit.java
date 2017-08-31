@@ -3243,7 +3243,12 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     ps.executeBatch();
     getLogWriter().info("commiting batch");
     conn.commit();
-    TXManagerImpl.waitForPendingCommitForTest();
+    // TXManagerImpl.waitForPendingCommitForTest();
+    // Now wait for Tx to finish. Above line was not working on same connection/thread
+    ResultSet rs = conn.createStatement().
+        executeQuery("select count(*) from app.t1");
+    assertTrue(rs.next());
+    assertFalse(rs.next());
     getLogWriter().info("verifying");
     for (VM vm : serverVMs) {
       vm.invoke(TransactionDUnit.class, "verifyNumEntries", new Object[] {

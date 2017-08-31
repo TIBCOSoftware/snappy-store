@@ -262,7 +262,8 @@ public final class GfxdDRWLockRequestProcessor extends DLockRequestProcessor {
           processor.addGrantedMember(dm.getDistributionManagerId(), 1);
         }
         else {
-          processor.setResponseCode(GfxdResponseCode.TIMEOUT);
+          processor.setResponseCode(GfxdResponseCode.TIMEOUT,
+              dm.getDistributionManagerId());
         }
       }
       if (grant) {

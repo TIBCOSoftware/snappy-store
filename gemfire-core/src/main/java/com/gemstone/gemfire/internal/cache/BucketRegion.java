@@ -267,7 +267,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private final Object giiReadLockForSIOwner = new Object();
   private final Object giiWriteLockForSIOwner = new Object();
 
-  private boolean lockGIIForSnapshot =
+  private final boolean lockGIIForSnapshot =
       Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
 
   public final AtomicLong5 getEventSeqNum() {

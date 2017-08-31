@@ -1546,7 +1546,7 @@ public class CacheServerLauncher  {
           }
       }
       writePidToFile(status);
-      System.out.println( status );
+      System.out.println(status);
     }
   }
 
