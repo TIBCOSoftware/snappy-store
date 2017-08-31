@@ -1204,7 +1204,7 @@ public class EmbedStatement extends ConnectionChild
                   GenericStatement.QUERY_HDFS, true);
             }
 
-            if (Misc.getMemStore().isSnappyStore() && routeQueryEnabled(cc)) {
+            if (routeQueryEnabled(cc)) {
               execFlags = GemFireXDUtils.set(execFlags, GenericStatement.ROUTE_QUERY, true);
             }
 
