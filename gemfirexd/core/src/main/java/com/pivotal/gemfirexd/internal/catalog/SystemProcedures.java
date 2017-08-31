@@ -1336,7 +1336,7 @@ public abstract class SystemProcedures  {
 	String  codeset)
         throws SQLException, StandardException
     {
-                Misc.invalidSnappyDataFeature("EXPORT_QUERY procedure");
+		Misc.invalidSnappyDataFeature("EXPORT_QUERY procedure");
 		Connection conn = getDefaultConn();
 		Export.exportQuery(conn, selectStatement, fileName ,
 							   columnDelimiter , characterDelimiter, codeset);
@@ -1403,7 +1403,7 @@ public abstract class SystemProcedures  {
 	short   replace)
         throws SQLException, StandardException
     {
-                Misc.invalidSnappyDataFeature("IMPORT_TABLE procedure");
+               Misc.invalidSnappyDataFeature("IMPORT_TABLE procedure");
 		Connection conn = getDefaultConn();
 		try{
                   // GemStone changes BEGIN
@@ -1520,7 +1520,7 @@ public abstract class SystemProcedures  {
 	short   replace)
         throws SQLException, StandardException
     {
-                Misc.invalidSnappyDataFeature("IMPORT_DATA procedure");
+		Misc.invalidSnappyDataFeature("IMPORT_DATA procedure");
 		Connection conn = getDefaultConn();
 		try{
 			Import.importData(conn, schemaName , tableName ,
