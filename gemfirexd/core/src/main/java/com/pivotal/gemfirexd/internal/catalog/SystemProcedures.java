@@ -1258,7 +1258,7 @@ public abstract class SystemProcedures  {
 	String  columnDelimiter,
 	String  characterDelimiter,
 	String  codeset)
-        throws SQLException, StandardException
+        throws SQLException
     {
     Misc.invalidSnappyDataFeature("EXPORT_TABLE procedure");
 		Connection conn = getDefaultConn();
@@ -1296,7 +1296,7 @@ public abstract class SystemProcedures  {
     String  characterDelimiter,
     String  codeset,
     String  lobsFileName)
-        throws SQLException, StandardException
+        throws SQLException
     {
         Misc.invalidSnappyDataFeature("EXPORT_TABLE_LOBS_TO_EXTFILE procedure");
         Connection conn = getDefaultConn();
@@ -1334,7 +1334,7 @@ public abstract class SystemProcedures  {
 	String  columnDelimiter,
 	String  characterDelimiter,
 	String  codeset)
-        throws SQLException, StandardException
+        throws SQLException
     {
 		Misc.invalidSnappyDataFeature("EXPORT_QUERY procedure");
 		Connection conn = getDefaultConn();
@@ -1367,7 +1367,7 @@ public abstract class SystemProcedures  {
     String  characterDelimiter,
     String  codeset,
     String  lobsFileName)
-        throws SQLException, StandardException
+        throws SQLException
     {
         Misc.invalidSnappyDataFeature("EXPORT_QUERY_LOBS_TO_EXTFILE procedure");
         Connection conn = getDefaultConn();
@@ -1401,7 +1401,7 @@ public abstract class SystemProcedures  {
 	String  characterDelimiter,
 	String  codeset,
 	short   replace)
-        throws SQLException, StandardException
+        throws SQLException
     {
                Misc.invalidSnappyDataFeature("IMPORT_TABLE procedure");
 		Connection conn = getDefaultConn();
@@ -1465,7 +1465,7 @@ public abstract class SystemProcedures  {
     String  characterDelimiter,
     String  codeset,
     short   replace)
-        throws SQLException, StandardException
+        throws SQLException
     {
         Misc.invalidSnappyDataFeature("IMPORT_TABLE_LOBS_FROM_EXTFILE procedure");
         Connection conn = getDefaultConn();
@@ -1518,7 +1518,7 @@ public abstract class SystemProcedures  {
 	String  characterDelimiter,
 	String  codeset,
 	short   replace)
-        throws SQLException, StandardException
+        throws SQLException
     {
 		Misc.invalidSnappyDataFeature("IMPORT_DATA procedure");
 		Connection conn = getDefaultConn();
@@ -1571,7 +1571,7 @@ public abstract class SystemProcedures  {
     String  characterDelimiter,
     String  codeset,
     short   replace)
-        throws SQLException, StandardException
+        throws SQLException
     {
         Misc.invalidSnappyDataFeature("IMPORT_DATA_LOBS_FROM_EXTFILE procedure");
         Connection conn = getDefaultConn();

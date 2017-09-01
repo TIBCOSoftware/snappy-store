@@ -2003,7 +2003,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String fileName, String columnDelimiter, String characterDelimiter,
       String codeset, short replace, short lockTable, int numThreads,
       short caseSensitiveNames, String importClassName, String errorFile)
-      throws SQLException, StandardException {
+      throws SQLException {
 
     Misc.invalidSnappyDataFeature("IMPORT_TABLE_EX procedure");
     Connection conn = getDefaultConn();
@@ -2057,7 +2057,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String insertColumnList, String columnIndexes, String fileName,
       String columnDelimiter, String characterDelimiter, String codeset,
       short replace, short lockTable, int numThreads, short caseSensitiveNames,
-      String importClassName, String errorFile) throws SQLException, StandardException {
+      String importClassName, String errorFile) throws SQLException {
 
     Misc.invalidSnappyDataFeature("IMPORT_DATA_EX procedure");
     Connection conn = getDefaultConn();
@@ -2110,7 +2110,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String tableName, String fileName, String columnDelimiter,
       String characterDelimiter, String codeset, short replace,
       short lockTable, int numThreads, short caseSensitiveNames,
-      String importClassName, String errorFile) throws SQLException, StandardException {
+      String importClassName, String errorFile) throws SQLException {
 
     Misc.invalidSnappyDataFeature("IMPORT_TABLE_LOBS_FROM_EXTFILE procedure");
     Connection conn = getDefaultConn();
@@ -2165,7 +2165,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String fileName, String columnDelimiter, String characterDelimiter,
       String codeset, short replace, short lockTable, int numThreads,
       short caseSensitiveNames, String importClassName, String errorFile)
-      throws SQLException, StandardException {
+      throws SQLException {
 
     Misc.invalidSnappyDataFeature("IMPORT_DATA_LOBS_FROM_EXTFILE procedure");
     Connection conn = getDefaultConn();
