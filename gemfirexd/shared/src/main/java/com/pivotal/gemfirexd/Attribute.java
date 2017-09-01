@@ -464,6 +464,8 @@ public interface Attribute {
    */
   String ROUTE_QUERY = "route-query";
 
+  String INTERNAL_CONNECTION = "internal-connection";
+
   /**
    * Embedded connection property to create tables as persistent by default
    * for the connection.

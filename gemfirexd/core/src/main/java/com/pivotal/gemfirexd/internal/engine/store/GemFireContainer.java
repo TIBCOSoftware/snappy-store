@@ -5618,7 +5618,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             !LocalRegion.isMetaTable(region.getFullPath())) {
           ExternalCatalog ec = Misc.getMemStore().getExternalCatalog();
           LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
-          if (ec != null && lcc != null && lcc.isQueryRoutingEnabled() &&
+          if (ec != null && lcc != null && lcc.isQueryRoutingFlagTrue() &&
               Misc.initialDDLReplayDone()) {
             if (ec.isColumnTable(schemaName, table.toString(), true)) {
               dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");

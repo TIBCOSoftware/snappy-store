@@ -258,7 +258,11 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     super.lock();
     try {
       checkClosedConnection();
-      service.commitTransaction(txHost, true, null);
+      if (getTransactionIsolation() == TRANSACTION_NONE) {
+        service.commitTransaction(service.getCurrentHostConnection(), true, null);
+      } else {
+        service.commitTransaction(txHost, true, null);
+      }
       initTXHost(service);
     } catch (SnappyException se) {
       throw informListeners(ThriftExceptionUtil.newSQLException(se));
@@ -276,7 +280,11 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     super.lock();
     try {
       checkClosedConnection();
-      service.rollbackTransaction(txHost, true, null);
+      if (getTransactionIsolation() == TRANSACTION_NONE) {
+        service.rollbackTransaction(service.getCurrentHostConnection(), true, null);
+      } else {
+        service.rollbackTransaction(txHost, true, null);
+      }
       initTXHost(service);
     } catch (SnappyException se) {
       throw informListeners(ThriftExceptionUtil.newSQLException(se));

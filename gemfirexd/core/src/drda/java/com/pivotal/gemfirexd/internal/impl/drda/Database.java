@@ -253,7 +253,7 @@ class Database
 	    }
 	    if (lcc != null) {
 	      lcc.setQueryHDFS(this.queryHDFS);
-        lcc.setQueryRouting(this.routeQuery);
+        lcc.setQueryRoutingFlag(this.routeQuery);
 	      if (this.skipConstraintChecks
 	          && SanityManager.TraceClientStatementHA) {
 	        SanityManager.DEBUG_PRINT(SanityManager.TRACE_CLIENT_HA,

@@ -75,11 +75,13 @@ import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
+import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
@@ -1353,5 +1355,21 @@ public abstract class Misc {
 
   public static boolean isSnappyHiveMetaTable(String schemaName) {
     return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);
+  }
+
+  public static boolean routeQuery(LanguageConnectionContext lcc) {
+    return Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingFlagTrue() &&
+        // if isolation level is not NONE, autocommit should be true to enable query routing
+        (lcc.getCurrentIsolationLevel() == ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL ||
+            lcc.getAutoCommit());
+  }
+
+  public static void invalidSnappyDataFeature(String featureDescription)
+      throws SQLException {
+    if(getMemStore().isSnappyStore()) {
+      throw Util.generateCsSQLException(SQLState.NOT_IMPLEMENTED,
+          featureDescription + " is not supported in SnappyData. " +
+              "This feature is supported when product is started in rowstore mode");
+    }
   }
 }

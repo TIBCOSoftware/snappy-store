@@ -5419,6 +5419,10 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
                 <name>XJ217.S</name>
                 <text>The locator that was supplied for this CLOB/BLOB is invalid</text>
             </msg>
+            <msg>
+                <name>XJ218.S</name>
+                <text>Operations on column tables are not supported when query routing is disabled or autocommit is false</text>
+            </msg>
 
         </family>
 
