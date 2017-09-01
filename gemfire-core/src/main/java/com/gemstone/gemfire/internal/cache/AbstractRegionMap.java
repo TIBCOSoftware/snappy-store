@@ -4136,7 +4136,9 @@ RETRY_LOOP:
     if (event.getTXState() != null && event.getTXState().isSnapshot()) {
       TXState localState = event.getTXState().getLocalTXState();
       if (!firstEntry(re)) {
-        if (!TXState.checkEntryInSnapshot(localState, event.getRegion(), re)) {
+        // deltas will be merged and will not conflict
+        if (!TXState.checkEntryInSnapshot(localState, event.getRegion(), re)
+            && !event.hasColumnDelta()) {
           throw new ConflictException("The value has changed.");
         }
       }

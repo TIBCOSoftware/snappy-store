@@ -2319,6 +2319,10 @@ public class EntryEventImpl extends KeyInfo implements
     return (this.delta != null);
   }
 
+  public final boolean hasColumnDelta() {
+    return this.delta instanceof SerializedDiskBuffer;
+  }
+
   /**
    * Return true for an internal Delta that requires an old value in region.
    */
