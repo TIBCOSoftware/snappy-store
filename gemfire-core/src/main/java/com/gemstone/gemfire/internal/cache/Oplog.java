@@ -1188,7 +1188,7 @@ public final class Oplog implements CompactableOplog {
   
   private void preblow(OplogFile olf, long maxSize) throws IOException {
     GemFireCacheImpl.StaticSystemCallbacks ssc = GemFireCacheImpl.getInternalProductCallbacks();
-    if (ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
+    if (!getParent().isOfflineCompacting() && ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
         && this.getParent().getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
       logger.warning(LocalizedStrings.SHOULDNT_INVOKE, "Pre blow is invoked on Accessor Node.");
       return;

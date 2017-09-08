@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -30,6 +30,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.TableQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
@@ -349,29 +350,22 @@ public class SnappyActivation extends BaseActivation {
     }
   }
 
-  public static boolean isColumnTable(DMLQueryInfo dmlQueryInfo, boolean skipLocks) {
+  public static boolean isColumnTable(DMLQueryInfo dmlQueryInfo) {
     if (dmlQueryInfo != null) {
-      ExternalCatalog extCatalog = Misc.getMemStore().getExternalCatalog();
-      if (extCatalog != null) {
-        List<TableQueryInfo> allTables = dmlQueryInfo.getTableQueryInfoList();
-        if (allTables != null) {
-          for (TableQueryInfo t : allTables) {
-            if (null != t) {
-              LocalRegion region = t.getRegion();
-              // don't try to query hive for system tables etc
-              if (region != null && region.getScope().isLocal()) {
-                continue;
-              }
-              String tabName = t.getFullTableName();
-              boolean isColumnTable = extCatalog.isColumnTable(t.getSchemaName(), t.getTableName(), skipLocks);
-              if (GemFireXDUtils.TraceQuery) {
-                SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-                    "SnappyActivation.isColumnTable: table-name=" + tabName +
-                        " ,isColumnTable=" + isColumnTable);
-              }
-              if (isColumnTable) {
-                return true;
-              }
+      List<GemFireContainer> allContainers = dmlQueryInfo.getContainerList();
+      boolean isColumnTable = false;
+      if (allContainers != null) {
+        for (GemFireContainer container : allContainers) {
+          if (null != container) {
+            isColumnTable = container.isRowBuffer();
+            if (GemFireXDUtils.TraceQuery) {
+              String tabName = container.getSchemaName() + container.getTableName();
+              SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
+                  "SnappyActivation.isColumnTable: table-name=" + tabName +
+                      " ,isColumnTable=" + isColumnTable);
+            }
+            if (isColumnTable) {
+              return true;
             }
           }
         }

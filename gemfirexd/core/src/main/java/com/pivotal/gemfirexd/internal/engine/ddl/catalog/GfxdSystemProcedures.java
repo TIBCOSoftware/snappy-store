@@ -2004,6 +2004,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String codeset, short replace, short lockTable, int numThreads,
       short caseSensitiveNames, String importClassName, String errorFile)
       throws SQLException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_TABLE_EX procedure");
     Connection conn = getDefaultConn();
     try {
       // not sure whether this is also a bug in Derby or not,
@@ -2056,6 +2058,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String columnDelimiter, String characterDelimiter, String codeset,
       short replace, short lockTable, int numThreads, short caseSensitiveNames,
       String importClassName, String errorFile) throws SQLException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_DATA_EX procedure");
     Connection conn = getDefaultConn();
     try {
       // tableName and schemaName need to be case insensitive.
@@ -2107,6 +2111,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String characterDelimiter, String codeset, short replace,
       short lockTable, int numThreads, short caseSensitiveNames,
       String importClassName, String errorFile) throws SQLException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_TABLE_LOBS_FROM_EXTFILE procedure");
     Connection conn = getDefaultConn();
     try {
       // tableName and schemaName need to be case insensitive.
@@ -2160,6 +2166,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
       String codeset, short replace, short lockTable, int numThreads,
       short caseSensitiveNames, String importClassName, String errorFile)
       throws SQLException {
+
+    Misc.invalidSnappyDataFeature("IMPORT_DATA_LOBS_FROM_EXTFILE procedure");
     Connection conn = getDefaultConn();
     try {
       // tableName and schemaName need to be case insensitive.

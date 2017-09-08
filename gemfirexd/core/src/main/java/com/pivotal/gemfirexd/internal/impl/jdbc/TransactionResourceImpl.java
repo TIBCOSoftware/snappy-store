@@ -271,6 +271,8 @@ public final class TransactionResourceImpl
 		this.routeQuery = getPropertyValue(
 		    Attribute.ROUTE_QUERY,
 		    GfxdConstants.GFXD_ROUTE_QUERY, info, false);
+		this.snappyInternalConnection = getPropertyValue(Attribute.INTERNAL_CONNECTION,
+				GfxdConstants.INTERNAL_CONNECTION, info, false);
 		this.defaultPersistent = getPropertyValue(
 		    Attribute.DEFAULT_PERSISTENT, GfxdConstants.GFXD_PREFIX
 			+ Attribute.DEFAULT_PERSISTENT, info, false);
@@ -341,6 +343,8 @@ public final class TransactionResourceImpl
 
 	private final boolean routeQuery;
 
+	private final boolean snappyInternalConnection;
+
 	private final boolean defaultPersistent;
 
 	private final boolean skipConstraintChecks;
@@ -403,7 +407,8 @@ public final class TransactionResourceImpl
 		}
 		this.lcc.setTXFlags(this.txFlags);
 		this.lcc.setQueryHDFS(this.queryHDFS);
-		this.lcc.setQueryRouting(this.routeQuery);
+		this.lcc.setQueryRoutingFlag(this.routeQuery);
+		this.lcc.setSnappyInternalConnection(this.snappyInternalConnection);
 		this.lcc.setDefaultPersistent(this.defaultPersistent);
 		this.lcc.setEnableBulkFkChecks(this.enableBulkFkChecks);
 		this.lcc.setSkipConstraintChecks(this.skipConstraintChecks);

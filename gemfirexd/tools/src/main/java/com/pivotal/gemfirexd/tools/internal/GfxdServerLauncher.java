@@ -741,7 +741,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
           + HeapEvictor.EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP
           + "=true");
     }
-
+    vmArgs.add("-Dorg.codehaus.janino.source_debugging.enable=true");
     vmArgs.addAll(incomingVMArgs);
     processedDefaultGCParams = true;
 
@@ -1253,26 +1253,24 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       Set<PersistentMemberID> membersToWaitFor, Set<Integer> missingBuckets,
       PersistentMemberID myId, String message) {
     StringBuilder otherMembers = new StringBuilder();
-    String tableName = Misc.getFullTableNameFromRegionPath(regionPath);
-    if (GemFireStore.DDL_STMTS_REGION.equals(tableName)) {
-      tableName = "DataDictionary";
+    String tableWithLocation = Misc.getFullTableNameFromRegionPath(regionPath);
+    if (GemFireStore.DDL_STMTS_REGION.equals(tableWithLocation)) {
+      tableWithLocation = "DataDictionary at location " + myId.directory;
     }
     else {
-      tableName = "table " + tableName;
+      tableWithLocation = "Table " + tableWithLocation + " at location " + myId.directory;
     }
     for (PersistentMemberID otherId : membersToWaitFor) {
-      otherMembers.append("\n [DiskId: ")
+      otherMembers.append("\n [" + otherId.host + "]");
+      otherMembers.append(" [DiskId: ")
           .append(otherId.diskStoreId.toUUID().toString())
           .append(", Location: ").append(otherId.directory).append(']');
     }
     if (missingBuckets != null && missingBuckets.size() > 0) {
       message = LocalizedResource.getMessage("FS_WAITING_MESSAGE_BUCKETS",
-          tableName, missingBuckets.toString(), myId.diskStoreId.toUUID()
-              .toString(), myId.directory, otherMembers.toString());
-    }
-    else {
-      message = LocalizedResource.getMessage("FS_WAITING_MESSAGE", tableName,
-          myId.diskStoreId.toUUID().toString(), myId.directory,
+          tableWithLocation, missingBuckets.toString(), otherMembers.toString());
+    } else {
+      message = LocalizedResource.getMessage("FS_WAITING_MESSAGE", tableWithLocation,
           otherMembers.toString());
     }
     super.setWaitingStatus(regionPath, membersToWaitFor, missingBuckets, myId,

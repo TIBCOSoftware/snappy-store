@@ -1,0 +1,49 @@
+api=GFXD
+
+locatorHosts=1
+locatorVMsPerHost=1
+locatorThreadsPerVM=1
+
+A=client
+clientHosts=2
+clientVMsPerHost=1
+clientThreadsPerVM=1
+
+B=dbsync
+dbsyncHosts=2
+dbsyncVMsPerHost=1
+dbsyncThreadsPerVM=1
+
+C=prdata
+prdataHosts=2
+prdataVMsPerHost=1
+prdataThreadsPerVM=1
+
+D=db
+dbHosts=1
+dbVMsPerHost=1
+dbThreadsPerVM=1
+
+tableFileNum = 7
+diskStoreFileNum = 7
+indexFileNum = 3
+createIndexes = true
+
+txIsolation = read_committed
+
+numWarehouses = 10
+numDistrictsPerWarehouse = 10
+numItems = 100000
+numCustomersPerDistrict = 3000
+
+clientHeapMB = 256
+dbsyncHeapMB = 1000
+prdataHeapMB = 1800
+
+trimSeconds =  60
+workSeconds = 180
+
+logQueries = false
+queryPlanFrequency = 0
+
+perffmwk.comparisonKey = tpcc

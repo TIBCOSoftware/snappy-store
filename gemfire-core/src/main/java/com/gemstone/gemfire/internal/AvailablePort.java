@@ -14,6 +14,25 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal;
 
 import java.io.*;
@@ -350,21 +369,27 @@ public class AvailablePort {
    *         <code>protocol</code> is unknown
    */
   public static int getRandomAvailablePort(int protocol, InetAddress addr) {
-    while (true) {
+    int maxTries = 10000;
+    while (maxTries-- > 0) {
       int port = getRandomWildcardBindPortNumber();
       if (isPortAvailable(port, protocol, addr)) {
         return port;
       }
     }
+    throw new IllegalStateException("Cannot find an available port for protocol=" +
+        protocol + " address=" + addr);
   }
   public static Keeper getRandomAvailablePortKeeper(int protocol, InetAddress addr) {
-    while (true) {
+    int maxTries = 10000;
+    while (maxTries-- > 0) {
       int port = getRandomWildcardBindPortNumber();
       Keeper result = isPortKeepable(port, protocol, addr);
       if (result != null) {
         return result;
       }
     }
+    throw new IllegalStateException("Cannot find an available port for protocol=" +
+        protocol + " address=" + addr);
   }
 
   /**
@@ -400,13 +425,17 @@ public class AvailablePort {
    * @throws IllegalArgumentException
    *         <code>protocol</code> is unknown
    */
-  public static int getRandomAvailablePortWithMod(int protocol, InetAddress addr,int mod) {
-    while (true) {
+  public static int getRandomAvailablePortWithMod(int protocol,
+      InetAddress addr, int mod) {
+    int maxTries = 10000;
+    while (maxTries-- > 0) {
       int port = getRandomWildcardBindPortNumber();
       if (isPortAvailable(port, protocol, addr) && (port % mod)==0) {
         return port;
       }
     }
+    throw new IllegalStateException("Cannot find an available port for protocol=" +
+        protocol + " address=" + addr + " mod=" + mod);
   }
   
 

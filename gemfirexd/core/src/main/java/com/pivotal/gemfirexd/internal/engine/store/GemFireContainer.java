@@ -475,6 +475,18 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     initTableFlags();
   }
 
+  private ExternalCatalog waitForHiveCatalogInit() {
+    ExternalCatalog ret;
+    int cnt = -1;
+    // Retrying after sleep of some millisecs to reduce the worst case
+    // of delaying that put for a large period of time
+    while ((ret = Misc.getMemStore().getExternalCatalog()) == null
+        && cnt < GfxdConstants.HA_NUM_RETRIES) {
+      GemFireXDUtils.sleepForRetry(cnt++);
+    }
+    return ret;
+  }
+
   public void invalidateHiveMetaData() {
     externalTableMetaData.set(null);
   }
@@ -491,9 +503,15 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         schemaName = fullName.substring(0, schemaIndex);
         tableName = fullName.substring(schemaIndex + 1);
       }
+      ExternalCatalog extcat = Misc.getMemStore().getExternalCatalog();
+      if (extcat == null) {
+        extcat = waitForHiveCatalogInit();
+        if (extcat == null) {
+          throw new TimeoutException("The snappy catalog in hive metastore is not accessible");
+        }
+      }
       // containers are created during initialization, ignore them
-      externalTableMetaData.compareAndSet(null,
-          Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
+      externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
               schemaName, tableName, true));
       if (isPartitioned()) {
         metaData = externalTableMetaData.get();
@@ -5600,7 +5618,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             !LocalRegion.isMetaTable(region.getFullPath())) {
           ExternalCatalog ec = Misc.getMemStore().getExternalCatalog();
           LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
-          if (ec != null && lcc != null && lcc.isQueryRoutingEnabled() &&
+          if (ec != null && lcc != null && lcc.isQueryRoutingFlagTrue() &&
               Misc.initialDDLReplayDone()) {
             if (ec.isColumnTable(schemaName, table.toString(), true)) {
               dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");

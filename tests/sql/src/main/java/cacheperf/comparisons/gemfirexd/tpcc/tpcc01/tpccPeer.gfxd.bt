@@ -1,0 +1,5 @@
+cacheperf/comparisons/gemfirexd/tpcc/tpccPeer.conf
+  api = GFXD
+  clientHosts = 4 clientVMsPerHost = 1 clientThreadsPerVM = 4
+  serverHosts = 4 serverVMsPerHost = 1 serverThreadsPerVM = 1
+  numWarehouses = 4

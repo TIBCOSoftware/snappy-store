@@ -1,0 +1,6 @@
+cacheperf/comparisons/gemfirexd/tpcc/tpccThin.conf
+  api = MYSQL
+  clientHosts = 4 clientVMsPerHost = 1 clientThreadsPerVM = 4
+  serverHosts = 4 serverVMsPerHost = 1 serverThreadsPerVM = 1
+  numWarehouses = 4
+  serverHeapMB = 256

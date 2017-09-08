@@ -69,6 +69,7 @@ import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
 import com.pivotal.gemfirexd.internal.engine.reflect.GemFireActivationClass;
 import com.pivotal.gemfirexd.internal.engine.reflect.SnappyActivationClass;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -131,6 +132,7 @@ public class GenericStatement
         public final static short IS_OPTIMIZED_STMT = 0x80;
         public final static short QUERY_HDFS = 0x100;
         public final static short IS_CALLABLE_STATEMENT = 0x200;
+        public final static short ROUTE_QUERY = 0x400;
 
         public static final Pattern SKIP_CANCEL_STMTS = Pattern.compile(
             "^\\s*\\{?\\s*(DROP|TRUNCATE)\\s+(TABLE|INDEX)\\s+",
@@ -157,9 +159,6 @@ public class GenericStatement
         private static final Pattern FUNCTION_DDL_PREFIX =
             Pattern.compile("\\s?(CREATE|DROP)\\s+FUNCTION\\s+.*",
                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern EXECUTION_ENGINE_STORE_HINT =
-            Pattern.compile(".*\\bEXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s*\\b.*",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     	private static final Pattern ALTER_TABLE_COLUMN =
 			Pattern.compile("\\s*ALTER\\s+TABLE?.*\\s+(ADD|DROP)\\s+.*",
 				Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -189,6 +188,7 @@ public class GenericStatement
                 h = ResolverUtils.addIntToHash(createQueryInfo() ? 1231 : 1237, h);
                 h = ResolverUtils.addIntToHash(isPreparedStatement()
                     || !isOptimizedStatement()? 19531 : 20161, h);
+                h = ResolverUtils.addIntToHash(getRouteQuery() ? 22409 : 22433, h);
                 h = ResolverUtils.addIntToHash(getQueryHDFS() ? 999599 : 999983, h);
                 this.hash = h;
                 final GemFireStore store = GemFireStore.getBootingInstance();
@@ -274,8 +274,7 @@ public class GenericStatement
 		Timestamp			endTimestamp = null;
 		StatementContext	statementContext = null;
 // GemStone changes BEGIN
-    boolean routeQuery = Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingEnabled()
-        && (!EXECUTION_ENGINE_STORE_HINT.matcher(getSource()).matches());
+    final boolean routeQuery = getRouteQuery();
 
 		GeneratedClass ac = null;
                 QueryInfo qinfo = null;
@@ -833,6 +832,12 @@ public class GenericStatement
                                             qinfo = handleInsertAndInsertSubSelect(qinfo, qt);
                                           }
 
+                                          if (Misc.getMemStore().isSnappyStore() &&
+                                              qinfo != null && qinfo.isDML() &&
+                                              invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
+                                            throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
+                                          }
+
                                           //Even if  i == 1, but if the top query contains replicated table
                                           //&  sub query contains PR , we cannot allow flattening as it will cause
                                           // Bug # 42428. causing repetition of data.
@@ -1267,6 +1272,25 @@ public class GenericStatement
 		return preparedStmt;
 	}
 
+	public boolean invalidQueryOnColumnTable(LanguageConnectionContext _lcc,
+			DMLQueryInfo qi) {
+		boolean isColumnTable = SnappyActivation.isColumnTable(qi);
+		// check subqueries
+		List<SubQueryInfo> subQinfoList = qi.getSubqueryInfoList();
+		if (!isColumnTable && subQinfoList.size() > 0) {
+			for (SubQueryInfo sq : subQinfoList) {
+				isColumnTable = SnappyActivation.isColumnTable(sq);
+				if(isColumnTable)
+					break;
+			}
+		}
+		// additional step for insertAsSubSelect
+		if (!isColumnTable && qi.isInsertAsSubSelect()) {
+			isColumnTable = SnappyActivation.isColumnTable(((InsertQueryInfo)qi).getSubSelectQueryInfo());
+		}
+		return isColumnTable && !Misc.routeQuery(_lcc) && !_lcc.isSnappyInternalConnection();
+	}
+
 	private boolean shouldSkipMemoryChecks(StatementNode qt) {
 		final int nodeType = qt.getNodeType();
 		return nodeType == C_NodeTypes.DELETE_NODE
@@ -1562,6 +1586,10 @@ public class GenericStatement
         
         protected boolean getQueryHDFS() {
           return  GemFireXDUtils.isSet(this.execFlags, QUERY_HDFS);
+        }
+
+        protected boolean getRouteQuery() {
+        	return  GemFireXDUtils.isSet(this.execFlags, ROUTE_QUERY);
         }
 
         private final boolean fetchStatementStats(LanguageConnectionContext lcc,

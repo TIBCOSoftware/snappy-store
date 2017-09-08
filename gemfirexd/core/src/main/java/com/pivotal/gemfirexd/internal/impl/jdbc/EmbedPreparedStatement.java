@@ -159,6 +159,10 @@ public abstract class EmbedPreparedStatement
                           execFlags = (short) GemFireXDUtils.set(execFlags,
                               GenericStatement.QUERY_HDFS, true);
                         }
+
+                        if (routeQueryEnabled(null)) {
+                          execFlags = GemFireXDUtils.set(execFlags, GenericStatement.ROUTE_QUERY, true);
+                        }
 			try {
 			    preparedStatement = lcc.prepareInternalStatement
 				(lcc.getDefaultSchema(), sql,                        

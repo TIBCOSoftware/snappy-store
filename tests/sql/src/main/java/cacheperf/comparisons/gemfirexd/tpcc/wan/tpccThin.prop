@@ -1,0 +1,38 @@
+api=GFXD
+
+wanSites = 3
+
+clientThreadsPerVM = 2
+senderThreadsPerVM = 2
+receiverThreadsPerVM = 2
+
+diskStoreFileNum = 1
+tableFileNum = 3
+indexFileNum = 2
+createIndexes = true
+
+txIsolation = read_committed
+
+numWarehouses = 12
+numDistrictsPerWarehouse = 10
+numItems = 100000
+numCustomersPerDistrict = 3000
+
+warehouseThrottleMs = 0
+itemThrottleMs = 0
+stockThrottleMs = 0
+districtThrottleMs = 0
+customerThrottleMs = 0
+orderThrottleMs = 0
+tpccThrottleMs = 0
+
+clientHeapMB = 256
+serverHeapMB = 3500
+
+trimSeconds =  60
+workSeconds = 180
+
+logQueries = false
+queryPlanFrequency = 0
+
+perffmwk.comparisonKey = tpcc

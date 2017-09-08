@@ -1,0 +1,38 @@
+locatorHosts=1
+locatorVMsPerHost=1
+locatorThreadsPerVM=1
+
+A=client
+clientHosts=1
+clientVMsPerHost=1
+clientThreadsPerVM=1
+
+B=server
+serverHosts=4
+serverVMsPerHost=1
+serverThreadsPerVM=1
+
+api=GFXD
+
+diskStoreFileNum = 8
+tableFileNum = 88
+indexFileNum = 3
+createIndexes = true
+
+txIsolation = read_committed
+
+numWarehouses = 12
+numDistrictsPerWarehouse = 10
+numItems = 100000
+numCustomersPerDistrict = 3000
+
+clientHeapMB = 256
+serverHeapMB = 3500
+
+trimSeconds =  60
+workSeconds = 180
+
+logQueries = false
+queryPlanFrequency = 0
+
+perffmwk.comparisonKey = tpcc

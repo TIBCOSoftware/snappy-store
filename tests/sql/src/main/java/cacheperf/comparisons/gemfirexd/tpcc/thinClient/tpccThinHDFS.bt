@@ -1,0 +1,35 @@
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/tpccThinHDFS.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=1500
+  trimSeconds=60 workSeconds=180
+  logQueries=false
+  queryPlanFrequency=35
+  queryHDFS = true, false
+  perffmwk.comparisonKey=tpcc
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/tpccThinHDFSMapReduce.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=1500
+  trimSeconds=60 workSeconds=180
+  logQueries=false
+  queryPlanFrequency=0
+  queryHDFS = true, false
+  perffmwk.comparisonKey=tpcc
+// long-running MTBF test (currently set to run for 72 hours)
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/tpccThinHDFSMTBF.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=3500
+  trimSeconds=180 workSeconds=259200 batchSeconds=3600
+  logQueries=false
+  queryPlanFrequency=0
+  queryHDFS = false
+  perffmwk.comparisonKey=tpcc
+

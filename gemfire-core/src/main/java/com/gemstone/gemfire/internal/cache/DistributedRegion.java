@@ -1786,14 +1786,22 @@ public class DistributedRegion extends LocalRegion implements
 
         // in the first loop apply the committed/rolled back transactions
         if (!pendingTXStates.isEmpty()) {
+
+          final TXRegionState[] orderedTXRegionState = pendingTXStates
+              .toArray(new TXRegionState[pendingTXStates.size()]);
+
+          Arrays.sort(orderedTXRegionState,
+              Comparator.comparing(t -> t.getTXState().getTransactionId()));
+
           final ArrayList<TXRegionState> inProgressTXStates =
               new ArrayList<TXRegionState>();
           final ArrayList<TXRegionState> finishedTXStates =
               new ArrayList<TXRegionState>();
           final TXManagerImpl txMgr = getCache().getCacheTransactionManager();
-          for (TXRegionState txrs : pendingTXStates) {
+          for (TXRegionState txrs : orderedTXRegionState) {
             TXState txState = txrs.getTXState();
             int txOrder = 0;
+            getLogWriterI18n().info(LocalizedStrings.DEBUG, "Locking txState = " + txState);
             txState.lockTXState();
             if (txState.isInProgress() && (txOrder = is.getFinishedTXOrder(
                 txState.getTransactionId())) == 0) {
@@ -1880,7 +1888,7 @@ public class DistributedRegion extends LocalRegion implements
               }
             }
           } finally {
-            for (TXRegionState txrs : pendingTXStates) {
+            for (TXRegionState txrs : orderedTXRegionState) {
               txrs.getTXState().unlockTXState();
             }
           }

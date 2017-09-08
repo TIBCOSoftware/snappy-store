@@ -42,4 +42,21 @@ public interface RowEncoder {
    * Decode the key from key columns as encoded by {@link #toRow}.
    */
   RegionKey fromRowToKey(DataValueDescriptor[] key, GemFireContainer container);
+
+  /**
+   * An interface to do some common pre-processing (e.g. set common UUID key)
+   * for a set of rows in a bulk/batch insert.
+   */
+  PreProcessRow getPreProcessorForRows(GemFireContainer container);
+
+  /**
+   * An interface to do some common pre-processing for bulk/batch inserts.
+   */
+  interface PreProcessRow {
+
+    /**
+     * Preprocess the current row and return the result.
+     */
+    DataValueDescriptor[] preProcess(DataValueDescriptor[] row);
+  }
 }
