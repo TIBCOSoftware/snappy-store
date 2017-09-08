@@ -106,7 +106,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   static final byte POSDUP = 0x10;
   static final byte PERSISTENT_TAG = 0x20;
   static final byte HAS_CALLBACKARG = 0x40;
-  static final byte HAS_BATCHUUID = (byte)0x80;
 
   // flags for CachedDeserializable; additional flags can be combined
   // with these if required
@@ -303,7 +302,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     }
     ev.callbacksInvoked(entry.isCallbacksInvoked());
     ev.setTailKey(entry.getTailKey());
-    ev.setBatchUUID(entry.getBatchUUID());
     return ev;
     } finally {
       if (!returnedEv) {
@@ -354,8 +352,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     // parallel wan is enabled
     private long tailKey = 0L;
 
-    volatile long batchUUID = BucketRegion.INVALID_UUID;
-
     public VersionTag versionTag;
 
     // following two are not serialized so they can coincide with
@@ -384,7 +380,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       this.eventID = event.getEventId();
       this.callbackArg = callbackArg;
       this.tailKey = event.getTailKey();
-      this.batchUUID = event.getBatchUUID();
       this.versionTag = event.getVersionTag();
 
       setNotifyOnly(!event.getInvokePRCallbacks());
@@ -442,9 +437,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         this.callbackArg = null;
       }
       this.tailKey = InternalDataSerializer.readSignedVL(in);
-      if ((this.flags & HAS_BATCHUUID) != 0) {
-        this.batchUUID = InternalDataSerializer.readVLHighLow(in);
-      }
     }
 
     @Override
@@ -465,9 +457,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
       if (callbackArg != null) {
         sb.append(",callbackArg=").append(callbackArg);
-      }
-      if (BucketRegion.isValidUUID(batchUUID)) {
-        sb.append(",uuid=").append(batchUUID);
       }
       sb.append(")");
       return sb.toString();
@@ -534,8 +523,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       // make sure that we sent it on wire only 
       // when parallel wan is enabled
       // bits |= HAS_TAILKEY;
-      final long batchUUID = this.batchUUID;
-      if (BucketRegion.isValidUUID(batchUUID)) bits |= HAS_BATCHUUID;
 
       out.writeByte(bits);
 
@@ -553,9 +540,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         DataSerializer.writeObject(this.callbackArg, out);
       }
       InternalDataSerializer.writeSignedVL(this.tailKey, out);
-      if (BucketRegion.isValidUUID(batchUUID)) {
-        InternalDataSerializer.writeVLHighLow(batchUUID, out);
-      }
     }
 
     /**
@@ -588,14 +572,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
 
     public void setTailKey(long key) {
       this.tailKey = key;
-    }
-
-    public long getBatchUUID() {
-      return this.batchUUID;
-    }
-
-    public void setBatchUUID(long uuid) {
-      this.batchUUID = uuid;
     }
 
     /**
@@ -1331,7 +1307,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
        * Setting tailKey for the secondary bucket here. Tail key was update by the primary.
        */
       ev.setTailKey(entry.getTailKey());
-      ev.setBatchUUID(entry.getBatchUUID());
       returnedEv = true;
       return ev;
       } finally {

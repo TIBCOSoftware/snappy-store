@@ -2523,8 +2523,6 @@ public class EntryEventImpl extends KeyInfo implements
     buf.append(this.getBucketId());
     buf.append(";tailKey=");
     buf.append(this.getTailKey());
-    buf.append(";batchIDUUID=");
-    buf.append(this.getBatchUUID());
     buf.append(";oldValue=");
     try {
       ArrayUtils.objectStringNonRecursive(basicGetOldValue(), buf);
@@ -2885,8 +2883,6 @@ public class EntryEventImpl extends KeyInfo implements
   }
 
   protected long tailKey = -1L;
-  protected long batchUUID = BucketRegion.INVALID_UUID;
-
   /**
    * Return true if this event came from a server by the client doing a get.
    * @since 5.7
@@ -3256,14 +3252,6 @@ public class EntryEventImpl extends KeyInfo implements
     return this.tailKey;
   }
 
-  public final long getBatchUUID() {
-    return this.batchUUID;
-  }
-
-  public final void setBatchUUID(long uuid) {
-    this.batchUUID = uuid;
-  }
-
   private Thread invokeCallbacksThread;
   private long currentOpLogKeyId = -1;
 
@@ -3445,7 +3433,6 @@ public class EntryEventImpl extends KeyInfo implements
     this.deltaBytes = null;
     this.txState = null;
     this.tailKey = -1L;
-    this.batchUUID = BucketRegion.INVALID_UUID;
     this.versionTag = null;
     if (!keepLastModifiedTime) {
       this.entryLastModified = -1L;

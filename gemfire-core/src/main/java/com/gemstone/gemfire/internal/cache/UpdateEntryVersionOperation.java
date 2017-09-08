@@ -120,8 +120,7 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
       ev.setEventId(this.eventId);
       ev.setVersionTag(this.versionTag);
       ev.setTailKey(this.tailKey);
-      ev.setBatchUUID(this.batchUUID);
-      
+
       return ev;
     }
 
@@ -207,7 +206,6 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
       else{
         InternalDataSerializer.writeSignedVL(0, out);
       }
-      out.writeLong(this.event.getBatchUUID());
     }
   }
 }

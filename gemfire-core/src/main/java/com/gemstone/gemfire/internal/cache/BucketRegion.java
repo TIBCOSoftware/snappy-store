@@ -269,8 +269,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public static final long INVALID_UUID = VMIdAdvisor.INVALID_ID;
 
-  private volatile long batchUUID = INVALID_UUID;
-
   public final ReentrantReadWriteLock columnBatchFlushLock =
       new ReentrantReadWriteLock();
 
@@ -658,10 +656,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
     validateValue(event.basicGetNewValue());
 
-    if (getPartitionedRegion().needsBatching()) {
-      setBatchUUID(event);
-    }
-
     if (event.getTXState() != null && event.getTXState().isSnapshot()) {
       return getSharedDataView().putEntry(event, ifNew, ifOld, null, false,
           cacheWrite, lastModified, overwriteDestroyed);
@@ -692,14 +686,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       CacheWriterException {
 
     final boolean locked = beginLocalWrite(event);
-    if (getPartitionedRegion().needsBatching()) {
-      if (getCache().getLoggerI18n().fineEnabled()) {
-        getCache()
-            .getLoggerI18n()
-            .fine(" Insert into bucket id " + this.getId() + " key " + event.getKey());
-      }
-      setBatchUUID(event);
-    }
     boolean success = false;
     try {
       if (this.partitionedRegion.isLocalParallelWanEnabled()) {
@@ -786,12 +772,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // has to be maintained
     // one more check for size to make sure that concurrent call doesn't succeed.
     // anyway batchUUID will be invalid in that case.
-    if (isValidUUID(this.batchUUID) && doFlush && getBucketAdvisor().isPrimary()) {
+    if (doFlush && getBucketAdvisor().isPrimary()) {
       // need to flush the region
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache().getLoggerI18n().fine("createAndInsertColumnBatch: " +
-                "Creating the column batch for bucket " + this.getId()
-                + ", and batchID " + this.batchUUID);
+                "Creating the column batch for bucket " + this.getId());
       }
       boolean txStarted = false;
       if (getCache().snapshotEnabled() && getCache().getCacheTransactionManager().getTXState() == null) {
@@ -799,10 +784,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         txStarted = true;
       }
       try {
+        long batchId =  partitionedRegion.newUUID(false);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
               "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +
-              " the current rvv is " + getVersionVector());
+              " the current rvv is " + getVersionVector() + "batch id " + batchId);
         }
         //Check if shutdown hook is set
         if (null != getCache().getRvvSnapshotTestHook()) {
@@ -810,20 +796,17 @@ public class BucketRegion extends DistributedRegion implements Bucket {
           getCache().waitOnRvvSnapshotTestHook();
         }
 
-        Set keysToDestroy = createColumnBatchAndPutInColumnTable();
+        Set keysToDestroy = createColumnBatchAndPutInColumnTable(batchId);
 
         if (getCache().getCacheTransactionManager().testRollBack) {
           throw new RuntimeException("Test Dummy Exception");
         }
-        destroyAllEntries(keysToDestroy);
+        destroyAllEntries(keysToDestroy, batchId);
         //Check if shutdown hook is set
         if (null != getCache().getRvvSnapshotTestHook()) {
           getCache().notifyRvvTestHook();
           getCache().waitOnRvvSnapshotTestHook();
         }
-        // create new batchUUID
-        generateAndSetBatchIDIfInvalid(true);
-
         success = true;
       } finally {
         if (getCache().snapshotEnabled() && txStarted) {
@@ -841,76 +824,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     return success;
   }
 
-  //TODO: Suranjan. it will change for tx operations, setting of batchID will be from commitPhase1
-  public void setBatchUUID(EntryEventImpl event) {
-    // we may have to use region.size so that no state
-    // has to be maintained
-    //TODO: Suranjan Will using region.size in synchronized be slower? or should maintain atomic variable per bucket?
-    // PUTALL
-    boolean resetBatchId = false;
-    if (getBucketAdvisor().isPrimary()) {
-      long batchUUIDToUse;
-      if (event.getPutAllOperation() != null) { //isPutAll op
-        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
-        // loose check on size, not very strict
-      } else if (size() >= getPartitionedRegion().getColumnMaxDeltaRows()) {
-        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
-        if (getCache().getLoggerI18n().fineEnabled()) {
-          getCache()
-              .getLoggerI18n()
-              .fine("Creating the new batchUUID for PRIMARY bucket " + this.getId()
-                  + "(NON PUTALL operation) as " + this.batchUUID);
-        }
-      } else {
-        batchUUIDToUse = generateAndSetBatchIDIfInvalid(resetBatchId);
-      }
-      event.setBatchUUID(batchUUIDToUse);
-    } else {
-      if (getCache().getLoggerI18n().fineEnabled()) {
-        getCache()
-            .getLoggerI18n()
-            .fine("Setting the batchUUID for SECONDARY bucket " + this.getId() + "(PUT/PUTALL operation)," +
-                " continuing the same batchUUID as " + event.getBatchUUID());
-
-      }
-      this.batchUUID = event.getBatchUUID();
-    }
-  }
-
-  private synchronized long generateAndSetBatchIDIfInvalid(boolean resetBatchId) {
-    if (resetBatchId) {
-      this.batchUUID = INVALID_UUID;
-      return this.batchUUID;
-    }
-    final long buid = this.batchUUID;
-    if (buid == INVALID_UUID) {
-      this.batchUUID = partitionedRegion.newUUID(false);
-      if (getCache().getLoggerI18n().fineEnabled()) {
-        getCache()
-            .getLoggerI18n()
-            .fine("Setting the batchUUID for PRIMARY bucket "  + this.getId() +  " (PUT/PUTALL operation)," +
-                " created the batchUUID as " + this.batchUUID);
-      }
-      return this.batchUUID;
-    } else {
-      if (getCache().getLoggerI18n().fineEnabled()) {
-        getCache()
-            .getLoggerI18n()
-            .fine("Setting the batchUUID for PRIMARY bucket "  + this.getId() +  "(PUT/PUTALL operation)," +
-                " continuing the same batchUUID as " + this.batchUUID);
-
-      }
-      return buid;
-    }
-  }
-
   public static boolean isValidUUID(long uuid) {
     return uuid != BucketRegion.INVALID_UUID;
   }
 
-  private Set createColumnBatchAndPutInColumnTable() {
+  private Set createColumnBatchAndPutInColumnTable(long key) {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    long key =  partitionedRegion.newUUID(false);
     return callback.createColumnBatch(this, key, this.getId());
   }
 
@@ -920,13 +839,13 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   // This destroy is under a lock which makes sure that there is no put into the region
   // No need to take the lock on key
-  private void destroyAllEntries(Set keysToDestroy) {
+  private void destroyAllEntries(Set keysToDestroy, long batchKey) {
     for(Object key : keysToDestroy) {
       if (getCache().getLoggerI18n().fineEnabled()) {
         getCache()
             .getLoggerI18n()
             .fine("Destroying the entries after creating ColumnBatch " + key +
-                " batchid " + this.batchUUID + " total size " + this.size() +
+                " batchid " + batchKey + " total size " + this.size() +
                 " keysToDestroy size " + keysToDestroy.size());
       }
       EntryEventImpl event = EntryEventImpl.create(
@@ -935,7 +854,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
       event.setKey(key);
       event.setBucketId(this.getId());
-      event.setBatchUUID(this.batchUUID); // to make sure that lock is not nexessary
 
       TXStateInterface txState = event.getTXState(this);
       if (txState != null) {
@@ -948,7 +866,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (getCache().getLoggerI18n().fineEnabled()) {
       getCache()
           .getLoggerI18n()
-          .fine("Destroyed all for batchID " + this.batchUUID + " total size " + this.size());
+          .fine("Destroyed all for batchID " + batchKey + " total size " + this.size());
     }
   }
 

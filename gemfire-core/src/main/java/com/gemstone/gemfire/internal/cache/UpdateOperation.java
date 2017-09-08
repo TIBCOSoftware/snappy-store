@@ -178,10 +178,8 @@ public class UpdateOperation extends AbstractUpdateOperation
     static final int HAS_EVENTID = getNextByteMask(DESERIALIZATION_POLICY_END);
     static final int HAS_DELTA_WITH_FULL_VALUE = getNextByteMask(HAS_EVENTID);
     static final int IS_PUT_DML = getNextByteMask(HAS_DELTA_WITH_FULL_VALUE);
-    static final int HAS_BATCHUUID = getNextByteMask(IS_PUT_DML);
 
     private long tailKey = 0L;
-    private long batchUUID = BucketRegion.INVALID_UUID;
 
     public UpdateMessage(){}
 
@@ -262,7 +260,6 @@ public class UpdateOperation extends AbstractUpdateOperation
             .getFilterInfo(rgn.getMyId()));
       }
       ev.setTailKey(tailKey);
-      ev.setBatchUUID(batchUUID);
       ev.setVersionTag(this.versionTag);
       
       ev.setInhibitAllNotifications(this.inhibitAllNotifications);
@@ -390,7 +387,6 @@ public class UpdateOperation extends AbstractUpdateOperation
           this.callbackArg, originRemote, getSender(), generateCallbacks);
       setOldValueInEvent(result);
       result.setTailKey(this.tailKey);
-      result.setBatchUUID(this.batchUUID);
       if (this.versionTag != null) {
         result.setVersionTag(this.versionTag);
       }
@@ -447,9 +443,6 @@ public class UpdateOperation extends AbstractUpdateOperation
         this.eventId = new EventID();
         InternalDataSerializer.invokeFromData(this.eventId, in);
         this.tailKey = InternalDataSerializer.readSignedVL(in);
-        if ((extraFlags & HAS_BATCHUUID) != 0) {
-          this.batchUUID = InternalDataSerializer.readVLHighLow(in);
-        }
       }
       else {
         this.eventId = null;
@@ -490,10 +483,8 @@ public class UpdateOperation extends AbstractUpdateOperation
       super.toData(out);
 
       byte extraFlags = this.deserializationPolicy;
-      final long batchUUID = this.event.getBatchUUID();
       if (this.eventId != null) {
         extraFlags |= HAS_EVENTID;
-        if (BucketRegion.isValidUUID(batchUUID)) extraFlags |= HAS_BATCHUUID;
       }
       boolean sendDeltaWithFullValue = this.sendDeltaWithFullValue && this.event.getDeltaBytes() != null;
       if (sendDeltaWithFullValue) {
@@ -519,9 +510,6 @@ public class UpdateOperation extends AbstractUpdateOperation
         }
         else {
           InternalDataSerializer.writeSignedVL(0, out);
-        }
-        if (BucketRegion.isValidUUID(batchUUID)) {
-          InternalDataSerializer.writeVLHighLow(batchUUID, out);
         }
       }
       Object key = this.key;

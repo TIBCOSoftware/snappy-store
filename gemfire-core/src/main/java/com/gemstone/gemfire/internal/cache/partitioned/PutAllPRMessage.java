@@ -556,7 +556,6 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
                   didPut = view.putEntryOnRemote(ev, false, false, null,
                       false, cacheWrite, lastModified, true);
                   putAllPRData[i].setTailKey(ev.getTailKey());
-                  putAllPRData[i].setBatchUUID(ev.getBatchUUID());
                 }
                 if (didPut && logger.fineEnabled()) {
                   logger.fine("PutAllPRMessage.doLocalPutAll:putLocally success for " + ev);
@@ -770,7 +769,6 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     } else {
       ev.setTailKey(prd.getTailKey());
     }
-    ev.setBatchUUID(prd.getBatchUUID());
     ev.setPutDML(isPutDML);
     evReturned = true;
     return ev;
