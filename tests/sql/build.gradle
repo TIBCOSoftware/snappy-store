@@ -42,9 +42,9 @@ ext {
 dependencies {
   provided project(subprojectBase + 'gemfire-core')
   compile project(subprojectBase + 'gemfire-tests')
-  compile project(subprojectBase + 'gemfirexd-client')
-  provided project(subprojectBase + 'gemfirexd-tools')
-  provided project(subprojectBase + 'gemfirexd-core')
+  compile project(subprojectBase + 'snappydata-store-client')
+  provided project(subprojectBase + 'snappydata-store-tools')
+  provided project(subprojectBase + 'snappydata-store-core')
 
   provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"

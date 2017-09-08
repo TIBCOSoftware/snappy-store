@@ -22,9 +22,9 @@ plugins {
 
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
-  compile project(subprojectBase + 'gemfirexd-shared')
-  compile project(subprojectBase + 'gemfirexd-client')
-  provided project(subprojectBase + 'gemfirexd-prebuild')
+  compile project(subprojectBase + 'snappydata-store-shared')
+  compile project(subprojectBase + 'snappydata-store-client')
+  provided project(subprojectBase + 'snappydata-store-prebuild')
 
   provided files("${System.getProperty('java.home')}/../lib/tools.jar")
   provided 'xalan:xalan:2.7.2'
@@ -104,7 +104,7 @@ def msgDir = "${projectDir}/src/main/resources/${locDir}"
 def msgEnDir = "${buildDir}/resources/main/${locDir}"
 
 task buildMessages {
-  dependsOn subprojectBase + 'gemfirexd-prebuild:jar', 'processResources', subprojectBase + 'gemfirexd-client:processResources'
+  dependsOn subprojectBase + 'snappydata-store-prebuild:jar', 'processResources', subprojectBase + 'snappydata-store-client:processResources'
 
   def msgXml = "${msgDir}/messages.xml"
   def msgEn = "${msgEnDir}/messages_en.properties"
@@ -119,7 +119,7 @@ task buildMessages {
 
     ant.taskdef(name: 'buildMessages',
         classname: 'org.apache.derbyBuild.MessageBuilder',
-        classpath: project(subprojectBase + 'gemfirexd-prebuild').sourceSets.main.output.classesDir)
+        classpath: project(subprojectBase + 'snappydata-store-prebuild').sourceSets.main.output.classesDir)
 
     ant.buildMessages(xmlSourceFile: msgXml, propertiesTargetFile: msgEn,
         ditaTargetFile: "${projectDir}/doc/rrefexcept71493.dita")
@@ -140,7 +140,7 @@ def splitMessages(def msgFile, def msgDir) {
 // create the client messages files for various languages
 task doSplit(dependsOn: buildMessages) {
   def msgXml = "${msgDir}/messages.xml"
-  def clientResourceDir = "${project(subprojectBase + 'gemfirexd-client').buildDir}/resources/main/${locDir}"
+  def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').buildDir}/resources/main/${locDir}"
 
   inputs.file msgXml
   outputs.file "${clientResourceDir}/clientmessages_en.properties"
@@ -178,7 +178,7 @@ task doSplit(dependsOn: buildMessages) {
 }
 
 task odbcMeta {
-  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources', "${subprojectBase}gemfirexd-prebuild:jar"
+  dependsOn "${subprojectBase}snappydata-store-prebuild:processResources", 'processResources', "${subprojectBase}snappydata-store-prebuild:jar"
   def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
   outputs.files "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir

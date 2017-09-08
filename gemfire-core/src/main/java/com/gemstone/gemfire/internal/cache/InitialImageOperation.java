@@ -25,16 +25,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2270,8 +2261,14 @@ public class InitialImageOperation  {
 
       final ArrayList<TXRegionState> txrss = new ArrayList<TXRegionState>();
       final THashMap txIdMap = new THashMap();
-      // first acquire locks on all TXStates
-      for (TXStateProxy proxy : txMgr.getHostedTransactionsInProgress()) {
+      // first acquire locks on all TXStates in a particular order to avoid deadlock
+      Collection<TXStateProxy> inProgressTXns = txMgr.getHostedTransactionsInProgress();
+      final TXStateProxy[] orderedInProgressTXns = inProgressTXns
+          .toArray(new TXStateProxy[inProgressTXns.size()]);
+      Arrays.sort(orderedInProgressTXns,
+          Comparator.comparing(t -> t.getTransactionId()));
+
+      for (TXStateProxy proxy : orderedInProgressTXns) {
         final TXState txState = proxy.getLocalTXState();
         if (txState != null && txState.isInProgress()) {
           boolean added = false;

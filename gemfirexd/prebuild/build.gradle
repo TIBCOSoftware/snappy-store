@@ -16,7 +16,7 @@
  */
 
 dependencies {
-  compile project(subprojectBase + 'gemfirexd-shared')
+  compile project(subprojectBase + 'snappydata-store-shared')
 
   provided files("${System.getProperty('java.home')}/../lib/tools.jar")
   provided "org.apache.ant:ant:${antVersion}"
