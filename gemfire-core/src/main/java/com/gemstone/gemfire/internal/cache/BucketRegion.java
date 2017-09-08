@@ -910,7 +910,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   private Set createColumnBatchAndPutInColumnTable() {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    return callback.createColumnBatch(this, this.batchUUID, this.getId());
+    long key =  partitionedRegion.newUUID(false);
+    return callback.createColumnBatch(this, key, this.getId());
   }
 
   // TODO: Suranjan Not optimized way to destroy all entries, as changes at level of RVV required.
