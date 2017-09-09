@@ -93,7 +93,6 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
     protected EventID eventId = null;
     protected EntryEventImpl event = null;    
     private long tailKey = 0L; // Used for Parallel Gateway Senders
-    private long batchUUID = BucketRegion.INVALID_UUID;
 
     public UpdateEntryVersionMessage() {
     }
@@ -180,7 +179,6 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
       this.eventId = (EventID)DataSerializer.readObject(in);
       this.key = DataSerializer.readObject(in);
       this.tailKey = InternalDataSerializer.readSignedVL(in);
-      this.batchUUID = in.readLong();
     }
 
     @Override
