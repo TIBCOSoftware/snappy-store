@@ -20,7 +20,6 @@ package com.gemstone.gemfire.internal.snappy;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
@@ -97,11 +96,6 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void releaseStorageMemory(String objectName,
         long numBytes, boolean offHeap) {
-    }
-
-    @Override
-    public ExecutorService poolForAsyncOperation() {
-      return null;
     }
 
     @Override

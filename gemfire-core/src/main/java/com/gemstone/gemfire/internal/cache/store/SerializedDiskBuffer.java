@@ -98,11 +98,6 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
     }
   }
 
-  @Override
-  public final void release() {
-    release(false);
-  }
-
   /**
    * An optional explicit release of the underlying data. The buffer may no
    * longer be usable after this call and return empty data.
@@ -112,14 +107,15 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
    * Typically this means using NIO DirectByteBuffers for data which will
    * release automatically in the GC cycles when no references remain.
    */
-  public void release(boolean async) {
+  @Override
+  public void release() {
     while (true) {
       final int refCount = refCountUpdate.get(this);
       if (refCount > 0) {
         if (refCountUpdate.compareAndSet(this, refCount, refCount - 1)) {
           if (refCount == 1) {
             // reference count has gone down to zero so release the buffer
-            releaseBuffer(async);
+            releaseBuffer();
           }
           break;
         }
@@ -144,7 +140,7 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
     return retain() ? this : null;
   }
 
-  protected abstract void releaseBuffer(boolean async);
+  protected abstract void releaseBuffer();
 
   /**
    * For buffers which are stored in region, set its DiskId.

@@ -1419,7 +1419,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       Object oldVal = getValueField();
       if (oldVal != val && oldVal instanceof SerializedDiskBuffer) {
         setValueField(val);
-        ((SerializedDiskBuffer)oldVal).release(true);
+        ((SerializedDiskBuffer)oldVal).release();
         return;
       }
     }

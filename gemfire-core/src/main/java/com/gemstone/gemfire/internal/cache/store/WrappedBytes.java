@@ -60,7 +60,7 @@ public final class WrappedBytes extends SerializedDiskBuffer {
   }
 
   @Override
-  public void release(boolean async) {
+  public void release() {
   }
 
   @Override
@@ -69,7 +69,7 @@ public final class WrappedBytes extends SerializedDiskBuffer {
   }
 
   @Override
-  protected void releaseBuffer(boolean async) {
+  protected void releaseBuffer() {
   }
 
   @Override

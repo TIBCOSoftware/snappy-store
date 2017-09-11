@@ -44,6 +44,7 @@ import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
@@ -504,7 +505,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           	  if(!region.getBucketAdvisor().isPrimary()){       	
               try {
                 bytesEvicted = ((AbstractLRURegionMap)region.entries)
-                    .centralizedLruUpdateCallback(false);
+                    .centralizedLruUpdateCallback(false, false);
                 if (bytesEvicted == 0) {
                   iter.remove();
                 } else {
@@ -651,7 +652,8 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
    * evicted in the LSB integer, and the (new SerializedDiskBuffer) off-heap
    * evicted bytes in the MSB integer if "includeOffHeapBytes" is true.
    */
-  public final long centralizedLruUpdateCallback(boolean includeOffHeapBytes) {
+  public final long centralizedLruUpdateCallback(boolean includeOffHeapBytes,
+      boolean skipLockedEntries) {
     long evictedBytes = 0;
     int offHeapSize = 0;
     if (getCallbackDisabled()) {
@@ -665,11 +667,20 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       debugLogging("limit is: " + getLimit());
     }
     LRUStatistics stats = _getLruList().stats();
+    LRUEntry lockedEntry = null;
     try {
       while (mustEvict() && (evictedBytes == 0 ||
           (includeOffHeapBytes && offHeapSize == 0))) {
         LRUEntry removalEntry = (LRUEntry)_getLruList().getLRUEntry();
         if (removalEntry != null) {
+          // check if need to skip a locked entry
+          if (skipLockedEntries) {
+            if (UnsafeHolder.getUnsafe().tryMonitorEnter(removalEntry)) {
+              lockedEntry = removalEntry;
+            } else {
+              continue;
+            }
+          }
           // get the handle to off-heap entry before eviction
           SerializedDiskBuffer buffer = null;
           if (includeOffHeapBytes && !removalEntry.isOffHeap()) {
@@ -680,6 +691,10 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
             }
           }
           int evicted = evictEntry(removalEntry, stats);
+          if (lockedEntry != null) {
+            UnsafeHolder.getUnsafe().monitorExit(lockedEntry);
+            lockedEntry = null;
+          }
           evictedBytes += evicted;
           if (evicted != 0) {
             // check if off-heap entry was evicted
@@ -703,10 +718,13 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           break;
         }
       }
-    }
-    catch (RegionClearedException rce) {
+    } catch (RegionClearedException rce) {
       // Ignore
       if (debug) debugLogging("exception =" + rce.getCause());
+    } finally {
+      if (lockedEntry != null) {
+        UnsafeHolder.getUnsafe().monitorExit(lockedEntry);
+      }
     }
     if (debug)
       debugLogging("callback complete");

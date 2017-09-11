@@ -24,7 +24,6 @@ import java.io.UTFDataFormatException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutorService;
 import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.DataSerializer;
@@ -38,7 +37,6 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataOutputStream;
-import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 
 /**
  * A {@link SerializedDiskBuffer} that implements {@link DataOutput} writing
@@ -113,16 +111,10 @@ public final class ByteBufferDataOutput extends SerializedDiskBuffer
   }
 
   @Override
-  protected synchronized void releaseBuffer(boolean async) {
+  protected synchronized void releaseBuffer() {
     final ByteBuffer buffer = this.buffer;
     this.buffer = null;
-    ExecutorService asyncPool;
-    if (async && (asyncPool = CallbackFactoryProvider.getStoreCallbacks()
-        .poolForAsyncOperation()) != null) {
-      asyncPool.execute(() -> allocator.release(buffer));
-    } else {
-      this.allocator.release(buffer);
-    }
+    this.allocator.release(buffer);
   }
 
   @Override
