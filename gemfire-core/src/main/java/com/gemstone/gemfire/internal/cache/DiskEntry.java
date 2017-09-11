@@ -739,7 +739,7 @@ public interface DiskEntry extends RegionEntry {
         final SerializedDiskBuffer buffer = this.buffer;
         if (buffer != null && buffer.needsRelease()) {
           this.buffer = null;
-          buffer.release();
+          buffer.release(true);
         }
       }
 

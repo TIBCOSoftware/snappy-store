@@ -19,6 +19,7 @@ package com.gemstone.gemfire.internal.snappy;
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
@@ -74,6 +75,12 @@ public interface StoreCallbacks {
       UMMMemoryTracker buffer, boolean shouldEvict, boolean offHeap);
 
   void releaseStorageMemory(String objectName, long numBytes, boolean offHeap);
+
+  /**
+   * Get the pool for an async acquire/release operation, or null if
+   * pool cannot be used and operation should be in the same thread.
+   */
+  ExecutorService poolForAsyncOperation();
 
   void dropStorageMemory(String objectName, long ignoreBytes);
 
