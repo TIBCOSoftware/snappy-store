@@ -20,6 +20,7 @@ package com.gemstone.gemfire.internal.cache;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.LockSupport;
 
 import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.cache.EvictionAction;
@@ -678,7 +679,13 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
             if (UnsafeHolder.getUnsafe().tryMonitorEnter(removalEntry)) {
               lockedEntry = removalEntry;
             } else {
-              continue;
+              // try once more after a small wait
+              LockSupport.parkNanos(10000L);
+              if (UnsafeHolder.getUnsafe().tryMonitorEnter(removalEntry)) {
+                lockedEntry = removalEntry;
+              } else {
+                continue;
+              }
             }
           }
           // get the handle to off-heap entry before eviction
