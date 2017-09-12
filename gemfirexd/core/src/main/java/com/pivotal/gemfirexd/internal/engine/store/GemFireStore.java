@@ -1302,6 +1302,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
       this.isShutdownAll = false;
 
+      Misc.checkClusterRestrictions(this.getMyVMKind());
       startExecutor();
     } catch (RuntimeException ex) {
 //      (new ManagerLogWriter(LogWriterImpl.FINE_LEVEL, System.out)).fine("GemFireStore caught unexpected exception", ex);
@@ -1339,9 +1340,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           == ContainerHandle.MODE_OPEN_FOR_LOCK_ONLY);
     }
   }
-
-
-
 
   /**
    * Start executor if any of the accessor is a driver.

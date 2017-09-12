@@ -80,6 +80,9 @@ public class GemFireVersion {
   /** Constant for the GemFire enterprise edition Resource Property entry */
   private static final String ENTERPRISE_EDITION = "Enterprise-Edition";
 
+  /** Constant for the SnappyData Cluster Type Resource Property entry */
+  private static final String CLUSTER_TYPE = "Cluster-Type";
+
   ////////////////////  Instance Fields  ////////////////////
 
   /** The name of the properties resource used to load this instance */
@@ -134,6 +137,9 @@ public class GemFireVersion {
 
   /** If the product is enterprise edition or not */
   private boolean enterpriseEdition;
+
+  /** Cluster type, indicates any specifications for cluster */
+  private String clusterType;
 
   ////////////////////  Static Methods  ////////////////////
 
@@ -452,6 +458,7 @@ public class GemFireVersion {
       this.productReleaseStage = "";
     }
     this.enterpriseEdition = Boolean.parseBoolean(props.getProperty(ENTERPRISE_EDITION, "false"));
+    this.clusterType = props.getProperty(CLUSTER_TYPE, "");
     // below setting for GemFireXD is to indicate the underlying GemFire
     // version being used in GemFireXD product; for GemFire this will not
     // be set and instead this.productVersion is used where required
@@ -814,6 +821,15 @@ public class GemFireVersion {
       return false;
     } else {
       return v.enterpriseEdition;
+    }
+  }
+
+  public static String getClusterType() {
+    GemFireVersion v = getInstance();
+    if (v.error != null) {
+      return "";
+    } else {
+      return v.clusterType;
     }
   }
 }

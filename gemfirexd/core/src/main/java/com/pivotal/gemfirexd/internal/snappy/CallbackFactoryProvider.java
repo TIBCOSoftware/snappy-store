@@ -80,6 +80,10 @@ public abstract class CallbackFactoryProvider {
     public void publishColumnTableStats() {
     }
 
+    @Override
+    public String getClusterType() {
+      return "";
+    }
 
   };
 

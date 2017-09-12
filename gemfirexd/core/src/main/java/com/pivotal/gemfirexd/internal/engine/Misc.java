@@ -27,6 +27,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -53,6 +54,7 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.GemFireVersion;
 import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LocalLogWriter;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
@@ -1372,4 +1374,38 @@ public abstract class Misc {
               "This feature is supported when product is started in rowstore mode");
     }
   }
+
+  public static void checkClusterRestrictions(GemFireStore.VMKind vmKind) {
+    if (/*Misc.getMemStore().isSnappyStore() &&*/ GemFireVersion.isEnterpriseEdition() &&
+        vmKind == GemFireStore.VMKind.DATASTORE && isAWS() && isRestrictedCluster()) {
+      int servers = 0;
+      Set<DistributedMember> all = Misc.getDistributedSystem().getAllOtherMembers();
+      for (DistributedMember dm : all) {
+        if (GemFireXDUtils.getVMKind(dm) == GemFireStore.VMKind.DATASTORE) {
+          servers++;
+        }
+      }
+      if (servers > 1) { // Only allow max 2 dataservers (or one?)
+        throw new IllegalStateException("Dataserver cannot be started as the dataserver limit " +
+            "exceeds.");
+      }
+    }
+  }
+
+  private static boolean isRestrictedCluster() {
+    return "singleNode".equalsIgnoreCase(com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider.getClusterCallbacks()
+        .getClusterType());
+  }
+
+  private static boolean isAWS() {
+    try {
+      String cmd = "curl --connect-timeout 2 http://169.254.169.254/latest/meta-data/ami-id";
+      Process p = Runtime.getRuntime().exec(cmd);
+      p.waitFor(3, TimeUnit.SECONDS);
+      return p.exitValue() == 0;
+    } catch (IOException | InterruptedException | IllegalThreadStateException e) {
+    }
+    return false;
+  }
+
 }
