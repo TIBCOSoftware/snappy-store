@@ -3960,17 +3960,23 @@ RETRY_LOOP:
                   try {
                     RegionEntry oldRe = null;
                     try {
-                      final int oldSize = event.getLocalRegion().calculateRegionEntryValueSize(re);
+                      final Object memoryValue = oldValueForDelta != null ? oldValueForDelta
+                          : re._getValue();
+                      final LocalRegion region = event.getLocalRegion();
+                      final int oldSize = region.calculateValueSize(memoryValue);
                       if (owner.isSnapshotEnabledRegion() && re.getVersionStamp() != null ) {
                         // we need to do the same for secondary as well.
                         // need to set the version information.
+                        int valueSize = oldSize;
                         if (re.getVersionStamp().asVersionTag().getEntryVersion() > 0) {
                           oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, event.getRegion(), true);
+                          valueSize = memoryValue != null && oldSize > 0
+                              ? oldSize : region.calculateValueSize(oldRe._getValue());
                           oldRe.setUpdateInProgress(true);
                           checkConflict(owner, event, re);
                         }
                         // need to put old entry in oldEntryMap for MVCC
-                        owner.getCache().addOldEntry(oldRe, re, owner, oldSize);
+                        owner.getCache().addOldEntry(oldRe, re, owner, valueSize, false);
                       }
                       if ((cacheWrite && event.getOperation().isUpdate()) // if there is a cacheWriter, type of event has already been set
                           || !re.isRemoved()
@@ -4380,7 +4386,8 @@ RETRY_LOOP:
     RegionEntry oldRe = null;
     boolean retVal = false;
     try {
-      final int oldSize = _getOwner().calculateRegionEntryValueSize(re);
+      final Object memoryValue = re._getValue();
+      final int oldSize = _getOwner().calculateValueSize(memoryValue);
       if (_getOwner().isSnapshotEnabledRegion() /*&& re.getVersionStamp() != null && re.getVersionStamp()
         .asVersionTag().getEntryVersion() > 0*/) {
         // we need to do the same for secondary as well.
@@ -4388,7 +4395,9 @@ RETRY_LOOP:
         checkConflict(_getOwner(), event, re);
         oldRe = NonLocalRegionEntry.newEntryWithoutFaultIn(re, event.getRegion(), true);
         oldRe.setUpdateInProgress(true);
-        _getOwner().getCache().addOldEntry(oldRe, re, _getOwner(), oldSize);
+        final int valueSize = memoryValue != null && oldSize > 0
+            ? oldSize : _getOwner().calculateValueSize(oldRe._getValue());
+        _getOwner().getCache().addOldEntry(oldRe, re, _getOwner(), valueSize, true);
       }
       processVersionTag(re, event);
 

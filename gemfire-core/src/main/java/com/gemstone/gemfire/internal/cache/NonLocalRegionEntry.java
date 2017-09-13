@@ -89,7 +89,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
       if (faultInValue) {
         v = re.getValue(br);
       } else {
-        v = re.getValueOffHeapOrDiskWithoutFaultIn(br);
+        v = re.getValueInVMOrDiskWithoutFaultIn(br);
       }
       try {
         this.value = OffHeapHelper.getHeapForm(v);  // OFFHEAP: copy into heap cd
