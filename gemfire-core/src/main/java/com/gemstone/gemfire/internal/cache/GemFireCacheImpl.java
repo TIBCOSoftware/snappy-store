@@ -782,7 +782,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                   // free the allocated memory
                   if (!region.reservedTable() && region.needAccounting()) {
                     int size = region.calculateRegionEntryValueSize(re);
-                    getLoggerI18n().info(LocalizedStrings.DEBUG, "Releasing memory "+ size + " Region entry " + re);
                     region.freePoolMemory(size, true);
                   }
                 }
