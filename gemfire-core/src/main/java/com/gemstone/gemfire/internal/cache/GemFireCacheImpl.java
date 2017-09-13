@@ -120,6 +120,7 @@ import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberManager;
 import com.gemstone.gemfire.internal.cache.persistence.query.TemporaryResultSetFactory;
 import com.gemstone.gemfire.internal.cache.snapshot.CacheSnapshotServiceImpl;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientProxy;
@@ -559,7 +560,19 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   // For each entry this should be in sync
   public void removeRegionFromOldEntryMap(String regionPath) {
     synchronized (this.oldEntryMap) {
-      oldEntryMap.remove(regionPath);
+      Map<Object, BlockingQueue<RegionEntry>> map = oldEntryMap.remove(regionPath);
+      if (GemFireCacheImpl.hasNewOffHeap() && map != null) {
+        for (BlockingQueue<RegionEntry> values : map.values()) {
+          if (values != null) {
+            for (RegionEntry re : values) {
+              Object value = re._getValue();
+              if (value instanceof SerializedDiskBuffer) {
+                ((SerializedDiskBuffer)value).release();
+              }
+            }
+          }
+        }
+      }
     }
   }
 
@@ -568,7 +581,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
   // For each entry this should be in sync
 
-  public void addOldEntry(RegionEntry oldRe, RegionEntry newEntry, LocalRegion region, int oldSize) {
+  public void addOldEntry(RegionEntry oldRe, RegionEntry newEntry, LocalRegion region,
+      int oldSize, boolean forDelete) {
     if (!snapshotEnabled()) {
       return;
     }
@@ -591,7 +605,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     if (!region.reservedTable() && region.needAccounting()) {
       region.calculateEntryOverhead(oldRe);
       LocalRegion.regionPath.set(region.getFullPath());
-      region.acquirePoolMemory(0, oldSize, true, null, true);
+      region.acquirePoolMemory(0, oldSize, forDelete, null, true);
     }
 
     if(getLoggerI18n().fineEnabled()) {
@@ -758,9 +772,17 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                             re.isUpdateInProgress());
                   }
                   oldEntriesQueue.remove(re);
+                  if (GemFireCacheImpl.hasNewOffHeap()) {
+                    // also remove reference to region buffer, if any
+                    Object value = re._getValue();
+                    if (value instanceof SerializedDiskBuffer) {
+                      ((SerializedDiskBuffer)value).release();
+                    }
+                  }
                   // free the allocated memory
                   if (!region.reservedTable() && region.needAccounting()) {
                     int size = region.calculateRegionEntryValueSize(re);
+                    getLoggerI18n().info(LocalizedStrings.DEBUG, "Releasing memory "+ size + " Region entry " + re);
                     region.freePoolMemory(size, true);
                   }
                 }
