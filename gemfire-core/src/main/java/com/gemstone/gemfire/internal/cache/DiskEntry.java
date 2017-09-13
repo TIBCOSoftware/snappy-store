@@ -1406,7 +1406,7 @@ public interface DiskEntry extends RegionEntry {
       //did.setValueSerializedSize(0);
       // I think the following assertion is true but need to run
       // a regression with it. Reenable this post 6.5
-      Assert.assertTrue(entry._getValue() == null);
+      // Assert.assertTrue(entry._getValue() == null);
       entry.setValueWithContext((RegionEntryContext) region, preparedValue);
       dr.incNumEntriesInVM(1L);
       dr.incNumOverflowOnDisk(-1L);
