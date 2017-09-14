@@ -323,8 +323,8 @@ final class UpdateLoader implements LockOwner {
 			return is;
 
 		// match behaviour of standard class loaders. 
-		if (name.endsWith(".class"))
-			return null;
+/*		if (name.endsWith(".class"))
+			return null;*/
 
 		boolean unlockLoader = false;
 		try {
