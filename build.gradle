@@ -434,7 +434,7 @@ subprojects {
 
   test {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = (2 * Runtime.getRuntime().availableProcessors())
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
     minHeapSize = '1g'
     maxHeapSize = '1g'
 
@@ -596,7 +596,7 @@ subprojects {
 
   task integrationTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = (2 * Runtime.getRuntime().availableProcessors())
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
 
     include '**/*Test.class'
     exclude '**/*DUnitTest.class'
