@@ -39,6 +39,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -124,6 +125,8 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    */
   private final AtomicLongWithTerminalState bytesInMemory =
     new AtomicLongWithTerminalState();
+
+  private final AtomicLong inProgressSize = new AtomicLong();
 
   public static final ReadEntryUnderLock READ_SER_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
@@ -2952,6 +2955,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public long getSizeInMemory() {
     return Math.max(this.bytesInMemory.get(), 0L);
+  }
+
+  public long getInProgressSize() {
+    return inProgressSize.get();
+  }
+
+  public void updateInProgressSize(long delta) {
+    inProgressSize.addAndGet(delta);
   }
 
   public long getTotalBytes() {

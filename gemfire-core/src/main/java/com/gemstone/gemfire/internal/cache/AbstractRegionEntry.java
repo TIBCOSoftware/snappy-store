@@ -538,7 +538,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
 
   @Retained
   public  Object getValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
-   return getValueInVM(owner);
+    Object v = getValueInVM(owner);
+    if (GemFireCacheImpl.hasNewOffHeap() && (v instanceof SerializedDiskBuffer)) {
+      ((SerializedDiskBuffer)v).retain();
+    }
+    return v;
   }
 
   @Retained
