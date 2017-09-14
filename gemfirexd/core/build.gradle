@@ -267,6 +267,10 @@ jar {
         from "${projectDir}/lib"
         into "${gemfireCoreProject.buildDir}/libs"
       }
+      copy {
+        from "${projectDir}/lib"
+        into gemfireCoreProject.sourceSets.main.output.classesDir
+      }
     }
   }
 }

@@ -556,10 +556,13 @@ public class DiskRegion extends AbstractDiskRegion {
       BucketRegion owner=(BucketRegion)region;
       long curInVM = owner.getNumEntriesInVM()*-1;
       long curOnDisk = owner.getNumOverflowOnDisk()*-1;
+      long curBytesOnDisk = owner.getNumOverflowBytesOnDisk()*-1;
       incNumEntriesInVM(curInVM);
       incNumOverflowOnDisk(curOnDisk);
+      incNumOverflowBytesOnDisk(curBytesOnDisk);
       owner.incNumEntriesInVM(curInVM);
       owner.incNumOverflowOnDisk(curOnDisk);
+      owner.incNumOverflowBytesOnDisk(curBytesOnDisk);
     } else {
       // set them both to zero
       incNumEntriesInVM(getNumEntriesInVM()*-1);
