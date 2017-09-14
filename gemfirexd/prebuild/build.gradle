@@ -18,7 +18,7 @@
 dependencies {
   compile project(subprojectBase + 'snappydata-store-shared')
 
-  provided files("${System.getProperty('java.home')}/../lib/tools.jar")
-  provided "org.apache.ant:ant:${antVersion}"
+  compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
+  compileOnly "org.apache.ant:ant:${antVersion}"
 }
 jar.baseName = 'snappydata-store-prebuild'

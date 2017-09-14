@@ -61,7 +61,8 @@ allprojects {
     guavaVersion = '14.0.1'
     nettyAllVersion = '4.0.42.Final'
     jlineVersion = '2.14.2'
-    fastutilVersion = '8.1.0'
+    kolobokeVersion = '1.0.0'
+    kolobokeCompileVersion = '0.5.1'
     //hbaseVersion = '0.94.4-gemfire-r45047'
     //hadoopVersion = '2.2.0-gphd-3.1.0.0'
     //hadoopVersion = '2.4.1-gphd-3.2.0.0-54'
@@ -227,32 +228,32 @@ def getStackTrace(def t) {
   return sw.toString()
 }
 
-task cleanTestOutput << {
+task cleanTestOutput { doLast {
   def testDir = "${testResultsBase}/junit"
   delete testDir
   file(testDir).mkdirs()
-}
-task cleanDUnitOutput << {
+} }
+task cleanDUnitOutput { doLast {
   def testDir = "${testResultsBase}/dunit"
   delete testDir
   file(testDir).mkdirs()
   // writeTestProperties(testDir, '.')
-}
-task cleanWanOutput << {
+} }
+task cleanWanOutput { doLast {
   def testDir = "${testResultsBase}/wan"
   delete testDir
   file(testDir).mkdirs()
-}
-task cleanIntegrationOutput << {
+} }
+task cleanIntegrationOutput { doLast {
   def testDir = "${testResultsBase}/integration"
   delete testDir
   file(testDir).mkdirs()
-}
-task cleanReports << {
+} }
+task cleanReports { doLast {
   def reportsDir = "${testResultsBase}/combined-reports"
   delete reportsDir
   file(reportsDir).mkdirs()
-}
+} }
 
 
 def parallelTests(def proj, def testClasses, def testObj, def prefix, def splitSize, def parallelism) {
@@ -373,11 +374,6 @@ subprojects {
   }
 
   configurations {
-    provided {
-      description 'a dependency that is provided externally at runtime'
-      visible true
-    }
-
     testOutput {
       extendsFrom testCompile
       description 'a dependency that exposes test artifacts'
@@ -400,50 +396,28 @@ subprojects {
     }
   }
 
+  cleanEclipse.doLast {
+    delete '.settings/org.eclipse.core.resources.prefs'
+  }
+
   eclipse {
     classpath {
-      defaultOutputDir = file('build-eclipse')
-      plusConfigurations += [ configurations.provided ]     
+      defaultOutputDir = file('build-artifacts/eclipse')
+      downloadSources = true
     }
     // Several files have UTF-8 encoding and Eclipse running on Windows
     // will have trouble unless we tell it to use UTF-8 encoding.
     // This setting needs to go into the core.resources.prefs file,
     // which the JDT script isn't set up to configure
-    eclipseJdt << {
+    eclipseJdt.doLast {
       File f = file('.settings/org.eclipse.core.resources.prefs')
       f.write('eclipse.preferences.version=1\n')
       f.append('encoding/<project>=utf-8')
     }
   }
 
-  cleanEclipse << {
-    delete '.settings/org.eclipse.core.resources.prefs'
-  }
-
-  idea {
-    module {
-      scopes.PROVIDED.plus += [ configurations.provided ]
-    }
-  }
-  eclipse {
-    classpath {
-      defaultOutputDir = file('build-artifacts/eclipse')
-      downloadSources = true
-      plusConfigurations += [ configurations.provided ]
-    }
-  }
-
-  sourceSets {
-    main.compileClasspath += configurations.provided
-    main.runtimeClasspath -= configurations.provided
-    test.compileClasspath += configurations.provided
-    test.runtimeClasspath += configurations.provided
-  }
-
-  javadoc.classpath += configurations.provided
-
   dependencies {
-    provided 'com.google.code.findbugs:annotations:3.0.1'
+    compileOnly 'com.google.code.findbugs:annotations:3.0.1'
     compile "log4j:log4j:${log4jVersion}"
     compile "org.slf4j:slf4j-api:${slf4jVersion}"
     compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
@@ -832,6 +806,7 @@ if (!rootProject.hasProperty('store')) {
 
 task generateSources {
   dependsOn subprojectBase + 'gemfire-jgroups:jgMagic'
+  dependsOn subprojectBase + 'gemfire-util:compileJava'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'
   dependsOn subprojectBase + 'snappydata-store-core:compileJavacc'
   dependsOn subprojectBase + 'snappydata-store-core:generatePropertiesFiles'
@@ -859,7 +834,7 @@ install.enabled = false
 // pack the entire GemFireXD product tree
 task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJar',
     subprojectBase + 'snappydata-store-core:shadowJar',
-    subprojectBase + 'snappydata-store-tools:shadowJar' ]) << {
+    subprojectBase + 'snappydata-store-tools:shadowJar' ]) { doLast {
 
   delete productDir
 
@@ -871,9 +846,9 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
 
   def gcmDir = System.getProperty('GCMDIR', '/gcm')
 
-  def extraJars = (gemcoreProject.configurations.provided - gemcoreProject.configurations.runtime +
-        coreProject.configurations.provided - coreProject.configurations.runtime +
-        toolsProject.configurations.provided - toolsProject.configurations.runtime).filter {
+  def extraJars = (gemcoreProject.configurations.compileOnly - gemcoreProject.configurations.runtime +
+        coreProject.configurations.compileOnly - coreProject.configurations.runtime +
+        toolsProject.configurations.compileOnly - toolsProject.configurations.runtime).filter {
     includeJar(it)
   }
   // first copy the product and dependent jars
@@ -913,11 +888,23 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
     fileMode 0755
   }
 
-  // the native JNI library
+  // the native JNI libraries
   if (osName.isLinux()) {
+    copy {
+      from gemcoreProject.projectDir.getAbsolutePath() + '/lib'
+      into "${productDir}/lib"
+      include '*.so'
+    }
     copy {
       from coreProject.projectDir.getAbsolutePath() + '/lib'
       into "${productDir}/lib"
+    }
+  }
+  if (osName.isWindows()) {
+    copy {
+      from gemcoreProject.projectDir.getAbsolutePath() + '/lib'
+      into "${productDir}/lib"
+      include '*.dll'
     }
   }
 
@@ -1004,7 +991,7 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
     }
     into (project(subprojectBase + 'snappydata-store-tests').buildDir.getAbsolutePath() + '/classes/main')
   }
-}
+} }
 if (rootProject.hasProperty('docs')) {
   storeProduct.dependsOn subprojectBase + 'snappydata-store-shared:javadoc',
                     subprojectBase + 'snappydata-store-core:javadoc'

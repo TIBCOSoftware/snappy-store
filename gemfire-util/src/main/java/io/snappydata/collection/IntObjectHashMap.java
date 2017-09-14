@@ -15,9 +15,26 @@
  * LICENSE file.
  */
 
-dependencies {
-  compile 'net.java.dev.jna:jna:4.2.2'
-  compile 'commons-io:commons-io:2.5'
-  compile project(subprojectBase + 'gemfire-trove')
-  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+package io.snappydata.collection;
+
+import java.util.Collection;
+
+import com.koloboke.compile.KolobokeMap;
+
+@KolobokeMap
+public abstract class IntObjectHashMap<V> {
+
+  public static <V> IntObjectHashMap<V> withExpectedSize(int expectedSize) {
+    return new KolobokeIntObjectHashMap<>(expectedSize);
+  }
+
+  public abstract V put(int key, V value);
+
+  public abstract V get(int key);
+
+  public abstract Collection<V> values();
+
+  public abstract int size();
+
+  public abstract void clear();
 }

@@ -16,12 +16,12 @@
  */
 
 plugins {
-  id 'com.github.johnrengelman.shadow' version '1.2.3'
+  id 'com.github.johnrengelman.shadow' version '2.0.1'
 }
 
 dependencies {
-  provided "org.apache.thrift:libthrift:${thriftVersion}"
-  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+  compileOnly "org.apache.thrift:libthrift:${thriftVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compile project(subprojectBase + 'snappydata-store-shared')
 }
@@ -78,7 +78,7 @@ shadowJar {
   // avoid conflict with the older incompatible thrift versions
   relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
 
-  configurations = [ project.configurations.runtime, project.configurations.provided ]
+  configurations = [ project.configurations.runtime, project.configurations.compileOnly ]
 
   mergeServiceFiles()
 }

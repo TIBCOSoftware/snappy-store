@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.internal.shared;
 
 import java.util.AbstractSet;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -30,8 +31,11 @@ import com.gemstone.gnu.trove.TObjectHashingStrategy;
 /**
  * An optimized HashSet using open addressing with quadratic probing.
  * In micro-benchmarks this is faster in both inserts, deletes and gets,
- * as well as mixed workloads than all other HashSet implementations
+ * as well as mixed workloads than most other HashSet implementations
  * generally available in java (JDK HashSet, fastutil HashSets, or Trove's).
+ * <p>
+ * It adds additional APIs like {@link #create}, {@link #getKey},
+ * {@link #addKey} which is the main reason for having this class.
  */
 public class OpenHashSet<E> extends AbstractSet<E>
     implements Set<E>, Cloneable, java.io.Serializable {
@@ -76,6 +80,11 @@ public class OpenHashSet<E> extends AbstractSet<E>
     this.data = new Object[capacity];
     this.hashingStrategy = hashingStrategy != null
         ? hashingStrategy : THashParameters.DEFAULT_HASHING;
+  }
+
+  public OpenHashSet(Collection<? extends E> c) {
+    this(c.size());
+    addAll(c);
   }
 
   public static int keyHash(Object k, TObjectHashingStrategy hashingStrategy) {

@@ -16,8 +16,8 @@
  */
 
 dependencies {
-  provided "org.apache.thrift:libthrift:${thriftVersion}"
-  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+  compileOnly "org.apache.thrift:libthrift:${thriftVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compile project(subprojectBase + 'gemfire-shared')
 }
