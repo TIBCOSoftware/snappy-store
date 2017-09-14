@@ -163,6 +163,18 @@ jar {
   exclude 'com/gemstone/gemfire/management/internal/web/**'
   exclude 'com/gemstone/gemfire/internal/i18n/StringIdResourceBundle_ja.txt'
   exclude 'com/gemstone/gemfire/admin/doc-files/ds4_0.dtd'
+
+  doLast {
+    // copy the native JNI libraries
+    copy {
+      from "${projectDir}/lib"
+      into "${buildDir}/libs"
+    }
+    copy {
+      from "${projectDir}/lib"
+      into sourceSets.main.output.classesDir
+    }
+  }
 }
 
 task webJar (type: Jar, dependsOn: classes) {
