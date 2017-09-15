@@ -2200,7 +2200,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
   /**
    * This procedure sets the log level for either the root logger or a class.
-   * If the logClass is empty string, the root logger's level is set .
+   * If the logClass is empty string, the root logger's level is set.
    */
   public static void SET_LOG_LEVEL(String logClass, String level)
           throws SQLException, StandardException {
