@@ -2199,9 +2199,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
-   * This procedure sets the log level for a logger.
+   * This procedure sets the log level for either the root logger or a class.
    * If the logClass is null, the root logger's level is set .
-   * corresponding GFE layer flag.
    */
   public static void SET_LOG_LEVEL(String logClass, String level)
           throws SQLException, StandardException {
