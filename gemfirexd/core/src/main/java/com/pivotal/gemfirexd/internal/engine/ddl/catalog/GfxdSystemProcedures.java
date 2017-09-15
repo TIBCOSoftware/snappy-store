@@ -31,6 +31,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.DataSerializer;
@@ -121,6 +122,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeSmartConnectorOpContext;
 import com.pivotal.gemfirexd.load.Import;
 import io.snappydata.thrift.ServerType;
+import org.apache.log4j.LogManager;
 
 /**
  * GemFireXD built-in system procedures that will get executed on every
@@ -2194,6 +2196,23 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
     // import finished successfully, commit it.
     conn.commit();
+  }
+
+  /**
+   * This procedure sets the log level for a logger.
+   * If the logClass is null, the root logger's level is set .
+   * corresponding GFE layer flag.
+   */
+  public static void SET_LOG_LEVEL(String logClass, String level)
+          throws SQLException, StandardException {
+
+    final Object[] params = new Object[] { logClass, level };
+    // first process locally
+    GfxdSystemProcedureMessage.SysProcMethod.setLogLevel.processMessage(
+            params, Misc.getMyId());
+    // then publish to other members including locators
+    publishMessage(params, false,
+            GfxdSystemProcedureMessage.SysProcMethod.setLogLevel, false, true);
   }
 
   /**
