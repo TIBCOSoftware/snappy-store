@@ -104,14 +104,16 @@ public class GFToSlf4jBridge extends LogWriterImpl {
         level = ERROR_LEVEL;
         break;
       case Level.FATAL_INT:
-      case Level.OFF_INT:
         level = SEVERE_LEVEL;
+        break;
+      case Level.OFF_INT:
+        level = NONE_LEVEL;
         break;
       case Level.TRACE_INT:
         level = FINER_LEVEL;
         break;
       default:
-        level = FINE_LEVEL;
+        level = CONFIG_LEVEL;
         break;
     }
   }

@@ -27,6 +27,7 @@ import java.util.Set;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.HDFSRegionDirector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
@@ -1087,8 +1088,9 @@ public final class GfxdSystemProcedureMessage extends
           if (logClass.equals("")) {
             // sets the log level for the root logger and the GFXD bridge
             LogManager.getRootLogger().setLevel(level);
-            if (InternalDistributedSystem.getLoggerI18n() instanceof GFToSlf4jBridge) {
-              ((GFToSlf4jBridge) InternalDistributedSystem.getLoggerI18n()).setLevelForLog4jLevel(level);
+            LogWriter logger = Misc.getCacheLogWriterNoThrow();
+            if (logger instanceof GFToSlf4jBridge) {
+              ((GFToSlf4jBridge) logger).setLevelForLog4jLevel(level);
             }
           } else {
             LogManager.getLogger(logClass).setLevel(level);
@@ -1120,7 +1122,7 @@ public final class GfxdSystemProcedureMessage extends
       String getSQLStatement(Object[] params) throws StandardException {
         final StringBuilder sb = new StringBuilder();
         return sb.append("CALL SYS.SET_LOG_LEVEL('").append(params[0])
-                .append("',").append(params[1]).append(')')
+                .append("', '").append(params[1]).append("')")
                 .toString();
       }
     },
