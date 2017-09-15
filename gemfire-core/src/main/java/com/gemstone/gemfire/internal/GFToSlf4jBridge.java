@@ -86,7 +86,7 @@ public class GFToSlf4jBridge extends LogWriterImpl {
     }
   }
 
-  public void setLog4Level(Level log4jlevel) {
+  public void setLevelForLog4jLevel(Level log4jlevel) {
     switch (log4jlevel.toInt()) {
       case Level.ALL_INT:
         level = FINEST_LEVEL;
