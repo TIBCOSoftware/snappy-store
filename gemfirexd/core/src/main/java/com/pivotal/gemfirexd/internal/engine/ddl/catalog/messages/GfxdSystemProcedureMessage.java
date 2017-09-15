@@ -1088,7 +1088,7 @@ public final class GfxdSystemProcedureMessage extends
             // sets the log level for the root logger and the GFXD bridge
             LogManager.getRootLogger().setLevel(level);
             if (InternalDistributedSystem.getLoggerI18n() instanceof GFToSlf4jBridge) {
-              ((GFToSlf4jBridge) InternalDistributedSystem.getLoggerI18n()).setLog4Level(level);
+              ((GFToSlf4jBridge) InternalDistributedSystem.getLoggerI18n()).setLevelForLog4jLevel(level);
             }
           } else {
             LogManager.getLogger(logClass).setLevel(level);
