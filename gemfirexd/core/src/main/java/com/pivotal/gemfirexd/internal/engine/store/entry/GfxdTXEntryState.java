@@ -1252,7 +1252,7 @@ public final class GfxdTXEntryState extends TXEntryState implements
   }
 
   @Override
-  public void setOwner(LocalRegion owner) {
+  public void setOwner(LocalRegion owner, Object previousOwner) {
     throw new UnsupportedOperationException("unexpected invocation");
   }
 

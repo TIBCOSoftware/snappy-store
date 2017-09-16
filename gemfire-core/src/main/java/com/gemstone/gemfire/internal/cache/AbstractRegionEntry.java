@@ -1697,7 +1697,18 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     clearFlag(getState(), MARKED_FOR_EVICTION);
   }
 
-  public final void setOwner(LocalRegion owner) {
+  public final void setOwner(LocalRegion owner, Object previousOwner) {
+    @Retained @Released Object val = _getValueRetain(owner, true);
+    try {
+    // update the memory stats if required
+    if (owner != previousOwner && !isOffHeap()) {
+      // add for new owner
+      if (owner != null) owner.updateMemoryStats(null, val);
+      // reduce from previous owner
+      if (previousOwner instanceof RegionEntryContext) {
+        ((RegionEntryContext)previousOwner).updateMemoryStats(val, null);
+      }
+    }
     final StaticSystemCallbacks sysCb =
         GemFireCacheImpl.FactoryStatics.systemCallbacks;
     if (sysCb == null) {
@@ -1705,8 +1716,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       return;
     }
     final Object containerInfo;
-    @Retained @Released Object val = _getValueRetain(owner, true);
-    try {
     if ((containerInfo = setContainerInfo(owner, val)) != null) {
       // refresh the key if required
       final Object key = getRawKey();

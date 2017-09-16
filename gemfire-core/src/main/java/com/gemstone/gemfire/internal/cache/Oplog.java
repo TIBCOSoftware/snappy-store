@@ -8399,7 +8399,7 @@ public final class Oplog implements CompactableOplog {
     public void setLastModified(long lastModifiedTime) { throw new IllegalStateException(); }
     public boolean isLockedForCreate() {throw new IllegalStateException();}
     public Object getRawKey() { throw new IllegalStateException(); }
-    public void setOwner(LocalRegion owner) { throw new IllegalStateException(); }
+    public void setOwner(LocalRegion owner, Object previousOwner) { throw new IllegalStateException(); }
     public Object getContainerInfo() { throw new IllegalStateException();
     }
 

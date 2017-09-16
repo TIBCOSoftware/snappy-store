@@ -278,7 +278,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   /**
    * Set the owner for this RegionEntry. Used only by GemFireXD.
    */
-  public void setOwner(LocalRegion owner);
+  public void setOwner(LocalRegion owner, Object previousOwner);
 
   /**
    * Obtain and return the value of this entry using {@link #_getValue()}.
