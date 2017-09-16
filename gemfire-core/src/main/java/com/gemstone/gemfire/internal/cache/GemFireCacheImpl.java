@@ -746,7 +746,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
 
   class OldEntriesCleanerThread implements Runnable {
-    // Keep each entry alive for at least 15 secs.
+    // Keep each entry alive for at least 20 secs.
     public void run() {
       try {
         if (!oldEntryMap.isEmpty()) {
