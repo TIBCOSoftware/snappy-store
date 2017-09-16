@@ -97,6 +97,7 @@ allprojects {
     gitBranch = "${gitCmd} rev-parse --abbrev-ref HEAD".execute().text.trim()
     commitId = "${gitCmd} rev-parse HEAD".execute().text.trim()
     sourceDate = "${gitCmd} log -n 1 --format=%ai".execute().text.trim()
+    buildIdPrefix = System.env.USER + ' '
 
     osArch = System.getProperty('os.arch')
     osName = org.gradle.internal.os.OperatingSystem.current()
@@ -123,6 +124,9 @@ allprojects {
     buildDir = new File(buildRoot, osDir + '/' +  project.path.replace(':', '/'))
   } else {
     buildDir = 'build-artifacts/' + osDir
+  }
+  if (rootProject.hasProperty('enablePublish')) {
+    buildIdPrefix = 'SnappyData, Inc. '
   }
 
   ext {

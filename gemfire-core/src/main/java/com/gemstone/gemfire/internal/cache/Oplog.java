@@ -8386,7 +8386,7 @@ public final class Oplog implements CompactableOplog {
     public Object prepareValueForCache(RegionEntryContext r, Object val, boolean isEntryUpdate,
         boolean valHasMetadataForGfxdOffHeapUpdate)
     { throw new IllegalStateException("Should never be called");  }
-    public void _removePhase1() {throw new IllegalStateException();}
+    public void _removePhase1(LocalRegion r) {throw new IllegalStateException();}
     public DiskId getDiskId() {throw new IllegalStateException();}
     public long getLastModified() {throw new IllegalStateException();}
     public boolean isRecovered() {throw new IllegalStateException();}
@@ -8510,7 +8510,7 @@ public final class Oplog implements CompactableOplog {
       // TODO Auto-generated method stub
     }
     @Override
-    public void removePhase2() {
+    public void removePhase2(LocalRegion r) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -8666,7 +8666,7 @@ public final class Oplog implements CompactableOplog {
       return false;
     }
     @Override
-    public void setValueToNull() {
+    public void setValueToNull(RegionEntryContext context) {
       // TODO Auto-generated method stub
     }
     @Override

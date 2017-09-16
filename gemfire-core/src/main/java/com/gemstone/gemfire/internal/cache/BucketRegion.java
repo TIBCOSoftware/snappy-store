@@ -2652,11 +2652,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   static int calcMemSize(Object value) {
-    if (value != null && (value instanceof GatewaySenderEventImpl)) {
-      return ((GatewaySenderEventImpl)value).getSerializedValueSize();
-    } 
     if (value == null || value instanceof Token) {
       return 0;
+    }
+    if (value instanceof GatewaySenderEventImpl) {
+      return ((GatewaySenderEventImpl)value).getSerializedValueSize();
     }
     if (!(value instanceof byte[])
         && !CachedDeserializableFactory.preferObject()
@@ -2752,7 +2752,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   public int calculateRegionEntryValueSize(RegionEntry re) {
     return calcMemSize(re._getValue()); // OFFHEAP _getValue ok
   }
-
 
   @Override
   void updateSizeOnPut(Object key, int oldSize, int newSize) {
@@ -3052,6 +3051,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   void updateBucket2Size(int oldSize, int newSize,
                          SizeOp op) {
 
+    // now done from AbstractRegionEntry._setValue by a direct call to
+    // updateBucketMemoryStats
+    /*
     final int memoryDelta = op.computeMemoryDelta(oldSize, newSize);
     
     if (memoryDelta == 0) return;
@@ -3064,8 +3066,18 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
     // do the bigger one first to keep the sum > 0
     updateBucketMemoryStats(memoryDelta);
+    */
   }
-  
+
+  @Override
+  public void updateMemoryStats(final Object oldValue, final Object newValue) {
+    if (newValue != oldValue) {
+      int oldValueSize = calcMemSize(oldValue);
+      int newValueSize = calcMemSize(newValue);
+      updateBucketMemoryStats(newValueSize - oldValueSize);
+    }
+  }
+
   void updateBucketMemoryStats(final int memoryDelta) {
     if (memoryDelta != 0) {
 

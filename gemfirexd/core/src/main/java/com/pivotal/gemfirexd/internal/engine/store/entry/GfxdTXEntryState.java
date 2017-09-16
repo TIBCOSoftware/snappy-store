@@ -1372,7 +1372,7 @@ public final class GfxdTXEntryState extends TXEntryState implements
   }
 
   @Override
-  public void removePhase2() {
+  public void removePhase2(LocalRegion r) {
     throw new UnsupportedOperationException("unexpected invocation");
   }
 
@@ -1626,7 +1626,7 @@ public final class GfxdTXEntryState extends TXEntryState implements
    * {@inheritDoc}
    */
   @Override
-  public void setValueToNull() {
+  public void setValueToNull(RegionEntryContext context) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + toString());
   }

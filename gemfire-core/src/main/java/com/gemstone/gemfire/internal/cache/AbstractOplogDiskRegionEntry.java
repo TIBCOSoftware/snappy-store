@@ -66,17 +66,17 @@ public abstract class AbstractOplogDiskRegionEntry
   {
     synchronized (this) {
       Helper.removeFromDisk(this, r, isClear);
-      _removePhase1();
+      _removePhase1(r);
     }
   }
   @Override
-  public void removePhase2() {
+  public void removePhase2(LocalRegion r) {
     Object syncObj = getDiskId();
     if (syncObj == null) {
       syncObj = this;
     }
     synchronized (syncObj) {
-      super.removePhase2();
+      super.removePhase2(r);
     }
   }
 

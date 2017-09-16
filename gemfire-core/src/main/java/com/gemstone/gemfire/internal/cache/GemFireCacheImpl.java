@@ -528,7 +528,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   private String vmIdRegionPath;
 
   //TODO:Suranjan This has to be replcaed with better approach. guava cache or WeakHashMap.
-  protected final Map<String, Map<Object, BlockingQueue<RegionEntry>
+  private final Map<String, Map<Object, BlockingQueue<RegionEntry>
     /*RegionEntry*/>>  oldEntryMap;
   
   private ScheduledExecutorService oldEntryMapCleanerService;
@@ -537,7 +537,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    * Time interval after which oldentries cleaner thread run
    */
   public static long OLD_ENTRIES_CLEANER_TIME_INTERVAL = Long.getLong("gemfire" +
-      ".snapshot-oldentries-cleaner-time-interval", 30000);
+      ".snapshot-oldentries-cleaner-time-interval", 15000);
 
 
   /**
@@ -581,8 +581,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
   // For each entry this should be in sync
 
-  public void addOldEntry(RegionEntry oldRe, RegionEntry newEntry, LocalRegion region,
-      int oldSize, boolean forDelete) {
+  public void addOldEntry(NonLocalRegionEntry oldRe, RegionEntry newEntry,
+      LocalRegion region) {
     if (!snapshotEnabled()) {
       return;
     }
@@ -605,7 +605,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     if (!region.reservedTable() && region.needAccounting()) {
       region.calculateEntryOverhead(oldRe);
       LocalRegion.regionPath.set(region.getFullPath());
-      region.acquirePoolMemory(0, oldSize, forDelete, null, true);
+      region.acquirePoolMemory(0, oldRe.getValueSize(), oldRe.isForDelete(), null, true);
     }
 
     if(getLoggerI18n().fineEnabled()) {
@@ -746,7 +746,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
 
   class OldEntriesCleanerThread implements Runnable {
-    // Keep each entry alive for atleast 5 mins.
+    // Keep each entry alive for at least 15 secs.
     public void run() {
       try {
         if (!oldEntryMap.isEmpty()) {
@@ -771,7 +771,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                         "OldEntriesCleanerThread : Removing the entry " + re + " entry update in progress : " +
                             re.isUpdateInProgress());
                   }
-                  oldEntriesQueue.remove(re);
+                  // continue if some explicit call removed the entry
+                  if (!oldEntriesQueue.remove(re)) continue;
                   if (GemFireCacheImpl.hasNewOffHeap()) {
                     // also remove reference to region buffer, if any
                     Object value = re._getValue();
@@ -781,8 +782,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                   }
                   // free the allocated memory
                   if (!region.reservedTable() && region.needAccounting()) {
-                    int size = region.calculateRegionEntryValueSize(re);
-                    region.freePoolMemory(size, true);
+                    NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
+                    region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
                   }
                 }
               }
@@ -790,6 +791,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
           }
         }
 
+       synchronized (oldEntryMap) {
         for (Map<Object, BlockingQueue<RegionEntry>> regionEntryMap : oldEntryMap.values()) {
           for (Entry<Object, BlockingQueue<RegionEntry>> entry : regionEntryMap.entrySet()) {
             if (entry.getValue().size() == 0) {
@@ -801,6 +803,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             }
           }
         }
+       }
       }
       catch (Exception e) {
         if (getLoggerI18n().warningEnabled()) {

@@ -44,4 +44,8 @@ public interface RegionEntryContext extends HasCachePerfStats {
    * Returns true if this region is persistent.
    */
   public boolean isBackup();
+
+  default void updateMemoryStats(Object oldValue, Object newValue) {
+    // only used by BucketRegion as of now
+  }
 }

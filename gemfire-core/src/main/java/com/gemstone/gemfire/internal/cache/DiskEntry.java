@@ -134,8 +134,8 @@ public interface DiskEntry extends RegionEntry {
    */
   public DiskId getDiskId();
 
-  public void _removePhase1();
-  
+  public void _removePhase1(LocalRegion r);
+
   public int updateAsyncEntrySize(EnableLRU capacityController);
   
   public DiskEntry getPrev();
@@ -1867,7 +1867,7 @@ public interface DiskEntry extends RegionEntry {
 //            + " with value " + entry._getValue() + "checkValue=" + checkValue);
         if (checkValue) {
           valueWasNull = entry.isValueNull();
-          entry._removePhase1();
+          entry._removePhase1(region);
         }
         if (valueWasNull) {
           dr.incNumOverflowOnDisk(-1L);
