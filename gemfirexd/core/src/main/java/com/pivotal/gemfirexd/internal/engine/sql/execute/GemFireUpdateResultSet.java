@@ -20,8 +20,11 @@ package com.pivotal.gemfirexd.internal.engine.sql.execute;
 import java.util.Collection;
 import java.util.Iterator;
 
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
+import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
@@ -91,6 +94,13 @@ public class GemFireUpdateResultSet extends AbstractGemFireResultSet {
 
   @Override
   protected final void openCore() throws StandardException {
+    TXStateInterface tx = this.gfContainer.getActiveTXState(this.tran);
+    if (tx == null && (this.gfContainer.isRowBuffer() || Misc.getGemFireCache().snapshotEnabledForTest())) {
+      // TOOD: decide on autocommit or this flag: Discuss
+      this.tran.getTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      ((GemFireTransaction)lcc.getTransactionExecute()).setActiveTXState(TXManagerImpl.getCurrentTXState(), false);
+      this.tran.setImplicitSnapshotTxStarted(true);
+    }
     openContainers();
     final LocalRegion reg = this.gfContainer.getRegion();
     final GfxdIndexManager sqim = (GfxdIndexManager)(reg != null ? reg

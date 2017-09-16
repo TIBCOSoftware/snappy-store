@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -160,7 +160,7 @@ namespace client {
         const thrift::SnappyExceptionData& snappyExceptionData) :
         m_reason(snappyExceptionData.reason),
         m_state(snappyExceptionData.sqlState),
-        m_severity(snappyExceptionData.severity), m_next(NULL),
+        m_severity(snappyExceptionData.errorCode), m_next(NULL),
         m_file(file), m_line(line) {
       init();
     }

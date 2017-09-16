@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 sourceSets {
   jca {
     compileClasspath += configurations.compile
@@ -20,6 +37,7 @@ dependencies {
     exclude(group: 'xml-apis', module: 'xml-apis')
   }
   compile 'commons-cli:commons-cli:1.3.1'
+  compile "it.unimi.dsi:fastutil:${fastutilVersion}"
   compile 'javax.mail:javax.mail-api:1.5.5'
   compile 'javax.resource:javax.resource-api:1.7'
   compile 'javax.transaction:javax.transaction-api:1.2'
@@ -57,10 +75,11 @@ dependencies {
   provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
   provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
   provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided 'javax.ws.rs:jsr311-api:1.1.1'
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
+  provided "com.esotericsoftware:kryo-shaded:${kryoVersion}"
+  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compile group: 'org.apache.hbase', name: 'hbase-protocol', version: hbaseVersion
   compile(group: 'org.apache.hbase', name: 'hbase-common', version: hbaseVersion) {
@@ -88,10 +107,14 @@ dependencies {
     exclude(group: 'com.sun.jersey', module: 'jersey-json')
     exclude(group: 'commons-io', module: 'commons-io')
   }
-  // compile 'org.cloudera.htrace:htrace-core:2.05'
-  // compile 'org.htrace:htrace-core:3.0.4'
+  compile "io.netty:netty-all:${nettyAllVersion}"
+  compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
+  compile 'org.cloudera.htrace:htrace-core:2.05'
+  compile 'org.apache.htrace:htrace-core:3.2.0-incubating'
+  compile 'org.codehaus.jackson:jackson-mapper-asl:1.9.13'
 
-  compile 'com.google.guava:guava:14.0.1'
+  compile 'org.apache.commons:commons-pool2:2.4.2'
+  compile "com.google.guava:guava:${guavaVersion}"
   compile 'xml-apis:xml-apis:2.0.2'
   compile('com.io7m.xom:xom:1.2.10') {
     exclude(group: 'xalan', module: 'xalan')
@@ -117,15 +140,15 @@ task createVersionPropertiesFile(dependsOn: 'processResources') {
 
   doLast {
     def props = [
-      "Product-Name"      : PRODUCT_NAME,
-      "Product-Version"   : version,
-      "Build-Id"          : System.env.USER + ' ' + buildNumber,
-      "Build-Date"        : buildDate,
-      "Build-Platform"    : "${osName.getName()} ${osVersion} ${osArch}",
-      "Build-Java-Version": jdkVersion,
-      "Source-Date"       : sourceDate,
-      "Source-Revision"   : commitId,
-      "Source-Repository" : gitBranch
+      'Product-Name'      : PRODUCT_NAME,
+      'Product-Version'   : version,
+      'Build-Id'          : buildIdPrefix + buildNumber,
+      'Build-Date'        : buildDate,
+      'Build-Platform'    : "${osName.getName()} ${osVersion} ${osArch}",
+      'Build-Java-Version': jdkVersion,
+      'Source-Date'       : sourceDate,
+      'Source-Revision'   : commitId,
+      'Source-Repository' : gitBranch
     ]
 
     writeProperties(propertiesDir, 'GemFireVersion.properties',
@@ -140,6 +163,18 @@ jar {
   exclude 'com/gemstone/gemfire/management/internal/web/**'
   exclude 'com/gemstone/gemfire/internal/i18n/StringIdResourceBundle_ja.txt'
   exclude 'com/gemstone/gemfire/admin/doc-files/ds4_0.dtd'
+
+  doLast {
+    // copy the native JNI libraries
+    copy {
+      from "${projectDir}/lib"
+      into "${buildDir}/libs"
+    }
+    copy {
+      from "${projectDir}/lib"
+      into sourceSets.main.output.classesDir
+    }
+  }
 }
 
 task webJar (type: Jar, dependsOn: classes) {

@@ -17,9 +17,9 @@
 
 package com.pivotal.gemfirexd;
 
-import com.gemstone.gemfire.internal.shared.SystemProperties;
-
 import java.sql.Statement;
+
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 
 /**
  * List of all server connection (JDBC) attributes by the system.
@@ -245,17 +245,17 @@ public interface Attribute {
   String GFXD_PERSIST_DD = "persist-dd";
 
   /**
-   * Read timeout for the connection, in seconds. Only for thin client
-   * connections.
+   * Read timeout for the connection, in milliseconds. For network server and
+   * client connections.
    */
-  String READ_TIMEOUT = SystemProperties.READ_TIMEOUT_NAME;
+  String READ_TIMEOUT = "read-timeout";
 
   /**
    * TCP KeepAlive IDLE timeout in seconds for the network server and client
    * sockets. This is the idle time after which a TCP KeepAlive probe is sent
    * over the socket to determine if the other side is alive or not.
    */
-  String KEEPALIVE_IDLE = SystemProperties.KEEPALIVE_IDLE_NAME;
+  String KEEPALIVE_IDLE = SystemProperties.KEEPALIVE_IDLE;
 
   /**
    * TCP KeepAlive INTERVAL timeout in seconds for the network server and client
@@ -267,7 +267,7 @@ public interface Attribute {
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
    */
-  String KEEPALIVE_INTVL = SystemProperties.KEEPALIVE_INTVL_NAME;
+  String KEEPALIVE_INTVL = SystemProperties.KEEPALIVE_INTVL;
 
   /**
    * TCP KeepAlive COUNT for the network server and client sockets. This is the
@@ -278,19 +278,17 @@ public interface Attribute {
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
    */
-  String KEEPALIVE_CNT = SystemProperties.KEEPALIVE_CNT_NAME;
+  String KEEPALIVE_CNT = SystemProperties.KEEPALIVE_CNT;
 
   /**
    * Input buffer size to use for client-server sockets.
    */
-  String SOCKET_INPUT_BUFFER_SIZE =
-      SystemProperties.SOCKET_INPUT_BUFFER_SIZE_NAME;
+  String SOCKET_INPUT_BUFFER_SIZE = "socket-input-buffer-size";
 
   /**
    * Output buffer size to use for client-server sockets.
    */
-  String SOCKET_OUTPUT_BUFFER_SIZE =
-      SystemProperties.SOCKET_OUTPUT_BUFFER_SIZE_NAME;
+  String SOCKET_OUTPUT_BUFFER_SIZE = "socket-output-buffer-size";
 
   /**
    * The default DataPolicy for tables is now replicated when no explicit
@@ -417,6 +415,12 @@ public interface Attribute {
   String PREFER_NETSERVER_IP_ADDRESS = "prefer-netserver-ipaddress";
 
   /**
+   * System property to force using a different hostName/IP sent
+   * to clients that will be exposed for external JDBC clients.
+   */
+  String HOSTNAME_FOR_CLIENTS = "hostname-for-clients";
+
+  /**
    * The attribute that is used for the database name, from the JDBC notion of
    * jdbc:&lt;subprotocol&gt;:&lt;subname&gt;
    */
@@ -459,6 +463,8 @@ public interface Attribute {
    * Connection property to enable/disable query routing for Spark.
    */
   String ROUTE_QUERY = "route-query";
+
+  String INTERNAL_CONNECTION = "internal-connection";
 
   /**
    * Embedded connection property to create tables as persistent by default
@@ -517,6 +523,19 @@ public interface Attribute {
   String SKIP_LOCKS = "skip-locks";
 
   /**
+   * Property to change the default schema to use for a connection.
+   * The default schema is normally the user name but this allows changing it.
+   */
+  String DEFAULT_SCHEMA = "default-schema";
+
+  /**
+   * Whether to use selector based server for the thrift server or
+   * per connection thread server model. Use with care since it is not
+   * fully tested yet. Default is false.
+   */
+  String THRIFT_SELECTOR_SERVER = "thrift-selector";
+
+  /**
    * If true then use <code>TBinaryProtocol</code> for the thrift server, else
    * the default is to use <code>TCompactProtocol</code>.
    * <p>
@@ -524,6 +543,19 @@ public interface Attribute {
    * in <code>FabricService.startThriftServer</code>.
    */
   String THRIFT_USE_BINARY_PROTOCOL = "thrift-binary-protocol";
+
+  /**
+   * If true then use <code>TFramedTransport</code> for the thrift server, else
+   * the default is to use non-framed transport.
+   * <p>
+   * This property can be specified for each thrift server startup in
+   * <code>FabricService.startThriftServer</code>.
+   * <p>
+   * WARNING: This is not recommended due to addional overheads and no gains,
+   * and also not as well tested. Only use for external connectors that don't
+   * support non-framed mode (reportedly elixir-thrift driver).
+   */
+  String THRIFT_USE_FRAMED_TRANSPORT = "thrift-framed-transport";
 
   /**
    * If true then use SSL sockets for thrift server.

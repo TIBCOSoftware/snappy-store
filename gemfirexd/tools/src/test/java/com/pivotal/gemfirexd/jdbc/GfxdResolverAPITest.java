@@ -22,6 +22,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.Iterator;
 
+import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
@@ -705,9 +706,10 @@ public class GfxdResolverAPITest extends JdbcTestBase {
             + "qty int not null, availQty int not null, tid int, sid int not null, "
             + "constraint portf_pk primary key (cid, sid)) "
             + "Partition by (qty + cid * tid)");
-    GfxdPartitionByExpressionResolver epr = (GfxdPartitionByExpressionResolver)Misc
-        .getGemFireCache().getRegion("/TRADE/PORTFOLIO").getAttributes()
-        .getPartitionAttributes().getPartitionResolver();
+    GemFireContainer c = (GemFireContainer)Misc
+        .getGemFireCache().getRegion("/TRADE/PORTFOLIO").getUserAttribute();
+    GfxdPartitionByExpressionResolver epr = (GfxdPartitionByExpressionResolver)
+        c.getRegionAttributes().getPartitionAttributes().getPartitionResolver();
 
     assertNotNull(epr);
 
@@ -732,7 +734,7 @@ public class GfxdResolverAPITest extends JdbcTestBase {
     assertTrue(nameArrayContains(cnames, "qty"));
     assertTrue(nameArrayContains(cnames, "tid"));
     // assertTrue(expr.equalsIgnoreCase("qty + cid * tid"));
-    cnames = epr.getDistributionDescriptor().getPartitionColumnNames();
+    cnames = c.getDistributionDescriptor().getPartitionColumnNames();
     assertTrue(nameArrayContains(cnames, "cid"));
     assertTrue(nameArrayContains(cnames, "qty"));
     assertTrue(nameArrayContains(cnames, "tid"));
@@ -867,9 +869,10 @@ public class GfxdResolverAPITest extends JdbcTestBase {
             + "qty int not null, "
             + "constraint cust_newt_fk foreign key (cidf, sidf) references trade.portfolio (cid, sid))");
 
-    GfxdPartitionByExpressionResolver epr = (GfxdPartitionByExpressionResolver)Misc
-        .getGemFireCache().getRegion("/TRADE/PORTFOLIO_FK").getAttributes()
-        .getPartitionAttributes().getPartitionResolver();
+    GemFireContainer c = (GemFireContainer)Misc
+        .getGemFireCache().getRegion("/TRADE/PORTFOLIO_FK").getUserAttribute();
+    GfxdPartitionByExpressionResolver epr = (GfxdPartitionByExpressionResolver)
+        c.getRegionAttributes().getPartitionAttributes().getPartitionResolver();
 
     assertNotNull(epr);
 
@@ -891,7 +894,7 @@ public class GfxdResolverAPITest extends JdbcTestBase {
     assertTrue(nameArrayContains(cnames, "cidf"));
     assertTrue(nameArrayContains(cnames, "sidf"));
 
-    cnames = epr.getDistributionDescriptor().getPartitionColumnNames();
+    cnames = c.getDistributionDescriptor().getPartitionColumnNames();
     assertTrue(nameArrayContains(cnames, "cidf"));
     assertTrue(nameArrayContains(cnames, "sidf"));
 

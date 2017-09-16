@@ -41,7 +41,8 @@
 package com.pivotal.gemfirexd.internal.impl.tools.ij;
                 
 
-import com.pivotal.gemfirexd.internal.GemFireXDVersion;
+import com.gemstone.gemfire.internal.GemFireVersion;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.iapi.services.info.ProductGenusNames;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.*;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
@@ -93,7 +94,8 @@ public class utilMain implements java.security.PrivilegedAction {
 	private LocalizedOutput out = null;
 	private Properties connAttributeDefaults;
 	private Hashtable ignoreErrors;
-	private static final Pattern pattern = Pattern.compile("gemfirexd|gfxd", Pattern.CASE_INSENSITIVE);
+	private static final Pattern pattern = Pattern.compile("gemfirexd|gfxd",
+	    Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 	/**
 	 * True if to display the error code when
 	 * displaying a SQLException.
@@ -124,7 +126,7 @@ public class utilMain implements java.security.PrivilegedAction {
 
 	private final int numTimesToRun;
 
-	private static String basePrompt = "gfxd";
+	static String basePrompt = "gfxd";
 
 	public static void setBasePrompt(String prompt) {
 		if (prompt != null && prompt.trim().length() >= 3 && prompt.trim().length() <= 10) {
@@ -267,8 +269,9 @@ public class utilMain implements java.security.PrivilegedAction {
 				version = "?";
 			}
 			*/
-//			out.println(convertGfxdMessageToSnappy(langUtil.getTextMessage("IJ_IjVers30C199", GemFireXDVersion.getGemFireXDVersion())));
-			out.println(GemFireXDVersion.getProductName() + " " + GemFireXDVersion.getGemFireXDVersion() + " " + GemFireXDVersion.getGemFireXDReleaseStage());
+			out.println(convertGfxdMessageToSnappy(
+					langUtil.getTextMessage("IJ_IjVers30C199", GemFireVersion.getProductVersion() + " " +
+							GemFireVersion.getProductReleaseStage())));
 			// GemStone changes END
 			for (int i = connEnv.length - 1; i >= 0; i--) { // print out any initial warnings...
 				Connection c = connEnv[i].getConnection();
@@ -295,7 +298,7 @@ public class utilMain implements java.security.PrivilegedAction {
          		try {
            			ijResult result = ijParser.showConnectionsMethod(true);
  					displayResult(out,result,connEnv[currCE].getConnection(),
- 					    -1 /* GemStoneAddition */);
+					    -1 /* GemStoneAddition */, true);
          		} catch (SQLException ex) {
            			handleSQLException(out,ex);
          		}
@@ -437,7 +440,7 @@ public class utilMain implements java.security.PrivilegedAction {
 
 					ijResult result = ijParser.ijStatement();
 					endTime = displayResult(out,result,connEnv[currCE].getConnection(),
-					    beginTime /* GemStoneAddition */);
+					    beginTime /* GemStoneAddition */, true);
 
 					// if something went wrong, an SQLException or ijException was thrown.
 					// we can keep going to the next statement on those (see catches below).
@@ -601,7 +604,8 @@ public class utilMain implements java.security.PrivilegedAction {
   	}
 
 	private long /* GemStone change: void */ displayResult(LocalizedOutput out, ijResult result, Connection conn,
-	    long beginTime /* GemStoneAddition */) throws SQLException {
+	    long beginTime /* GemStoneAddition */,
+	    boolean displayCount /* GemStoneAddition */) throws SQLException {
 	  final StopWatch timer = SharedUtils.newTimer(beginTime);
 		// display the result, if appropriate.
 		if (result!=null) {
@@ -631,7 +635,7 @@ public class utilMain implements java.security.PrivilegedAction {
 // GemStone changes BEGIN
 				    JDBCDisplayUtil.DisplayResults(out,
 				        s, connEnv[currCE].getConnection(),
-				        reader, timer);
+				        reader, timer, displayCount);
 				    /* (original code)
 				    JDBCDisplayUtil.DisplayResults(out,s,connEnv[currCE].getConnection());
 				    */
@@ -739,8 +743,9 @@ public class utilMain implements java.security.PrivilegedAction {
 	    try {
 				int repeatCommand = numTimesToRun;
 				boolean reportRunNum = false;
-				final String c = command.trim().toLowerCase();
-				if (c.startsWith("set") || c.startsWith("elapsed")) {
+				String firstToken = ClientSharedUtils.getStatementToken(command, 0);
+				// final String c = command.trim().toLowerCase();
+				if (firstToken.equalsIgnoreCase("set") || firstToken.equalsIgnoreCase("elapsed")) {
 					repeatCommand = 1;
 				} else if (repeatCommand > 1) {
 					reportRunNum = true;
@@ -764,8 +769,16 @@ public class utilMain implements java.security.PrivilegedAction {
                         else {
                           redirected = null;
                         }
-			endTime = displayResult(redirected == null ? out : redirected,result,connEnv[currCE]
-			    .getConnection(), beginTime /* GemStoneAddition */);
+// GemStone changes BEGIN
+      boolean displayCount = false;
+      if (firstToken.equalsIgnoreCase("insert") || firstToken.equalsIgnoreCase("update")
+        || firstToken.equalsIgnoreCase("delete") || firstToken.equalsIgnoreCase("put") ) {
+        displayCount = true;
+      }
+// GemStone changes END
+			endTime = displayResult(redirected == null ? out :
+			  redirected,result,connEnv[currCE].getConnection(),
+			  beginTime /* GemStoneAddition */, displayCount /* GemStoneAddition */);
 
 			/* Print the elapsed time if appropriate */
 			if (elapsedTimeOn) {
@@ -989,17 +1002,19 @@ public class utilMain implements java.security.PrivilegedAction {
 	String getExceptionCauseForDisplay(final Throwable t,
 	    final StringBuilder sb) {
 	  Throwable cause = t;
+	  String tSimpleName = t.getClass().getSimpleName();
 	  while (cause.getCause() != null) {
 	    cause = cause.getCause();
 	  }
 	  String causeClass;
-	  if (cause != t && !"SqlException".equals(
+	  if (!"SQLException".equals(tSimpleName) &&
+	     cause != t && !"SqlException".equals(
 	      (causeClass = cause.getClass().getSimpleName()))) {
-	    sb.append(SanityManager.lineSeparator);
-	    sb.append("Caused by: ").append(causeClass);
-	    sb.append(": ").append(cause.getMessage());
-	    sb.append(SanityManager.lineSeparator);
-	    sb.append("\tat ").append(cause.getStackTrace()[0]);
+	     sb.append(SanityManager.lineSeparator);
+	     sb.append("Caused by: ").append(causeClass);
+	     sb.append(": ").append(cause.getMessage());
+	     sb.append(SanityManager.lineSeparator);
+	     sb.append("\tat ").append(cause.getStackTrace()[0]);
 	  }
 	  return sb.toString();
 	}
@@ -1061,7 +1076,7 @@ public class utilMain implements java.security.PrivilegedAction {
 	}
 
 	public static String convertGfxdMessageToSnappy(String message) {
-		if (getPrompt(true, "").contains("snappy")) {
+		if (basePrompt.contains("snappy")) {
 			return pattern.matcher(message).replaceAll("SnappyData");
 		} else {
 			return message;

@@ -46,6 +46,10 @@ public abstract class CollectionBasedOHAddressCacheTestBase extends TestCase {
     props.setProperty("locators", "");
     props.setProperty("mcast-port", "0");
     props.setProperty("off-heap-memory-size", "500m");
+    GemFireCacheImpl current = GemFireCacheImpl.getInstance();
+    if (current != null) {
+      current.close();
+    }
     GemFireCacheImpl result = (GemFireCacheImpl) new CacheFactory(props).create();
     return result;
   }

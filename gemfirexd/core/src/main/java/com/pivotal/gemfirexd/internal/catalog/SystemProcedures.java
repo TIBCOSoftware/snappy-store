@@ -57,6 +57,7 @@ import java.util.StringTokenizer;
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -69,7 +70,6 @@ import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.cache.CacheManager;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
-import com.pivotal.gemfirexd.internal.iapi.services.property.PersistentSet;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.Authorizer;
@@ -89,12 +89,6 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.load.Export;
 import com.pivotal.gemfirexd.load.Import;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
-import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINResultSetDescriptor;
-import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINResultSetTimingsDescriptor;
-import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINScanPropsDescriptor;
-import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINSortPropsDescriptor;
-import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINStatementDescriptor;
-import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINStatementTimingsDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.XPLAINTableDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.JarUtil;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.TablePrivilegeInfo;
@@ -1266,6 +1260,7 @@ public abstract class SystemProcedures  {
 	String  codeset)
         throws SQLException
     {
+    Misc.invalidSnappyDataFeature("EXPORT_TABLE procedure");
 		Connection conn = getDefaultConn();
     // GemStone changes BEGIN
     // not sure whether this is also a bug in Derby or not,
@@ -1303,6 +1298,7 @@ public abstract class SystemProcedures  {
     String  lobsFileName)
         throws SQLException
     {
+        Misc.invalidSnappyDataFeature("EXPORT_TABLE_LOBS_TO_EXTFILE procedure");
         Connection conn = getDefaultConn();
         // GemStone changes BEGIN
         // not sure whether this is also a bug in Derby or not,
@@ -1340,6 +1336,7 @@ public abstract class SystemProcedures  {
 	String  codeset)
         throws SQLException
     {
+		Misc.invalidSnappyDataFeature("EXPORT_QUERY procedure");
 		Connection conn = getDefaultConn();
 		Export.exportQuery(conn, selectStatement, fileName ,
 							   columnDelimiter , characterDelimiter, codeset);
@@ -1372,6 +1369,7 @@ public abstract class SystemProcedures  {
     String  lobsFileName)
         throws SQLException
     {
+        Misc.invalidSnappyDataFeature("EXPORT_QUERY_LOBS_TO_EXTFILE procedure");
         Connection conn = getDefaultConn();
         Export.exportQuery(conn, selectStatement, fileName ,
                            columnDelimiter , characterDelimiter, 
@@ -1405,6 +1403,7 @@ public abstract class SystemProcedures  {
 	short   replace)
         throws SQLException
     {
+               Misc.invalidSnappyDataFeature("IMPORT_TABLE procedure");
 		Connection conn = getDefaultConn();
 		try{
                   // GemStone changes BEGIN
@@ -1468,6 +1467,7 @@ public abstract class SystemProcedures  {
     short   replace)
         throws SQLException
     {
+        Misc.invalidSnappyDataFeature("IMPORT_TABLE_LOBS_FROM_EXTFILE procedure");
         Connection conn = getDefaultConn();
         try{
           // GemStone changes BEGIN
@@ -1520,6 +1520,7 @@ public abstract class SystemProcedures  {
 	short   replace)
         throws SQLException
     {
+		Misc.invalidSnappyDataFeature("IMPORT_DATA procedure");
 		Connection conn = getDefaultConn();
 		try{
 			Import.importData(conn, schemaName , tableName ,
@@ -1572,6 +1573,7 @@ public abstract class SystemProcedures  {
     short   replace)
         throws SQLException
     {
+        Misc.invalidSnappyDataFeature("IMPORT_DATA_LOBS_FROM_EXTFILE procedure");
         Connection conn = getDefaultConn();
         try{
             Import.importData(conn, schemaName , tableName ,

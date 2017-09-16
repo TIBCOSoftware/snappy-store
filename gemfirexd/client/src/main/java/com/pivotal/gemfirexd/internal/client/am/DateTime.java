@@ -44,7 +44,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.Calendar;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.net.Typdef;
 import com.pivotal.gemfirexd.internal.shared.common.i18n.MessageUtil;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
@@ -299,7 +298,7 @@ public class DateTime {
         if (year > 9999) {
           throw new SqlException(null,
               new ClientMessageId(SQLState.YEAR_EXCEEDS_MAXIMUM),
-              ClientSharedUtils.getJdkHelper().newInteger(year), "9999");
+              year, "9999");
         }
         int month = cal.get(Calendar.MONTH) + 1;
         int day = cal.get(Calendar.DAY_OF_MONTH);
@@ -416,8 +415,7 @@ public class DateTime {
           .timestampToTimestampChars(buffer, offset, timestamp, cal);
         if (numBytes < 0) {
           throw new SqlException(null, new ClientMessageId(SQLState
-              .YEAR_EXCEEDS_MAXIMUM), ClientSharedUtils.getJdkHelper()
-              .newInteger(-numBytes), "9999");
+              .YEAR_EXCEEDS_MAXIMUM), -numBytes, "9999");
         }
         return numBytes;
     /* (original code)
@@ -729,7 +727,7 @@ public class DateTime {
         if (year > 9999) {
             throw new SqlException(null,
                 new ClientMessageId(SQLState.YEAR_EXCEEDS_MAXIMUM),
-                ClientSharedUtils.getJdkHelper().newInteger(year), "9999");
+                year, "9999");
         }
         int month = cal.get(Calendar.MONTH) + 1;
         int day = cal.get(Calendar.DAY_OF_MONTH);

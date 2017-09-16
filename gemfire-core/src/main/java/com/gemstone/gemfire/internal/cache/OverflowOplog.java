@@ -14,13 +14,31 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.RandomAccessFile;
-import java.io.SyncFailedException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
@@ -39,6 +57,7 @@ import com.gemstone.gemfire.internal.cache.Oplog.OplogDiskEntry;
 import com.gemstone.gemfire.internal.cache.persistence.BytesAndBits;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 
 /**
  * An oplog used for overflow-only regions.
@@ -256,7 +275,7 @@ class OverflowOplog implements CompactableOplog {
       result = previous.consumeWriteBuf();
     }
     if (result == null) {
-      result = ByteBuffer.allocateDirect(Integer.getInteger("WRITE_BUF_SIZE", 32768).intValue());
+      result = ByteBuffer.allocateDirect(Integer.getInteger("WRITE_BUF_SIZE", 32768));
     }
     return result;
   }
@@ -268,7 +287,7 @@ class OverflowOplog implements CompactableOplog {
       return result;
     }
   }
-  
+
   /**
    * Returns the <code>DiskStoreStats</code> for this oplog
    */
@@ -282,27 +301,6 @@ class OverflowOplog implements CompactableOplog {
    * 
    * public final void flush() { forceFlush(); }
    */
-
-  /**
-   * Test Method to be used only for testing purposes. Gets the underlying File
-   * object for the Oplog . Oplog class uses this File object to obtain the
-   * RandomAccessFile object. Before returning the File object , the dat present
-   * in the buffers of the RandomAccessFile object is flushed. Otherwise, for
-   * windows the actual file length does not match with the File size obtained
-   * from the File object
-   * 
-   * @throws IOException
-   * @throws SyncFailedException
-   */
-  File getOplogFile() throws SyncFailedException, IOException
-  {
-    synchronized (this.crf) {
-      if (!this.crf.RAFClosed) {
-        this.crf.raf.getFD().sync();
-      }
-      return this.crf.f;
-    }
-  }
 
   /** the oplog identifier * */
   public int getOplogId()
@@ -359,6 +357,15 @@ class OverflowOplog implements CompactableOplog {
       // }
     }
 
+    if (DiskStoreImpl.TRACE_READS) {
+      logger.info(LocalizedStrings.DEBUG,
+          "TRACE_READS Overflow getBytesAndBits: "
+              + " valueOffset=" + offset
+              + " userBits=" + id.getUserBits()
+              + " valueLen=" + id.getValueLength()
+              + " drId=" + dr.getId()
+              + " oplog#" + getOplogId());
+    }
     // Asif :If the current OpLog is not destroyed ( its opLogRaf file
     // is still open) we can retrieve the value from this oplog.
     try {
@@ -397,7 +404,8 @@ class OverflowOplog implements CompactableOplog {
     if (bitOnly) {
       dr.endRead(start, this.stats.endRead(start, 1), 1);
     } else {
-      dr.endRead(start, this.stats.endRead(start, bb.getBytes().length), bb.getBytes().length);
+      final int numRead = bb.size();
+      dr.endRead(start, this.stats.endRead(start, numRead), numRead);
     }
     return bb;
 
@@ -548,14 +556,6 @@ class OverflowOplog implements CompactableOplog {
     }
   }
 
-  private void initOpState(DiskEntry entry,
-                           byte[] value,
-                           int valueLength,
-                           byte userBits)
-  {
-    this.opState.initialize(entry, value, valueLength, userBits);
-  }
-
   private void clearOpState() {
     this.opState.clear();
   }
@@ -567,18 +567,17 @@ class OverflowOplog implements CompactableOplog {
     return this.opState.getSize();
   }
 
-  private byte calcUserBits(byte[] value,
-                            boolean isSerializedObject) {
+  private byte calcUserBits(DiskEntry.Helper.ValueWrapper value) {
     byte userBits = 0x0;
-  
-    if (isSerializedObject) {
-      if (value == DiskEntry.INVALID_BYTES) {
+
+    if (value.isSerializedObject) {
+      if (value == DiskEntry.Helper.INVALID_VW) {
         // its the invalid token
         userBits = EntryBits.setInvalid(userBits, true);
-      } else if (value == DiskEntry.LOCAL_INVALID_BYTES) {
+      } else if (value == DiskEntry.Helper.LOCAL_INVALID_VW) {
         // its the local-invalid token
         userBits = EntryBits.setLocalInvalid(userBits, true);
-      } else if (value == DiskEntry.TOMBSTONE_BYTES) {
+      } else if (value == DiskEntry.Helper.TOMBSTONE_VW) {
         // its the tombstone token
         userBits = EntryBits.setTombstone(userBits, true);
       } else {
@@ -587,19 +586,15 @@ class OverflowOplog implements CompactableOplog {
     }
     return userBits;
   }
-  
+
   /**
    * Modifies a key/value pair from a region entry on disk. Updates all of the
    * necessary {@linkplain DiskStoreStats statistics} and invokes basicModify
    * 
    * @param entry
    *          DiskEntry object representing the current Entry
-   * 
    * @param value
-   *          byte array representing the value
-   * @param isSerializedObject
-   *          Do the bytes in <code>value</code> contain a serialized object
-   *          (or an actually <code>byte</code> array)?
+   *          The <code>ValueWrapper</code> for the byte data
    * @throws DiskAccessException
    * @throws IllegalStateException
    */
@@ -609,12 +604,11 @@ class OverflowOplog implements CompactableOplog {
    * operations for different entries to proceed concurrently for asynch mode
    * @return true if modify was done; false if this file did not have room
    */
-  public final boolean modify(DiskRegion dr, DiskEntry entry, byte[] value,
-                              boolean isSerializedObject, boolean async)
-  {
+  public final boolean modify(DiskRegion dr, DiskEntry entry,
+      DiskEntry.Helper.ValueWrapper value, boolean async) {
     try {
-      byte userBits = calcUserBits(value, isSerializedObject);
-      return basicModify(entry, value, value.length, userBits, async);
+      byte userBits = calcUserBits(value);
+      return basicModify(entry, value, userBits, async);
     } catch (IOException ex) {
       throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_WRITING_KEY_TO_0.toLocalizedString(this.diskFile.getPath()), ex, dr.getName());
     } catch (InterruptedException ie) {
@@ -623,9 +617,10 @@ class OverflowOplog implements CompactableOplog {
       throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_WRITING_KEY_TO_0_DUE_TO_FAILURE_IN_ACQUIRING_READ_LOCK_FOR_ASYNCH_WRITING.toLocalizedString(this.diskFile.getPath()), ie, dr.getName());
     }
   }
-  public final boolean copyForwardForOverflowCompact(DiskEntry entry, byte[] value, int length, byte userBits) {
+  public final boolean copyForwardForOverflowCompact(DiskEntry entry,
+      DiskEntry.Helper.ValueWrapper value, byte userBits) {
     try {
-      return basicModify(entry, value, length, userBits, true);
+      return basicModify(entry, value, userBits, true);
     } catch (IOException ex) {
       throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_WRITING_KEY_TO_0.toLocalizedString(this.diskFile.getPath()), ex, getParent().getName());
     } catch (InterruptedException ie) {
@@ -650,8 +645,7 @@ class OverflowOplog implements CompactableOplog {
    * @throws InterruptedException
    */
   private boolean basicModify(DiskEntry entry,
-                              byte[] value,
-                              int valueLength,
+                              DiskEntry.Helper.ValueWrapper value,
                               byte userBits, boolean async)
     throws IOException, InterruptedException
   {
@@ -659,7 +653,9 @@ class OverflowOplog implements CompactableOplog {
     long startPosForSynchOp = -1L;
     OverflowOplog emptyOplog = null;
     synchronized (this.crf) {
-      initOpState(entry, value, valueLength, userBits);
+      final int valueLength = value.size();
+      // can't use ByteBuffer after handing it over to OpState
+      this.opState.initialize(value, valueLength, userBits);
       int adjustment = getOpStateSize();
       assert adjustment > 0;
       //       {
@@ -1007,6 +1003,7 @@ class OverflowOplog implements CompactableOplog {
           this.stats.incOplogSeeks();
           byte[] valueBytes = new byte[valueLength];
           myRAF.readFully(valueBytes);
+          ByteBuffer valueBuffer = ByteBuffer.wrap(valueBytes);
 //           if (EntryBits.isSerialized(userBits)) {
 //             try {
 //               com.gemstone.gemfire.internal.util.BlobHelper.deserializeBlob(valueBytes);
@@ -1025,13 +1022,15 @@ class OverflowOplog implements CompactableOplog {
 //               throw new RuntimeException(ex2);
 //             }
 //           }
-          //         logger.info(LocalizedStrings.DEBUG,
-          //                     "DEBUG attemptGet readPosition=" + readPosition
-          //                     + " valueLength=" + valueLength
-          //                     + " value=<" + baToString(valueBytes) + ">"
-          //                     + " oplog#" + getOplogId());
+          if (DiskStoreImpl.TRACE_READS) {
+            logger.info(LocalizedStrings.DEBUG,
+                "TRACE_READS Overflow attemptGet readPosition=" + readPosition
+                    + " valueLength=" + valueLength
+                    + " value=<" + ClientSharedUtils.toString(valueBuffer) + ">"
+                    + " oplog#" + getOplogId());
+          }
           this.stats.incOplogReads();
-          bb = new BytesAndBits(valueBytes, userBits);
+          bb = new BytesAndBits(valueBuffer, userBits);
         }
         finally {
           // if this oplog is no longer being appended to then don't waste disk io
@@ -1067,7 +1066,15 @@ class OverflowOplog implements CompactableOplog {
       writeBuf.get(valueBytes);
       writeBuf.position(curWriteBufPos);
       writeBuf.limit(oldLimit);
-      bb = new BytesAndBits(valueBytes, userBits);
+      ByteBuffer valueBuffer = ByteBuffer.wrap(valueBytes);
+      if (DiskStoreImpl.TRACE_READS) {
+        logger.info(LocalizedStrings.DEBUG,
+            "TRACE_READS attemptWriteBufferGet readPosition=" + readPosition
+                + " valueLength=" + valueLength
+                + " value=<" + ClientSharedUtils.toString(valueBuffer) + ">"
+                + " oplog#" + getOplogId());
+      }
+      bb = new BytesAndBits(valueBuffer, userBits);
     }
     return bb;
   }
@@ -1092,11 +1099,11 @@ class OverflowOplog implements CompactableOplog {
     BytesAndBits bb = null;
     if (EntryBits.isAnyInvalid(userBits) || EntryBits.isTombstone(userBits) || bitOnly || valueLength == 0) {
       if (EntryBits.isInvalid(userBits)) {
-        bb = new BytesAndBits(DiskEntry.INVALID_BYTES, userBits);
+        bb = new BytesAndBits(DiskEntry.Helper.INVALID_BUFFER, userBits);
       } else if (EntryBits.isTombstone(userBits)) {
-        bb = new BytesAndBits(DiskEntry.TOMBSTONE_BYTES, userBits);
+        bb = new BytesAndBits(DiskEntry.Helper.TOMBSTONE_BUFFER, userBits);
       } else {
-        bb = new BytesAndBits(DiskEntry.LOCAL_INVALID_BYTES, userBits);
+        bb = new BytesAndBits(DiskEntry.Helper.LOCAL_INVALID_BUFFER, userBits);
       }
     }
     else {
@@ -1384,8 +1391,7 @@ class OverflowOplog implements CompactableOplog {
      */
     private int size;
     private boolean needsValue;
-    private byte[] value;
-    private int valueLength;
+    private DiskEntry.Helper.ValueWrapper value;
 
     public final int getSize() {
       return this.size;
@@ -1395,20 +1401,31 @@ class OverflowOplog implements CompactableOplog {
      * Free up any references to possibly large data.
      */
     public void clear() {
+      if (this.value != null) {
+        this.value.release();
+      }
       this.value = null;
     }
 
-    private final void write(byte[] bytes, int byteLength) throws IOException {
-      int offset = 0;
-      final int maxOffset = byteLength;
+    private void write(ByteBuffer buffer, final int byteLength) throws IOException {
+      final int position = buffer.position();
       ByteBuffer bb = getOLF().writeBuf;
-      while (offset < maxOffset) {
-        
-        int bytesThisTime = maxOffset - offset;
+      if (!this.value.buffer.writeSerializationHeader(buffer, bb)) {
+        flush();
+        if (!this.value.buffer.writeSerializationHeader(buffer, bb)) {
+          throw new IllegalStateException("Overflow: failed to write header for " +
+              this.value.buffer + " -- write buffer with limit = " +
+              bb.limit() + " too small?");
+        }
+      }
+      int bytesThisTime;
+      while ((bytesThisTime = buffer.remaining()) > 0) {
         boolean needsFlush = false;
-        if (bytesThisTime > bb.remaining()) {
+        int availableSpace = bb.remaining();
+        if (bytesThisTime > availableSpace) {
           needsFlush = true;
-          bytesThisTime = bb.remaining();
+          bytesThisTime = availableSpace;
+          buffer.limit(buffer.position() + bytesThisTime);
         }
 //         logger.info(LocalizedStrings.DEBUG,
 //                     "DEBUG " + OverflowOplog.this.toString()
@@ -1420,35 +1437,43 @@ class OverflowOplog implements CompactableOplog {
 //                     + " bb.position()=" + bb.position()
 //                     + " bb.limit()=" + bb.limit()
 //                     + " bb.remaining()=" + bb.remaining());
-        bb.put(bytes, offset, bytesThisTime);
-        offset += bytesThisTime;
+        bb.put(buffer);
         if (needsFlush) {
           flush();
+          // restore the limit to original
+          buffer.limit(byteLength);
         }
       }
+      // rewind the incoming buffer back to the start
+      if (position == 0) buffer.rewind();
+      else buffer.position(position);
     }
-    public void initialize(DiskEntry entry,
-                           byte[] value,
+
+    public void initialize(DiskEntry.Helper.ValueWrapper value,
                            int valueLength,
                            byte userBits)
     {
       this.userBits = userBits;
       this.value = value;
-      this.valueLength = valueLength;
 
       this.size = 0;
       this.needsValue = EntryBits.isNeedsValue(this.userBits);
       if (this.needsValue) {
-        this.size += this.valueLength;
+        this.size += valueLength;
       }
     }
     public long write() throws IOException {
-      long bytesWritten = 0;
-      if (this.needsValue && this.valueLength > 0) {
-        write(this.value, this.valueLength);
-        bytesWritten += this.valueLength;
+      int valueLength = 0;
+      if (this.needsValue && (valueLength = this.value.size()) > 0) {
+        try {
+          write(this.value.getBufferRetain(), valueLength);
+        } finally {
+          this.value.release();
+          // done with value so clear it immediately
+          clear();
+        }
       }
-      return bytesWritten;
+      return valueLength;
     }
   }
 
@@ -1581,7 +1606,8 @@ class OverflowOplog implements CompactableOplog {
               continue;
             }
             // write it to the current oplog
-            getOplogSet().copyForwardForOverflowCompact(de, valueBytes, length, userBits);
+            getOplogSet().copyForwardForOverflowCompact(de,
+                DiskEntry.Helper.wrapBytes(valueBytes, length), userBits);
             // the did's oplogId will now be set to the current active oplog
             didCompact = true;
           }

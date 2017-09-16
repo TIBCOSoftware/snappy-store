@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 plugins {
   id 'de.undercouch.download' version '3.0.0'
 }
@@ -40,7 +57,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   if (osName == 'lin') {
     // get the OS installation flavour
     String flavour = ''
-    if (project.hasProperty('linuxFlavour')) {
+    if (rootProject.hasProperty('linuxFlavour')) {
       flavour = linuxFlavour
     } else {
       def out = new ByteArrayOutputStream()
@@ -48,7 +65,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
       flavour = out.toString().replaceAll('[\r\n\f]', '').toLowerCase()
     }
     if (flavour.startsWith('ubuntu14') || flavour.startsWith('ubuntu16') ||
-        flavour.startsWith('linuxmint17')) {
+        flavour.startsWith('linuxmint17') || flavour.startsWith('linuxmint18')) {
       dependencies += [ "thrift-${thriftVersion}-ubuntu14.04.tar.bz2",
                         "boost-${boostVersion}-ubuntu14.04.tar.bz2",
                         "unixODBC-${unixodbcVersion}-ubuntu14.04.tar.bz2",
@@ -118,10 +135,10 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     }
     platforms {
       x86 {
-        architecture "x86"
+        architecture 'x86'
       }
       x64 {
-        architecture "x86_64"
+        architecture 'x86_64'
       }
     }
 
@@ -229,8 +246,12 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
             // explicitly include UCRT since its still not passed through by gradle
             String VS_2015_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt'
             String VS_2015_LIB_DIR = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/ucrt'
+            String VS_2015_INCLUDE_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/um'
+            String VS_2015_LIB_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/um'
+            String VS_2015_INCLUDE_DIR_SHARED = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/shared'
             cppCompiler.args '/W3', '/FS', '/Zc:inline', '/WX', '/EHsc',
                              '/Fdsnappyclient.pdb', '/errorReport:prompt',
+                             "/I${VS_2015_INCLUDE_DIR_UM}", "/I${VS_2015_INCLUDE_DIR_SHARED}",
                              "/I${VS_2015_INCLUDE_DIR}"
             if (buildType == buildTypes.debug) {
               cppCompiler.define '_DEBUG'
@@ -240,9 +261,9 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
               cppCompiler.args '/O2', '/GL', '/Oi', '/Gm-', '/Zi', '/MD'
             }
             if (targetPlatform == platforms.x64) {
-              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x64"
+              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x64:${VS_2015_LIB_DIR_UM}/x64"
             } else {
-              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x86"
+              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x86:${VS_2015_LIB_DIR_UM}/x86"
             }
           }
         }
@@ -252,7 +273,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
 
   assemble.dependsOn extractDependencies
 
-  jar.enabled = false
+  // jar.enabled = false
   task product(dependsOn: assemble) {
     String productDir = "${buildDir}/snappyclient"
 
@@ -307,7 +328,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
         into "${productDir}/include"
       }
 
-      if (project.hasProperty('copyTo')) {
+      if (rootProject.hasProperty('copyTo')) {
         copy {
           from productDir
           into copyTo

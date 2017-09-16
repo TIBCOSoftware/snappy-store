@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.DataSerializer;
@@ -68,6 +69,7 @@ import com.gemstone.gemfire.internal.cache.ControllerAdvisor.ControllerProfile;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GridAdvisor;
 import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gnu.trove.THashMap;
@@ -266,7 +268,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   @Override
   protected final GfxdProfile instantiateProfile(
       InternalDistributedMember memberId, int version) {
-    return new GfxdProfile(memberId, version, CallbackFactoryProvider.getClusterCallbacks().getDriverURL());
+    return new GfxdProfile(memberId, version,
+        CallbackFactoryProvider.getClusterCallbacks().getDriverURL());
   }
 
   /**
@@ -681,6 +684,26 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
+   * Get the {@link Profile} for the given member's toString().
+   */
+  public GfxdProfile getProfile(String memberStr) {
+    final Profile[] allProfiles = this.profiles; // volatile read
+    final int numProfiles = allProfiles.length;
+    for (int i = 0; i < numProfiles; i++) {
+      final Profile profile = allProfiles[i];
+      if (profile.getDistributedMember().toString().equals(memberStr)) {
+        return (GfxdProfile)profile;
+      }
+    }
+    GfxdProfile profile = getMyProfile();
+    if (profile.getDistributedMember().toString().equals(memberStr)) {
+      return profile;
+    } else {
+      return null;
+    }
+  }
+
+  /**
    * Return true if the given non-locator member belongs to one of the provided
    * server groups.
    */
@@ -1011,21 +1034,24 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
-   * Get the mapping of InternalDistributedMember to corresponding DRDA servers
+   * Get the mapping of InternalDistributedMember to corresponding DRDA/Thrift servers
    * they have in the entire system. The format of the network server string is:
    * <p>
    * host1[port1]{kind1},host2[port2]{kind2},...
    * <p>
    * i.e. comma-separated list of each DRDA server followed by the
-   * <code>VMKind</code> of the VM in curly braces. The DRDA servers on
+   * <code>VMKind</code> of the VM in curly braces. The DRDA/Thrift servers on
    * stand-alone locators are given preference and appear at the front. Note
    * that we do not use ':' to separate host and port since host can be an ipv6
    * address in some rare cases when host name itself cannot be looked up.
+   * <p>
+   * The choice of DRDA servers vs Thrift servers is determined by
    */
-  public final Map<InternalDistributedMember, String> getAllDRDAServersAndCorrespondingMemberMapping() {
+  public final Map<InternalDistributedMember, String> getAllNetServersWithMembers() {
     HashMap<InternalDistributedMember, String> mbrToNetworkServerMap =
       new HashMap<InternalDistributedMember, String>();
     StringBuilder serverSB = new StringBuilder();
+    final boolean useThrift = ClientSharedUtils.isThriftDefault();
     this.mapLock.readLock().lock();
     try {
       VMKind kind = this.myProfile.getVMKind();
@@ -1034,9 +1060,9 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
           .currentFabricServiceInstance();
       if (service != null) {
         for (NetworkInterface ni : service.getAllNetworkServers()) {
-          if (!ni.getServerType().isDRDA()) {
-            continue;
-          }
+          if (useThrift) {
+            if (!ni.getServerType().isThrift()) continue;
+          } else if (!ni.getServerType().isDRDA()) continue;
           if (serverSB.length() > 0) {
             serverSB.append(',');
           }
@@ -1049,23 +1075,29 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       // then for all the other members of the DS
       final Map<InternalDistributedMember, VMKind> gfxdMembers =
         this.serverGroupMap.get(DEFAULT_GROUP);
-      Set<String> servers;
-      for (Map.Entry<InternalDistributedMember, Set<String>> entry :
-          this.drdaServerMap.entrySet()) {
-        servers = entry.getValue();
+      Set<?> servers;
+      Map<?, ?> serverMap = useThrift ? thriftServers : drdaServerMap;
+      for (Map.Entry<?, ?> entry : serverMap.entrySet()) {
+        InternalDistributedMember m = (InternalDistributedMember)entry.getKey();
+        servers = (Set<?>)entry.getValue();
         if (servers != null && servers.size() > 0
-            && (kind = gfxdMembers.get(entry.getKey())) != null
+            && (kind = gfxdMembers.get(m)) != null
             && kind != VMKind.LOCATOR) {
           serverSB = new StringBuilder();
-          for (String s : servers) {
+          for (Object s : servers) {
             if (serverSB.length() > 0) {
               serverSB.append(',');
             }
-            serverSB.append(s).append(MEMBER_KIND_BEGIN)
-                .append(kind.toString()).append(MEMBER_KIND_END);
+            if (s instanceof HostAddress) {
+              serverSB.append(((HostAddress)s).getHostString());
+            } else {
+              serverSB.append(s);
+            }
+            serverSB.append(MEMBER_KIND_BEGIN).append(kind.toString())
+                .append(MEMBER_KIND_END);
           }
         }
-        mbrToNetworkServerMap.put(entry.getKey(), serverSB.toString());
+        mbrToNetworkServerMap.put(m, serverSB.toString());
       }
     } finally {
       this.mapLock.readLock().unlock();
@@ -1305,6 +1337,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     private static final byte F_HASLOCALE = 0x2;
 
     private static final byte F_HAS_SPARK_DRIVERURL = 0x4;
+
+    private static final byte F_HAS_PROCESSOR_COUNT = 0x8;
     // end bitmasks
 
     /** OR of various bitmasks above */
@@ -1322,9 +1356,16 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     private String dbLocaleStr;
 
     /**
+     * The total number of processors on this node.
+     */
+    private int numProcessors;
+
+    /**
      * Driver port for spark. Is set only if this node is the primary lead node.
      */
     private String sparkDriverUrl;
+
+    private AtomicInteger relationDestroyVersion;
 
     /** for deserialization */
     public GfxdProfile() {
@@ -1335,14 +1376,17 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     public GfxdProfile(InternalDistributedMember memberId, int version, String sparkUrl) {
       super(memberId, version);
       this.initialized = true;
+      this.numProcessors = Runtime.getRuntime().availableProcessors();
       this.sparkDriverUrl = sparkUrl;
       boolean hasURL = sparkDriverUrl != null && !sparkDriverUrl.equals("");
       setHasSparkURL(hasURL);
       initFlags();
+      relationDestroyVersion = new AtomicInteger(0);
     }
 
     private void initFlags() {
       this.flags |= F_HASLOCALE;
+      this.flags |= F_HAS_PROCESSOR_COUNT;
     }
 
     public final VMKind getVMKind() {
@@ -1360,11 +1404,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     public final void setServerGroups(SortedSet<String> groups) {
       this.serverGroups = groups;
     }
-    
+
     public final void setLocale(String l) {
       this.dbLocaleStr = l;
     }
-    
+
     public final void setPersistentDD(boolean isPersistDD) {
       if (isPersistDD) {
         this.flags |= F_PERSISTDD;
@@ -1391,6 +1435,10 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       return (this.flags & F_HAS_SPARK_DRIVERURL) != 0;
     }
 
+    public final void setRelationDestroyVersion(int value){ relationDestroyVersion.set(value); }
+
+    public final int getRelationDestroyVersion() { return relationDestroyVersion.get(); }
+
     public final void setInitialized(boolean initialized) {
       this.initialized = initialized;
     }
@@ -1401,6 +1449,10 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     
     public final String getLocale() {
       return this.dbLocaleStr;
+    }
+
+    public final int getNumProcessors() {
+      return this.numProcessors;
     }
 
     @Override
@@ -1465,10 +1517,15 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       }
       Version version = InternalDataSerializer.getVersionForDataStream(out);
       boolean isPre12Version = Version.SQLF_11.compareTo(version) >= 0;
+      boolean isPre20Version = Version.GFXD_20.compareTo(version) > 0;
       byte flgs = this.flags;
       // no locale in GFXD <= 1.1
       if (isPre12Version) {
         flgs &= ~F_HASLOCALE;
+      }
+      if (isPre20Version) {
+        // no processor count
+        flgs &= ~F_HAS_PROCESSOR_COUNT;
       }
       out.writeByte(flgs);
       out.writeBoolean(this.initialized);
@@ -1476,9 +1533,13 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if (!isPre12Version) {
         DataSerializer.writeString(dbLocaleStr, out);
       }
+      if (!isPre20Version) {
+        out.writeInt(this.numProcessors);
+      }
       if (hasSparkURL()) {
         DataSerializer.writeString(sparkDriverUrl, out);
       }
+      DataSerializer.writeInteger(relationDestroyVersion.get(), out);
     }
 
     @Override
@@ -1502,11 +1563,15 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if ((this.flags & F_HASLOCALE) != 0) {
         this.dbLocaleStr = DataSerializer.readString(in);
       }
+      if ((this.flags & F_HAS_PROCESSOR_COUNT) != 0) {
+        this.numProcessors = in.readInt();
+      }
       // initialize the flags for possible further serializations
       initFlags();
       if (hasSparkURL()) {
         this.sparkDriverUrl = DataSerializer.readString(in);
       }
+      relationDestroyVersion = new AtomicInteger(DataSerializer.readInteger(in));
     }
 
     @Override
@@ -1523,6 +1588,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       sb.append("; flags=0x").append(Integer.toHexString(this.flags));
       sb.append("; initialized=").append(this.initialized);
       sb.append("; dbLocaleStr=").append(this.dbLocaleStr);
+      sb.append("; numProcessors=").append(this.numProcessors);
     }
   }
 

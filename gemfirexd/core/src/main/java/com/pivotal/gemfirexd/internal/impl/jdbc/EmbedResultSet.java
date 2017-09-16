@@ -55,6 +55,7 @@ import com.pivotal.gemfirexd.internal.engine.procedure.coordinate.ProcedureProce
 import com.pivotal.gemfirexd.internal.engine.sql.execute.UpdatableResultSet;
 import com.pivotal.gemfirexd.internal.engine.store.AbstractCompactExecRow;
 import com.pivotal.gemfirexd.internal.engine.store.ResultWasNull;
+import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.procedure.OutgoingResultSet;
 // GemStone changes END
@@ -91,6 +92,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.GenericActivationHolder;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ScrollInsensitiveResultSet;
+import io.snappydata.ResultSetWithNull;
 
 
 
@@ -129,7 +131,7 @@ import java.util.Map;
 
 public abstract class EmbedResultSet extends ConnectionChild 
 // GemStone changes BEGIN
-    implements EngineResultSet, ResultWasNull, Comparable {
+    implements EngineResultSet, ResultWasNull, ResultSetWithNull, Comparable {
     /* (original code)
     implements EngineResultSet, Comparable {
     */
@@ -372,7 +374,7 @@ public abstract class EmbedResultSet extends ConnectionChild
            if (stmt.resultSetType == java.sql.ResultSet.TYPE_FORWARD_ONLY)
                maxRows = stmt.maxRows;
 
-           maxFieldSize = stmt.MaxFieldSize;
+           maxFieldSize = stmt.maxFieldSize;
         }
 		else
 			maxFieldSize = 0;
@@ -2623,6 +2625,7 @@ public abstract class EmbedResultSet extends ConnectionChild
 	public final int getFetchDirection() throws SQLException {
 		checkIfClosed("getFetchDirection");
 		if (fetchDirection == 0) {
+			if (stmt == null) return java.sql.ResultSet.FETCH_FORWARD;
 			// value is not set at the result set level
 			// get it from the statement level
 			return stmt.getFetchDirection();
@@ -2688,6 +2691,7 @@ public abstract class EmbedResultSet extends ConnectionChild
 	 */
 	public final int getType() throws SQLException {
 		checkIfClosed("getType");
+		if (stmt == null) return java.sql.ResultSet.TYPE_FORWARD_ONLY;
 		return stmt.getResultSetType();
 	}
 
@@ -5839,10 +5843,15 @@ public abstract class EmbedResultSet extends ConnectionChild
     /* 
      * @see com.pivotal.gemfirexd.internal.iapi.jdbc.EngineResultSet#isNull(int)
      */
-    public final boolean isNull(int columnIndex) throws SQLException{
+    public final boolean isNull(int columnIndex) throws SQLException {
         try {
+            this.isValid(columnIndex);
+            return this.currentRow.isNull(columnIndex) ==
+                RowFormatter.OFFSET_AND_WIDTH_IS_NULL;
+            /* (original code)
             DataValueDescriptor dvd = getColumn(columnIndex);
             return dvd.isNull();
+            */
         } catch (StandardException t) {
                 throw noStateChangeException(t, this.resultDescription
                     .getColumnDescriptor(columnIndex).getName() /* GemStoneAddition */);

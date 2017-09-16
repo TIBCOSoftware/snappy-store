@@ -54,7 +54,6 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
@@ -67,6 +66,7 @@ import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.QueuedSynchronizer;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.versions.ConcurrentCacheModificationException;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
@@ -100,7 +100,6 @@ import com.gemstone.gemfire.pdx.PdxSerializationException;
 import com.gemstone.gemfire.pdx.PdxSerializer;
 import com.gemstone.gemfire.pdx.internal.ConvertableToBytes;
 import com.gemstone.gemfire.pdx.internal.PdxInstanceImpl;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 
 /**
  * Abstract implementation class of RegionEntry interface.
@@ -182,7 +181,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         // Phase 2 of region entry removal is done here. The first phase is done
         // by the RegionMap. It is unclear why this code is needed. ARM destroy
         // does this also and we are now doing it as phase3 of the ARM destroy.
-        removePhase2();
+        removePhase2(rgn);
         rgn.getRegionMap().removeEntry(event.getKey(), this, true, event, rgn, null);
       }
     }
@@ -221,17 +220,17 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     throw new InternalStatisticsDisabledException();
   }
     
-  public void _removePhase1() {
-    _setValue(Token.REMOVED_PHASE1);
+  public void _removePhase1(LocalRegion r) {
+    _setValue(r, Token.REMOVED_PHASE1);
     // debugging for 38467 (hot thread in ARM.basicUpdate)
 //    this.removeTrace = new Exception("stack trace for thread " + Thread.currentThread());
   }
   public void removePhase1(LocalRegion r, boolean isClear) throws RegionClearedException {
-    _removePhase1();
+    _removePhase1(r);
   }
   
-  public void removePhase2() {
-    _setValue(Token.REMOVED_PHASE2);
+  public void removePhase2(LocalRegion r) {
+    _setValue(r, Token.REMOVED_PHASE2);
 //    this.removeTrace = new Exception("stack trace for thread " + Thread.currentThread());
   }
 
@@ -282,16 +281,16 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
    * and places that don't want a destroyed Token can explicitly check
    * for a DESTROY token.
    */
-  public final boolean isRemoved() {
+  public boolean isRemoved() {
     Token o = getValueAsToken();
     return (o == Token.REMOVED_PHASE1) || (o == Token.REMOVED_PHASE2) || (o == Token.TOMBSTONE);
   }
 
-  public final boolean isDestroyedOrRemoved() {
+  public boolean isDestroyedOrRemoved() {
     return Token.isRemoved(getValueAsToken());
   }
   
-  public final boolean isDestroyedOrRemovedButNotTombstone() {
+  public boolean isDestroyedOrRemovedButNotTombstone() {
     Token o = getValueAsToken();
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
@@ -306,7 +305,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   
   public boolean fillInValue(LocalRegion region,
                              @Retained(ABSTRACT_REGION_ENTRY_FILL_IN_VALUE) InitialImageOperation.Entry dst,
-                             ByteArrayDataInput in,
                              DM mgr, Version targetVersion)
   {
     dst.setSerialized(false); // starting default value
@@ -476,10 +474,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   
   @Released
   protected void setValue(RegionEntryContext context, @Unretained Object value, boolean recentlyUsed) {
-    _setValue(value);
-    if (value != null && context != null && (this instanceof OffHeapRegionEntry) 
-        && context instanceof LocalRegion && ((LocalRegion)context).isThisRegionBeingClosedOrDestroyed()) {
-      ((OffHeapRegionEntry)this).release();
+    _setValue(context, value);
+    if (value != null && context != null && context instanceof LocalRegion
+        && ((LocalRegion)context).isThisRegionBeingClosedOrDestroyed()
+        && isOffHeap()) {
+      release();
       ((LocalRegion)context).checkReadiness();
     }
     if (recentlyUsed) {
@@ -536,12 +535,29 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     SimpleMemoryAllocatorImpl.setReferenceCountOwner(null);
     return result;
   }
-  
+
   @Retained
   public  Object getValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
-   return getValueInVM(owner);
+    Object v = getValueInVM(owner);
+    if (GemFireCacheImpl.hasNewOffHeap() && (v instanceof SerializedDiskBuffer)) {
+      ((SerializedDiskBuffer)v).retain();
+    }
+    return v;
   }
-  
+
+  @Retained
+  public Object getHeapValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
+    final Object v;
+    if (owner.compressor == null) {
+      v = _getValue();
+      // null should only be possible if disk entry
+      return v != null ? v : Token.NOT_AVAILABLE;
+    } else {
+      v = decompress(owner, _getValue());
+      return v != null ? v : Token.NOT_AVAILABLE;
+    }
+  }
+
   @Override
   @Retained
   public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner) {
@@ -838,8 +854,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
             if(isValueNull()) {
               @Released Object value = getValueOffHeapOrDiskWithoutFaultIn(region);
               try {
-              _setValue(prepareValueForCache(region, value, false, false));
-              if (value != null && region != null && (this instanceof OffHeapRegionEntry) && region.isThisRegionBeingClosedOrDestroyed()) {
+              _setValue(region, prepareValueForCache(region, value, false, false));
+              if (value != null && region != null && isOffHeap() && region.isThisRegionBeingClosedOrDestroyed()) {
                 ((OffHeapRegionEntry)this).release();
                 region.checkReadiness();
               }
@@ -916,10 +932,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           && event.getRegion().isUsedForPartitionedRegionBucket()
           && event.getRegion().getPartitionedRegion().isHDFSRegion();
 
+      // this happens for eviction/expiration on PR
       if (removeEntry || forceRemoveEntry) {
         boolean isThisTombstone = isTombstone();
         if(inTokenMode && !event.getOperation().isEviction()) {
-          setValue(region, Token.DESTROYED);  
+          setValue(region, Token.DESTROYED);
         } else {
 //          if (event.getRegion().getLogWriterI18n().fineEnabled()) {
 //            event.getRegion().getLogWriterI18n().fine("ARE.destroy calling removePhase1");
@@ -1209,7 +1226,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
             QueuedSynchronizer, AbstractRegionEntry, Void>() {
 
     /**
-     * @see MapCallback#newValue(Object, Object)
+     * @see MapCallback#newValue
      */
     @Override
     public final QueuedSynchronizer newValue(final RegionEntry key,
@@ -1263,7 +1280,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     if (Token.isInvalidOrRemoved(v)) return false;
     if (v == Token.NOT_AVAILABLE) return false;
     if (v instanceof DiskEntry.RecoveredEntry) return false; // The disk layer has special logic that ends up storing the nested value in the RecoveredEntry off heap
-    if (!(this instanceof OffHeapRegionEntry)) return false;
+    if (!isOffHeap()) return false;
     // TODO should we check for deltas here or is that a user error?
     return true;
   }
@@ -1288,7 +1305,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           return key;
         }
         // skip this check for off-heap entry since it will be expensive
-        if (!(this instanceof OffHeapRegionEntry)) {
+        if (!isOffHeap()) {
           sysCb.entryCheckValue(_getValue());
         }
         if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -1321,7 +1338,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           return key;
         }
         // skip this check for off-heap entry since it will be expensive
-        if (!(this instanceof OffHeapRegionEntry)) {
+        if (!isOffHeap()) {
           sysCb.entryCheckValue(_getValue());
         }
         if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -1377,7 +1394,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     _setLastModified(LOCKED_TOKEN);
   }
 
-  public final void _setValue(@Unretained final Object val) {
+  final void _setValue(RegionEntryContext context, @Unretained final Object val) {
     final StaticSystemCallbacks sysCb =
         GemFireCacheImpl.FactoryStatics.systemCallbacks;
     final Object containerInfo;
@@ -1401,6 +1418,19 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       }
     }
 
+    // release old SerializedDiskBuffer explicitly for eager cleanup
+    final boolean isOffHeap = isOffHeap();
+    Object rawOldVal = null;
+    if (!isOffHeap) {
+      rawOldVal = getValueField();
+      if (rawOldVal != val && rawOldVal instanceof SerializedDiskBuffer) {
+        setValueField(val);
+        if (context != null) context.updateMemoryStats(rawOldVal, val);
+        ((SerializedDiskBuffer)rawOldVal).release();
+        return;
+      }
+    }
+
     if (sysCb == null
         // GFXD: this is the case of generated key so a fixed long key
         || (containerInfo = sysCb.entryGetContainerInfoForKey(this)) == null
@@ -1409,6 +1439,9 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         // and will remain the same
         || (Token.isRemoved(val) && getValueAsToken() != Token.NOT_A_TOKEN)) {
       setValueField(val);
+      if (!isOffHeap && context != null) {
+        context.updateMemoryStats(rawOldVal, val);
+      }
     }
     else {
       final LocalRegion region = sysCb
@@ -1437,6 +1470,9 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           else {
             setValueField(val);
             _setRawKey(null);
+          }
+          if (!isOffHeap && context != null) {
+            context.updateMemoryStats(rawOldVal, val);
           }
           // also upgrade GemFireXD schema information if required; there is no
           // problem of concurrency since GFXD DDL cannot happen concurrently
@@ -1661,7 +1697,18 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     clearFlag(getState(), MARKED_FOR_EVICTION);
   }
 
-  public final void setOwner(LocalRegion owner) {
+  public final void setOwner(LocalRegion owner, Object previousOwner) {
+    @Retained @Released Object val = _getValueRetain(owner, true);
+    try {
+    // update the memory stats if required
+    if (owner != previousOwner && !isOffHeap()) {
+      // add for new owner
+      if (owner != null) owner.updateMemoryStats(null, val);
+      // reduce from previous owner
+      if (previousOwner instanceof RegionEntryContext) {
+        ((RegionEntryContext)previousOwner).updateMemoryStats(val, null);
+      }
+    }
     final StaticSystemCallbacks sysCb =
         GemFireCacheImpl.FactoryStatics.systemCallbacks;
     if (sysCb == null) {
@@ -1669,8 +1716,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       return;
     }
     final Object containerInfo;
-    @Retained @Released Object val = _getValueRetain(owner, true);
-    try {
     if ((containerInfo = setContainerInfo(owner, val)) != null) {
       // refresh the key if required
       final Object key = getRawKey();
@@ -1804,7 +1849,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         // indicates retry
       }
       // skip this check for off-heap entry since it will be expensive
-      if (!(this instanceof OffHeapRegionEntry)) {
+      if (!isOffHeap()) {
         sysCb.entryCheckValue(_getValue());
       }
       if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -1844,7 +1889,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         OffHeapHelper.releaseWithNoTracking(val);
       }
       // skip this check for off-heap entry since it will be expensive
-      if (!(this instanceof OffHeapRegionEntry)) {
+      if (!isOffHeap()) {
         sysCb.entryCheckValue(_getValue());
       }
       if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -2062,10 +2107,10 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       if (region.getVersionVector() != null) {
         if (isRemoteVersionSource) {
           tag.setRegionVersion(region.getVersionVector().getNextRemoteVersion(
-              mbr));
+              mbr, event));
         }
         else {
-          tag.setRegionVersion(region.getVersionVector().getNextVersion());
+          tag.setRegionVersion(region.getVersionVector().getNextVersion(event));
         }
       }
       if (withDelta) {
@@ -2252,7 +2297,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         if (who == null) {
           who = originator;
         }
-        r.getVersionVector().recordVersion(who, tag);
+        r.getVersionVector().recordVersion(who, tag, (EntryEventImpl)cacheEvent);
       }
 
       assert !tag.isFromOtherMember() || tag.getMemberID() != null : "remote tag is missing memberID";
@@ -2665,9 +2710,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   }
 
   static boolean isCompressible(RegionEntryContext context, Object value) {
-    return ((value != null) && (context != null)
-        && (context.getCompressor() != null) && !Token
-          .isInvalidOrRemoved(value));
+    return (context != null && context.getCompressor() != null &&
+        value != null && !Token.isInvalidOrRemoved(value));
   }
 
   /* subclasses supporting versions must override this */
@@ -2734,7 +2778,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           return size;
         }
         // skip this check for off-heap entry since it will be expensive
-        if (!(this instanceof OffHeapRegionEntry)) {
+        if (!isOffHeap()) {
           sysCb.entryCheckValue(_getValue());
         }
         if ((tries % MAX_READ_TRIES_YIELD) == 0) {
@@ -2864,8 +2908,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     throw new UnsupportedOperationException("unexpected invocation");
   }
 
-  public final int readBytes(UnsafeWrapper unsafe, long memOffset,
-      int columnWidth, ByteSource bs) {
+  public final int readBytes(long memOffset, int columnWidth, ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation");
   }
 
@@ -3038,14 +3081,19 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     return Token.isDestroyed(getValueAsToken());
   }
 
-  public void setValueToNull() {
-    _setValue(null);
+  public void setValueToNull(RegionEntryContext context) {
+    _setValue(context, null);
   }
   
   public boolean isInvalidOrRemoved() {
     return Token.isInvalidOrRemoved(getValueAsToken());
   }
-  
+
+  @Override
+  public boolean isOffHeap() {
+    return false;
+  }
+
   /**
    * This is only retained in off-heap subclasses.  However, it's marked as
    * Retained here so that callers are aware that the value may be retained.

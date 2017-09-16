@@ -9,7 +9,8 @@ hydratest/version/gemfirexd/tpcc/tpccPeer.conf
   logQueries=false
   queryPlanFrequency=35
   perffmwk.comparisonKey=tpcc
-hydratest/version/gemfirexd/tpcc/tpccThin.conf
+
+/*hydratest/version/gemfirexd/tpcc/tpccThin.conf
   clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
   serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
   tableFileNum=1 indexFileNum=3
@@ -20,4 +21,4 @@ hydratest/version/gemfirexd/tpcc/tpccThin.conf
   logQueries=false
   queryPlanFrequency=35
   perffmwk.comparisonKey=tpcc
-hydratest/version/gemfirexd/tpcc/tpccThinRollingRestartFromDisk.conf
+hydratest/version/gemfirexd/tpcc/tpccThinRollingRestartFromDisk.conf*/

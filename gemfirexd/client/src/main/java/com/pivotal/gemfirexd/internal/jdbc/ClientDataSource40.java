@@ -1,22 +1,22 @@
 /*
- 
+
    Derby - Class com.pivotal.gemfirexd.internal.jdbc.ClientDataSource40
- 
+
    Licensed to the Apache Software Foundation (ASF) under one or more
    contributor license agreements.  See the NOTICE file distributed with
    this work for additional information regarding copyright ownership.
    The ASF licenses this file to You under the Apache License, Version 2.0
    (the "License"); you may not use this file except in compliance with
    the License.  You may obtain a copy of the License at
- 
+
       http://www.apache.org/licenses/LICENSE-2.0
- 
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
- 
+
  */
 
 /*
@@ -37,24 +37,35 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 package com.pivotal.gemfirexd.internal.jdbc;
-
-import java.sql.SQLException;
-import javax.sql.DataSource;
-import com.pivotal.gemfirexd.internal.client.am.ClientMessageId;
-import com.pivotal.gemfirexd.internal.client.am.SqlException;
-import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 
 /**
  * ClientDataSource40 is a simple data source implementation
  * that can be used for establishing connections in a
  * non-pooling, non-distributed environment.
  * The class ClientConnectionPoolDataSource40 can be used in a connection pooling environment,
- * and the class ClientXADataSource40 can be used in a distributed, and pooling
+ * and the class ClientXADataSource can be used in a distributed, and pooling
  * environment. Use these DataSources if your application runs under
  * JDBC4.0. Use the corresponding ClientDataSource, ClientConnectionPoolDataSource, and
- * ClientXADataSource classes if 
+ * ClientXADataSource classes if
  * your application runs in the following environments:
  * <p/>
  *	<UL>
@@ -64,7 +75,7 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
  *
  * <p>The example below registers a DNC data source object with a JNDI naming service.
  * <pre>
- * com.pivotal.gemfirexd.internal.client.ClientDataSource40 dataSource = new com.pivotal.gemfirexd.internal.client.ClientDataSource40 ();
+ * com.pivotal.gemfirexd.internal.client.ClientDataSource dataSource = new com.pivotal.gemfirexd.internal.jdbc.ClientDataSource ();
  * dataSource.setServerName ("my_derby_database_server");
  * dataSource.setDatabaseName ("my_derby_database_name");
  * javax.naming.Context context = new javax.naming.InitialContext();
@@ -119,57 +130,5 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
  * breaches.
  * <p/>
  */
-public class ClientDataSource40 extends ClientDataSource {
-    
-    public ClientDataSource40() {
-        super();
-    }   
-    
-    /**
-     * Returns false unless <code>interfaces</code> is implemented 
-     * 
-     * @param  interfaces             a Class defining an interface.
-     * @return true                   if this implements the interface or 
-     *                                directly or indirectly wraps an object 
-     *                                that does.
-     * @throws java.sql.SQLException  if an error occurs while determining 
-     *                                whether this is a wrapper for an object 
-     *                                with the given interface.
-     */
-// GemStone changes BEGIN
-    // made non-generic so can override the method in base class so that can
-    // be compiled with both JDK 1.6 and 1.4
-    public boolean isWrapperFor(Class interfaces) throws SQLException {
-    /* (original code)
-    public boolean isWrapperFor(Class<?> interfaces) throws SQLException {
-    */
-// GemStone changes END
-        return interfaces.isInstance(this);
-    }
-    
-    /**
-     * Returns <code>this</code> if this class implements the interface
-     *
-     * @param  interfaces a Class defining an interface
-     * @return an object that implements the interface
-     * @throws java.sql.SQLExption if no object if found that implements the 
-     * interface
-     */
-// GemStone changes BEGIN
-    // made non-generic so can override the method in base class so that can
-    // be compiled with both JDK 1.6 and 1.4
-    public Object unwrap(java.lang.Class interfaces) throws SQLException {
-    /* (original code)
-    public <T> T unwrap(java.lang.Class<T> interfaces)
-                                   throws SQLException {
-    */
-// GemStone changes END
-        try { 
-            return interfaces.cast(this);
-        } catch (ClassCastException cce) {
-            throw new SqlException(null,new ClientMessageId(SQLState.UNABLE_TO_UNWRAP),
-                    interfaces).getSQLException(null /* GemStoneAddition */);
-        }
-    }
-    
+public class ClientDataSource40 extends io.snappydata.jdbc.ClientDataSource {
 }

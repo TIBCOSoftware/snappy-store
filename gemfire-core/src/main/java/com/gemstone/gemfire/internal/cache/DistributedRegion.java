@@ -45,27 +45,7 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.InvalidDeltaException;
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.cache.CacheListener;
-import com.gemstone.gemfire.cache.CacheLoader;
-import com.gemstone.gemfire.cache.CacheLoaderException;
-import com.gemstone.gemfire.cache.CacheWriter;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.ConflictException;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.LossAction;
-import com.gemstone.gemfire.cache.MembershipAttributes;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.RegionAccessException;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.RegionDistributionException;
-import com.gemstone.gemfire.cache.RegionMembershipListener;
-import com.gemstone.gemfire.cache.ResumptionAction;
-import com.gemstone.gemfire.cache.RoleException;
-import com.gemstone.gemfire.cache.TimeoutException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionException;
@@ -93,7 +73,6 @@ import com.gemstone.gemfire.distributed.internal.locks.DLockService;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.NullDataOutputStream;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation.GIIStatus;
@@ -101,6 +80,7 @@ import com.gemstone.gemfire.internal.cache.InitialImageOperation.InitialImageVer
 import com.gemstone.gemfire.internal.cache.RemoteFetchVersionMessage.FetchVersionResponse;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.ResourceType;
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
+import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.DistributedRegionFunctionExecutor;
 import com.gemstone.gemfire.internal.cache.execute.DistributedRegionFunctionResultSender;
 import com.gemstone.gemfire.internal.cache.execute.DistributedRegionFunctionResultWaiter;
@@ -108,6 +88,7 @@ import com.gemstone.gemfire.internal.cache.execute.FunctionStats;
 import com.gemstone.gemfire.internal.cache.execute.LocalResultCollector;
 import com.gemstone.gemfire.internal.cache.execute.RegionFunctionContextImpl;
 import com.gemstone.gemfire.internal.cache.execute.ServerToClientFunctionResultSender;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.persistence.CreatePersistentRegionProcessor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistenceAdvisor;
@@ -123,6 +104,7 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySenderEventProcessor;
+import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
@@ -134,6 +116,10 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArraySortedCollection;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gnu.trove.TObjectIntProcedure;
@@ -210,6 +196,8 @@ public class DistributedRegion extends LocalRegion implements
    * a clear at the same time.
    */
   private final Object clearLock = new Object();
+
+  protected volatile boolean indexLockedForGII;
 
   private static AtomicBoolean loggedNetworkPartitionWarning = new AtomicBoolean(false);
   
@@ -504,7 +492,7 @@ public class DistributedRegion extends LocalRegion implements
      * force shared data view so that we just do the virtual op, accruing things
      * in the put all operation for later
      */
-    if (tx != null) {
+    if (tx != null && !tx.isSnapshot()) {
       event.getPutAllOperation().addEntry(event);
     }
     else {
@@ -1207,7 +1195,6 @@ public class DistributedRegion extends LocalRegion implements
     }
 
     final IndexUpdater indexUpdater = getIndexUpdater();
-    boolean indexLocked = false;
     // this try block is to release the GFXD GII lock in finally
     // which should be done after bucket status will be set
     // properly in LocalRegion#initialize()
@@ -1218,7 +1205,7 @@ public class DistributedRegion extends LocalRegion implements
         // index list for GemFireXD (#41330 and others)
         if (indexUpdater != null) {
           indexUpdater.lockForGII();
-          indexLocked = true;
+          indexLockedForGII = true;
         }
         
         PersistentMemberID persistentId = null;
@@ -1259,8 +1246,9 @@ public class DistributedRegion extends LocalRegion implements
       }
      }
     } finally {
-      if (indexLocked) {
+      if (indexUpdater != null && indexLockedForGII) {
         indexUpdater.unlockForGII();
+        indexLockedForGII = false;
       }
     }
   }
@@ -1340,7 +1328,7 @@ public class DistributedRegion extends LocalRegion implements
       boolean recoverFromDisk, PersistentMemberID persistentId) throws TimeoutException
   {
     LogWriterI18n logger = getSystem().getLogWriter().convertToLogWriterI18n();
-    if (logger.infoEnabled()) {
+    if (logger.infoEnabled() && !LocalRegion.isMetaTable(getFullPath())) {
       logger.info(LocalizedStrings.DistributedRegion_INITIALIZING_REGION_0, this.getName());
     }
   
@@ -1504,7 +1492,9 @@ public class DistributedRegion extends LocalRegion implements
       else {
         if(!isDestroyed()) {
           if(recoverFromDisk) {
-            logger.info(LocalizedStrings.DistributedRegion_INITIALIZED_FROM_DISK, new Object[] {this.getFullPath(), persistentId, getPersistentID()});
+            if (!LocalRegion.isMetaTable(getFullPath())) {
+              logger.info(LocalizedStrings.DistributedRegion_INITIALIZED_FROM_DISK, new Object[]{this.getFullPath(), persistentId, getPersistentID()});
+            }
             if(persistentId != null) {
               RegionLogger.logRecovery(this.getFullPath(), persistentId,
                   getDistributionManager().getDistributionManagerId());
@@ -1517,7 +1507,9 @@ public class DistributedRegion extends LocalRegion implements
               RegionLogger.logPersistence(this.getFullPath(),
                   getDistributionManager().getDistributionManagerId(),
                   getPersistentID());
-              logger.info(LocalizedStrings.DistributedRegion_NEW_PERSISTENT_REGION_CREATED, new Object[] {this.getFullPath(), getPersistentID()});
+              if (!LocalRegion.isMetaTable(getFullPath())) {
+                logger.info(LocalizedStrings.DistributedRegion_NEW_PERSISTENT_REGION_CREATED, new Object[]{this.getFullPath(), getPersistentID()});
+              }
             }
           }
           
@@ -1582,8 +1574,17 @@ public class DistributedRegion extends LocalRegion implements
   /** remove any partial entries received in a failed GII */
   protected void cleanUpAfterFailedGII(boolean recoverFromDisk) {    
     boolean isProfileExchanged = isProfileExchanged();
-    boolean giiIndexLockAcquired = this.doPreEntryDestructionCleanup(true, null, false);
+    // release read lock on index if required because cleanup will need
+    // write lock on index
+    final IndexUpdater indexUpdater = getIndexUpdater();
+    final boolean indexLocked = indexUpdater != null && indexLockedForGII;
+    boolean giiIndexLockAcquired = false;
     try {
+      if (indexLocked) {
+        indexUpdater.unlockForGII();
+        indexLockedForGII = false;
+      }
+      giiIndexLockAcquired = this.doPreEntryDestructionCleanup(true, null, false);
       // reset the profile exchanged flag after this since we will continue with
       // GII from next source
       setProfileExchanged(isProfileExchanged);
@@ -1617,7 +1618,15 @@ public class DistributedRegion extends LocalRegion implements
         }
       }
     } finally {
-      doPostEntryDestructionCleanup(true, null, false, giiIndexLockAcquired);
+      try {
+        doPostEntryDestructionCleanup(true, null, false, giiIndexLockAcquired);
+      } finally {
+        // reacquire the index read lock
+        if (indexLocked) {
+          indexUpdater.lockForGII();
+          indexLockedForGII = true;
+        }
+      }
     }
   }
 
@@ -1777,14 +1786,22 @@ public class DistributedRegion extends LocalRegion implements
 
         // in the first loop apply the committed/rolled back transactions
         if (!pendingTXStates.isEmpty()) {
+
+          final TXRegionState[] orderedTXRegionState = pendingTXStates
+              .toArray(new TXRegionState[pendingTXStates.size()]);
+
+          Arrays.sort(orderedTXRegionState,
+              Comparator.comparing(t -> t.getTXState().getTransactionId()));
+
           final ArrayList<TXRegionState> inProgressTXStates =
               new ArrayList<TXRegionState>();
           final ArrayList<TXRegionState> finishedTXStates =
               new ArrayList<TXRegionState>();
           final TXManagerImpl txMgr = getCache().getCacheTransactionManager();
-          for (TXRegionState txrs : pendingTXStates) {
+          for (TXRegionState txrs : orderedTXRegionState) {
             TXState txState = txrs.getTXState();
             int txOrder = 0;
+            getLogWriterI18n().info(LocalizedStrings.DEBUG, "Locking txState = " + txState);
             txState.lockTXState();
             if (txState.isInProgress() && (txOrder = is.getFinishedTXOrder(
                 txState.getTransactionId())) == 0) {
@@ -1871,7 +1888,7 @@ public class DistributedRegion extends LocalRegion implements
               }
             }
           } finally {
-            for (TXRegionState txrs : pendingTXStates) {
+            for (TXRegionState txrs : orderedTXRegionState) {
               txrs.getTXState().unlockTXState();
             }
           }
@@ -3335,12 +3352,10 @@ public class DistributedRegion extends LocalRegion implements
     chunkEntries = new InitialImageVersionedEntryList(
         this.concurrencyChecksEnabled, MAX_ENTRIES_PER_CHUNK);
     final boolean keyRequiresRegionContext = keyRequiresRegionContext();
-    ByteArrayDataInput in = null;
     DiskRegion dr = getDiskRegion();
     final Version targetVersion = sender.getVersionObject();
     if( dr!=null ){
       dr.setClearCountReference();
-      in = new ByteArrayDataInput();
     }
     VersionSource myId = getVersionMember();
     Set<VersionSource> foundIds = new HashSet<VersionSource>();
@@ -3423,7 +3438,7 @@ public class DistributedRegion extends LocalRegion implements
                     entry = new InitialImageOperation.Entry();
                     entry.key = key;
                     entry.setVersionTag(stamp.asVersionTag());
-                    fillRes = mapEntry.fillInValue(this, entry, in, dm, targetVersion);
+                    fillRes = mapEntry.fillInValue(this, entry, dm, targetVersion);
                     if (getLogWriterI18n().finerEnabled() || InitialImageOperation.TRACE_GII_FINER) {
                       getLogWriterI18n().convertToLogWriter().info("chunkEntries:entry="+entry+",stamp="+stamp);
                     }
@@ -3434,7 +3449,7 @@ public class DistributedRegion extends LocalRegion implements
                   if (getLogWriterI18n().finerEnabled() || InitialImageOperation.TRACE_GII_FINER) {
                     getLogWriterI18n().convertToLogWriter().info("chunkEntries:entry="+entry+",stamp=null");
                   }
-                  fillRes = mapEntry.fillInValue(this, entry, in, dm, targetVersion);
+                  fillRes = mapEntry.fillInValue(this, entry, dm, targetVersion);
                 }
               }
               catch(DiskAccessException dae) {
@@ -4869,5 +4884,55 @@ public class DistributedRegion extends LocalRegion implements
    */
   public boolean hasNetLoader() {
     return this.hasNetLoader(getCacheDistributionAdvisor());
+  }
+
+  @Override
+  void updateSizeOnRemove(Object key, int oldSize) {
+    freePoolMemory(oldSize, true);
+  }
+
+  @Override
+  void updateSizeOnClearRegion(int sizeBeforeClear){
+    // For memory accounting related clean ups
+   super.updateSizeOnClearRegion(sizeBeforeClear);
+  }
+
+  @Override
+  public int calculateRegionEntryValueSize(RegionEntry re) {
+    if (!this.isInternalRegion() && callback.isSnappyStore()) {
+      return calcMemSize(re._getValue());
+    } else {
+      return 0;
+    }
+  }
+
+  @Override
+  public int calculateValueSize(Object val) {
+    if (!this.isInternalRegion() && callback.isSnappyStore()) {
+      return calcMemSize(val);
+    } else {
+      return 0;
+    }
+  }
+
+  static int calcMemSize(Object value) {
+    if (value == null || value instanceof Token) {
+      return 0;
+    }
+    if (!(value instanceof byte[])
+        && !CachedDeserializableFactory.preferObject()
+        && !(value instanceof CachedDeserializable)
+        && !(value instanceof com.gemstone.gemfire.Delta)
+        && !(value instanceof Delta)) {
+      // ezoerner:20090401 it's possible this value is a Delta
+      throw new InternalGemFireError("DEBUG: calcMemSize: weird value (class "
+          + value.getClass() + "): " + value);
+    }
+
+    try {
+      return CachedDeserializableFactory.calcMemSize(value);
+    } catch (IllegalArgumentException e) {
+      return 0;
+    }
   }
 }

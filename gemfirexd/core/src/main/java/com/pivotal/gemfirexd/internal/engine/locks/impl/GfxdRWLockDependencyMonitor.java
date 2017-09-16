@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
 package com.pivotal.gemfirexd.internal.engine.locks.impl;
 
 import java.io.Serializable;
@@ -27,6 +24,7 @@ import java.util.Set;
 import com.gemstone.gemfire.distributed.internal.deadlock.Dependency;
 import com.gemstone.gemfire.distributed.internal.deadlock.DependencyMonitor;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockService;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLocalLockService;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLocalLockService.DistributedLockOwner;
@@ -34,8 +32,6 @@ import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockable;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdReadWriteLock;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 
@@ -88,7 +84,7 @@ public class GfxdRWLockDependencyMonitor implements DependencyMonitor {
 
   public Set<Dependency<Serializable, Thread>> getHeldResources(
       Thread[] allThreads) {
-    Set<Dependency<Serializable, Thread>> results = new HashSet<Dependency<Serializable, Thread>>();
+    final Set<Dependency<Serializable, Thread>> results = new HashSet<>();
     GemFireStore memStore = GemFireStore.getBootedInstance();
     if(memStore == null) {
       return results;
@@ -136,41 +132,37 @@ public class GfxdRWLockDependencyMonitor implements DependencyMonitor {
       }
     }
 
-    
-    
     //Get the list of read locks that are held in this local VM
     //This code was stolen from GfxdLockService.dumpReadLocks.
-    final ContextService service = ContextService.getFactory();
-    if(service == null) {
-      return results;
-    }
+    final GemFireXDUtils.Visitor<LanguageConnectionContext> gatherDeps =
+        new GemFireXDUtils.Visitor<LanguageConnectionContext>() {
+          @Override
+          public boolean visit(LanguageConnectionContext lcc) {
+            final TransactionController tc = lcc.getTransactionExecute();
+            final GfxdLockSet lockSet;
+            if (tc != null &&
+                (lockSet = ((GemFireTransaction)tc).getLockSpace()) != null) {
+              Thread thread = lcc.getContextManager().getActiveThread();
+              if (thread != null) {
+                Collection<GfxdLockable> readLocks =
+                    lockSet.getReadLocksForDebugging();
 
-    synchronized (service) {
-      for (final ContextManager cm : service.getAllContexts()) {
-        final LanguageConnectionContext lcc = (LanguageConnectionContext)cm
-            .getContext(LanguageConnectionContext.CONTEXT_ID);
-        final TransactionController tc;
-        final GfxdLockSet lockSet;
-        if (lcc != null && (tc = lcc.getTransactionExecute()) != null
-            && (lockSet = ((GemFireTransaction)tc).getLockSpace()) != null) {
-          Thread thread = cm.getActiveThread();
-          if(thread != null) {
-            Collection<GfxdLockable> readLocks = lockSet.getReadLocksForDebugging();
-
-            for(GfxdLockable lock : readLocks) {
-              if(lock.getName() instanceof Serializable) {
-                results.add(new Dependency<Serializable, Thread>(
-                    (Serializable) lock.getName(), thread));
+                for (GfxdLockable lock : readLocks) {
+                  if (lock.getName() instanceof Serializable) {
+                    results.add(new Dependency<>(
+                        (Serializable)lock.getName(), thread));
+                  }
+                }
               }
             }
+            return true;
           }
-        }
-      }
-    }
-    
+        };
+    GemFireXDUtils.forAllContexts(gatherDeps);
+
     return results;
   }
-  
+
   /**
    * Private constructor for a singleton.
    */

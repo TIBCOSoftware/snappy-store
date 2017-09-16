@@ -44,6 +44,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.execute;
 import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.BucketAdvisor;
+import com.gemstone.gemfire.internal.cache.ColocationHelper;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
 import com.gemstone.gemfire.internal.cache.partitioned.RegionAdvisor;
@@ -274,18 +275,22 @@ public abstract class ConstraintConstantAction extends DDLSingleTableConstantAct
 			
 			if(partitionColIndexInRefKeyForSelectiveCheck != null && !tc.skipLocks()) {
 			      //Take region lock so that no rebalance occurs during constraint check
-			      RecoveryLock recoveryLock = refTablePR.getRecoveryLock();
+			      RecoveryLock recoveryLock = ColocationHelper.getLeaderRegion(refTablePR)
+			          .getRecoveryLock();
 			      recoveryLock.lock();
-			      //check if all the hosted buckets have primary
-			      int bucketIDWithNoPrimary = checkIfAllHostedBucketsHavePrimary(refTablePR);
-			      if(bucketIDWithNoPrimary == -1 ) {
+			      int bucketIDWithNoPrimary = 0;
+			      try {
+			        //check if all the hosted buckets have primary
+			        bucketIDWithNoPrimary = checkIfAllHostedBucketsHavePrimary(refTablePR);
+			        if (bucketIDWithNoPrimary == -1) {
 			          ((GemFireTransaction)tc).setRegionRecoveryLock(recoveryLock);
-			      }else {
-			        recoveryLock.unlock();
-			        throw StandardException.newException(SQLState.GFXD_PRIMARY_NOT_PRESENT_FOR_BUCKET,
-			            bucketIDWithNoPrimary, Misc.getFullTableNameFromRegionPath(refTablePR.getFullPath()));
+			        } else {
+			          throw StandardException.newException(SQLState.GFXD_PRIMARY_NOT_PRESENT_FOR_BUCKET,
+			              bucketIDWithNoPrimary, Misc.getFullTableNameFromRegionPath(refTablePR.getFullPath()));
+			        }
+			      } finally {
+			        if (bucketIDWithNoPrimary != -1) recoveryLock.unlock();
 			      }
-			      
 			 }
 // GemStone changes END
 

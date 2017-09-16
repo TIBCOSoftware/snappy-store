@@ -1220,7 +1220,7 @@ implements Serializable {
       gfd.setArchiveDiskSpaceLimit( new Integer( archiveDiskSpaceLimit ) );
 
       // conserveSockets
-      boolean conserveSockets = tab.booleanAtWild( GemFirePrms.conserveSockets, i, Boolean.valueOf(DistributionConfig.DEFAULT_CONSERVE_SOCKETS) );
+      boolean conserveSockets = tab.booleanAtWild( GemFirePrms.conserveSockets, i, Boolean.TRUE);
       gfd.setConserveSockets( Boolean.valueOf(conserveSockets) );
 
       // deltaPropagation
@@ -1375,15 +1375,18 @@ implements Serializable {
       }
       // add default classPath -- test classes, junit,  and product jar
       classPath.add(mhd.getTestDir());
-      classPath.add(mhd.getTestDir()  + mhd.getFileSep() + "junit.jar");
-      if ( mhd.getExtraTestDir() != null ) {
-        classPath.add( mhd.getExtraTestDir() );
+      classPath.add(mhd.getTestDir() + mhd.getFileSep() + "junit.jar");
+      if (mhd.getExtraTestDir() != null) {
+        classPath.add(mhd.getExtraTestDir());
       }
-      if ( mhd.getGemFireHome() != null ) {
+      if (mhd.getGemFireHome() != null) {
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib"
-                + mhd.getFileSep() + "snappydata-store-" +
-                ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
+            + mhd.getFileSep() + "snappydata-store-" +
+            ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + ".jar");
         classPath.add(mhd.getGemFireHome() + mhd.getFileSep() + "lib");
+        classPath.add(VmDescription.getSnappyJarPath(mhd.getGemFireHome() +
+            mhd.getFileSep() + ".." + mhd.getFileSep() + ".." + mhd.getFileSep() + ".." +
+            mhd.getFileSep(), "snappydata-store-scala-tests*tests.jar"));
       }
       // set classpath at last
       Vector expandedClassPath = EnvHelper.expandEnvVars(classPath, mhd);

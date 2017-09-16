@@ -17,8 +17,6 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.Map;
 
 import com.gemstone.gemfire.StatisticDescriptor;
@@ -28,8 +26,6 @@ import com.gemstone.gemfire.StatisticsType;
 import com.gemstone.gemfire.StatisticsTypeFactory;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
@@ -166,9 +162,15 @@ public class PartitionedRegionStats {
   private static final int rebalancePrimaryTransfersCompletedId;
   private static final int rebalancePrimaryTransfersFailedId;
   private static final int rebalancePrimaryTransferTimeId;
-  
+
+
   private static final int prMetaDataSentCountId;
-  
+
+
+  //Column table Stats
+  private static final int prNumRowsInColumnBatches;
+  private static final int prOffHeapSizeInBytes;
+
   static {
     final boolean largerIsBetter = true;
     StatisticsTypeFactory f = StatisticsTypeFactoryImpl.singleton();
@@ -544,8 +546,15 @@ public class PartitionedRegionStats {
         f.createLongCounter(
                 "prMetaDataSentCount",
                 "total number of times meta data refreshed sent on client's request.",
-                "operation", false),    
-            
+                "operation", false),
+        f.createLongCounter(
+              "prNumRowsInColumnBatches",
+              "total number of rows which are part of column batches.",
+              "entries", false),
+        f.createLongCounter(
+            "prOffHeapSizeInBytes",
+            "total bytes occupied by off-heap in the partitioned region",
+            "bytes", false),
       });
     
     bucketCountId = type.nameToId("bucketCount");
@@ -643,6 +652,8 @@ public class PartitionedRegionStats {
     putLocalTimeId = type.nameToId("putLocalTime");
     
     prMetaDataSentCountId = type.nameToId("prMetaDataSentCount");
+    prNumRowsInColumnBatches = type.nameToId("prNumRowsInColumnBatches");
+    prOffHeapSizeInBytes = type.nameToId("prOffHeapSizeInBytes");
   }
   
   private final Statistics stats;
@@ -1217,8 +1228,24 @@ type, name /* fixes bug 42343 */);
   public void incPRMetaDataSentCount(){
     this.stats.incLong(prMetaDataSentCountId, 1);
   }
-  
+
   public long getPRMetaDataSentCount(){
     return this.stats.getLong(prMetaDataSentCountId);
+  }
+
+  public void setPRNumRowsInColumnBatches(long value) {
+    this.stats.setLong(prNumRowsInColumnBatches, value);
+  }
+
+  public long getPRNumRowsInColumnBatches() {
+    return this.stats.getLong(prNumRowsInColumnBatches);
+  }
+
+  public void setOffHeapSizeInBytes(long value) {
+    this.stats.setLong(prOffHeapSizeInBytes, value);
+  }
+
+  public long getOffHeapSizeInBytes() {
+    return this.stats.getLong(prOffHeapSizeInBytes);
   }
 }

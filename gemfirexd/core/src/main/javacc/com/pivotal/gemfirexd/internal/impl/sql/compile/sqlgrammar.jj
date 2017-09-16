@@ -210,6 +210,7 @@ import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.cache.Scope;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
+import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import com.pivotal.gemfirexd.Constants;
@@ -421,16 +422,11 @@ public class SQLParser
 		  afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
 	  }
 
-	  StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-
 	  if (repPartPersFlags[1] && repPartPersFlags[2]) {
 	    afact.setDataPolicy(DataPolicy.PERSISTENT_PARTITION);
 	    distributionNode.setPersistence(true);
 	    // [sjigyasu] Create versioned region entries for persistent partitioned tables
-           if (callback.haveRegisteredExternalStore(tableName.getFullTableName())){
-              afact.setConcurrencyChecksEnabled(false);
-           }
-           else if (concChecksFlag) {
+            if (concChecksFlag && !repPartPersFlags[7]) {
               afact.setConcurrencyChecksEnabled(true);
            }
 	  }
@@ -506,7 +502,7 @@ public class SQLParser
 			afact.setDataPolicy(DataPolicy.HDFS_PERSISTENT_PARTITION);
 			distributionNode.setPersistence(true);
 	    	// [sjigyasu] Create versioned region entries for persistent partitioned tables
-	    	if (concChecksFlag) {
+	    	if (concChecksFlag && !repPartPersFlags[7]) {
       			afact.setConcurrencyChecksEnabled(true);
       		}
 	      }
@@ -519,19 +515,15 @@ public class SQLParser
 			afact.setDataPolicy(DataPolicy.PERSISTENT_PARTITION);
 			distributionNode.setPersistence(true);
 		    // [sjigyasu] Create versioned region entries for persistent partitioned tables
-		    if (callback.haveRegisteredExternalStore(tableName.getFullTableName())){
-		        afact.setConcurrencyChecksEnabled(false);
-		    }
-		    else if (concChecksFlag) {
+		     if (concChecksFlag && !repPartPersFlags[7]) {
     	  		afact.setConcurrencyChecksEnabled(true);
     	  	}
 	      }
 	    }
-	    GfxdPartitionResolver resolver;
 	    if (!repPartPersFlags[1]) {
 	     // Create a default partitioned table when neither
 		 // REPLICATE nor partitioning has been explicitly specified
-		 resolver = new GfxdPartitionByExpressionResolver();
+		 GfxdPartitionByExpressionResolver resolver = new GfxdPartitionByExpressionResolver();
 		 TableName colocatedTable =
 		   distributionNode.getColocatedTable();
 		 if (colocatedTable != null) {
@@ -545,14 +537,15 @@ public class SQLParser
 	   else {
 		 afact.setPartitionAttributes(getPartitionAttributesFromFactory(pafact));
 		 attrs = getAttributesFromFactory(afact);
-
-		 PartitionAttributes pattrs = attrs.getPartitionAttributes();
-		 resolver = (GfxdPartitionResolver)pattrs.getPartitionResolver();
 	   }
 	 }
 
 
 	 properties.put(GfxdConstants.REGION_ATTRIBUTES_KEY, attrs);
+	 String encoderClass = distributionNode.getRowEncoderClass();
+	 if (encoderClass != null) {
+	   properties.put(GfxdConstants.TABLE_ROW_ENCODER_CLASS_KEY, encoderClass);
+	 }
 	 String schemaName = tableName.getSchemaName();
 	 if (schemaName == null || schemaName.length() == 0) {
 	   schemaName = getLanguageConnectionContext().
@@ -1119,6 +1112,9 @@ public class SQLParser
 		  case INTEGER:
 		  case INT:
 		  case SMALLINT:
+		  case SHORT:
+		  case BYTE:
+		  case TINYINT:
 		  case LONGINT:
 		  case FLOAT:
 		  case REAL:
@@ -1149,6 +1145,9 @@ public class SQLParser
 				  case BIT:
 					retval = true;
 					break;
+				  default:
+				    retval = true;
+				    break;
 				}
 				break;
 			}
@@ -2607,6 +2606,7 @@ TOKEN [IGNORE_CASE] :
 |	<BIT: "bit">
 |	<BOTH: "both">
 |	<BY: "by">
+|	<BYTE: "byte">
 |	<CASCADE: "cascade">
 |	<CASCADED: "cascaded">
 |	<CASE: "case">
@@ -2680,7 +2680,6 @@ TOKEN [IGNORE_CASE] :
 |	<GRANT: "grant">
 |	<GROUP: "group">
 |	<HAVING: "having">
-|	<HOUR: "hour">
 |	<IDENTITY: "identity">
 |	<IMMEDIATE: "immediate">
 |	<IN: "in">
@@ -2706,7 +2705,6 @@ TOKEN [IGNORE_CASE] :
 |	<MATCH: "match">
 |	<MAX: "max">
 |	<MIN: "min">
-|	<MINUTE: "minute">
 |	<MODULE: "module">
 |	<NATIONAL: "national">
 |	<NATURAL: "natural">
@@ -2747,10 +2745,10 @@ TOKEN [IGNORE_CASE] :
 |	<ROWS: "rows">
 |	<SCHEMA: "schema">
 |	<SCROLL: "scroll">
-|	<SECOND: "second">
 |	<SELECT: "select">
 |	<SESSION_USER: "session_user">
 |	<SET: "set">
+|	<SHORT: "short">
 |	<SMALLINT: "smallint">
 |	<SOME: "some">
 |	<SPACE: "space">
@@ -2766,6 +2764,7 @@ TOKEN [IGNORE_CASE] :
 |	<TEMPORARY: "temporary">
 |	<TIMEZONE_HOUR: "timezone_hour">
 |	<TIMEZONE_MINUTE: "timezone_minute">
+|	<TINYINT: "tinyint">
 |	<TO: "to">
 |	<TRANSACTION: "transaction">
 |	<TRANSLATE: "translate">
@@ -2792,7 +2791,6 @@ TOKEN [IGNORE_CASE] :
 |	<WITH: "with">
 |	<WORK: "work">
 |	<WRITE: "write">
-|	<YEAR: "year">
 }
 
 /*
@@ -2828,6 +2826,8 @@ TOKEN [IGNORE_CASE] :
 |   <DYNAMIC: "dynamic">
 |	<FORTRAN: "fortran">
 |   <GENERATED: "generated">
+// mark HOUR as non-reserved (SNAP-1179)
+|	<HOUR: "hour">
 |	<IDENTITY_VAL_LOCAL: "identity_val_local">
 |	<INCREMENT: "increment">
 |	<INITIAL: "initial">
@@ -2841,6 +2841,8 @@ TOKEN [IGNORE_CASE] :
 |	<LOCKS: "locks">
 |	<LOCKSIZE: "locksize">
 |	<LOGGED: "logged">
+// mark MINUTE as non-reserved (SNAP-1179)
+|	<MINUTE: "minute">
 |       <MOD: "mod">
 |	<MODIFIES: "modifies">
 |	<MODIFY: "modify">
@@ -2864,6 +2866,8 @@ TOKEN [IGNORE_CASE] :
 |	<ROW: "row">
 |	<SAVEPOINT: "savepoint">
 |	<SCALE: "scale">
+// mark SECOND as non-reserved (SNAP-1179)
+|	<SECOND: "second">
 |	<SECURITY: "security">
 |	<SERIALIZABLE: "serializable">
 |	<SQL_TSI_FRAC_SECOND: "sql_tsi_frac_second">
@@ -2888,7 +2892,9 @@ TOKEN [IGNORE_CASE] :
 |	<UNCOMMITTED: "uncommitted">
 |	<USAGE: "usage">
 |	<WHEN: "when">
-// GemStone changes BEGIN 
+// GemStone changes BEGIN
+// mark YEAR as non-reserved (SNAP-1179)
+|	<YEAR: "year">
 |	<JSON: "json">
 |	<CLOB_STRING: "string">
 // GemStone changes END
@@ -3014,6 +3020,7 @@ TOKEN [IGNORE_CASE] :
 |   <DECODE: "decode">
 |   <DESTROY: "destroy">
 |   <DISKDIR: "diskdir">
+|   <ENCODER: "encoder">
 |   <ENTRY: "entry">
 |   <EVICT: "evict">
 |   <EVICTACTION: "evictaction">
@@ -3049,6 +3056,7 @@ TOKEN [IGNORE_CASE] :
 |   <NVL: "nvl">
 |   <OVERFLOW: "overflow">
 |   <PARTITION: "partition">
+|   <PARTITIONER: "partitioner">
 |   <PERSISTENT: "persistent">
 |   <PROCESSOR: "processor">
 |   <RANGE: "range">
@@ -3109,6 +3117,7 @@ TOKEN [IGNORE_CASE] :
 |	<PURGEINTERVAL: "purgeinterval">
 |	<WRITEONLY: "writeonly">
 |   <ENABLE: "enable" >
+|   <DISABLE: "disable" >
 |   <CONCURRENCY: "concurrency" >
 |   <CHECKS: "checks" >
 |	<MAXWRITEONLYFILESIZE: "maxwriteonlyfilesize">
@@ -3159,7 +3168,7 @@ TOKEN :
 
 TOKEN :
 {	/* Identifiers */
-	<IDENTIFIER: ( <LETTER> ) (<LETTER> | "_" | <DIGIT>)* >
+	<IDENTIFIER: (<UNDERSCORE>)* ( <LETTER> ) (<LETTER> | <UNDERSCORE> | <DIGIT>)* >
 }
 
 TOKEN: {	<K: "K" >	 }
@@ -5056,7 +5065,7 @@ dataTypeCommon() throws StandardException :
 	typeDescriptor = datetimeType()
 | <BOOLEAN>
 {
-	checkInternalFeature(TypeId.BOOLEAN_NAME);
+	// checkInternalFeature(TypeId.BOOLEAN_NAME);
 	typeDescriptor = new DataTypeDescriptor(TypeId.BOOLEAN_ID, true);
 }
 |
@@ -5386,6 +5395,11 @@ exactIntegerType() throws StandardException :
 	{
 		return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.BIGINT);
 	}
+|
+	(<SHORT> | <TINYINT> | <BYTE> )
+	{
+		return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.SMALLINT);
+	}
 }
 
 /*
@@ -5496,6 +5510,10 @@ longSubType() throws StandardException :
 		throw StandardException.newException(SQLState.NOT_IMPLEMENTED, TypeId.NATIONAL_LONGVARCHAR_NAME);
 		// return DataTypeDescriptor.getBuiltInDataTypeDescriptor(TypeId.NATIONAL_LONGVARCHAR_NAME);
 	}
+|
+    {
+        return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.BIGINT);
+    }
 }
 
 /*
@@ -7996,7 +8014,10 @@ miscBuiltins() throws StandardException :
 		        lookAhead.kind == INTEGER ||
 		        lookAhead.kind == INT || 
 		        lookAhead.kind == SMALLINT ||
+		        lookAhead.kind == BYTE ||
+		        lookAhead.kind == SHORT ||
 		        lookAhead.kind == LONGINT ||
+		        lookAhead.kind == TINYINT ||
                 lookAhead.kind == YEAR ||
                 lookAhead.kind == MONTH ||
                 lookAhead.kind == DAY ||
@@ -8037,6 +8058,9 @@ miscBuiltins() throws StandardException :
 		getToken(1).kind == INT || 
 		getToken(1).kind == SMALLINT ||
 		getToken(1).kind == LONGINT ||
+		getToken(1).kind == SHORT ||
+		getToken(1).kind == TINYINT ||
+		getToken(1).kind == BYTE ||
                 getToken(1).kind == YEAR ||
                 getToken(1).kind == MONTH ||
                 getToken(1).kind == DAY ||
@@ -11519,8 +11543,9 @@ tableDefinition() throws StandardException :
     // index 4 = eviction attributes set or not
     // index 5 = HDFS store set or not
     // index 6 = whether EVICTION BY CRITERIA has been set
+    // index 7 = whether to disable concurrency checks or not
     boolean[] repPartPersFlags = new boolean[] { false, false, false, false,
-        false, false, false };
+        false, false, false , false };
     DistributionDefinitionNode distributionNode =
         (DistributionDefinitionNode) nodeFactory.getNode(C_NodeTypes.DISTRIBUTION_DEFINTION_NODE,
                                                          Integer.valueOf(DistributionDescriptor.NONE),
@@ -11616,6 +11641,7 @@ tableDefinition() throws StandardException :
 	                           serverGroups,
 	                           initSize);
 	            queryExpression.setDistributionDefinition(distributionNode);
+
             // GemStone changes END
                 int textToBeReplacedBegin;
                 if (columnListToken != null) {
@@ -11647,6 +11673,11 @@ StatementNode gatewaySenderDefinition() throws StandardException :
 {
     
    <GATEWAYSENDER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <REMOTEDSID > remoteDsId = simpleValueSpecification_int()
     (  populateGatewaySenderAttributes(attrs))*
@@ -11697,6 +11728,11 @@ StatementNode asyncEventListenerDefinition() throws StandardException :
 {
     
    <ASYNCLISTENER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <LISTENERCLASS>  listenerClass = string()
    <INITPARAMS>  initParams = string()   
@@ -11746,6 +11782,11 @@ StatementNode dropAsyncEventListenerStatement() throws StandardException :
     
    <ASYNCLISTENER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
@@ -11773,6 +11814,11 @@ StatementNode dropGatewaySenderStatement() throws StandardException :
     
    <GATEWAYSENDER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    
@@ -11794,6 +11840,11 @@ StatementNode dropGatewayReceiverStatement() throws StandardException :
 {
 	String id  = null;
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	Boolean onlyIfExists = Boolean.FALSE;
 // GemStone changes END
 }
@@ -11825,7 +11876,12 @@ gatewayReceiverDefinition() throws StandardException :
 	String id  = null;
 }
 {
-	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true) 
+	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+	{
+       CompilerContext cc = getCompilerContext();
+       cc.markAsDDLForSnappyUse(false);
+       cc.setForcedDDLrouting(false);
+    }
 	[ <LEFT_PAREN>
      ( populateGatewarReceiverAttributes(attrs) )*
 	 <RIGHT_PAREN>
@@ -12176,6 +12232,8 @@ fabricTableAttribute(AttributesFactory afact,
 	(
 	regionTypeDefinition(afact, pafact, repPartPersFlags, tableName, distributionNode)
 |
+  tableEncoderDefinition(distributionNode, tableName)
+|
     serverGroupDefinition(serverGroups)
 |
     initSizeDefinition(initSize)
@@ -12203,7 +12261,7 @@ fabricTableAttribute(AttributesFactory afact,
 |
 	memScaleDefinition(afact)
 |
-    concurrencyChecksDefinition(afact)
+    concurrencyChecksDefinition(afact , repPartPersFlags)
    )
 }
 
@@ -12226,6 +12284,18 @@ regionTypeDefinition(AttributesFactory afact,
       repPartPersFlags[3] = true;
       distributionNode.setPolicy(DistributionDescriptor.LOCAL);
     }
+}
+
+void tableEncoderDefinition(DistributionDefinitionNode distributionNode,
+    TableName tableName) throws StandardException :
+{
+  String encoderClassName;
+}
+{
+  <ENCODER> encoderClassName = string()
+  {
+    distributionNode.setRowEncoderClass(encoderClassName);
+  }
 }
 
 void
@@ -12252,7 +12322,7 @@ partitionClauseAndColocationDefinition(AttributesFactory afact,
 }
 {
   (
-    prslvr = partitioningClause(distributionNode, repPartPersFlags)
+    prslvr = partitioningClause(distributionNode, tableName, repPartPersFlags)
     (
       colocatedTable = otherTablesColocationDefinition(distributionNode)
       {
@@ -12271,7 +12341,7 @@ partitionClauseAndColocationDefinition(AttributesFactory afact,
                 + tableName.toString() + "'");
           }
     	  pafact.setColocatedWith(tablePath);
-          if (prslvr != null) {
+          if (prslvr instanceof GfxdPartitionResolver) {
             ((GfxdPartitionResolver)prslvr).setMasterTable(tablePath);
           }
         }
@@ -12293,10 +12363,11 @@ partitionClauseAndColocationDefinition(AttributesFactory afact,
 
 
 PartitionResolver 
-partitioningClause(DistributionDefinitionNode distributionNode, boolean[] repPartPersFlags)
-	throws StandardException :
+partitioningClause(DistributionDefinitionNode distributionNode,
+    TableName tableName, boolean[] repPartPersFlags) throws StandardException :
 {
 	PartitionResolver tmpprslvr = null;
+	String resolverClass;
 }
 {
 	<PARTITION> <BY>
@@ -12326,6 +12397,23 @@ partitioningClause(DistributionDefinitionNode distributionNode, boolean[] repPar
         }
     	repPartPersFlags[1] = true;
     	return tmpprslvr;
+    }
+|
+    <PARTITIONER> resolverClass = string()
+    {
+      if (repPartPersFlags[1]) {
+        // We already have a partition by clause, throw error
+        throw StandardException.newException(SQLState.LANG_DUPLICATE_PROPERTY,
+            "partitioning clause");
+      }
+      repPartPersFlags[1] = true;
+      try {
+        return (PartitionResolver)ClassPathLoader.getLatest().forName(
+            resolverClass).getConstructor(TableName.class).newInstance(tableName);
+      } catch (Exception e) {
+        throw StandardException.newException(
+            SQLState.UNEXPECTED_EXCEPTION_FOR_PARTITION_RESOLVER, e, tableName);
+      }
     }
 }
 
@@ -12595,6 +12683,7 @@ initSizeDefinition(InitSizeTableAttribute initSize) throws StandardException :
 {
 	<INITSIZE> val = simpleValueSpecification_int()
 	{
+		// TODO: SW: how will this work when there is no pass by reference?
 		initSize = new InitSizeTableAttribute(val);
 	}
 }
@@ -13258,7 +13347,7 @@ memScaleDefinition(AttributesFactory afact)
 }
 
 void
-concurrencyChecksDefinition(AttributesFactory afact)
+concurrencyChecksDefinition(AttributesFactory afact ,  boolean[] repPartPersFlags)
   throws StandardException :
 {
 }
@@ -13267,6 +13356,12 @@ concurrencyChecksDefinition(AttributesFactory afact)
   {
     afact.setConcurrencyChecksEnabled(true);
   }
+  |
+   <DISABLE> <CONCURRENCY> <CHECKS>
+   {
+   afact.setConcurrencyChecksEnabled(false);
+   repPartPersFlags[7] = true;
+   }
 }
 
 // GemStone changes END
@@ -13336,8 +13431,10 @@ propertyList(boolean propertiesUseAllowed) throws StandardException :
                                         value = value.trim();
                                 }
                                 // GemStone changes END
-				else 
+				else {
+					value = value.trim();
 					value = value.toUpperCase();
+					}
 				// Do not allow user to specify multiple values for the same key
 				if (properties.put(key, value) != null)
 				{
@@ -13400,6 +13497,7 @@ indexDefinition() throws StandardException :
 	TableName	indexName;
 	TableName	tableName;
 	Vector	indexColumnList = new Vector();
+	CompilerContext cc = getCompilerContext();
 }
 {
 	/*
@@ -13419,6 +13517,7 @@ indexDefinition() throws StandardException :
 	*/
 // GemStone changes END
 	{
+   cc.setForcedDDLrouting(true);
 		/* User allowed to specify schema name on table and index.
 		 * If no schema name specified for index, then it "inherits" 
 		 * its schema name from the table.
@@ -14494,7 +14593,7 @@ literal() throws StandardException :
 |
 	tok = booleanLiteral()
 	{
-		checkInternalFeature(tok.image);
+		// checkInternalFeature(tok.image);
 		return (ValueNode) nodeFactory.getNode(
 									C_NodeTypes.BOOLEAN_CONSTANT_NODE,
 									StringUtil.SQLEqualsIgnoreCase(tok.image, "true") ?
@@ -16802,6 +16901,7 @@ dropIndexStatement() throws StandardException :
 	TableName indexName;
 // GemStone changes BEGIN
 	Boolean onlyIfExists = Boolean.FALSE;
+	CompilerContext cc = getCompilerContext();
 // GemStone changes END
 }
 {
@@ -16814,6 +16914,8 @@ dropIndexStatement() throws StandardException :
 	<INDEX> indexName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH)
 	*/
 	{
+    cc.markAsDDLForSnappyUse(true);
+    cc.setForcedDDLrouting(true);
 		return (StatementNode) nodeFactory.getNode(
 								C_NodeTypes.DROP_INDEX_NODE,
 								indexName,
@@ -17557,6 +17659,7 @@ reservedKeyword() :
 |	tok = <BIT>
 |	tok = <BOTH>
 |	tok = <BY>
+|	tok = <BYTE>
 |	tok = <CASCADE>
 |	tok = <CASCADED>
 |	tok = <CASE>
@@ -17626,7 +17729,6 @@ reservedKeyword() :
 |	tok = <GRANT>
 |	tok = <GROUP>
 |	tok = <HAVING>
-|	tok = <HOUR>
 |	tok = <IDENTITY>
 |	tok = <IMMEDIATE>
 |	tok = <IN>
@@ -17654,7 +17756,6 @@ reservedKeyword() :
 |	tok = <MATCH>
 |	tok = <MAX>
 |	tok = <MIN>
-|	tok = <MINUTE>
 // SQL92 says it is reserved, but we want it to be non-reserved.
 |	tok = <NATIONAL>
 |	tok = <NATURAL>
@@ -17698,10 +17799,10 @@ reservedKeyword() :
 |	tok = <ROWS>
 |	tok = <SCHEMA>
 |	tok = <SCROLL>
-|	tok = <SECOND>
 |	tok = <SELECT>
 |	tok = <SESSION_USER>
 |	tok = <SET>
+|	tok = <SHORT>
 |	tok = <SMALLINT>
 |	tok = <SOME>
 |	tok = <SPACE>
@@ -17716,6 +17817,7 @@ reservedKeyword() :
 |	tok = <TEMPORARY>
 |	tok = <TIMEZONE_HOUR>
 |	tok = <TIMEZONE_MINUTE>
+|	tok = <TINYINT>
 |	tok = <TO>
 |	tok = <TRAILING>
 |	tok = <TRANSACTION>
@@ -17738,7 +17840,6 @@ reservedKeyword() :
 |	tok = <WITH>
 |	tok = <WORK>
 |	tok = <WRITE>
-|	tok = <YEAR>
 	/* Additional JSQL reserved keywords -- non-SQL92 reserved Keywords */
 |	tok = <BOOLEAN>
 |	tok = <CALL>
@@ -17819,6 +17920,8 @@ nonReservedKeyword()  :
 	|	tok = <FN>
 	|	tok = <FORTRAN>
 	|	tok = <GENERATED>
+// mark HOUR as non-reserved (SNAP-1179)
+	|	tok = <HOUR>
 	|	tok = <IDENTITY_VAL_LOCAL>
 	|	tok = <INCREMENT>
 	|	tok = <INDEX>
@@ -17839,6 +17942,8 @@ nonReservedKeyword()  :
 	|	tok = <LONG>
 	|	tok = <MESSAGE_LOCALE>
 	|	tok = <METHOD>
+// mark MINUTE as non-reserved (SNAP-1179)
+	|	tok = <MINUTE>
 	|	tok = <MOD>
 	|	tok = <MODE>
 	|	tok = <MODIFIES>
@@ -17892,6 +17997,8 @@ nonReservedKeyword()  :
 	|   tok = <RS>
 	|	tok = <SCALE>
 	|	tok = <SAVEPOINT>
+// mark SECOND as non-reserved (SNAP-1179)
+	|	tok = <SECOND>
 	|	tok = <SECURITY>
 	|	tok = <SEQUENCE>
 	|	tok = <SEQUENTIAL>
@@ -17937,6 +18044,8 @@ nonReservedKeyword()  :
 	|	tok = <WHEN>
 	|	tok = <WHITESPACE>
 // GemStone changes BEGIN
+// mark YEAR as non-reserved (SNAP-1179)
+	|	tok = <YEAR>
 	|   tok = <ALIAS>
 	|   tok = <ARRAY>
 	|   tok = <ASYNCHRONOUS>
@@ -17946,6 +18055,7 @@ nonReservedKeyword()  :
 	|   tok = <DECODE>
 	|   tok = <DESTROY>
 	|   tok = <DISKDIR>
+	|   tok = <ENCODER>
 	|   tok = <ENTRY>
 	|   tok = <EVICT>
 	|   tok = <EVICTACTION>
@@ -17983,6 +18093,7 @@ nonReservedKeyword()  :
 	|   tok = <REDUNDANCY>
 	|   tok = <REPLICATE>	
 	|   tok = <PARTITION>
+	|   tok = <PARTITIONER>
 	|   tok = <PERSISTENT>
 	|   tok = <ASYNCLISTENER>
 	|   tok = <SERVER> // also for CREATE SCHEMA
@@ -18041,6 +18152,7 @@ nonReservedKeyword()  :
 	|	tok = <PURGEINTERVAL>
 	|	tok = <WRITEONLY>
 	|   tok = <ENABLE>
+	|   tok = <DISABLE>
 	|   tok = <CONCURRENCY>
 	|   tok = <CHECKS>	
 	|   tok = <MAXWRITEONLYFILESIZE>

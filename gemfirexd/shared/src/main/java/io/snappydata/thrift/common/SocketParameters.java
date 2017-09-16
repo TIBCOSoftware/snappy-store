@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -36,6 +36,7 @@
 package io.snappydata.thrift.common;
 
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.pivotal.gemfirexd.Attribute;
 import io.snappydata.thrift.ServerType;
 import org.apache.thrift.transport.TSSLTransportFactory;
 
@@ -44,6 +45,11 @@ import org.apache.thrift.transport.TSSLTransportFactory;
  */
 public class SocketParameters extends
     TSSLTransportFactory.TSSLTransportParameters {
+
+  /**
+   * Default input and output socket buffer size.
+   */
+  public static final int DEFAULT_BUFFER_SIZE = 32 * 1024;
 
   private static final java.util.HashMap<String, Param> paramsMap =
       new java.util.HashMap<>();
@@ -57,14 +63,13 @@ public class SocketParameters extends
     return paramsMap.values();
   }
 
-  public static Param findSSLParameterByPropertyName(String propertyName,
-      boolean throwIfNotFound) {
+  public static Param findSSLParameterByPropertyName(String propertyName) {
+    Param.init();
     Param p = sslParamsMap.get(propertyName
         .toLowerCase(java.util.Locale.ENGLISH));
-    if (p != null || !throwIfNotFound) {
+    if (p != null) {
       return p;
-    }
-    else {
+    } else {
       throw new IllegalArgumentException("Unknown SSL property '"
           + propertyName + "'; expected one of: " + sslParamsMap.keySet());
     }
@@ -77,37 +82,37 @@ public class SocketParameters extends
    * read in socket properties and initialize SocketParameters.
    */
   public enum Param {
-    INPUT_BUFFER_SIZE(SystemProperties.SOCKET_INPUT_BUFFER_SIZE_NAME, false) {
+    INPUT_BUFFER_SIZE(Attribute.SOCKET_INPUT_BUFFER_SIZE, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.inputBufferSize = Integer.parseInt(value);
       }
     },
-    OUTPUT_BUFFER_SIZE(SystemProperties.SOCKET_OUTPUT_BUFFER_SIZE_NAME, false) {
+    OUTPUT_BUFFER_SIZE(Attribute.SOCKET_OUTPUT_BUFFER_SIZE, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.outputBufferSize = Integer.parseInt(value);
       }
     },
-    READ_TIMEOUT(SystemProperties.READ_TIMEOUT_NAME, false) {
+    READ_TIMEOUT(Attribute.READ_TIMEOUT, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.readTimeout = Integer.parseInt(value);
       }
     },
-    KEEPALIVE_IDLE(SystemProperties.KEEPALIVE_IDLE_NAME, false) {
+    KEEPALIVE_IDLE(Attribute.KEEPALIVE_IDLE, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keepAliveIdle = Integer.parseInt(value);
       }
     },
-    KEEPALIVE_INTERVAL(SystemProperties.KEEPALIVE_INTVL_NAME, false) {
+    KEEPALIVE_INTERVAL(Attribute.KEEPALIVE_INTVL, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keepAliveInterval = Integer.parseInt(value);
       }
     },
-    KEEPALIVE_COUNT(SystemProperties.KEEPALIVE_CNT_NAME, false) {
+    KEEPALIVE_COUNT(Attribute.KEEPALIVE_CNT, false) {
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keepAliveCount = Integer.parseInt(value);
@@ -141,6 +146,7 @@ public class SocketParameters extends
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.keyStore = value;
+        params.isKeyStoreSet = true;
       }
     },
     SSL_KEYSTORE_TYPE("keystore-type", true) {
@@ -165,6 +171,7 @@ public class SocketParameters extends
       @Override
       public void setParameter(SocketParameters params, String value) {
         params.trustStore = value;
+        params.isTrustStoreSet = true;
       }
     },
     SSL_TRUSTSTORE_TYPE("truststore-type", true) {
@@ -184,8 +191,7 @@ public class SocketParameters extends
       public void setParameter(SocketParameters params, String value) {
         params.trustManagerType = value;
       }
-    }
-    ;
+    };
 
     private final String propertyName;
 
@@ -193,10 +199,12 @@ public class SocketParameters extends
       this.propertyName = propertyName;
       if (ssl) {
         sslParamsMap.put(propertyName, this);
-      }
-      else {
+      } else {
         paramsMap.put(propertyName, this);
       }
+    }
+
+    static void init() {
     }
 
     public abstract void setParameter(SocketParameters params, String value);
@@ -209,12 +217,12 @@ public class SocketParameters extends
   private volatile ServerType serverType;
   private boolean hasSSLParams;
   private String[] sslEnabledProtocols;
-  private int inputBufferSize = -1;
-  private int outputBufferSize = -1;
+  private int inputBufferSize;
+  private int outputBufferSize;
   private int readTimeout;
-  private int keepAliveIdle = -1;
-  private int keepAliveInterval = -1;
-  private int keepAliveCount = -1;
+  private int keepAliveIdle;
+  private int keepAliveInterval;
+  private int keepAliveCount;
 
   /**
    * Default empty parameters.
@@ -222,6 +230,20 @@ public class SocketParameters extends
   public SocketParameters() {
     super(null, EMPTY_CIPHERS, false);
     this.protocol = null;
+
+    // set socket parameters from global defaults
+    final SystemProperties props = SystemProperties.getClientInstance();
+    this.inputBufferSize = props.getInteger(
+        Attribute.SOCKET_INPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
+    this.outputBufferSize = props.getInteger(
+        Attribute.SOCKET_OUTPUT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
+    this.readTimeout = props.getInteger(Attribute.READ_TIMEOUT, 0);
+    this.keepAliveIdle = props.getInteger(SystemProperties.KEEPALIVE_IDLE,
+        SystemProperties.DEFAULT_KEEPALIVE_IDLE);
+    this.keepAliveInterval = props.getInteger(SystemProperties.KEEPALIVE_INTVL,
+        SystemProperties.DEFAULT_KEEPALIVE_INTVL);
+    this.keepAliveCount = props.getInteger(SystemProperties.KEEPALIVE_CNT,
+        SystemProperties.DEFAULT_KEEPALIVE_CNT);
   }
 
   /**
@@ -240,62 +262,32 @@ public class SocketParameters extends
     return this.serverType;
   }
 
-  public final int getInputBufferSize(int defaultValue) {
-    if (this.inputBufferSize > 0) {
-      return this.inputBufferSize;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getInputBufferSize() {
+    return this.inputBufferSize;
   }
 
-  public final int getOutputBufferSize(int defaultValue) {
-    if (this.outputBufferSize > 0) {
-      return this.outputBufferSize;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getOutputBufferSize() {
+    return this.outputBufferSize;
   }
 
-  public final int getReadTimeout(int defaultValue) {
-    if (this.readTimeout != 0) {
-      return this.readTimeout;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getReadTimeout() {
+    return this.readTimeout;
   }
 
-  public final int getKeepAliveIdle(int defaultValue) {
-    if (this.keepAliveIdle >= 0) {
-      return this.keepAliveIdle;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getKeepAliveIdle() {
+    return this.keepAliveIdle;
   }
 
-  public final int getKeepAliveInterval(int defaultValue) {
-    if (this.keepAliveInterval >= 0) {
-      return this.keepAliveInterval;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getKeepAliveInterval() {
+    return this.keepAliveInterval;
   }
 
-  public final int getKeepAliveCount(int defaultValue) {
-    if (this.keepAliveCount >= 0) {
-      return this.keepAliveCount;
-    }
-    else {
-      return defaultValue;
-    }
+  public final int getKeepAliveCount() {
+    return this.keepAliveCount;
   }
 
-  void setHasSSLParams(boolean hasSSLParams) {
-    this.hasSSLParams = hasSSLParams;
+  void setHasSSLParams() {
+    this.hasSSLParams = true;
   }
 
   public final boolean hasSSLParams() {

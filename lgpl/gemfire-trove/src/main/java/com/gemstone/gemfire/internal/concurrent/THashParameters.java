@@ -22,49 +22,37 @@ import com.gemstone.gnu.trove.TObjectHashingStrategy;
 
 /**
  * Holds various parameters used for hashing.
- * 
+ *
  * @author swale
  * @since gfxd 1.0
  */
 @SuppressWarnings("serial")
-class THashParameters implements TObjectHashingStrategy {
+public class THashParameters {
+
+  public static final ObjectHashing DEFAULT_HASHING = new ObjectHashing();
 
   /**
    * Determines how full the internal table can become before rehashing is
    * required. This must be a value in the range: 0.0 < loadFactor < 1.0.
    */
-  final float loadFactor;
+  protected final float loadFactor;
 
-  /** the strategy used to hash objects, if any, in this collection. */
-  final transient TObjectHashingStrategy hashingStrategy;
+  /**
+   * the strategy used to hash objects, if any, in this collection.
+   */
+  protected final transient TObjectHashingStrategy hashingStrategy;
 
   /**
    * optional statistics object to track number of hash collisions and time
    * spent probing based on hash collisions
    */
-  final transient HashingStats stats;
+  protected final transient HashingStats stats;
 
-  THashParameters(float loadFactor, TObjectHashingStrategy strategy,
+  protected THashParameters(float loadFactor, TObjectHashingStrategy strategy,
       HashingStats stats) {
     this.loadFactor = loadFactor;
-    this.hashingStrategy = strategy != null ? strategy : this;
+    this.hashingStrategy = strategy != null ? strategy : DEFAULT_HASHING;
     this.stats = stats;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final int computeHashCode(Object o) {
-    return o != null ? o.hashCode() : 0;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public final boolean equals(Object o1, Object o2) {
-    return o1 != null ? (o1 == o2 || o1.equals(o2)) : o2 == null;
   }
 
   /**
@@ -88,5 +76,20 @@ class THashParameters implements TObjectHashingStrategy {
   static int computeHashCode(final Object o,
       final TObjectHashingStrategy hashingStrategy) {
     return hash(hashingStrategy.computeHashCode(o)) & 0x7fffffff;
+  }
+
+  public static final class ObjectHashing implements TObjectHashingStrategy {
+
+    private static final long serialVersionUID = -2248161209573646282L;
+
+    @Override
+    public int computeHashCode(Object o) {
+      return o.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o1, Object o2) {
+      return o1.equals(o2);
+    }
   }
 }

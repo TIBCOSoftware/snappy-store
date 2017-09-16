@@ -216,7 +216,7 @@ public class Main {
 		  }
 
 		  final String historyFileName = System.getProperty(
-		      "gfxd.history", ".gfxd.history");
+		      utilMain.basePrompt + ".history", "." + utilMain.basePrompt + ".history");
 		  // setup the input stream
 		  final ConsoleReader reader = new ConsoleReader();
 		  reader.setBellEnabled(false);

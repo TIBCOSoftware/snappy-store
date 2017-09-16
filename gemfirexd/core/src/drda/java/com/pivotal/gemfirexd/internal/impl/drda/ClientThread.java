@@ -45,7 +45,6 @@ import java.net.*;
 import java.security.*;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 
 final class ClientThread extends Thread {
 
@@ -94,16 +93,13 @@ final class ClientThread extends Thread {
 
 // GemStone changes BEGIN
                         if (parent.getKeepAlive()) {
-                          final SystemProperties props = SystemProperties
-                              .getServerInstance();
-                          ClientSharedUtils.setKeepAliveOptions(clientSocket,
-                              null, props.getKeepAliveIdle(),
-                              props.getKeepAliveInterval(),
-                              props.getKeepAliveCount());
-                        }
-                        else {
+                          ClientSharedUtils.setKeepAliveOptionsServer(
+                              clientSocket, null);
+                        } else {
                           clientSocket.setKeepAlive(false);
                         }
+                        clientSocket.setTcpNoDelay(true);
+                        clientSocket.setSoLinger(false, 0);
                         /* (original code)
                         clientSocket.setKeepAlive(parent.getKeepAlive());
                         */

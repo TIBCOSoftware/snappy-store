@@ -1,14 +1,21 @@
-apply plugin: 'wrapper'
+/*
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
-buildscript {
-  repositories {
-    maven { url 'https://plugins.gradle.org/m2' }
-    mavenCentral()
-  }
-  dependencies {
-    classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.3'
-  }
-}
+apply plugin: 'wrapper'
 
 allprojects {
   // We want to see all test results.  This is equivalent to setting --continue
@@ -32,6 +39,7 @@ allprojects {
   ext {
     scalaBinaryVersion = '2.11'
     scalaVersion = scalaBinaryVersion + '.8'
+    sparkVersion = '2.1.1'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
     slf4jVersion = '1.7.21'
@@ -39,15 +47,21 @@ allprojects {
     antVersion = '1.9.7'
     pxfVersion = '2.5.1.0'
     osgiVersion = '6.0.0'
-    jettyVersion = '9.2.16.v20160414'
-    hadoopVersion = '2.7.2'
+    jettyVersion = '9.2.22.v20170606'
+    hadoopVersion = '2.7.3'
     protobufVersion = '2.6.1'
+    kryoVersion = '4.0.0'
+    thriftVersion = '0.9.3'
     sunJerseyVersion = '1.19.1'
     hadoopJettyVersion = '6.1.26'
     jsr305Version = '3.0.1'
     servletAPIVersion = '3.1.0'
     derbyVersion = '10.12.1.1'
     hbaseVersion = '0.98.17-hadoop2'
+    guavaVersion = '14.0.1'
+    nettyAllVersion = '4.0.42.Final'
+    jlineVersion = '2.14.2'
+    fastutilVersion = '8.1.0'
     //hbaseVersion = '0.94.4-gemfire-r45047'
     //hadoopVersion = '2.2.0-gphd-3.1.0.0'
     //hadoopVersion = '2.4.1-gphd-3.2.0.0-54'
@@ -65,24 +79,25 @@ allprojects {
 
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '5'
-    PRODUCT_MAINT = '0'
-    PRODUCT_CLASSFIER = ''
-    PRODUCT_RELEASE_STAGE = 'GA'
-    PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSFIER}"
+    PRODUCT_MAINT = '6'
+    PRODUCT_CLASSIFIER = '-rc1.1'
+    PRODUCT_RELEASE_STAGE = ''
+    PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"
     PRODUCT_VENDOR = 'SnappyData, Inc.'
-    COPYRIGHT = "Copyright 2016, ${PRODUCT_VENDOR} All rights reserved."
+    COPYRIGHT = "Copyright 2017, ${PRODUCT_VENDOR} All rights reserved."
 
     if (rootProject.name == 'snappy-store') {
       subprojectBase = ':'
-      gitCmd = "git --git-dir=${rootDir}/.git --work-tree=${rootDir}"
     } else {
       subprojectBase = ':snappy-store:'
-      gitCmd = "git --git-dir=${project(':snappy-store').projectDir}/.git --work-tree=${project(':snappy-store').projectDir}"
+      // gitCmd = "git --git-dir=${project(':snappy-store').projectDir}/.git --work-tree=${project(':snappy-store').projectDir}"
     }
+    gitCmd = "git --git-dir=${rootDir}/.git --work-tree=${rootDir}"
 
     gitBranch = "${gitCmd} rev-parse --abbrev-ref HEAD".execute().text.trim()
     commitId = "${gitCmd} rev-parse HEAD".execute().text.trim()
     sourceDate = "${gitCmd} log -n 1 --format=%ai".execute().text.trim()
+    buildIdPrefix = System.env.USER + ' '
 
     osArch = System.getProperty('os.arch')
     osName = org.gradle.internal.os.OperatingSystem.current()
@@ -104,18 +119,21 @@ allprojects {
   }
 
   buildRoot = buildRoot.trim()
-  def osDir = osName.getFamilyName().replace(" ", "").toLowerCase()
+  def osDir = osName.getFamilyName().replace(' ', '').toLowerCase()
   if (!buildRoot.isEmpty()) {
     buildDir = new File(buildRoot, osDir + '/' +  project.path.replace(':', '/'))
   } else {
     buildDir = 'build-artifacts/' + osDir
   }
+  if (rootProject.hasProperty('enablePublish')) {
+    buildIdPrefix = 'SnappyData, Inc. '
+  }
 
   ext {
     productDir = file("${rootProject.buildDir}/store")
     locDir = 'com/pivotal/gemfirexd/internal/loc'
-    clientMsgOutDir = "${project(subprojectBase + 'gemfirexd-core').buildDir}/client/${locDir}"
-    if (!project.hasProperty("sanity")) {
+    clientMsgOutDir = "${project(subprojectBase + 'snappydata-store-core').buildDir}/client/${locDir}"
+    if (!rootProject.hasProperty('sanity')) {
       isSane = 'true'
     } else {
       isSane = sanity
@@ -160,16 +178,16 @@ def writeTestProperties(def parent, def name) {
 
 def getManifest(def symname, def imports, def exports, def otherAttrs) {
   def attrs = [
-    "Manifest-Version"        : "1.0",
-    "Title"                   : PRODUCT_NAME,
-    "Bundle-Name"             : "${PRODUCT_NAME} ${PRODUCT_VERSION} ${PRODUCT_RELEASE_STAGE}",
-    "Bundle-Version"          : PRODUCT_VERSION,
-    "Bundle-Vendor"           : PRODUCT_VENDOR,
-    "Bundle-SymbolicName"     : symname,
-    "Bundle-ActivationPolicy" : "lazy",
-    "Bundle-NativeCode"       : "com/sun/jna/win32-x86/jnidispatch.dll; processor=x86;osname=win32, com/sun/jna/win32-x86-64/jnidispatch.dll; processor=x86-64;osname=win32, com/sun/jna/w32ce-arm/jnidispatch.dll; processor=arm;osname=wince,  com/sun/jna/sunos-x86/libjnidispatch.so; processor=x86;osname=sunos, com/sun/jna/sunos-x86-64/libjnidispatch.so; processor=x86-64;osname=sunos, com/sun/jna/sunos-sparc/libjnidispatch.so; processor=sparc;osname=sunos, com/sun/jna/sunos-sparcv9/libjnidispatch.so; processor=sparcv9;osname=sunos,  com/sun/jna/aix-ppc/libjnidispatch.a; processor=ppc;osname=aix, com/sun/jna/aix-ppc64/libjnidispatch.a; processor=ppc64;osname=aix,  com/sun/jna/linux-ppc/libjnidispatch.so; processor=ppc;osname=linux, com/sun/jna/linux-ppc64/libjnidispatch.so; processor=ppc64;osname=linux, com/sun/jna/linux-x86/libjnidispatch.so; processor=x86;osname=linux, com/sun/jna/linux-x86-64/libjnidispatch.so; processor=x86-64;osname=linux, com/sun/jna/linux-arm/libjnidispatch.so; processor=arm;osname=linux, com/sun/jna/linux-ia64/libjnidispatch.so; processor=ia64;osname=linux,  com/sun/jna/freebsd-x86/libjnidispatch.so; processor=x86;osname=freebsd, com/sun/jna/freebsd-x86-64/libjnidispatch.so; processor=x86-64;osname=freebsd, com/sun/jna/openbsd-x86/libjnidispatch.so; processor=x86;osname=openbsd, com/sun/jna/openbsd-x86-64/libjnidispatch.so; processor=x86-64;osname=openbsd,  com/sun/jna/darwin/libjnidispatch.jnilib; osname=macosx;processor=x86;processor=x86-64;processor=ppc",
-    "DynamicImport-Package"   : imports,
-    "Export-Package"          : exports
+    'Manifest-Version'        : '1.0',
+    'Title'                   : PRODUCT_NAME,
+    'Bundle-Name'             : "${PRODUCT_NAME} ${PRODUCT_VERSION} ${PRODUCT_RELEASE_STAGE}",
+    'Bundle-Version'          : PRODUCT_VERSION,
+    'Bundle-Vendor'           : PRODUCT_VENDOR,
+    'Bundle-SymbolicName'     : symname,
+    'Bundle-ActivationPolicy' : 'lazy',
+    'Bundle-NativeCode'       : 'com/sun/jna/win32-x86/jnidispatch.dll; processor=x86;osname=win32, com/sun/jna/win32-x86-64/jnidispatch.dll; processor=x86-64;osname=win32, com/sun/jna/w32ce-arm/jnidispatch.dll; processor=arm;osname=wince,  com/sun/jna/sunos-x86/libjnidispatch.so; processor=x86;osname=sunos, com/sun/jna/sunos-x86-64/libjnidispatch.so; processor=x86-64;osname=sunos, com/sun/jna/sunos-sparc/libjnidispatch.so; processor=sparc;osname=sunos, com/sun/jna/sunos-sparcv9/libjnidispatch.so; processor=sparcv9;osname=sunos,  com/sun/jna/aix-ppc/libjnidispatch.a; processor=ppc;osname=aix, com/sun/jna/aix-ppc64/libjnidispatch.a; processor=ppc64;osname=aix,  com/sun/jna/linux-ppc/libjnidispatch.so; processor=ppc;osname=linux, com/sun/jna/linux-ppc64/libjnidispatch.so; processor=ppc64;osname=linux, com/sun/jna/linux-x86/libjnidispatch.so; processor=x86;osname=linux, com/sun/jna/linux-x86-64/libjnidispatch.so; processor=x86-64;osname=linux, com/sun/jna/linux-arm/libjnidispatch.so; processor=arm;osname=linux, com/sun/jna/linux-ia64/libjnidispatch.so; processor=ia64;osname=linux,  com/sun/jna/freebsd-x86/libjnidispatch.so; processor=x86;osname=freebsd, com/sun/jna/freebsd-x86-64/libjnidispatch.so; processor=x86-64;osname=freebsd, com/sun/jna/openbsd-x86/libjnidispatch.so; processor=x86;osname=openbsd, com/sun/jna/openbsd-x86-64/libjnidispatch.so; processor=x86-64;osname=openbsd,  com/sun/jna/darwin/libjnidispatch.jnilib; osname=macosx;processor=x86;processor=x86-64;processor=ppc',
+    'DynamicImport-Package'   : imports,
+    'Export-Package'          : exports
   ]
   attrs.putAll(otherAttrs)
   return attrs
@@ -197,12 +215,13 @@ def replaceRegex(def fileDir, def fileName, def regex, def replacement) {
       line.replaceAll(regex, replacement)
     }
   }
+  delete filePath
   file("${tmpDir}/${fileName}").renameTo(file(filePath))
 }
 
 def getProcessId() {
   def name = java.lang.mangement.ManagementFactory.getRuntimeMXBean().getName()
-  return name[0..name.indexOf("@") - 1]
+  return name[0..name.indexOf('@') - 1]
 }
 
 def getStackTrace(def t) {
@@ -242,7 +261,7 @@ task cleanReports << {
 
 def parallelTests(def proj, def testClasses, def testObj, def prefix, def splitSize, def parallelism) {
   proj.task("${prefix}Parallel") {
-    dependsOn proj.testClasses, "${subprojectBase}product"
+    dependsOn proj.testClasses, "${subprojectBase}storeProduct"
     def ntestClasses = testClasses.size()
     def testClassesGroups = testClasses.collate(splitSize)
     def ntestClassesGroups = testClassesGroups.size()
@@ -410,6 +429,13 @@ subprojects {
       scopes.PROVIDED.plus += [ configurations.provided ]
     }
   }
+  eclipse {
+    classpath {
+      defaultOutputDir = file('build-artifacts/eclipse')
+      downloadSources = true
+      plusConfigurations += [ configurations.provided ]
+    }
+  }
 
   sourceSets {
     main.compileClasspath += configurations.provided
@@ -437,12 +463,12 @@ subprojects {
   }
 
   test {
-    dependsOn "${subprojectBase}product"
-    maxParallelForks = (2 * Runtime.getRuntime().availableProcessors())
-    minHeapSize = '768m'
-    maxHeapSize = '768m'
+    dependsOn "${subprojectBase}storeProduct"
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
+    minHeapSize = '1g'
+    maxHeapSize = '1g'
 
-    def single = System.getProperty("junit.single")
+    def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
       include '**/*Test.class'
       exclude '**/*DUnitTest.class'
@@ -464,7 +490,7 @@ subprojects {
     reports.junitXml.destination = file(workingDir)
   }
   task junitSingle1(type: Test) {
-    def single = System.getProperty("junit.single")
+    def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
       include '**/BugsTest.class'
       include '**/DDLPersistenceHDFSTest.class'
@@ -479,11 +505,12 @@ subprojects {
     exclude '**/*DUnitTest.class'
     exclude '**/*DUnit.class'
     exclude '**/derbyTesting/**'
+    exclude '**/client/am/**'
   }
   task junit {
     def testClasses = new ArrayList()
     testClasses.addAll(junitSingle1.getCandidateClassFiles().getFiles())
-    def single = System.getProperty("junit.single")
+    def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
       testClasses.addAll(junitSingle2.getCandidateClassFiles().getFiles())
     }
@@ -502,16 +529,34 @@ subprojects {
   junit.dependsOn junitParallel, junitReport
 
   task dunitTest(type:Test, overwrite: true) {
-    dependsOn "${subprojectBase}product"
+    dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
-    minHeapSize = '512m'
-    maxHeapSize = '512m'
+    minHeapSize = '2g'
+    maxHeapSize = '2g'
 
-    def single = System.getProperty("dunit.single")
+    def single = System.getProperty('dunit.single')
     if (single == null || single.length() == 0) {
-      include '**/*DUnitTest.class'
-      include '**/*DUnit.class'
-      exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
+      single = rootProject.hasProperty('dunit.single') ?
+          rootProject.property('dunit.single') : null
+    }
+    if (single == null || single.length() == 0) {
+      def dunitTests = fileTree(dir: testClassesDir,
+          includes: ['**/*DUnitTest.class', '**/*DUnit.class'],
+          excludes: ['**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
+      FileTree includeTestFiles = dunitTests
+      int dunitFrom = rootProject.hasProperty('dunit.from') ?
+          getLast(includeTestFiles, rootProject.property('dunit.from')) : 0
+      int dunitTo = rootProject.hasProperty('dunit.to') ?
+          getLast(includeTestFiles, rootProject.property('dunit.to')) : includeTestFiles.size()
+
+      int begin = dunitFrom != -1 ? dunitFrom : 0
+      int end = dunitTo != -1 ? dunitTo : includeTestFiles.size()
+      def filteredSet = includeTestFiles.drop(begin).take(end-begin+1).collect {f -> "**/" + f.name}
+      if (begin != 0 || end != includeTestFiles.size()) {
+        println("Picking tests :")
+        filteredSet.each { a -> println(a) }
+      }
+      include filteredSet
     } else {
       include single
     }
@@ -542,12 +587,12 @@ subprojects {
   dunit.dependsOn dunitParallel, dunitReport
 
   task wanTest(type:Test) {
-    dependsOn "${subprojectBase}product"
+    dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = (int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1)
-    minHeapSize = '512m'
-    maxHeapSize = '512m'
+    minHeapSize = '1g'
+    maxHeapSize = '1g'
 
-    def single = System.getProperty("wan.single")
+    def single = System.getProperty('wan.single')
     if (single == null || single.length() == 0) {
       include '**/pivotal/gemfirexd/wan/**/*DUnit.class'
     } else {
@@ -580,8 +625,8 @@ subprojects {
   wan.dependsOn wanParallel, wanReport
 
   task integrationTest(type:Test) {
-    dependsOn "${subprojectBase}product"
-    maxParallelForks = (2 * Runtime.getRuntime().availableProcessors())
+    dependsOn "${subprojectBase}storeProduct"
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
 
     include '**/*Test.class'
     exclude '**/*DUnitTest.class'
@@ -604,7 +649,7 @@ subprojects {
     tasks.withType(Test).each { test ->
       test.configure {
 
-        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError', '-XX:MaxPermSize=128M',
+        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError',
                    '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC',
                    '-XX:CMSInitiatingOccupancyFraction=50',
                    '-XX:+CMSClassUnloadingEnabled', '-ea']
@@ -636,23 +681,23 @@ subprojects {
           def eol = System.getProperty('line.separator')
           beforeTest { desc ->
             def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-            def progress = new File(workingDir, "progress.txt")
-            def output = new File(workingDir, "output.txt")
+            def progress = new File(workingDir, 'progress.txt')
+            def output = new File(workingDir, 'output.txt')
             progress << "${now} Starting test ${desc.className} ${desc.name}${eol}"
             output << "${now} STARTING TEST ${desc.className} ${desc.name}${eol}${eol}"
           }
           onOutput { desc, event ->
-            def output = new File(workingDir, "output.txt")
+            def output = new File(workingDir, 'output.txt')
             def msg = event.message
             if (event.destination.toString() == 'StdErr') {
-              msg = msg.replace("\n", "\n[stderr]  ")
+              msg = msg.replace('\n', '\n[stderr]  ')
             }
             output << msg
           }
           afterTest { desc, result ->
             def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-            def progress = new File(workingDir, "progress.txt")
-            def output = new File(workingDir, "output.txt")
+            def progress = new File(workingDir, 'progress.txt')
+            def output = new File(workingDir, 'output.txt')
             progress << "${now} Completed test ${desc.className} ${desc.name} with result: ${result.resultType}${eol}"
             output << "${eol}${now} COMPLETED TEST ${desc.className} ${desc.name} with result: ${result.resultType}${eol}${eol}"
             result.exceptions.each { t ->
@@ -707,10 +752,10 @@ subprojects {
         mavenDeployer {
           beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-          repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+          repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
             authentication(userName: ossrhUsername, password: ossrhPassword)
           }
-          snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+          snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots/') {
             authentication(userName: ossrhUsername, password: ossrhPassword)
           }
 
@@ -748,14 +793,20 @@ subprojects {
   }
 }
 
+int getLast(includeTestFiles, pattern) {
+  includeTestFiles.findLastIndexOf {
+    File f -> f.name.indexOf(pattern) >= 0
+  }
+}
+
 task junit {
   dependsOn subprojects.junit
 }
 task dunit {
-  dependsOn "${subprojectBase}gemfirexd-tools:dunit"
+  dependsOn "${subprojectBase}snappydata-store-tools:dunit"
 }
 task wan {
-  dependsOn "${subprojectBase}gemfirexd-tools:wan"
+  dependsOn "${subprojectBase}snappydata-store-tools:wan"
 }
 task integrationTest {
   dependsOn subprojects.integrationTest
@@ -786,15 +837,15 @@ if (!rootProject.hasProperty('store')) {
 task generateSources {
   dependsOn subprojectBase + 'gemfire-jgroups:jgMagic'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'
-  dependsOn subprojectBase + 'gemfirexd-core:compileJavacc'
-  dependsOn subprojectBase + 'gemfirexd-core:generatePropertiesFiles'
+  dependsOn subprojectBase + 'snappydata-store-core:compileJavacc'
+  dependsOn subprojectBase + 'snappydata-store-core:generatePropertiesFiles'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'
-  dependsOn subprojectBase + 'gemfirexd-shared:createVersionPropertiesFile'
-  dependsOn subprojectBase + 'gemfirexd-core:doSplit'
-  dependsOn subprojectBase + 'gemfirexd-core:odbcMeta'
-  dependsOn subprojectBase + 'gemfirexd-client:generatePropertiesFiles'
-  dependsOn subprojectBase + 'gemfirexd-tools:compileJavacc'
-  dependsOn subprojectBase + 'gemfirexd-tools:generatePropertiesFiles'
+  dependsOn subprojectBase + 'snappydata-store-shared:createVersionPropertiesFile'
+  dependsOn subprojectBase + 'snappydata-store-core:doSplit'
+  dependsOn subprojectBase + 'snappydata-store-core:odbcMeta'
+  dependsOn subprojectBase + 'snappydata-store-client:generatePropertiesFiles'
+  dependsOn subprojectBase + 'snappydata-store-tools:compileJavacc'
+  dependsOn subprojectBase + 'snappydata-store-tools:generatePropertiesFiles'
 }
 
 def includeJar(def jarFile) {
@@ -807,19 +858,20 @@ def includeJar(def jarFile) {
 }
 
 jar.enabled = false
+install.enabled = false
 
 // pack the entire GemFireXD product tree
-task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
-    subprojectBase + 'gemfirexd-core:shadowJar',
-    subprojectBase + 'gemfirexd-tools:jar' ]) << {
+task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJar',
+    subprojectBase + 'snappydata-store-core:shadowJar',
+    subprojectBase + 'snappydata-store-tools:shadowJar' ]) << {
 
   delete productDir
 
-  def sharedProject = project(subprojectBase + 'gemfirexd-shared')
-  def clientProject = project(subprojectBase + 'gemfirexd-client')
+  def sharedProject = project(subprojectBase + 'snappydata-store-shared')
+  def clientProject = project(subprojectBase + 'snappydata-store-client')
   def gemcoreProject = project(subprojectBase + 'gemfire-core')
-  def coreProject = project(subprojectBase + 'gemfirexd-core')
-  def toolsProject = project(subprojectBase + 'gemfirexd-tools')
+  def coreProject = project(subprojectBase + 'snappydata-store-core')
+  def toolsProject = project(subprojectBase + 'snappydata-store-tools')
 
   def gcmDir = System.getProperty('GCMDIR', '/gcm')
 
@@ -831,13 +883,13 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
   // first copy the product and dependent jars
   copy {
     from(clientProject.jar.destinationDir) {
-      include clientProject.jar.archiveName
+      include clientProject.shadowJar.archiveName
     }
     from(coreProject.jar.destinationDir) {
       include coreProject.shadowJar.archiveName
     }
     from(toolsProject.jar.destinationDir) {
-      include toolsProject.jar.archiveName
+      include toolsProject.shadowJar.archiveName
     }
     from extraJars
     into "${productDir}/lib"
@@ -865,17 +917,29 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
     fileMode 0755
   }
 
-  // the native JNI library
+  // the native JNI libraries
   if (osName.isLinux()) {
+    copy {
+      from gemcoreProject.projectDir.getAbsolutePath() + '/lib'
+      into "${productDir}/lib"
+      include '*.so'
+    }
     copy {
       from coreProject.projectDir.getAbsolutePath() + '/lib'
       into "${productDir}/lib"
     }
   }
+  if (osName.isWindows()) {
+    copy {
+      from gemcoreProject.projectDir.getAbsolutePath() + '/lib'
+      into "${productDir}/lib"
+      include '*.dll'
+    }
+  }
 
   // examples, javadocs, vsd
   copy {
-    from(project(subprojectBase + 'gemfirexd-core').projectDir.getAbsolutePath() + '/../examples') {
+    from(project(subprojectBase + 'snappydata-store-core').projectDir.getAbsolutePath() + '/../examples') {
       exclude 'src/main/java/mapreduce/README.txt'
       exclude 'src/main/java/mapreduce/pom.xml'
     }
@@ -886,7 +950,7 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
     into "${productDir}/examples"
   }
   copy {
-    from(project(subprojectBase + 'gemfirexd-core').projectDir.getAbsolutePath() + '/../examples') {
+    from(project(subprojectBase + 'snappydata-store-core').projectDir.getAbsolutePath() + '/../examples') {
       include 'src/main/java/mapreduce/README.txt'
       include 'src/main/java/mapreduce/pom.xml'
     }
@@ -896,7 +960,7 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
     }
   }
   copy {
-    from (project(subprojectBase + 'gemfirexd-core').projectDir.getAbsolutePath() + '/../quickstart')
+    from (project(subprojectBase + 'snappydata-store-core').projectDir.getAbsolutePath() + '/../quickstart')
     into "${productDir}/quickstart"
   }
   copy {
@@ -941,7 +1005,7 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
       include 'hydratest/hydracheck/*.sh'
       include 'bin/scaleperf/*'
     }
-    from (project(subprojectBase +  'gemfirexd-tests').projectDir.getAbsolutePath() + '/src/main/java') {
+    from (project(subprojectBase +  'snappydata-store-tests').projectDir.getAbsolutePath() + '/src/main/java') {
       include '**/*.bt'
       include '**/*.conf'
       include '**/*.inc'
@@ -954,24 +1018,24 @@ task product(dependsOn: [ subprojectBase + 'gemfirexd-client:jar',
       include '**/*.ts'
       include '**/*.pl'
     }
-    into (project(subprojectBase + 'gemfirexd-tests').buildDir.getAbsolutePath() + '/classes/main')
+    into (project(subprojectBase + 'snappydata-store-tests').buildDir.getAbsolutePath() + '/classes/main')
   }
 }
 if (rootProject.hasProperty('docs')) {
-  product.dependsOn subprojectBase + 'gemfirexd-shared:javadoc',
-                    subprojectBase + 'gemfirexd-core:javadoc'
+  storeProduct.dependsOn subprojectBase + 'snappydata-store-shared:javadoc',
+                    subprojectBase + 'snappydata-store-core:javadoc'
 }
 
 task cleanAll {
   dependsOn clean, subprojects.clean
 }
 task buildAll {
-  dependsOn subprojects.assemble, subprojects.testClasses, product
+  dependsOn subprojects.assemble, subprojects.testClasses, storeProduct
   mustRunAfter cleanAll
 }
 check.mustRunAfter buildAll
 task precheckin {
-  if (project.hasProperty('gfxd')) {
+  if (rootProject.hasProperty('gfxd')) {
     dependsOn cleanAll, buildAll, check
   }
 }

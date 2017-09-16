@@ -45,7 +45,6 @@ import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 // GemStone changes END
@@ -524,8 +523,7 @@ public class HeapRowLocation extends DataType implements RowLocation
     }
 
     @Override
-    public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
-        ByteSource bs) {
+    public int readBytes(long memOffset, int columnWidth, ByteSource bs) {
       throw new UnsupportedOperationException("unexpected invocation for "
           + getClass());
     }

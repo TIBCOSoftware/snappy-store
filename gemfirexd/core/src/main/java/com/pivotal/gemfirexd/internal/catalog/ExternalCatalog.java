@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -16,6 +16,11 @@
  */
 
 package com.pivotal.gemfirexd.internal.catalog;
+
+import java.util.HashMap;
+import java.util.List;
+
+import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
 
 /**
  * Need to keep GemXD independent of any snappy/spark/hive related
@@ -45,6 +50,36 @@ public interface ExternalCatalog {
    * Get the schema for a column table in Json format (as in Spark).
    */
   String getColumnTableSchemaAsJson(String schema, String tableName, boolean skipLocks);
+
+  /**
+   * Retruns a map of DBs to list of store tables(those tables that
+   * are in store DD) in catalog
+   */
+  HashMap<String, List<String>> getAllStoreTablesInCatalog(boolean skipLocks);
+
+  /**
+   *  Removes a table from the external catalog
+   */
+  boolean removeTable(String schema, String table, boolean skipLocks);
+
+  /**
+   * Returns the schema in which this catalog is created
+   * @return
+   */
+  public String catalogSchemaName();
+
+  Object getTable(String schema, String tableName, boolean skipLocks);
+
+  /**
+   * Get the metadata for all external hive tables (including all their columns).
+   */
+  public List<ExternalTableMetaData> getHiveTables(boolean skipLocks);
+
+  /**
+   * Returns the meta data of the Hive Table
+   */
+  public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
+      boolean skipLocks);
 
   void stop();
 }

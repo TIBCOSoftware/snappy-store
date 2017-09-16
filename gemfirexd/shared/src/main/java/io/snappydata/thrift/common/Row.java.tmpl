@@ -24,7 +24,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -51,7 +51,11 @@ public final class Row extends io.snappydata.thrift.common.ThriftRow {
   }
 
   public Row(List<ColumnDescriptor> metadata) {
-    super(metadata);
+    this(metadata, false);
+  }
+
+  public Row(List<ColumnDescriptor> metadata, boolean checkOutputParameters) {
+    super(metadata, checkOutputParameters);
   }
 
   /**
@@ -65,8 +69,8 @@ public final class Row extends io.snappydata.thrift.common.ThriftRow {
    * Performs a deep copy on <i>other</i> if copyValues is true else don't copy
    * values.
    */
-  public Row(Row other, boolean copyValues) {
-    super(other, copyValues);
+  public Row(Row other, boolean otherIsEmpty, boolean copyValues) {
+    super(other, otherIsEmpty, copyValues);
   }
 
   @Override

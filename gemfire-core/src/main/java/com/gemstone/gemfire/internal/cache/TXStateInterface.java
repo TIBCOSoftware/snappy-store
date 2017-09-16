@@ -20,6 +20,7 @@ package com.gemstone.gemfire.internal.cache;
 import java.util.Collection;
 
 import com.gemstone.gemfire.cache.IsolationLevel;
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TransactionException;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
@@ -164,4 +165,8 @@ public interface TXStateInterface extends InternalDataView {
   public void setExecutionSequence(int execSeq);
   
   public int getExecutionSequence();
+
+  public boolean isSnapshot();
+
+  public void recordVersionForSnapshot(Object member, long version, Region region);
 }

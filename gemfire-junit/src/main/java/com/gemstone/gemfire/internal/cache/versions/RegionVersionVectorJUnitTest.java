@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.BitSet;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import junit.framework.TestCase;
 
@@ -31,6 +32,47 @@ import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.shared.Version;
 
 public class RegionVersionVectorJUnitTest extends TestCase {
+
+
+  public void testRVVGII() {
+
+    DiskStoreID id1 = new DiskStoreID(1, 0);
+    DiskStoreID id2 = new DiskStoreID(2, 0);
+
+    DiskRegionVersionVector rvv1 = new DiskRegionVersionVector(id1);
+
+    for(int i=1;i<19;i++) {
+      rvv1.recordVersion(id1,i,null);
+    }
+    for(int i=1;i<10;i++) {
+      rvv1.recordVersion(id2,i,null);
+    }
+
+    System.out.println("This node init, rvv1= "+ rvv1.fullToString());
+
+    DiskRegionVersionVector rvv2 = new DiskRegionVersionVector(id2);
+
+    for(int i=1;i<20;i++) {
+      rvv2.recordVersion(id1,i,null);
+    }
+    for(int i=1;i<12;i++) {
+      rvv2.recordVersion(id2,i,null);
+    }
+
+
+    System.out.println("This node init, rvv2="+rvv2.fullToString());
+
+    rvv1.recordVersions(rvv2, null);
+
+
+    System.out.println("This node init, rvv1="+rvv1.fullToString());
+
+    rvv1.getCurrentVersion();
+    System.out.println("This node init, rvv1="+rvv1.fullToString());
+
+    assert(rvv1.fullToString().contentEquals("RegionVersionVector[00000000-0000-0001-0000-000000000000={rv19 gc0 localVersion=19 local exceptions=[]} others={00000000-0000-0001-0000-000000000000={rv19 bsv1 bs=[], 00000000-0000-0002-0000-000000000000={rv11 bsv11 bs=[0]}, gc={}]"));
+    assert(rvv1.contains(id1,19));
+  }
 
   public void testExceptionsWithContains() {
     DiskStoreID ownerId = new DiskStoreID(0, 0);
@@ -42,7 +84,7 @@ public class RegionVersionVectorJUnitTest extends TestCase {
     doExceptionsWithContains(ownerId, rvv);
     doExceptionsWithContains(id1, rvv);
   }
-  
+
   public void testRVVSerialization() throws IOException, ClassNotFoundException {
     DiskStoreID ownerId = new DiskStoreID(0, 0);
     DiskStoreID id1 = new DiskStoreID(0, 1);
@@ -70,7 +112,57 @@ public class RegionVersionVectorJUnitTest extends TestCase {
     
     assertTrue(rvv.sameAs(rvv2));
   }
-  
+
+  public void testRVVSnapshot() throws IOException, ClassNotFoundException {
+    DiskStoreID ownerId = new DiskStoreID(0, 0);
+    DiskStoreID id1 = new DiskStoreID(0, 1);
+    DiskStoreID id2 = new DiskStoreID(1, 0);
+
+    DiskRegionVersionVector rvv = new DiskRegionVersionVector(ownerId);
+
+    rvv.recordVersion(id1, 2);
+    rvv.recordVersion(id1, 1);
+    rvv.recordVersion(id1, 7);
+    rvv.recordVersion(id1, 9);
+    rvv.recordVersion(id1, 20);
+    rvv.recordVersion(id1, 11);
+    rvv.recordVersion(id1, 12);
+    rvv.recordGCVersion(id2, 5);
+    rvv.recordGCVersion(id1, 3);
+
+    ConcurrentHashMap<DiskStoreID, RegionVersionHolder<DiskStoreID>> vector = rvv.getCopyOfSnapShotOfMemberVersion();
+    ConcurrentHashMap<DiskStoreID, Long> gcVersions = rvv.getMemberToGCVersionTest();
+    DiskRegionVersionVector snapShotRvv = new DiskRegionVersionVector(ownerId, vector, rvv.getCurrentVersion(),
+        gcVersions, rvv.getGCVersion(null), false, rvv.getLocalExceptions());
+
+    assertTrue(rvv.sameAs(snapShotRvv));
+  }
+
+  public void testRVVSnapshotContains() throws IOException, ClassNotFoundException {
+    DiskStoreID ownerId = new DiskStoreID(0, 0);
+    DiskStoreID id1 = new DiskStoreID(0, 1);
+    DiskStoreID id2 = new DiskStoreID(1, 0);
+
+    DiskRegionVersionVector rvv = new DiskRegionVersionVector(ownerId);
+
+    for(int i=0; i< 57; i++) {
+      rvv.recordVersion(id1, i);
+    }
+    rvv.recordVersion(id1, 60);
+    rvv.recordVersion(id1, 58);
+
+    ConcurrentHashMap<DiskStoreID, RegionVersionHolder<DiskStoreID>> vector = rvv.getCopyOfSnapShotOfMemberVersion();
+
+    assertTrue(vector.get(id1).contains(2));
+    assertTrue(vector.get(id1).contains(1));
+    assertTrue(vector.get(id1).contains(7));
+    assertTrue(vector.get(id1).contains(9));
+    assertTrue(vector.get(id1).contains(20));
+    assertTrue(vector.get(id1).contains(11));
+    assertTrue(vector.get(id1).contains(12));
+    assertTrue(vector.get(id1).contains(3));
+  }
+
   /**
    * Test that we can copy the member to version map correctly.
    */

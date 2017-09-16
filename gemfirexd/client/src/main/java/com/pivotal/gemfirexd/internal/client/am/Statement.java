@@ -45,6 +45,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
@@ -913,7 +914,7 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
                 try {
                 conn = (NetConnection)java.sql.DriverManager.getConnection(
                     com.pivotal.gemfirexd.internal.client.am.Configuration
-                        .jdbcDerbyNETProtocol + host + ':' + serverPort,
+                        .jdbcDerbyNETProtocol() + host + ':' + serverPort,
                         props);
                 // cancel the statement
                 String cancelStmt = "CALL SYS.CANCEL_STATEMENT(" + 
@@ -2719,7 +2720,7 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
           // read next token
           int idx = sql.indexOf('>');
           if (idx > 0) {
-            firstToken = getStatementToken(sql, idx + 1);
+            firstToken = ClientSharedUtils.getStatementToken(sql, idx + 1);
           }
         }
         if (firstToken.equalsIgnoreCase("set")) {
@@ -2745,37 +2746,6 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
         }
     }
 
-
-    /**
-     * Minion of getStatementToken. If the input string starts with an
-     * identifier consisting of letters only (like "select", "update"..),return
-     * it, else return supplied string.
-     * @see #getStatementToken
-     * @param sql input string
-     * @return identifier or unmodified string
-     */
-    private String isolateAnyInitialIdentifier (String sql) {
-        int idx;
-        for (idx = 0; idx < sql.length(); idx++) {
-            char ch = sql.charAt(idx);
-            if (!Character.isLetter(ch)
-                && ch != '<' /* for <local>/<global> tags */) {
-                // first non-token char found
-                break;
-            }
-        }
-        // return initial token if one is found, or the entire string otherwise
-        return (idx > 0) ? sql.substring(0, idx) : sql;
-    }
-
-    /**
-     * State constants used by the FSM inside getStatementToken.
-     * @see #getStatementToken
-     */
-    private final static int OUTSIDE = 0;
-    private final static int INSIDE_SIMPLECOMMENT = 1;
-    private final static int INSIDE_BRACKETED_COMMENT = 2;
-
     /**
      * Step past any initial non-significant characters to find first
      * significant SQL token so we can classify statement.
@@ -2784,130 +2754,7 @@ public class Statement implements java.sql.Statement, StatementCallbackInterface
      * @throws SqlException std exception policy
      */
     private String getStatementToken(String sql) throws SqlException {
-      return getStatementToken(sql, 0);
-    }
-
-    /**
-     * Step past any initial non-significant characters to find first
-     * significant SQL token so we can classify statement.
-     *
-     * @return first significant SQL token
-     * @throws SqlException std exception policy
-     */
-    private String getStatementToken(String sql, int idx) throws SqlException {
-        int bracketNesting = 0;
-        int state = OUTSIDE;
-        String tokenFound = null;
-        char next;
-
-        final int sqlLen = sql.length();
-        while (idx < sqlLen && tokenFound == null) {
-            next = sql.charAt(idx);
-
-            switch (state) {
-            case OUTSIDE:
-                switch (next) {
-                case '\n':
-                case '\t':
-                case '\r':
-                case '\f':
-                case ' ':
-                case '(':
-                case '{': // JDBC escape characters
-                case '=': //
-                case '?': //
-                    idx++;
-                    break;
-                case '/':
-                    if (idx == sql.length() - 1) {
-                        // no more characters, so this is the token
-                        tokenFound = "/";
-                    } else if (sql.charAt(idx + 1) == '*') {
-                        state = INSIDE_BRACKETED_COMMENT;
-                        bracketNesting++;
-                        idx++; // step two chars
-                    }
-
-                    idx++;
-                    break;
-                case '-':
-                    if (idx == sql.length() - 1) {
-                        // no more characters, so this is the token
-                        tokenFound = "/";
-                    } else if (sql.charAt(idx + 1) == '-') {
-                        state = INSIDE_SIMPLECOMMENT;
-                        idx++;
-                    }
-
-                    idx++;
-                    break;
-                default:
-                    // a token found
-                    tokenFound = isolateAnyInitialIdentifier(
-                        sql.substring(idx));
-
-                    break;
-                }
-
-                break;
-            case INSIDE_SIMPLECOMMENT:
-                switch (next) {
-                case '\n':
-                case '\r':
-                case '\f':
-
-                    state = OUTSIDE;
-                    idx++;
-
-                    break;
-                default:
-                    // anything else inside a simple comment is ignored
-                    idx++;
-                    break;
-                }
-
-                break;
-            case INSIDE_BRACKETED_COMMENT:
-                switch (next) {
-                case '/':
-                    if (idx != sql.length() - 1 &&
-                            sql.charAt(idx + 1) == '*') {
-
-                        bracketNesting++;
-                        idx++; // step two chars
-                    }
-                    idx++;
-
-                    break;
-                case '*':
-                    if (idx != sql.length() - 1 &&
-                            sql.charAt(idx + 1) == '/') {
-
-                        bracketNesting--;
-
-                        if (bracketNesting == 0) {
-                            state = OUTSIDE;
-                            idx++; // step two chars
-                        }
-                    }
-
-                    idx++;
-                    break;
-                default:
-                    idx++;
-                    break;
-                }
-
-                break;
-            default:
-                if (SanityManager.DEBUG) {
-                    SanityManager.ASSERT(false);
-                }
-                break;
-            }
-        }
-
-        return tokenFound;
+      return ClientSharedUtils.getStatementToken(sql, 0);
     }
 
     private void parseUpdateSql(String firstToken) throws SqlException {

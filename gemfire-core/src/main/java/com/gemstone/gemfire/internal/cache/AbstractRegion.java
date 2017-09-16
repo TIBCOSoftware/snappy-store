@@ -1789,17 +1789,16 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     this.evictionAttributes = new EvictionAttributesImpl((EvictionAttributesImpl)attrs
         .getEvictionAttributes());
     if (this.partitionAttributes != null) {
-      if (this.evictionAttributes != null
-          && this.evictionAttributes.getAlgorithm().isLRUMemory()
+      if (this.evictionAttributes.getAlgorithm().isLRUMemory()
           && this.partitionAttributes.getLocalMaxMemory() > 0
-          && this.evictionAttributes.getMaximum() > this.partitionAttributes.getLocalMaxMemory()) {
+          && this.evictionAttributes.getMaximum() != this.partitionAttributes.getLocalMaxMemory()) {
         
         getCache().getLoggerI18n().warning(LocalizedStrings.Mem_LRU_Eviction_Attribute_Reset,
             new Object[] { regionName,this.evictionAttributes.getMaximum(),
             this.partitionAttributes.getLocalMaxMemory() });
         this.evictionAttributes.setMaximum(this.partitionAttributes.getLocalMaxMemory());
       }
-      ((PartitionAttributesImpl) this.partitionAttributes)
+      ((PartitionAttributesImpl)this.partitionAttributes)
           .computeLocalMaxMemory();
     }
     //final boolean isNotPartitionedRegion = !(attrs.getPartitionAttributes() != null || attrs
@@ -2156,7 +2155,7 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     return new RegionSnapshotServiceImpl(this);
   }
   
-  public Compressor getCompressor() {
+  public final Compressor getCompressor() {
     return this.compressor;
   }
 
@@ -2247,4 +2246,5 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     }
     return criteria;
   }
+
 }

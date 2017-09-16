@@ -82,7 +82,7 @@ public final class ClientMarkerMessageImpl implements ClientMessage {
   }
   
   protected Message getGFEMessage() throws IOException {
-    Message message = new Message(1, Version.CURRENT);
+    Message message = new Message(1, Version.CURRENT_GFE);
     message.setMessageType(MessageType.CLIENT_MARKER);
     message.setLogger(this.logger);
     message.setTransactionId(0);

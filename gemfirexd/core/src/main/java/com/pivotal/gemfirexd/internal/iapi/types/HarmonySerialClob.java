@@ -204,7 +204,7 @@ public class HarmonySerialClob implements Clob, Serializable, Cloneable {
         try {
 // GemStone changes BEGIN
             this.makeCopy = true;
-            return ClientSharedUtils.getJdkHelper().newWrappedString(buf,
+            return ClientSharedUtils.newWrappedString(buf,
                 (int)pos - 1, length);
             /* (original code)
             return new String(buf, (int) (pos - 1), length);

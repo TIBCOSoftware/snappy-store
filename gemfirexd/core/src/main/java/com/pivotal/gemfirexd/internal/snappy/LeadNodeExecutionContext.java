@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -21,12 +21,19 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
+import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
 
 public final class LeadNodeExecutionContext implements GfxdSerializable {
   private long connId;
+
+  private String username;
+  private String authToken;
 
   public LeadNodeExecutionContext() {
     this.connId = 0;
@@ -34,10 +41,23 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
 
   public LeadNodeExecutionContext(long connId) {
     this.connId = connId;
+    LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
+    if (lcc != null) {
+      this.username = ((GenericLanguageConnectionContext)lcc).getUserName();
+      this.authToken = ((GenericLanguageConnectionContext)lcc).getAuthToken();
+    }
   }
 
   public long getConnId() {
     return connId;
+  }
+
+  public String getUserName() {
+    return this.username;
+  }
+
+  public String getAuthToken() {
+    return this.authToken;
   }
 
   @Override
@@ -53,11 +73,15 @@ public final class LeadNodeExecutionContext implements GfxdSerializable {
   @Override
   public void toData(DataOutput out) throws IOException {
     out.writeLong(connId);
+    DataSerializer.writeString(this.username, out);
+    DataSerializer.writeString(this.authToken, out);
   }
 
   @Override
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     connId = in.readLong();
+    this.username = DataSerializer.readString(in);
+    this.authToken = DataSerializer.readString(in);
   }
 
   @Override

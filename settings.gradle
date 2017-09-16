@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 rootProject.name = 'snappy-store'
 
 include ':gemfire-jgroups'
@@ -9,24 +26,24 @@ include 'gemfire-core'
 include 'gemfire-junit'
 include 'gemfire-web'
 include 'gemfire-examples'
-include ':gemfirexd-shared'
-include ':gemfirexd-prebuild'
-include ':gemfirexd-core'
-include ':gemfirexd-client'
-include ':gemfirexd-hibernate'
-include ':gemfirexd-tools'
+include ':snappydata-store-shared'
+include ':snappydata-store-prebuild'
+include ':snappydata-store-core'
+include ':snappydata-store-client'
+include ':snappydata-store-hibernate'
+include ':snappydata-store-tools'
 include ':gemfire-tests'
-include ':gemfirexd-tests'
+include ':snappydata-store-tests'
 include ':snappydata-native'
 
 project(':gemfire-jgroups').projectDir = "$rootDir/lgpl/gemfire-jgroups" as File
 project(':gemfire-trove').projectDir = "$rootDir/lgpl/gemfire-trove" as File
-project(':gemfirexd-shared').projectDir = "$rootDir/gemfirexd/shared" as File
-project(':gemfirexd-prebuild').projectDir = "$rootDir/gemfirexd/prebuild" as File
-project(':gemfirexd-core').projectDir = "$rootDir/gemfirexd/core" as File
-project(':gemfirexd-client').projectDir = "$rootDir/gemfirexd/client" as File
-project(':gemfirexd-hibernate').projectDir = "$rootDir/lgpl/gemfirexd-hibernate" as File
-project(':gemfirexd-tools').projectDir = "$rootDir/gemfirexd/tools" as File
+project(':snappydata-store-shared').projectDir = "$rootDir/gemfirexd/shared" as File
+project(':snappydata-store-prebuild').projectDir = "$rootDir/gemfirexd/prebuild" as File
+project(':snappydata-store-core').projectDir = "$rootDir/gemfirexd/core" as File
+project(':snappydata-store-client').projectDir = "$rootDir/gemfirexd/client" as File
+project(':snappydata-store-hibernate').projectDir = "$rootDir/lgpl/gemfirexd-hibernate" as File
+project(':snappydata-store-tools').projectDir = "$rootDir/gemfirexd/tools" as File
 project(':gemfire-tests').projectDir = "$rootDir/tests/core" as File
-project(':gemfirexd-tests').projectDir = "$rootDir/tests/sql" as File
+project(':snappydata-store-tests').projectDir = "$rootDir/tests/sql" as File
 project(':snappydata-native').projectDir = "$rootDir/native" as File

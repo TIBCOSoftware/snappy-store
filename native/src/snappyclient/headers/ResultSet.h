@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -280,12 +280,6 @@ namespace client {
         }
       }
 
-      void reset(ResultSet& resultSet) {
-        m_resultSet = &resultSet;
-        m_rows = resultSet.m_rows;
-        init(false);
-      }
-
       void clear() {
         m_resultSet = NULL;
         m_rows = NULL;
@@ -297,6 +291,10 @@ namespace client {
 
       inline bool isOnRow() const noexcept {
         return m_currentRow != NULL;
+      }
+
+      inline bool isBeforeFirst() const noexcept {
+        return m_currentRow == NULL && m_endBatch != NULL;
       }
 
       /** Dereference the iterator. No NULL check like STL iterators. */
@@ -583,6 +581,19 @@ namespace client {
 
     iterator begin(int32_t offset = 0);
 
+    const_iterator crbegin() const {
+      return cbegin(-1);
+    }
+
+    inline const_iterator rbegin() const {
+      return cbegin(-1);
+    }
+
+    iterator rbegin() {
+      return begin(-1);
+    }
+
+
     inline const const_iterator& cend() const {
       return ITR_END_CONST;
     }
@@ -592,6 +603,18 @@ namespace client {
     }
 
     inline const iterator& end() {
+      return ITR_END;
+    }
+
+    inline const const_iterator& crend() const {
+      return ITR_END_CONST;
+    }
+
+    inline const const_iterator& rend() const {
+      return ITR_END_CONST;
+    }
+
+    inline const iterator& rend() {
       return ITR_END;
     }
 

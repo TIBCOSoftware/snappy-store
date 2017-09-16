@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -17,12 +17,15 @@
 
 package com.pivotal.gemfirexd.internal.snappy;
 
+import java.util.HashSet;
+import java.util.Iterator;
+
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-
-import java.util.HashSet;
+import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
 
 /**
  * Callbacks that are required for cluster management of Snappy should go here.
@@ -37,13 +40,20 @@ public interface ClusterCallbacks {
 
   void stopExecutor();
 
-  SparkSQLExecute getSQLExecute(String sql, String schema, LeadNodeExecutionContext ctx, Version v);
+  SparkSQLExecute getSQLExecute(String sql, String schema, LeadNodeExecutionContext ctx,
+      Version v, boolean isPreparedStatement, boolean isPreparedPhase, ParameterValueSet pvs);
+
+  Object readDataType(ByteArrayDataInput in);
 
   /**
-   * Deserialize the SnappyResultHolder object per batch.
+   * Deserialize/decompress the SnappyResultHolder data and get an iterator.
    */
-  void readDVDArray(DataValueDescriptor[] dvds, int[] types,
-      ByteArrayDataInput in, int numEightColGroups, int numPartialCols);
+  Iterator<ValueRow> getRowIterator(DataValueDescriptor[] dvds, int[] types,
+      int[] precisions, int[] scales, Object[] dataTypes, ByteArrayDataInput in);
 
-  void clearSnappyContextForConnection(Long connectionId);
+  void clearSnappySessionForConnection(Long connectionId);
+
+  void publishColumnTableStats();
+
+  String getClusterType();
 }

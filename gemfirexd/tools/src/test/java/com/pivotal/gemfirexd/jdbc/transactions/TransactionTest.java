@@ -131,6 +131,84 @@ public class TransactionTest extends JdbcTestBase {
     conn = getConnection();
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
+
+    st = conn.createStatement();
+    st.execute("insert into t1 values (10, 10)");
+
+    conn.rollback();// rollback.
+
+    ResultSet rs = st.executeQuery("Select * from t1");
+    assertFalse("ResultSet should be empty ", rs.next());
+    rs.close();
+
+    st.execute("insert into t1 values (10, 10)");
+    st.execute("insert into t1 values (20, 20)");
+
+    rs = st.executeQuery("Select * from t1");
+
+    int numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another
+      // test).
+      numRows++;
+    }
+    rs = st.executeQuery("Select * from t1 where c1=10");
+    numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another
+      // test).
+      numRows++;
+    }
+    // withing tx also the row count should be 2
+    assertEquals("ResultSet should contain two rows ", 1, numRows);
+
+    conn.commit(); // commit two rows.
+    rs = st.executeQuery("Select * from t1");
+    numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another
+      // test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 2, numRows);
+
+    conn.commit();
+    st.execute("delete from t1 where c1=10");
+    conn.commit();
+    rs = st.executeQuery("Select * from t1");
+    numRows = 0;
+    while (rs.next()) {
+      // Checking number of rows returned, since ordering of results
+      // is not guaranteed. We can write an order by query for this (another
+      // test).
+      numRows++;
+    }
+    assertEquals("ResultSet should contain two rows ", 1, numRows);
+
+
+    // Close connection, resultset etc...
+    rs.close();
+    st.close();
+    conn.commit();
+    conn.close();
+  }
+
+  /**
+   * Test commit and rollback.
+   * @throws Exception on failure.
+   */
+  public void testCommitOnReplicatedTable2() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    st.execute("Create table t1 (c1 int not null , c2 int not null, "
+        + "primary key(c1)) replicate"+getSuffix());
+    conn.commit();
+    conn = getConnection();
+    conn.setTransactionIsolation(getIsolationLevel());
+    conn.setAutoCommit(false);
     
     st = conn.createStatement();
     st.execute("insert into t1 values (10, 10)");
@@ -1547,6 +1625,7 @@ public class TransactionTest extends JdbcTestBase {
       }
     }
     // also check with network connection (#43109)
+    stmt3.addBatch("update t1 set c2=3 where c1=2");
     stmt3.addBatch("update t1 set c2=3 where c1=2");
     try {
       stmt3.executeBatch();

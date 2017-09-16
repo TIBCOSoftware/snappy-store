@@ -50,13 +50,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataType;
-import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLBoolean;
-import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 
@@ -982,9 +975,9 @@ public final class SQLReal
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
-    this.value = Float.intBitsToFloat(RowFormatter.readInt(unsafe, memOffset));
+  public int readBytes(long memOffset,
+			final int columnWidth, ByteSource bs) {
+    this.value = Float.intBitsToFloat(RowFormatter.readInt(memOffset));
     this.isnull = false;
     assert columnWidth == (Float.SIZE >>> 3);
     return columnWidth;
@@ -1001,9 +994,8 @@ public final class SQLReal
     return Float.intBitsToFloat(RowFormatter.readInt(inBytes, offset));
   }
 
-  static final float getAsFloat(final UnsafeWrapper unsafe,
-      final long memOffset) {
-    return Float.intBitsToFloat(RowFormatter.readInt(unsafe, memOffset));
+  static final float getAsFloat(final long memOffset) {
+    return Float.intBitsToFloat(RowFormatter.readInt(memOffset));
   }
 
   @Override

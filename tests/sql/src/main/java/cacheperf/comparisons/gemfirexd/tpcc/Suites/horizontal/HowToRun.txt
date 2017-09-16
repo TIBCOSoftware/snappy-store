@@ -1,0 +1,7 @@
+This suite runs three hydra tpcc scaling suites, each with a different amount of data (S, M, L).  Each suite scales horizontally: hardware, clients, servers, and data are scaled together.  The suites are run for both peer and thin clients.
+
+The compareperf script creates separate reports for S vs M vs L and for peer vs thin.  The reports are further subdivided into throughput, responseTime, loading, cpu, and heap.
+
+--------------------------------------------------------------------------------
+
+To run the suite, reserve w1-gst-01 through w1-gst-10 and w1-gst-20 through w1-gst-29.  Log in to w1-gst-dev01, copy this suite to a directory on a local drive such as w1-gst-dev01a, and execute ./run.sh from there.

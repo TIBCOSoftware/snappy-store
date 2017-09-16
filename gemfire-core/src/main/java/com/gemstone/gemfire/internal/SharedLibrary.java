@@ -271,7 +271,7 @@ public class SharedLibrary {
       } else if (cache != null
           && (sysCb = GemFireCacheImpl.getInternalProductCallbacks()) != null) {
         sysCb.log(LogWriterImpl.levelToString(logLevel), msg, t);
-      } else {
+      } else if (logLevel >= LogWriterImpl.WARNING_LEVEL) {
         System.out.println("NanoTimer::" + msg);
         if (t != null) {
           t.printStackTrace();

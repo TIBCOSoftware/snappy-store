@@ -122,6 +122,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -315,7 +316,7 @@ public class EmbedStatement extends ConnectionChild
 
     private int fetchSize = 1;
     private int fetchDirection = java.sql.ResultSet.FETCH_FORWARD;
-    int MaxFieldSize;
+    int maxFieldSize;
 	/**
 	 * Query timeout in milliseconds. By default, no statements time
 	 * out. Timeout is set explicitly with setQueryTimeout().
@@ -329,6 +330,9 @@ public class EmbedStatement extends ConnectionChild
  	//this is only used by JDBC 2.0
 // GemStone changes BEGIN
 	ArrayList<Object> batchStatements;
+	int batchStatementCurrentIndex = 0;
+	int executeBatchInProgress = 0;
+
 	/* (original code)
  	Vector batchStatements;
  	*/
@@ -582,7 +586,7 @@ public class EmbedStatement extends ConnectionChild
 		 * batch either by clearing the batch or executing the batch.
 		 * executeUpdate is not allowed inside the batch.
 		 */
-		if (batchStatements != null)
+		if (batchStatements != null && batchStatementCurrentIndex > 0)
   		throw newSQLException(SQLState.MIDDLE_OF_BATCH);
 	}
 
@@ -634,11 +638,7 @@ public class EmbedStatement extends ConnectionChild
                 iapiResultSet = null; 
 
                 // lose the finalizer so it can be GCed
-                final FinalizeStatement finalizer = this.finalizer;
-                if (finalizer != null) {
-                  finalizer.clearAll();
-                  this.finalizer = null;
-                }
+                clearFinalizer();
 // GemStone changes END
 		  closeActions();
 		 
@@ -656,7 +656,9 @@ public class EmbedStatement extends ConnectionChild
 		  warnings = null;
 		  SQLText = null;
 		  batchStatements = null;
-		        		  
+      batchStatementCurrentIndex = 0;
+	    executeBatchInProgress = 0;
+
 	  }
 		
 	  
@@ -666,15 +668,19 @@ public class EmbedStatement extends ConnectionChild
 	  return this.active;
 	}
 
-	
-	public final boolean hasBatch() {
-	  return this.batchStatements != null
-	      && this.batchStatements.size() > 0;
-	}
-
-	public final void clearBatchIfPossible() {
+	@Override
+	public final void forceClearBatch() {
 	  synchronized (getConnectionSynchronization()) {
 	    this.batchStatements = null;
+	  }
+	}
+
+	@Override
+	public final void clearFinalizer() {
+	  final FinalizeStatement finalizer = this.finalizer;
+	  if (finalizer != null) {
+	    finalizer.clearAll();
+	    this.finalizer = null;
 	  }
 	}
 
@@ -735,7 +741,7 @@ public class EmbedStatement extends ConnectionChild
 	public int getMaxFieldSize() throws SQLException {
 		checkStatus();
 
-        return MaxFieldSize;
+        return maxFieldSize;
 	}
 
     /**
@@ -755,7 +761,7 @@ public class EmbedStatement extends ConnectionChild
 		{
 			throw newSQLException(SQLState.INVALID_MAXFIELD_SIZE, new Integer(max));
 		}
-        this.MaxFieldSize = max;
+        this.maxFieldSize = max;
 	}
 
     /**
@@ -831,7 +837,7 @@ public class EmbedStatement extends ConnectionChild
                                   new Integer(seconds));
         }
         
-        if (GemFireXDUtils.TraceExecute) {
+        if (GemFireXDUtils.TraceExecution) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
               "EmbedStatement#setQueryTimeout timeout=" + seconds + " seconds");
         }
@@ -863,7 +869,7 @@ public class EmbedStatement extends ConnectionChild
 	 *  * @exception SQLException thrown on failure.
 	 */
 	public void cancel() throws SQLException {
-	  if (GemFireXDUtils.TraceExecute) {
+	  if (GemFireXDUtils.TraceExecution) {
 	    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
 	        "EmbedStatement#cancel statementId=" + this.statementID 
 	        + " activation=" + this.activation);
@@ -874,11 +880,11 @@ public class EmbedStatement extends ConnectionChild
 	  }
 	  // send a message to cancel the query on all other data nodes
 	  QueryCancelFunctionArgs args = QueryCancelFunction
-	      .newQueryCancelFunctionArgs(this.statementID, this.executionID, 
-	          lcc.getConnectionId());
+	      .newQueryCancelFunctionArgs(this.statementID, lcc.getConnectionId());
 	  Set<DistributedMember> dataStores = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
 	  final DistributedMember myId = GemFireStore.getMyId();
-	  dataStores.remove(myId);
+	  // add self too for the wrapper connection
+	  dataStores.add(myId);
 	  if (dataStores.size() > 0) {
 	    FunctionService.onMembers(dataStores).withArgs(args).execute(
 	        QueryCancelFunction.ID);
@@ -1076,6 +1082,7 @@ public class EmbedStatement extends ConnectionChild
       if (sql == null) {
         throw newSQLException(SQLState.NULL_SQL_TEXT);
       }
+			// GemStone changes BEGIN
       checkIfInMiddleOfBatch();
       clearResultSets(); // release the last statement executed, if any.
       
@@ -1196,6 +1203,11 @@ public class EmbedStatement extends ConnectionChild
               execFlags = (short) GemFireXDUtils.set(execFlags,
                   GenericStatement.QUERY_HDFS, true);
             }
+
+            if (routeQueryEnabled(cc)) {
+              execFlags = GemFireXDUtils.set(execFlags, GenericStatement.ROUTE_QUERY, true);
+            }
+
             preparedStatement = lcc.prepareInternalStatement(lcc
                 .getDefaultSchema(), cc != null? cc.getGeneralizedQueryString():SQLText,                
                 false /* for meta data*/, execFlags, cc, ncjMetaData);
@@ -1299,7 +1311,17 @@ public class EmbedStatement extends ConnectionChild
     }
    }
 
-  private void validateParameterizedData(PreparedStatement preparedStatement)
+  protected static final Pattern EXECUTION_ENGINE_STORE_HINT =
+    Pattern.compile(".*\\bEXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s*\\b.*",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+  protected boolean routeQueryEnabled(CompilerContext cc) {
+    String stmt = cc != null? cc.getGeneralizedQueryString() : SQLText;
+    return Misc.routeQuery(lcc)
+      && (!EXECUTION_ENGINE_STORE_HINT.matcher(stmt).matches());
+  }
+
+	private void validateParameterizedData(PreparedStatement preparedStatement)
       throws StandardException {
     ConstantValueSet  cvs = (ConstantValueSet)this.lcc.getConstantValueSet(null);
     GenericPreparedStatement gps = (GenericPreparedStatement)preparedStatement; 
@@ -1605,6 +1627,8 @@ public class EmbedStatement extends ConnectionChild
 		    batchStatements = new ArrayList<Object>();
 		  }
 		  batchStatements.add(sql);
+		  batchStatementCurrentIndex++;
+
 		    /* (original code)
 			  batchStatements = new Vector();
         batchStatements.addElement(sql);
@@ -1626,10 +1650,25 @@ public class EmbedStatement extends ConnectionChild
 		checkStatus();
   	  synchronized (getConnectionSynchronization()) {
         batchStatements = null;
-  		}
+        batchStatementCurrentIndex = 0;
+          }
 	}
 
-    /**
+	public final void resetBatch() throws SQLException {
+		checkStatus();
+		synchronized (getConnectionSynchronization()) {
+			//batchStatements = null;
+			batchStatementCurrentIndex = 0;
+			if (batchStatements != null) {
+				for (int i = batchStatements.size() - 1; i >= 0; i--) {
+					((ParameterValueSet)batchStatements.get(i)).clearParameters();
+				}
+			}
+		}
+	}
+
+
+	/**
      * JDBC 2.0
      * 
      * Submit a batch of commands to the database for execution.
@@ -1652,6 +1691,7 @@ public class EmbedStatement extends ConnectionChild
 		checkExecStatus();
 		synchronized (getConnectionSynchronization()) 
 		{
+			executeBatchInProgress++;
                         setupContextStack(true);
 			int i = 0;
 			// As per the jdbc 2.0 specs, close the statement object's current resultset
@@ -1667,13 +1707,16 @@ public class EmbedStatement extends ConnectionChild
 			Vector stmts = batchStatements;
 			*/
 // GemStone changes END
-			batchStatements = null;
+			if (!isPrepared()){
+				batchStatements = null;
+			}
+
 			int size;
 			if (stmts == null)
 				size = 0;
 			else
-				size = stmts.size();
-
+				size = batchStatementCurrentIndex;//stmts.size();
+			// take the index in case if last batch
 			int[] returnUpdateCountForBatch = new int[size];
 
 			SQLException sqle;
@@ -2073,7 +2116,7 @@ public class EmbedStatement extends ConnectionChild
         Set<DistributedMember> otherMembers = null;
         Set<DistributedMember> memberThatPersistOnHDFS = null;
         boolean hdfsPersistenceSuccess = false; 
-        if (GemFireXDUtils.TraceExecute) {
+        if (GemFireXDUtils.TraceExecution) {
           ParameterValueSet pvs;
           final String pvsStr;
           // mask passwords from being logged
@@ -2264,7 +2307,7 @@ public class EmbedStatement extends ConnectionChild
 						  a.reset(false);
 						}
 						if (!distribute)
-						  if (!origAutoCommit) {
+						  if (!origAutoCommit && !tran.getImplcitSnapshotTxStarted()) {
 						    if (!tran.isTransactional() && !isPreparedBatch && (act == null || !(act instanceof LockTableConstantAction))) {
 						      tran.releaseAllLocks(
 						          false, false);
@@ -2781,6 +2824,7 @@ public class EmbedStatement extends ConnectionChild
 	  clearResultSets(false);
 	}
 
+	@Override
 	public void resetForReuse() throws SQLException {
 	  // will get closed either via EmbedResultSet or
 	  // right after collecting updateCount.
@@ -2793,9 +2837,11 @@ public class EmbedStatement extends ConnectionChild
 	  warnings = null;
 	  SQLText = null;
 	  batchStatements = null;
+	  batchStatementCurrentIndex = 0;
 	  clearParameters();
 	}
 
+	@Override
 	public boolean hasDynamicResults() {
 	  return this.dynamicResults != null;
 	}
@@ -3164,6 +3210,7 @@ public class EmbedStatement extends ConnectionChild
 
 
 // GemStone changes BEGIN
+  @Override
   public boolean isPrepared() {
     return false;
   }
@@ -3192,12 +3239,18 @@ public class EmbedStatement extends ConnectionChild
     }
   }
 
+  @Override
   public void reset(int newType, int newConcurrency, int newHoldability)
       throws SQLException {
     checkAttributes(newType, newConcurrency, newHoldability);
     this.resultSetType = newType;
     this.resultSetConcurrency = newConcurrency;
     this.resultSetHoldability = newHoldability;
+    // reset some other attributes
+    this.timeoutMillis = 0;
+    this.maxRows = 0;
+    this.maxFieldSize = 0;
+    this.cursorName = null;
   }
 
   @Override
@@ -3405,7 +3458,7 @@ public class EmbedStatement extends ConnectionChild
     }
 
     @Override
-    protected final FinalizeHolder getHolder() {
+    public final FinalizeHolder getHolder() {
       return getServerHolder();
     }
 

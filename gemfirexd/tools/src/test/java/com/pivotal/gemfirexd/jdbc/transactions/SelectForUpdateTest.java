@@ -84,7 +84,8 @@ public class SelectForUpdateTest extends JdbcTestBase {
           .prepareStatement("update employee set workdept = ? where current of C1");
       fail("exception expected");
     } catch (SQLException e) {
-      if (!"0A000".equalsIgnoreCase(e.getSQLState())) {
+      if (!"0A000".equals(e.getSQLState()) &&
+          !"XJ083".equals(e.getSQLState())) {
         throw e;
       }
     }
@@ -200,7 +201,8 @@ public class SelectForUpdateTest extends JdbcTestBase {
           uprs.updateRow();
           fail("expected not implemented exception");
         } catch (SQLException sqle) {
-          if (!"0A000".equals(sqle.getSQLState())) {
+          if (!"0A000".equals(sqle.getSQLState()) &&
+              !"XJ083".equals(sqle.getSQLState())) {
             throw sqle;
           }
         }

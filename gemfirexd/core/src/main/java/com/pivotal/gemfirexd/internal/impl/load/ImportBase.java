@@ -528,9 +528,11 @@ public class ImportBase extends ImportAbstract{
                   if (err.get() != null) {
                     // try to interrupt as soon as possible
                     th.join(100);
-                    if (th.isAlive()) {
-                      th.interrupt();
-                    }
+                    // Not giving interrupt to all the threads as it can close the oplog file channel
+                    // which can close the region and the network interfaces. See bug SNAP-1138.
+                    // if (th.isAlive()) {
+                      // th.interrupt();
+                    // }
                     th.join(1000);
                     break;
                   }

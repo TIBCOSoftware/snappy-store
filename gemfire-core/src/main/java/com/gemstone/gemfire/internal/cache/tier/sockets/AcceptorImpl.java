@@ -295,7 +295,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
    * @param maxThreads
    *          the maximum number of threads allowed in the server pool
    * 
-   * @see SocketCreator#createServerSocket(int, int, InetAddress, LogWriterI18n)
+   * @see SocketCreator#createServerSocket
    * @see ClientHealthMonitor
    * @since 5.7
    */
@@ -318,6 +318,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
     this.isGatewayReceiver = isGatewayReceiver;
     this.isGatewayReceiver = isGatewayReceiver;
     this.gatewayTransportFilters = transportFilter;
+    InetAddress bindAddress = getBindAddress();
     {
       int tmp_maxConnections = maxConnections;
       if (tmp_maxConnections < MINIMUM_MAX_CONNECTIONS) {
@@ -348,7 +349,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
       }
       if (tmp_maxThreads > 0 && isWindows) {
         // bug #40472 and JDK bug 6230761 - NIO can't be used with IPv6 on Windows
-        if (getBindAddress() instanceof Inet6Address) {
+        if (bindAddress instanceof Inet6Address) {
           c.getLoggerI18n().warning(LocalizedStrings.AcceptorImpl_IGNORING_MAX_THREADS_DUE_TO_JROCKIT_NIO_BUG);
           tmp_maxThreads = 0;
         }
@@ -389,13 +390,6 @@ public class AcceptorImpl extends Acceptor implements Runnable
       final int backLog = Integer.getInteger(BACKLOG_PROPERTY_NAME, DEFAULT_BACKLOG).intValue();
       
       SocketCreator sc = SocketCreator.getDefaultInstance();
-      final GemFireCacheImpl gc;
-      if (getCachedRegionHelper() != null) {
-        gc = (GemFireCacheImpl)getCachedRegionHelper().getCache();
-      }
-      else {
-        gc = null;
-      }
       final long tilt = System.currentTimeMillis() + 120 * 1000;
 
       if (isSelector()) {
@@ -416,12 +410,12 @@ public class AcceptorImpl extends Acceptor implements Runnable
         // immediately restarted, which sometimes results in a bind exception
         for (;;) {
           try {
-            this.serverSock.bind(new InetSocketAddress(getBindAddress(), port),
+            this.serverSock.bind(new InetSocketAddress(bindAddress, port),
                              backLog);
             break;
           }
           catch (SocketException b) {
-            if (! treatAsBindException(b) || 
+            if (! treatAsBindException(b, bindAddress) ||
                 System.currentTimeMillis() > tilt) { 
               throw b;
             }
@@ -439,9 +433,8 @@ public class AcceptorImpl extends Acceptor implements Runnable
               Thread.currentThread().interrupt();
             }
           }
-          if (gc != null) {
-            gc.getCancelCriterion().checkCancelInProgress(null);
-          }
+          GemFireCacheImpl.getExisting().getCancelCriterion()
+              .checkCancelInProgress(null);
         } // for
       } // isSelector 
       else { // !isSelector
@@ -451,12 +444,12 @@ public class AcceptorImpl extends Acceptor implements Runnable
         for (;;) {
           try {
             this.serverSock = sc.createServerSocket(port, backLog,
-                getBindAddress(), c.getLoggerI18n(),
+                bindAddress, c.getLoggerI18n(),
                 this.gatewayTransportFilters, socketBufferSize);
             break;
           }
           catch (SocketException e) {
-            if (! treatAsBindException(e) ||
+            if (! treatAsBindException(e, bindAddress) ||
                 System.currentTimeMillis() > tilt) {
               throw e;
             }
@@ -474,9 +467,8 @@ public class AcceptorImpl extends Acceptor implements Runnable
               Thread.currentThread().interrupt();
             }
           }
-          if (gc != null) {
-            gc.getCancelCriterion().checkCancelInProgress(null);
-          }
+          GemFireCacheImpl.getExisting().getCancelCriterion()
+              .checkCancelInProgress(null);
         } // for
       } // !isSelector
       
@@ -1779,7 +1771,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
    
    * @since 5.7
    */
-  private static String calcBindHostName(Cache cache, String bindName) {
+  public static String calcBindHostName(Cache cache, String bindName) {
     if (bindName != null && !bindName.equals("")) {
       return bindName;
     }
@@ -1804,11 +1796,15 @@ public class AcceptorImpl extends Acceptor implements Runnable
     return hostName;
   }
 
-  private InetAddress getBindAddress() throws IOException {
-    if (this.bindHostName == null || "".equals(this.bindHostName)) {
-      return null; // pick default local address
+  public InetAddress getBindAddress() throws IOException {
+    return getBindAddress(this.bindHostName);
+  }
+
+  public static InetAddress getBindAddress(String bindHostName) throws IOException {
+    if (bindHostName == null || "".equals(bindHostName)) {
+      return new InetSocketAddress(0).getAddress(); // pick default local address
     } else {
-      return InetAddress.getByName(this.bindHostName);
+      return InetAddress.getByName(bindHostName);
     }
   }
   
@@ -1882,7 +1878,11 @@ public class AcceptorImpl extends Acceptor implements Runnable
 
   //IBM J9 sometimes reports "listen failed" instead of BindException
   //see bug #40589
-  public static boolean treatAsBindException(SocketException se) {
+  public static boolean treatAsBindException(SocketException se, InetAddress bindAddress) {
+    // if bind address is not of this machine then fail
+    if (!SocketCreator.isLocalHost(bindAddress)) {
+      return false;
+    }
     if(se instanceof BindException) { 
       return true;
     }

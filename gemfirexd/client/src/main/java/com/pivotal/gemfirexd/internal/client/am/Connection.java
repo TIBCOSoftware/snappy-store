@@ -60,15 +60,7 @@ public abstract class Connection implements java.sql.Connection,
     //---------------------navigational members-----------------------------------
 
 // GemStone changes BEGIN
-  static FinalizeInvoker finalizer;
-  static Thread finalizerThread;
   static {
-    finalizer = new FinalizeInvoker();
-    finalizerThread = new Thread(finalizer, "FinalizeInvoker");
-    finalizerThread.setDaemon(true);
-    finalizerThread.start();
-    Runtime.getRuntime().addShutdownHook(
-        new FinalizeInvoker.StopFinalizer(finalizer));
     initialize();
   }
 //GemStone changes END
@@ -470,11 +462,14 @@ public abstract class Connection implements java.sql.Connection,
     // per-socket TCP keepalive settings
 
     public int keepAliveIdle_ = SystemProperties.getClientInstance()
-        .getKeepAliveIdle();
+        .getInteger(ClientAttribute.KEEPALIVE_IDLE,
+            SystemProperties.DEFAULT_KEEPALIVE_IDLE);
     public int keepAliveIntvl_ = SystemProperties.getClientInstance()
-        .getKeepAliveInterval();
+        .getInteger(ClientAttribute.KEEPALIVE_INTVL,
+            SystemProperties.DEFAULT_KEEPALIVE_INTVL);
     public int keepAliveCnt_ = SystemProperties.getClientInstance()
-        .getKeepAliveCount();
+        .getInteger(ClientAttribute.KEEPALIVE_CNT,
+            SystemProperties.DEFAULT_KEEPALIVE_CNT);
 
     /**
      * Maximum timeout in seconds for read before failover in case nothing is
@@ -494,9 +489,6 @@ public abstract class Connection implements java.sql.Connection,
     public static final int DEFAULT_SINGLE_HOP_MAX_CONN_PER_SERVER = 5;
     
     public static int SINGLE_HOP_MAX_CONN_PER_SERVER;
-
-    public static void init() {
-    }
 
     public static void initialize() {
       try {
@@ -535,8 +527,7 @@ public abstract class Connection implements java.sql.Connection,
     public abstract java.io.InputStream getInputStream();
 
     /**
-     * Return status of {@link Connection#doFailoverOnException(String, int)}
-     * method.
+     * Return status of {@link Connection#doFailoverOnException} method.
      */
     public enum FailoverStatus {
 

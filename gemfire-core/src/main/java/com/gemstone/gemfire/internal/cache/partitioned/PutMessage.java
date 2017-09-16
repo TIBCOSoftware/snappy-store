@@ -44,22 +44,10 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.NanoTimer;
-import com.gemstone.gemfire.internal.cache.CachedDeserializable;
-import com.gemstone.gemfire.internal.cache.CachedDeserializableFactory;
-import com.gemstone.gemfire.internal.cache.DataLocationException;
-import com.gemstone.gemfire.internal.cache.DistributedCacheOperation;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl.NewValueImporter;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl.OldValueImporter;
-import com.gemstone.gemfire.internal.cache.EnumListenerEvent;
-import com.gemstone.gemfire.internal.cache.EventID;
-import com.gemstone.gemfire.internal.cache.FilterRoutingInfo;
-import com.gemstone.gemfire.internal.cache.ForceReattemptException;
-import com.gemstone.gemfire.internal.cache.KeyWithRegionContext;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
-import com.gemstone.gemfire.internal.cache.PrimaryBucketException;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -990,14 +978,18 @@ public final class PutMessage extends PartitionMessageWithDirectReply implements
 //        event.setOriginRemote(true);
 //        this.op = r.doCacheWriteBeforePut(event, ifNew);  // TODO fix this for bug 37072
         ev.setOriginRemote(false);
-        result = r.getDataView(tx).putEntryOnRemote(ev,
-                               this.ifNew,
-                               this.ifOld,
-                               this.expectedOldValue,
-                               this.requireOldValue,
-                               this.cacheWrite,
-                               this.lastModified,
-                               true/*overwriteDestroyed *not* used*/);
+
+        InternalDataView view = (getLockingPolicy() == LockingPolicy.SNAPSHOT) ?
+            r.getSharedDataView() : r.getDataView(tx);
+
+        result = view.putEntryOnRemote(ev,
+            this.ifNew,
+            this.ifOld,
+            this.expectedOldValue,
+            this.requireOldValue,
+            this.cacheWrite,
+            this.lastModified,
+            true/*overwriteDestroyed *not* used*/);
 
         if (!this.result) { // make sure the region hasn't gone away
           r.checkReadiness();

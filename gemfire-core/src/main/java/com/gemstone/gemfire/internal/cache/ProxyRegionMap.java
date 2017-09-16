@@ -33,7 +33,6 @@ import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
@@ -549,7 +548,7 @@ public final class ProxyRegionMap implements RegionMap {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
-    public void removePhase2() {
+    public void removePhase2(LocalRegion r) {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
@@ -566,7 +565,7 @@ public final class ProxyRegionMap implements RegionMap {
     }
 
     public boolean fillInValue(LocalRegion r,
-        InitialImageOperation.Entry entry, ByteArrayDataInput in, DM mgr, Version targetVersion) {
+        InitialImageOperation.Entry entry, DM mgr, Version targetVersion) {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
@@ -618,7 +617,7 @@ public final class ProxyRegionMap implements RegionMap {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
-    public void setOwner(LocalRegion owner) {
+    public void setOwner(LocalRegion owner, Object previousOwner) {
       throw new UnsupportedOperationException(LocalizedStrings
           .ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0
               .toLocalizedString(DataPolicy.EMPTY));
@@ -838,13 +837,18 @@ public final class ProxyRegionMap implements RegionMap {
     }
 
     @Override
-    public void setValueToNull() {
+    public void setValueToNull(RegionEntryContext context) {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
     
     @Override
     public boolean isInvalidOrRemoved() {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));      
+    }
+
+    @Override
+    public boolean isOffHeap() {
+      return false;
     }
 
     @Override

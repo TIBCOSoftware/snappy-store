@@ -49,12 +49,9 @@ import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
 import com.pivotal.gemfirexd.internal.iapi.services.io.Storable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.types.BooleanDataValue;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
-import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
+import org.apache.spark.unsafe.Platform;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -1235,10 +1232,9 @@ public final class SQLBoolean
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset, final int columnWidth, ByteSource bs) {
     assert columnWidth == 1: columnWidth;
-    this.value = (unsafe.getByte(memOffset) == 1);
+    this.value = (Platform.getByte(null, memOffset) == 1);
     return 1;
   }
 

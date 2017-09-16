@@ -38,6 +38,11 @@ public abstract class AbstractLRURegionEntry
   protected AbstractLRURegionEntry(RegionEntryContext context, Object value) {
     super(context, value);
   }
+
+  @Override
+  public boolean isValueNull() {
+    return super.isValueNull();
+  }
  
   /////////////////////////////////////////////////////////////
   /////////////////////////// fields //////////////////////////

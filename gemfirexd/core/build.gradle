@@ -1,13 +1,30 @@
+/*
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 plugins {
   id 'ca.coglinc.javacc' version '2.3.1'
+  id 'com.github.johnrengelman.shadow' version '1.2.3'
 }
-
-apply plugin: 'com.github.johnrengelman.shadow'
 
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
-  compile project(subprojectBase + 'gemfirexd-shared')
-  provided project(subprojectBase + 'gemfirexd-prebuild')
+  compile project(subprojectBase + 'snappydata-store-shared')
+  compile project(subprojectBase + 'snappydata-store-client')
+  provided project(subprojectBase + 'snappydata-store-prebuild')
 
   provided files("${System.getProperty('java.home')}/../lib/tools.jar")
   provided 'xalan:xalan:2.7.2'
@@ -16,6 +33,9 @@ dependencies {
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
   compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
+  compile "org.apache.thrift:libthrift:${thriftVersion}"
+  compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
+  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
   provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
@@ -26,7 +46,6 @@ dependencies {
   provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
   provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
   provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided 'javax.ws.rs:jsr311-api:1.1.1'
   provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   provided "com.google.code.findbugs:jsr305:${jsr305Version}"
@@ -54,11 +73,16 @@ compileJavacc {
         'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
 
     replaceRegex("${compileJavacc.outputDirectory}/${matcherDir}", 'SQLMatcher.java',
-        'GetImage\\(\\)', "GetImage(jjmatchedKind)")
+        'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
     replaceRegex("${compileJavacc.outputDirectory}/${matcherDir}", 'SQLMatcherTokenManager.java',
         'GetImage\\(\\)', 'GetImage(jjmatchedKind)')
   }
 }
+
+task deleteGenerated(type: Delete) {
+  delete javaccOut
+}
+clean.dependsOn deleteGenerated
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
   def infoDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/info")
@@ -80,7 +104,7 @@ def msgDir = "${projectDir}/src/main/resources/${locDir}"
 def msgEnDir = "${buildDir}/resources/main/${locDir}"
 
 task buildMessages {
-  dependsOn subprojectBase + 'gemfirexd-prebuild:jar', 'processResources', subprojectBase + 'gemfirexd-client:processResources'
+  dependsOn subprojectBase + 'snappydata-store-prebuild:jar', 'processResources', subprojectBase + 'snappydata-store-client:processResources'
 
   def msgXml = "${msgDir}/messages.xml"
   def msgEn = "${msgEnDir}/messages_en.properties"
@@ -95,7 +119,7 @@ task buildMessages {
 
     ant.taskdef(name: 'buildMessages',
         classname: 'org.apache.derbyBuild.MessageBuilder',
-        classpath: project(subprojectBase + 'gemfirexd-prebuild').sourceSets.main.output.classesDir)
+        classpath: project(subprojectBase + 'snappydata-store-prebuild').sourceSets.main.output.classesDir)
 
     ant.buildMessages(xmlSourceFile: msgXml, propertiesTargetFile: msgEn,
         ditaTargetFile: "${projectDir}/doc/rrefexcept71493.dita")
@@ -116,7 +140,7 @@ def splitMessages(def msgFile, def msgDir) {
 // create the client messages files for various languages
 task doSplit(dependsOn: buildMessages) {
   def msgXml = "${msgDir}/messages.xml"
-  def clientResourceDir = "${project(subprojectBase + 'gemfirexd-client').buildDir}/resources/main/${locDir}"
+  def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').buildDir}/resources/main/${locDir}"
 
   inputs.file msgXml
   outputs.file "${clientResourceDir}/clientmessages_en.properties"
@@ -154,7 +178,7 @@ task doSplit(dependsOn: buildMessages) {
 }
 
 task odbcMeta {
-  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources'
+  dependsOn "${subprojectBase}snappydata-store-prebuild:processResources", 'processResources', "${subprojectBase}snappydata-store-prebuild:jar"
   def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
   outputs.files "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir
@@ -189,19 +213,17 @@ task createClassSizeCatalog {
     "${internalOut}/iapi/services/cache/SizedCacheable.class" ]
   outputs.file "src/main/java/${internalDir}/iapi/services/cache/ClassSizeCatalog.java"
 
-  def internalCP = "com.pivotal.gemfirexd.internal"
+  def internalCP = 'com.pivotal.gemfirexd.internal'
   javaexec {
     main = 'org.apache.derbyBuild.ClassSizeCrawler'
     classpath = sourceSets.main.runtimeClasspath
     // TODO: SW: incomplete code ...
-    args = [ "-DWS=${workspace}", "-DclassDir=${out.dir}", "-Dout=${derby.engine.src.dir}/${derby.dir}/iapi/services/cache/ClassSizeCatalog.java", "-Dprefix.1=${internalCP}.iapi.types", "-Dprefix.2=com.pivotal.gemfirexd.internal.impl", com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor" ]
+    args = [ "-DWS=${workspace}", "-DclassDir=${out.dir}", "-Dout=${derby.engine.src.dir}/${derby.dir}/iapi/services/cache/ClassSizeCatalog.java", "-Dprefix.1=${internalCP}.iapi.types", '-Dprefix.2=com.pivotal.gemfirexd.internal.impl, com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor' ]
   }
 }
 */
 
 compileJava.dependsOn generatePropertiesFiles
-
-// TODO: SW: manifest generation, check previous GemFireXD.xml
 
 // external javadocs
 javadoc {
@@ -244,6 +266,10 @@ jar {
       copy {
         from "${projectDir}/lib"
         into "${gemfireCoreProject.buildDir}/libs"
+      }
+      copy {
+        from "${projectDir}/lib"
+        into gemfireCoreProject.sourceSets.main.output.classesDir
       }
     }
   }

@@ -112,6 +112,7 @@ public interface Database extends com.pivotal.gemfirexd.internal.database.Databa
          * so it can implement the DatabaseMetaData.getURL() method.
          *
          * @param user  The UserID of the user getting the connection
+         * @param authToken  The authToken of the user getting the connection
          * @param drdaID        The drda id of the connection (from network server)
          * @param dbname        The database name
          * @param connectionID  Connection ID of EmbedConnection with which the transaction is associated with
@@ -122,7 +123,7 @@ public interface Database extends com.pivotal.gemfirexd.internal.database.Databa
          * @exception StandardException thrown if unable to create the connection.
          */
       public LanguageConnectionContext setupConnection(ContextManager cm, String user,
-          String drdaID, String dbname, long connectionID, boolean isRemote)
+          String authToken, String drdaID, String dbname, long connectionID, boolean isRemote)
       throws StandardException;
 // GemStone changes END
 	/**

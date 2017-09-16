@@ -35,6 +35,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import com.gemstone.gemfire.GemFireTestCase;
+import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
@@ -57,7 +58,7 @@ import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlGenerator;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionCreation;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.OSType;
+import com.gemstone.gemfire.internal.shared.jna.OSType;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
@@ -134,9 +135,9 @@ import org.xml.sax.SAXParseException;
 public class TestUtil extends TestCase {
 
   // the default framework is embedded
-  private static final String driver = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  private static final String driver = "io.snappydata.jdbc.EmbeddedDriver";
 
-  private static final String netDriver = "com.pivotal.gemfirexd.jdbc.ClientDriver";
+  private static final String netDriver = "io.snappydata.jdbc.ClientDriver";
 
   private static final String protocol = "jdbc:gemfirexd:";
 
@@ -784,10 +785,15 @@ public class TestUtil extends TestCase {
   }
 
   public static void loadDerbyDriver() throws Exception {
-    Driver autoDriver = (Driver)Class.forName(
-        "org.apache.derby.jdbc.AutoloadedDriver40").newInstance();
     Class<?> autoDriverBaseClass = Class.forName(
         "org.apache.derby.jdbc.AutoloadedDriver");
+    Driver autoDriver;
+    try {
+      autoDriver = (Driver)Class.forName(
+          "org.apache.derby.jdbc.AutoloadedDriver40").newInstance();
+    } catch (Throwable t) {
+      autoDriver = (Driver)autoDriverBaseClass.newInstance();
+    }
     Method m = autoDriverBaseClass.getDeclaredMethod("registerMe",
         autoDriverBaseClass);
     m.setAccessible(true);
@@ -1534,11 +1540,10 @@ public class TestUtil extends TestCase {
   }
 
   public static void checkServerGroups(String tableName, String... serverGroups) {
-    PartitionAttributesImpl pattrs = getPartitionAttributes(tableName);
-    GfxdPartitionResolver resolver = (GfxdPartitionResolver)pattrs
-        .getPartitionResolver();
-    SortedSet<String> actualServerGroups = resolver.getDistributionDescriptor()
-        .getServerGroups();
+    Region<?, ?> region = Misc.getRegionForTable(StringUtil
+        .SQLToUpperCase(tableName), true);
+    SortedSet<String> actualServerGroups = ((GemFireContainer)region.getUserAttribute())
+        .getDistributionDescriptor().getServerGroups();
     if (serverGroups == null) {
       assertTrue("expected target server groups to be null",
           actualServerGroups == null || actualServerGroups.size() == 0);
@@ -1553,11 +1558,13 @@ public class TestUtil extends TestCase {
 
   public static GfxdPartitionResolver checkColocation(String tableName,
       String targetSchema, String targetTable) {
-    PartitionAttributesImpl pattrs = getPartitionAttributes(tableName);
+    Region<?, ?> region = Misc.getRegionForTable(StringUtil
+        .SQLToUpperCase(tableName), true);
+    GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+    PartitionAttributes<?, ?> pattrs = container.getRegionAttributes()
+        .getPartitionAttributes();
     // first check using DistributionDescriptor
-    GfxdPartitionResolver resolver = (GfxdPartitionResolver)pattrs
-        .getPartitionResolver();
-    DistributionDescriptor dd = resolver.getDistributionDescriptor();
+    DistributionDescriptor dd = container.getDistributionDescriptor();
     String targetRegionPath = null;
     if (targetTable != null && targetTable.length() > 0) {
       targetTable = Misc.getFullTableName(
@@ -1570,7 +1577,7 @@ public class TestUtil extends TestCase {
     // then using region attributes
     assertEquals("Failure in checking colocation of regions: ",
         targetRegionPath, pattrs.getColocatedWith());
-    return resolver;
+    return (GfxdPartitionResolver)pattrs.getPartitionResolver();
   }
   /**
    * Utility class to store a column name and value pair using for creating a
@@ -2141,8 +2148,8 @@ public class TestUtil extends TestCase {
   public static final String EmbeddedeXADsClassName = 
       "com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource";
 
-  public static final String NetClientXADsClassName = 
-      "com.pivotal.gemfirexd.internal.jdbc.ClientXADataSource";
+  public static final String NetClientXADsClassName =
+      "io.snappydata.jdbc.ClientXADataSource";
 
   public static Object getXADataSource(String xaDsClassName) {
     ClassLoader contextLoader = (ClassLoader)AccessController

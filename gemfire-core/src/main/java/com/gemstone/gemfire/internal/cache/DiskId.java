@@ -305,6 +305,25 @@ public abstract class DiskId
   }
 
   /**
+   * Creates a copy of this DiskId (excluding linked list previous/next).
+   */
+  public final synchronized DiskId copy() {
+    DiskId copy = newInstance();
+    copyFields(copy);
+    return copy;
+  }
+
+  protected abstract DiskId newInstance();
+
+  /**
+   * Copy the fields from this DiskId to the given one.
+   */
+  protected void copyFields(DiskId other) {
+    other.id = id;
+    other.valueLength = valueLength;
+  }
+
+  /**
    * Test method to verify if the passed DiskId is an instance of
    * PersistenceWithIntOffset.
    * 
@@ -460,6 +479,11 @@ public abstract class DiskId
     boolean needsToBeWritten() {
       return (this.valueLength & 0x80000000) != 0;
     }
+
+    @Override
+    protected DiskId newInstance() {
+      return new OverflowOnlyWithIntOffsetNoLL();
+    }
   }
   final protected static class OverflowOnlyWithIntOffset extends
       OverflowOnlyWithIntOffsetNoLL
@@ -528,6 +552,11 @@ public abstract class DiskId
     @Override
     boolean needsToBeWritten() {
       return (this.valueLength & 0x80000000) != 0;
+    }
+
+    @Override
+    protected DiskId newInstance() {
+      return new OverflowOnlyWithLongOffsetNoLL();
     }
   }
   final protected static class OverflowOnlyWithLongOffset extends
@@ -603,6 +632,17 @@ public abstract class DiskId
     @Override
     boolean needsToBeWritten() {
       return this.keyId <= DiskRegion.INVALID_ID;
+    }
+
+    @Override
+    protected DiskId newInstance() {
+      return new PersistenceWithIntOffsetNoLL();
+    }
+
+    @Override
+    protected void copyFields(DiskId other) {
+      super.copyFields(other);
+      other.setKeyId(keyId);
     }
 
     @Override
@@ -682,6 +722,17 @@ public abstract class DiskId
         // Mark the id as NOT needing to be written
         this.setKeyId(- this.keyId);
       }
+    }
+
+    @Override
+    protected DiskId newInstance() {
+      return new PersistenceWithLongOffsetNoLL();
+    }
+
+    @Override
+    protected void copyFields(DiskId other) {
+      super.copyFields(other);
+      other.setKeyId(keyId);
     }
 
     @Override

@@ -72,7 +72,7 @@ public final class Version implements Comparable<Version> {
 
   private static final Method getGFEClientCommands;
 
-  public static final int NUM_OF_VERSIONS = 32;
+  public static final int NUM_OF_VERSIONS = 33;
 
   private static final Version[] VALUES = new Version[NUM_OF_VERSIONS];
 
@@ -171,7 +171,13 @@ public final class Version implements Comparable<Version> {
   public static final Version GFE_7099 = new Version("GFE", "7.0.99", (byte)7,
       (byte)0, (byte)99, (byte)0, GFE_7099_ORDINAL);
 
-  private static final byte SQLF_11_ORDINAL = 22;
+  /** match the ordinal with Pivotal GemFire 7.1 for compatibility */
+  private static final byte GFE_71_ORDINAL = 22;
+
+  public static final Version GFE_71 = new Version("GFE", "7.1", (byte)7,
+      (byte)1, (byte)0, (byte)0, GFE_71_ORDINAL);
+
+  private static final byte SQLF_11_ORDINAL = 23;
 
   /**
    * SQLFire 1.1 has a separate version since it has changed the RowFormatter
@@ -181,15 +187,12 @@ public final class Version implements Comparable<Version> {
   public static final Version SQLF_11 = new Version("SQLF", "1.1", (byte)1,
       (byte)1, (byte)0, (byte)0, SQLF_11_ORDINAL, GFE_7099);
 
-  private static final byte GFE_71_ORDINAL = 23;
-
-  public static final Version GFE_71 = new Version("GFE", "7.1", (byte)7,
-      (byte)1, (byte)0, (byte)0, GFE_71_ORDINAL);
-
   private static final byte GFE_75_ORDINAL = 24;
 
   public static final Version GFE_75 = new Version("GFE", "7.5", (byte)7,
       (byte)5, (byte)0, (byte)0, GFE_75_ORDINAL);
+
+
 
   private static final byte GFXD_10_ORDINAL = 25;
 
@@ -226,15 +229,29 @@ public final class Version implements Comparable<Version> {
   public static final Version GFXD_20 = new Version("GFXD", "2.0",
       (byte)2, (byte)0, (byte)0, (byte)0, GFXD_20_ORDINAL, GFE_75);
 
+  private static final byte GFE_80_ORDINAL = GFXD_14_ORDINAL;
+  public static final Version GFE_80 = new Version("GFE", "8.0", (byte)8,
+      (byte)0, (byte)0, (byte)0, GFE_80_ORDINAL, false /* overwrite */);
+
+  private static final byte GFXD_155_ORDINAL = 32;
+
+  /** GemFire version is at 7.1 for compatibility with external clusters. */
+  public static final Version GFXD_155 = new Version("GFXD", "1.5.5",
+      (byte)1, (byte)5, (byte)5, (byte)0, GFXD_155_ORDINAL, GFE_80);
+
+
+
   /**
    * This constant must be set to the most current version of GFE/GFXD.
    */
-  public static final Version CURRENT = GFXD_20;
+  public static final Version CURRENT = GFXD_155;
+  public static final Version CURRENT_GFE = CURRENT.getGemFireVersion();
 
   /**
    * A lot of versioning code needs access to the current version's ordinal
    */
   public static final short CURRENT_ORDINAL = CURRENT.ordinal();
+  public static final short CURRENT_GFE_ORDINAL = CURRENT_GFE.ordinal();
 
   public static final short NOT_SUPPORTED_ORDINAL = 59;
 
@@ -274,6 +291,11 @@ public final class Version implements Comparable<Version> {
   /** Creates a new instance of <code>Version</code> */
   private Version(String product, String name, byte major, byte minor,
       byte release, byte patch, byte ordinal) {
+    this(product, name, major, minor, release, patch, ordinal, true /* overwrite*/);
+  }
+  /** Creates a new instance of <code>Version</code> */
+  private Version(String product, String name, byte major, byte minor,
+      byte release, byte patch, byte ordinal, boolean overwrite) {
     this.productName = product;
     this.name = name;
     this.majorVersion = major;
@@ -284,7 +306,7 @@ public final class Version implements Comparable<Version> {
     this.methodSuffix = this.productName + "_" + this.majorVersion + "_"
         + this.minorVersion + "_" + this.release + "_" + this.patch;
     this.gemfireVersion = null;
-    if (ordinal != TOKEN_ORDINAL) {
+    if (overwrite && ordinal != TOKEN_ORDINAL) {
       VALUES[this.ordinal] = this;
     }
   }

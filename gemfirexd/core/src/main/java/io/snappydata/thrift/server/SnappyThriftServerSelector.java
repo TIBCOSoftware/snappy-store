@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -42,7 +42,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.ListIterator;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionHandler;
@@ -55,7 +55,6 @@ import java.util.concurrent.locks.LockSupport;
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.internal.shared.InputStreamChannel;
-import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.NetworkInterface.ConnectionListener;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import io.snappydata.thrift.common.SnappyTSocket;
@@ -225,8 +224,7 @@ public final class SnappyThriftServerSelector extends TServer {
         : createDefaultExecutorService(args);
     this.threadPerConnExecutor = args.threadPerConnExecutor != null
         ? args.threadPerConnExecutor : createDefaultExecutorService(args);
-    this.threadPerConnExecutor
-        .setRejectedExecutionHandler(new RejectedExecutionHandler() {
+    RejectedExecutionHandler handleRejected = new RejectedExecutionHandler() {
       @Override
       public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
         try {
@@ -241,14 +239,15 @@ public final class SnappyThriftServerSelector extends TServer {
           }
         }
       }
-    });
+    };
+    this.threadPerConnExecutor.setRejectedExecutionHandler(handleRejected);
     this.connListener = args.connListener;
     this.connectionCounter = new AtomicInteger(0);
     this.numSelectorsInExecution = new AtomicInteger(0);
   }
 
   private static ThreadPoolExecutor createDefaultExecutorService(Args args) {
-    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<Runnable>();
+    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
     return new ThreadPoolExecutor(args.minWorkerThreads,
         args.maxWorkerThreads, 60, TimeUnit.SECONDS, executorQueue);
   }
@@ -315,8 +314,10 @@ public final class SnappyThriftServerSelector extends TServer {
     serverTransport_.close();
   }
 
-  /** sync on this should be held by caller */
-  private final void registerClientDataInNextSelector_(
+  /**
+   * sync on this should be held by caller
+   */
+  private void registerClientDataInNextSelector_(
       final ClientProcessData clientData, final SelectorProcess skipProc)
       throws IOException {
     SelectorProcess proc;
@@ -333,9 +334,8 @@ public final class SnappyThriftServerSelector extends TServer {
         proc.registerClient(clientData);
         this.selectorProcesses[this.currentSelectorIndex] = proc;
         this.executorService.execute(proc);
-      }
-      else {
-        synchronized (proc) {
+      } else {
+        synchronized (proc.sync) {
           if (proc.inExecution) {
             continue;
           }
@@ -402,8 +402,7 @@ public final class SnappyThriftServerSelector extends TServer {
             data.outputProtocol));
         if (!success) {
           break;
-        }
-        else if (input.available() <= 0) {
+        } else if (input.available() <= 0) {
           data.idle = true;
           // change interest to remove OP_WRITE at this point
           /*
@@ -427,8 +426,9 @@ public final class SnappyThriftServerSelector extends TServer {
       }
 
       cleanupSelectionKey(data);
-    } catch (TTransportException tte) {
+    } catch (TTransportException te) {
       // Assume the client died and continue
+      LOGGER.debug("Thrift error occurred during processing of message.", te);
       cleanupSelectionKey(data);
     } catch (TProtocolException tpe) {
       // Assume the client died and continue
@@ -436,7 +436,7 @@ public final class SnappyThriftServerSelector extends TServer {
           + "message. Closing this connection.", tpe);
       cleanupSelectionKey(data);
     } catch (TException te) {
-      LOGGER.error("Thrift error occurred during processing of message.", te);
+      LOGGER.warn("Thrift error occurred during processing of message.", te);
       cleanupSelectionKey(data);
     } catch (Exception e) {
       LOGGER.error("Error occurred during processing of message.", e);
@@ -516,8 +516,7 @@ public final class SnappyThriftServerSelector extends TServer {
       this.eventHandler = eventHandler;
       if (eventHandler != null) {
         this.connectionContext = eventHandler.createContext(inp, outp);
-      }
-      else {
+      } else {
         this.connectionContext = null;
       }
       this.idle = true;
@@ -558,14 +557,16 @@ public final class SnappyThriftServerSelector extends TServer {
      */
     private final Selector selector;
     private final ArrayList<ClientProcessData> pendingConnections;
-    private final THashSet selectedKeys;
+    private final ArrayList<SelectionKey> selectedKeys;
     private volatile boolean stopped;
     private volatile boolean inExecution;
+    private final Object sync;
 
     protected SelectorProcess(Selector selector) {
       this.selector = selector;
-      this.pendingConnections = new ArrayList<ClientProcessData>(4);
-      this.selectedKeys = new THashSet(4);
+      this.pendingConnections = new ArrayList<>(4);
+      this.selectedKeys = new ArrayList<>(4);
+      this.sync = new Object();
     }
 
     /**
@@ -577,8 +578,8 @@ public final class SnappyThriftServerSelector extends TServer {
     @Override
     public void run() {
       final ExecutorService executorService =
-        SnappyThriftServerSelector.this.executorService;
-      final THashSet selectedKeys = this.selectedKeys;
+          SnappyThriftServerSelector.this.executorService;
+      final ArrayList<SelectionKey> selectedKeys = this.selectedKeys;
       try {
         while (!this.stopped) {
           handlePendingConnections();
@@ -589,106 +590,98 @@ public final class SnappyThriftServerSelector extends TServer {
             if (newSelectedKeys.size() > 0) {
               selectedKeys.addAll(newSelectedKeys);
               newSelectedKeys.clear();
-            }
-            else {
+            } else {
               continue;
             }
           }
 
-          if (selectedKeys.isEmpty()) {
+          final int numSelectedKeys = selectedKeys.size();
+          if (numSelectedKeys == 0) {
             continue;
           }
           // process the io events we received
           ClientProcessData myData = null;
-          Iterator<?> keysIter = selectedKeys.iterator();
-          while (keysIter.hasNext()) {
-            SelectionKey key = (SelectionKey)keysIter.next();
+          // reverse iteration for better efficiency in remove
+          ListIterator<SelectionKey> keysIter = selectedKeys.listIterator(
+              numSelectedKeys);
+          while (keysIter.hasPrevious()) {
+            SelectionKey key = keysIter.previous();
             keysIter.remove();
 
             SnappyTSocket client;
-            final ClientProcessData data = (ClientProcessData)key
-                .attachment();
+            final ClientProcessData data = (ClientProcessData)key.attachment();
             // skip if not valid
-            if (key.isValid()) {
-              final int readyOps = key.readyOps();
-              if (this.stopped) {
-                return;
-              }
-              if ((readyOps & SelectionKey.OP_READ) != 0) {
-                // deal with reads and start inline processing if required
-                if (data.idle) {
-                  client = data.clientSocket;
-                  // check if we have read large enough data (either full frame
-                  // or filled the buffer)
-                  int remainingFrameSize = data.remainingFrameSize;
-                  try {
-                    if (remainingFrameSize == 0) {
-                      remainingFrameSize = client.getInputStream()
-                          .readFrame();
-                    }
-                    else {
-                      remainingFrameSize = client.getInputStream()
-                          .readFrameFragment(remainingFrameSize);
-                    }
-                  } catch (IOException ioe) {
-                    if (client.isOpen()) {
-                      LOGGER.trace("Got an IOException while reading frame",
-                          ioe);
-                    }
-                    closeConnection(data);
-                    continue;
-                  }
-                  if (remainingFrameSize == 0) {
-                    if (myData == null) {
-                      myData = data;
-                    }
-                    else {
-                      data.idle = false;
-                      data.remainingFrameSize = 0;
-                      // handover execution of completed frame to another thread
-                      executorService.execute(new SelectorWorker(data));
-                    }
-                  }
-                  else {
-                    // we should get a new notification for this in selector
-                    // when more data arrives for the frame so just skip it now
-                    data.remainingFrameSize = remainingFrameSize;
-                  }
-                }
-                else {
-                  // unpark any waiting thread
-                  Thread parkedThread = data.clientSocket
-                      .getInputStream().getParkedThread();
-                  if (parkedThread != null) {
-                    LockSupport.unpark(parkedThread);
-                  }
-                  else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                    if (!data.idle) {
-                      parkedThread = data.clientSocket.getOutputStream()
-                          .getParkedThread();
-                      if (parkedThread != null) {
-                        LockSupport.unpark(parkedThread);
-                      }
-                    }
-                  }
-                }
-              }
-              else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                if (!data.idle) {
-                  final Thread parkedThread = data.clientSocket
-                      .getOutputStream().getParkedThread();
-                  if (parkedThread != null) {
-                    LockSupport.unpark(parkedThread);
-                  }
-                }
-              }
-              else {
-                LOGGER.warn("Unexpected state in select! "
-                    + key.interestOps());
-              }
-            }
-            else {
+            if (!key.isValid()) {
               closeConnection(data);
+              continue;
+            }
+            final int readyOps = key.readyOps();
+            if (this.stopped) {
+              return;
+            }
+            if ((readyOps & SelectionKey.OP_READ) != 0) {
+              // deal with reads and start inline processing if required
+              if (data.idle) {
+                client = data.clientSocket;
+                // check if we have read large enough data (either full frame
+                // or filled the buffer)
+                int remainingFrameSize = data.remainingFrameSize;
+                try {
+                  if (remainingFrameSize == 0) {
+                    remainingFrameSize = client.getInputStream()
+                        .readFrame();
+                  } else {
+                    remainingFrameSize = client.getInputStream()
+                        .readFrameFragment(remainingFrameSize);
+                  }
+                } catch (IOException ioe) {
+                  if (client.isOpen()) {
+                    LOGGER.trace("Got an IOException while reading frame",
+                        ioe);
+                  }
+                  closeConnection(data);
+                  continue;
+                }
+                if (remainingFrameSize == 0) {
+                  if (myData == null) {
+                    myData = data;
+                  } else {
+                    data.idle = false;
+                    data.remainingFrameSize = 0;
+                    // handover execution of completed frame to another thread
+                    executorService.execute(new SelectorWorker(data));
+                  }
+                } else {
+                  // we should get a new notification for this in selector
+                  // when more data arrives for the frame so just skip it now
+                  data.remainingFrameSize = remainingFrameSize;
+                }
+              } else {
+                // unpark any waiting thread
+                Thread parkedThread = data.clientSocket
+                    .getInputStream().getParkedThread();
+                if (parkedThread != null) {
+                  LockSupport.unpark(parkedThread);
+                } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                  if (!data.idle) {
+                    parkedThread = data.clientSocket.getOutputStream()
+                        .getParkedThread();
+                    if (parkedThread != null) {
+                      LockSupport.unpark(parkedThread);
+                    }
+                  }
+                }
+              }
+            } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+              if (!data.idle) {
+                final Thread parkedThread = data.clientSocket
+                    .getOutputStream().getParkedThread();
+                if (parkedThread != null) {
+                  LockSupport.unpark(parkedThread);
+                }
+              }
+            } else {
+              LOGGER.warn("Unexpected state in select! " + key.interestOps());
             }
           }
 
@@ -710,57 +703,54 @@ public final class SnappyThriftServerSelector extends TServer {
                 break;
               }
             }
-            if (inlineExecute) {
-              ArrayList<ClientProcessData> myClients = null;
-              try {
-                synchronized (this) {
-                  this.inExecution = true;
-                  final Set<SelectionKey> keys = this.selector.keys();
-                  final int ksize = keys.size();
-                  if (ksize > 1) {
-                    myClients = new ArrayList<ClientProcessData>(ksize);
-                    for (SelectionKey key : keys) {
-                      if (!key.isValid()) {
-                        continue;
-                      }
-                      ClientProcessData data = (ClientProcessData)key
-                          .attachment();
-                      myClients.add(data);
-                      data.key = null;
-                      key.cancel();
-                    }
-                  }
-                  final int csize = this.pendingConnections.size();
-                  if (csize > 0) {
-                    if (myClients == null) {
-                      myClients = new ArrayList<ClientProcessData>(csize);
-                    }
-                    for (int index = 0; index < csize; index++) {
-                      myClients.add(this.pendingConnections.get(index));
-                    }
-                    this.pendingConnections.clear();
-                  }
-                }
-                if (myClients != null) {
-                  registerClientDataInNextSelector(myClients, this);
-                }
-                handleRead(myData, false, true);
-              } finally {
-                this.inExecution = false;
-                numSelectorsInExecute.decrementAndGet();
-              }
-            }
-            else {
+            if (!inlineExecute) {
               // handover execution to another thread
               executorService.execute(new SelectorWorker(myData));
+              continue;
+            }
+            // execute in the current thread
+            ArrayList<ClientProcessData> myClients = null;
+            try {
+              synchronized (this.sync) {
+                this.inExecution = true;
+                final Set<SelectionKey> keys = this.selector.keys();
+                final int ksize = keys.size();
+                if (ksize > 1) {
+                  myClients = new ArrayList<>(ksize);
+                  for (SelectionKey key : keys) {
+                    if (!key.isValid()) {
+                      continue;
+                    }
+                    ClientProcessData data = (ClientProcessData)key
+                        .attachment();
+                    myClients.add(data);
+                    data.key = null;
+                    key.cancel();
+                  }
+                }
+                final int csize = this.pendingConnections.size();
+                if (csize > 0) {
+                  if (myClients == null) {
+                    myClients = new ArrayList<>(csize);
+                  }
+                  for (int index = 0; index < csize; index++) {
+                    myClients.add(this.pendingConnections.get(index));
+                  }
+                  this.pendingConnections.clear();
+                }
+              }
+              if (myClients != null) {
+                registerClientDataInNextSelector(myClients, this);
+              }
+              handleRead(myData, false, true);
+            } finally {
+              this.inExecution = false;
+              numSelectorsInExecute.decrementAndGet();
             }
           }
         }
-      } catch (ClosedChannelException cce) {
-        Misc.checkIfCacheClosing(cce);
-        this.stopped = true;
-      } catch (ClosedSelectorException cse) {
-        Misc.checkIfCacheClosing(cse);
+      } catch (ClosedChannelException | ClosedSelectorException ce) {
+        Misc.checkIfCacheClosing(ce);
         this.stopped = true;
       } catch (IOException ioe) {
         Misc.checkIfCacheClosing(ioe);
@@ -803,24 +793,26 @@ public final class SnappyThriftServerSelector extends TServer {
       }
     }
 
-    synchronized void handlePendingConnections() throws IOException {
-      final int size = this.pendingConnections.size();
-      if (size > 0) {
-        ClientProcessData clientData = this.pendingConnections.get(0);
-        // invoke a selectNow to remove any cancelled keys first
-        this.selector.selectNow();
-        final Set<SelectionKey> newSelectedKeys = this.selector
-            .selectedKeys();
-        if (newSelectedKeys.size() > 0) {
-          this.selectedKeys.addAll(newSelectedKeys);
-          newSelectedKeys.clear();
-        }
-        addNewClient(clientData);
-        for (int index = 1; index < size; index++) {
-          clientData = this.pendingConnections.get(index);
+    void handlePendingConnections() throws IOException {
+      synchronized (this.sync) {
+        final int size = this.pendingConnections.size();
+        if (size > 0) {
+          ClientProcessData clientData = this.pendingConnections.get(0);
+          // invoke a selectNow to remove any cancelled keys first
+          this.selector.selectNow();
+          final Set<SelectionKey> newSelectedKeys = this.selector
+              .selectedKeys();
+          if (newSelectedKeys.size() > 0) {
+            this.selectedKeys.addAll(newSelectedKeys);
+            newSelectedKeys.clear();
+          }
           addNewClient(clientData);
+          for (int index = 1; index < size; index++) {
+            clientData = this.pendingConnections.get(index);
+            addNewClient(clientData);
+          }
+          this.pendingConnections.clear();
         }
-        this.pendingConnections.clear();
       }
     }
 
@@ -855,8 +847,7 @@ public final class SnappyThriftServerSelector extends TServer {
         this.pendingConnections.add(clientData);
         this.selector.wakeup();
         return true;
-      }
-      else {
+      } else {
         return false;
       }
     }

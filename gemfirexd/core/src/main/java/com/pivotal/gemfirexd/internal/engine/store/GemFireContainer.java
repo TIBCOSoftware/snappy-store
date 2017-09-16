@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.engine.store;
 
@@ -25,6 +43,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.InternalGemFireError;
@@ -36,6 +57,7 @@ import com.gemstone.gemfire.cache.wan.GatewaySender;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.*;
@@ -58,12 +80,12 @@ import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.DataAsAddress;
-import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -145,6 +167,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ValueRow;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
 
 /**
  * Masquerades as a ContainerHandle, but has almost none of the behavior of one.
@@ -257,17 +280,24 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   private ExtraTableInfo tableInfo;
 
+  private DistributionDescriptor distributionDesc;
+
+  /**
+   * RowEncoder for object tables.
+   */
+  private final RowEncoder encoder;
+
   boolean hasLobs;
 
   /** the current version of the schema of this table */
   private int schemaVersion;
 
   /**
-   * if true then this table has only one schema (e.g. no multiple schemas due
+   * if set then this table has only one schema (e.g. no multiple schemas due
    * to ALTER TABLE or recovery from old format data which had no schema
    * versions so would use {@link RowFormatter#TOKEN_RECOVERY_VERSION}
    */
-  public boolean hasSingleSchema;
+  public RowFormatter singleSchema;
 
   /**
    * the table info adjusted after recovery from disk at the end of DDL replay
@@ -305,6 +335,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       .getServerInstance().getBoolean("cacheGlobalIndexINMap", false);
 
   private CacheMap globalIndexMap;
+
+  private AtomicReference<ExternalTableMetaData> externalTableMetaData =
+      new AtomicReference<ExternalTableMetaData>(null);
+
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -387,7 +421,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             this.comparator, true, true);
       }
       this.region = null;
-      this.hasSingleSchema = true;
+      this.singleSchema = this.baseContainer.getCurrentRowFormatter();
       this.oldTableInfos = null;
       // Write the index creation records to disk store if table is persistent.
       // It doesn't really matter if the index creation ultimately fails due
@@ -408,6 +442,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         }
       }
       this.globalIndexMap = null;
+      this.encoder = null;
       return;
     }
 
@@ -418,13 +453,85 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
     assert rootRegion != null: "Schema '" + schemaName + "' not found";
     this.properties = properties;
+    String rowEncoderClass = properties.getProperty(
+        GfxdConstants.TABLE_ROW_ENCODER_CLASS_KEY);
+    if (rowEncoderClass != null) {
+      try {
+        this.encoder = (RowEncoder)ClassPathLoader.getLatest()
+            .forName(rowEncoderClass).newInstance();
+      } catch (Exception e) {
+        throw StandardException.newException(
+            SQLState.UNEXPECTED_EXCEPTION_FOR_ROW_ENCODER, e, qualifiedName);
+      }
+    } else {
+      this.encoder = null;
+    }
     this.regionAttributes = (RegionAttributes<?, ?>)properties
         .get(GfxdConstants.REGION_ATTRIBUTES_KEY);
     this.indexInfo = null;
     this.schemaVersion = 1;
-    this.hasSingleSchema = true;
+    this.singleSchema = getCurrentRowFormatter();
     this.oldTableInfos = new ArrayList<ExtraTableInfo>();
     initTableFlags();
+  }
+
+  private ExternalCatalog waitForHiveCatalogInit() {
+    ExternalCatalog ret;
+    int cnt = -1;
+    // Retrying after sleep of some millisecs to reduce the worst case
+    // of delaying that put for a large period of time
+    while ((ret = Misc.getMemStore().getExternalCatalog()) == null
+        && cnt < GfxdConstants.HA_NUM_RETRIES) {
+      GemFireXDUtils.sleepForRetry(cnt++);
+    }
+    return ret;
+  }
+
+  public void invalidateHiveMetaData() {
+    externalTableMetaData.set(null);
+  }
+
+  public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
+    ExternalTableMetaData metaData;
+    if (refresh || (metaData = externalTableMetaData.get()) == null) {
+      // for column store, get the row buffer table name
+      String schemaName = this.schemaName;
+      String tableName = this.tableName;
+      if (isColumnStore()) {
+        String fullName = getRowBufferTableName(this.qualifiedName);
+        int schemaIndex = fullName.indexOf('.');
+        schemaName = fullName.substring(0, schemaIndex);
+        tableName = fullName.substring(schemaIndex + 1);
+      }
+      ExternalCatalog extcat = Misc.getMemStore().getExternalCatalog();
+      if (extcat == null) {
+        extcat = waitForHiveCatalogInit();
+        if (extcat == null) {
+          throw new TimeoutException("The snappy catalog in hive metastore is not accessible");
+        }
+      }
+      // containers are created during initialization, ignore them
+      externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
+              schemaName, tableName, true));
+      if (isPartitioned()) {
+        metaData = externalTableMetaData.get();
+        if (metaData == null) return null;
+        ((PartitionedRegion)this.region).setColumnBatchSizes(
+            metaData.columnBatchSize, metaData.columnMaxDeltaRows,
+            GfxdConstants.SNAPPY_MIN_COLUMN_DELTA_ROWS);
+        return metaData;
+      }
+      return externalTableMetaData.get();
+    } else {
+      return metaData;
+    }
+  }
+
+  public static String getRowBufferTableName(String columnBatchTableName) {
+    String tableName = columnBatchTableName.replace(
+        StoreCallbacks.SHADOW_SCHEMA_NAME_WITH_SEPARATOR, "");
+    return tableName.substring(0, tableName.length() -
+        StoreCallbacks.SHADOW_TABLE_SUFFIX.length());
   }
 
   public boolean cachesGlobalIndex() {
@@ -503,6 +610,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         row.setRowArray(template);
       }
       this.templateRow = row.getNewNullRow();
+      this.singleSchema = null;
     }
 
     if (this.comparator != null) {
@@ -657,7 +765,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       //fix for #47662
       if (hasAutoGeneratedCols()) {
         final VMIdAdvisor uuidAdvisor = this.region.getUUIDAdvisor();
-        if (uuidAdvisor != null) {
+        if (uuidAdvisor != null && !Misc.isSnappyHiveMetaTable(getSchemaName())) {
           SanityManager.DEBUG_PRINT("info:", "Initializing UUID advisor "
               + uuidAdvisor);
           uuidAdvisor.handshake();
@@ -719,8 +827,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     refreshCachedInfo(td, distributionDesc, activation);
     // set the index maintenance listener
     if (!getSchemaName().equalsIgnoreCase(GfxdConstants.SYSTEM_SCHEMA_NAME)) {
-      indexManager = GfxdIndexManager.newIndexManager(dd, td, this,
-          lcc.getDatabase(), hasFk);
+      if (!isObjectStore()) {
+        indexManager = GfxdIndexManager.newIndexManager(dd, td, this,
+            lcc.getDatabase(), hasFk);
+      }
       initialize(this.properties, indexManager, tran, cdl);
     }
     this.properties = null;
@@ -730,6 +840,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   public void refreshCachedInfo(TableDescriptor td,
       DistributionDescriptor distributionDesc, Activation activation)
       throws StandardException {
+    setDistributionDescriptor(distributionDesc);
     if (distributionDesc != null) {
       final RegionAttributes<?, ?> rattr = getRegionAttributes();
       final CacheLoader<?, ?> ldr = rattr.getCacheLoader();
@@ -740,10 +851,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       if (pattrs != null) {
         final PartitionResolver<?, ?> pr = rattr.getPartitionAttributes()
             .getPartitionResolver();
-        if (pr != null && pr instanceof GfxdPartitionResolver) {
+        if (pr instanceof GfxdPartitionResolver) {
           final GfxdPartitionResolver spr = (GfxdPartitionResolver)pr;
           spr.setTableDetails(td, this);
-          spr.setDistributionDescriptor(distributionDesc);
+          spr.updateDistributionDescriptor(distributionDesc);
           spr.setColumnInfo(td, activation);
         }
       }
@@ -753,6 +864,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public void setIndexInitialized() {
     this.isIndexInitialized = true;
+  }
+
+  public void setDistributionDescriptor(DistributionDescriptor desc) {
+    this.distributionDesc = desc;
+  }
+
+  public final DistributionDescriptor getDistributionDescriptor() {
+    return this.distributionDesc;
   }
 
   private static void prepareContainerName(long containerId, Properties props,
@@ -860,6 +979,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public void setExtraTableInfo(ExtraTableInfo tableInfo) {
     this.tableInfo = tableInfo;
+    schemaUpdated();
+  }
+
+  public void schemaUpdated() {
+    if (this.oldTableInfos.isEmpty()) {
+      this.singleSchema = getCurrentRowFormatter();
+    }
   }
 
   public final boolean hasLobs() {
@@ -928,20 +1054,17 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    */
   public final ExtraTableInfo getExtraTableInfo(final byte[] rawRow) {
 
-    if (rawRow == null) {
-      return this.tableInfo;
-    }
-
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    if (this.singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion((rowVersion = readVersion(rawRow))):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
       return this.tableInfo;
-    }
-    else {
+    } else if (rawRow == null) {
+      return this.tableInfo;
+    } else {
       return getExtraTableInfoForMultiSchema(rawRow);
     }
   }
@@ -949,11 +1072,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   /**
    * Return the table info for this container given the first row byte array.
    */
-  private final ExtraTableInfo getExtraTableInfoForMultiSchema(
+  private ExtraTableInfo getExtraTableInfoForMultiSchema(
       final OffHeapByteSource rawRow) {
-    final UnsafeWrapper unsafe = UnsafeMemoryChunk.getUnsafeWrapper();
     final long memAddr = rawRow.getUnsafeAddress();
-    final int schemaVersion = RowFormatter.readVersion(unsafe, memAddr);
+    final int schemaVersion = RowFormatter.readVersion(memAddr);
     // schemaVersion == TOKEN_RECOVERY_VERSION indicates recovery from old
     // product files
     if (isCurrentVersion(schemaVersion)) {
@@ -974,21 +1096,17 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    * Return the table info for this container given the first row byte array.
    */
   public final ExtraTableInfo getExtraTableInfo(final OffHeapByteSource rawRow) {
-
-    if (rawRow == null) {
-      return this.tableInfo;
-    }
-
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    if (this.singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion((rowVersion = readVersion(rawRow))):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
       return this.tableInfo;
-    }
-    else {
+    } else if (rawRow == null) {
+      return this.tableInfo;
+    } else {
       return getExtraTableInfoForMultiSchema(rawRow);
     }
   }
@@ -998,17 +1116,15 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    */
   public final ExtraTableInfo getExtraTableInfo(final Object rawRow) {
 
-    if (rawRow == null) {
-      return this.tableInfo;
-    }
-
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    if (this.singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion((rowVersion = readVersion_(rawRow))):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
+      return this.tableInfo;
+    } else if (rawRow == null) {
       return this.tableInfo;
     }
 
@@ -1036,18 +1152,17 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
-  private final int readVersion(final OffHeapByteSource rowBytes) {
+  private int readVersion(final OffHeapByteSource rowBytes) {
     if (rowBytes != null && isByteArrayStore()) {
-      return RowFormatter.readVersion(UnsafeMemoryChunk.getUnsafeWrapper(),
-          rowBytes.getUnsafeAddress());
-    }
-    else {
+      return RowFormatter.readVersion(rowBytes.getUnsafeAddress());
+    } else {
       return this.schemaVersion;
     }
   }
 
   @Unretained
   private final int readVersion_(@Unretained final Object rawRow) {
+    if (rawRow == null) return this.schemaVersion;
     final Class<?> cls = rawRow.getClass();
     if (cls == byte[].class) {
       return readVersion((byte[])rawRow);
@@ -1125,10 +1240,12 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.oldTableInfos.add(this.tableInfo);
 
     this.schemaVersion++;
-    this.hasSingleSchema = false;
+    this.singleSchema = null;
     ExtraTableInfo.newExtraTableInfo(dd, td, lcc.getContextManager(),
         this.schemaVersion, this, true);
-    this.tableInfo.initRowFormatter(this);
+    if (isByteArrayStore()) {
+      this.tableInfo.initRowFormatter(this);
+    }
   }
 
   /**
@@ -1185,7 +1302,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.tableInfoOnRecovery.refreshCachedInfo(td, this);
     this.tableInfoOnRecovery.initRowFormatter(this);
     this.tableInfoOnRecovery.setLatestSchema(false);
-    this.hasSingleSchema = false;
+    this.singleSchema = null;
     this.schemaVersionOnRecovery = this.schemaVersion;
     // unmark current tableInfo as current since this new tableInfo is set
     // later and when looking up schema we may need to check for this too
@@ -1352,6 +1469,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+
+
   public static GemFireContainer getContainerFromIdentityKey(String key) {
     String tableName;
     int uuidIndex = key.lastIndexOf(':');
@@ -1395,53 +1514,46 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   public final RowFormatter getRowFormatter(final byte[] rawRow) {
-    if (!isByteArrayStore()) {
-      return null;
-    }
-
-    if (rawRow == null) {
-      return this.tableInfo.getRowFormatter();
-    }
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
-      assert isCurrentVersion(rowVersion = readVersion(rawRow)):
+      assert isCurrentVersion(rowVersion = readVersion(rawRow)) :
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
+      return singleSchema;
+    } else if (!isByteArrayStore()) {
+      return null;
+    } else if (rawRow == null) {
       return this.tableInfo.getRowFormatter();
-    }
-    else {
+    } else {
       return getRowFormatterForMultiSchema(rawRow);
     }
   }
 
   public final RowFormatter getRowFormatter(final byte[][] rawRow) {
-    if (!isByteArrayStore()) {
-      return null;
-    }
-
-    if (rawRow == null || rawRow.length == 0) {
-      return this.tableInfo.getRowFormatter();
-    }
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
-      assert isCurrentVersion(rowVersion = readVersion(rawRow[0])):
+      assert isCurrentVersion(rowVersion = readVersion(rawRow[0])) :
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
+      return singleSchema;
+    } else if (!isByteArrayStore()) {
+      return null;
+    } else if (rawRow == null || rawRow.length == 0) {
       return this.tableInfo.getRowFormatter();
-    }
-    else {
+    } else {
       return getRowFormatterForMultiSchema(rawRow[0]);
     }
   }
 
-  private final RowFormatter getRowFormatterForMultiSchema(
-      final UnsafeWrapper unsafe, final long memAddr,
+  private RowFormatter getRowFormatterForMultiSchema(final long memAddr,
       @Unretained final OffHeapByteSource rawRow) {
-    final int schemaVersion = RowFormatter.readVersion(unsafe, memAddr);
+    final int schemaVersion = RowFormatter.readVersion(memAddr);
     // schemaVersion == TOKEN_RECOVERY_VERSION indicates recovery from old
     // product files
     if (isCurrentVersion(schemaVersion)) {
@@ -1460,46 +1572,39 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public final RowFormatter getRowFormatter(
       @Unretained final OffHeapByteSource rawRow) {
-    if (!isByteArrayStore()) {
-      return null;
-    }
-
-    if (rawRow == null) {
-      return this.tableInfo.getRowFormatter();
-    }
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion(rawRow)):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
+      return singleSchema;
+    } else if (!isByteArrayStore()) {
+      return null;
+    } else if (rawRow == null) {
       return this.tableInfo.getRowFormatter();
-    }
-    else {
-      return getRowFormatterForMultiSchema(
-          UnsafeMemoryChunk.getUnsafeWrapper(), rawRow.getUnsafeAddress(),
-          rawRow);
+    } else {
+      return getRowFormatterForMultiSchema(rawRow.getUnsafeAddress(), rawRow);
     }
   }
 
-  public final RowFormatter getRowFormatter(final UnsafeWrapper unsafe,
-      final long memAddr, @Unretained final OffHeapByteSource rawRow) {
-    if (!isByteArrayStore()) {
-      return null;
-    }
-
+  public final RowFormatter getRowFormatter(final long memAddr,
+      @Unretained final OffHeapByteSource rawRow) {
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion(rawRow)):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
-      return this.tableInfo.getRowFormatter();
-    }
-    else {
-      return getRowFormatterForMultiSchema(unsafe, memAddr, rawRow);
+      return singleSchema;
+    } else if (!isByteArrayStore()) {
+      return null;
+    } else {
+      return getRowFormatterForMultiSchema(memAddr, rawRow);
     }
   }
 
@@ -1509,20 +1614,18 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    * @return the RowFormatter, or null if this is not a byte array store table.
    */
   public final RowFormatter getRowFormatter(@Unretained final Object rawRow) {
-    if (!isByteArrayStore()) {
-      return null;
-    }
-
-    if (rawRow == null) {
-      return this.tableInfo.getRowFormatter();
-    }
     // if there are no old schemas then simply return current formatter
-    if (this.hasSingleSchema) {
+    final RowFormatter singleSchema = this.singleSchema;
+    if (singleSchema != null) {
       int rowVersion;
       assert isCurrentVersion(rowVersion = readVersion_(rawRow)):
           "unexpected version in row=" + rowVersion + ", schemaVersion="
-          + this.schemaVersion;
+              + this.schemaVersion;
 
+      return singleSchema;
+    } else if (!isByteArrayStore()) {
+      return null;
+    } else if (rawRow == null) {
       return this.tableInfo.getRowFormatter();
     }
 
@@ -1535,8 +1638,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
     else if (OffHeapByteSource.isOffHeapBytesClass(cls)) {
       final OffHeapByteSource bs = (OffHeapByteSource)rawRow;
-      return getRowFormatterForMultiSchema(
-          UnsafeMemoryChunk.getUnsafeWrapper(), bs.getUnsafeAddress(), bs);
+      return getRowFormatterForMultiSchema(bs.getUnsafeAddress(), bs);
     }
     else {
       return this.tableInfo.getRowFormatter();
@@ -1658,20 +1760,21 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         // first acquire the recovery lock to avoid any rebalance etc.
         // this is done only on the source node
         if (!lcc.isConnectionForRemote()) {
-          final RecoveryLock rl = pr.getRecoveryLock();
+          final AtomicBoolean locked = new AtomicBoolean();
+          final RecoveryLock rl = ColocationHelper.getLeaderRegion(pr).getRecoveryLock();
           rl.lock();
-          // register operation for releasing the lock at commit
+          locked.set(true);
+          // register operation for releasing the lock at commit/abort
           tc.logAndDo(new MemOperation(null) {
-            private boolean skipUnlock;
             @Override
             public void doMe(Transaction xact, LogInstant instant,
                 LimitObjectInput in) throws StandardException, IOException {
               if (GemFireXDUtils.TraceConglom) {
                 SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM,
-                    "Invoked localClear.RecoveryLock.unlock with skipUnlock="
-                        + this.skipUnlock + " for " + xact);
+                    "Invoked localClear.RecoveryLock.unlock with locked="
+                        + locked.get() + " for " + xact);
               }
-              if (!this.skipUnlock) {
+              if (locked.compareAndSet(true, false)) {
                 try {
                   rl.unlock();
                 } catch (Exception e) {
@@ -1691,12 +1794,12 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             @Override
             public Compensation generateUndo(Transaction xact,
                 LimitObjectInput in) throws StandardException, IOException {
-              this.skipUnlock = true;
-              return null;
+              // release the lock in any case if it has been acquired
+              return this;
             }
           });
         }
-        
+
         pr.clearLocalPrimaries();
       }
       else {
@@ -1840,6 +1943,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   final void drop(final GemFireTransaction tran) throws StandardException {
     try {
+      if (this.baseContainer != null) {
+        accountIndexMemory(false, true);
+      }
       localDestroy(tran);
     } finally {
       // remove dependencies for ExtraTableInfo
@@ -1864,6 +1970,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       if (r != null
           && (indexManager = (GfxdIndexManager)r.getIndexUpdater()) != null) {
         indexManager.drop(tran);
+      }
+      if (this.skipListMap != null) {
+        releaseIndexMemory();
       }
     }
   }
@@ -2471,6 +2580,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           regionKey = cKey;
         }
         val = getPrimaryKeyBytesAndValue(row, rf, cKey, primaryKeyColumns);
+      } else if (isObjectStore()) {
+        Map.Entry<RegionKey, Object> entry = this.encoder.fromRow(row, this);
+        regionKey = entry.getKey();
+        val = entry.getValue();
       }
       else {
         // clone the row since this row will get reused by derby
@@ -3278,12 +3391,12 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       observer.insertMultipleRowsBeingInvoked(numRows);
       observer.invokeCacheCloseAtMultipleInsert();
     }
-    if (GemFireXDUtils.TraceConglomUpdate | GemFireXDUtils.TraceQuery) {
+    if (GemFireXDUtils.TraceConglomUpdate | GemFireXDUtils.TraceQuery && false) {
       final StringBuilder insertString = new StringBuilder(
           "GemFireContainer: inserting multiple rows [");
       for (int i = 0; i < rows.size(); i++) {
-        insertString.append('(').append(newExecRow(rows.get(i), this.tableInfo, false))
-            .append(") ");
+        insertString.append('(').append(newExecRow(null, rows.get(i),
+            this.tableInfo, false)).append(") ");
       }
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM_UPDATE,
           insertString.append("] [").append(tx).append("] in container: ")
@@ -3359,16 +3472,22 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             // storing in serialized form
             // [sumedh] row has already been cloned for putAll case
             final DataValueDescriptor[] row = (DataValueDescriptor[])val;
-            for (int i = 0; i < row.length; i++) {
-              // also invoke setRegionContext() here that will turn DVD into
-              // its final shape to avoid any state changes during reads that
-              // have potential race conditions
-              row[i].setRegionContext(this.region);
+            if (isObjectStore()) {
+              Map.Entry<RegionKey, Object> entry = this.encoder.fromRow(row, this);
+              regionKey = entry.getKey();
+              val = entry.getValue();
+            } else {
+              for (int i = 0; i < row.length; i++) {
+                // also invoke setRegionContext() here that will turn DVD into
+                // its final shape to avoid any state changes during reads that
+                // have potential race conditions
+                row[i].setRegionContext(this.region);
+              }
+              if ((regionKey = getGeneratedKey(primaryKeyColumns)) == null) {
+                regionKey = getPrimaryKeyDVDs(primaryKeyColumns, row);
+              }
+              val = row;
             }
-            if ((regionKey = getGeneratedKey(primaryKeyColumns)) == null) {
-              regionKey = getPrimaryKeyDVDs(primaryKeyColumns, row);
-            }
-            val = row;
             final Object routingObject = GemFireXDUtils
                 .getRoutingObjectFromGlobalIndex(this.region, regionKey, val);
             // marking skipListener as false.
@@ -4053,7 +4172,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
               changedRow[column] = dvd;
             }
             if (origDVD != null
-                && origDVD.getTypeFormatId() == StoredFormatIds.SQL_CHAR_ID
+                && dtd.getDVDTypeFormatId() == StoredFormatIds.SQL_CHAR_ID
                 && origDVD.getString() != null) {
               // See #46933
               ((SQLChar)origDVD).normalize(dtd, origDVD);
@@ -4186,9 +4305,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   private Object getRoutingObject(LocalRegion r, Object key, Object value) {
-    GfxdPartitionResolver pr = (GfxdPartitionResolver)r
+    InternalPartitionResolver<?, ?> pr = (InternalPartitionResolver<?, ?>)r
         .getPartitionAttributes().getPartitionResolver();
-    return pr.getRoutingObject(key, value, r);
+    return pr.getRoutingObject(key, value, null, r);
   }
 
   public VersionedObjectList doPutAllOfAllDeltas(MultipleKeyValueHolder mkvh,
@@ -4879,18 +4998,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   /**
-   * Get a new template row with null DVDs for DVD[] storage.
-   */
-  public ExecRow newNullTemplateRow() {
-    if (isByteArrayStore()) {
-      return this.templateRow.getNewNullRow();
-    }
-    else {
-      return new ValueRow(this.templateRow.nColumns());
-    }
-  }
-
-  /**
    * Get a new template row with given valid columns and having given
    * RowFormatter for byte array store.
    */
@@ -4962,10 +5069,19 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     return (this.containerFlags & BYTEARRAY_STORE) != 0;
   }
 
+  public final boolean isObjectStore() {
+    return this.encoder != null;
+  }
+
+  public final RowEncoder getRowEncoder() {
+    return this.encoder;
+  }
+
   private final boolean isCandidateForByteArrayStore() {
     return !GfxdConstants.SYSTEM_SCHEMA_NAME.equals(this.schemaName)
         // TODO: SW: why for session schema??
-        && !GfxdConstants.SESSION_SCHEMA_NAME.equals(this.schemaName);
+        && !GfxdConstants.SESSION_SCHEMA_NAME.equals(this.schemaName)
+        && !isObjectStore();
   }
 
   /**
@@ -4973,6 +5089,18 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    */
   public final boolean isPartitioned() {
     return this.regionAttributes.getDataPolicy().withPartitioning();
+  }
+
+  public final boolean isRowBuffer() {
+    return isPartitioned() && ((PartitionedRegion)this.region).needsBatching();
+  }
+
+  public final boolean isColumnStore() {
+    // latter check is not useful currently since only column tables use
+    // object store, but still added the check for possible future use
+    // (e.g. local index table on column store)
+    return isObjectStore() &&
+        this.tableName.endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
   }
 
   public final boolean isOffHeap() {
@@ -5106,8 +5234,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    * 
    * @return either an AbstractCompactExecRow or a ValueRow
    */
-  public final ExecRow newExecRow(final Object rawStoreRow,
-      final ExtraTableInfo tableInfo, boolean faultIn) {
+  public final ExecRow newExecRow(final RegionEntry entry,
+      final Object rawStoreRow, final ExtraTableInfo tableInfo,
+      boolean faultIn) {
     if (rawStoreRow != null) {
       if (isByteArrayStore()) {
         Class<?> rawStoreRowClass = rawStoreRow.getClass();
@@ -5129,6 +5258,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           throw new AssertionError("Unexpected raw store data . Object is "
               + rawStoreRow);
         }
+      } else if (isObjectStore()) {
+        return this.encoder.toRow(entry, rawStoreRow, this);
       }
       else {
         assert rawStoreRow instanceof DataValueDescriptor[]:
@@ -5403,8 +5534,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         dataPolicy = attrs.getDataPolicy().toString();
         if (pattrs != null) {
           pattrsStr = pattrs.getStringForGFXD();
-          resolverStr = ((GfxdPartitionResolver)pattrs.getPartitionResolver())
-              .getDDLString();
+          resolverStr = ((InternalPartitionResolver<?, ?>)pattrs
+              .getPartitionResolver()).getDDLString();
         }
         expirationAttrs = attrs.getRegionIdleTimeout();
         if (expirationAttrs != null && expirationAttrs.getTimeout() != 0) {
@@ -5483,10 +5614,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         }
 
         final DataValueDescriptor tType = dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1];
-        if (tType != null && "T".equalsIgnoreCase(tType.toString())) {
+        if (tType != null && "T".equalsIgnoreCase(tType.toString()) &&
+            !LocalRegion.isMetaTable(region.getFullPath())) {
           ExternalCatalog ec = Misc.getMemStore().getExternalCatalog();
           LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
-          if (ec != null && lcc != null && lcc.isQueryRoutingEnabled() &&
+          if (ec != null && lcc != null && lcc.isQueryRoutingFlagTrue() &&
               Misc.initialDDLReplayDone()) {
             if (ec.isColumnTable(schemaName, table.toString(), true)) {
               dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
@@ -5735,7 +5867,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
 
     @Override
-    public Object apply(EntryEvent<?, ?> event) {      
+    public Object apply(EntryEvent<?, ?> event) {
       return apply(event.getRegion(), event.getKey(),
           ((EntryEventImpl)event).getOldValueAsOffHeapDeserializedOrRaw(),
           event.getTransactionId() == null);
@@ -6333,4 +6465,141 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       this.globalIndexMap.put(globalIndexKey, robj);
     }
   }
+
+  private StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+
+  final ObjectSizer sizer = ObjectSizer.getInstance(false);
+
+  // This field is to be used only for initial index setup. If index is big we compute
+  // the cost step-wise and acquire memory accoringly
+  long intialAccounting = 0;
+
+  private AtomicLong sizeAccountedByIndex = new AtomicLong(0L);
+  // Cuurrent overhead which is stamped in the region
+  private int currenrOverhead = 0;
+  // Total number of rows in Index
+  private long totalRows = 0;
+
+  private AtomicLong numOperations = new AtomicLong(0L);
+
+  private boolean doAccounting() {
+    if (!callback.isSnappyStore()) {
+      return false;
+    }
+    LocalRegion baseRegion = getBaseRegion();
+    if (!baseRegion.reservedTable()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public void accountMemoryForIndex(long cursorPos, boolean forceAccount) {
+    if ((cursorPos >= 8
+            && (cursorPos & (cursorPos - 1)) == 0) // Power of 2
+            || forceAccount) {
+      accountIndexMemory(true, false);
+    }
+  }
+
+  public void resetInitialAccounting(){
+    intialAccounting = 0;
+  }
+
+  public void accountIndexMemory(boolean askMemoryManager, boolean isDestroy) {
+    if (!doAccounting()) {
+      return;
+    }
+    LocalRegion baseRegion = getBaseRegion();
+    final String baseTableContainerName = baseRegion.getFullPath();
+    List<GemFireContainer> indexes = new ArrayList<>();
+    indexes.add(this);
+    final LinkedHashMap<String, Object[]> retEstimates = new LinkedHashMap<>();
+    long sum = 0L;
+    long totalOverhead = 0L;
+    try {
+      sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes, retEstimates, null);
+      Misc.getCacheLogWriter().info("Computing initial index overhead of region " +
+          "" + baseTableContainerName + " for index " + this.getName()) ;
+      for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
+        long[] value = (long[]) e.getValue()[0];
+        sum += value[0]; //constantOverhead
+        sum += value[1]; //entryOverhead[0] + /entryOverhead[1]
+        sum += value[2]; //keySize
+        sum += value[3]; //valueSize
+        long rowCount = value[5];
+        totalOverhead += (rowCount == 0 ? 0 : Math.round((sum - intialAccounting) / rowCount));
+        if (askMemoryManager) {
+          // Only acquire memory while initial index creation. Rest all index accounting will be done by
+          // region put/delete
+          Misc.getCacheLogWriter().info("Total overhead computed = "+ sum + " intialAccounting = "+intialAccounting);
+          baseRegion.acquirePoolMemory(0, sum - intialAccounting,
+              false, null, false);
+          intialAccounting = sum;
+          sizeAccountedByIndex.set(sum);
+        }
+        totalRows = rowCount;
+      }
+
+      if (!isDestroy) {
+        adjustAccountedMemory(totalOverhead);
+        currenrOverhead = (int) totalOverhead;
+      }
+    } catch (StandardException | IllegalAccessException e) {
+      throw new GemFireXDRuntimeException(e);
+    } catch (InterruptedException ie) {
+      Misc.checkIfCacheClosing(ie);
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  // Release the current size of index from memory manager.
+  private void releaseIndexMemory() {
+    LocalRegion baseRegion = getBaseRegion();
+    if (doAccounting()) {
+      long memoryToBeFreed = currenrOverhead * totalRows;
+      // Free all memory by index + (index overhead * row count)
+      getBaseRegion().freePoolMemory(memoryToBeFreed + sizeAccountedByIndex.get(), false);
+      if (!baseRegion.isDestroyed) {
+        baseRegion.setIndexOverhead(-1 * currenrOverhead);
+        // mark (index overhead * row count) as ignore bytes in local region , which will be ignored by
+        // dropping the table
+        baseRegion.incIgnoreBytes(memoryToBeFreed);
+      }
+    }
+  }
+
+  public void accountSnapshotEntry(int numBytes) {
+    LocalRegion baseRegion = getBaseRegion();
+    if (doAccounting()) {
+      getBaseRegion().acquirePoolMemory(0, numBytes,
+          false, null, false);
+      sizeAccountedByIndex.addAndGet(numBytes);
+    }
+  }
+
+  public void adjustAccountedMemory(long newValue) {
+    LocalRegion baseRegion = getBaseRegion();
+    if (doAccounting()) {
+      long adjustedMemory = newValue - currenrOverhead;
+      baseRegion.setIndexOverhead((int)adjustedMemory);
+    }
+  }
+
+  public void runEstimation() {
+    if (doAccounting()) {
+      long numOps = numOperations.incrementAndGet();
+      if (numOps >= 8
+              && (numOps & (numOps - 1)) == 0) { // Power of 2
+        // accounting in sync call. One of the operation will be slow.
+        // But it will lead to more resiliency. for around 5 million rows in index
+        // it takes around 500 ms.
+        // @TODO will see if cost is very high will make it a async call.
+        accountIndexMemory(false, false);
+      }
+    }
+  }
+
+
 }

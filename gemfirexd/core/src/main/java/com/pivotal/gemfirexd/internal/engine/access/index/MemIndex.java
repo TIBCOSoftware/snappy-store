@@ -29,7 +29,6 @@ import java.util.Properties;
 
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
@@ -525,7 +524,7 @@ public abstract class MemIndex extends DataType implements MemConglomerate {
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
+  public int readBytes(long memOffset, int columnWidth,
       ByteSource bs) {
     throw new UnsupportedOperationException("Not expected to be invoked for "
         + getClass());

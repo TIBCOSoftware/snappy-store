@@ -167,7 +167,8 @@ public final class ServerGroupUtils {
     } else {
       isDataStore = isStore && isGroupMember(serverGroups);
     }
-    if (GemFireXDUtils.TraceConglom || !table.startsWith("SYSSTAT")) {
+    if (GemFireXDUtils.TraceConglom ||
+        !(table.startsWith("SYSSTAT") || table.startsWith(Misc.SNAPPY_HIVE_METASTORE))) {
       if (isDataStore) {
         LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
         SanityManager.DEBUG_PRINT("info:" + GfxdConstants.TRACE_CONGLOM,

@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.InternalGemFireError;
@@ -165,20 +166,23 @@ public final class RegionInfoShip implements DataSerializable {
               return pbrs[this.bucketId].getCreatedBucketRegion();
             }
           }
-        } catch (PRLocallyDestroyedException prlde) {
-          // return null below for this case
-        } catch (RegionDestroyedException rde) {
+        } catch (PRLocallyDestroyedException | RegionDestroyedException |
+            CancelException e) {
           // return null below for this case
         }
         return null;
       case IS_RR:
-        return cache.getRegionByPath(this.fullPath, false);
+        try {
+          return cache != null ? cache.getRegionByPath(
+              this.fullPath, false) : null;
+        } catch (RegionDestroyedException | CancelException e) {
+          return null;
+        }
       case IS_PR:
         try {
           return PartitionedRegion.getPRFromId(this.prId);
-        } catch (PRLocallyDestroyedException prlde) {
-          return null;
-        } catch (RegionDestroyedException rde) {
+        } catch (PRLocallyDestroyedException | RegionDestroyedException |
+            CancelException e) {
           return null;
         }
       default:

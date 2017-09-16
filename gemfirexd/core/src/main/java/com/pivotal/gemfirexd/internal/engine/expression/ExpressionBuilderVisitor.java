@@ -33,8 +33,10 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ColumnReference;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.QueryTreeNodeVector;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ResultColumn;
+import com.pivotal.gemfirexd.internal.impl.sql.compile.SubqueryNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ValueNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.VirtualColumnNode;
+import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 
 
@@ -95,13 +97,45 @@ public class ExpressionBuilderVisitor extends VisitorAdaptor {
   public void skipChildren() {
     skipChildren = true;
   }
-  
+
+  private static class SubqueryVisitor extends VisitorAdaptor {
+    SubqueryNode result;
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Visitable visit(Visitable node) throws StandardException {
+      if (node instanceof SubqueryNode) {
+        result = (SubqueryNode)node;
+      }
+      return node;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean stopTraversal() {
+      return result != null;
+    }
+  }
+
   public Visitable visit(Visitable node) throws StandardException {
-    
+
+    // check for Subquery which is unsupported for this expression builder
+    SubqueryVisitor visitor = new SubqueryVisitor();
+    node.accept(visitor);
+    if (visitor.result != null) {
+      // unsupported case of subquery in a group by node
+      throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
+          "Subquery within GROUP BY context");
+    }
+
     if(! (node instanceof ValueNode)) {
       return node;
     }
-    
+
     ValueNode vn = null;
     ResultColumn rc = null;
     

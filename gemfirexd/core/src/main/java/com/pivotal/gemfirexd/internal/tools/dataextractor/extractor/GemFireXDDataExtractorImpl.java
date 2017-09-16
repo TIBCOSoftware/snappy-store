@@ -101,7 +101,7 @@ public class GemFireXDDataExtractorImpl {
   public static final String DEFAULT_STRING_DELIMITER = "\"";
 
   public static final String DEFAULT_SALVAGER_LOG_FILE = "extractor.log";
-  public static final String DRIVER_STRING = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  public static final String DRIVER_STRING = "io.snappydata.jdbc.EmbeddedDriver";
   public static final String LOGGER_NAME = "extractor.logger";
 
   public volatile static Logger logger = Logger.getLogger(LOGGER_NAME);;

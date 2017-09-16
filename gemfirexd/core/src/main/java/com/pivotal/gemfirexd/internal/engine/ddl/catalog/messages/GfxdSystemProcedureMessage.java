@@ -27,12 +27,14 @@ import java.util.Set;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.HDFSRegionDirector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
@@ -59,9 +61,7 @@ import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore.VMKind;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
-import com.pivotal.gemfirexd.internal.iapi.reference.ContextId;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -84,6 +84,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.TablePrivilegeInfo;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 
 /**
  * System Procedure Message that is sent out to members to execute procedures
@@ -1004,7 +1006,7 @@ public final class GfxdSystemProcedureMessage extends
             .toString();
       }
     },
-    
+
     waitForSenderQueueFlush {
 
       @Override
@@ -1065,7 +1067,66 @@ public final class GfxdSystemProcedureMessage extends
             .append(params[2]).append(')').toString();
       }
     },
-    
+
+    setLogLevel {
+
+      @Override
+      boolean allowExecution(Object[] params) {
+        // so allowing log level to be set on all nodes including locator
+        return true;
+      }
+
+      @Override
+      public void processMessage(Object[] params, DistributedMember sender)
+          throws StandardException {
+        try {
+          String logClass = (String) params[0];
+          Level level = org.apache.log4j.Level.toLevel((String) params[1]);
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+                  "GfxdSystemProcedureMessage: setting log level for class '" + logClass
+                          + "' to " + level);
+          if (logClass.equals("")) {
+            // sets the log level for the root logger and the GFXD bridge
+            LogManager.getRootLogger().setLevel(level);
+            LogWriter logger = Misc.getCacheLogWriterNoThrow();
+            if (logger instanceof GFToSlf4jBridge) {
+              ((GFToSlf4jBridge) logger).setLevelForLog4jLevel(level);
+            }
+          } else {
+            LogManager.getLogger(logClass).setLevel(level);
+          }
+        } catch (Exception e) {
+          throw StandardException.newException(
+                  com.pivotal.gemfirexd.internal.iapi.reference.SQLState.GENERIC_PROC_EXCEPTION,
+                  e, e.getMessage());
+        }
+      }
+
+      @Override
+      public Object[] readParams(DataInput in, short flags) throws IOException {
+        Object[] inParams = new Object[2];
+        inParams[0] = InternalDataSerializer.readString(in);
+        inParams[1] = InternalDataSerializer.readString(in);
+
+        return inParams;
+      }
+
+      @Override
+      public void writeParams(Object[] params, DataOutput out)
+              throws IOException {
+        InternalDataSerializer.writeString((String)params[0], out);
+        InternalDataSerializer.writeString((String)params[1], out);
+      }
+
+      @Override
+      String getSQLStatement(Object[] params) throws StandardException {
+        final StringBuilder sb = new StringBuilder();
+        return sb.append("CALL SYS.SET_LOG_LEVEL('").append(params[0])
+                .append("', '").append(params[1]).append("')")
+                .toString();
+      }
+    },
+
     setGatewayFKChecks {
       @Override
       boolean allowExecution(Object[] params) {
@@ -1273,8 +1334,8 @@ public final class GfxdSystemProcedureMessage extends
       public void processMessage(Object[] params, DistributedMember sender)
           throws StandardException {
 
-        Boolean enableStats = (Boolean)params[0];
-        Boolean enableTimeStats = (Boolean)params[1];
+        final Boolean enableStats = (Boolean)params[0];
+        final Boolean enableTimeStats = (Boolean)params[1];
 
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_PLAN_GENERATION,
             "GfxdSystemProcedure: Switching " + (enableStats ? "On" : "Off")
@@ -1288,21 +1349,16 @@ public final class GfxdSystemProcedureMessage extends
             enableTimeStats.toString());
 
         // next set on all active connections
-        ContextService factory = ContextService.getFactory();
-        LanguageConnectionContext lcc;
-        if (factory != null) {
-          for (ContextManager cm : factory.getAllContexts()) {
-            if (cm == null) {
-              continue;
-            }
-            lcc = (LanguageConnectionContext)cm
-                .getContext(ContextId.LANG_CONNECTION);
-            if (lcc != null) {
-              lcc.setStatsEnabled(enableStats, enableTimeStats,
-                  lcc.explainConnection());
-            }
-          }
-        }
+        final GemFireXDUtils.Visitor<LanguageConnectionContext> setStats =
+            new GemFireXDUtils.Visitor<LanguageConnectionContext>() {
+              @Override
+              public boolean visit(LanguageConnectionContext lcc) {
+                lcc.setStatsEnabled(enableStats, enableTimeStats,
+                    lcc.explainConnection());
+                return true;
+              }
+            };
+        GemFireXDUtils.forAllContexts(setStats);
 
         // also enable GemFire and other timing stats
         if (enableTimeStats) {
@@ -1379,6 +1435,45 @@ public final class GfxdSystemProcedureMessage extends
       @Override
       String getSQLStatement(Object[] params) throws StandardException {
         return "CALL SYS.DUMP_STACKS(1)";
+      }
+    },
+
+    repairCatalog {
+      @Override
+      boolean allowExecution(Object[] params) {
+        // allow execution only on lead node
+        final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
+        return isLead;
+      }
+
+      @Override
+      public void processMessage(Object[] params, DistributedMember sender) throws
+          StandardException {
+        Object repair = params[0];
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+            "GfxdSystemProcedureMessage: invoking REPAIR_CATALOG() procedure");
+        try {
+          GfxdSystemProcedures.runCatalogConsistencyChecks();
+        } catch (SQLException sq) {
+          throw StandardException.unexpectedUserException(sq);
+        }
+      }
+
+      @Override
+      public Object[] readParams(DataInput in, short flags) throws IOException,
+          ClassNotFoundException {
+        return new Object[] { DataSerializer.readInteger(in) };
+      }
+
+      @Override
+      public void writeParams(Object[] params, DataOutput out)
+          throws IOException {
+        DataSerializer.writeInteger((Integer)params[0], out);
+      }
+
+      @Override
+      String getSQLStatement(Object[] params) throws StandardException {
+        return "CALL SYS.REPAIR_CATALOG(1)";
       }
     },
     

@@ -159,6 +159,7 @@ public final class TransactionResourceImpl
 	private InternalDriver driver;
 	private String url;
 	private String drdaID;
+	private String authToken;
 
 	// set these up after constructor, called by EmbedConnection
 	protected Database database;
@@ -184,6 +185,7 @@ public final class TransactionResourceImpl
 		// interface is used.  Thus, we look there first.
 		// Default to APP.
 		username = IdUtil.getUserNameFromURLProps(info);
+		this.authToken = info.getProperty(Attribute.PASSWORD_ATTR, "");
 
 		drdaID = info.getProperty(Attribute.DRDAID_ATTR, null);		
 		
@@ -202,6 +204,8 @@ public final class TransactionResourceImpl
 		// only allowed for admin user by LCC.setSkipLocksForConnection
 		this.skipLocks = getPropertyValue(
                     Attribute.SKIP_LOCKS, null, info, false);
+		this.defaultSchema = PropertyUtil.findAndGetProperty(info,
+		    Attribute.DEFAULT_SCHEMA, null);
 		// default is streaming enabled
 		this.disableStreaming = getPropertyValue(
 		    Attribute.DISABLE_STREAMING,
@@ -267,6 +271,8 @@ public final class TransactionResourceImpl
 		this.routeQuery = getPropertyValue(
 		    Attribute.ROUTE_QUERY,
 		    GfxdConstants.GFXD_ROUTE_QUERY, info, false);
+		this.snappyInternalConnection = getPropertyValue(Attribute.INTERNAL_CONNECTION,
+				GfxdConstants.INTERNAL_CONNECTION, info, false);
 		this.defaultPersistent = getPropertyValue(
 		    Attribute.DEFAULT_PERSISTENT, GfxdConstants.GFXD_PREFIX
 			+ Attribute.DEFAULT_PERSISTENT, info, false);
@@ -337,6 +343,8 @@ public final class TransactionResourceImpl
 
 	private final boolean routeQuery;
 
+	private final boolean snappyInternalConnection;
+
 	private final boolean defaultPersistent;
 
 	private final boolean skipConstraintChecks;
@@ -351,7 +359,9 @@ public final class TransactionResourceImpl
 
 	private final boolean skipLocks;
 
-        private final boolean enableMetadataPrepare;
+	final String defaultSchema;
+
+  private final boolean enableMetadataPrepare;
         
 	public final EnumSet<TransactionFlag> getTXFlags() {
 	  return this.txFlags;
@@ -385,7 +395,7 @@ public final class TransactionResourceImpl
 	void startTransaction(long connectionID, boolean isRemote)
 	throws StandardException, SQLException {
 		// setting up local connection
-		lcc = database.setupConnection(cm, username, drdaID, dbname,
+		lcc = database.setupConnection(cm, username, this.authToken, drdaID, dbname,
 		    connectionID, isRemote);
 
 		// no streaming for remote connections
@@ -397,7 +407,8 @@ public final class TransactionResourceImpl
 		}
 		this.lcc.setTXFlags(this.txFlags);
 		this.lcc.setQueryHDFS(this.queryHDFS);
-		this.lcc.setQueryRouting(this.routeQuery);
+		this.lcc.setQueryRoutingFlag(this.routeQuery);
+		this.lcc.setSnappyInternalConnection(this.snappyInternalConnection);
 		this.lcc.setDefaultPersistent(this.defaultPersistent);
 		this.lcc.setEnableBulkFkChecks(this.enableBulkFkChecks);
 		this.lcc.setSkipConstraintChecks(this.skipConstraintChecks);
@@ -594,7 +605,8 @@ public final class TransactionResourceImpl
 					** rollback in the cleanupOnError above, but we still
 					** may hold locks from the stmt.
 					*/
-					if (autoCommit && rollbackOnAutoCommit)
+
+					if (autoCommit && rollbackOnAutoCommit || ((GemFireTransaction)lcc.getTransactionExecute()).getImplcitSnapshotTxStarted())
 					{
 						se.setSeverity(ExceptionSeverity.TRANSACTION_SEVERITY);
 					}

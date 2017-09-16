@@ -683,6 +683,10 @@ recompileOutOfDatePlan:
 		return paramTypeDescriptors;
 	}
 
+  public void setParameterTypes(DataTypeDescriptor[] paramTypes)	{
+    paramTypeDescriptors = paramTypes;
+  }
+
 	public String getSource() {
 		return (sourceTxt != null) ?
 			sourceTxt :
@@ -1356,18 +1360,7 @@ recompileOutOfDatePlan:
 			}
 		}
 // GemStone changes BEGIN
-		for (;;) {
-		  final int invalidFlags = this.isInvalid.get();
-		  if ((invalidFlags & IS_INVALID) != 0) {
-		    if (this.isInvalid.compareAndSet(invalidFlags,
-		        invalidFlags & (~IS_INVALID))) {
-		      return;
-		    }
-		  }
-		  else {
-		    return;
-		  }
-		}
+		makeValid();
 		/* (original code)
 		isValid = true;
 
@@ -1375,6 +1368,23 @@ recompileOutOfDatePlan:
 		*/
 // GemStone changes END
 	}
+// GemStone changes BEGIN
+
+  void makeValid() {
+    for (;;) {
+      final int invalidFlags = this.isInvalid.get();
+      if ((invalidFlags & IS_INVALID) != 0) {
+        if (this.isInvalid.compareAndSet(invalidFlags,
+            invalidFlags & (~IS_INVALID))) {
+          return;
+        }
+      }
+      else {
+        return;
+      }
+    }
+  }
+// GemStone changes END
 
 	public GeneratedClass getActivationClass()
 		throws StandardException

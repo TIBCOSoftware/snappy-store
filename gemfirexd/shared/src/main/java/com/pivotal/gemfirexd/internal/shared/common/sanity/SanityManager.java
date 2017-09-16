@@ -210,7 +210,7 @@ public class SanityManager {
 	public static boolean isFinerEnabled = false;
 
 	static {
-          DebugFlags = ClientSharedUtils.getJdkHelper().newConcurrentMap(16, 4);
+          DebugFlags = new ConcurrentHashMap(16, 0.75f, 4);
         }
 // GemStone changes END
 	/**
@@ -561,8 +561,7 @@ public class SanityManager {
             String connectionName) {
           final StringBuilder sb = new StringBuilder(lineSeparator);
           final Thread thread = Thread.currentThread();
-          final long threadId = ClientSharedUtils.getJdkHelper()
-              .getThreadId(thread);
+          final long threadId = thread.getId();
           final long millis = System.currentTimeMillis();
           sb.append('[');
           if (level != null) {
@@ -753,8 +752,7 @@ public class SanityManager {
                 // wait for user input before further output
                 out.print(continuePrompt);
                 out.flush();
-                String chars = ClientSharedUtils.getJdkHelper()
-                    .readChars(in, noecho);
+                String chars = ClientSharedUtils.readChars(in, noecho);
                 out.println();
                 if (chars != null && chars.length() > 0
                     && (chars.charAt(0) == 'q' || chars.charAt(0) == 'Q')) {
@@ -793,14 +791,14 @@ public class SanityManager {
           final String tid;
           final String opId;
           final Object sql;
-          final int sqlId;
+          final long sqlId;
           final long connId;
           final ByteBuffer sessionToken;
           final long nanoTime;
           final long milliTime;
           final Throwable t;
 
-          CompactLogLine(String tid, String opId, Object sql, int sqlId,
+          CompactLogLine(String tid, String opId, Object sql, long sqlId,
               long connId, ByteBuffer sessionToken, long nanoTime,
               long milliTime, Throwable t) {
             this.tid = tid;
@@ -817,7 +815,7 @@ public class SanityManager {
           void toString(StringBuilder sb) {
             sb.append(this.tid).append(' ').append(this.opId).append(' ');
             final Object sql = this.sql;
-            final int sqlId;
+            final long sqlId;
             if (sql != null) {
               Class<?> cls = sql.getClass();
               if (cls == Integer.class) {
@@ -867,7 +865,7 @@ public class SanityManager {
           DEBUG_PRINT_COMPACT(opId, opSql, connId, null, nanoTime, isStart, t);
         }
 
-        static public void DEBUG_PRINT_COMPACT(String opId, final int sqlId,
+        static public void DEBUG_PRINT_COMPACT(String opId, final long sqlId,
             long connId, ByteBuffer sessionToken, long nanoTime,
             boolean isStart, Throwable t) {
           DEBUG_PRINT_COMPACT(opId, null, sqlId, connId, sessionToken,
@@ -882,7 +880,7 @@ public class SanityManager {
         }
 
         static public void DEBUG_PRINT_COMPACT(String opId, final String opSql,
-            int sqlId, long connId, ByteBuffer sessionToken, long nanoTime,
+            long sqlId, long connId, ByteBuffer sessionToken, long nanoTime,
             boolean isStart, Throwable t) {
           final Object sql;
           final Thread currentThread = Thread.currentThread();

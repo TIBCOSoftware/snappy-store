@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -143,7 +143,6 @@ public final class ClientRSMetaData implements ResultSetMetaData {
   public boolean isSigned(int column) throws SQLException {
     switch (getDescriptor(column).getType()) {
       case INTEGER:
-      case REAL:
       case DECIMAL:
       case SMALLINT:
       case BIGINT:
@@ -174,11 +173,10 @@ public final class ClientRSMetaData implements ResultSetMetaData {
         return 11;
       case SMALLINT:
         return 6;
-      case REAL:
-        return 13;
       case DOUBLE:
-      case FLOAT:
         return 22;
+      case FLOAT:
+        return 13;
       case TINYINT:
         return 15;
       case BIGINT:
@@ -262,7 +260,6 @@ public final class ClientRSMetaData implements ResultSetMetaData {
         case SMALLINT:
         case INTEGER:
         case BIGINT:
-        case REAL:
         case DOUBLE:
         case FLOAT:
         case DATE:
@@ -339,12 +336,10 @@ public final class ClientRSMetaData implements ResultSetMetaData {
           return "INTEGER";
         case BIGINT:
           return "BIGINT";
-        case REAL:
-          return "REAL";
         case DOUBLE:
           return "DOUBLE";
         case FLOAT:
-          return "FLOAT";
+          return "REAL";
         case DECIMAL:
           return "DECIMAL";
         case CHAR:
@@ -434,11 +429,10 @@ public final class ClientRSMetaData implements ResultSetMetaData {
         return "java.lang.Integer";
       case BIGINT:
         return "java.lang.Long";
-      case REAL:
-        return "java.lang.Float";
       case DOUBLE:
-      case FLOAT:
         return "java.lang.Double";
+      case FLOAT:
+        return "java.lang.Float";
       case DECIMAL:
         return "java.math.BigDecimal";
       case CHAR:
@@ -462,11 +456,10 @@ public final class ClientRSMetaData implements ResultSetMetaData {
       case BLOB:
         return "java.sql.Blob";
       case CLOB:
+      case JSON:
         return "java.sql.Clob";
       case SQLXML:
         return "java.sql.SQLXML";
-      case JSON:
-        return "io.snappydata.thrift.JSONObject";
       case ARRAY:
         return "java.sql.Array";
       case MAP:

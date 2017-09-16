@@ -83,9 +83,10 @@ public final class ChannelBufferFramedInputStream extends
 
   @Override
   public final int readFrameFragment(int fragmentSize) throws IOException {
-    final int readBytes = this.channel.read(this.buffer);
-    if (readBytes >= 0) {
-      fragmentSize -= readBytes;
+    final int numBytes = this.channel.read(this.buffer);
+    if (numBytes >= 0) {
+      this.bytesRead += numBytes;
+      fragmentSize -= numBytes;
       if (fragmentSize <= 0) {
         // ready the frame for reading
         final int limit = buffer.position();

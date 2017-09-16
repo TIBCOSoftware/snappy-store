@@ -20,7 +20,9 @@ package com.gemstone.gemfire.internal.cache;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelException;
@@ -36,6 +38,7 @@ import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
+import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
@@ -150,13 +153,22 @@ public final class TXRegionState extends ReentrantLock {
     this.expiryReadLock = r.getTxEntryExpirationReadLock();
     this.isValid = true;
 
-    if (r.isInitialized() || !r.getImageState().addPendingTXRegionState(this)) {
+    if (!r.isInitialized() && r.getImageState().lockPendingTXRegionStates(true, false)) {
+      try {
+        if (!r.getImageState().addPendingTXRegionState(this)) {
+          this.pendingTXOps = null;
+          this.pendingTXLockFlags = null;
+        } else {
+          this.pendingTXOps = new ArrayList<Object>();
+          this.pendingTXLockFlags = new TIntArrayList();
+        }
+      } finally {
+        r.getImageState().unlockPendingTXRegionStates(true);
+      }
+
+    } else {
       this.pendingTXOps = null;
       this.pendingTXLockFlags = null;
-    }
-    else {
-      this.pendingTXOps = new ArrayList<Object>();
-      this.pendingTXLockFlags = new TIntArrayList();
     }
   }
 
@@ -233,6 +245,8 @@ public final class TXRegionState extends ReentrantLock {
    * Returns either a {@link TXEntryState} object for a transactional entry
    * locked for write, while returns {@link RegionEntry} object for a
    * transactional entry locked for read.
+   *
+   * It should return old entry or new entry depending on version
    */
   public final Object readEntry(final Object entryKey) {
     return readEntry(entryKey, true);
@@ -260,6 +274,8 @@ public final class TXRegionState extends ReentrantLock {
                 + ",type=" + entryKey.getClass().getSimpleName() + "] for "
                 + toString() + ": " + txEntry);
       }
+
+      // suranjan we can check the version here, no need to check..as any entry in txr will have to be read anyway.
       return txEntry;
     }
     else {
@@ -861,4 +877,5 @@ public final class TXRegionState extends ReentrantLock {
         + this.txState.txId.shortToString() + ",TXState@0x"
         + Integer.toHexString(System.identityHashCode(txState));
   }
+
 }

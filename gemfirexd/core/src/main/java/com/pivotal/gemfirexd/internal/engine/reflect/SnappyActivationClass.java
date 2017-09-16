@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -25,13 +25,23 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 
 public class SnappyActivationClass implements GeneratedClass {
-  boolean returnRows;
-  public SnappyActivationClass(boolean returnRows) {
+
+  private final boolean returnRows;
+  private final int classLoaderVersion;
+  boolean isPrepStmt;
+  boolean isUpdateOrDelete;
+
+  public SnappyActivationClass(LanguageConnectionContext lcc, boolean returnRows,
+      boolean isPrepStmt, boolean isUpdateOrDelete) {
     this.returnRows = returnRows;
+    this.classLoaderVersion = lcc.getLanguageConnectionFactory()
+        .getClassFactory().getClassLoaderVersion();
+    this.isPrepStmt = isPrepStmt;
+    this.isUpdateOrDelete = isUpdateOrDelete;
   }
 
   public int getClassLoaderVersion() {
-    return 0;
+    return this.classLoaderVersion;
   }
 
   public GeneratedMethod getMethod(String simpleName) throws StandardException {
@@ -42,9 +52,13 @@ public class SnappyActivationClass implements GeneratedClass {
     return "SnappyActivation";
   }
 
-  public final Object newInstance(final LanguageConnectionContext lcc,
-                                  final boolean addToLCC, final ExecPreparedStatement eps)
-    throws StandardException {
-    return new SnappyActivation(lcc, eps, this.returnRows);
+  public final Object newInstance(final LanguageConnectionContext lcc, final boolean addToLCC,
+      final ExecPreparedStatement eps) throws StandardException {
+    SnappyActivation sa = new SnappyActivation(lcc, eps, this.returnRows, this.isPrepStmt,
+        this.isUpdateOrDelete);
+    if (isPrepStmt) {
+      sa.initialize_pvs();
+    }
+    return sa;
   }
 }

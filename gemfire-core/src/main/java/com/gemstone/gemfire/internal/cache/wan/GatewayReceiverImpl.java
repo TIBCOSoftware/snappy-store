@@ -18,6 +18,7 @@ package com.gemstone.gemfire.internal.cache.wan;
 
 import java.io.IOException;
 import java.net.BindException;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
@@ -33,6 +34,7 @@ import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.BridgeServerImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -160,9 +162,14 @@ public final class GatewayReceiverImpl implements GatewayReceiver {
       receiver.setGroups(new String[] { GatewayReceiverImpl.RECEIVER_GROUP });
       ((BridgeServerImpl)receiver).setGatewayTransportFilter(this.filters);
       try {
-        ((BridgeServerImpl)receiver).start();
+        receiver.start();
         started = true;
       } catch (BindException be) {
+        InetAddress bindHostAddress = AcceptorImpl.getBindAddress(
+            AcceptorImpl.calcBindHostName(cache, getBindAddress()));
+        if (!AcceptorImpl.treatAsBindException(be, bindHostAddress)) {
+          throw be;
+        }
         // ignore as this port might have been used by other threads.
         logger.warning(LocalizedStrings.GatewayReceiver_Address_Already_In_Use,
             this.port);
@@ -204,7 +211,9 @@ public final class GatewayReceiverImpl implements GatewayReceiver {
   }
   
   public void stop() {
-    receiver.stop();
+    if (receiver != null) {
+      receiver.stop();
+    }
 
 //    InternalDistributedSystem system = ((GemFireCacheImpl) this.cache)
 //        .getDistributedSystem();

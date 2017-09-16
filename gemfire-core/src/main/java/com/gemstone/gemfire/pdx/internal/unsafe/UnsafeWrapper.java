@@ -33,7 +33,7 @@ public final class UnsafeWrapper {
 
   private static final Unsafe unsafe = UnsafeHolder.getUnsafe();
 
-  public final Unsafe getUnsafe() {
+  public static Unsafe getUnsafe() {
     return unsafe;
   }
 

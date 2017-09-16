@@ -42,6 +42,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionByExpressionResolver;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
+import io.snappydata.test.dunit.RMIException;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.util.TestException;
 
@@ -129,6 +130,88 @@ public class InsertUpdateForeignKeyDUnit extends DistributedSQLTestBase {
 
     clientSQLExecute(1, "drop table t2");
     clientSQLExecute(1, "drop table t1");
+  }
+
+  /**
+   * Test inserts an invalid foreign key.
+   */
+  public void testInvalidKeyDelete() throws Exception {
+
+    startVMs(1, 1);
+
+    clientSQLExecute(1, "create table t1(id int not null, id2 int not null, primary key(id))");
+    clientSQLExecute(1,
+        "create table t2(id int not null, fkId int not null, "
+            + "primary key(id), foreign key (fkId) references t1(id))");
+    clientSQLExecute(1, "insert into t1 values(1, 1)");
+    clientSQLExecute(1, "insert into t2 values(1, 1)");
+
+    addExpectedException(new int[] { 1 }, new int[] { 1 }, new Object[] {
+        FunctionExecutionException.class,
+        "java.sql.SQLIntegrityConstraintViolationException" });
+
+    String sql = "delete from t1 where id = 1";
+    String expectedState = "23503";
+
+    Thread t = doUpdateInThread();
+
+    try {
+      Connection conn = TestUtil.jdbcConn;
+      Statement s = conn.createStatement();
+      s.execute(sql);
+      fail("should have got a foreign key violation exception for SQL: "
+          + sql);
+    } catch (SQLException ex) {
+      if (!expectedState.equals(ex.getSQLState())) {
+        throw ex;
+      }
+    } catch (RMIException ex) {
+      if (ex.getCause() instanceof SQLException) {
+        SQLException sqlEx = (SQLException)ex.getCause();
+        if (!expectedState.equals(sqlEx.getSQLState())) {
+          throw ex;
+        }
+      } else {
+        throw ex;
+      }
+    }
+    t.join();
+    removeExpectedException(new int[]{1}, new int[]{1}, new Object[]{
+        FunctionExecutionException.class,
+        "java.sql.SQLIntegrityConstraintViolationException"});
+
+    clientSQLExecute(1, "drop table t2");
+    clientSQLExecute(1, "drop table t1");
+  }
+
+  private Thread doUpdateInThread() throws Exception {
+    final Connection conn2 = TestUtil.getConnection();
+    final Exception[] tx = new Exception[1];
+
+    Runnable r = new Runnable() {
+      @Override
+      public void run() {
+        for (int i = 0; i < 10000; i++) {
+          try {
+            Statement st = conn2.createStatement();
+            conn2.setTransactionIsolation(Connection.TRANSACTION_NONE);
+            conn2.setAutoCommit(false);
+            st.execute("update t1 set id2=2 where id = 1");
+            conn2.commit();
+          } catch (SQLException e) {
+            e.printStackTrace();
+            tx[0] = e;
+          }
+        }
+      }
+    };
+    Thread t = new Thread(r);
+    t.start();
+    //t.join();
+    if (tx[0] != null) {
+      throw tx[0];
+    }
+    return t;
   }
 
   /**

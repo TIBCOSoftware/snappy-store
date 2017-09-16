@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -35,12 +35,13 @@
 
 package io.snappydata.thrift.server;
 
+import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import javax.transaction.xa.XAException;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.SystemFailure;
@@ -64,14 +65,7 @@ import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.SnappyExceptionData;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
-import org.apache.thrift.ProcessFunction;
-import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TMessage;
-import org.apache.thrift.protocol.TMessageType;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TProtocolUtil;
-import org.apache.thrift.protocol.TType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,10 +124,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
    * connection to use the main {@link SnappyDataService.Iface} thrift API.
    * A list of servers to be excluded from consideration can be passed as a
    * comma-separated string (e.g. to ignore the failed server during failover).
-   * <p>
-   * If no server is available (after excluding the "failedServers"), then this
-   * throws a SnappyException with SQLState "40XD2" (
-   * {@link SQLState#DATA_CONTAINER_VANISHED}).
    */
   @Override
   public final HostAddress getPreferredServer(Set<ServerType> serverTypes,
@@ -150,8 +140,7 @@ public class LocatorServiceImpl implements LocatorService.Iface {
       if (ntypes == 1) {
         intersectGroups = Collections.singleton(serverTypes.iterator().next()
             .getServerGroupName());
-      }
-      else {
+      } else {
         @SuppressWarnings("unchecked")
         Set<String> igroups = new THashSet(ntypes);
         intersectGroups = igroups;
@@ -159,8 +148,7 @@ public class LocatorServiceImpl implements LocatorService.Iface {
           intersectGroups.add(serverType.getServerGroupName());
         }
       }
-    }
-    else {
+    } else {
       intersectGroups = null;
     }
     if (SanityManager.TraceClientHA) {
@@ -177,12 +165,11 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     } catch (Throwable t) {
       throw SnappyException(t);
     }
-    if (prefServer != null) {
+    if (prefServer != null && prefServer.getPort() > 0) {
       prefHost = ThriftUtils.getHostAddress(prefServer.getHostName(),
           prefServer.getPort());
-    }
-    else {
-      // for consistency though null here is okay in Thrift protocol
+    } else {
+      // for consistency since some calls expect non-null result
       prefHost = HostAddress.NULL_ADDRESS;
     }
     return prefHost;
@@ -202,10 +189,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
    * <p>
    * This is primarily to avoid making two calls to the servers from the clients
    * during connection creation or failover.
-   * <p>
-   * If no server is available (after excluding the "failedServers"), then this
-   * throws a SnappyException with SQLState "40XD2" (
-   * {@link SQLState#DATA_CONTAINER_VANISHED}).
    */
   @Override
   public final List<HostAddress> getAllServersWithPreferredServer(
@@ -214,10 +197,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     HostAddress prefServer = getPreferredServer(serverTypes, serverGroups,
         failedServers);
     ArrayList<HostAddress> prefAndAllServers = new ArrayList<>();
-    // null result in a list causes Thrift protocol exception
-    if (prefServer == null) {
-      prefServer = HostAddress.NULL_ADDRESS;
-    }
 
     final Set<ServerType> allTypes;
     if (serverTypes == null || serverTypes.isEmpty()) {
@@ -253,59 +232,6 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     return prefAndAllServers;
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void closeConnection() {
-    // nothing to be done here; only signals the processor to cleanly close
-    // server-side socket
-  }
-
-  /**
-   * Custom Processor implementation to handle closeConnection by closing
-   * server-side connection cleanly.
-   */
-  public static final class Processor extends
-      LocatorService.Processor<LocatorServiceImpl> {
-
-    private final LocatorServiceImpl inst;
-    private final HashMap<String, ProcessFunction<LocatorServiceImpl, ?>> fnMap;
-
-    public Processor(LocatorServiceImpl inst) {
-      super(inst);
-      this.inst = inst;
-      this.fnMap = new HashMap<>(super.getProcessMapView());
-    }
-
-    @Override
-    public final boolean process(final TProtocol in, final TProtocol out)
-        throws TException {
-      final TMessage msg = in.readMessageBegin();
-      final ProcessFunction<LocatorServiceImpl, ?> fn = this.fnMap
-          .get(msg.name);
-      if (fn != null) {
-        fn.process(msg.seqid, in, out, this.inst);
-        // terminate connection on receiving closeConnection
-        // direct class comparison should be the fastest way
-        return fn.getClass() != LocatorService.Processor.closeConnection.class;
-      }
-      else {
-        TProtocolUtil.skip(in, TType.STRUCT);
-        in.readMessageEnd();
-        TApplicationException x = new TApplicationException(
-            TApplicationException.UNKNOWN_METHOD, "Invalid method name: '"
-                + msg.name + "'");
-        out.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION,
-            msg.seqid));
-        x.write(out);
-        out.writeMessageEnd();
-        out.getTransport().flush();
-        return true;
-      }
-    }
-  }
-
   public final CancelCriterion getCancelCriterion() {
     return this.stopper;
   }
@@ -314,11 +240,16 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     SQLException sqle;
     if (t instanceof SQLException) {
       sqle = (SQLException)t;
-    }
-    else if (t instanceof SnappyException) {
+    } else if (t instanceof SnappyException) {
       return (SnappyException)t;
-    }
-    else {
+    } else if (t instanceof XAException) {
+      XAException xae = (XAException)t;
+      sqle = new SQLException(xae.getMessage(), null, xae.errorCode);
+      if (xae.getCause() != null) {
+        sqle.setNextException(
+            TransactionResourceImpl.wrapInSQLException(xae.getCause()));
+      }
+    } else {
       if (t instanceof Error) {
         Error err = (Error)t;
         if (SystemFailure.isJVMFailureError(err)) {
@@ -350,14 +281,27 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     }
 
     SnappyExceptionData exData = new SnappyExceptionData(sqle.getMessage(),
-        sqle.getSQLState(), sqle.getErrorCode());
+        sqle.getErrorCode()).setSqlState(sqle.getSQLState());
+    if (sqle instanceof BatchUpdateException) {
+      int[] updates = ((BatchUpdateException)sqle).getUpdateCounts();
+      List<Integer> updateCounts;
+      if (updates != null && updates.length > 0) {
+        updateCounts = new ArrayList<>(updates.length);
+        for (int update : updates) {
+          updateCounts.add(update);
+        }
+      } else {
+        updateCounts = Collections.emptyList();
+      }
+      exData.setUpdateCounts(updateCounts);
+    }
     ArrayList<SnappyExceptionData> nextExceptions = new ArrayList<>(4);
     SQLException next = sqle.getNextException();
     if (next != null) {
       nextExceptions = new ArrayList<>();
       do {
-        nextExceptions.add(new SnappyExceptionData(next.getMessage(), next
-            .getSQLState(), next.getErrorCode()));
+        nextExceptions.add(new SnappyExceptionData(next.getMessage(),
+            next.getErrorCode()).setSqlState(next.getSQLState()));
       } while ((next = next.getNextException()) != null);
     }
     SnappyException se = new SnappyException(exData, getServerInfo());
@@ -366,14 +310,13 @@ public class LocatorServiceImpl implements LocatorService.Iface {
     if (t instanceof TException) {
       stack = new StringBuilder("Cause: ").append(
           ThriftExceptionUtil.getExceptionString(t)).append("; Server STACK: ");
-    }
-    else {
+    } else {
       stack = new StringBuilder("Server STACK: ");
     }
     SanityManager.getStackTrace(t, stack);
     nextExceptions.add(new SnappyExceptionData(stack.toString(),
-        SQLState.SNAPPY_SERVER_STACK_INDICATOR,
-        ExceptionSeverity.STATEMENT_SEVERITY));
+        ExceptionSeverity.STATEMENT_SEVERITY)
+        .setSqlState(SQLState.SNAPPY_SERVER_STACK_INDICATOR));
     se.setNextExceptions(nextExceptions);
     return se;
   }
@@ -381,7 +324,7 @@ public class LocatorServiceImpl implements LocatorService.Iface {
   public SnappyException newSnappyException(String messageId, Object... args) {
     SnappyExceptionData exData = new SnappyExceptionData();
     exData.setSqlState(StandardException.getSQLStateFromIdentifier(messageId));
-    exData.setSeverity(StandardException.getSeverityFromIdentifier(messageId));
+    exData.setErrorCode(StandardException.getSeverityFromIdentifier(messageId));
     exData.setReason(MessageService.getCompleteMessage(messageId, args));
     return new SnappyException(exData, getServerInfo());
   }

@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -61,7 +61,7 @@ namespace client {
     std::unique_ptr<SQLWarning> m_warnings;
     std::unique_ptr<std::map<int32_t, thrift::OutputParameter> > m_outParams;
     // cursorId of last execution
-    int32_t m_cursorId;
+    int64_t m_cursorId;
 
     friend class Connection;
     friend class Result;

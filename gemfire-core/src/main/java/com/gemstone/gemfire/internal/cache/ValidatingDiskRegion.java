@@ -22,13 +22,11 @@ import java.util.concurrent.ConcurrentMap;
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskPosition;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation.Entry;
@@ -197,7 +195,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       throw new IllegalStateException("Should never be called");
     }
 
-    public void _removePhase1() {
+    public void _removePhase1(LocalRegion r) {
       throw new IllegalStateException("should never be called");
     }
 
@@ -313,7 +311,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       // TODO Auto-generated method stub
     }
     @Override
-    public void removePhase2() {
+    public void removePhase2(LocalRegion r) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -333,7 +331,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
     }
     @Override
     public boolean fillInValue(LocalRegion r, Entry entry,
-        ByteArrayDataInput in, DM mgr, Version targetVersion) {
+        DM mgr, Version targetVersion) {
       // TODO Auto-generated method stub
       return false;
     }
@@ -464,7 +462,11 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       return false;
     }
     @Override
-    public void setValueToNull() {
+    public boolean isOffHeap() {
+      return false;
+    }
+    @Override
+    public void setValueToNull(RegionEntryContext context) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -549,7 +551,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
      * {@inheritDoc}
      */
     @Override
-    public void setOwner(LocalRegion owner) {
+    public void setOwner(LocalRegion owner, Object previousOwner) {
       // TODO Auto-generated method stub
       
     }

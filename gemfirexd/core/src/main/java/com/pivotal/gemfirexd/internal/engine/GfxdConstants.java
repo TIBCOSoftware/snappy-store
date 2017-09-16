@@ -132,6 +132,8 @@ public interface GfxdConstants {
    */
   final String REGION_INITSIZE_KEY = "GEMFIRE_REGION_INITSIZE";
 
+  String TABLE_ROW_ENCODER_CLASS_KEY = "TABLE_ROW_ENCODER_CLASS";
+
   /**
    * this string is used to pass the DistributionDescriptor between the
    * CreateTableNode and CreateTableConstantAction. It could be better just
@@ -240,11 +242,6 @@ public interface GfxdConstants {
    * Protocol string used for obtaining connection
    */
   final String PROTOCOL = Attribute.PROTOCOL;
-
-  /**
-   * Protocol string used for thin network clients.
-   */
-  final String NET_PROTOCOL = Attribute.THRIFT_PROTOCOL;
 
   /**
    * A random date selected to represent infinity value
@@ -442,6 +439,7 @@ public interface GfxdConstants {
           Attribute.CONFIG_SCRIPTS,
           Attribute.DEFAULT_INITIAL_CAPACITY_PROP,
           Attribute.DEFAULT_RECOVERY_DELAY_PROP,
+          DEFAULT_STARTUP_RECOVERY_DELAY_PROP,
           Attribute.DUMP_TIME_STATS_FREQ,
           Attribute.ENABLE_STATS,
           Attribute.ENABLE_TIMESTATS,
@@ -449,6 +447,7 @@ public interface GfxdConstants {
           Attribute.SERVER_GROUPS,
           Attribute.GFXD_HOST_DATA,
           Attribute.GFXD_PERSIST_DD,
+          Attribute.READ_TIMEOUT,
           Attribute.KEEPALIVE_IDLE,
           Attribute.KEEPALIVE_INTVL,
           Attribute.KEEPALIVE_CNT,
@@ -457,6 +456,7 @@ public interface GfxdConstants {
           Attribute.SYS_HDFS_ROOT_DIR,
           Attribute.TABLE_DEFAULT_PARTITIONED,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.COLLATE,
+          com.pivotal.gemfirexd.internal.iapi.reference.Attribute.INTERNAL_CONNECTION,
           Attribute.COLLATION,
           Attribute.CREATE_ATTR,
           Attribute.DISABLE_STREAMING,
@@ -470,6 +470,7 @@ public interface GfxdConstants {
           Attribute.SHUTDOWN_ATTR,
           Attribute.SKIP_LISTENERS,
           Attribute.SKIP_LOCKS,
+          Attribute.DEFAULT_SCHEMA,
           Attribute.CLIENT_SECURITY_MECHANISM,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.SOFT_UPGRADE_NO_FEATURE_CHECK,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.TERRITORY,
@@ -487,9 +488,11 @@ public interface GfxdConstants {
           CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
           CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
           Attribute.THRIFT_USE_BINARY_PROTOCOL,
+          Attribute.THRIFT_USE_FRAMED_TRANSPORT,
           Attribute.THRIFT_USE_SSL,
           Attribute.THRIFT_SSL_PROPERTIES,
           Attribute.PREFER_NETSERVER_IP_ADDRESS,
+          Attribute.HOSTNAME_FOR_CLIENTS,
           Attribute.QUERY_HDFS,
           Attribute.NCJ_BATCH_SIZE,
           Attribute.NCJ_CACHE_SIZE,
@@ -743,6 +746,8 @@ public interface GfxdConstants {
   final String GFXD_QUERY_HDFS = GFXD_PREFIX + Attribute.QUERY_HDFS;
 
   final String GFXD_ROUTE_QUERY = GFXD_PREFIX + Attribute.ROUTE_QUERY;
+
+  final String INTERNAL_CONNECTION = GFXD_PREFIX + Attribute.INTERNAL_CONNECTION;
   /*
    * @see Attribute.NCJ_BATCH_SIZE
    */
@@ -796,6 +801,18 @@ public interface GfxdConstants {
 
   final String GFXD_ENABLE_GETALL_LOCALINDEX_EMBED_GFE = GFXD_PREFIX
       + Attribute.ENABLE_GETALL_LOCALINDEX_EMBED_GFE;
+
+  /**
+   * System property to certain store queries to spark for better performance
+   */
+
+  final String GFXD_ROUTE_SELECTED_STORE_QUERIES_TO_SPARK =
+      GFXD_PREFIX + "enable-routing-arbiter";
+
+//  public static final String GFXD_COST_OPTIMIZED_ROUTING_THRESHOLD =
+//      GFXD_PREFIX +"cost-optimized-routing-threshold";
+
+  int SNAPPY_MIN_COLUMN_DELTA_ROWS = 200;
 
   // --------------------- Defaults for GFXD connection/transaction props
 

@@ -108,7 +108,7 @@ public class GemFireXDManager {
    */
   public static final String RESERVED_COLUMN_EVENTTYPE = "GFXD_PXF_EVENTTYPE";
   public static final String GFXD_PROTOCOL = "jdbc:gemfirexd:";
-  public static final String DRIVER_FOR_STAND_ALONE_GFXDIRE = "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  public static final String DRIVER_FOR_STAND_ALONE_GFXDIRE = "io.snappydata.jdbc.EmbeddedDriver";
   /**
    * This is only applicable for R/W tables. User can specify its value as
    * either 'true' or 'false'. Default is 'true', if not specified.

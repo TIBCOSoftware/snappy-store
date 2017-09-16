@@ -584,9 +584,9 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId CacheServerLauncher_ERROR_0 = new StringIdImpl(3965, "Error: {0}");
   public static final StringId CacheServerLauncher_STARTING_0_WITH_PID_1 = new StringIdImpl(3966, "Starting {0} with pid: {1,number,#}");
   public static final StringId ExecuteFunction_RESULTS_ALREADY_COLLECTED = new StringIdImpl(3967, "Function results already collected");
-  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE = new StringIdImpl(3968, "The specified working directory ({0}) contains no status file");
-  public static final StringId CacheServerLauncher_0_STOPPED = new StringIdImpl(3969, "The {0} has stopped.");
-  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 = new StringIdImpl(3970, "Timeout waiting for {0} to shutdown, status is: {1}");
+  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE = new StringIdImpl(3968, "The specified working directory ({0}) on {1} contains no status file");
+  public static final StringId CacheServerLauncher_0_STOPPED = new StringIdImpl(3969, "The {0} on {1} has stopped.");
+  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 = new StringIdImpl(3970, "Timeout waiting for {0} to shutdown on {1}, status is: {2}");
   public static final StringId CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS = new StringIdImpl(3971, "See log file for details.");
   public static final StringId DistributionManager__0_MESSAGE_DISTRIBUTION_HAS_TERMINATED = new StringIdImpl(3972, "{0}: Message distribution has terminated");
   public static final StringId SystemFailure_DISTRIBUTION_HALTED_DUE_TO_JVM_CORRUPTION = new StringIdImpl(3973, "Distribution halted due to JVM corruption");
@@ -2086,7 +2086,7 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId GemFireCacheImpl_REST_SERVER_ON_PORT_0_IS_SHUTTING_DOWN = new StringIdImpl(5873, "Rest Server on port {0} is shutting down");
 
   public static final StringId InternalDistributedSystem_QUORUM_OF_MEMBERS_CONTACTED = new StringIdImpl(5874, "quorum check passed - now attempting multicast discovery");
-  
+
   /** JGroups strings, messageId 15000-90000 **/
   /** Testing strings, messageId 90000-99999 **/
   /** These are simple messages for testing, translated with Babelfish. **/
@@ -2098,5 +2098,5 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId EVENT_LOGGER_FAILED_0_1_2 = new StringIdImpl(90005, "Event error logger failed to log event and error. Event: {0} , Error: {1}. Logger exception: {2}");
   public static final StringId CUSTOM_EVENT_ERROR_HANDLER_FAILED_0_1_2 = new StringIdImpl(90006, "Custom event error handler failed to handle event and error. Event: {0} , Error: {1}. Handler exception: {2}");
   public static final StringId FAILED_TO_CREATE_LOG_EVENT_0_1_2_3_4 = new StringIdImpl(90007, "Failed to create log event for batch-id: {0}, Event-id: {1}, Op: {2}, Key: {3}, Value: {4} ");
-
+  public static final StringId AbstractDistributionConfig_MEMORY_SIZE = new StringIdImpl(90008, "Total off-heap memory which server regions and various operators can occupy");
 }

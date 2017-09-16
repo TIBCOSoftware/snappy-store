@@ -34,6 +34,7 @@ import com.gemstone.gemfire.distributed.internal.DirectReplyProcessor;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.versions.ConcurrentCacheModificationException;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -159,7 +160,7 @@ public abstract class AbstractUpdateOperation extends DistributedCacheOperation 
             if (rgn.getVersionVector() != null && ev.getVersionTag() != null) {
                 rgn.getVersionVector().recordVersion(
                     (InternalDistributedMember) ev.getDistributedMember(),
-                    ev.getVersionTag());
+                    ev.getVersionTag(), ev);
             }
             doUpdate = false;
           }
@@ -211,7 +212,7 @@ public abstract class AbstractUpdateOperation extends DistributedCacheOperation 
               updated = true;
             } else {
               if (rgn.getVersionVector() != null && ev.getVersionTag() != null) {
-                rgn.getVersionVector().recordVersion((InternalDistributedMember) ev.getDistributedMember(), ev.getVersionTag());
+                rgn.getVersionVector().recordVersion((InternalDistributedMember) ev.getDistributedMember(), ev.getVersionTag(), ev);
               }
               if (logger.fineEnabled()) {
                 logger.fine("While processing Update message, update not performed because this key is " +
@@ -237,7 +238,7 @@ public abstract class AbstractUpdateOperation extends DistributedCacheOperation 
       }
       else {
         if (rgn.getVersionVector() != null && ev.getVersionTag() != null && !ev.getVersionTag().isRecorded()) {
-          rgn.getVersionVector().recordVersion((InternalDistributedMember) ev.getDistributedMember(), ev.getVersionTag());
+          rgn.getVersionVector().recordVersion((InternalDistributedMember) ev.getDistributedMember(), ev.getVersionTag(), ev);
         }
         if (!updated && logger.fineEnabled()) {
           logger.fine("While processing Update message, " +
@@ -256,8 +257,22 @@ public abstract class AbstractUpdateOperation extends DistributedCacheOperation 
   public static abstract class AbstractUpdateMessage extends CacheOperationMessage  {
     protected long lastModified;
 
+    public AbstractUpdateMessage(){}
+    public AbstractUpdateMessage(TXStateInterface tx) {
+      super(tx);
+    }
+    @Override
+    public boolean canStartRemoteTransaction() {
+      if (getLockingPolicy() == LockingPolicy.SNAPSHOT)
+        return true;
+
+      return super.canStartRemoteTransaction();
+    }
+
     @Override
     protected boolean operateOnRegion(CacheEvent event, DistributionManager dm) throws EntryNotFoundException {
+
+
       EntryEventImpl ev = (EntryEventImpl)event;
       DistributedRegion rgn = (DistributedRegion)ev.region;
       boolean sendReply = true; // by default tell caller to send ack
@@ -267,17 +282,32 @@ public abstract class AbstractUpdateOperation extends DistributedCacheOperation 
           assert ev.getEntryLastModified() == -1;
           ev.setEntryLastModified(this.lastModified);
         }
+      TXManagerImpl txMgr = null;
+      TXManagerImpl.TXContext context = null;
+      if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+        txMgr = rgn.getCache().getTxManager();
+        context = txMgr.masqueradeAs(this, false,
+            true);
+        ev.setTXState(getTXState());
+      }
+      try {
         if (!rgn.isCacheContentProxy()) {
+          LogWriterI18n l = rgn.getCache().getLoggerI18n();
           basicOperateOnRegion(ev, rgn);
         }
-//      }
-      else {
-        LogWriterI18n l = rgn.getCache().getLoggerI18n();
-        if (l.fineEnabled()) {
-          l.fine("UpdateMessage: this cache has already seen this event " + event);
+      //}
+        else {
+          LogWriterI18n l = rgn.getCache().getLoggerI18n();
+          if (l.fineEnabled()) {
+            l.fine("UpdateMessage: this cache has already seen this event " + event);
+          }
+        }
+
+      } finally {
+        if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+          txMgr.unmasquerade(context, true);
         }
       }
-      
       return sendReply;
     }
 

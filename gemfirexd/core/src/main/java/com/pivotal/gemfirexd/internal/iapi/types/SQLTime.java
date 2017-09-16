@@ -444,7 +444,7 @@ public final class SQLTime extends DataType
      *<li>JIS & current ISO: hh:mm[:ss]
      *</ol>
      * 
-     * @exception Standard exception if the syntax is invalid or the value is out of range.
+     * @exception StandardException if the syntax is invalid or the value is out of range.
      */
     public SQLTime( String timeStr, boolean isJdbcEscape, LocaleFinder localeFinder)
         throws StandardException
@@ -460,7 +460,7 @@ public final class SQLTime extends DataType
      *<li>JIS & current ISO: hh:mm[:ss]
      *</ol>
      * 
-     * @exception Standard exception if the syntax is invalid or the value is out of range.
+     * @exception StandardException if the syntax is invalid or the value is out of range.
      */
     public SQLTime( String timeStr, boolean isJdbcEscape, LocaleFinder localeFinder, Calendar cal)
         throws StandardException
@@ -1155,12 +1155,12 @@ public final class SQLTime extends DataType
    * {@inheritDoc}
    */
   @Override
-  public int readBytes(final UnsafeWrapper unsafe, long memOffset,
-      final int columnWidth, ByteSource bs) {
+  public int readBytes(long memOffset,
+			final int columnWidth, ByteSource bs) {
     this.valueString = null;
-    this.encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    this.encodedTime = RowFormatter.readInt(memOffset);
     memOffset += 4;
-    this.encodedTimeFraction = RowFormatter.readInt(unsafe, memOffset);
+    this.encodedTimeFraction = RowFormatter.readInt(memOffset);
     assert columnWidth == 8;
     return 8;
   }
@@ -1185,10 +1185,10 @@ public final class SQLTime extends DataType
 
   static final java.sql.Time getAsTime(final UnsafeWrapper unsafe,
       long memOffset, Calendar cal) {
-    int encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    int encodedTime = RowFormatter.readInt(memOffset);
     if (encodedTime == -1) return null;
     memOffset += 4;
-    int encodedTimeFraction = RowFormatter.readInt(unsafe, memOffset);
+    int encodedTimeFraction = RowFormatter.readInt(memOffset);
     return getTime(cal, encodedTime, encodedTimeFraction);
   }
 
@@ -1205,10 +1205,10 @@ public final class SQLTime extends DataType
 
   static final java.sql.Timestamp getAsTimestamp(final UnsafeWrapper unsafe,
       long memOffset, Calendar cal) {
-    int encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    int encodedTime = RowFormatter.readInt(memOffset);
     if (encodedTime == -1) return null;
     memOffset += 4;
-    int encodedTimeFraction = RowFormatter.readInt(unsafe, memOffset);
+    int encodedTimeFraction = RowFormatter.readInt(memOffset);
     SQLTime.setTimeInCalendar(cal, encodedTime);
     cal.set(Calendar.MILLISECOND, encodedTimeFraction / 1000000);
     return new Timestamp(cal.getTimeInMillis());
@@ -1224,19 +1224,17 @@ public final class SQLTime extends DataType
     SharedUtils.dateTimeToString(str, 0, -1, -1, -1,
         SQLTime.getHour(encodedTime), SQLTime.getMinute(encodedTime),
         SQLTime.getSecond(encodedTime), -1, -1, false);
-    return ClientSharedUtils.getJdkHelper()
-        .newWrappedString(str, 0, TIME_CHARS);
+    return ClientSharedUtils.newWrappedString(str, 0, TIME_CHARS);
   }
 
   static String getAsString(final UnsafeWrapper unsafe, final long memOffset) {
-    final int encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedTime = RowFormatter.readInt(memOffset);
     if (encodedTime == -1) return null;
     char[] str = new char[TIME_CHARS];
     SharedUtils.dateTimeToString(str, 0, -1, -1, -1,
         SQLTime.getHour(encodedTime), SQLTime.getMinute(encodedTime),
         SQLTime.getSecond(encodedTime), -1, -1, false);
-    return ClientSharedUtils.getJdkHelper()
-        .newWrappedString(str, 0, TIME_CHARS);
+    return ClientSharedUtils.newWrappedString(str, 0, TIME_CHARS);
   }
 
   static void writeAsString(final byte[] inBytes, final int offset,
@@ -1250,9 +1248,9 @@ public final class SQLTime extends DataType
     buffer.advance(TIME_CHARS);
   }
 
-  static void writeAsString(final UnsafeWrapper unsafe, final long memOffset,
+  static void writeAsString(final long memOffset,
       final ByteArrayDataOutput buffer) {
-    final int encodedTime = RowFormatter.readInt(unsafe, memOffset);
+    final int encodedTime = RowFormatter.readInt(memOffset);
     if (encodedTime == -1) return;
     final int bufferPos = buffer.ensureCapacity(TIME_CHARS, buffer.position());
     SharedUtils.dateTimeToChars(buffer.getData(), bufferPos, -1, -1, -1,

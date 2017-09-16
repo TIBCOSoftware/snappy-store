@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
@@ -28,7 +46,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.DataPolicy;
@@ -59,6 +76,8 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 
@@ -87,7 +106,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   static final byte POSDUP = 0x10;
   static final byte PERSISTENT_TAG = 0x20;
   static final byte HAS_CALLBACKARG = 0x40;
-  static final byte HAS_TAILKEY = (byte)0x80;
 
   // flags for CachedDeserializable; additional flags can be combined
   // with these if required
@@ -284,7 +302,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     }
     ev.callbacksInvoked(entry.isCallbacksInvoked());
     ev.setTailKey(entry.getTailKey());
-    ev.setBatchUUID(entry.getBatchUUID());
     return ev;
     } finally {
       if (!returnedEv) {
@@ -335,8 +352,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
     // parallel wan is enabled
     private long tailKey = 0L;
 
-    private UUID batchUUID = BucketRegion.zeroUUID;
-
     public VersionTag versionTag;
 
     // following two are not serialized so they can coincide with
@@ -365,7 +380,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       this.eventID = event.getEventId();
       this.callbackArg = callbackArg;
       this.tailKey = event.getTailKey();
-      this.batchUUID = event.getBatchUUID();
       this.versionTag = event.getVersionTag();
 
       setNotifyOnly(!event.getInvokePRCallbacks());
@@ -422,23 +436,21 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       else {
         this.callbackArg = null;
       }
-      if ((this.flags & HAS_TAILKEY) != 0) {
-        this.tailKey = InternalDataSerializer.readSignedVL(in);
-      }
-      this.batchUUID = InternalDataSerializer.readUUID(in);
+      this.tailKey = InternalDataSerializer.readSignedVL(in);
     }
 
     @Override
     public String toString() {
       StringBuilder sb = new StringBuilder(50);
-      sb.append("(").append(getKey()).append(",").
+      sb.append("(op=").append(getOp()).append(',').append(getKey()).append(",").
         append(getValue()).append(",").
         append(getOldValue());
       if (this.bucketId > 0) {
         sb.append(", b").append(this.bucketId);
       }
       if (versionTag != null) {
-        sb.append(",v").append(versionTag.getEntryVersion()).append(",rv="+versionTag.getRegionVersion());
+        sb.append(",v").append(versionTag.getEntryVersion())
+            .append(",rv=").append(versionTag.getRegionVersion());
       }
       if (filterRouting != null) {
         sb.append(", ").append(filterRouting);
@@ -449,7 +461,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       sb.append(")");
       return sb.toString();
     }
-    
+
     void setSender(InternalDistributedMember sender) {
       if (this.versionTag != null) {
         this.versionTag.replaceNullIDs(sender);
@@ -510,7 +522,8 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       //TODO: Yogesh, this should be conditional,
       // make sure that we sent it on wire only 
       // when parallel wan is enabled
-      bits |= HAS_TAILKEY;
+      // bits |= HAS_TAILKEY;
+
       out.writeByte(bits);
 
       if (this.filterRouting != null) {
@@ -527,7 +540,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         DataSerializer.writeObject(this.callbackArg, out);
       }
       InternalDataSerializer.writeSignedVL(this.tailKey, out);
-      InternalDataSerializer.writeUUID(this.batchUUID, out);
     }
 
     /**
@@ -560,14 +572,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
 
     public void setTailKey(long key) {
       this.tailKey = key;
-    }
-
-    public UUID getBatchUUID() {
-      return this.batchUUID;
-    }
-
-    public void setBatchUUID(UUID uuid) {
-      this.batchUUID = uuid;
     }
 
     /**
@@ -953,7 +957,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   protected CacheOperationMessage createMessage()
  {
     EntryEventImpl event = getEvent();
-    PutAllMessage msg = new PutAllMessage();
+    PutAllMessage msg = new PutAllMessage(event.getTXState());
     msg.eventId = event.getEventId();
     msg.context = event.getContext();
     msg.lastModified = event.getEntryLastModified();
@@ -1141,6 +1145,11 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
   public static class PutAllMessage extends AbstractUpdateMessage
    {
 
+     public PutAllMessage(){}
+     public PutAllMessage(TXStateInterface tx) {
+       super(tx);
+     }
+
     protected PutAllEntryData[] putAllData;
 
     protected int putAllDataSize;
@@ -1211,7 +1220,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
      */
     protected final void doEntryPut(PutAllEntryData entry,
         DistributedRegion rgn, boolean requiresRegionContext,
-        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML, long lastModifiedTime) {
+        final TXStateInterface tx, boolean fetchFromHDFS, boolean isPutDML, long lastModifiedTime, UMMMemoryTracker memoryTracker) {
       EntryEventImpl ev = PutAllMessage.createEntryEvent(entry, getSender(),
           this.context, rgn, requiresRegionContext, this.possibleDuplicate,
           this.needsRouting, this.callbackArg, true, skipCallbacks,
@@ -1220,6 +1229,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
         ev.setEntryLastModified(lastModifiedTime);
       ev.setFetchFromHDFS(fetchFromHDFS);
       ev.setPutDML(isPutDML);
+      ev.setBufferedMemoryTracker(memoryTracker);
 //      rgn.getLogWriterI18n().info(LocalizedStrings.DEBUG, "PutAllOp.doEntryPut sender=" + getSender() +
 //          " event="+ev);
       // we don't need to set old value here, because the msg is from remote. local old value will get from next step
@@ -1228,7 +1238,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       } finally {
         if (ev.getVersionTag() != null && !ev.getVersionTag().isRecorded()) {
           if (rgn.getVersionVector() != null) {
-            rgn.getVersionVector().recordVersion(getSender(), ev.getVersionTag());
+            rgn.getVersionVector().recordVersion(getSender(), ev.getVersionTag(), ev);
           }
         }
         ev.release();
@@ -1297,7 +1307,6 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
        * Setting tailKey for the secondary bucket here. Tail key was update by the primary.
        */
       ev.setTailKey(entry.getTailKey());
-      ev.setBatchUUID(entry.getBatchUUID());
       returnedEv = true;
       return ev;
       } finally {
@@ -1307,7 +1316,7 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
     }
 
-     @Override
+    @Override
     protected void basicOperateOnRegion(final EntryEventImpl ev, final DistributedRegion rgn)
     {
       for (int i = 0; i < putAllDataSize; ++i) {
@@ -1317,19 +1326,52 @@ public final class DistributedPutAllOperation extends AbstractUpdateOperation {
       }
       
       final TXStateInterface tx = ev.getTXState(rgn);
-
-      rgn.syncPutAll(tx, new Runnable() {
-        public void run() {
-          final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
-          for (int i = 0; i < putAllDataSize; ++i) {
-            if (rgn.getLogWriterI18n().finerEnabled()) {
-              rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
+      TXManagerImpl txMgr = null;
+      TXManagerImpl.TXContext context = null;
+      if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+        txMgr = rgn.getCache().getTxManager();
+        context = txMgr.masqueradeAs(this, false,
+            true);
+        ev.setTXState(getTXState());
+      }
+      ev.setTXState(tx);
+      try {
+        rgn.syncPutAll(tx, new Runnable() {
+          public void run() {
+            UMMMemoryTracker memoryTracker = null;
+            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                    && !rgn.isInternalColumnTable()) {
+              memoryTracker = new UMMMemoryTracker(
+                      Thread.currentThread().getId(), putAllDataSize);
             }
-            putAllData[i].setSender(sender);
-            doEntryPut(putAllData[i], rgn, requiresRegionContext, tx, fetchFromHDFS, isPutDML, ev.getEntryLastModified());
+            try {
+              final boolean requiresRegionContext = rgn.keyRequiresRegionContext();
+              for (int i = 0; i < putAllDataSize; ++i) {
+                if (rgn.getLogWriterI18n().finerEnabled()) {
+                  rgn.getLogWriterI18n().finer("putAll processing " + putAllData[i] + " with " + putAllData[i].versionTag);
+                }
+                putAllData[i].setSender(sender);
+                doEntryPut(putAllData[i], rgn, requiresRegionContext, tx,
+                    fetchFromHDFS, isPutDML, ev.getEntryLastModified(), memoryTracker);
+              }
+            } finally {
+              if (memoryTracker != null) {
+                long unusedMemory = memoryTracker.freeMemory();
+                if (unusedMemory > 0) {
+                  CallbackFactoryProvider.getStoreCallbacks().releaseStorageMemory(
+                          memoryTracker.getFirstAllocationObject(), unusedMemory, false);
+                }
+              }
+            }
+
           }
+        }, ev.getEventId());
+      }
+      finally {
+        if (getLockingPolicy() == LockingPolicy.SNAPSHOT) {
+          txMgr.unmasquerade(context, true);
         }
-      }, ev.getEventId());
+      }
     }
 
     public int getDSFID() {

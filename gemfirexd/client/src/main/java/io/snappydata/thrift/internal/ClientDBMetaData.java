@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
+import com.pivotal.gemfirexd.jdbc.ClientAttribute;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.Converters;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
@@ -61,7 +62,7 @@ public class ClientDBMetaData implements DatabaseMetaData {
 
   ClientDBMetaData(ClientConnection conn) {
     this.conn = conn;
-    this.service = conn.clientService;
+    this.service = conn.getClientService();
     this.metaAttrs = new StatementAttrs();
   }
 
@@ -1169,7 +1170,7 @@ public class ClientDBMetaData implements DatabaseMetaData {
           .getFeaturesWithParams().get(
               ServiceFeatureParameterized.TRANSACTIONS_SUPPORT_ISOLATION);
       return (supportedIsolationLevels != null && supportedIsolationLevels
-          .contains(Converters.getThriftTransactionIsolation(level)));
+          .contains((int)Converters.getThriftTransactionIsolation(level)));
     } finally {
       this.conn.unlock();
     }
@@ -2249,8 +2250,27 @@ public class ClientDBMetaData implements DatabaseMetaData {
    */
   @Override
   public String getURL() throws SQLException {
-    return ClientConfiguration.CURRENT_DRIVER_PROTOCOL
-        + this.service.connHosts.get(0).getHostString();
+    StringBuilder url = new StringBuilder();
+    url.append(ClientConfiguration.CURRENT_DRIVER_PROTOCOL());
+    final List<HostAddress> connHosts = this.service.connHosts;
+    if (connHosts == null || connHosts.isEmpty()) {
+      url.append(this.service.getCurrentHostConnection()
+          .hostAddr.getHostString());
+    } else {
+      url.append(connHosts.get(0).getHostString());
+      final int numHosts = connHosts.size();
+      if (numHosts > 1) {
+        // add secondary locators to the URL
+        url.append("/;").append(ClientAttribute.SECONDARY_LOCATORS).append('=');
+        for (int index = 1; index < numHosts; index++) {
+          if (index > 1) {
+            url.append(',');
+          }
+          url.append(connHosts.get(index).getHostString());
+        }
+      }
+    }
+    return url.toString();
   }
 
   /**
@@ -2326,7 +2346,7 @@ public class ClientDBMetaData implements DatabaseMetaData {
           new ServiceMetaDataArgs()
               .setDriverType(ClientConfiguration.DRIVER_TYPE)
               .setSchema(schemaPattern).setTable(tableNamePattern)
-              .setTableTypes(Arrays.asList(types)));
+              .setTableTypes(types != null ? Arrays.asList(types) : null));
       return new ClientResultSet(this.conn, this.metaAttrs, rs);
     } catch (SnappyException se) {
       throw ThriftExceptionUtil.newSQLException(se);

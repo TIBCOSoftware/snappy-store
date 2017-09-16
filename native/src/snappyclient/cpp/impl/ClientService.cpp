@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -64,7 +64,8 @@
 #include "LogWriter.h"
 #include "Utils.h"
 
-#include "BufferedSocketTransport.h"
+#include "BufferedClientTransport.h"
+#include "FramedClientTransport.h"
 #include "DNSCacheService.h"
 #include "InternalLogger.h"
 #include "InternalUtils.h"
@@ -338,7 +339,8 @@ ClientService::ClientService(const std::string& host, const int port,
     thrift::OpenConnectionArgs& connArgs) :
     // default for load-balance is true
     m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(true),
-    m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP), m_serverGroups(),
+    m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
+    m_useFramedTransport(false), m_serverGroups(),
     m_transport(), m_client(createDummyProtocol()),
     m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
     m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
@@ -378,6 +380,7 @@ ClientService::ClientService(const std::string& host, const int port,
     // now check for the protocol details like SSL etc
     // and reqd snappyServerType
     bool binaryProtocol = false;
+    bool framedTransport = false;
     bool useSSL = false;
     //SSLSocketParameters sslParams = null;
     std::map<std::string, std::string>::iterator propValue;
@@ -386,6 +389,11 @@ ClientService::ClientService(const std::string& host, const int port,
     if ((propValue = props.find(ClientAttribute::THRIFT_USE_BINARY_PROTOCOL))
         != props.end()) {
       binaryProtocol = boost::iequals(propValue->second, "true");
+      props.erase(propValue);
+    }
+    if ((propValue = props.find(ClientAttribute::THRIFT_USE_FRAMED_TRANSPORT))
+        != props.end()) {
+      framedTransport = boost::iequals(propValue->second, "true");
       props.erase(propValue);
     }
     if ((propValue = props.find(ClientAttribute::SSL)) != props.end()) {
@@ -400,6 +408,7 @@ ClientService::ClientService(const std::string& host, const int port,
       props.erase(propValue);
     }
     m_reqdServerType = getServerType(true, binaryProtocol, useSSL);
+    m_useFramedTransport = framedTransport;
   }
 
   std::set<thrift::HostAddress> failedServers;
@@ -438,8 +447,8 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
       // first close any existing transport
       destroyTransport();
 
-      boost::shared_ptr<protocol::TProtocol> protocol(
-          createProtocol(hostAddr, m_reqdServerType, m_transport));
+      boost::shared_ptr<protocol::TProtocol> protocol(createProtocol(
+          hostAddr, m_reqdServerType, m_useFramedTransport, m_transport));
       m_client.resetProtocols(protocol, protocol);
 
       thrift::ConnectionProperties connProps;
@@ -489,10 +498,10 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
 void ClientService::destroyTransport() noexcept {
   // destructor should *never* throw an exception
   try {
-    BufferedSocketTransport* transport = m_transport.get();
+    ClientTransport* transport = m_transport.get();
     if (transport != NULL) {
-      if (transport->isOpen()) {
-        transport->close();
+      if (transport->isTransportOpen()) {
+        transport->closeTransport();
       }
       m_transport = NULL;
     }
@@ -552,8 +561,8 @@ protocol::TProtocol* ClientService::createDummyProtocol() {
 
 protocol::TProtocol* ClientService::createProtocol(
     thrift::HostAddress& hostAddr, const thrift::ServerType::type serverType,
-    //const SSLSocketParameters& sslParams,
-    boost::shared_ptr<BufferedSocketTransport>& returnTransport) {
+    bool useFramedTransport,//const SSLSocketParameters& sslParams,
+    boost::shared_ptr<ClientTransport>& returnTransport) {
   bool useBinaryProtocol;
   bool useSSL;
   switch (serverType) {
@@ -598,23 +607,31 @@ protocol::TProtocol* ClientService::createProtocol(
   // to work
   DNSCacheService::instance().resolve(hostAddr);
 
+  boost::shared_ptr<TSocket> socket;
   if (useSSL) {
     TSSLSocketFactory sslSocketFactory;
     sslSocketFactory.authenticate(false);
-    boost::shared_ptr<TSocket> sslSocket = sslSocketFactory.createSocket(
-        hostAddr.hostName, hostAddr.port);
-    returnTransport.reset(
-        new BufferedSocketTransport(sslSocket, rsz, wsz, false));
+    socket = sslSocketFactory.createSocket(hostAddr.hostName, hostAddr.port);
   } else {
-    boost::shared_ptr<TSocket> socket(
-        new TSocket(hostAddr.hostName, hostAddr.port));
-    returnTransport.reset(
-        new BufferedSocketTransport(socket, rsz, wsz, false));
+    socket.reset(new TSocket(hostAddr.hostName, hostAddr.port));
+  }
+
+  // socket->setKeepAlive(false);
+  BufferedClientTransport* bufferedTransport = new BufferedClientTransport(
+      socket, rsz, wsz, false);
+  // setup framed transport if configured
+  if (useFramedTransport) {
+    returnTransport.reset(new FramedClientTransport(
+        boost::shared_ptr<BufferedClientTransport>(bufferedTransport), wsz));
+  } else {
+    returnTransport.reset(bufferedTransport);
   }
   if (useBinaryProtocol) {
-    return new protocol::TBinaryProtocol(returnTransport);
+    return new protocol::TBinaryProtocol(
+        boost::dynamic_pointer_cast<TTransport>(returnTransport));
   } else {
-    return new protocol::TCompactProtocol(returnTransport);
+    return new protocol::TCompactProtocol(
+        boost::dynamic_pointer_cast<TTransport>(returnTransport));
   }
 }
 
@@ -747,7 +764,8 @@ void ClientService::prepareStatement(thrift::PrepareResult& result,
 
 void ClientService::executePrepared(thrift::StatementResult& result,
     thrift::PrepareResult& prepResult, const thrift::Row& params,
-    const std::map<int32_t, thrift::OutputParameter>& outputParams) {
+    const std::map<int32_t, thrift::OutputParameter>& outputParams,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -755,7 +773,7 @@ void ClientService::executePrepared(thrift::StatementResult& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePrepared(result, prepResult.statementId, params,
-        outputParams, m_token);
+        outputParams, attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -772,7 +790,8 @@ void ClientService::executePrepared(thrift::StatementResult& result,
 }
 
 void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
-    thrift::PrepareResult& prepResult, const thrift::Row& params) {
+    thrift::PrepareResult& prepResult, const thrift::Row& params,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -780,7 +799,7 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePreparedUpdate(result, prepResult.statementId, params,
-        m_token);
+        attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -797,7 +816,8 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
 }
 
 void ClientService::executePreparedQuery(thrift::RowSet& result,
-    thrift::PrepareResult& prepResult, const thrift::Row& params) {
+    thrift::PrepareResult& prepResult, const thrift::Row& params,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -805,7 +825,7 @@ void ClientService::executePreparedQuery(thrift::RowSet& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePreparedQuery(result, prepResult.statementId, params,
-        m_token);
+        attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -823,7 +843,8 @@ void ClientService::executePreparedQuery(thrift::RowSet& result,
 
 void ClientService::executePreparedBatch(thrift::UpdateResult& result,
     thrift::PrepareResult& prepResult,
-    const std::vector<thrift::Row>& paramsBatch) {
+    const std::vector<thrift::Row>& paramsBatch,
+    const thrift::StatementAttrs& attrs) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -831,7 +852,7 @@ void ClientService::executePreparedBatch(thrift::UpdateResult& result,
       flushPendingTransactionAttrs();
     }
     m_client.executePreparedBatch(result, prepResult.statementId, paramsBatch,
-        m_token);
+        attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
     handleSnappyException(sqle);
   } catch (const TTransportException& tte) {
@@ -882,7 +903,7 @@ void ClientService::prepareAndExecute(thrift::StatementResult& result,
 }
 
 void ClientService::getNextResultSet(thrift::RowSet& result,
-    const int32_t cursorId, const int8_t otherResultSetBehaviour) {
+    const int64_t cursorId, const int8_t otherResultSetBehaviour) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -958,7 +979,7 @@ void ClientService::getClobChunk(thrift::ClobChunk& result,
   }
 }
 
-int32_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
+int64_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -983,7 +1004,7 @@ int32_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
   return -1;
 }
 
-int32_t ClientService::sendClobChunk(thrift::ClobChunk& chunk) {
+int64_t ClientService::sendClobChunk(thrift::ClobChunk& chunk) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -1032,7 +1053,7 @@ void ClientService::freeLob(const int32_t lobId) {
 }
 
 void ClientService::scrollCursor(thrift::RowSet& result,
-    const int32_t cursorId, const int32_t offset, const bool offsetIsAbsolute,
+    const int64_t cursorId, const int32_t offset, const bool offsetIsAbsolute,
     const bool fetchReverse, const int32_t fetchSize) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
@@ -1057,7 +1078,7 @@ void ClientService::scrollCursor(thrift::RowSet& result,
   }
 }
 
-void ClientService::executeCursorUpdate(const int32_t cursorId,
+void ClientService::executeCursorUpdate(const int64_t cursorId,
     const thrift::CursorUpdateOperation::type operation,
     const thrift::Row& changedRow, const std::vector<int32_t>& changedColumns,
     const int32_t changedRowIndex) {
@@ -1066,7 +1087,7 @@ void ClientService::executeCursorUpdate(const int32_t cursorId,
       Utils::singleVector(changedRowIndex));
 }
 
-void ClientService::executeBatchCursorUpdate(const int32_t cursorId,
+void ClientService::executeBatchCursorUpdate(const int64_t cursorId,
     const std::vector<thrift::CursorUpdateOperation::type>& operations,
     const std::vector<thrift::Row>& changedRows,
     const std::vector<std::vector<int32_t> >& changedColumnsList,
@@ -1232,30 +1253,6 @@ void ClientService::rollbackTransaction(const bool startNewTransaction) {
   }
 }
 
-bool ClientService::prepareCommitTransaction() {
-  try {
-    boost::lock_guard<boost::mutex> sync(m_lock);
-
-    return m_client.prepareCommitTransaction(m_connId, m_pendingTXAttrs,
-        m_token);
-    clearPendingTransactionAttrs();
-  } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException(sqle);
-  } catch (const TTransportException& tte) {
-    handleTTransportException("prepareCommitTransaction", tte);
-  } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("prepareCommitTransaction", tpe);
-  } catch (const TException& te) {
-    handleTException("prepareCommitTransaction", te);
-  } catch (const std::exception& stde) {
-    handleStdException("prepareCommitTransaction", stde);
-  } catch (...) {
-    handleUnknownException("prepareCommitTransaction");
-  }
-  // never reached
-  return false;
-}
-
 void ClientService::fetchActiveConnections(
     std::vector<thrift::ConnectionProperties>& result) {
   try {
@@ -1281,7 +1278,7 @@ void ClientService::fetchActiveConnections(
 }
 
 void ClientService::fetchActiveStatements(
-    std::map<int32_t, std::string>& result) {
+    std::map<int64_t, std::string>& result) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -1443,7 +1440,7 @@ void ClientService::getBestRowIdentifier(thrift::RowSet& result,
   }
 }
 
-void ClientService::closeResultSet(const int32_t cursorId) {
+void ClientService::closeResultSet(const int64_t cursorId) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -1463,7 +1460,7 @@ void ClientService::closeResultSet(const int32_t cursorId) {
   }
 }
 
-void ClientService::cancelStatement(const int32_t stmtId) {
+void ClientService::cancelStatement(const int64_t stmtId) {
   // TODO: SW: need a separate connection for this to work
   // Preferably the whole class should be changed to use pool of connections
   // with key being server+port+connProps and a queue of pooled connections
@@ -1488,7 +1485,7 @@ void ClientService::cancelStatement(const int32_t stmtId) {
   }
 }
 
-void ClientService::closeStatement(const int32_t stmtId) {
+void ClientService::closeStatement(const int64_t stmtId) {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
@@ -1533,11 +1530,11 @@ void ClientService::close() {
   try {
     boost::lock_guard<boost::mutex> sync(m_lock);
 
-    BufferedSocketTransport* transport = m_transport.get();
+    ClientTransport* transport = m_transport.get();
     if (transport != NULL) {
-      m_client.closeConnection(m_connId, m_token);
-      if (transport->isOpen()) {
-        transport->close();
+      m_client.closeConnection(m_connId, true, m_token);
+      if (transport->isTransportOpen()) {
+        transport->closeTransport();
       }
       m_transport = NULL;
     }

@@ -66,9 +66,13 @@ public class DirectReplySender implements ReplySender {
     }
     ArrayList<Connection> conns = new ArrayList<Connection>(1);
     conns.add(conn);
-    MsgStreamer ms = (MsgStreamer)MsgStreamer.create(conns, msg, false,
-        DUMMY_STATS);
+    BaseMsgStreamer ms = null;
     try {
+      if (conn.useNIOStream()) {
+        ms = MsgChannelStreamer.create(conns, msg, false, DUMMY_STATS);
+      } else {
+        ms = MsgStreamer.create(conns, msg, false, DUMMY_STATS);
+      }
       ms.writeMessage();
       ConnectExceptions ce = ms.getConnectExceptions();
       if(ce != null && !ce.getMembers().isEmpty()) {
@@ -94,7 +98,9 @@ public class DirectReplySender implements ReplySender {
     }
     finally {
       try {
-        ms.close();
+        if (ms != null) {
+          ms.close(getLoggerI18n());
+        }
       }
       catch (IOException e) {
         throw new InternalGemFireException("Unknown error serializing message", e);

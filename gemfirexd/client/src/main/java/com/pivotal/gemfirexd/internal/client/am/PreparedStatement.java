@@ -718,8 +718,7 @@ public class PreparedStatement extends Statement
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.BIT;
 // GemStone changes BEGIN
                 // changed to Short.valueOf() if possible
-                setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-                    .newShort((short)(x ? 1 : 0)));
+                setInput(parameterIndex, (short)(x ? 1 : 0));
                 /* (original code)
                 setInput(parameterIndex, new Short((short) (x ? 1 : 0)));
                 */
@@ -753,9 +752,7 @@ public class PreparedStatement extends Statement
                 
                 parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.TINYINT;
 // GemStone changes BEGIN
-                // changed to use Short.valueOf() if possible
-                setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-                    .newShort(x));
+                setInput(parameterIndex, (short)x);
                 /* (original code)
                 setInput(parameterIndex, new Short(x));
                 */
@@ -801,8 +798,7 @@ public class PreparedStatement extends Statement
     void setShortX(int parameterIndex, short x) throws SqlException {
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.SMALLINT;
 // GemStone changes BEGIN
-        // changed to use Short.valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper().newShort(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Short(x));
         */
@@ -841,9 +837,7 @@ public class PreparedStatement extends Statement
     void setIntX(int parameterIndex, int x) throws SqlException {
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] = java.sql.Types.INTEGER;
 // GemStone changes BEGIN
-        // changed to use Integer.valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper()
-            .newInteger(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Integer(x));
         */
@@ -883,8 +877,7 @@ public class PreparedStatement extends Statement
         parameterMetaData_.clientParamtertype_[parameterIndex - 1] 
                 = java.sql.Types.BIGINT;
 // GemStone changes BEGIN
-        // changed to use valueOf() if possible
-        setInput(parameterIndex, ClientSharedUtils.getJdkHelper().newLong(x));
+        setInput(parameterIndex, x);
         /* (original code)
         setInput(parameterIndex, new Long(x));
         */
@@ -1846,7 +1839,7 @@ public class PreparedStatement extends Statement
         }
         catch (ClassNotFoundException e) { problem = e; }
 // GemStone changes BEGIN
-        if (Boolean.TRUE.equals(Cursor.ALLOW_THREADCONTEXT_CLASSLOADER.get())) {
+        if (Boolean.TRUE.equals(ClientSharedUtils.ALLOW_THREADCONTEXT_CLASSLOADER.get())) {
           try {
             // also check with current thread context ClassLoader
             Class targetClass = Class.forName(targetClassName, true,

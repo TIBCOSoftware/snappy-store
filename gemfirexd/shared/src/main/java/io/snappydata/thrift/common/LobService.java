@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -35,6 +35,8 @@
 
 package io.snappydata.thrift.common;
 
+import java.io.InputStream;
+import java.io.Reader;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
@@ -47,13 +49,19 @@ import io.snappydata.thrift.ClobChunk;
  */
 public interface LobService {
 
-  Blob createBlob(BlobChunk firstChunk) throws SQLException;
+  Blob createBlob(BlobChunk firstChunk, boolean forStream) throws SQLException;
 
-  Clob createClob(ClobChunk firstChunk) throws SQLException;
+  Blob createBlob(InputStream stream, long length) throws SQLException;
 
-  BlobChunk getBlobChunk(int lobId, long offset, int chunkSize,
+  Clob createClob(ClobChunk firstChunk, boolean forStream) throws SQLException;
+
+  Clob createClob(Reader reader, long length) throws SQLException;
+
+  Clob createClob(InputStream asciiStream, long length) throws SQLException;
+
+  BlobChunk getBlobChunk(long lobId, long offset, int chunkSize,
       boolean freeLobAtEnd) throws SQLException;
 
-  ClobChunk getClobChunk(int lobId, long offset, int chunkSize,
+  ClobChunk getClobChunk(long lobId, long offset, int chunkSize,
       boolean freeLobAtEnd) throws SQLException;
 }

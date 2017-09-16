@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.sql.Types;
+import java.util.Iterator;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
@@ -44,19 +45,23 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
 
   private transient SparkSQLExecute exec;
 
-  private transient ByteArrayDataInput dis;
+  private transient volatile ByteArrayDataInput dis;
   private transient volatile String[] colNames;
   private transient volatile String[] tableNames;
   private transient volatile boolean[] nullability;
   private transient volatile int[] colTypes;
   private transient volatile int[] precisions;
   private transient volatile int[] scales;
+  private transient volatile Object[] dataTypes;
   private DataValueDescriptor[] templateDVDRow;
-  private ValueRow execRow;
+  private Iterator<ValueRow> execRows;
   private DataTypeDescriptor[] dtds;
+  private boolean hasMetadata;
+  private boolean isUpdateOrDelete;
 
-  public SnappyResultHolder(SparkSQLExecute exec) {
+  public SnappyResultHolder(SparkSQLExecute exec, Boolean isUpdateOrDelete) {
     this.exec = exec;
+    this.isUpdateOrDelete = isUpdateOrDelete;
   }
 
   /** for deserialization */
@@ -75,11 +80,28 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.colTypes = other.colTypes;
     this.precisions = other.precisions;
     this.scales = other.scales;
+    this.dataTypes = other.dataTypes;
+  }
+
+  public ByteArrayDataInput getByteArrayDataInput() {
+    return dis;
+  }
+
+  public void setHasMetadata() {
+    this.hasMetadata = true;
+  }
+
+  public void clearHasMetadata() {
+    this.hasMetadata = false;
+  }
+
+  public boolean hasMetadata() {
+    return this.hasMetadata;
   }
 
   @Override
   public void toData(final DataOutput out) throws IOException {
-    this.exec.serializeRows(out);
+    this.exec.serializeRows(out, this.hasMetadata);
   }
 
   @Override
@@ -104,6 +126,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
       int totCols = colNames.length;
       this.precisions = new int[totCols];
       this.scales = new int[totCols];
+      this.dataTypes = new Object[totCols];
       dtds = new DataTypeDescriptor[totCols];
       this.colTypes = new int[totCols];
       for (int i = 0; i < totCols; i++) {
@@ -113,6 +136,15 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
           // read the precision and the scale
           precisions[i] = (int)InternalDataSerializer.readSignedVL(dis);
           scales[i] = (int)InternalDataSerializer.readSignedVL(dis);
+        } else if (columnType == StoredFormatIds.SQL_VARCHAR_ID ||
+            columnType == StoredFormatIds.SQL_CHAR_ID) {
+          precisions[i] = (int)InternalDataSerializer.readSignedVL(dis);
+          scales[i] = -1;
+        } else if (columnType == StoredFormatIds.REF_TYPE_ID) {
+          dataTypes[i] = CallbackFactoryProvider.getClusterCallbacks()
+              .readDataType(dis);
+          precisions[i] = -1;
+          scales[i] = -1;
         } else {
           precisions[i] = -1;
           scales[i] = -1;
@@ -123,21 +155,22 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   }
 
   private void makeTemplateDVDArr() {
-    dtds = new DataTypeDescriptor[colTypes.length];
-    DataValueDescriptor[] dvds = new DataValueDescriptor[colTypes.length];
-    for (int i = 0; i < colTypes.length; i++) {
-      int typeId = colTypes[i];
-      DataValueDescriptor dvd = getNewNullDVD(typeId, i, dtds,
-          precisions[i], scales[i]);
-      dvds[i] = dvd;
-    }
-    this.templateDVDRow = dvds;
-    this.execRow = new ValueRow(templateDVDRow);
-    // determine eight col groups and partial col
-    int numCols = colTypes.length;
-    if (numEightColGrps < 0) {
-      numEightColGrps = numCols / 8;
-      numPartialCols = numCols % 8;
+    if (this.isUpdateOrDelete) {
+      DataValueDescriptor[] dvds = new DataValueDescriptor[1];
+      dvds[0] = new SQLInteger();
+      dtds = new DataTypeDescriptor[1];
+      dtds[0] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.INTEGER, false);
+      this.templateDVDRow = dvds;
+    } else {
+      dtds = new DataTypeDescriptor[colTypes.length];
+      DataValueDescriptor[] dvds = new DataValueDescriptor[colTypes.length];
+      for (int i = 0; i < colTypes.length; i++) {
+        int typeId = colTypes[i];
+        DataValueDescriptor dvd = getNewNullDVD(typeId, i, dtds,
+            precisions[i], scales[i]);
+        dvds[i] = dvd;
+      }
+      this.templateDVDRow = dvds;
     }
   }
 
@@ -155,28 +188,42 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.exec.packRows(msg, this);
   }
 
-  private int numEightColGrps = -1;
-  private int numPartialCols = 0;
-
   public ExecRow getNextRow() throws IOException, ClassNotFoundException, StandardException {
-    if (this.dis != null && this.dis.available() > 0) {
-      if (templateDVDRow == null) {
-        makeTemplateDVDArr();
+    final ByteArrayDataInput in = this.dis;
+    if (in != null) {
+      Iterator<ValueRow> execRows = this.execRows;
+      if (execRows == null) {
+        if (in.available() > 0) {
+          if (this.templateDVDRow == null) {
+            makeTemplateDVDArr();
+          }
+          execRows = CallbackFactoryProvider.getClusterCallbacks()
+              .getRowIterator(templateDVDRow, colTypes, precisions, scales,
+                  dataTypes, in);
+          this.execRows = execRows;
+        } else {
+          this.dis = null;
+          return null;
+        }
       }
-      CallbackFactoryProvider.getClusterCallbacks().readDVDArray(
-          templateDVDRow, colTypes, this.dis, numEightColGrps, numPartialCols);
-      return this.execRow;
+      if (execRows.hasNext()) {
+        return execRows.next();
+      }
     }
     this.dis = null;
     return null;
   }
 
   private DataValueDescriptor getNewNullDVD(
-    int storeType, int colNum, DataTypeDescriptor[] dtds, int precision, int scale) {
+      int storeType, int colNum, DataTypeDescriptor[] dtds, int precision, int scale) {
+    return getNewNullDVD(storeType, colNum, dtds, precision, scale, nullability[colNum]);
+  }
+
+  public static DataValueDescriptor getNewNullDVD(
+    int storeType, int colNum, DataTypeDescriptor[] dtds, int precision, int scale, boolean nullable) {
     DataValueDescriptor dvd;
     int jdbcTypeId;
     DataTypeDescriptor dtd;
-    boolean nullable = nullability[colNum];
     switch(storeType) {
       case StoredFormatIds.SQL_TIMESTAMP_ID :
         dvd = new SQLTimestamp();
@@ -243,10 +290,21 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
         break;
 
       case StoredFormatIds.SQL_CLOB_ID:
-      case StoredFormatIds.SQL_VARCHAR_ID:
         dvd = new SQLClob();
         jdbcTypeId = Types.CLOB;
         dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable);
+        break;
+
+      case StoredFormatIds.SQL_VARCHAR_ID:
+        dvd = new SQLVarchar();
+        jdbcTypeId = Types.VARCHAR;
+        dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable, precision);
+        break;
+
+      case StoredFormatIds.SQL_CHAR_ID:
+        dvd = new SQLChar();
+        jdbcTypeId = Types.CHAR;
+        dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable, precision);
         break;
 
       case StoredFormatIds.SQL_BLOB_ID:
@@ -254,6 +312,13 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
         jdbcTypeId = Types.BLOB;
         dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(
             jdbcTypeId, nullable);
+        break;
+
+      // indicator for values (complex or user-defined types) as JSON strings
+      case StoredFormatIds.REF_TYPE_ID:
+        dvd = new SQLClob();
+        jdbcTypeId = Types.CLOB;
+        dtd = DataTypeDescriptor.getBuiltInDataTypeDescriptor(jdbcTypeId, nullable);
         break;
 
       default :

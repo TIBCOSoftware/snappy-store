@@ -47,6 +47,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeUtilities;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLDecimal;
+import org.apache.spark.unsafe.types.UTF8String;
 
 /**
  * Common behavior for implementations of a compact Row used to minimize the
@@ -985,7 +986,7 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
   /**
    * Get a clone of a DataValueDescriptor from an ExecRow.
    *
-   * @param columnPosition (1 based)
+   * @param position (1 based)
    */
   public final DataValueDescriptor cloneColumn(int position) {
     try {
@@ -1043,9 +1044,8 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
     }
     if (!dvd.isNull()) {
       return dvd.getDouble();
-    }
-    else {
-      wasNull.setWasNull();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
       return 0.0;
     }
   }
@@ -1061,9 +1061,8 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
     final String result = dvd.getString();
     if (result != null) {
       return result;
-    }
-    else {
-      wasNull.setWasNull();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
       return null;
     }
   }
@@ -1078,9 +1077,8 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
     final Object result = dvd.getObject();
     if (result != null) {
       return result;
-    }
-    else {
-      wasNull.setWasNull();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
       return null;
     }
   }
@@ -1092,10 +1090,12 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getBoolean(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    if (!dvd.isNull()) {
+      return dvd.getBoolean();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return false;
     }
-    return dvd.getBoolean();
   }
 
   public final byte getAsByte(int position, ResultWasNull wasNull)
@@ -1105,10 +1105,12 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getByte(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    if (!dvd.isNull()) {
+      return dvd.getByte();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0;
     }
-    return dvd.getByte();
   }
 
   public final short getAsShort(int position, ResultWasNull wasNull)
@@ -1118,10 +1120,12 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getShort(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    if (!dvd.isNull()) {
+      return dvd.getShort();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0;
     }
-    return dvd.getShort();
   }
 
   public final int getAsInt(int position, ResultWasNull wasNull)
@@ -1131,10 +1135,12 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getInt(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    if (!dvd.isNull()) {
+      return dvd.getInt();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0;
     }
-    return dvd.getInt();
   }
 
   public final long getAsLong(int position, ResultWasNull wasNull)
@@ -1144,10 +1150,12 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getLong(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    if (!dvd.isNull()) {
+      return dvd.getLong();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0L;
     }
-    return dvd.getLong();
   }
 
   public final float getAsFloat(int position, ResultWasNull wasNull)
@@ -1157,10 +1165,12 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getFloat(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    if (!dvd.isNull()) {
+      return dvd.getFloat();
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return 0.0f;
     }
-    return dvd.getFloat();
   }
 
   public final BigDecimal getAsBigDecimal(int position, ResultWasNull wasNull)
@@ -1170,10 +1180,12 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getBigDecimal(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    if (!dvd.isNull()) {
+      return SQLDecimal.getBigDecimal(dvd);
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return null;
     }
-    return SQLDecimal.getBigDecimal(dvd);
   }
 
   public final byte[] getAsBytes(int position, ResultWasNull wasNull)
@@ -1183,10 +1195,13 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         || (dvd = this.deserializedCache[position - 1]) == null) {
       return getBytes(position, wasNull);
     }
-    if (dvd.isNull()) {
-      wasNull.setWasNull();
+    final byte[] result = dvd.getBytes();
+    if (result != null) {
+      return result;
+    } else {
+      if (wasNull != null) wasNull.setWasNull();
+      return null;
     }
-    return dvd.getBytes();
   }
 
   public final java.sql.Date getAsDate(int position, Calendar cal,
@@ -1237,6 +1252,9 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
             .getFullSQLTypeName(), cd.getColumnName());
   }
 
+  // TODO: SW: fix to store same full UTF8 format in GemXD like in UTF8String
+  public abstract UTF8String getAsUTF8String(int index)
+      throws StandardException;
   protected abstract String getString(int position, ResultWasNull wasNull)
       throws StandardException;
   protected abstract Object getObject(int position, ResultWasNull wasNull)
@@ -1259,9 +1277,15 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
       throws StandardException;
   protected abstract BigDecimal getBigDecimal(int position,
       ResultWasNull wasNull) throws StandardException;
+  // invoked by generated code of SnappyData
+  public abstract long getAsDateMillis(int index, Calendar cal,
+      ResultWasNull wasNull) throws StandardException;
   protected abstract java.sql.Date getDate(int position, Calendar cal,
       ResultWasNull wasNull) throws StandardException;
   protected abstract java.sql.Time getTime(int position, Calendar cal,
+      ResultWasNull wasNull) throws StandardException;
+  // invoked by generated code of SnappyData
+  public abstract long getAsTimestampMicros(int index, Calendar cal,
       ResultWasNull wasNull) throws StandardException;
   protected abstract java.sql.Timestamp getTimestamp(int position,
       Calendar cal, ResultWasNull wasNull) throws StandardException;
@@ -1278,8 +1302,7 @@ public abstract class AbstractCompactExecRow extends GfxdDataSerializable
         for (RegionAndKey rak : setOfKeys) {
           sz += ClassSize.refSize + rak.estimateMemoryUsage();
         }
-      } catch (ConcurrentModificationException ignore) {
-      } catch (NoSuchElementException ignore) {
+      } catch (ConcurrentModificationException | NoSuchElementException ignore) {
       }
     }
     return sz;

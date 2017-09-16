@@ -1,1 +1,1 @@
-com.pivotal.gemfirexd.jdbc.ClientDriver
+io.snappydata.jdbc.ClientDriver

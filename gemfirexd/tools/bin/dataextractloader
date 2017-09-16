@@ -27,7 +27,7 @@ if [ "x$WINDIR" != "x" ]; then
   exit 1
 fi
 
-if [ ! -f "$gfxd/lib/snappydata-store-core-__VERSION__.jar" ]; then
+if [ ! -f "$gfxd/lib/snappydata-store-__VERSION__.jar" ]; then
   echo "ERROR: Could not determine GemFire XD location."
   exit 1
 fi
@@ -95,7 +95,7 @@ if [ -z "$PXF_JAR" ]; then
   fi
 fi
 
-GFXD_JARS="$gfxd/lib/snappydata-store-core-__VERSION__.jar:$gfxd/lib/snappydata-store-tools-__VERSION__.jar:$gfxd/lib/snappydata-store-client-__VERSION__.jar:$gfxd/lib/pulse-dependencies.jar"
+GFXD_JARS="$gfxd/lib/snappydata-store-__VERSION__.jar:$gfxd/lib/snappydata-tools-__VERSION__.jar:$gfxd/lib/snappydata-client-__VERSION__.jar:$gfxd/lib/pulse-dependencies.jar"
 
 if [ -n "$CLASSPATH" ]; then
   GFXD_JARS="$GFXD_JARS:$CLASSPATH"

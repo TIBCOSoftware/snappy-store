@@ -188,6 +188,43 @@ public class splitmessages {
         clientMessageIds.add(SQLState.LANG_SYNTAX_ERROR);
         clientMessageIds.add(SQLState.JAVA_EXCEPTION);
         clientMessageIds.add(SQLState.LANG_UNEXPECTED_USER_EXCEPTION);
+        clientMessageIds.add(SQLState.DATA_UNEXPECTED_EXCEPTION);
+
+        clientMessageIds.add(SQLState.COLUMN_NOT_FOUND);
+        clientMessageIds.add(SQLState.NULL_COLUMN_NAME);
+        clientMessageIds.add(SQLState.BLOB_BAD_POSITION);
+        clientMessageIds.add(SQLState.BLOB_NONPOSITIVE_LENGTH);
+        clientMessageIds.add(SQLState.BLOB_TOO_LARGE_FOR_CLIENT);
+        clientMessageIds.add(SQLState.BLOB_LENGTH_TOO_LONG);
+        clientMessageIds.add(SQLState.BLOB_INVALID_OFFSET);
+        clientMessageIds.add(SQLState.LOB_LOCATOR_INVALID);
+        clientMessageIds.add(SQLState.LOB_OBJECT_INVALID);
+        clientMessageIds.add(SQLState.LOB_OBJECT_LENGTH_UNKNOWN_YET);
+        clientMessageIds.add(SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION);
+        clientMessageIds.add(SQLState.NO_ID_FOR_NAMED_SAVEPOINT);
+        clientMessageIds.add(SQLState.NO_NAME_FOR_UNNAMED_SAVEPOINT);
+        clientMessageIds.add(SQLState.NULL_NAME_FOR_SAVEPOINT);
+        clientMessageIds.add(SQLState.NO_SAVEPOINT_WHEN_AUTO);
+        clientMessageIds.add(SQLState.NO_SAVEPOINT_ROLLBACK_OR_RELEASE_WHEN_AUTO);
+        clientMessageIds.add(SQLState.SAVEPOINT_NOT_CREATED_BY_CONNECTION);
+        clientMessageIds.add(SQLState.INVALID_API_PARAMETER);
+        clientMessageIds.add(SQLState.NOT_FOR_PREPARED_STATEMENT);
+        clientMessageIds.add(SQLState.ALREADY_CLOSED);
+        clientMessageIds.add(SQLState.INVALID_FETCH_SIZE);
+        clientMessageIds.add(SQLState.INVALID_FETCH_DIRECTION);
+        clientMessageIds.add(SQLState.INVALID_MAX_ROWS_VALUE);
+        clientMessageIds.add(SQLState.INVALID_MAXFIELD_SIZE);
+        clientMessageIds.add(SQLState.INVALID_QUERYTIMEOUT_VALUE);
+        clientMessageIds.add(SQLState.UNABLE_TO_UNWRAP);
+        clientMessageIds.add(SQLState.CURSOR_MUST_BE_SCROLLABLE);
+        clientMessageIds.add(SQLState.UPDATABLE_RESULTSET_API_DISALLOWED);
+        clientMessageIds.add(SQLState.CURSOR_NOT_POSITIONED_ON_INSERT_ROW);
+        clientMessageIds.add(SQLState.CURSOR_INVALID_OPERATION_AT_CURRENT_POSITION);
+        clientMessageIds.add(SQLState.BLOB_NONPOSITIVE_LENGTH);
+        clientMessageIds.add(SQLState.SOCKET_EXCEPTION);
+        clientMessageIds.add(SQLState.NET_CONNECT_AUTH_FAILED);
+        clientMessageIds.add(SQLState.DRDA_CONNECTION_TERMINATED);
+        clientMessageIds.add(SQLState.CANCEL_NO_UNIQUE_STATEMENT);
 // GemStone changes END
     }
 

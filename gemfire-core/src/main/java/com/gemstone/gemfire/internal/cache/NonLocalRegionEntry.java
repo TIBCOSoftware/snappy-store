@@ -23,6 +23,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheWriterException;
 import com.gemstone.gemfire.cache.EntryEvent;
@@ -33,7 +34,6 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.FactoryStatics;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
@@ -43,6 +43,8 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
+import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.shared.Version;
 
 public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
@@ -51,6 +53,9 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   protected Object key;
   protected Object value;
   private VersionTag<?> versionTag;
+  private boolean updateInProgress = false;
+  private transient int valueSize;
+  private transient boolean forDelete;
 
   /**
    * Create one of these in the local case so that we have a snapshot of the
@@ -64,6 +69,35 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
       this.value = Token.TOMBSTONE;
     } else {
       this.value = re.getValue(br); // OFFHEAP: copy into heap cd
+    }
+    Assert.assertTrue(this.value != Token.NOT_AVAILABLE,
+        "getEntry did not fault value in from disk");
+    this.lastModified = re.getLastModified();
+    this.isRemoved = re.isRemoved();
+    VersionStamp<?> stamp = re.getVersionStamp();
+    if (stamp != null) {
+      this.versionTag = stamp.asVersionTag();
+    }
+  }
+
+  protected NonLocalRegionEntry(RegionEntry re, LocalRegion br,
+      boolean allowTombstones, boolean faultInValue) {
+    this.key = re.getKeyCopy();
+    // client get() operations need to see tombstone values
+    if (allowTombstones && re.isTombstone()) {
+      this.value = Token.TOMBSTONE;
+    } else {
+      @Released Object v = null;
+      if (faultInValue) {
+        v = re.getValue(br);
+      } else {
+        v = re.getValueInVMOrDiskWithoutFaultIn(br);
+      }
+      try {
+        this.value = OffHeapHelper.getHeapForm(v);  // OFFHEAP: copy into heap cd
+      } finally {
+        OffHeapHelper.release(v);
+      }
     }
     Assert.assertTrue(this.value != Token.NOT_AVAILABLE,
         "getEntry did not fault value in from disk");
@@ -112,6 +146,22 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     this.versionTag = versionTag;
   }
 
+  public void setValueSize(int size) {
+    this.valueSize = size;
+  }
+
+  public int getValueSize() {
+    return this.valueSize;
+  }
+
+  public void setForDelete() {
+    this.forDelete = true;
+  }
+
+  public boolean isForDelete() {
+    return this.forDelete;
+  }
+
   @Override
   public String toString() {
     return "NonLocalRegionEntry("+this.key + "; value="  + this.value + "; version=" + this.versionTag;
@@ -135,6 +185,17 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     }
     else {
       return sysCb.newNonLocalRegionEntry(re, region, allowTombstones);
+    }
+  }
+
+  public static NonLocalRegionEntry newEntryWithoutFaultIn(RegionEntry re,
+      LocalRegion region, boolean allowTombstones) {
+    final StaticSystemCallbacks sysCb = FactoryStatics.systemCallbacks;
+    if (sysCb == null) {
+      return new NonLocalRegionEntry(re, region, allowTombstones, false);
+    }
+    else {
+      return sysCb.newNonLocalRegionEntry(re, region, allowTombstones, false);
     }
   }
 
@@ -237,11 +298,11 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
   
   public boolean isTombstone() {
-    return false;
+    return this.value == Token.TOMBSTONE;
   }
 
   public boolean fillInValue(LocalRegion r,
-      InitialImageOperation.Entry entry, ByteArrayDataInput in, DM mgr, Version targetVersion) {
+      InitialImageOperation.Entry entry, DM mgr, Version targetVersion) {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
@@ -262,6 +323,9 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
 
   public final Object getValue(RegionEntryContext context) {
+    if (Token.isRemoved(this.value)) {
+      return null;
+    }
     return this.value;
   }
   
@@ -297,7 +361,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
-  public void removePhase2()
+  public void removePhase2(LocalRegion r)
   {
     throw new UnsupportedOperationException(
         "Not appropriate for PartitionedRegion.NonLocalRegionEntry");
@@ -309,10 +373,11 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public Object _getValue() {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+    return value;
+    //throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
-  public void setOwner(LocalRegion owner) {
+  public void setOwner(LocalRegion owner, Object previousOwner) {
     throw new UnsupportedOperationException(LocalizedStrings
         .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
             .toLocalizedString());
@@ -599,23 +664,25 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public boolean isUpdateInProgress() {
-    throw new UnsupportedOperationException(LocalizedStrings
+    // In case of Snapshot we will return this only for read operations:
+    // so update in progress should be false
+    return updateInProgress;
+    /*throw new UnsupportedOperationException(LocalizedStrings
         .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
-            .toLocalizedString());
+            .toLocalizedString());*/
   }
 
   @Override
   public void setUpdateInProgress(boolean underUpdate) {
-    throw new UnsupportedOperationException(LocalizedStrings
+    /*throw new UnsupportedOperationException(LocalizedStrings
         .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
-            .toLocalizedString());
+            .toLocalizedString());*/
+    updateInProgress = underUpdate;
   }
 
   @Override
   public boolean isMarkedForEviction() {
-    throw new UnsupportedOperationException(LocalizedStrings
-        .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
-            .toLocalizedString());
+    return false;
   }
   @Override
   public void setMarkedForEviction() {
@@ -647,7 +714,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
 
   @Override
-  public void setValueToNull() {
+  public void setValueToNull(RegionEntryContext context) {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
   
@@ -659,6 +726,11 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   @Override
   public boolean isDestroyedOrRemovedButNotTombstone() {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+  }
+
+  @Override
+  public boolean isOffHeap() {
+    return false;
   }
 
   @Override

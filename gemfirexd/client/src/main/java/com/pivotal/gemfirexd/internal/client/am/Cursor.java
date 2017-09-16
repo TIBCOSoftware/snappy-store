@@ -42,7 +42,6 @@ package com.pivotal.gemfirexd.internal.client.am;
 // GemStone changes BEGIN
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import com.pivotal.gemfirexd.internal.client.am.Connection.FailoverStatus;
 import com.pivotal.gemfirexd.internal.iapi.reference.JDBC40Translation;
 
 import java.io.IOException;
@@ -721,7 +720,8 @@ public abstract class Cursor {
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream( bytes );
 // GemStone changes BEGIN
-            ObjectInputStream ois = new ThreadContextObjectInputStream(bais);
+            ObjectInputStream ois = new ClientSharedUtils
+                .ThreadContextObjectInputStream(bais);
             /* (original code)
             ObjectInputStream ois = new ObjectInputStream( bais );
             */
@@ -787,40 +787,6 @@ public abstract class Cursor {
       return new ColumnTypeConversionException(agent_.logWriter_,
           "java.sql.Types " + jdbcTypes_[column - 1] + " java type "
               + o.getClass().getName(), convertType);
-    }
-
-    public static final ThreadLocal ALLOW_THREADCONTEXT_CLASSLOADER =
-        new ThreadLocal();
-    /** allow using Thread context ClassLoader to load classes */
-    public static final class ThreadContextObjectInputStream extends
-        ObjectInputStream {
-
-      protected ThreadContextObjectInputStream() throws IOException,
-          SecurityException {
-        super();
-      }
-  
-      public ThreadContextObjectInputStream(final InputStream in)
-          throws IOException {
-        super(in);
-      }
-
-      protected Class resolveClass(final ObjectStreamClass desc)
-          throws IOException, ClassNotFoundException {
-        try {
-          return super.resolveClass(desc);
-        } catch (ClassNotFoundException cnfe) {
-          // try to load using Thread context ClassLoader, if required
-          final Object allowTCCL = ALLOW_THREADCONTEXT_CLASSLOADER.get();
-          if (allowTCCL == null || !Boolean.TRUE.equals(allowTCCL)) {
-            throw cnfe;
-          }
-          else {
-            return Thread.currentThread().getContextClassLoader()
-                .loadClass(desc.getName());
-          }
-        }
-      }
     }
 // GemStone changes END
 
@@ -1620,14 +1586,11 @@ public abstract class Cursor {
         switch (jdbcTypes_[column - 1]) {
         case java.sql.Types.SMALLINT:
 // GemStone changes BEGIN
-            // changed to use *.valueOf() if possible
-            return ClientSharedUtils.getJdkHelper().newInteger(
-                get_SMALLINT(column)); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
+            return (int)get_SMALLINT(column); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
         case java.sql.Types.INTEGER:
-            return ClientSharedUtils.getJdkHelper().newInteger(
-                get_INTEGER(column));
+            return get_INTEGER(column);
         case java.sql.Types.BIGINT:
-            return ClientSharedUtils.getJdkHelper().newLong(get_BIGINT(column));
+            return get_BIGINT(column);
             /* (original code)
             return new Integer(get_SMALLINT(column)); // See Table 4 in JDBC 1 spec (pg. 932 in jdbc book)
         case java.sql.Types.INTEGER:
@@ -1637,9 +1600,9 @@ public abstract class Cursor {
             */
 // GemStone changes END
         case java.sql.Types.REAL:
-            return new Float(get_FLOAT(column));
+            return get_FLOAT(column);
         case java.sql.Types.DOUBLE:
-            return new Double(get_DOUBLE(column));
+            return get_DOUBLE(column);
         case java.sql.Types.DECIMAL:
             return get_DECIMAL(column);
         case java.sql.Types.DATE:

@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -45,10 +45,10 @@ import io.snappydata.thrift.HostAddress;
 public final class HostConnection {
 
   public final HostAddress hostAddr;
-  public final int connId;
+  public final long connId;
   public final ByteBuffer token;
 
-  public HostConnection(HostAddress host, int connId, ByteBuffer token) {
+  public HostConnection(HostAddress host, long connId, ByteBuffer token) {
     this.hostAddr = host;
     this.connId = connId;
     this.token = token;
@@ -59,7 +59,7 @@ public final class HostConnection {
    */
   @Override
   public int hashCode() {
-    int h = connId + hostAddr.hashCode();
+    int h = (int)(connId ^ (connId >>> 32)) + hostAddr.hashCode();
     if (token != null) {
       h += token.hashCode();
     }
@@ -71,22 +71,15 @@ public final class HostConnection {
    */
   @Override
   public boolean equals(Object other) {
-    if (this == other) {
-      return true;
-    }
-    if (other instanceof HostConnection) {
-      return equals((HostConnection)other);
-    }
-    else {
-      return false;
-    }
+    return this == other ||
+        (other instanceof HostConnection && equals((HostConnection)other));
   }
 
   public boolean equals(final HostConnection other) {
     return this == other || (connId == other.connId
         && (hostAddr == other.hostAddr || hostAddr.equals(other.hostAddr))
-        && (token == other.token || (token != null && token
-            .equals(other.token))));
+        && (token == other.token ||
+        (token != null && token.equals(other.token))));
   }
 
   /**

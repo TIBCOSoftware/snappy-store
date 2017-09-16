@@ -14,6 +14,25 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal.cache;
 
 import java.util.EnumSet;
@@ -375,9 +394,8 @@ public class DiskRegion extends AbstractDiskRegion {
    *
    * @param entry
    *          The entry which is going to be written to disk
-   * @param isSerializedObject
-   *                Do the bytes in <code>value</code> contain a serialized
-   *                object (or an actually <code>byte</code> array)?
+   * @param value
+   *          The <code>ValueWrapper</code> for the byte data
    * @throws RegionClearedException
    *                 If a clear operation completed before the put operation
    *                 completed successfully, resulting in the put operation to
@@ -385,12 +403,11 @@ public class DiskRegion extends AbstractDiskRegion {
    * @throws IllegalArgumentException
    *         If <code>id</code> is less than zero
    */
-  final void put(DiskEntry entry, LocalRegion region, byte[] value, boolean isSerializedObject, boolean async)
-      throws  RegionClearedException
-  {
-    getDiskStore().put(region, entry, value, isSerializedObject, async);
+  final void put(DiskEntry entry, LocalRegion region,
+      DiskEntry.Helper.ValueWrapper value, boolean async) throws  RegionClearedException {
+    getDiskStore().put(region, entry, value, async);
   }
-    
+
   /**
    * Returns the value of the key/value pair with the given diskId. Updates all
    * of the necessary {@linkplain DiskRegionStats statistics}
@@ -539,10 +556,13 @@ public class DiskRegion extends AbstractDiskRegion {
       BucketRegion owner=(BucketRegion)region;
       long curInVM = owner.getNumEntriesInVM()*-1;
       long curOnDisk = owner.getNumOverflowOnDisk()*-1;
+      long curBytesOnDisk = owner.getNumOverflowBytesOnDisk()*-1;
       incNumEntriesInVM(curInVM);
       incNumOverflowOnDisk(curOnDisk);
+      incNumOverflowBytesOnDisk(curBytesOnDisk);
       owner.incNumEntriesInVM(curInVM);
       owner.incNumOverflowOnDisk(curOnDisk);
+      owner.incNumOverflowBytesOnDisk(curBytesOnDisk);
     } else {
       // set them both to zero
       incNumEntriesInVM(getNumEntriesInVM()*-1);
@@ -793,7 +813,7 @@ public class DiskRegion extends AbstractDiskRegion {
    * Only called on overflow-only regions.
    * Needs to take every entry currently using disk storage and free up that storage
    */
-  void freeAllEntriesOnDisk(LocalRegion region) {
+  void freeAllEntriesOnDisk(final LocalRegion region) {
     if(region == null) {
       return;
     }
@@ -805,8 +825,8 @@ public class DiskRegion extends AbstractDiskRegion {
             synchronized (id) {
               // GemFireXD: give a chance to copy key from value bytes when key
               // is just a pointer to value row
-              re.setValueToNull(); // TODO why call _setValue twice in a row?
-              re.removePhase2();
+              re.setValueToNull(region); // TODO why call _setValue twice in a row?
+              re.removePhase2(region);
               id.unmarkForWriting();
               if (EntryBits.isNeedsValue(id.getUserBits())) {
                 long oplogId = id.getOplogId();

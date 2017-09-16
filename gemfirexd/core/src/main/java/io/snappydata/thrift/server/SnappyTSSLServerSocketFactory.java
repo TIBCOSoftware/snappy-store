@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -40,7 +40,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 
-import io.snappydata.thrift.common.SnappyTSSLSocketFactory;
+import io.snappydata.thrift.common.SSLFactory;
 import io.snappydata.thrift.common.SocketParameters;
 import org.apache.thrift.transport.TTransportException;
 
@@ -64,33 +64,20 @@ public abstract class SnappyTSSLServerSocketFactory {
    * <p>
    * Else if SocketParameters don't have SSL settings, then the default settings
    * are used. Default settings are retrieved from server System properties.
-   * 
+   *
    * Example system properties: -Djavax.net.ssl.trustStore=<truststore location>
    * -Djavax.net.ssl.trustStorePassword=password
    * -Djavax.net.ssl.keyStore=<keystore location>
    * -Djavax.net.ssl.keyStorePassword=password
-   * 
-   * 
+   *
+   *
    * @return An SSL wrapped {@link SnappyTSSLServerSocket}
    */
   public static SnappyTSSLServerSocket getServerSocket(
       InetSocketAddress bindAddress, SocketParameters params)
       throws TTransportException {
-    if (params.hasSSLParams()) {
-      if (!params.isSSLKeyStoreSet() && !params.isSSLTrustStoreSet()) {
-        throw new TTransportException(
-            "Either one of the KeyStore or TrustStore must be set "
-                + "for SocketParameters having SSL parameters");
-      }
-
-      SSLContext ctx = SnappyTSSLSocketFactory.createSSLContext(params);
-      return createServer(ctx.getServerSocketFactory(), bindAddress, params);
-    }
-    else {
-      SSLServerSocketFactory factory = (SSLServerSocketFactory)SSLServerSocketFactory
-          .getDefault();
-      return createServer(factory, bindAddress, params);
-    }
+    SSLContext ctx = SSLFactory.createSSLContext(params);
+    return createServer(ctx.getServerSocketFactory(), bindAddress, params);
   }
 
   private static SnappyTSSLServerSocket createServer(

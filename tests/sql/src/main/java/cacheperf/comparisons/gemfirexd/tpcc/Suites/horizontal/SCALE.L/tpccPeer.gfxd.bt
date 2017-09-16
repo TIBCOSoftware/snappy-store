@@ -1,0 +1,48 @@
+cacheperf/comparisons/gemfirexd/tpcc/peerClient/tpccPeer.conf
+  api = GFXD
+  clientHosts = 1 clientVMsPerHost = 5 clientThreadsPerVM = 3
+  serverHosts = 1 serverVMsPerHost = 3 serverThreadsPerVM = 1
+  numWarehouses = 27
+  indexFileNum = 2
+  serverHeapMB = 15000 clientHeapMB = 1024
+  perffmwk.comparisonKey = 01
+cacheperf/comparisons/gemfirexd/tpcc/peerClient/tpccPeer.conf
+  api = GFXD
+  clientHosts = 2 clientVMsPerHost = 5 clientThreadsPerVM = 3
+  serverHosts = 2 serverVMsPerHost = 3 serverThreadsPerVM = 1
+  numWarehouses = 54
+  indexFileNum = 2
+  serverHeapMB = 15000 clientHeapMB = 1024
+  perffmwk.comparisonKey = 02
+cacheperf/comparisons/gemfirexd/tpcc/peerClient/tpccPeer.conf
+  api = GFXD
+  clientHosts = 4 clientVMsPerHost = 5 clientThreadsPerVM = 3
+  serverHosts = 4 serverVMsPerHost = 3 serverThreadsPerVM = 1
+  numWarehouses = 108
+  indexFileNum = 2
+  serverHeapMB = 15000 clientHeapMB = 1024
+  perffmwk.comparisonKey = 04
+cacheperf/comparisons/gemfirexd/tpcc/peerClient/tpccPeer.conf
+  api = GFXD
+  clientHosts = 6 clientVMsPerHost = 5 clientThreadsPerVM = 3
+  serverHosts = 6 serverVMsPerHost = 3 serverThreadsPerVM = 1
+  numWarehouses = 162
+  indexFileNum = 2
+  serverHeapMB = 15000 clientHeapMB = 1024
+  perffmwk.comparisonKey = 06
+cacheperf/comparisons/gemfirexd/tpcc/peerClient/tpccPeer.conf
+  api = GFXD
+  clientHosts = 8 clientVMsPerHost = 5 clientThreadsPerVM = 3
+  serverHosts = 8 serverVMsPerHost = 3 serverThreadsPerVM = 1
+  numWarehouses = 216
+  indexFileNum = 2
+  serverHeapMB = 15000 clientHeapMB = 1024
+  perffmwk.comparisonKey = 08
+cacheperf/comparisons/gemfirexd/tpcc/peerClient/tpccPeer.conf
+  api = GFXD
+  clientHosts = 10 clientVMsPerHost = 5 clientThreadsPerVM = 3
+  serverHosts = 10 serverVMsPerHost = 3 serverThreadsPerVM = 1
+  numWarehouses = 270
+  indexFileNum = 2
+  serverHeapMB = 15000 clientHeapMB = 1024
+  perffmwk.comparisonKey = 10

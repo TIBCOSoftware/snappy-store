@@ -1,5 +1,5 @@
 dependencies {
-  provided project(subprojectBase + 'gemfirexd-core')
+  provided project(subprojectBase + 'snappydata-store-core')
   provided 'org.hibernate:hibernate-core:4.3.11.Final'
 }
 jar.baseName = 'snappydata-store-hibernate'

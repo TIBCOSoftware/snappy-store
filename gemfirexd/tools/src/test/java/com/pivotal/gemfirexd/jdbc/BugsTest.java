@@ -107,7 +107,7 @@ public class BugsTest extends JdbcTestBase {
     super(name);
   }
 
-  public void testGEMXD_3_TMG16663_IndexRecoveryNPE() throws Exception {
+  public void testGEMXD_3_IndexRecoveryNPE() throws Exception {
     Connection conn = TestUtil.getConnection();
     Statement st = conn.createStatement();
     st.execute("Create table ODS.POSTAL_ADDRESS("
@@ -700,9 +700,6 @@ public class BugsTest extends JdbcTestBase {
    }
    long end = System.currentTimeMillis();
    bw.println("query 9 time="+ (end -start) + "milliseconds");
-   assertTrue((end-start) < 8000);
-  
-   
    
    String query5 = "select n_name, sum(l_extendedprice * (1 - l_discount)) as revenue " +
    		"from   customer, orders" +
@@ -724,7 +721,6 @@ public class BugsTest extends JdbcTestBase {
    }
    end = System.currentTimeMillis();
    bw.println("query 5 time="+ (end -start) + "milliseconds");
-   assertTrue((end-start) < 8000);
    
    st.executeUpdate("drop table lineitem");
    st.executeUpdate("drop table  orders");

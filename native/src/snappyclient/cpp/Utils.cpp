@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -91,7 +91,7 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
     case thrift::SnappyType::DOUBLE:
       return "DOUBLE";
     case thrift::SnappyType::FLOAT:
-      return "FLOAT";
+      return "REAL";
     case thrift::SnappyType::INTEGER:
       return "INTEGER";
     case thrift::SnappyType::JAVA_OBJECT:
@@ -106,8 +106,6 @@ const char* Utils::getSQLTypeName(const thrift::ColumnValue& cv) {
       return "MAP";
     case thrift::SnappyType::NULLTYPE:
       return "NULL";
-    case thrift::SnappyType::REAL:
-      return "REAL";
     case thrift::SnappyType::SMALLINT:
       return "SMALLINT";
     case thrift::SnappyType::SQLXML:
@@ -439,8 +437,8 @@ std::string Utils::toString(const std::exception& stde) {
   return str;
 }
 
-void Utils::throwDataFormatError(const char* target, const uint32_t columnIndex,
-    const char* cause) {
+void Utils::throwDataFormatError(const char* target,
+    const uint32_t columnIndex, const char* cause) {
   std::ostringstream reason;
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
@@ -452,8 +450,23 @@ void Utils::throwDataFormatError(const char* target, const uint32_t columnIndex,
       reason.str().c_str());
 }
 
-void Utils::throwDataFormatError(const char* target, const uint32_t columnIndex,
-    const std::exception& cause) {
+void Utils::throwDataFormatError(const char* target,
+    const thrift::ColumnValue& srcValue, const uint32_t columnIndex,
+    const char* cause) {
+  std::ostringstream reason;
+  reason << " for value '" << srcValue << '\'';
+  if (columnIndex > 0) {
+    reason << " at column " << columnIndex;
+  }
+  if (cause != NULL) {
+    reason << ": " << cause;
+  }
+  throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_FORMAT_EXCEPTION_MSG, target,
+      reason.str().c_str());
+}
+
+void Utils::throwDataFormatError(const char* target,
+    const uint32_t columnIndex, const std::exception& cause) {
   std::ostringstream reason;
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;

@@ -146,6 +146,6 @@ public abstract class ExtraInfo {
 
   public abstract RowFormatter getRowFormatter(byte[] vbytes);
   public abstract RowFormatter getRowFormatter(OffHeapByteSource vbytes);
-  public abstract RowFormatter getRowFormatter(UnsafeWrapper unsafe,
-      long memAddr, OffHeapByteSource vbytes);
+  public abstract RowFormatter getRowFormatter(long memAddr,
+      OffHeapByteSource vbytes);
 }

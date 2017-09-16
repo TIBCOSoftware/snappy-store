@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -45,34 +45,34 @@ import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.snappydataConstants;
 
 /**
- * Efficient finalizer for a statement that will clear server-side artifacts.
+ * Efficient finalizer for client artifacts to clear server-side artifacts.
  */
 @SuppressWarnings("serial")
 public final class ClientFinalizer extends FinalizeObject implements
     FinalizeObject.BatchFinalize {
 
-  private volatile int id;
+  private volatile long id;
   private ClientService service;
   HostConnection source;
   private final byte entityType;
   private TLinkedList batchedFinalizers;
 
-  static final int DEFAULT_FINALIZER_LOCK_TIMEOUT_MS = 5000;
+  private static final int FINALIZER_LOCK_TIMEOUT_MS = 10000;
 
-  public ClientFinalizer(Object referent, ClientService service,
+  ClientFinalizer(Object referent, ClientService service,
       byte entityType) {
     super(referent, false);
     this.service = service;
     this.entityType = entityType;
   }
 
-  public void updateReferentData(int id, HostConnection source) {
+  void updateReferentData(long id, HostConnection source) {
     this.id = id;
     this.source = source;
   }
 
   @Override
-  protected final FinalizeHolder getHolder() {
+  public final FinalizeHolder getHolder() {
     return getClientHolder();
   }
 
@@ -91,37 +91,27 @@ public final class ClientFinalizer extends FinalizeObject implements
 
     final byte type = finalizer.entityType;
     final ClientService service = finalizer.service;
-    final int id;
+    final long id;
     final HostConnection source;
     if (type == snappydataConstants.BULK_CLOSE_CONNECTION) {
-      if (service == null
-          || (source = service.getCurrentHostConnection()) == null) {
+      if (service == null || service.isClosed() ||
+          (source = service.getCurrentHostConnection()) == null) {
         return;
       }
       id = source.connId;
       closeServices.add(service);
-    }
-    else {
+    } else {
       id = finalizer.id;
       source = finalizer.source;
     }
     if (id == snappydataConstants.INVALID_ID || service == null ||
-        source == null || !service.isOpen) {
+        source == null || service.isClosed()) {
       return;
     }
 
-    entities
-        .add(new EntityId(id, type, source.connId).setToken(source.token));
+    entities.add(new EntityId(id, type, source.connId, source.token));
     sources.add(source);
     services.add(service);
-  }
-
-  private void removeFromBulkCloseArgs(int index,
-      ArrayList<EntityId> entities, ArrayList<HostConnection> sources,
-      ArrayList<ClientService> services) {
-    entities.remove(index);
-    sources.remove(index);
-    services.remove(index);
   }
 
   /**
@@ -150,42 +140,36 @@ public final class ClientFinalizer extends FinalizeObject implements
     }
 
     long start = System.currentTimeMillis();
-    int numServices = services.size();
+    int numActiveServices = services.size();
     // try for a successful send on any one of the services
     while (true) {
-      for (int i = 0; i < numServices; i++) {
-        boolean success;
+      for (int i = numActiveServices - 1; i >= 0; i--) {
         ClientService service = services.get(i);
-        if (!service.isOpen) {
-          removeFromBulkCloseArgs(i, entities, sources, services);
-          numServices--;
-          i--;
-          continue;
-        }
+        boolean removeService = service.isClosed();
         try {
-          success = service.bulkClose(sources.get(i), entities,
-              closeServices, 100L);
+          if (!removeService && service.bulkClose(sources.get(i), entities,
+              closeServices, 100L)) {
+            if (batchedFinalizers != null) {
+              batchedFinalizers.clear();
+            }
+            return true;
+          }
         } catch (SnappyException se) {
           // connection could have closed/failed not necessarily the server,
           // so continue trying with other ClientServices till timeout
-          success = false;
-          removeFromBulkCloseArgs(i, entities, sources, services);
-          numServices--;
-          i--;
+          removeService = true;
         }
-        if (success) {
-          if (batchedFinalizers != null) {
-            batchedFinalizers.clear();
-          }
-          return true;
-        }
-        else if ((System.currentTimeMillis() - start) >
-            DEFAULT_FINALIZER_LOCK_TIMEOUT_MS) {
+        if ((System.currentTimeMillis() - start) >
+            FINALIZER_LOCK_TIMEOUT_MS) {
           return false;
+        } else if (removeService) {
+          services.remove(i);
+          sources.remove(i);
+          numActiveServices--;
         }
       }
       // if all failed then assume the server itself has gone away
-      if (numServices == 0) {
+      if (numActiveServices <= 0) {
         // force close sockets etc for connections to be closed in any case
         if (closeServices != null) {
           for (ClientService service : closeServices) {

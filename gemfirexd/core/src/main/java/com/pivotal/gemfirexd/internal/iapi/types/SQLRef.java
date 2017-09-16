@@ -47,7 +47,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.catalog.TypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
@@ -280,7 +279,7 @@ public final class SQLRef extends DataType implements RefDataValue
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
+  public int readBytes(long memOffset, int columnWidth,
       ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + getClass());

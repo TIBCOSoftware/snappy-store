@@ -41,7 +41,6 @@ import com.gemstone.gemfire.internal.cache.TXId;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.io.ArrayInputStream;
@@ -68,6 +67,11 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
   NonLocalRowLocationRegionEntry(RegionEntry re, LocalRegion br,
       boolean allowTombstones) {
     super(re, br, allowTombstones);
+  }
+
+  NonLocalRowLocationRegionEntry(RegionEntry re, LocalRegion br,
+      boolean allowTombstones, boolean faultInValue) {
+    super(re, br, allowTombstones, faultInValue);
   }
 
   NonLocalRowLocationRegionEntry(Object key, Object value, LocalRegion br,
@@ -310,7 +314,8 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
    */
   @Override
   public DataValueDescriptor getClone() {
-    throw new UnsupportedOperationException("unexpected invocation");
+    return this;
+    //throw new UnsupportedOperationException("unexpected invocation");
   }
 
   /**
@@ -318,7 +323,8 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
    */
   @Override
   public DataValueDescriptor recycle() {
-    throw new UnsupportedOperationException("unexpected invocation");
+    return this;
+    //throw new UnsupportedOperationException("unexpected invocation");
   }
 
   /**
@@ -741,7 +747,7 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
   }
 
   @Override
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
+  public int readBytes(long memOffset, int columnWidth,
       ByteSource bs) {
     throw new UnsupportedOperationException("unexpected invocation for "
         + getClass());
@@ -777,7 +783,9 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
    */
   @Override
   public boolean isNull() {
-    throw new UnsupportedOperationException("unexpected invocation");
+    // For snapshot and tx this should be returned only for READ operations
+    return isDestroyedOrRemoved();
+    //throw new UnsupportedOperationException("unexpected invocation");
   }
 
   /**
@@ -926,7 +934,7 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
 
   @Override
   public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
-    return this.getValueInVMOrDiskWithoutFaultIn(owner);
+    return this.value;
   }
   
   @Override

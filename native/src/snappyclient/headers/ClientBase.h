@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -43,9 +43,6 @@
 #include "snappydata_constants.h"
 #include "snappydata_types.h"
 #include "snappydata_struct_Decimal.h"
-#include "snappydata_struct_Timestamp.h"
-#include "snappydata_struct_JSONValue.h"
-#include "snappydata_struct_JSONObject.h"
 #include "snappydata_struct_BlobChunk.h"
 #include "snappydata_struct_ClobChunk.h"
 #include "snappydata_struct_ServiceMetaData.h"
@@ -55,7 +52,6 @@
 #include "snappydata_struct_HostAddress.h"
 #include "snappydata_struct_SnappyExceptionData.h"
 #include "snappydata_struct_StatementAttrs.h"
-#include "snappydata_struct_DateTime.h"
 #include "snappydata_struct_ColumnValue.h"
 #include "snappydata_struct_ColumnDescriptor.h"
 #include "snappydata_struct_Row.h"
@@ -102,9 +98,8 @@ namespace client {
     SMALLINT = thrift::SnappyType::SMALLINT,
     INTEGER = thrift::SnappyType::INTEGER,
     BIGINT = thrift::SnappyType::BIGINT,
-    REAL = thrift::SnappyType::REAL,
-    DOUBLE = thrift::SnappyType::DOUBLE,
     FLOAT = thrift::SnappyType::FLOAT,
+    DOUBLE = thrift::SnappyType::DOUBLE,
     DECIMAL = thrift::SnappyType::DECIMAL,
     CHAR = thrift::SnappyType::CHAR,
     VARCHAR = thrift::SnappyType::VARCHAR,
@@ -260,7 +255,6 @@ namespace client {
     class Clob;
     class DateTime;
     class Decimal;
-    class JSON;
     class Timestamp;
   } /* namespace types */
 

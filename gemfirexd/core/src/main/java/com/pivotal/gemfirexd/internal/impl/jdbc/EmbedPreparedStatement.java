@@ -69,6 +69,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.BrokeredConnectionControl;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineParameterMetaData;
@@ -87,9 +88,12 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RawToBinaryFormatStream;
 import com.pivotal.gemfirexd.internal.iapi.types.ReaderToUTF8Stream;
 import com.pivotal.gemfirexd.internal.iapi.types.VariableSizeDataValue;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericActivationHolder;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.shared.common.SingleHopInformation;
+import io.snappydata.thrift.common.BufferedBlob;
+
 /**
  *
  * EmbedPreparedStatement is a local JDBC statement.
@@ -154,6 +158,10 @@ public abstract class EmbedPreparedStatement
                         if (lcc.getQueryHDFS()) {
                           execFlags = (short) GemFireXDUtils.set(execFlags,
                               GenericStatement.QUERY_HDFS, true);
+                        }
+
+                        if (routeQueryEnabled(null)) {
+                          execFlags = GemFireXDUtils.set(execFlags, GenericStatement.ROUTE_QUERY, true);
                         }
 			try {
 			    preparedStatement = lcc.prepareInternalStatement
@@ -361,6 +369,7 @@ public abstract class EmbedPreparedStatement
 	  return results;
 	}
 
+        @Override
         public int getStatementType() {
           return ((GenericPreparedStatement)this.preparedStatement).getStatementType();
         }
@@ -1106,23 +1115,39 @@ public abstract class EmbedPreparedStatement
 	  // would lead to one of the set of parameters being thrown
 	  // away
   	  synchronized (getConnectionSynchronization()) {
-  			if (batchStatements == null)
-// GemStone changes BEGIN
-  			{
-  			  batchStatements = new ArrayList<Object>();
-  			}
+            if (batchStatements == null)
+              // GemStone changes BEGIN
+            {
+              batchStatements = new ArrayList<Object>();
+            }
   			/* (original code)
   				batchStatements = new Vector();
   			*/
-
           //get a clone of the parameterValueSet and save it in the vector
           //which will be used later on at the time of batch execution.
           //This way we will get a copy of the current statement's parameter
           //values rather than a pointer to the statement's parameter value
           //set which will change with every new statement in the batch.
   	  try {
-            batchStatements.add(getParms().getClone());
-  	  } catch (Throwable t) {
+            //batchStatements.add(getParms().getClone());
+            if (executeBatchInProgress == 0) {
+              batchStatements.add(getParms().getClone());
+            } else {
+              // copy into the already existing params
+              ParameterValueSet temp = (ParameterValueSet)getParms();
+              int numberOfParameters = temp.getParameterCount();
+
+              if (batchStatementCurrentIndex < batchStatements.size()) {
+                for (int j = 0; j < numberOfParameters; j++) {
+                  ((ParameterValueSet)batchStatements.get(batchStatementCurrentIndex)).getParameter(j)
+                    .setValue(temp.getParameter(j));
+                }
+              } else {
+                batchStatements.add(getParms().getClone());
+              }
+            }
+            batchStatementCurrentIndex++;
+          } catch (Throwable t) {
   	    throw TransactionResourceImpl.wrapInSQLException(t);
   	  }
           /* (original code)
@@ -1171,6 +1196,7 @@ public abstract class EmbedPreparedStatement
             }
             finally {
               rs.closeBatch();
+	      resetBatch(); // with this, if .clearBatch is skipped, we will resuse the objects already created.
             }
             if (observer != null) {
               observer.afterFlushBatch(rs, lcc);
@@ -1307,24 +1333,44 @@ public abstract class EmbedPreparedStatement
 					// Gemstone changes END
 					gcDuringGetMetaData = execp.getActivationClass().getName();
 				}
-				if (rMetaData == null)
+				Activation a = null;
+				if (this.getActivation() != null) {
+					if (this.getActivation() instanceof GenericActivationHolder) {
+						a = ((GenericActivationHolder)this.getActivation()).getActivation();
+					} else if (this.getActivation() instanceof Activation) {
+						a = this.getActivation();
+					}
+				}
+
+				if (rMetaData == null && !(a instanceof SnappyActivation))
 				{
-					ResultDescription resd = preparedStatement.getResultDescription();
-					if (resd != null)
-					{
-						// Internally, the result description has information
-						// which is used for insert, update and delete statements
-						// Externally, we decided that statements which don't
-						// produce result sets such as insert, update and delete
-						// should not return ResultSetMetaData.  This is enforced
-						// here
-						String statementType = resd.getStatementType();
-						if (statementType.equals("INSERT") ||
-								statementType.equals("UPDATE") ||
-								statementType.equals("DELETE"))
-							rMetaData = null;
-						else
-				    		rMetaData = newEmbedResultSetMetaData(resd);
+					Activation act = null;
+					if (this.getActivation() != null) {
+						if (this.getActivation() instanceof GenericActivationHolder) {
+							act = ((GenericActivationHolder)this.getActivation()).getActivation();
+						} else if (this.getActivation() instanceof Activation) {
+							act = this.getActivation();
+						}
+					}
+					if (act instanceof  SnappyActivation) {
+						rMetaData = null;
+					} else {
+						ResultDescription resd = preparedStatement.getResultDescription();
+						if (resd != null) {
+							// Internally, the result description has information
+							// which is used for insert, update and delete statements
+							// Externally, we decided that statements which don't
+							// produce result sets such as insert, update and delete
+							// should not return ResultSetMetaData.  This is enforced
+							// here
+							String statementType = resd.getStatementType();
+							if (statementType.equals("INSERT") ||
+									statementType.equals("UPDATE") ||
+									statementType.equals("DELETE"))
+								rMetaData = null;
+							else
+								rMetaData = newEmbedResultSetMetaData(resd);
+						}
 					}
 				}
 			} catch (Throwable t) {
@@ -1644,6 +1690,17 @@ public abstract class EmbedPreparedStatement
 			setNull(i, Types.BLOB);
 		else
         {
+// GemStone changes BEGIN
+            if (x instanceof BufferedBlob) {
+              try {
+                getParms().getParameterForSet(i - 1).setValue(x);
+                return;
+              } catch (StandardException t) {
+                throw EmbedResultSet.noStateChangeException(t,
+                    "parameter index " + i);
+              }
+            }
+// GemStone changes END
             // Note, x.length() needs to be called before retrieving the
             // stream using x.getBinaryStream() because EmbedBlob.length()
             // will read from the stream and drain some part of the stream 
@@ -1918,11 +1975,12 @@ public abstract class EmbedPreparedStatement
                      boolean executeQuery, boolean executeUpdate,
                      boolean skipContextRestore /* GemStone addition */)
                      throws SQLException {
-
+		// GemStone changes BEGIN
 		checkExecStatus();
 		checkIfInMiddleOfBatch();
 		clearResultSets();
 // GemStone changes BEGIN
+
 		return super.executeStatement(a, executeQuery, executeUpdate,
 		    ((GenericPreparedStatement)preparedStatement).createQueryInfo(),
 		    false /* is Context set */,

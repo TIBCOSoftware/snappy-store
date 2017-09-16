@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -43,6 +43,7 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.iapi.services.info.JVMInfo;
 import com.pivotal.gemfirexd.internal.iapi.services.info.ProductGenusNames;
 import com.pivotal.gemfirexd.internal.iapi.services.info.ProductVersionHolder;
@@ -60,12 +61,10 @@ public final class ClientConfiguration {
   public static final String DRIVER_NAME =
       "SnappyData Thrift Client JDBC Driver";
 
-  public static final String DRIVER_PROTOCOL =
-      com.pivotal.gemfirexd.Attribute.THRIFT_PROTOCOL;
-
-  public static final String CURRENT_DRIVER_PROTOCOL = ClientSharedUtils
-      .USE_THRIFT_AS_DEFAULT
-      ? com.pivotal.gemfirexd.Attribute.DNC_PROTOCOL : DRIVER_PROTOCOL;
+  public static String CURRENT_DRIVER_PROTOCOL() {
+    return ClientSharedUtils.isThriftDefault()
+        ? Attribute.SNAPPY_THRIFT_PROTOCOL : Attribute.SNAPPY_DNC_PROTOCOL;
+  }
 
   public static final byte DRIVER_TYPE = snappydataConstants.DRIVER_JDBC;
 

@@ -31,11 +31,10 @@ import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl.NetworkInterfaceImpl;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
-import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 
 /**
- * Lists currently active DRDA client sessions on this & other nodes.
- * 
+ * Lists currently active DRDA/Thrift client sessions on this & other nodes.
+ *
  * @author soubhikc
  */
 public class SessionsVTI extends GfxdVTITemplate {
@@ -51,9 +50,9 @@ public class SessionsVTI extends GfxdVTITemplate {
       final FabricService service = FabricServiceManager
           .currentFabricServiceInstance();
       if (service != null) {
-        ArrayList<SessionInfo> sessions = new ArrayList<SessionInfo>();
+        ArrayList<SessionInfo> sessions = new ArrayList<>();
         assert service instanceof FabricServiceImpl;
-        Iterator<NetworkInterface> nwIter = ((FabricServiceImpl)service)
+        Iterator<NetworkInterface> nwIter = service
             .getAllNetworkServers().iterator();
         while (nwIter.hasNext()) {
           NetworkInterfaceImpl nwImpl = (NetworkInterfaceImpl)nwIter.next();
@@ -92,8 +91,6 @@ public class SessionsVTI extends GfxdVTITemplate {
 
   public static final String USERID = "USER_ID";
 
-  public static final String SERVER_BIND_PORT = "SERVER_BIND_PORT";
-
   public static final String CLIENT_BIND_ADDRESS = "CLIENT_BIND_ADDRESS";
 
   public static final String CLIENT_BIND_PORT = "CLIENT_BIND_PORT";
@@ -107,15 +104,15 @@ public class SessionsVTI extends GfxdVTITemplate {
   public static final String SESSION_INFO = "SESSION_INFO";
 
   public static final String CURRENT_STATEMENT_UUID = "CURRENT_STATEMENT_UUID";
-  
+
   public static final String CURRENT_STATEMENT = "CURRENT_STATEMENT";
 
   public static final String CURRENT_STATEMENT_STATUS = "CURRENT_STATEMENT_STATUS";
-  
+
   public static final String CURRENT_STATEMENT_ELAPSED_TIME = "CURRENT_STATEMENT_ELAPSED_TIME";
-  
+
   public static final String CURRENT_STATEMENT_ACCESS_FREQUENCY = "CURRENT_STATEMENT_ACCESS_FREQUENCY";
-  
+
   public static final String CURRENT_STATEMENT_MEMORY_USAGE = "CURRENT_STATEMENT_MEMORY_USAGE";
 
   public static final String HOSTNAME = "HOSTNAME";
@@ -154,22 +151,22 @@ public class SessionsVTI extends GfxdVTITemplate {
 
       EmbedResultSetMetaData.getResultColumnDescriptor(SESSION_INFO,
           Types.VARCHAR, false, 128),
-          
+
       EmbedResultSetMetaData.getResultColumnDescriptor(CURRENT_STATEMENT_UUID,
           Types.VARCHAR, true, 1024),
 
       EmbedResultSetMetaData.getResultColumnDescriptor(CURRENT_STATEMENT,
           Types.VARCHAR, true, 1024),
-          
+
       EmbedResultSetMetaData.getResultColumnDescriptor(
           CURRENT_STATEMENT_STATUS, Types.VARCHAR, true, 32),
-          
+
       EmbedResultSetMetaData.getResultColumnDescriptor(
-          CURRENT_STATEMENT_ELAPSED_TIME, Types.BIGINT, true),
-          
+          CURRENT_STATEMENT_ELAPSED_TIME, Types.DOUBLE, true),
+
       EmbedResultSetMetaData.getResultColumnDescriptor(
           CURRENT_STATEMENT_ACCESS_FREQUENCY, Types.BIGINT, true),
-          
+
       EmbedResultSetMetaData.getResultColumnDescriptor(
           CURRENT_STATEMENT_MEMORY_USAGE, Types.BIGINT, true),
 
@@ -211,19 +208,8 @@ public class SessionsVTI extends GfxdVTITemplate {
     }
     else if (SESSION_INFO.equals(columnName)) {
       SessionInfo.ClientSession s = current.current();
-      StringBuilder sb = new StringBuilder();
-      sb.append("failover=").append(s.failover).append(SanityManager.lineSeparator);
-      if (s.skipLocks) {
-        sb.append(";skipLocks=true").append(SanityManager.lineSeparator);
-      }
-      sb.append(";disableStreaming=").append(s.disableStreaming).append(SanityManager.lineSeparator);
-      sb.append(";skipListeners=").append(s.skipListeners).append(SanityManager.lineSeparator);
-      sb.append(";disableTXBatching=").append(s.disableTXBatching).append(SanityManager.lineSeparator);
-      sb.append(";syncCommits=").append(s.syncCommits).append(SanityManager.lineSeparator);
-      sb.append(";skipConstraintChecks=").append(s.skipConstraintChecks).append(SanityManager.lineSeparator);
-      sb.append(";queryHDFS=").append(s.queryHDFS).append(SanityManager.lineSeparator);
-      res = sb.toString();
-    } 
+      res = s.connectionProperties;
+    }
     else if (CURRENT_STATEMENT_UUID.equals(columnName)) {
       res = current.current().currentStatementUUID;
     }
@@ -232,13 +218,13 @@ public class SessionsVTI extends GfxdVTITemplate {
     }
     else if (CURRENT_STATEMENT_STATUS.equals(columnName)) {
       res = current.current().currentStatementStatus;
-    } 
+    }
     else if (CURRENT_STATEMENT_ELAPSED_TIME.equals(columnName)) {
       res = current.current().currentStatementElapsedTime;
-    } 
+    }
     else if (CURRENT_STATEMENT_ACCESS_FREQUENCY.equals(columnName)) {
       res = current.current().currentStatementAccessFrequency;
-    } 
+    }
     else if (CURRENT_STATEMENT_MEMORY_USAGE.equals(columnName)) {
       res = current.current().currentStatementEstimatedMemUsage;
     }
@@ -271,14 +257,14 @@ public class SessionsVTI extends GfxdVTITemplate {
 
     return res;
   }
-  
+
   /**
    * SessionInfo struct that is used internally within drda classes & engine.
-   * 
+   *
    * This class resides here due to drda compiling after engine code.
-   * 
+   *
    * @author soubhikc
-   * 
+   *
    */
   public final static class SessionInfo {
 
@@ -301,40 +287,24 @@ public class SessionsVTI extends GfxdVTITemplate {
 
       public boolean isConnected;
 
-      public int connNum;
+      public long connNum;
 
       public String userId;
 
-      public boolean failover;
-
-      public boolean disableStreaming;
-
-      public boolean skipListeners;
-
-      public boolean queryHDFS;
-
-      public boolean routeQuery;
-
-      public boolean skipConstraintChecks;
-
-      public boolean syncCommits;
-
-      public boolean disableTXBatching;
-
-      public boolean skipLocks;
+      public String connectionProperties;
 
       public Timestamp connectionBeginTimeStamp;
 
       public String currentStatementUUID;
-      
+
       public String currentStatement;
 
       public String currentStatementStatus;
-      
-      public long currentStatementElapsedTime;
-      
+
+      public double currentStatementElapsedTime;
+
       public long currentStatementAccessFrequency;
-      
+
       public long currentStatementEstimatedMemUsage;
     }
 
@@ -364,8 +334,6 @@ public class SessionsVTI extends GfxdVTITemplate {
 
     private ClientSession current;
 
-    private ArrayList<ClientSession> sessions = new ArrayList<ClientSession>();
-
+    private ArrayList<ClientSession> sessions = new ArrayList<>();
   }
-
 }

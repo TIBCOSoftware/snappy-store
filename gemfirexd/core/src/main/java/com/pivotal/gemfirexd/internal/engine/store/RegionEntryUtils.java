@@ -37,29 +37,12 @@ import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.cache.AbstractDiskRegion;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.EventErrorHandler;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
-import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntry;
-import com.gemstone.gemfire.internal.cache.NonLocalRegionEntryWithStats;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.cache.PlaceHolderDiskRegion;
-import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionEntryContext;
-import com.gemstone.gemfire.internal.cache.SortedIndexContainer;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
-import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
+import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
@@ -113,6 +96,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import org.apache.spark.unsafe.Platform;
 
 public final class RegionEntryUtils {
 
@@ -121,10 +105,11 @@ public final class RegionEntryUtils {
   }
 
   private static final boolean isValueToken(Object value) {
-    if (Misc.getMemStoreBooting().isHadoopGfxdLonerMode())
-      return Token.isInvalidOrRemoved(value);
-    else
+    if (!Misc.getMemStoreBooting().isHadoopGfxdLonerMode()) {
       return Token.isInvalidOrRemoved(value) || value == Token.NOT_AVAILABLE;
+    } else {
+      return Token.isInvalidOrRemoved(value);
+    }
   }
 
   /**
@@ -242,6 +227,7 @@ public final class RegionEntryUtils {
   public static Object getValueWithoutFaultIn(
       final GemFireContainer baseContainer, final int bucketId,
       final RegionEntry entry) {
+
     assert bucketId != -1 : "The bucket ID should not be -1: " + baseContainer;
     // need BucketRegion only if overflow to get value
     final PartitionedRegion pr = (PartitionedRegion) baseContainer.getRegion();
@@ -403,7 +389,7 @@ public final class RegionEntryUtils {
     final Object value = getValueOrOffHeapEntry(getDataRegion(region, entry),
         (RowLocation)entry);
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, true);
+      return baseContainer.newExecRow(entry, value, tableInfo, true);
     }
     return null;
   }
@@ -418,7 +404,7 @@ public final class RegionEntryUtils {
     final Object value = getValueOrOffHeapEntry(getBucketRegion(pr, bucketId),
         (RowLocation)entry);
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, true);
+      return baseContainer.newExecRow(entry, value, tableInfo, true);
     }
     return null;
   }
@@ -429,7 +415,7 @@ public final class RegionEntryUtils {
     final Object value = getValueWithoutFaultInOrOffHeapEntry(
         getDataRegion(region, entry), (RowLocation)entry);
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, false);
+      return baseContainer.newExecRow(entry, value, tableInfo, false);
     }
     return null;
   }
@@ -444,7 +430,7 @@ public final class RegionEntryUtils {
         getBucketRegion(pr, bucketId), (RowLocation)entry);
 
     if (value != null) {
-      return baseContainer.newExecRow(value, tableInfo, false);
+      return baseContainer.newExecRow(entry, value, tableInfo, false);
     }
     return null;
   }
@@ -507,7 +493,7 @@ public final class RegionEntryUtils {
   public static byte[] convertLOBAddresstoBytes(final UnsafeWrapper unsafe,
       final long ohAddress) {
     if (OffHeapRegionEntryHelper.isOffHeap(ohAddress)) {
-      return OffHeapRow.getBaseRowBytes(unsafe,
+      return OffHeapRow.getBaseRowBytes(
           OffHeapByteSource.getBaseDataAddress(ohAddress),
           OffHeapByteSource.getDataSize(unsafe, ohAddress));
     }
@@ -537,7 +523,7 @@ public final class RegionEntryUtils {
     return OffHeapRegionEntryHelper.encodedAddressToObject(address, false, true);
   }
 
-  public static AbstractCompactExecRow fillRowWithoutFaultIn(
+  public static boolean fillRowWithoutFaultIn(
       final GemFireContainer baseContainer, final LocalRegion region,
       final RegionEntry entry, final AbstractCompactExecRow row)
       throws StandardException {
@@ -556,8 +542,8 @@ public final class RegionEntryUtils {
           && Misc.getMemStoreBooting().isHadoopGfxdLonerMode()) {
         final Object containerInfo = entry.getContainerInfo();
         final ExtraTableInfo tableInfo = containerInfo != null
-          ? (ExtraTableInfo)containerInfo
-          : baseContainer.getExtraTableInfo();
+            ? (ExtraTableInfo)containerInfo
+            : baseContainer.getExtraTableInfo();
         final int[] keyColumns = tableInfo.getPrimaryKeyColumns();
         if (keyColumns != null) {
           //We have a primary key. Convert that to a full row with just the primary
@@ -568,11 +554,10 @@ public final class RegionEntryUtils {
           if (key != null) {
             final byte[] newRow;
             if (key.getClass() == byte[].class) {
-              newRow = rf.copyColumns(keyColumns, false, (byte[])key, kf);
+              newRow = rf.copyColumns(keyColumns, (byte[])key, kf);
             }
             else {
-              newRow = rf.copyColumns(keyColumns, false,
-                  (OffHeapByteSource)key, kf);
+              newRow = rf.copyColumns(keyColumns, (OffHeapByteSource)key, kf);
             }
             row.setRowArray(newRow, rf);
           }
@@ -585,21 +570,55 @@ public final class RegionEntryUtils {
         AbstractCompactExecRow filledRow = fillRowUsingAddress(baseContainer,
             region, (OffHeapRegionEntry)entry, row, false);
         if (filledRow == null) {
-          return null;
+          return false;
         }
       }
       else if (Delta.class.isAssignableFrom(valClass)) {
         // The RegionEntry has at present deltas & the base row has not arrived,
         // return null for this case
-        return null;
+        return false;
       }
       else {
         GemFireXDUtils.throwAssert("fillRow:: unexpected value type: "
             + valClass.getName());
       }
-      return row;
+      return true;
     }
-    return null;
+    return false;
+  }
+
+  public static boolean fillRowWithoutFaultInOptimized(
+      final GemFireContainer baseContainer, final LocalRegion region,
+      final RowLocation entry, final AbstractCompactExecRow row)
+      throws StandardException {
+
+    final Object value = entry.getValueWithoutFaultInOrOffHeapEntry(region);
+    if (value != null) {
+      final Class<?> valClass = value.getClass();
+      if (valClass == byte[][].class) {
+        fillRowUsingByteArrayArray(baseContainer, row, (byte[][])value);
+      } else if (valClass == byte[].class) {
+        fillRowUsingByteArray(baseContainer, row, (byte[])value);
+      } else if (region.getEnableOffHeapMemory() &&
+          OffHeapRegionEntry.class.isAssignableFrom(valClass)) {
+        AbstractCompactExecRow filledRow = fillRowUsingAddress(baseContainer,
+            region, (OffHeapRegionEntry)entry, row, false);
+        if (filledRow == null) {
+          return false;
+        }
+      } else if (Token.class.isAssignableFrom(valClass)) {
+        return false;
+      } else if (Delta.class.isAssignableFrom(valClass)) {
+        // The RegionEntry has at present deltas & the base row has not arrived,
+        // return null for this case
+        return false;
+      } else {
+        GemFireXDUtils.throwAssert("fillRow:: unexpected value type: "
+            + valClass.getName());
+      }
+      return true;
+    }
+    return false;
   }
 
   private static void fillRowUsingByteArray(
@@ -624,7 +643,7 @@ public final class RegionEntryUtils {
     }
   }
 
-  private static AbstractCompactExecRow fillRowUsingAddress(
+  public static AbstractCompactExecRow fillRowUsingAddress(
       final GemFireContainer baseContainer, final LocalRegion region,
       final OffHeapRegionEntry entry, final AbstractCompactExecRow row,
       boolean faultIn) {
@@ -974,7 +993,7 @@ public final class RegionEntryUtils {
           if (keyClass == CompactCompositeRegionKey.class) {
             return key;
           }
-          else if (entry instanceof OffHeapRegionEntry) {
+          else if (entry.isOffHeap()) {
             return new CompactCompositeRegionKey((OffHeapRegionEntry)entry,
                 tableInfo);
           }
@@ -1031,12 +1050,14 @@ public final class RegionEntryUtils {
           /* ExtraInfo reference */
           + ReflectionSingleObjectSizer.REFERENCE_SIZE;
         } else if (keyClass == CompactCompositeRegionKey.class) {
-          return (int) ((CompactCompositeRegionKey) key).estimateMemoryUsage();
+          return (int)((CompactCompositeRegionKey) key).estimateMemoryUsage();
         } else if (keyClass == Long.class) {
           return (Long.SIZE / 8) + ReflectionSingleObjectSizer.OBJECT_SIZE;
         } else if (keyClass == CompositeRegionKey.class) {
           return (int)((CompositeRegionKey)key).estimateMemoryUsage();
-        } 
+        } else if (Sizeable.class.isAssignableFrom(keyClass)) {
+          return ((Sizeable)key).getSizeInBytes();
+        }
         else if (keyClass == DataValueDescriptor[].class) {
           DataValueDescriptor[] arr = (DataValueDescriptor[])key;
           int memoryUsage = 2 * ReflectionSingleObjectSizer.OBJECT_SIZE;
@@ -1196,9 +1217,6 @@ public final class RegionEntryUtils {
                   || bytes[2] != GfxdDataSerializable.DDL_REGION_VALUE) {
                 return bytes;
               } else {
-                  // TODO: SW: this should be avoided completely for objects
-                  // that have not changed serialization as per
-                  // SerializationVersions
                 in.initialize(bytes, 0, bytesLen, version);
                 hdos.clearForReuse();
                 // register GemFireXD types explicitly for offline mode
@@ -1415,6 +1433,12 @@ public final class RegionEntryUtils {
     }
 
     @Override
+    public NonLocalRegionEntry newNonLocalRegionEntry(RegionEntry re, LocalRegion region,
+        boolean allowTombstones, boolean faultInValue) {
+      return new NonLocalRowLocationRegionEntry(re, region, allowTombstones, faultInValue);
+    }
+
+        @Override
     public final NonLocalRegionEntry newNonLocalRegionEntry(final Object key,
         final Object value, final LocalRegion region,
         final VersionTag<?> versionTag) {
@@ -1515,7 +1539,13 @@ public final class RegionEntryUtils {
 
     @Override
     public boolean isSnappyStore() {
-      return Misc.getMemStore().isSnappyStore();
+      return Misc.getMemStoreBooting().isSnappyStore();
+    }
+
+    @Override
+    public boolean isAccessor() {
+      GemFireStore.VMKind myVMKind = GemFireXDUtils.getMyVMKind();
+      return myVMKind != null && myVMKind.isAccessor();
     }
 
     @Override
@@ -1561,9 +1591,8 @@ public final class RegionEntryUtils {
     }
 
     // assumes val to be non null
-    public int getBucketIdFromRegionEntry(RegionEntry val) {
-      RowLocation rl = (RowLocation) val;
-      return rl.getBucketID();
+    public final int getBucketIdFromRegionEntry(RegionEntry val) {
+      return ((RowLocation)val).getBucketID();
     }
 
     @Override
@@ -1575,6 +1604,15 @@ public final class RegionEntryUtils {
       } else {
         return null;
       }
+    }
+
+    public ExternalTableMetaData fetchSnappyTablesHiveMetaData(
+        PartitionedRegion region) {
+      GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+      if (container != null) {
+        return container.fetchHiveMetaData(false);
+      }
+      return null;
     }
   };
 
@@ -1662,8 +1700,8 @@ public final class RegionEntryUtils {
                     key, offsetFromMap, pkrf.columns[keyIndex]);
                 if (offsetAndWidth >= 0) {
                   int idx = 0;
-                  offset = (int) (offsetAndWidth >>> Integer.SIZE);
-                  width = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+                  offset = (int)(offsetAndWidth >>> Integer.SIZE);
+                  width = (int)offsetAndWidth;
                   // hash = ResolverUtils.addBytesToHash(key, offset, width,
                   // hash);
                   int typeId = pkrf.getColumnDescriptor(keyIndex).getType()
@@ -1706,14 +1744,14 @@ public final class RegionEntryUtils {
                   varOffsets[index] = pkrf.getNullIndicator(varOffset);
                 } else {
                   assert offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT;
-                  varOffsets[index] = pkrf.offsetIsDefault;
+                  varOffsets[index] = pkrf.getOffsetDefaultToken();
                 }
               } else {
-                varOffsets[index] = pkrf.offsetIsDefault;
+                varOffsets[index] = pkrf.getOffsetDefaultToken();
               }
             }
             // lastly add the offset values including those for null and default
-            final int offsetBytes = pkrf.offsetBytes;
+            final int offsetBytes = pkrf.getNumOffsetBytes();
             for (int index = 0; index < numVarWidths; ++index) {
               hash = computeIntHash(varOffsets[index], offsetBytes, hash);
             }
@@ -1779,8 +1817,8 @@ public final class RegionEntryUtils {
           offsetAndWidth = rf.getOffsetAndWidth(keyIndex, vbytes, offsetFromMap, rf.columns[keyIndex]);
           if (offsetAndWidth >= 0) {
             int varCharWidth = 0;
-            offset = (int) (offsetAndWidth >>> Integer.SIZE);
-            width = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+            offset = (int)(offsetAndWidth >>> Integer.SIZE);
+            width = (int)offsetAndWidth;
             // hash = ResolverUtils.addBytesToHash(vbytes, offset, width, hash);
             int typeId = rf.getColumnDescriptor(keyIndex).getType().getTypeId()
                 .getTypeFormatId();
@@ -1819,14 +1857,14 @@ public final class RegionEntryUtils {
             varOffsets[index] = rf.getNullIndicator(varOffset);
           } else {
             assert offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT;
-            varOffsets[index] = pkrf.offsetIsDefault;
+            varOffsets[index] = pkrf.getOffsetDefaultToken();
           }
         } else {
-          varOffsets[index] = pkrf.offsetIsDefault;
+          varOffsets[index] = pkrf.getOffsetDefaultToken();
         }
       }
       // lastly add the offset values including those for null and default
-      final int offsetBytes = pkrf.offsetBytes;
+      final int offsetBytes = pkrf.getNumOffsetBytes();
       for (int index = 0; index < numVarWidths; ++index) {
         hash = computeIntHash(varOffsets[index], offsetBytes, hash);
       }
@@ -1876,8 +1914,8 @@ public final class RegionEntryUtils {
               bytesLen, offsetFromMap, rf.columns[keyIndex]);
           if (offsetAndWidth >= 0) {
             int varCharWidth = 0;
-            offset = (int) (offsetAndWidth >>> Integer.SIZE);
-            width = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+            offset = (int)(offsetAndWidth >>> Integer.SIZE);
+            width = (int)offsetAndWidth;
             int typeId = rf.getColumnDescriptor(keyIndex).getType().getTypeId()
                 .getTypeFormatId();
             if (typeId == StoredFormatIds.VARCHAR_TYPE_ID) {
@@ -1915,14 +1953,14 @@ public final class RegionEntryUtils {
             varOffsets[index] = rf.getNullIndicator(varOffset);
           } else {
             assert offsetAndWidth == RowFormatter.OFFSET_AND_WIDTH_IS_DEFAULT;
-            varOffsets[index] = pkrf.offsetIsDefault;
+            varOffsets[index] = pkrf.getOffsetDefaultToken();
           }
         } else {
-          varOffsets[index] = pkrf.offsetIsDefault;
+          varOffsets[index] = pkrf.getOffsetDefaultToken();
         }
       }
       // lastly add the offset values including those for null and default
-      final int offsetBytes = pkrf.offsetBytes;
+      final int offsetBytes = pkrf.getNumOffsetBytes();
       for (int index = 0; index < numVarWidths; ++index) {
         hash = computeIntHash(varOffsets[index], offsetBytes, hash);
       }
@@ -1954,7 +1992,7 @@ public final class RegionEntryUtils {
         /* ExtraInfo reference */
         + ReflectionSingleObjectSizer.REFERENCE_SIZE;
       } else if (keyClass == CompactCompositeRegionKey.class) {
-        return (int) ((CompactCompositeRegionKey) key).estimateMemoryUsage();
+        return (int)((CompactCompositeRegionKey) key).estimateMemoryUsage();
       } else if (keyClass == Long.class) {
         return (Long.SIZE / 8) + ReflectionSingleObjectSizer.OBJECT_SIZE;
       } else if (keyClass == CompositeRegionKey.class) {
@@ -2081,7 +2119,7 @@ public final class RegionEntryUtils {
             final int bytesLen = bs.getLength();
             final long memAddr = bs.getUnsafeAddress(0, bytesLen);
 
-            final RowFormatter rf = tableInfo.getRowFormatter(unsafe, memAddr,
+            final RowFormatter rf = tableInfo.getRowFormatter(memAddr,
                 bs);
             rf.setDVDColumn(dvd, keyPositions[index] - 1, unsafe, memAddr,
                 bytesLen, bs);
@@ -2092,7 +2130,7 @@ public final class RegionEntryUtils {
             final int bytesLen = bs.getLength();
             final long memAddr = bs.getUnsafeAddress(0, bytesLen);
 
-            final RowFormatter rf = tableInfo.getRowFormatter(unsafe, memAddr,
+            final RowFormatter rf = tableInfo.getRowFormatter(memAddr,
                 bs);
             rf.setDVDColumn(dvd, keyPositions[index] - 1, unsafe, memAddr,
                 bytesLen, bs);
@@ -2864,9 +2902,9 @@ public final class RegionEntryUtils {
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
           columnBytes, targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareBytes(row, columnOffset, columnWidth, columnBytes,
               targetOffset);
         }
@@ -2876,33 +2914,24 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareCharBytes(row, columnOffset, columnWidth, columnBytes,
               targetOffset, targetWidth);
         }
       }
       return -1;
     }
-
-    @Override
-    public final int handleLob(byte[] row, byte[] output, int outputPosition,
-        RowFormatter formatter, ColumnDescriptor cd, int colIndex,
-        RowFormatter targetFormat, int targetIndex, int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
-    }
   };
 
   public static final ColumnProcessorOffHeap<byte[]> checkColumnEqualityWithRowOffHeap =
       new ColumnProcessorOffHeap<byte[]>() {
 
-    private final int compareBytes(final UnsafeWrapper unsafe,
-        final long memAddr, int columnOffset, final int columnWidth,
-        final byte[] columnBytes, int columnPos) {
+    private final int compareBytes(final long memAddr, int columnOffset,
+        final int columnWidth, final byte[] columnBytes, int columnPos) {
       final int endColumnPos = columnPos + columnWidth;
       long rowAddr = memAddr + columnOffset;
       while (columnPos < endColumnPos) {
-        if (columnBytes[columnPos] != unsafe.getByte(rowAddr)) {
+        if (columnBytes[columnPos] != Platform.getByte(null, rowAddr)) {
           // indicates failure in equality comparison
           return -1;
         }
@@ -2915,12 +2944,12 @@ public final class RegionEntryUtils {
     /**
      * Compare two byte[], ignore the trailing blanks in the longer byte[]
      */
-    private final int compareCharBytes(final UnsafeWrapper unsafe,
-        final long memAddr, final int columnOffset, final int columnWidth,
+    private final int compareCharBytes(final long memAddr,
+        final int columnOffset, final int columnWidth,
         final byte[] targetColumnBytes, final int targetOffset,
         final int targetWidth) {
       int shorter = columnWidth < targetWidth ? columnWidth : targetWidth;
-      if (compareBytes(unsafe, memAddr, columnOffset, shorter,
+      if (compareBytes(memAddr, columnOffset, shorter,
           targetColumnBytes, targetOffset) == -1) {
         return -1;
       }
@@ -2939,7 +2968,7 @@ public final class RegionEntryUtils {
         long rowAddr = memAddr + columnOffset + shorter;
         long rowAddrEnd = rowAddr + (columnWidth - shorter);
         while (rowAddr < rowAddrEnd) {
-          if (unsafe.getByte(rowAddr) != 0x20) {
+          if (Platform.getByte(null, rowAddr) != 0x20) {
             return -1;
           }
           ++rowAddr;
@@ -2990,23 +3019,21 @@ public final class RegionEntryUtils {
     }
 
     @Override
-    public final int handleFixed(final UnsafeWrapper unsafe,
-        final long memAddr, final int columnOffset, final int columnWidth,
+    public final int handleFixed(final long memAddr, final int columnOffset, final int columnWidth,
         final byte[] columnBytes, int pos, final RowFormatter formatter,
         int colIndex, final RowFormatter targetFormat, final int targetIndex,
         final int targetOffsetFromMap) {
       // check the widths first
       final int targetWidth = targetFormat.columns[targetIndex].fixedWidth;
       if (columnWidth == targetWidth) {
-        return compareBytes(unsafe, memAddr, columnOffset, columnWidth,
+        return compareBytes(memAddr, columnOffset, columnWidth,
             columnBytes, targetOffsetFromMap);
       }
       return -1;
     }
 
     @Override
-    public final int handleVariable(final UnsafeWrapper unsafe,
-        final long memAddr, final int columnOffset, final int columnWidth,
+    public final int handleVariable(final long memAddr, final int columnOffset, final int columnWidth,
         final byte[] columnBytes, int pos, RowFormatter formatter,
         ColumnDescriptor cd, int colIndex, final RowFormatter targetFormat,
         final int targetIndex, final int targetOffsetFromMap) {
@@ -3015,10 +3042,10 @@ public final class RegionEntryUtils {
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
           columnBytes, targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
-          return compareBytes(unsafe, memAddr, columnOffset, columnWidth,
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
+          return compareBytes(memAddr, columnOffset, columnWidth,
               columnBytes, targetOffset);
         }
         int typeId = cd.getType().getTypeId().getTypeFormatId();
@@ -3027,21 +3054,12 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
-          return compareCharBytes(unsafe, memAddr, columnOffset, columnWidth,
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
+          return compareCharBytes(memAddr, columnOffset, columnWidth,
               columnBytes, targetOffset, targetWidth);
         }
       }
       return -1;
-    }
-
-    @Override
-    public final int handleLob(UnsafeWrapper unsafe, long memAddr,
-        byte[] output, int outputPosition, RowFormatter formatter,
-        ColumnDescriptor cd, int colIndex, RowFormatter targetFormat,
-        int targetIndex, int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
     }
   };
 
@@ -3176,9 +3194,9 @@ public final class RegionEntryUtils {
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
           unsafe, targetMemAddr, bytesLen, targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareBytes(row, columnOffset, columnWidth, unsafe,
               targetMemAddr + targetOffset);
         }
@@ -3188,21 +3206,12 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
           return compareCharBytes(row, columnOffset, columnWidth, unsafe,
               targetMemAddr + targetOffset, targetWidth);
         }
       }
       return -1;
-    }
-
-    @Override
-    public final int handleLob(byte[] row, OffHeapByteSource output,
-        int outputPosition, RowFormatter formatter, ColumnDescriptor cd,
-        int colIndex, RowFormatter targetFormat, int targetIndex,
-        int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
     }
   };
 
@@ -3210,16 +3219,15 @@ public final class RegionEntryUtils {
       checkOffHeapColumnEqualityWithRowOffHeap =
       new ColumnProcessorOffHeap<OffHeapByteSource>() {
 
-    private final int compareBytes(final UnsafeWrapper unsafe,
-        final long memAddr, int columnOffset, final int columnWidth,
-        long columnAddr) {
+    private final int compareBytes(final long memAddr, int columnOffset,
+        final int columnWidth, long columnAddr) {
       if (columnWidth == 0) {
         return 0;
       }
       long rowAddr = memAddr + columnOffset;
       final long rowEndPos = rowAddr + columnWidth;
       while (rowAddr < rowEndPos) {
-        if (unsafe.getByte(rowAddr) != unsafe.getByte(columnAddr)) {
+        if (Platform.getByte(null, rowAddr) != Platform.getByte(null, columnAddr)) {
           return -1;
         }
         rowAddr++;
@@ -3231,12 +3239,11 @@ public final class RegionEntryUtils {
     /**
      * Compare two byte[], ignore the trailing blanks in the longer byte[]
      */
-    private final int compareCharBytes(final UnsafeWrapper unsafe,
-        final long memAddr, final int columnOffset, final int columnWidth,
+    private final int compareCharBytes(final long memAddr,
+        final int columnOffset, final int columnWidth,
         long targetColumnAddr, final int targetWidth) {
       final int shorter = columnWidth < targetWidth ? columnWidth : targetWidth;
-      if (compareBytes(unsafe, memAddr, columnOffset, shorter,
-          targetColumnAddr) == -1) {
+      if (compareBytes(memAddr, columnOffset, shorter, targetColumnAddr) == -1) {
         return -1;
       }
       // see if the rest of the longer byte array is space
@@ -3244,7 +3251,7 @@ public final class RegionEntryUtils {
         final long targetEndPos = targetColumnAddr + targetWidth;
         targetColumnAddr += shorter;
         while (targetColumnAddr < targetEndPos) {
-          if (unsafe.getByte(targetColumnAddr) != 0x20) {
+          if (Platform.getByte(null, targetColumnAddr) != 0x20) {
             return -1;
           }
           targetColumnAddr++;
@@ -3253,7 +3260,7 @@ public final class RegionEntryUtils {
           long rowColumnAddr = memAddr + columnOffset + shorter;
           final long rowColumnEnd = rowColumnAddr + columnWidth - shorter;
           while (rowColumnAddr < rowColumnEnd) {
-            if (unsafe.getByte(rowColumnAddr) != 0x20) {
+            if (Platform.getByte(null, rowColumnAddr) != 0x20) {
               return -1;
             }
             rowColumnAddr++;
@@ -3308,8 +3315,7 @@ public final class RegionEntryUtils {
     }
 
     @Override
-    public final int handleFixed(final UnsafeWrapper unsafe,
-        final long memAddr, final int columnOffset, final int columnWidth,
+    public final int handleFixed(final long memAddr, final int columnOffset, final int columnWidth,
         final OffHeapByteSource columnBytes, int pos,
         final RowFormatter formatter, int colIndex,
         final RowFormatter targetFormat, final int targetIndex,
@@ -3319,29 +3325,29 @@ public final class RegionEntryUtils {
       if (columnWidth == targetWidth) {
         final long columnAddr = columnBytes.getUnsafeAddress(
             targetOffsetFromMap, columnWidth);
-        return compareBytes(unsafe, memAddr, columnOffset, columnWidth,
-            columnAddr);
+        return compareBytes(memAddr, columnOffset, columnWidth, columnAddr);
       }
       return -1;
     }
 
     @Override
-    public final int handleVariable(final UnsafeWrapper unsafe,
-        final long memAddr, final int columnOffset, final int columnWidth,
-        final OffHeapByteSource columnBytes, int pos, RowFormatter formatter,
-        ColumnDescriptor cd, int colIndex, final RowFormatter targetFormat,
-        final int targetIndex, final int targetOffsetFromMap) {
+    public final int handleVariable(final long memAddr, final int columnOffset,
+        final int columnWidth, final OffHeapByteSource columnBytes, int pos,
+        RowFormatter formatter, ColumnDescriptor cd, int colIndex,
+        final RowFormatter targetFormat, final int targetIndex,
+        final int targetOffsetFromMap) {
       // check the widths first
       final int bytesLen = columnBytes.getLength();
       final long targetMemAddr = columnBytes.getUnsafeAddress(0, bytesLen);
       final ColumnDescriptor targetCD = targetFormat.columns[targetIndex];
       final long offsetAndWidth = targetFormat.getOffsetAndWidth(targetIndex,
-          unsafe, targetMemAddr, bytesLen, targetOffsetFromMap, targetCD);
+          UnsafeMemoryChunk.getUnsafeWrapper(), targetMemAddr, bytesLen,
+          targetOffsetFromMap, targetCD);
       if (offsetAndWidth >= 0) {
-        final int targetWidth = (int) (offsetAndWidth & RowFormatter.LOWER_INT32_MASK);
+        final int targetWidth = (int)offsetAndWidth;
         if (columnWidth == targetWidth) {
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
-          return compareBytes(unsafe, memAddr, columnOffset, columnWidth,
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
+          return compareBytes(memAddr, columnOffset, columnWidth,
               targetMemAddr + targetOffset);
         }
         int typeId = cd.getType().getTypeId().getTypeFormatId();
@@ -3350,21 +3356,12 @@ public final class RegionEntryUtils {
             || (typeId == StoredFormatIds.BIT_TYPE_ID)) {
           // special handling for CHAR/VARCHAR/VARCHAR FOR BIT DATA
           // compareCharBytes() ignores the trailing blanks in the longer byte[]
-          final int targetOffset = (int) (offsetAndWidth >>> Integer.SIZE);
-          return compareCharBytes(unsafe, memAddr, columnOffset, columnWidth,
+          final int targetOffset = (int)(offsetAndWidth >>> Integer.SIZE);
+          return compareCharBytes(memAddr, columnOffset, columnWidth,
               targetMemAddr + targetOffset, targetWidth);
         }
       }
       return -1;
-    }
-
-    @Override
-    public final int handleLob(UnsafeWrapper unsafe, long memAddr,
-        OffHeapByteSource output, int outputPosition, RowFormatter formatter,
-        ColumnDescriptor cd, int colIndex, RowFormatter targetFormat,
-        int targetIndex, int targetOffsetFromMap) {
-      throw new UnsupportedOperationException(
-          "not expected to be invoked for cd " + cd);
     }
   };
 

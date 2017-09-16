@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -335,7 +335,7 @@ namespace client {
       const thrift::ColumnValue& cv = getColumnValue(columnNum);
 
       if (auto v = cv.getOrNull<thrift::Date>()) {
-        return DateTime(v->secsSinceEpoch);
+        return DateTime(v->m_elapsed);
       } else {
         return convertDate(cv, columnNum);
       }
@@ -345,7 +345,7 @@ namespace client {
       const thrift::ColumnValue& cv = getColumnValue(columnNum);
 
       if (auto v = cv.getOrNull<thrift::Time>()) {
-        return DateTime(v->secsSinceEpoch);
+        return DateTime(v->m_elapsed);
       } else {
         return convertTime(cv, columnNum);
       }
@@ -355,7 +355,7 @@ namespace client {
       const thrift::ColumnValue& cv = getColumnValue(columnNum);
 
       if (auto v = cv.getOrNull<thrift::Timestamp>()) {
-        return Timestamp(v->secsSinceEpoch, v->nanos);
+        return Timestamp(v->m_elapsed);
       } else {
         return convertTimestamp(cv, columnNum);
       }
@@ -369,8 +369,6 @@ namespace client {
 
     std::shared_ptr<thrift::Struct> getStruct(
         const uint32_t columnNum) const;
-
-    JSON getJSON(const uint32_t columnNum) const;
 
     inline bool isNull(const uint32_t columnNum) const {
       return getColumnValue(columnNum).isNull();

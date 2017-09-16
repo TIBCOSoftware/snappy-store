@@ -28,7 +28,6 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.CacheFactory;
 import com.gemstone.gemfire.cache.LowMemoryException;
 import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
@@ -232,7 +231,7 @@ public abstract class RemoteOperationMessage extends AbstractOperationMessage
                 .toLocalizedString(dm.getId()));
         return;
       }
-      GemFireCacheImpl gfc = (GemFireCacheImpl)CacheFactory.getInstance(dm.getSystem());
+      GemFireCacheImpl gfc = GemFireCacheImpl.getExisting();
       r = gfc.getRegionByPathForProcessing(this.regionPath);
       if (r == null && failIfRegionMissing()) {
         // if the distributed system is disconnecting, don't send a reply saying

@@ -17,33 +17,34 @@
 package com.pivotal.gemfirexd.internal.impl.sql.execute;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import com.gemstone.gemfire.admin.internal.InetAddressUtil;
 import com.gemstone.gemfire.cache.wan.GatewayReceiver;
 import com.gemstone.gemfire.cache.wan.GatewayReceiverFactory;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
+import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.operations.ReceiverCreateOperation;
 import com.pivotal.gemfirexd.internal.engine.ddl.ServerGroupsTableAttribute;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
-import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.GfxdGatewayReceiverDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -226,11 +227,15 @@ public class CreateGatewayReceiverConstantAction extends DDLConstantAction {
       GatewayReceiver rcvr = factory.create(id);
       ReceiverCreateOperation startOp = new ReceiverCreateOperation(
           rcvr, serverGroups);
+      InetAddress bindHostAddress = null;
       try {
+        bindHostAddress = AcceptorImpl.getBindAddress(
+            AcceptorImpl.calcBindHostName(cache, bindAddress));
         Misc.getMemStoreBooting().addPendingOperation(startOp, tc);
       } catch (IOException ioe) {
-        // If host could not be found, throw more user-friendly error
-        if (ioe instanceof UnknownHostException) {
+        // If host could not be found or not local, throw more user-friendly error
+        if (ioe instanceof UnknownHostException || bindHostAddress == null ||
+            !SocketCreator.isLocalHost(bindHostAddress)) {
           // Stop the GATEWAYRECEIVER cache object before we throw error
           // Or else it is in the cache but not in the catalog!
           GatewayReceiver server = cache.getGatewayReceiver(id);
@@ -246,7 +251,7 @@ public class CreateGatewayReceiverConstantAction extends DDLConstantAction {
           }
           throw StandardException.newException(
               SQLState.LANG_INVALID_FUNCTION_ARGUMENT, "BINDADDRESS "
-                  + bindAddress + " is not a reachable host name/address",
+                  + bindAddress + " is not a reachable or bindable host name/address",
               "CREATE GATEWAYRECEIVER");
         }
         throw StandardException.newException(

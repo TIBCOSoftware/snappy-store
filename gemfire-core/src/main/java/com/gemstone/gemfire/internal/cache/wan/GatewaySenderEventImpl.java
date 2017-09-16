@@ -23,11 +23,12 @@ import java.io.IOException;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.InternalGemFireError;
-import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEvent;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.cache.wan.EventSequenceID;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.cache.CachedDeserializable;
 import com.gemstone.gemfire.internal.cache.CachedDeserializableFactory;
@@ -466,9 +467,10 @@ public class GatewaySenderEventImpl implements
       final LocalRegion r = getRegion();
       if (r == null) {
         // log a warning
-        final LogWriter logger = GemFireCacheImpl.getExisting().getLogger();
-        if (logger.warningEnabled()) {
-          logger.warning("GatewaySenderEventImpl.initializeKey: region "
+        final LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
+        if (logger != null && logger.warningEnabled()) {
+          logger.warning(LocalizedStrings.DEBUG,
+              "GatewaySenderEventImpl.initializeKey: region "
               + this.regionPath + " not found while initializing key "
               + this.key);
         }
@@ -756,7 +758,6 @@ public class GatewaySenderEventImpl implements
     this.bucketId = in.readInt();
     this.shadowKey = in.readLong();
     this.versionTimeStamp = in.readLong();
-    // TODO should this call initializeKey()?    
   }
 
   protected void deserializeKey(DataInput in) throws IOException,
@@ -1204,9 +1205,10 @@ public class GatewaySenderEventImpl implements
   public LocalRegion getRegion() {
     // The region will be null mostly for the other node where the gateway event
     // is serialized
+    final GemFireCacheImpl cache;
     return this.region != null ? this.region
-        : (this.region = (LocalRegion)GemFireCacheImpl.getExisting().getRegion(
-            this.regionPath));
+        : (this.region = ((cache = GemFireCacheImpl.getInstance()) != null
+        ? (LocalRegion)cache.getRegion(this.regionPath) : null));
   }
 
   public int getBucketId() {

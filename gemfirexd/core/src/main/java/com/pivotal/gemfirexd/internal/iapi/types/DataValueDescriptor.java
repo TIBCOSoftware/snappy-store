@@ -43,7 +43,6 @@ package com.pivotal.gemfirexd.internal.iapi.types;
 // GemStone changes BEGIN
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
 import com.pivotal.gemfirexd.internal.engine.store.RegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 // GemStone changes END
@@ -316,9 +315,6 @@ public interface DataValueDescriptor extends Storable, Orderable,
      * @return The stream state of the data value.
      * @throws StandardException Throws an exception if the data value
      *      cannot be received as a stream.
-     *
-     * @see #hasStream()
-     * @see StringDataValue#getStreamWithDescriptor()
      */
     InputStream getStream() throws StandardException;
 
@@ -961,19 +957,16 @@ public interface DataValueDescriptor extends Storable, Orderable,
   /**
    * Optimized read from an OffHeapByteSource at specified memory offset
    * 
-   * @param unsafe
-   *          the UnsafeWrapper to use for reading off-heap memory
    * @param memOffset
    *          the off-heap memory offset to start reading from
    * @param columnWidth
    *          the number of bytes to read
    * @param bs
    *          the {@link OffHeapByteSource} being read
-   * 
+   *
    * @return number of bytes actually read
    */
-  public int readBytes(UnsafeWrapper unsafe, long memOffset, int columnWidth,
-      ByteSource bs);
+  public int readBytes(long memOffset, int columnWidth, ByteSource bs);
 
   /**
    * Calculate the hashCode using ResolverUtils.add*Hash() for each serialized

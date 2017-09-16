@@ -38,7 +38,6 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.management.ManagementException;
 import com.gemstone.gemfire.management.internal.BaseManagementService;
 import com.gemstone.gemfire.management.internal.FederationComponent;
@@ -527,7 +526,7 @@ public class InternalManagementService {
     try {
       Properties props = new Properties();      
       props.setProperty(Attribute.QUERY_HDFS, Boolean.toString(connection.getLanguageConnectionContext().getQueryHDFS()));
-      props.setProperty(Attribute.ROUTE_QUERY, Boolean.toString(connection.getLanguageConnectionContext().isQueryRoutingEnabled()));
+      props.setProperty(Attribute.ROUTE_QUERY, Boolean.toString(connection.getLanguageConnectionContext().isQueryRoutingFlagTrue()));
       connectionWrapper = holder.createWrapper(connection.getSchema(), GemFireXDUtils.newUUID(), false, props);
     } catch (SQLException e) {
       logInfo("Error creating EmbedConnection for Management. Reason: " + e.getMessage());

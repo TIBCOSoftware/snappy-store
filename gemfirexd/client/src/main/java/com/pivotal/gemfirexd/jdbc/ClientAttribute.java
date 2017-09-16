@@ -26,7 +26,7 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
  * getting the full list of available properties by doing a reflection on this
  * interface. Client side system properties (starting with "gemfirexd.") are fine
  * here since those are ignored by the ODBC driver.
- * 
+ *
  * @author swale
  * @since 7.0
  */
@@ -65,7 +65,7 @@ public interface ClientAttribute {
    * sockets. This is the time interval between successive TCP KeepAlive probes
    * if there is no response to the previous probe ({@link #KEEPALIVE_IDLE}) to
    * determine if the other side is alive or not.
-   * 
+   *
    * Note that this may not be supported by all platforms (e.g. Solaris), in
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
@@ -76,7 +76,7 @@ public interface ClientAttribute {
    * TCP KeepAlive COUNT for the network server and client sockets. This is the
    * number of TCP KeepAlive probes sent before declaring the other side to be
    * dead.
-   * 
+   *
    * Note that this may not be supported by all platforms (e.g. Solaris), in
    * which case this will be ignored and an info-level message logged that the
    * option could not be enabled on the socket.
@@ -120,7 +120,7 @@ public interface ClientAttribute {
   String SINGLE_HOP_ENABLED = "single-hop-enabled";
 
   /**
-   * The attribute that is used to set the internal connection size per 
+   * The attribute that is used to set the internal connection size per
    * network server.
    */
   String SINGLE_HOP_MAX_CONNECTIONS = "single-hop-max-connections";
@@ -210,20 +210,20 @@ public interface ClientAttribute {
    * Otherwise, only in-memory data is queried.
    */
   String QUERY_HDFS = com.pivotal.gemfirexd.Attribute.QUERY_HDFS;
-  
+
   /**
    * A connection level property. If value greater than zero, rows will be
    * batched for NCJ Query. Otherwise, batching will be disabled.
-   * 
+   *
    * @see com.pivotal.gemfirexd.Attribute#NCJ_BATCH_SIZE
    */
   String NCJ_BATCH_SIZE = com.pivotal.gemfirexd.Attribute.NCJ_BATCH_SIZE;
-  
+
   /**
    * A connection level property. If value greater than zero, rows will be
    * cached with limited size for NCJ Query. Otherwise, caching will be
    * disabled.
-   * 
+   *
    * @see com.pivotal.gemfirexd.Attribute#NCJ_CACHE_SIZE
    */
   String NCJ_CACHE_SIZE = com.pivotal.gemfirexd.Attribute.NCJ_CACHE_SIZE;
@@ -239,16 +239,27 @@ public interface ClientAttribute {
   String SKIP_LOCKS = com.pivotal.gemfirexd.Attribute.SKIP_LOCKS;
 
   /**
+   * Property to change the default schema to use for a connection.
+   * The default schema is normally the user name but this allows changing it.
+   */
+  String DEFAULT_SCHEMA = com.pivotal.gemfirexd.Attribute.DEFAULT_SCHEMA;
+
+  /**
    * A connection level property to disable query routing.
    */
   String ROUTE_QUERY = com.pivotal.gemfirexd.Attribute.ROUTE_QUERY;
 
   /**
    * The GemFireXD log file path property.
-   * 
+   *
    * added by GemStone
    */
   String LOG_FILE = com.pivotal.gemfirexd.Attribute.LOG_FILE;
+
+  /**
+   * The GemFireXD log level property.
+   */
+  String LOG_LEVEL = "log-level";
 
   /**
    * Log file path to which the initialization nano time is appended.
@@ -314,58 +325,72 @@ public interface ClientAttribute {
   String THRIFT_USE_BINARY_PROTOCOL = "binary-protocol";
 
   /**
+   * If true then use <code>TFramedTransport</code> for the thrift client,
+   * else the default is to use non-framed transport. This should be used
+   * for only specialized needs since it is less efficient than the normal
+   * transport mechanism.
+   * <p>
+   * Unlike binary-protocol or SSL properties, there is no support in thrift
+   * API to search for specific servers/locators having the corresponding
+   * framed transport enabled (using <code>thrift-framed-transport</code>)
+   * so all locators/servers in the system must also have framed transport
+   * enabled for this to work on clients.
+   */
+  String THRIFT_USE_FRAMED_TRANSPORT = "framed-transport";
+
+  /**
    * A comma-separated SSL property key=value pairs that can be set for a thrift
    * client connection. The available property values are:
-   * 
+   *
    * <li>
    * protocol: Protocol level to use e.g. TLSv1.2, TLS. See
    * SSLContext.getInstance(protocol).</li>
-   * 
+   *
    * <li>
    * enabled-protocols: A colon (":") separated list of precise protocols to
    * enable for the socket. Note that the "protocol" property specifies a family
    * e.g. TLSv1.2 will usually also support TLSv1.1, TLSv1 etc, so this can be
    * used to further restrict the enabled protocols. See
    * SSLSocket.setEnabledProtocols.</li>
-   * 
+   *
    * <li>
    * cipher-suites: A colon (":") separated list of cipher suites to enable for
    * the connection e.g. TLS_RSA_WITH_AES_256_CBC_SHA256. See
    * SSLSocket.setEnabledCipherSuites.</li>
-   * 
+   *
    * <li>
    * keystore: Path to the keystore file.</li>
-   * 
+   *
    * <li>
    * keystore-type: Type of the keystore file e.g. JKS. See
    * KeyStore.getInstance(type).</li>
-   * 
+   *
    * <li>
    * keystore-password: Password to read the keystore.</li>
-   * 
+   *
    * <li>
    * keymanager-type: Type of the keymanager e.g. . See
    * KeyManagerFactory.getInstance(algorithm)</li>
-   * 
+   *
    * <li>
    * truststore: Path to the truststore file.</li>
-   * 
+   *
    * <li>
    * truststore-type: Type of the truststore file e.g. JKS. See
    * KeyStore.getInstance(type).</li>
-   * 
+   *
    * <li>
    * truststore-password: Password to read the truststore.</li>
-   * 
+   *
    * <li>
    * trustmanager-type: Type of the trustmanager e.g. . See
    * TrustManagerFactory.getInstance(algorithm)</li>
-   * 
+   *
    * <li>
    * client-auth: If true, then require client connections to be authenticated.
    * Only applicable for server side connections. See
    * SSLSocket.setNeedClientAuth.</li>
-   * 
+   *
    * <p>
    * If this is not specified then default java SSL properties as per
    * "-Djavax.net.ssl.*" or system defaults will be used. See JSSE reference
@@ -376,24 +401,33 @@ public interface ClientAttribute {
    */
   String THRIFT_SSL_PROPERTIES = "ssl-properties";
 
-  /**
+  /*
    * The security mechanism to use by the thrift driver. Supported values are:
-   * 
-   * <li>PLAIN: User name and password sent in plaintext</li>
-   * 
-   * <li>TOKEN: In addition to user and password, a unique random token is
-   * generated by server and returned to client that is required to be passed to
-   * server in every request for verification</li>
-   * 
+   *
+   * <li>PLAIN: User name and password sent in plaintext. In addition to user
+   * and password, a unique random token is generated by server and returned
+   * to client that is required to be passed to server in every request for
+   * verification</li>
+   *
    * <li>DIFFIE_HELLMAN: Use Diffie-Hellman key exchange to generate AES
    * symmetric encryption keys to encrypt user and password. In addition this
-   * will use random token as in TOKEN scheme which will also be encrypted.</li>
-   * 
-   * <p>
-   * See the enumerated values in
-   * <code>com.pivotal.gemfirexd.thrift.SecurityMechanism</code>.
+   * will also encrypt the random token and refresh at regular intervals.</li>
    */
-  String THRIFT_SECURITY_MECHANISM = "security-mechanism";
+  // String THRIFT_SECURITY_MECHANISM = "security-mechanism";
+
+  /**
+   * The chunk size to be used for fetching/sending BLOBs and CLOBs over
+   * a connection when using the thrift based JDBC driver.
+   */
+  String THRIFT_LOB_CHUNK_SIZE = "lob-chunk-size";
+
+  /**
+   * Use direct ByteBuffers when reading BLOBs. This will provide higher
+   * performance avoiding a copy but caller must take care to free the BLOB
+   * after use else cleanup may happen only in a GC cycle which may be delayed
+   * due to no particular GC pressure due to direct ByteBuffers.
+   */
+  String THRIFT_LOB_DIRECT_BUFFERS = "lob-direct-buffers";
 
   /**
    * Set this to true to force using pre GemFireXD 1.3.0.2 release hashing

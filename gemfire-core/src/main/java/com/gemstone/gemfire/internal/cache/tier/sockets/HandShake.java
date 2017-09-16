@@ -259,7 +259,7 @@ public class HandShake implements ClientHandShake
           DataInputStream dis = new DataInputStream(is);
           DataOutputStream dos = new DataOutputStream(sock.getOutputStream());
           this.clientReadTimeout = dis.readInt();
-          if (clientVersion.compareTo(Version.CURRENT) < 0) {
+          if (clientVersion.compareTo(Version.CURRENT_GFE) < 0) {
             // versioned streams allow object serialization code to deal with older clients
             dis = new VersionedDataInputStream(dis, clientVersion);
             dos = new VersionedDataOutputStream(dos, clientVersion);
@@ -449,7 +449,7 @@ public class HandShake implements ClientHandShake
   public byte write(DataOutputStream dos, DataInputStream dis, byte communicationMode, int replyCode,
       int readTimeout, List ports, Properties p_credentials, DistributedMember member, boolean isCallbackConnection)
       throws IOException {
-    HeapDataOutputStream hdos = new HeapDataOutputStream(32, Version.CURRENT);
+    HeapDataOutputStream hdos = new HeapDataOutputStream(32, Version.CURRENT_GFE);
     byte acceptanceCode = -1;
     try {
       hdos.writeByte(communicationMode);
@@ -507,7 +507,7 @@ public class HandShake implements ClientHandShake
   public void writeCredentials(DataOutputStream dos, DataInputStream dis,
       Properties p_credentials, boolean isNotification, DistributedMember member)
       throws IOException, GemFireSecurityException {
-    HeapDataOutputStream hdos = new HeapDataOutputStream(32, Version.CURRENT);
+    HeapDataOutputStream hdos = new HeapDataOutputStream(32, Version.CURRENT_GFE);
     try {
       writeCredentials(dos, dis, p_credentials, isNotification, member, hdos);
     }
@@ -630,7 +630,7 @@ public class HandShake implements ClientHandShake
 
         
 
-        HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT);
+        HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT_GFE);
         try {
           DataSerializer.writeProperties(p_credentials, hdos);
           // Also add the challenge string
@@ -776,7 +776,7 @@ public class HandShake implements ClientHandShake
 //        PublicKey pubKey = keyFact.generatePublic(x509KeySpec);
         this.clientPublicKey = keyFact.generatePublic(x509KeySpec);
 
-        HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT);
+        HeapDataOutputStream hdos = new HeapDataOutputStream(Version.CURRENT_GFE);
         try {
           // Add the challenge string
           DataSerializer.writeByteArray(serverChallenge, hdos);
@@ -1130,7 +1130,7 @@ public class HandShake implements ClientHandShake
       byte communicationMode, Principal principal) throws IOException {
     DataOutputStream dos = new DataOutputStream(out);
     DataInputStream dis;
-    if (clientVersion.compareTo(Version.CURRENT) < 0) {
+    if (clientVersion.compareTo(Version.CURRENT_GFE) < 0) {
       dis = new VersionedDataInputStream(in, clientVersion);
       dos = new VersionedDataOutputStream(dos, clientVersion);
     } else {

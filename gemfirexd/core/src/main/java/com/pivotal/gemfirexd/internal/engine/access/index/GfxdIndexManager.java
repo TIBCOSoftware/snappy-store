@@ -19,14 +19,7 @@ package com.pivotal.gemfirexd.internal.engine.access.index;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
@@ -215,6 +208,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   private InternalDistributedMember thisNodeMemberId;
 
   private MembershipManager membershipManager;
+
 
   public enum Index{
     LOCAL,
@@ -657,7 +651,11 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       // No constraint checking for destroy since that is done by
       // ReferencedKeyCheckerMessage if required.
       // Also check if foreign key constraint check is really required.
-      final TXStateInterface tx = event.getTXState(owner);
+      TXStateInterface tx = event.getTXState(owner);
+      if (tx != null && tx.isSnapshot()) {
+        tx = null;
+      }
+
       final RowLocation rl = entry instanceof RowLocation ? (RowLocation)entry
           : null;
       final boolean skipDistribution;
@@ -1045,12 +1043,15 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           this.container, getObjectString(indexes), entry, success,
           event);
     }
-    if(event.getTXState() != null && event.isCustomEviction()) {      
+    if (event.getTXState() != null && event.isCustomEviction()) {
       return;
     }
     final Operation op = event.getOperation();
     //try {
-    final TXStateInterface tx = event.getTXState(owner);
+    TXStateInterface tx = event.getTXState(owner);
+    if (tx != null && tx.isSnapshot()) {
+      tx = null;
+    }
     if (success && tx == null /* txnal ops will update this at commit */) {
       if (!(op.isUpdate() && event.hasDelta())) {
         this.container.updateNumRows(op.isDestroy());
@@ -1541,7 +1542,12 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
                 // snapshot
                 // the value in the key.
                 if (!updatedValue) {
-                  foundKey.snapshotKeyFromValue();
+                  byte[] value = foundKey.snapshotKeyFromValue();
+                  if(value != null){
+                    indexContainer.accountSnapshotEntry(value.length);
+                  }
+
+
                 }
               }
             } finally {
@@ -3120,7 +3126,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
    * 
    * @param event
    *          from underlying region.
-   * @param newEntery
+   * @param rl
    *          from underlying region doing the create.
    */
   private void checkForeignKeyConstraint(EntryEventImpl event,
@@ -4391,8 +4397,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       }
       if (needToAcquireWriteLockOnGIILock) {
         if (lockForGII) {
-          lockForGII(holdIndexLock, tc);
-          giiLockAcquired = true;
+          giiLockAcquired = lockForGII(holdIndexLock, tc);
         }
       }
 
@@ -4441,7 +4446,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           lcc, null, null);
     } finally {
       if (!holdIndexLock) {
-        unlockForGII(holdIndexLock, tc);
+        unlockForGII(false, tc);
       }
       if (tableLockAcquired) {
         gfc.closeForEndTransaction(tc, false);
@@ -4955,6 +4960,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         Misc.checkIfCacheClosing(null);
       }
       indexRecoveryJob.endJobs();
+      indexContainer.accountMemoryForIndex(numEntries, true);
       return numEntries;
     } catch (IOException ioe) {
       // check for node shutdown
@@ -4975,6 +4981,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   public long loadLocalIndexRecords(GemFireContainer indexContainer)
       throws StandardException {
     final LocalRegion region = this.container.getRegion();
+    // Compute the size of index step wise , with power of two
+
     final SortedIndexRecoveryJob indexRecoveryJob = new SortedIndexRecoveryJob(
         region.getCache(), null, region.getCancelCriterion(), indexContainer);
     try {
@@ -4987,6 +4995,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       Iterator<?> entryIterator = this.container.getEntrySetIterator(null,
           false, 0, true);
       while (entryIterator.hasNext()) {
+        indexContainer.accountMemoryForIndex(numEntries, false);
         RegionEntry entry = (RegionEntry)entryIterator.next();
         @Released
         final Object val = ((RowLocation)entry)
@@ -5014,6 +5023,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         numEntries++;
       }
       indexRecoveryJob.endJobs();
+      indexContainer.accountMemoryForIndex(numEntries, true);
+      List<GemFireContainer> indexes = getAllIndexes();
       return numEntries;
     } catch (CancelException ce) {
       throw ce;

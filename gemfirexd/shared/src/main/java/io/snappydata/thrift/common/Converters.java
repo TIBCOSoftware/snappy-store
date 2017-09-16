@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -35,20 +35,12 @@
 
 package io.snappydata.thrift.common;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.sql.Blob;
-import java.sql.Clob;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.nio.charset.StandardCharsets;
+import java.sql.*;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +48,12 @@ import java.util.Map;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.JDBC40Translation;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.*;
+import io.snappydata.thrift.Decimal;
+import io.snappydata.thrift.SnappyType;
+import io.snappydata.thrift.snappydataConstants;
+import org.apache.commons.io.input.ReaderInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Conversion utilities from thrift API values/enums to JDBC/SnappyData equivalent
@@ -68,10 +65,17 @@ public abstract class Converters {
     // no instance allowed
   }
 
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(Converters.class.getName());
+
   static final BigDecimal MAXLONG_PLUS_ONE = BigDecimal.valueOf(Long.MAX_VALUE)
       .add(BigDecimal.ONE);
   static final BigDecimal MINLONG_MINUS_ONE = BigDecimal
       .valueOf(Long.MIN_VALUE).subtract(BigDecimal.ONE);
+
+  public static final long MICROS_PER_SECOND = 1000L * 1000L;
+  public static final long NANOS_PER_SECOND = MICROS_PER_SECOND * 1000L;
+  public static final long NANOS_PER_MILLI = 1000L * 1000L;
 
   public static final ColumnValueConverter BOOLEAN_TYPE =
       new ColumnValueConverter() {
@@ -81,134 +85,128 @@ public abstract class Converters {
       return SnappyType.BOOLEAN;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getBoolean(columnIndex - 1);
+      return row.getBoolean(columnPosition - 1);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return row.getBoolean(columnIndex - 1) ? BigDecimal.ONE : BigDecimal.ZERO;
+        int columnPosition) throws SQLException {
+      return row.getBoolean(columnPosition - 1) ? BigDecimal.ONE : BigDecimal.ZERO;
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getBoolean(columnIndex - 1) ? "true" : "false";
+      return row.getBoolean(columnPosition - 1) ? "true" : "false";
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getBoolean(columnIndex - 1);
+      return row.getBoolean(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      row.setBoolean(columnIndex - 1, x);
+      row.setBoolean(columnPosition - 1, x);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      row.setBoolean(columnIndex - 1, x != 0);
+      row.setBoolean(columnPosition - 1, x != 0);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      row.setBoolean(columnIndex - 1, x != 0);
+      row.setBoolean(columnPosition - 1, x != 0);
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      row.setBoolean(columnIndex - 1, x != 0);
+      row.setBoolean(columnPosition - 1, x != 0);
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
-      row.setBoolean(columnIndex - 1, x != 0);
+      row.setBoolean(columnPosition - 1, x != 0);
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
-      row.setBoolean(columnIndex - 1, x != 0.0f);
+      row.setBoolean(columnPosition - 1, x != 0.0f);
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
         throws SQLException {
-      row.setBoolean(columnIndex - 1, x != 0.0);
+      row.setBoolean(columnPosition - 1, x != 0.0);
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      row.setBoolean(columnIndex - 1, !BigDecimal.ZERO.equals(x));
+        int columnPosition, BigDecimal x) throws SQLException {
+      row.setBoolean(columnPosition - 1, !BigDecimal.ZERO.equals(x));
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setBoolean(columnIndex - 1,
+      row.setBoolean(columnPosition - 1,
           x != null && !(x.equals("0") || x.equalsIgnoreCase("false")));
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "boolean");
+      Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "boolean", columnPosition);
       }
     }
   };
@@ -221,158 +219,152 @@ public abstract class Converters {
       return SnappyType.TINYINT;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return (row.getByte(columnIndex - 1) != 0);
+      return (row.getByte(columnPosition - 1) != 0);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return new BigDecimal(row.getByte(columnIndex - 1));
+        int columnPosition) throws SQLException {
+      return new BigDecimal(row.getByte(columnPosition - 1));
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return Byte.toString(row.getByte(columnIndex - 1));
+      return Byte.toString(row.getByte(columnPosition - 1));
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getByte(columnIndex - 1);
+      return row.getByte(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      row.setByte(columnIndex - 1, x ? (byte)1 : 0);
+      row.setByte(columnPosition - 1, x ? (byte)1 : 0);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      row.setByte(columnIndex - 1, x);
+      row.setByte(columnPosition - 1, x);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
-        throws SQLException {
-      if (x >= Byte.MIN_VALUE && x <= Byte.MAX_VALUE) {
-        row.setByte(columnIndex - 1, (byte)x);
-      }
-      else {
-        throw newOutOfRangeException("byte", columnIndex);
-      }
-    }
-    @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
       if (x >= Byte.MIN_VALUE && x <= Byte.MAX_VALUE) {
-        row.setByte(columnIndex - 1, (byte)x);
+        row.setByte(columnPosition - 1, (byte)x);
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
       if (x >= Byte.MIN_VALUE && x <= Byte.MAX_VALUE) {
-        row.setByte(columnIndex - 1, (byte)x);
+        row.setByte(columnPosition - 1, (byte)x);
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
       if (x >= Byte.MIN_VALUE && x <= Byte.MAX_VALUE) {
-        row.setByte(columnIndex - 1, (byte)x);
+        row.setByte(columnPosition - 1, (byte)x);
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
       if (x >= Byte.MIN_VALUE && x <= Byte.MAX_VALUE) {
-        row.setByte(columnIndex - 1, (byte)x);
+        row.setByte(columnPosition - 1, (byte)x);
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
+      }
+    }
+    @Override
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
+        throws SQLException {
+      if (x >= Byte.MIN_VALUE && x <= Byte.MAX_VALUE) {
+        row.setByte(columnPosition - 1, (byte)x);
+      }
+      else {
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+        int columnPosition, BigDecimal x) throws SQLException {
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "byte");
+      Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "byte", columnPosition);
       }
     }
   };
@@ -385,159 +377,153 @@ public abstract class Converters {
       return SnappyType.SMALLINT;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return (row.getShort(columnIndex - 1) != 0);
+      return (row.getShort(columnPosition - 1) != 0);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      short v = row.getShort(columnIndex - 1);
+      short v = row.getShort(columnPosition - 1);
       if (v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE) {
         return (byte)v;
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getShort(columnIndex - 1);
+      return row.getShort(columnPosition - 1);
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getShort(columnIndex - 1);
+      return row.getShort(columnPosition - 1);
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getShort(columnIndex - 1);
+      return row.getShort(columnPosition - 1);
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getShort(columnIndex - 1);
+      return row.getShort(columnPosition - 1);
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getShort(columnIndex - 1);
+      return row.getShort(columnPosition - 1);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return new BigDecimal(row.getShort(columnIndex - 1));
+        int columnPosition) throws SQLException {
+      return new BigDecimal(row.getShort(columnPosition - 1));
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return Short.toString(row.getShort(columnIndex - 1));
+      return Short.toString(row.getShort(columnPosition - 1));
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return (int)row.getShort(columnIndex - 1);
+      return (int)row.getShort(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      row.setShort(columnIndex - 1, x ? (short)1 : 0);
+      row.setShort(columnPosition - 1, x ? (short)1 : 0);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      row.setShort(columnIndex - 1, x);
+      row.setShort(columnPosition - 1, x);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      row.setShort(columnIndex - 1, x);
+      row.setShort(columnPosition - 1, x);
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
-        throws SQLException {
-      if (x >= Short.MIN_VALUE && x <= Short.MAX_VALUE) {
-        row.setShort(columnIndex - 1, (short)x);
-      }
-      else {
-        throw newOutOfRangeException("short", columnIndex);
-      }
-    }
-    @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
       if (x >= Short.MIN_VALUE && x <= Short.MAX_VALUE) {
-        row.setShort(columnIndex - 1, (short)x);
+        row.setShort(columnPosition - 1, (short)x);
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
       if (x >= Short.MIN_VALUE && x <= Short.MAX_VALUE) {
-        row.setShort(columnIndex - 1, (short)x);
+        row.setShort(columnPosition - 1, (short)x);
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
       if (x >= Short.MIN_VALUE && x <= Short.MAX_VALUE) {
-        row.setShort(columnIndex - 1, (short)x);
+        row.setShort(columnPosition - 1, (short)x);
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
+      }
+    }
+    @Override
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
+        throws SQLException {
+      if (x >= Short.MIN_VALUE && x <= Short.MAX_VALUE) {
+        row.setShort(columnPosition - 1, (short)x);
+      }
+      else {
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+        int columnPosition, BigDecimal x) throws SQLException {
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "short");
+      Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "short", columnPosition);
       }
     }
   };
@@ -550,160 +536,154 @@ public abstract class Converters {
       return SnappyType.INTEGER;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return (row.getInt(columnIndex - 1) != 0);
+      return (row.getInt(columnPosition - 1) != 0);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      int v = row.getInt(columnIndex - 1);
+      int v = row.getInt(columnPosition - 1);
       if (v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE) {
         return (byte)v;
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      int v = row.getInt(columnIndex - 1);
+      int v = row.getInt(columnPosition - 1);
       if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) {
         return (short)v;
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getInt(columnIndex - 1);
+      return row.getInt(columnPosition - 1);
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getInt(columnIndex - 1);
+      return row.getInt(columnPosition - 1);
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getInt(columnIndex - 1);
+      return row.getInt(columnPosition - 1);
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getInt(columnIndex - 1);
+      return row.getInt(columnPosition - 1);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return new BigDecimal(row.getInt(columnIndex - 1));
+        int columnPosition) throws SQLException {
+      return new BigDecimal(row.getInt(columnPosition - 1));
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return Integer.toString(row.getInt(columnIndex - 1));
+      return Integer.toString(row.getInt(columnPosition - 1));
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getInt(columnIndex - 1);
+      return row.getInt(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      row.setInt(columnIndex - 1, x ? 1 : 0);
+      row.setInt(columnPosition - 1, x ? 1 : 0);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      row.setInt(columnIndex - 1, x);
+      row.setInt(columnPosition - 1, x);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      row.setInt(columnIndex - 1, x);
+      row.setInt(columnPosition - 1, x);
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      row.setInt(columnIndex - 1, x);
+      row.setInt(columnPosition - 1, x);
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
-        throws SQLException {
-      if (x >= Integer.MIN_VALUE && x <= Integer.MAX_VALUE) {
-        row.setInt(columnIndex - 1, (int)x);
-      }
-      else {
-        throw newOutOfRangeException("int", columnIndex);
-      }
-    }
-    @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
       if (x >= Integer.MIN_VALUE && x <= Integer.MAX_VALUE) {
-        row.setInt(columnIndex - 1, (int)x);
+        row.setInt(columnPosition - 1, (int)x);
       }
       else {
-        throw newOutOfRangeException("int", columnIndex);
+        throw newOutOfRangeException("int", columnPosition);
       }
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
       if (x >= Integer.MIN_VALUE && x <= Integer.MAX_VALUE) {
-        row.setInt(columnIndex - 1, (int)x);
+        row.setInt(columnPosition - 1, (int)x);
       }
       else {
-        throw newOutOfRangeException("int", columnIndex);
+        throw newOutOfRangeException("int", columnPosition);
+      }
+    }
+    @Override
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
+        throws SQLException {
+      if (x >= Integer.MIN_VALUE && x <= Integer.MAX_VALUE) {
+        row.setInt(columnPosition - 1, (int)x);
+      }
+      else {
+        throw newOutOfRangeException("int", columnPosition);
       }
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+        int columnPosition, BigDecimal x) throws SQLException {
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "int");
+      Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "int", columnPosition);
       }
     }
   };
@@ -716,334 +696,322 @@ public abstract class Converters {
       return SnappyType.BIGINT;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return (row.getLong(columnIndex - 1) != 0);
+      return (row.getLong(columnPosition - 1) != 0);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = row.getLong(columnIndex - 1);
+      long v = row.getLong(columnPosition - 1);
       if (v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE) {
         return (byte)v;
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = row.getLong(columnIndex - 1);
+      long v = row.getLong(columnPosition - 1);
       if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) {
         return (short)v;
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = row.getLong(columnIndex - 1);
+      long v = row.getLong(columnPosition - 1);
       if (v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE) {
         return (int)v;
       }
       else {
-        throw newOutOfRangeException("int", columnIndex);
+        throw newOutOfRangeException("int", columnPosition);
       }
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getLong(columnIndex - 1);
+      return row.getLong(columnPosition - 1);
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getLong(columnIndex - 1);
+      return row.getLong(columnPosition - 1);
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getLong(columnIndex - 1);
+      return row.getLong(columnPosition - 1);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return new BigDecimal(row.getLong(columnIndex - 1));
+        int columnPosition) throws SQLException {
+      return new BigDecimal(row.getLong(columnPosition - 1));
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return Long.toString(row.getLong(columnIndex - 1));
+      return Long.toString(row.getLong(columnPosition - 1));
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getLong(columnIndex - 1);
+      return row.getLong(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      row.setLong(columnIndex - 1, x ? 1 : 0);
+      row.setLong(columnPosition - 1, x ? 1 : 0);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      row.setLong(columnIndex - 1, x);
+      row.setLong(columnPosition - 1, x);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      row.setLong(columnIndex - 1, x);
+      row.setLong(columnPosition - 1, x);
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      row.setLong(columnIndex - 1, x);
+      row.setLong(columnPosition - 1, x);
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
-      row.setLong(columnIndex - 1, x);
+      row.setLong(columnPosition - 1, x);
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
-        throws SQLException {
-      if (x >= Long.MIN_VALUE && x <= Long.MAX_VALUE) {
-        row.setLong(columnIndex - 1, (long)x);
-      }
-      else {
-        throw newOutOfRangeException("long", columnIndex);
-      }
-    }
-    @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
       if (x >= Long.MIN_VALUE && x <= Long.MAX_VALUE) {
-        row.setLong(columnIndex - 1, (long)x);
+        row.setLong(columnPosition - 1, (long)x);
       }
       else {
-        throw newOutOfRangeException("long", columnIndex);
+        throw newOutOfRangeException("long", columnPosition);
+      }
+    }
+    @Override
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
+        throws SQLException {
+      if (x >= Long.MIN_VALUE && x <= Long.MAX_VALUE) {
+        row.setLong(columnPosition - 1, (long)x);
+      }
+      else {
+        throw newOutOfRangeException("long", columnPosition);
       }
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+        int columnPosition, BigDecimal x) throws SQLException {
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      setLong(row, columnIndex, getLong(x, columnIndex));
+      setLong(row, columnPosition, getLong(x, columnPosition));
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "long");
+      Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "long", columnPosition);
       }
     }
   };
 
-  public static final ColumnValueConverter REAL_TYPE =
+  public static final ColumnValueConverter FLOAT_TYPE =
       new ColumnValueConverter() {
 
     @Override
     public SnappyType getType() {
-      return SnappyType.REAL;
+      return SnappyType.FLOAT;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return (row.getFloat(columnIndex - 1) != 0.0f);
+      return (row.getFloat(columnPosition - 1) != 0.0f);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      float v = row.getFloat(columnIndex - 1);
+      float v = row.getFloat(columnPosition - 1);
       if (v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE) {
         return (byte)v;
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      float v = row.getFloat(columnIndex - 1);
+      float v = row.getFloat(columnPosition - 1);
       if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) {
         return (short)v;
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      float v = row.getFloat(columnIndex - 1);
+      float v = row.getFloat(columnPosition - 1);
       if (v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE) {
         return (int)v;
       }
       else {
-        throw newOutOfRangeException("int", columnIndex);
+        throw newOutOfRangeException("int", columnPosition);
       }
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      float v = row.getFloat(columnIndex - 1);
+      float v = row.getFloat(columnPosition - 1);
       if (v >= Long.MIN_VALUE && v <= Long.MAX_VALUE) {
         return (long)v;
       }
       else {
-        throw newOutOfRangeException("long", columnIndex);
+        throw newOutOfRangeException("long", columnPosition);
       }
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getFloat(columnIndex - 1);
+      return row.getFloat(columnPosition - 1);
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getFloat(columnIndex - 1);
+      return row.getFloat(columnPosition - 1);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return new BigDecimal(row.getFloat(columnIndex - 1));
+        int columnPosition) throws SQLException {
+      return new BigDecimal(row.getFloat(columnPosition - 1));
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return Float.toString(row.getFloat(columnIndex - 1));
+      return Float.toString(row.getFloat(columnPosition - 1));
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getFloat(columnIndex - 1);
+      return row.getFloat(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      row.setFloat(columnIndex - 1, x ? 1.0f : 0.0f);
+      row.setFloat(columnPosition - 1, x ? 1.0f : 0.0f);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      row.setFloat(columnIndex - 1, x);
+      row.setFloat(columnPosition - 1, x);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      row.setFloat(columnIndex - 1, x);
+      row.setFloat(columnPosition - 1, x);
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      row.setFloat(columnIndex - 1, x);
+      row.setFloat(columnPosition - 1, x);
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
       if (x >= Float.MIN_VALUE) {
-        row.setFloat(columnIndex - 1, x);
+        row.setFloat(columnPosition - 1, x);
       }
       else {
-        throw newOutOfRangeException("float", columnIndex);
+        throw newOutOfRangeException("float", columnPosition);
       }
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
-      row.setFloat(columnIndex - 1, x);
+      row.setFloat(columnPosition - 1, x);
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
         throws SQLException {
       if (x >= Float.MIN_VALUE && x <= Float.MAX_VALUE) {
-        row.setFloat(columnIndex - 1, (float)x);
+        row.setFloat(columnPosition - 1, (float)x);
       }
       else {
-        throw newOutOfRangeException("float", columnIndex);
+        throw newOutOfRangeException("float", columnPosition);
       }
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setDouble(row, columnIndex, getDouble(x, columnIndex));
+        int columnPosition, BigDecimal x) throws SQLException {
+      setDouble(row, columnPosition, getDouble(x, columnPosition));
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      setDouble(row, columnIndex, getDouble(x, columnIndex));
+      setDouble(row, columnPosition, getDouble(x, columnPosition));
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "float");
+      Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "float", columnPosition);
       }
     }
   };
@@ -1056,163 +1024,157 @@ public abstract class Converters {
       return SnappyType.DOUBLE;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return (row.getDouble(columnIndex - 1) != 0.0);
+      return (row.getDouble(columnPosition - 1) != 0.0);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      double v = row.getDouble(columnIndex - 1);
+      double v = row.getDouble(columnPosition - 1);
       if (v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE) {
         return (byte)v;
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      double v = row.getDouble(columnIndex - 1);
+      double v = row.getDouble(columnPosition - 1);
       if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) {
         return (short)v;
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      double v = row.getDouble(columnIndex - 1);
+      double v = row.getDouble(columnPosition - 1);
       if (v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE) {
         return (int)v;
       }
       else {
-        throw newOutOfRangeException("int", columnIndex);
+        throw newOutOfRangeException("int", columnPosition);
       }
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      double v = row.getDouble(columnIndex - 1);
+      double v = row.getDouble(columnPosition - 1);
       if (v >= Long.MIN_VALUE && v <= Long.MAX_VALUE) {
         return (long)v;
       }
       else {
-        throw newOutOfRangeException("long", columnIndex);
+        throw newOutOfRangeException("long", columnPosition);
       }
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      double v = row.getDouble(columnIndex - 1);
+      double v = row.getDouble(columnPosition - 1);
       if (v >= Float.MIN_VALUE && v <= Float.MAX_VALUE) {
         return (float)v;
       }
       else {
-        throw newOutOfRangeException("float", columnIndex);
+        throw newOutOfRangeException("float", columnPosition);
       }
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return row.getDouble(columnIndex - 1);
+      return row.getDouble(columnPosition - 1);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return new BigDecimal(row.getDouble(columnIndex - 1));
+        int columnPosition) throws SQLException {
+      return new BigDecimal(row.getDouble(columnPosition - 1));
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return Double.toString(row.getDouble(columnIndex - 1));
+      return Double.toString(row.getDouble(columnPosition - 1));
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getDouble(columnIndex - 1);
+      return row.getDouble(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      row.setDouble(columnIndex - 1, x ? 1.0 : 0.0);
+      row.setDouble(columnPosition - 1, x ? 1.0 : 0.0);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      row.setDouble(columnIndex - 1, x);
+      row.setDouble(columnPosition - 1, x);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      row.setDouble(columnIndex - 1, x);
+      row.setDouble(columnPosition - 1, x);
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      row.setDouble(columnIndex - 1, x);
+      row.setDouble(columnPosition - 1, x);
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
-      row.setDouble(columnIndex - 1, x);
+      row.setDouble(columnPosition - 1, x);
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
-      row.setDouble(columnIndex - 1, x);
+      row.setDouble(columnPosition - 1, x);
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
         throws SQLException {
-      row.setDouble(columnIndex - 1, x);
+      row.setDouble(columnPosition - 1, x);
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setDouble(row, columnIndex, getDouble(x, columnIndex));
+        int columnPosition, BigDecimal x) throws SQLException {
+      setDouble(row, columnPosition, getDouble(x, columnPosition));
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      setDouble(row, columnIndex, getDouble(x, columnIndex));
+      setDouble(row, columnPosition, getDouble(x, columnPosition));
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      Class<?> c = o.getClass();
-      if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "double");
+      Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "double", columnPosition);
       }
     }
   };
@@ -1225,76 +1187,76 @@ public abstract class Converters {
       return SnappyType.DECIMAL;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      BigDecimal bd = (BigDecimal)row.getObject(columnIndex - 1);
+      BigDecimal bd = (BigDecimal)row.getObject(columnPosition - 1);
       return bd != null && !bd.equals(BigDecimal.ZERO);
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = toLong(row, columnIndex);
+      long v = toLong(row, columnPosition);
       if (v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE) {
         return (byte)v;
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = toLong(row, columnIndex);
+      long v = toLong(row, columnPosition);
       if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) {
         return (short)v;
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = toLong(row, columnIndex);
+      long v = toLong(row, columnPosition);
       if (v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE) {
         return (int)v;
       }
       else {
-        throw newOutOfRangeException("int", columnIndex);
+        throw newOutOfRangeException("int", columnPosition);
       }
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      BigDecimal decimal = (BigDecimal)row.getObject(columnIndex - 1);
-      return getLong(decimal, columnIndex);
+      BigDecimal decimal = (BigDecimal)row.getObject(columnPosition - 1);
+      return getLong(decimal, columnPosition);
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      double v = getDouble((BigDecimal)row.getObject(columnIndex - 1),
-          columnIndex);
+      double v = getDouble((BigDecimal)row.getObject(columnPosition - 1),
+          columnPosition);
       if (v >= Float.MIN_VALUE && v <= Float.MAX_VALUE) {
         return (float)v;
       }
       else {
-        throw newOutOfRangeException("float", columnIndex);
+        throw newOutOfRangeException("float", columnPosition);
       }
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return getDouble((BigDecimal)row.getObject(columnIndex - 1), columnIndex);
+      return getDouble((BigDecimal)row.getObject(columnPosition - 1), columnPosition);
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return (BigDecimal)row.getObject(columnIndex - 1);
+        int columnPosition) throws SQLException {
+      return (BigDecimal)row.getObject(columnPosition - 1);
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      BigDecimal bd = (BigDecimal)row.getObject(columnIndex - 1);
+      BigDecimal bd = (BigDecimal)row.getObject(columnPosition - 1);
       if (bd != null) {
         return bd.toPlainString();
       }
@@ -1303,88 +1265,83 @@ public abstract class Converters {
       }
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getObject(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      setBigDecimal(row, columnIndex, x ? BigDecimal.ONE : BigDecimal.ZERO);
+      setBigDecimal(row, columnPosition, x ? BigDecimal.ONE : BigDecimal.ZERO);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      setBigDecimal(row, columnIndex, new BigDecimal(x));
+      setBigDecimal(row, columnPosition, new BigDecimal(x));
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      setBigDecimal(row, columnIndex, new BigDecimal(x));
+      setBigDecimal(row, columnPosition, new BigDecimal(x));
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      setBigDecimal(row, columnIndex, new BigDecimal(x));
+      setBigDecimal(row, columnPosition, new BigDecimal(x));
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
-      setBigDecimal(row, columnIndex, new BigDecimal(x));
+      setBigDecimal(row, columnPosition, new BigDecimal(x));
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
-      setBigDecimal(row, columnIndex, new BigDecimal(x));
+      setBigDecimal(row, columnPosition, new BigDecimal(x));
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
         throws SQLException {
-      setBigDecimal(row, columnIndex, new BigDecimal(x));
+      setBigDecimal(row, columnPosition, new BigDecimal(x));
     }
     @Override
     public final void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.DECIMAL);
+        int columnPosition, BigDecimal x) throws SQLException {
+      row.setObject(columnPosition - 1, x, SnappyType.DECIMAL);
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+      row.setObject(columnPosition - 1, getBigDecimal(x, columnPosition),
+          SnappyType.DECIMAL);
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
       Class<?> c;
-      if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else if ((c = o.getClass()) == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), "BigDecimal");
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if ((c = o.getClass()) == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), "BigDecimal", columnPosition);
       }
     }
   };
@@ -1397,94 +1354,82 @@ public abstract class Converters {
       return SnappyType.DATE;
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
-      if (date != null) {
-        return date.toString();
-      }
-      else {
-        return null;
-      }
+      java.sql.Date date = row.getDate(columnPosition - 1);
+      return date.toString();
     }
     @Override
-    public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
+    public java.sql.Date toDate(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
+      long millis = row.getDateTimeMillis(columnPosition - 1);
       if (cal == null) {
-        return date;
-      }
-      else {
-        cal.setTime(date);
+        return new java.sql.Date(millis);
+      } else {
+        cal.setTimeInMillis(millis);
         return new java.sql.Date(cal.getTimeInMillis());
       }
     }
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
-        int columnIndex, Calendar cal) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
+        int columnPosition, Calendar cal) throws SQLException {
+      long millis = row.getDateTimeMillis(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Timestamp(date.getTime());
-      }
-      else {
-        cal.setTime(date);
+        return new java.sql.Timestamp(millis);
+      } else {
+        cal.setTimeInMillis(millis);
         return new java.sql.Timestamp(cal.getTimeInMillis());
       }
     }
     @Override
-    public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
+    public java.sql.Time toTime(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      java.sql.Date date = (java.sql.Date)row.getObject(columnIndex - 1);
+      long millis = row.getDateTimeMillis(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Time(date.getTime());
-      }
-      else {
-        cal.setTime(date);
+        return new java.sql.Time(millis);
+      } else {
+        cal.setTimeInMillis(millis);
         return new java.sql.Time(cal.getTimeInMillis());
       }
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getDate(columnPosition - 1);
     }
     @Override
-    public void setDate(OptimizedElementArray row, int columnIndex,
+    public void setDate(OptimizedElementArray row, int columnPosition,
         java.sql.Date x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.DATE);
+      row.setDateTime(columnPosition - 1, x);
     }
     @Override
-    public void setTimestamp(OptimizedElementArray row, int columnIndex,
+    public void setTimestamp(OptimizedElementArray row, int columnPosition,
         java.sql.Timestamp x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIMESTAMP);
+      row.setDateTime(columnPosition - 1, x);
     }
     @Override
-    public void setTime(OptimizedElementArray row, int columnIndex,
+    public void setTime(OptimizedElementArray row, int columnPosition,
         java.sql.Time x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIME);
+      row.setDateTime(columnPosition - 1, x);
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+      java.sql.Date date = java.sql.Date.valueOf(x);
+      row.setDateTime(columnPosition - 1, date);
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof java.sql.Date) {
-        setDate(row, columnIndex, (java.sql.Date)o);
-      }
-      else if (o instanceof java.sql.Time) {
-        setTime(row, columnIndex, (java.sql.Time)o);
-      }
-      else if (o instanceof java.sql.Timestamp) {
-        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(o.getClass().getName(), "Date");
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof java.util.Date) {
+        row.setDateTime(columnPosition - 1, (java.util.Date)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Date", columnPosition);
       }
     }
   };
@@ -1497,94 +1442,82 @@ public abstract class Converters {
       return SnappyType.TIME;
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
-      if (time != null) {
-        return time.toString();
-      }
-      else {
-        return null;
-      }
+      java.sql.Time time = row.getTime(columnPosition - 1);
+      return time.toString();
     }
     @Override
-    public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
+    public java.sql.Date toDate(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
+      long millis = row.getDateTimeMillis(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Date(time.getTime());
-      }
-      else {
-        cal.setTime(time);
+        return new java.sql.Date(millis);
+      } else {
+        cal.setTimeInMillis(millis);
         return new java.sql.Date(cal.getTimeInMillis());
       }
     }
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
-        int columnIndex, Calendar cal) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
+        int columnPosition, Calendar cal) throws SQLException {
+      long millis = row.getDateTimeMillis(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Timestamp(time.getTime());
-      }
-      else {
-        cal.setTime(time);
+        return new java.sql.Timestamp(millis);
+      } else {
+        cal.setTimeInMillis(millis);
         return new java.sql.Timestamp(cal.getTimeInMillis());
       }
     }
     @Override
-    public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
+    public java.sql.Time toTime(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      java.sql.Time time = (java.sql.Time)row.getObject(columnIndex - 1);
+      long millis = row.getDateTimeMillis(columnPosition - 1);
       if (cal == null) {
-        return time;
-      }
-      else {
-        cal.setTime(time);
+        return new java.sql.Time(millis);
+      } else {
+        cal.setTimeInMillis(millis);
         return new java.sql.Time(cal.getTimeInMillis());
       }
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getTime(columnPosition - 1);
     }
     @Override
-    public void setDate(OptimizedElementArray row, int columnIndex,
+    public void setDate(OptimizedElementArray row, int columnPosition,
         java.sql.Date x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.DATE);
+      row.setDateTime(columnPosition - 1, x);
     }
     @Override
-    public void setTimestamp(OptimizedElementArray row, int columnIndex,
+    public void setTimestamp(OptimizedElementArray row, int columnPosition,
         java.sql.Timestamp x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIMESTAMP);
+      row.setDateTime(columnPosition - 1, x);
     }
     @Override
-    public void setTime(OptimizedElementArray row, int columnIndex,
+    public void setTime(OptimizedElementArray row, int columnPosition,
         java.sql.Time x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIME);
+      row.setDateTime(columnPosition - 1, x);
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+      java.sql.Time dtime = java.sql.Time.valueOf(x);
+      row.setTimestamp(columnPosition - 1, dtime);
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof java.sql.Time) {
-        setTime(row, columnIndex, (java.sql.Time)o);
-      }
-      else if (o instanceof java.sql.Date) {
-        setDate(row, columnIndex, (java.sql.Date)o);
-      }
-      else if (o instanceof java.sql.Timestamp) {
-        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(o.getClass().getName(), "Time");
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof java.util.Date) {
+        row.setDateTime(columnPosition - 1, (java.util.Date)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Time", columnPosition);
       }
     }
   };
@@ -1597,97 +1530,94 @@ public abstract class Converters {
       return SnappyType.TIMESTAMP;
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row
-          .getObject(columnIndex - 1);
-      if (ts != null) {
-        return ts.toString();
-      }
-      else {
-        return null;
-      }
+      java.sql.Timestamp ts = row.getTimestamp(columnPosition - 1);
+      return ts.toString();
     }
     @Override
-    public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
+    public java.sql.Date toDate(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row
-          .getObject(columnIndex - 1);
+      long ts = row.getLong(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Date(ts.getTime());
+        return new java.sql.Date(ts / NANOS_PER_MILLI);
       }
       else {
-        cal.setTime(ts);
+        cal.setTimeInMillis(ts / NANOS_PER_MILLI);
         return new java.sql.Date(cal.getTimeInMillis());
       }
     }
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
-        int columnIndex, Calendar cal) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row.getObject(columnIndex - 1);
+        int columnPosition, Calendar cal) throws SQLException {
+      long ts = row.getLong(columnPosition - 1);
       if (cal == null) {
-        return ts;
-      }
-      else {
-        cal.setTime(ts);
-        return new java.sql.Timestamp(cal.getTimeInMillis());
+        return Converters.getTimestamp(ts);
+      } else {
+        // pass only the seconds for epoch time
+        long seconds = ts / NANOS_PER_SECOND;
+        long nanos = ts % NANOS_PER_SECOND;
+        if (nanos < 0) {
+          nanos += NANOS_PER_SECOND;
+          seconds--;
+        }
+        cal.setTimeInMillis(seconds * 1000L);
+        return Converters.getTimestamp(cal.getTimeInMillis() *
+            NANOS_PER_MILLI + nanos);
       }
     }
     @Override
-    public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
+    public java.sql.Time toTime(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      java.sql.Timestamp ts = (java.sql.Timestamp)row
-          .getObject(columnIndex - 1);
+      long ts = row.getLong(columnPosition - 1);
       if (cal == null) {
-        return new java.sql.Time(ts.getTime());
+        return new java.sql.Time(ts / NANOS_PER_MILLI);
       }
       else {
-        cal.setTime(ts);
+        cal.setTimeInMillis(ts / NANOS_PER_MILLI);
         return new java.sql.Time(cal.getTimeInMillis());
       }
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getTimestamp(columnPosition - 1);
     }
     @Override
-    public void setDate(OptimizedElementArray row, int columnIndex,
+    public void setDate(OptimizedElementArray row, int columnPosition,
         java.sql.Date x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.DATE);
+      row.setTimestamp(columnPosition - 1, x);
     }
     @Override
-    public void setTimestamp(OptimizedElementArray row, int columnIndex,
+    public void setTimestamp(OptimizedElementArray row, int columnPosition,
         java.sql.Timestamp x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIMESTAMP);
+      row.setTimestamp(columnPosition - 1, x);
     }
     @Override
-    public void setTime(OptimizedElementArray row, int columnIndex,
+    public void setTime(OptimizedElementArray row, int columnPosition,
         java.sql.Time x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.TIME);
+      row.setTimestamp(columnPosition - 1, x);
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+      java.sql.Timestamp timestamp = java.sql.Timestamp.valueOf(x);
+      row.setTimestamp(columnPosition - 1, timestamp);
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof java.sql.Timestamp) {
-        setTimestamp(row, columnIndex, (java.sql.Timestamp)o);
-      }
-      else if (o instanceof java.sql.Date) {
-        setDate(row, columnIndex, (java.sql.Date)o);
-      }
-      else if (o instanceof java.sql.Time) {
-        setTime(row, columnIndex, (java.sql.Time)o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(o.getClass().getName(), "Timestamp");
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof java.sql.Timestamp) {
+        row.setTimestamp(columnPosition - 1, (java.sql.Timestamp)o);
+      } else if (o instanceof java.util.Date) {
+        row.setTimestamp(columnPosition - 1, (java.util.Date)o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Timestamp", columnPosition);
       }
     }
   };
@@ -1699,9 +1629,9 @@ public abstract class Converters {
       return SnappyType.VARCHAR;
     }
     @Override
-    public final boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public final boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      String str = toString(row, columnIndex);
+      String str = toString(row, columnPosition);
       if (str != null) {
         str = str.trim();
         return !(str.equals("0") || str.equalsIgnoreCase("false"));
@@ -1711,84 +1641,84 @@ public abstract class Converters {
       }
     }
     @Override
-    public final byte toByte(OptimizedElementArray row, int columnIndex)
+    public final byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = toLong(row, columnIndex);
+      long v = toLong(row, columnPosition);
       if (v >= Byte.MIN_VALUE && v <= Byte.MAX_VALUE) {
         return (byte)v;
       }
       else {
-        throw newOutOfRangeException("byte", columnIndex);
+        throw newOutOfRangeException("byte", columnPosition);
       }
     }
     @Override
-    public final short toShort(OptimizedElementArray row, int columnIndex)
+    public final short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = toLong(row, columnIndex);
+      long v = toLong(row, columnPosition);
       if (v >= Short.MIN_VALUE && v <= Short.MAX_VALUE) {
         return (short)v;
       }
       else {
-        throw newOutOfRangeException("short", columnIndex);
+        throw newOutOfRangeException("short", columnPosition);
       }
     }
     @Override
-    public final int toInteger(OptimizedElementArray row, int columnIndex)
+    public final int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      long v = toLong(row, columnIndex);
+      long v = toLong(row, columnPosition);
       if (v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE) {
         return (int)v;
       }
       else {
-        throw newOutOfRangeException("int", columnIndex);
+        throw newOutOfRangeException("int", columnPosition);
       }
     }
     @Override
-    public final long toLong(OptimizedElementArray row, int columnIndex)
+    public final long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return getLong(toString(row, columnIndex), columnIndex);
+      return getLong(toString(row, columnPosition), columnPosition);
     }
     @Override
-    public final float toFloat(OptimizedElementArray row, int columnIndex)
+    public final float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      double v = toDouble(row, columnIndex);
+      double v = toDouble(row, columnPosition);
       if (v >= Float.MIN_VALUE && v <= Float.MAX_VALUE) {
         return (float)v;
       }
       else {
-        throw newOutOfRangeException("float", columnIndex);
+        throw newOutOfRangeException("float", columnPosition);
       }
     }
     @Override
-    public final double toDouble(OptimizedElementArray row, int columnIndex)
+    public final double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return getDouble(toString(row, columnIndex), columnIndex);
+      return getDouble(toString(row, columnPosition), columnPosition);
     }
     @Override
     public final BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      String str = toString(row, columnIndex);
+        int columnPosition) throws SQLException {
+      String str = toString(row, columnPosition);
       try {
         // BigDecimal constructor calls java.lang.Long.parseLong(),
         // which doesn't like spaces.
         return new BigDecimal(str.trim());
       } catch (NumberFormatException nfe) {
-        throw newFormatException("BigDecimal", columnIndex, nfe);
+        throw newFormatException("BigDecimal", columnPosition, nfe);
       }
     }
-    private String toString(OptimizedElementArray row, int columnIndex)
+    private String toString(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      return (String)row.getObject(columnIndex - 1);
+      return (String)row.getObject(columnPosition - 1);
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return toString(row, columnIndex);
+      return toString(row, columnPosition);
     }
     @Override
-    public final java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
+    public final java.sql.Date toDate(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      String str = toString(row, columnIndex);
+      String str = toString(row, columnPosition);
       if (str != null) {
         java.sql.Date date;
         try {
@@ -1812,8 +1742,8 @@ public abstract class Converters {
     }
     @Override
     public final java.sql.Timestamp toTimestamp(OptimizedElementArray row,
-        int columnIndex, Calendar cal) throws SQLException {
-      String str = toString(row, columnIndex);
+        int columnPosition, Calendar cal) throws SQLException {
+      String str = toString(row, columnPosition);
       if (str != null) {
         java.sql.Timestamp ts;
         try {
@@ -1824,10 +1754,10 @@ public abstract class Converters {
         }
         if (cal == null) {
           return ts;
-        }
-        else {
+        } else {
           cal.setTime(ts);
-          return new java.sql.Timestamp(cal.getTimeInMillis());
+          return Converters.getTimestamp(cal.getTimeInMillis() *
+              NANOS_PER_MILLI + ts.getNanos());
         }
       }
       else {
@@ -1837,8 +1767,8 @@ public abstract class Converters {
     }
     @Override
     public final java.sql.Time toTime(OptimizedElementArray row,
-        int columnIndex, Calendar cal) throws SQLException {
-      String str = toString(row, columnIndex);
+        int columnPosition, Calendar cal) throws SQLException {
+      String str = toString(row, columnPosition);
       if (str != null) {
         java.sql.Time time;
         try {
@@ -1861,129 +1791,184 @@ public abstract class Converters {
       }
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Reader toCharacterStream(OptimizedElementArray row,
+        int columnPosition, LobService lobService) throws SQLException {
+      return new StringReader(toString(row, columnPosition));
+    }
+    @Override
+    public InputStream toAsciiStream(OptimizedElementArray row,
+        int columnPosition, LobService lobService) throws SQLException {
+      return new ReaderInputStream(new StringReader(toString(row,
+          columnPosition)), StandardCharsets.US_ASCII);
+    }
+    @Override
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getObject(columnPosition - 1);
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      setString(row, columnIndex, x ? "true" : "false");
+      setString(row, columnPosition, x ? "true" : "false");
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      setString(row, columnIndex, Byte.toString(x));
+      setString(row, columnPosition, Byte.toString(x));
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      setString(row, columnIndex, Short.toString(x));
+      setString(row, columnPosition, Short.toString(x));
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      setString(row, columnIndex, Integer.toString(x));
+      setString(row, columnPosition, Integer.toString(x));
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
-      setString(row, columnIndex, Long.toString(x));
+      setString(row, columnPosition, Long.toString(x));
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
-      setString(row, columnIndex, Float.toString(x));
+      setString(row, columnPosition, Float.toString(x));
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
         throws SQLException {
-      setString(row, columnIndex, Double.toString(x));
+      setString(row, columnPosition, Double.toString(x));
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setString(row, columnIndex, x.toPlainString());
+        int columnPosition, BigDecimal x) throws SQLException {
+      setString(row, columnPosition, x.toPlainString());
     }
     @Override
-    public final void setString(OptimizedElementArray row, int columnIndex,
+    public void setString(OptimizedElementArray row, int columnPosition,
         String x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+      row.setObject(columnPosition - 1, x, SnappyType.VARCHAR);
     }
     @Override
-    public void setDate(OptimizedElementArray row, int columnIndex,
+    public void setDate(OptimizedElementArray row, int columnPosition,
         java.sql.Date x) throws SQLException {
-      setString(row, columnIndex, x.toString());
+      setString(row, columnPosition, x.toString());
     }
     @Override
-    public void setTimestamp(OptimizedElementArray row, int columnIndex,
+    public void setTimestamp(OptimizedElementArray row, int columnPosition,
         java.sql.Timestamp x) throws SQLException {
-      setString(row, columnIndex, x.toString());
+      setString(row, columnPosition, x.toString());
     }
     @Override
-    public void setTime(OptimizedElementArray row, int columnIndex,
+    public void setTime(OptimizedElementArray row, int columnPosition,
         java.sql.Time x) throws SQLException {
-      setString(row, columnIndex, x.toString());
+      setString(row, columnPosition, x.toString());
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      final Class<?> c = o.getClass();
-      if (c == String.class) {
-        setString(row, columnIndex, (String)o);
-      }
-      else if (c == Double.class) {
-        setDouble(row, columnIndex, ((Double)o).doubleValue());
-      }
-      else if (c == Float.class) {
-        setFloat(row, columnIndex, ((Float)o).floatValue());
-      }
-      else if (c == Integer.class) {
-        setInteger(row, columnIndex, ((Integer)o).intValue());
-      }
-      else if (c == Byte.class) {
-        setByte(row, columnIndex, ((Byte)o).byteValue());
-      }
-      else if (c == Short.class) {
-        setShort(row, columnIndex, ((Short)o).shortValue());
-      }
-      else if (c == Long.class) {
-        setLong(row, columnIndex, ((Long)o).longValue());
-      }
-      else if (c == Boolean.class) {
-        setBoolean(row, columnIndex, ((Boolean)o).booleanValue());
-      }
-      else if (o instanceof BigDecimal) {
-        setBigDecimal(row, columnIndex, (BigDecimal)o);
-      }
-      else {
-        throw newTypeConversionException(c.getName(), getType().toString());
+      final Class<?> c;
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if ((c = o.getClass()) == String.class) {
+        setString(row, columnPosition, (String)o);
+      } else if (c == Double.class) {
+        setDouble(row, columnPosition, (Double)o);
+      } else if (c == Float.class) {
+        setFloat(row, columnPosition, (Float)o);
+      } else if (c == Integer.class) {
+        setInteger(row, columnPosition, (Integer)o);
+      } else if (c == Byte.class) {
+        setByte(row, columnPosition, (Byte)o);
+      } else if (c == Short.class) {
+        setShort(row, columnPosition, (Short)o);
+      } else if (c == Long.class) {
+        setLong(row, columnPosition, (Long)o);
+      } else if (c == Boolean.class) {
+        setBoolean(row, columnPosition, (Boolean)o);
+      } else if (o instanceof BigDecimal) {
+        setBigDecimal(row, columnPosition, (BigDecimal)o);
+      } else if (o instanceof java.util.Date) {
+        setString(row, columnPosition, o.toString());
+      } else {
+        throw newTypeSetConversionException(
+            c.getName(), getType().toString(), columnPosition);
       }
     }
   }
   public static final ColumnValueConverter STRING_TYPE = new StringConverter();
 
-  public static final ColumnValueConverter CLOB_TYPE = new StringConverter() {
+  static class ClobConverter extends StringConverter {
+    @Override
+    public String toString(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      Clob clob = (Clob)row.getObject(columnPosition - 1);
+      return clob.getSubString(1, (int)clob.length());
+    }
+    @Override
+    public final Clob toClob(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      return (Clob)row.getObject(columnPosition - 1);
+    }
+    @Override
+    public Reader toCharacterStream(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      Clob clob = (Clob)row.getObject(columnPosition - 1);
+      return clob.getCharacterStream();
+    }
+    @Override
+    public InputStream toAsciiStream(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      Clob clob = (Clob)row.getObject(columnPosition - 1);
+      return clob.getAsciiStream();
+    }
+    @Override
+    public Object toObject(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      return toClob(row, columnPosition, lobService);
+    }
+    private void freeClob(OptimizedElementArray row, final int index)
+        throws SQLException {
+      Object o;
+      if (!row.isNull(index) && (o = row.getObject(index)) != null) {
+        ((Clob)o).free();
+      }
+    }
+    @Override
+    public void setString(OptimizedElementArray row, int columnPosition,
+        String x) throws SQLException {
+      final int index = columnPosition - 1;
+      freeClob(row, index);
+      row.setObject(index, x, SnappyType.VARCHAR);
+    }
+    @Override
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
+        throws SQLException {
+      if (o == null) {
+        final int index = columnPosition - 1;
+        freeClob(row, index);
+        row.setNull(index);
+      } else if (o instanceof Clob) {
+        // not chunking in sends yet
+        Clob clob = (Clob)o;
+        long clobLen = clob.length();
+        if (clobLen > Integer.MAX_VALUE) {
+          throw ThriftExceptionUtil.newSQLException(
+              SQLState.BLOB_LENGTH_TOO_LONG, null, clobLen);
+        }
+        setString(row, columnPosition, clob.getSubString(1, (int)clobLen));
+      } else {
+        super.setObject(row, columnPosition, o);
+      }
+    }
+  }
 
+  public static final ColumnValueConverter CLOB_TYPE = new ClobConverter() {
     @Override
     public SnappyType getType() {
       return SnappyType.CLOB;
-    }
-    @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
-        LobService lobService) throws SQLException {
-      return getClobAsString(row.getClobChunk(columnIndex - 1, true),
-          lobService);
-    }
-    @Override
-    public final Clob toClob(OptimizedElementArray row, int columnIndex,
-        LobService lobService) throws SQLException {
-      return lobService.createClob(row.getClobChunk(columnIndex - 1, true));
-    }
-    @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
-        LobService lobService) throws SQLException {
-      return toClob(row, columnIndex, lobService);
     }
   };
 
@@ -1995,9 +1980,9 @@ public abstract class Converters {
       return SnappyType.VARBINARY;
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      byte[] bytes = (byte[])row.getObject(columnIndex - 1);
+      byte[] bytes = (byte[])row.getObject(columnPosition - 1);
       if (bytes != null) {
         return ClientSharedUtils.toHexString(bytes, 0, bytes.length);
       }
@@ -2006,41 +1991,48 @@ public abstract class Converters {
       }
     }
     @Override
-    public byte[] toBytes(OptimizedElementArray row, int columnIndex,
+    public byte[] toBytes(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return (byte[])row.getObject(columnIndex - 1);
+      return (byte[])row.getObject(columnPosition - 1);
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
-        LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+    public InputStream toBinaryStream(OptimizedElementArray row,
+        int columnPosition, LobService lobService) throws SQLException {
+      return new ByteArrayInputStream(toBytes(row, columnPosition, lobService));
     }
     @Override
-    public final void setBytes(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      return row.getObject(columnPosition - 1);
+    }
+    @Override
+    public final void setBytes(OptimizedElementArray row, int columnPosition,
         byte[] x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARBINARY);
+      row.setObject(columnPosition - 1, x, SnappyType.VARBINARY);
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
       try {
         byte[] bytes = ClientSharedUtils.fromHexString(x, 0, x.length());
-        setBytes(row, columnIndex, bytes);
+        setBytes(row, columnPosition, bytes);
       } catch (IllegalArgumentException iae) {
-        throw newTypeConversionException("String", getType().toString(), iae);
+        throw newTypeSetConversionException(
+            "String", getType().toString(), Integer.toString(columnPosition), iae);
       }
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof byte[]) {
-        setBytes(row, columnIndex, (byte[])o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(o.getClass().getName(), "byte[]");
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof byte[]) {
+        setBytes(row, columnPosition, (byte[])o);
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "byte[]", columnPosition);
       }
     }
   };
@@ -2053,9 +2045,9 @@ public abstract class Converters {
       return SnappyType.BLOB;
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      byte[] bytes = toBytes(row, columnIndex, lobService);
+      byte[] bytes = toBytes(row, columnPosition, lobService);
       if (bytes != null) {
         return ClientSharedUtils.toHexString(bytes, 0, bytes.length);
       }
@@ -2064,51 +2056,86 @@ public abstract class Converters {
       }
     }
     @Override
-    public final byte[] toBytes(OptimizedElementArray row, int columnIndex,
+    public final byte[] toBytes(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return getBlobAsBytes(row.getBlobChunk(columnIndex - 1, true),
-          lobService);
+      Blob blob = (Blob)row.getObject(columnPosition - 1);
+      return blob.getBytes(1, (int)blob.length());
     }
     @Override
-    public final Blob toBlob(OptimizedElementArray row, int columnIndex,
+    public final Blob toBlob(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return lobService.createBlob(row.getBlobChunk(columnIndex - 1, true));
-    }
-    // TODO: SW: implement toBinaryStream, toCharacterStream, toAsciiStream for appropriate types
-    @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
-        LobService lobService) throws SQLException {
-      return toBlob(row, columnIndex, lobService);
+      return (Blob)row.getObject(columnPosition - 1);
     }
     @Override
-    public final void setBytes(OptimizedElementArray row, int columnIndex,
+    public InputStream toBinaryStream(OptimizedElementArray row,
+        int columnPosition, LobService lobService) throws SQLException {
+      Blob blob = (Blob)row.getObject(columnPosition - 1);
+      return blob.getBinaryStream();
+    }
+    @Override
+    public Object toObject(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      return toBlob(row, columnPosition, lobService);
+    }
+    private void freeBlob(OptimizedElementArray row, final int index)
+        throws SQLException {
+      Object o;
+      if (!row.isNull(index) && (o = row.getObject(index)) != null) {
+        ((Blob)o).free();
+      }
+    }
+    @Override
+    public final void setBytes(OptimizedElementArray row, int columnPosition,
         byte[] x) throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARBINARY);
+      final int index = columnPosition - 1;
+      freeBlob(row, index);
+      row.setObject(index, x, SnappyType.VARBINARY);
     }
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
+    public void setString(OptimizedElementArray row, int columnPosition, String x)
         throws SQLException {
       try {
         byte[] bytes = ClientSharedUtils.fromHexString(x, 0, x.length());
-        setBytes(row, columnIndex, bytes);
+        setBytes(row, columnPosition, bytes);
       } catch (IllegalArgumentException iae) {
-        throw newTypeConversionException("String", getType().toString(), iae);
+        throw newTypeSetConversionException(
+            "String", getType().toString(), Integer.toString(columnPosition), iae);
       }
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof byte[]) {
-        setBytes(row, columnIndex, (byte[])o);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(o.getClass().getName(), "Blob");
+      if (o == null) {
+        final int index = columnPosition - 1;
+        freeBlob(row, index);
+        row.setNull(index);
+      } else if (o instanceof byte[]) {
+        setBytes(row, columnPosition, (byte[])o);
+      } else if (o instanceof Blob) {
+        // not chunking in sends yet
+        Blob blob = (Blob)o;
+        long blobLen = blob.length();
+        if (blobLen > Integer.MAX_VALUE) {
+          throw ThriftExceptionUtil.newSQLException(
+              SQLState.BLOB_LENGTH_TOO_LONG, null, blobLen);
+        }
+        setBytes(row, columnPosition, blob.getBytes(1, (int)blobLen));
+      } else if (o instanceof String) {
+        setString(row, columnPosition, (String)o);
+      } else {
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "Blob", columnPosition);
       }
     }
   };
+
+  static final ObjectInputStreamCreator javaObjectCreator =
+      new ObjectInputStreamCreator() {
+        @Override
+        public ObjectInputStream create(InputStream stream) throws IOException {
+          return new ClientSharedUtils.ThreadContextObjectInputStream(stream);
+        }
+      };
 
   public static final ColumnValueConverter OBJECT_TYPE =
       new ColumnValueConverter() {
@@ -2118,9 +2145,9 @@ public abstract class Converters {
       return SnappyType.JAVA_OBJECT;
     }
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof Boolean) {
         return (Boolean)o;
       }
@@ -2128,90 +2155,98 @@ public abstract class Converters {
         return (Byte)o != 0;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "boolean");
+        throw newTypeConversionException(
+            getType().toString(), "boolean", columnPosition);
       }
     }
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof Number) {
         return ((Number)o).byteValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "byte");
+        throw newTypeConversionException(
+            getType().toString(), "byte", columnPosition);
       }
     }
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof Number) {
         return ((Number)o).shortValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "short");
+        throw newTypeConversionException(
+            getType().toString(), "short", columnPosition);
       }
     }
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof Number) {
         return ((Number)o).intValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "int");
+        throw newTypeConversionException(
+            getType().toString(), "int", columnPosition);
       }
     }
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof Number) {
         return ((Number)o).longValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "long");
+        throw newTypeConversionException(
+            getType().toString(), "long", columnPosition);
       }
     }
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof Number) {
         return ((Number)o).floatValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "float");
+        throw newTypeConversionException(
+            getType().toString(), "float", columnPosition);
       }
     }
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof Number) {
         return ((Number)o).doubleValue();
       }
       else {
-        throw newTypeConversionException(getType().toString(), "double");
+        throw newTypeConversionException(
+            getType().toString(), "double", columnPosition);
       }
     }
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+        int columnPosition) throws SQLException {
+      Object o = toObject(row, columnPosition);
       if (o instanceof BigDecimal) {
         return (BigDecimal)o;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "BigDecimal");
+        throw newTypeConversionException(
+            getType().toString(), "BigDecimal", columnPosition);
       }
     }
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o != null) {
         return o.toString();
       }
@@ -2220,118 +2255,135 @@ public abstract class Converters {
       }
     }
     @Override
-    public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
+    public java.sql.Date toDate(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof java.sql.Date) {
         return (java.sql.Date)o;
-      }
-      else {
-        throw newTypeConversionException(getType().toString(), "Date");
+      } else if (o instanceof Number) {
+        return Converters.getDate(((Number)o).longValue());
+      } else {
+        throw newTypeConversionException(
+            getType().toString(), "Date", columnPosition);
       }
     }
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
-        int columnIndex, Calendar cal) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+        int columnPosition, Calendar cal) throws SQLException {
+      Object o = toObject(row, columnPosition);
       if (o instanceof java.sql.Timestamp) {
         return (java.sql.Timestamp)o;
-      }
-      else {
-        throw newTypeConversionException(getType().toString(), "Timestamp");
+      } else if (o instanceof Number) {
+        return Converters.getTimestamp(((Number)o).longValue());
+      } else {
+        throw newTypeConversionException(
+            getType().toString(), "Timestamp", columnPosition);
       }
     }
     @Override
-    public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
+    public java.sql.Time toTime(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof java.sql.Time) {
         return (java.sql.Time)o;
-      }
-      else {
-        throw newTypeConversionException(getType().toString(), "Time");
+      } else if (o instanceof Number) {
+        return Converters.getTime(((Number)o).longValue());
+      } else {
+        throw newTypeConversionException(
+            getType().toString(), "Time", columnPosition);
       }
     }
     @Override
-    public byte[] toBytes(OptimizedElementArray row, int columnIndex,
+    public byte[] toBytes(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = toObject(row, columnPosition);
       if (o instanceof byte[]) {
         return (byte[])o;
       }
       else {
-        throw newTypeConversionException(getType().toString(), "byte[]");
+        throw newTypeConversionException(
+            getType().toString(), "byte[]", columnPosition);
       }
     }
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return toObject(row, columnPosition);
+    }
+    private Object toObject(OptimizedElementArray row, int columnPosition)
+        throws SQLException {
+      JavaObjectWrapper jw = (JavaObjectWrapper)row.getObject(columnPosition - 1);
+      if (jw != null) {
+        return jw.getDeserialized(columnPosition, javaObjectCreator);
+      } else {
+        return null;
+      }
     }
     @Override
-    public void setBoolean(OptimizedElementArray row, int columnIndex,
+    public void setBoolean(OptimizedElementArray row, int columnPosition,
         boolean x) throws SQLException {
-      setObject(row, columnIndex, Boolean.valueOf(x));
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
         throws SQLException {
-      setObject(row, columnIndex, Byte.valueOf(x));
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setShort(OptimizedElementArray row, int columnIndex, short x)
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
         throws SQLException {
-      setObject(row, columnIndex, Short.valueOf(x));
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
         throws SQLException {
-      setObject(row, columnIndex, Integer.valueOf(x));
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setLong(OptimizedElementArray row, int columnIndex, long x)
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
         throws SQLException {
-      setObject(row, columnIndex, Long.valueOf(x));
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
         throws SQLException {
-      setObject(row, columnIndex, Float.valueOf(x));
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
         throws SQLException {
-      setObject(row, columnIndex, Double.valueOf(x));
+      setObject(row, columnPosition, x);
     }
     @Override
     public void setBigDecimal(OptimizedElementArray row,
-        int columnIndex, BigDecimal x) throws SQLException {
-      setObject(row, columnIndex, x);
+        int columnPosition, BigDecimal x) throws SQLException {
+      setObject(row, columnPosition, x);
     }
     @Override
-    public final void setString(OptimizedElementArray row, int columnIndex,
+    public final void setString(OptimizedElementArray row, int columnPosition,
         String x) throws SQLException {
-      setObject(row, columnIndex, x);
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setDate(OptimizedElementArray row, int columnIndex,
+    public void setDate(OptimizedElementArray row, int columnPosition,
         java.sql.Date x) throws SQLException {
-      setObject(row, columnIndex, x);
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setTimestamp(OptimizedElementArray row, int columnIndex,
+    public void setTimestamp(OptimizedElementArray row, int columnPosition,
         java.sql.Timestamp x) throws SQLException {
-      setObject(row, columnIndex, x);
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setTime(OptimizedElementArray row, int columnIndex,
+    public void setTime(OptimizedElementArray row, int columnPosition,
         java.sql.Time x) throws SQLException {
-      setObject(row, columnIndex, x);
+      setObject(row, columnPosition, x);
     }
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      row.setObject(columnIndex - 1, o, SnappyType.JAVA_OBJECT);
+      row.setObject(columnPosition - 1,
+          new JavaObjectWrapper(o, columnPosition), SnappyType.JAVA_OBJECT);
     }
   };
 
@@ -2344,9 +2396,9 @@ public abstract class Converters {
     }
 
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = row.getObject(columnPosition - 1);
       if (o != null) {
         return o.toString();
       } else {
@@ -2355,26 +2407,29 @@ public abstract class Converters {
     }
 
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getObject(columnPosition - 1);
     }
 
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+    public void setString(OptimizedElementArray row, int columnPosition,
+        String x) throws SQLException {
+      row.setObject(columnPosition - 1, x, SnappyType.VARCHAR);
     }
 
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof List<?>) {
-        row.setObject(columnIndex - 1, o, SnappyType.ARRAY);
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof List<?>) {
+        row.setObject(columnPosition - 1, o, SnappyType.ARRAY);
       } else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
+        setString(row, columnPosition, (String)o);
       } else {
-        throw newTypeConversionException(o.getClass().getName(), "ARRAY");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "ARRAY", columnPosition);
       }
     }
   };
@@ -2388,9 +2443,9 @@ public abstract class Converters {
     }
 
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = row.getObject(columnPosition - 1);
       if (o != null) {
         return o.toString();
       } else {
@@ -2399,26 +2454,29 @@ public abstract class Converters {
     }
 
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getObject(columnPosition - 1);
     }
 
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+    public void setString(OptimizedElementArray row, int columnPosition,
+        String x) throws SQLException {
+      row.setObject(columnPosition - 1, x, SnappyType.VARCHAR);
     }
 
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof Map<?, ?>) {
-        row.setObject(columnIndex - 1, o, SnappyType.MAP);
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof Map<?, ?>) {
+        row.setObject(columnPosition - 1, o, SnappyType.MAP);
       } else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
+        setString(row, columnPosition, (String)o);
       } else {
-        throw newTypeConversionException(o.getClass().getName(), "MAP");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "MAP", columnPosition);
       }
     }
   };
@@ -2432,9 +2490,9 @@ public abstract class Converters {
     }
 
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
+      Object o = row.getObject(columnPosition - 1);
       if (o != null) {
         return o.toString();
       } else {
@@ -2443,257 +2501,525 @@ public abstract class Converters {
     }
 
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Object toObject(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
+      return row.getObject(columnPosition - 1);
     }
 
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
+    public void setString(OptimizedElementArray row, int columnPosition,
+        String x) throws SQLException {
+      row.setObject(columnPosition - 1, x, SnappyType.VARCHAR);
     }
 
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
+    public void setObject(OptimizedElementArray row, int columnPosition, Object o)
         throws SQLException {
-      if (o instanceof List<?>) {
-        row.setObject(columnIndex - 1, o, SnappyType.STRUCT);
+      if (o == null) {
+        row.setNull(columnPosition - 1);
+      } else if (o instanceof List<?>) {
+        row.setObject(columnPosition - 1, o, SnappyType.STRUCT);
       } else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
+        setString(row, columnPosition, (String)o);
       } else {
-        throw newTypeConversionException(o.getClass().getName(), "STRUCT");
+        throw newTypeSetConversionException(
+            o.getClass().getName(), "STRUCT", columnPosition);
       }
     }
   };
 
-  public static final ColumnValueConverter JSON_TYPE =
-      new ColumnValueConverter() {
-
+  public static final ColumnValueConverter JSON_TYPE = new ClobConverter() {
     @Override
     public SnappyType getType() {
       return SnappyType.JSON;
     }
-    @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
-        LobService lobService) throws SQLException {
-      Object o = row.getObject(columnIndex - 1);
-      if (o != null) {
-        return o.toString();
-      }
-      else {
-        return null;
-      }
-    }
-    @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
-        LobService lobService) throws SQLException {
-      return row.getObject(columnIndex - 1);
-    }
-    @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
-      row.setObject(columnIndex - 1, x, SnappyType.VARCHAR);
-    }
-    @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object o)
-        throws SQLException {
-      if (o instanceof JSONObject) {
-        row.setObject(columnIndex - 1, o, SnappyType.JSON);
-      }
-      else if (o instanceof String) {
-        setString(row, columnIndex, (String)o);
-      }
-      else {
-        throw newTypeConversionException(o.getClass().getName(), "JSON");
-      }
-    }
   };
 
-  public static final ColumnValueConverter NULL_TYPE =
-      new ColumnValueConverter() {
+  public static class NullConverter extends ColumnValueConverter {
 
     @Override
     public SnappyType getType() {
       return SnappyType.NULLTYPE;
     }
+
     @Override
-    public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+    public boolean toBoolean(OptimizedElementArray row, int columnPosition)
         throws SQLException {
       return false;
     }
+
     @Override
-    public byte toByte(OptimizedElementArray row, int columnIndex)
+    public byte toByte(OptimizedElementArray row, int columnPosition)
         throws SQLException {
       return 0;
     }
+
     @Override
-    public short toShort(OptimizedElementArray row, int columnIndex)
+    public short toShort(OptimizedElementArray row, int columnPosition)
         throws SQLException {
       return 0;
     }
+
     @Override
-    public int toInteger(OptimizedElementArray row, int columnIndex)
+    public int toInteger(OptimizedElementArray row, int columnPosition)
         throws SQLException {
       return 0;
     }
+
     @Override
-    public long toLong(OptimizedElementArray row, int columnIndex)
+    public long toLong(OptimizedElementArray row, int columnPosition)
         throws SQLException {
       return 0;
     }
+
     @Override
-    public float toFloat(OptimizedElementArray row, int columnIndex)
+    public float toFloat(OptimizedElementArray row, int columnPosition)
         throws SQLException {
       return 0.0f;
     }
+
     @Override
-    public double toDouble(OptimizedElementArray row, int columnIndex)
+    public double toDouble(OptimizedElementArray row, int columnPosition)
         throws SQLException {
       return 0.0;
     }
+
     @Override
     public BigDecimal toBigDecimal(OptimizedElementArray row,
-        int columnIndex) throws SQLException {
-      return BigDecimal.ZERO;
+        int columnPosition) throws SQLException {
+      return null;
     }
+
     @Override
-    public String toString(OptimizedElementArray row, int columnIndex,
+    public String toString(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
       return null;
     }
+
     @Override
-    public java.sql.Date toDate(OptimizedElementArray row, int columnIndex,
+    public java.sql.Date toDate(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
       return null;
     }
+
     @Override
     public java.sql.Timestamp toTimestamp(OptimizedElementArray row,
-        int columnIndex, Calendar cal) throws SQLException {
+        int columnPosition, Calendar cal) throws SQLException {
       return null;
     }
+
     @Override
-    public java.sql.Time toTime(OptimizedElementArray row, int columnIndex,
+    public java.sql.Time toTime(OptimizedElementArray row, int columnPosition,
         Calendar cal) throws SQLException {
       return null;
     }
+
     @Override
-    public byte[] toBytes(OptimizedElementArray row, int columnIndex,
+    public byte[] toBytes(OptimizedElementArray row, int columnPosition,
         LobService lobService) throws SQLException {
       return null;
     }
+
     @Override
-    public Object toObject(OptimizedElementArray row, int columnIndex,
+    public Blob toBlob(OptimizedElementArray row, int columnIndex,
         LobService lobService) throws SQLException {
       return null;
     }
+
     @Override
-    public void setString(OptimizedElementArray row, int columnIndex, String x)
-        throws SQLException {
-      throw new AssertionError("unexpected invocation");
+    public InputStream toBinaryStream(OptimizedElementArray row,
+        int columnIndex, LobService lobService) throws SQLException {
+      return null;
     }
+
     @Override
-    public void setObject(OptimizedElementArray row, int columnIndex, Object x)
-        throws SQLException {
-      throw new AssertionError("unexpected invocation");
+    public Clob toClob(OptimizedElementArray row, int columnIndex,
+        LobService lobService) throws SQLException {
+      return null;
     }
+
+    @Override
+    public Reader toCharacterStream(OptimizedElementArray row,
+        int columnIndex, LobService lobService) throws SQLException {
+      return null;
+    }
+
+    @Override
+    public InputStream toAsciiStream(OptimizedElementArray row,
+        int columnIndex, LobService lobService) throws SQLException {
+      return null;
+    }
+
+    @Override
+    public Object toObject(OptimizedElementArray row, int columnPosition,
+        LobService lobService) throws SQLException {
+      return null;
+    }
+
+    @Override
+    public void setString(OptimizedElementArray row, int columnPosition,
+        String x) throws SQLException {
+      throw Converters.newTypeSetConversionException(
+          getType().toString(), "String", columnPosition);
+    }
+
+    @Override
+    public void setObject(OptimizedElementArray row, int columnPosition,
+        Object x) throws SQLException {
+      throw Converters.newTypeSetConversionException(
+          getType().toString(), "Object", columnPosition);
+    }
+
     @Override
     public boolean isNull() {
       return true;
     }
+  }
+
+  /**
+   * This is used to delegate set* calls that must fail if the underlying
+   * column type itself is NULLTYPE. Else if the value is null but underlying
+   * type is a proper one, then {@link #NULL_TYPE} is used.
+   */
+  static final ColumnValueConverter NULL_ONLY_TYPE = new NullConverter();
+
+  public static final ColumnValueConverter NULL_TYPE = new NullConverter() {
+
+    private ColumnValueConverter getConverterForSet(int snappyTypeValue,
+        String targetType, int columnPosition) throws SQLException {
+      ColumnValueConverter conv = getConverter(snappyTypeValue, targetType,
+          true, columnPosition);
+      // for the rare case when underlying type itself is a NULLTYPE don't fall
+      // into infinite recursion but use NULL_ONLY_TYPE to fail for set* calls
+      return (conv != NULL_TYPE) ? conv : NULL_ONLY_TYPE;
+    }
+
+    @Override
+    public void setBoolean(OptimizedElementArray row, int columnPosition, boolean x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnPosition - 1), "boolean",
+          columnPosition).setBoolean(row, columnPosition, x);
+    }
+
+    @Override
+    public void setByte(OptimizedElementArray row, int columnPosition, byte x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnPosition - 1), "byte",
+          columnPosition).setByte(row, columnPosition, x);
+    }
+
+    @Override
+    public void setShort(OptimizedElementArray row, int columnPosition, short x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnPosition - 1), "short",
+          columnPosition).setShort(row, columnPosition, x);
+    }
+
+    @Override
+    public void setInteger(OptimizedElementArray row, int columnPosition, int x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnPosition - 1), "int",
+          columnPosition).setInteger(row, columnPosition, x);
+    }
+
+    @Override
+    public void setLong(OptimizedElementArray row, int columnPosition, long x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnPosition - 1), "long",
+          columnPosition).setLong(row, columnPosition, x);
+    }
+
+    @Override
+    public void setFloat(OptimizedElementArray row, int columnPosition, float x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnPosition - 1), "float",
+          columnPosition).setFloat(row, columnPosition, x);
+    }
+
+    @Override
+    public void setDouble(OptimizedElementArray row, int columnPosition, double x)
+        throws SQLException {
+      // mark as non-null and call the underlying type's method
+      getConverterForSet(row.setNotNull(columnPosition - 1), "double",
+          columnPosition).setDouble(row, columnPosition, x);
+    }
+
+    @Override
+    public void setBigDecimal(OptimizedElementArray row, int columnPosition,
+        BigDecimal x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "BigDecimal",
+            columnPosition).setBigDecimal(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setString(OptimizedElementArray row, int columnPosition,
+        String x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "string",
+            columnPosition).setString(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setDate(OptimizedElementArray row, int columnPosition, Date x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "date",
+            columnPosition).setDate(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setTime(OptimizedElementArray row, int columnPosition, Time x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "time",
+            columnPosition).setTime(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setTimestamp(OptimizedElementArray row, int columnPosition,
+        Timestamp x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "timestamp",
+            columnPosition).setTimestamp(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setBytes(OptimizedElementArray row, int columnPosition, byte[] x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "byte[]",
+            columnPosition).setBytes(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setBlob(OptimizedElementArray row, int columnPosition, Blob x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "blob",
+            columnPosition).setBlob(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setBinaryStream(OptimizedElementArray row, int columnPosition,
+        InputStream stream, long length,
+        LobService lobService) throws SQLException {
+      if (stream != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "BinaryStream",
+            columnPosition).setBinaryStream(row, columnPosition, stream,
+            length, lobService);
+      }
+    }
+
+    @Override
+    public void setClob(OptimizedElementArray row, int columnPosition, Clob x)
+        throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "clob",
+            columnPosition).setClob(row, columnPosition, x);
+      }
+    }
+
+    @Override
+    public void setCharacterStream(OptimizedElementArray row, int columnPosition,
+        Reader reader, long length, LobService lobService) throws SQLException {
+      if (reader != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "CharacterStream",
+            columnPosition).setCharacterStream(row, columnPosition, reader,
+            length, lobService);
+      }
+    }
+
+    @Override
+    public void setAsciiStream(OptimizedElementArray row, int columnPosition,
+        InputStream stream, long length,
+        LobService lobService) throws SQLException {
+      if (stream != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "AsciiStream",
+            columnPosition).setAsciiStream(row, columnPosition, stream,
+            length, lobService);
+      }
+    }
+
+    @Override
+    public void setObject(OptimizedElementArray row, int columnPosition,
+        Object x) throws SQLException {
+      if (x != null) {
+        // mark as non-null and call the underlying type's method
+        getConverterForSet(row.setNotNull(columnPosition - 1), "object",
+            columnPosition).setObject(row, columnPosition, x);
+      }
+    }
   };
 
   static final ColumnValueConverter[] typeConverters;
+  static final int[] jdbcTypes;
 
   static {
     final SnappyType[] universe = SnappyType.values();
     typeConverters = new ColumnValueConverter[universe.length + 2];
+    jdbcTypes = new int[universe.length + 2];
     for (SnappyType type : universe) {
+      final int typeValue = type.getValue();
       switch (type) {
         case CHAR:
+          jdbcTypes[typeValue] = Types.CHAR;
+          typeConverters[typeValue] = STRING_TYPE;
+          break;
         case VARCHAR:
+          jdbcTypes[typeValue] = Types.VARCHAR;
+          typeConverters[typeValue] = STRING_TYPE;
+          break;
         case LONGVARCHAR:
-          typeConverters[type.ordinal()] = STRING_TYPE;
+          jdbcTypes[typeValue] = Types.LONGVARCHAR;
+          typeConverters[typeValue] = STRING_TYPE;
           break;
         case INTEGER:
-          typeConverters[type.ordinal()] = INT_TYPE;
+          jdbcTypes[typeValue] = Types.INTEGER;
+          typeConverters[typeValue] = INT_TYPE;
           break;
         case BOOLEAN:
-          typeConverters[type.ordinal()] = BOOLEAN_TYPE;
+          jdbcTypes[typeValue] = Types.BOOLEAN;
+          typeConverters[typeValue] = BOOLEAN_TYPE;
           break;
         case TINYINT:
-          typeConverters[type.ordinal()] = BYTE_TYPE;
+          jdbcTypes[typeValue] = Types.TINYINT;
+          typeConverters[typeValue] = BYTE_TYPE;
           break;
         case SMALLINT:
-          typeConverters[type.ordinal()] = SHORT_TYPE;
+          jdbcTypes[typeValue] = Types.SMALLINT;
+          typeConverters[typeValue] = SHORT_TYPE;
           break;
         case BIGINT:
-          typeConverters[type.ordinal()] = LONG_TYPE;
+          jdbcTypes[typeValue] = Types.BIGINT;
+          typeConverters[typeValue] = LONG_TYPE;
           break;
-        case REAL:
-          typeConverters[type.ordinal()] = REAL_TYPE;
+        case FLOAT:
+          jdbcTypes[typeValue] = Types.REAL;
+          typeConverters[typeValue] = FLOAT_TYPE;
           break;
         case DOUBLE:
-        case FLOAT:
-          typeConverters[type.ordinal()] = DOUBLE_TYPE;
+          jdbcTypes[typeValue] = Types.DOUBLE;
+          typeConverters[typeValue] = DOUBLE_TYPE;
           break;
         case DECIMAL:
-          typeConverters[type.ordinal()] = DECIMAL_TYPE;
+          jdbcTypes[typeValue] = Types.DECIMAL;
+          typeConverters[typeValue] = DECIMAL_TYPE;
           break;
         case DATE:
-          typeConverters[type.ordinal()] = DATE_TYPE;
+          jdbcTypes[typeValue] = Types.DATE;
+          typeConverters[typeValue] = DATE_TYPE;
           break;
         case TIME:
-          typeConverters[type.ordinal()] = TIME_TYPE;
+          jdbcTypes[typeValue] = Types.TIME;
+          typeConverters[typeValue] = TIME_TYPE;
           break;
         case TIMESTAMP:
-          typeConverters[type.ordinal()] = TIMESTAMP_TYPE;
+          jdbcTypes[typeValue] = Types.TIMESTAMP;
+          typeConverters[typeValue] = TIMESTAMP_TYPE;
           break;
         case BINARY:
+          jdbcTypes[typeValue] = Types.BINARY;
+          typeConverters[typeValue] = BINARY_TYPE;
+          break;
         case VARBINARY:
+          jdbcTypes[typeValue] = Types.VARBINARY;
+          typeConverters[typeValue] = BINARY_TYPE;
+          break;
         case LONGVARBINARY:
-          typeConverters[type.ordinal()] = BINARY_TYPE;
+          jdbcTypes[typeValue] = Types.LONGVARBINARY;
+          typeConverters[typeValue] = BINARY_TYPE;
           break;
         case CLOB:
-          typeConverters[type.ordinal()] = CLOB_TYPE;
+          jdbcTypes[typeValue] = Types.CLOB;
+          typeConverters[typeValue] = CLOB_TYPE;
           break;
         case BLOB:
-          typeConverters[type.ordinal()] = BLOB_TYPE;
+          jdbcTypes[typeValue] = Types.BLOB;
+          typeConverters[typeValue] = BLOB_TYPE;
           break;
         case ARRAY:
-          typeConverters[type.ordinal()] = ARRAY_TYPE;
+          jdbcTypes[typeValue] = Types.ARRAY;
+          typeConverters[typeValue] = ARRAY_TYPE;
           break;
         case MAP:
-          typeConverters[type.ordinal()] = MAP_TYPE;
+          jdbcTypes[typeValue] = JDBC40Translation.MAP;
+          typeConverters[typeValue] = MAP_TYPE;
         case STRUCT:
-          typeConverters[type.ordinal()] = STRUCT_TYPE;
+          jdbcTypes[typeValue] = Types.STRUCT;
+          typeConverters[typeValue] = STRUCT_TYPE;
         case JSON:
-          typeConverters[type.ordinal()] = JSON_TYPE;
+          jdbcTypes[typeValue] = JDBC40Translation.JSON;
+          typeConverters[typeValue] = JSON_TYPE;
           break;
         case NULLTYPE:
-          typeConverters[type.ordinal()] = NULL_TYPE;
+          jdbcTypes[typeValue] = Types.NULL;
+          typeConverters[typeValue] = NULL_TYPE;
           break;
         case JAVA_OBJECT:
+          jdbcTypes[typeValue] = Types.JAVA_OBJECT;
+          typeConverters[typeValue] = OBJECT_TYPE;
+          break;
         case OTHER:
-          typeConverters[type.ordinal()] = OBJECT_TYPE;
+          jdbcTypes[typeValue] = Types.OTHER;
+          typeConverters[typeValue] = OBJECT_TYPE;
           break;
         default:
-          // no support for other types yet
+          jdbcTypes[typeValue] = Types.OTHER;
+          // no conversion support for other types
           break;
       }
     }
   }
 
   public static SQLException newTypeConversionException(
-      String sourceType, String targetType, Throwable cause) {
+      String sourceType, String targetType, String column, Throwable cause) {
     return ThriftExceptionUtil.newSQLException(
-        SQLState.LANG_DATA_TYPE_GET_MISMATCH, cause, sourceType,
-        targetType, null);
+        SQLState.LANG_DATA_TYPE_GET_MISMATCH, cause, targetType,
+        sourceType, column);
   }
 
   public static SQLException newTypeConversionException(
-      String sourceType, String targetType) {
-    return newTypeConversionException(sourceType, targetType, null);
+      String sourceType, String targetType, int columnPosition) {
+    return newTypeConversionException(sourceType, targetType,
+        Integer.toString(columnPosition), null);
+  }
+
+  public static SQLException newTypeSetConversionException(
+      String sourceType, String targetType, String column, Throwable cause) {
+    return ThriftExceptionUtil.newSQLException(
+        SQLState.LANG_DATA_TYPE_SET_MISMATCH, cause, sourceType, targetType,
+        column);
+  }
+
+  public static SQLException newTypeSetConversionException(
+      String sourceType, String targetType, int columnPosition) {
+    return newTypeSetConversionException(sourceType, targetType,
+        Integer.toString(columnPosition), null);
   }
 
   public static SQLException newOutOfRangeException(
@@ -2713,23 +3039,32 @@ public abstract class Converters {
         cause, type, column);
   }
 
-  public static ColumnValueConverter getConverter(SnappyType type,
-      String targetType) throws SQLException {
-    ColumnValueConverter converter = typeConverters[type.ordinal()];
+  public static ColumnValueConverter getConverter(int snappyTypeValue,
+      String targetType, boolean forSet, int columnPosition) throws SQLException {
+    ColumnValueConverter converter = snappyTypeValue > 0
+        ? typeConverters[snappyTypeValue] : NULL_TYPE;
     if (converter != null) {
       return converter;
-    }
-    else {
-      throw newTypeConversionException(type.toString(), targetType);
+    } else {
+      SnappyType type = SnappyType.findByValue(snappyTypeValue);
+      String typeString = type != null ? type.toString()
+          : Integer.toString(snappyTypeValue);
+      if (forSet) {
+        throw newTypeSetConversionException(
+            typeString, targetType, Integer.toString(columnPosition), null);
+      } else {
+        throw newTypeConversionException(
+            typeString, targetType, Integer.toString(columnPosition), null);
+      }
     }
   }
 
   /**
    * Get the {@link BigDecimal} for given non-null {@link Decimal} value.
-   * 
+   *
    * @param decimal
    *          the {@link Decimal} to convert to {@link BigDecimal}
-   * 
+   *
    * @throws NullPointerException
    *           if decimal argument is null
    */
@@ -2738,12 +3073,25 @@ public abstract class Converters {
         new BigInteger(decimal.signum, decimal.getMagnitude()), decimal.scale);
   }
 
+  public static BigDecimal getBigDecimal(String str, int columnPosition)
+      throws SQLException {
+    if (str != null) {
+      try {
+        return new BigDecimal(str);
+      } catch (NumberFormatException nfe) {
+        throw newFormatException("decimal", columnPosition, nfe);
+      }
+    } else {
+      return null;
+    }
+  }
+
   /**
    * Get the {@link Decimal} for given non-null {@link BigDecimal} value.
-   * 
+   *
    * @param decimal
    *          the {@link BigDecimal} to convert to {@link Decimal}
-   * 
+   *
    * @throws NullPointerException
    *           if decimal argument is null
    */
@@ -2754,8 +3102,16 @@ public abstract class Converters {
         .abs().toByteArray()));
   }
 
-  public static DateTime getDateTime(java.util.Date date) {
-    return new DateTime(date.getTime() / 1000L);
+  public static java.sql.Date getDate(long date) {
+    return new java.sql.Date(date * 1000L);
+  }
+
+  public static java.sql.Time getTime(long time) {
+    return new java.sql.Time(time * 1000L);
+  }
+
+  public static long getDateTime(java.util.Date date) {
+    return date.getTime() / 1000L;
   }
 
   public static BigDecimal adjustScale(final BigDecimal decimal) {
@@ -2767,12 +3123,12 @@ public abstract class Converters {
     }
   }
 
-  public static long getLong(String str, int columnIndex) throws SQLException {
+  public static long getLong(String str, int columnPosition) throws SQLException {
     if (str != null) {
       try {
         return Long.parseLong(str.trim());
       } catch (NumberFormatException nfe) {
-        throw newFormatException("long", columnIndex, nfe);
+        throw newFormatException("long", columnPosition, nfe);
       }
     }
     else {
@@ -2780,7 +3136,7 @@ public abstract class Converters {
     }
   }
 
-  public static long getLong(BigDecimal decimal, int columnIndex)
+  public static long getLong(BigDecimal decimal, int columnPosition)
       throws SQLException {
     if (decimal != null) {
       if ((decimal.compareTo(MINLONG_MINUS_ONE) == 1)
@@ -2788,7 +3144,7 @@ public abstract class Converters {
         return decimal.longValue();
       }
       else {
-        throw newOutOfRangeException("long", columnIndex);
+        throw newOutOfRangeException("long", columnPosition);
       }
     }
     else {
@@ -2796,13 +3152,13 @@ public abstract class Converters {
     }
   }
 
-  public static double getDouble(String str, int columnIndex)
+  public static double getDouble(String str, int columnPosition)
       throws SQLException {
     if (str != null) {
       try {
         return Double.parseDouble(str.trim());
       } catch (NumberFormatException nfe) {
-        throw newFormatException("double", columnIndex, nfe);
+        throw newFormatException("double", columnPosition, nfe);
       }
     }
     else {
@@ -2810,7 +3166,7 @@ public abstract class Converters {
     }
   }
 
-  public static double getDouble(BigDecimal decimal, int columnIndex)
+  public static double getDouble(BigDecimal decimal, int columnPosition)
       throws SQLException {
     if (decimal != null) {
       double v = decimal.doubleValue();
@@ -2818,7 +3174,7 @@ public abstract class Converters {
         return v;
       }
       else {
-        throw newOutOfRangeException("double", columnIndex);
+        throw newOutOfRangeException("double", columnPosition);
       }
     }
     else {
@@ -2826,249 +3182,134 @@ public abstract class Converters {
     }
   }
 
-  public static java.sql.Timestamp getTimestamp(Timestamp ts) {
-    java.sql.Timestamp jts = new java.sql.Timestamp(ts.secsSinceEpoch * 1000L);
-    if (ts.isSetNanos()) {
-      jts.setNanos(ts.nanos);
+  public static java.sql.Timestamp getTimestamp(long ts) {
+    // pass only the seconds for epoch time
+    long seconds = ts / NANOS_PER_SECOND;
+    long nanos = ts % NANOS_PER_SECOND;
+    if (nanos < 0) {
+      nanos += NANOS_PER_SECOND;
+      seconds--;
     }
+    java.sql.Timestamp jts = new java.sql.Timestamp(seconds * 1000L);
+    jts.setNanos((int)nanos);
     return jts;
   }
 
-  public static Timestamp getTimestamp(java.sql.Timestamp jts) {
-    Timestamp ts = new Timestamp(jts.getTime() / 1000L);
-    int nanos = jts.getNanos();
-    if (nanos != 0) {
-      ts.setNanos(nanos);
-    }
-    return ts;
+  public static long getTimestampNanos(java.sql.Timestamp ts) {
+    return (ts.getTime() * NANOS_PER_MILLI) + (ts.getNanos() % NANOS_PER_MILLI);
   }
 
-  public static String getClobAsString(ClobChunk clob, LobService lobService)
-      throws SQLException {
-    if (clob.last) {
-      return clob.chunk;
-    }
-
-    final long totalLength = clob.getTotalLength();
-    if (totalLength <= 0) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_NONPOSITIVE_LENGTH, null, totalLength);
-    }
-    if (totalLength > Integer.MAX_VALUE) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, Long.toString(totalLength),
-          Long.toString(Integer.MAX_VALUE));
-    }
-    if (!clob.isSetLobId()) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.LOB_LOCATOR_INVALID, new RuntimeException("missing LOB id"));
-    }
-
-    final int lobId = clob.lobId;
-    final StringBuilder sb = new StringBuilder((int)totalLength);
-    String chunk = clob.chunk;
-    sb.append(chunk);
-    int offset = 0;
-    while (!clob.last) {
-      int chunkSize = chunk.length();
-      offset += chunkSize;
-      clob = lobService.getClobChunk(lobId, offset, chunkSize, true);
-      chunk = clob.chunk;
-      sb.append(chunk);
-    }
-    return sb.toString();
+  public static long getTimestampNanos(java.util.Date date) {
+    return date.getTime() * NANOS_PER_MILLI;
   }
 
-  public static byte[] getBlobAsBytes(BlobChunk blob, LobService lobService)
-      throws SQLException {
-    if (blob.last) {
-      return blob.getChunk();
-    }
-
-    final long totalLength = blob.getTotalLength();
-    if (totalLength <= 0) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_NONPOSITIVE_LENGTH, null, totalLength);
-    }
-    if (totalLength > Integer.MAX_VALUE) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, Long.toString(totalLength),
-          Long.toString(Integer.MAX_VALUE));
-    }
-    if (!blob.isSetLobId()) {
-      throw ThriftExceptionUtil.newSQLException(
-          SQLState.LOB_LOCATOR_INVALID, new RuntimeException("missing LOB id"));
-    }
-
-    final int lobId = blob.lobId;
-    final byte[] fullBytes = new byte[(int)totalLength];
-    byte[] chunk = blob.getChunk();
-    int chunkSize = chunk.length;
-    System.arraycopy(chunk, 0, fullBytes, 0, chunkSize);
-    int offset = 0;
-    while (!blob.last) {
-      offset += chunkSize;
-      blob = lobService.getBlobChunk(lobId, offset, chunkSize, true);
-      chunk = blob.getChunk();
-      chunkSize = chunk.length;
-      System.arraycopy(chunk, 0, fullBytes, offset, chunkSize);
-    }
-    return fullBytes;
-  }
-
-  public static Object getJavaObject(byte[] bytes, int columnIndex)
-      throws SQLException {
+  public static Object getJavaObject(byte[] bytes, int columnPosition,
+      ObjectInputStreamCreator creator) throws SQLException {
     ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-    Object obj;
-    try {
-      obj = new ObjectInputStream(in).readObject();
-    } catch (Exception e) {
+    try (ObjectInputStream ois = creator.create(in)) {
+      return ois.readObject();
+    } catch (IOException | ClassNotFoundException e) {
+      LOGGER.warn("Exception in deserialization of java object", e);
       throw ThriftExceptionUtil.newSQLException(
-          SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, e, columnIndex);
+          SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, e,
+          "Java object deserialization at position=" + columnPosition);
     }
-    return obj;
   }
 
-  public static byte[] getJavaObjectAsBytes(Object o) throws IOException {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream os = new ObjectOutputStream(bos);
-    os.writeObject(o);
-    os.flush();
-    return bos.toByteArray();
+  public static byte[] getJavaObjectAsBytes(Object o, int columnPosition)
+      throws SQLException {
+    try {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      ObjectOutputStream os = new ObjectOutputStream(bos);
+      os.writeObject(o);
+      os.flush();
+      return bos.toByteArray();
+    } catch (IOException ioe) {
+      LOGGER.warn("Exception in serialization of java object", ioe);
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe,
+          "Java object serialization at position=" + columnPosition);
+    }
   }
 
   /**
    * Get JDBC {@link Types} type for given {@link SnappyType}.
    */
   public static int getJdbcType(SnappyType type) {
-    switch (type) {
-      case ARRAY:
-        return Types.ARRAY;
-      case BIGINT:
-        return Types.BIGINT;
-      case BINARY:
-        return Types.BINARY;
-      case BLOB:
-        return Types.BLOB;
-      case BOOLEAN:
-        return Types.BOOLEAN;
-      case CHAR:
-        return Types.CHAR;
-      case CLOB:
-        return Types.CLOB;
-      case DATE:
-        return Types.DATE;
-      case DECIMAL:
-        return Types.DECIMAL;
-      case DOUBLE:
-        return Types.DOUBLE;
-      case FLOAT:
-        return Types.FLOAT;
-      case INTEGER:
-        return Types.INTEGER;
-      case JAVA_OBJECT:
-        return Types.JAVA_OBJECT;
-      case JSON:
-        return JDBC40Translation.JSON;
-      case LONGVARBINARY:
-        return Types.LONGVARBINARY;
-      case LONGVARCHAR:
-        return Types.LONGVARCHAR;
-      case MAP:
-        return JDBC40Translation.MAP;
-      case NULLTYPE:
-        return Types.NULL;
-      case OTHER:
-        return Types.OTHER;
-      case REAL:
-        return Types.REAL;
-      case SMALLINT:
-        return Types.SMALLINT;
-      case SQLXML:
-        return Types.SQLXML;
-      case STRUCT:
-        return Types.STRUCT;
-      case TIME:
-        return Types.TIME;
-      case TIMESTAMP:
-        return Types.TIMESTAMP;
-      case TINYINT:
-        return Types.TINYINT;
-      case VARBINARY:
-        return Types.VARBINARY;
-      case VARCHAR:
-        return Types.VARCHAR;
-      default:
-        return Types.OTHER;
-    }
+    return type != null ? jdbcTypes[type.getValue()] : Types.NULL;
   }
 
   /**
    * Get {@link SnappyType} for given JDBC {@link Types}.
    */
   public static SnappyType getThriftSQLType(int jdbcType) {
+    return getThriftSQLType(jdbcType, false);
+  }
+
+  /**
+   * Get {@link SnappyType} for given JDBC {@link Types}.
+   */
+  public static SnappyType getThriftSQLType(int jdbcType,
+      boolean useStringForDecimal) {
     switch (jdbcType) {
-      case Types.ARRAY:
-        return SnappyType.ARRAY;
-      case Types.BIGINT:
-        return SnappyType.BIGINT;
-      case Types.BINARY:
-        return SnappyType.BINARY;
-      case Types.BIT:
-        return SnappyType.BOOLEAN;
-      case Types.BLOB:
-        return SnappyType.BLOB;
-      case Types.BOOLEAN:
-        return SnappyType.BOOLEAN;
-      case Types.CHAR:
-        return SnappyType.CHAR;
-      case Types.CLOB:
-        return SnappyType.CLOB;
-      case Types.DATE:
-        return SnappyType.DATE;
-      case Types.DECIMAL:
-        return SnappyType.DECIMAL;
-      case Types.DOUBLE:
-        return SnappyType.DOUBLE;
-      case Types.FLOAT:
-        // Derby FLOAT can be DOUBLE or REAL depending on precision
-        return SnappyType.FLOAT;
+      case Types.VARCHAR:
+        return SnappyType.VARCHAR;
       case Types.INTEGER:
         return SnappyType.INTEGER;
+      case Types.BIGINT:
+        return SnappyType.BIGINT;
+      case Types.DOUBLE:
+      // GemFireXD FLOAT can be DOUBLE or REAL depending on precision
+      case Types.FLOAT:
+        return SnappyType.DOUBLE;
+      case Types.DECIMAL:
+      case Types.NUMERIC:
+        return useStringForDecimal ? SnappyType.VARCHAR : SnappyType.DECIMAL;
+      case Types.CHAR:
+        return SnappyType.CHAR;
+      case Types.DATE:
+        return SnappyType.DATE;
+      case Types.TIMESTAMP:
+        return SnappyType.TIMESTAMP;
+      case Types.SMALLINT:
+        return SnappyType.SMALLINT;
+      case Types.BOOLEAN:
+      case Types.BIT:
+        return SnappyType.BOOLEAN;
+      case Types.REAL:
+        return SnappyType.FLOAT;
+      case Types.LONGVARCHAR:
+        return SnappyType.LONGVARCHAR;
+      case Types.BLOB:
+        return SnappyType.BLOB;
+      case Types.CLOB:
+        return SnappyType.CLOB;
+      case Types.ARRAY:
+        return SnappyType.ARRAY;
+      case Types.BINARY:
+        return SnappyType.BINARY;
       case Types.JAVA_OBJECT:
         return SnappyType.JAVA_OBJECT;
       case JDBC40Translation.JSON:
         return SnappyType.JSON;
       case Types.LONGVARBINARY:
         return SnappyType.LONGVARBINARY;
-      case Types.LONGVARCHAR:
-        return SnappyType.LONGVARCHAR;
       case JDBC40Translation.MAP:
         return SnappyType.MAP;
       case Types.NULL:
         return SnappyType.NULLTYPE;
-      case Types.NUMERIC:
-        return SnappyType.DECIMAL;
       case Types.OTHER:
         return SnappyType.OTHER;
-      case Types.REAL:
-        return SnappyType.REAL;
-      case Types.SMALLINT:
-        return SnappyType.SMALLINT;
       case Types.SQLXML:
         return SnappyType.SQLXML;
       case Types.STRUCT:
         return SnappyType.STRUCT;
       case Types.TIME:
         return SnappyType.TIME;
-      case Types.TIMESTAMP:
-        return SnappyType.TIMESTAMP;
       case Types.TINYINT:
         return SnappyType.TINYINT;
       case Types.VARBINARY:
         return SnappyType.VARBINARY;
-      case Types.VARCHAR:
-        return SnappyType.VARCHAR;
       default:
         return SnappyType.OTHER;
     }
@@ -3134,5 +3375,53 @@ public abstract class Converters {
       default:
         return snappydataConstants.TRANSACTION_NO_CHANGE;
     }
+  }
+
+  /**
+   * Wraps a java object and its serialized form. Serves two purpose:
+   * <p>
+   * a) Serialize/deserialize at application layer calls rather than during
+   * serialization/deserialization at transport layer else latter can leave
+   * dangling data on socket (or already flushed to the server)
+   * <p>
+   * b) Avoid multiple serialization/deserialization for an object.
+   */
+  public static final class JavaObjectWrapper {
+    private Object deserialized;
+    private byte[] serialized;
+
+    public JavaObjectWrapper(Object deserialized, int columnPosition)
+        throws SQLException {
+      this.deserialized = deserialized;
+      this.serialized = Converters.getJavaObjectAsBytes(
+          this.deserialized, columnPosition);
+    }
+
+    public JavaObjectWrapper(byte[] serialized) {
+      this.serialized = serialized;
+    }
+
+    public Object getDeserialized(int columnPosition,
+        ObjectInputStreamCreator creator) throws SQLException {
+      final Object deserialized = this.deserialized;
+      if (deserialized != null) {
+        return deserialized;
+      } else {
+        return (this.deserialized = Converters.getJavaObject(
+            this.serialized, columnPosition, creator));
+      }
+    }
+
+    public byte[] getSerialized() {
+      return this.serialized;
+    }
+  }
+
+  /**
+   * Callback to enable creation of an ObjectInputStream given an InputStream
+   * (primarily for custom class loading).
+   */
+  public interface ObjectInputStreamCreator {
+    ObjectInputStream create(InputStream stream) throws IOException;
   }
 }

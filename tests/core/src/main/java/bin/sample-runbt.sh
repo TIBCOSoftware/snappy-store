@@ -28,7 +28,7 @@ shift
 
 export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/main
 export PATH=$JAVA_HOME:$PATH:$JTESTS
-export GEMFIRE=$SNAPPYDATADIR/build-artifacts/scala-2.10/store
+export GEMFIRE=$SNAPPYDATADIR/build-artifacts/scala-2.11/store
 export OUTPUT_DIR=$resultDir
 export myOS=`uname | tr "cyglinsu" "CYGLINSU" | cut -b1-3`
 
@@ -83,19 +83,19 @@ filename=`tr "/" "\n" <<< $list | tail -1`
 
 export releaseVersion=`echo "${filename%*.*}"| cut -d'-' -f5-6`
 
-assemblyJarName=`ls $GEMFIRE/../snappy/lib/snappydata-assembly*`
-assemblyJarFilename=`tr "/" "\n" <<< $assemblyJarName | tail -1`
-export assemblyJarVersion=`echo "${assemblyJarFilename%*.*}"| cut -d'_' -f2`
-
-snappyTestsJarName=`ls $SNAPPYDATADIR/dtests/build-artifacts/scala-2.10/libs/snappydata-store-scala-tests*`
+snappyTestsJarName=`ls $SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/snappydata-store-scala-tests*`
 snappyTestsJarFilename=`tr "/" "\n" <<< $snappyTestsJarName | tail -1`
 export snappyTestsJarVersion=`echo "${snappyTestsJarFilename%*.*}"| cut -d'-' -f5-6`
 
-export CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.10/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar:$GEMFIRE/../snappy/lib/snappydata-assembly_${assemblyJarVersion}.jar
+CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar
+LIB=$SNAPPYDATADIR/build-artifacts/scala-2.11/snappy/jars
+for i in $LIB/*.jar; do CLASSPATH=$CLASSPATH:$i; done
+
+export CLASSPATH=$CLASSPATH
 export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/main
 #export JTESTS_RESOURCES=$SNAPPYDATADIR/store/tests/core/src/main/java
 
 # This is the command to run the test, make sure the correct release version of jar used or change the jar path to use correctly. Also change the jar name in sql/snappy.local.conf if incorrect
 
 echo $SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS  -Dbt.grepLogs=true -DremovePassedTest=$deleteTestLogs -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
-$SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS  -Dbt.grepLogs=true -DremovePassedTest=$deleteTestLogs -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
+$SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS -Dbt.mergeLogFiles=true -Dbt.grepLogs=true -DremovePassedTest=$deleteTestLogs -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}

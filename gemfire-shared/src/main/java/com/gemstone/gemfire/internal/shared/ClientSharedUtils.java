@@ -14,14 +14,40 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.shared;
 
+import java.io.Console;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
+import java.lang.management.LockInfo;
+import java.lang.management.MonitorInfo;
+import java.lang.management.ThreadInfo;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
@@ -38,7 +64,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.directory.Attribute;
@@ -46,8 +71,10 @@ import javax.naming.directory.Attributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 
+import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
+import org.apache.spark.unsafe.Platform;
 
 /**
  * Some shared methods now also used by GemFireXD clients so should not have any
@@ -82,10 +109,12 @@ public abstract class ClientSharedUtils {
    * True if using Thrift as default network server and client, false if using
    * DRDA (default).
    */
-  public static final boolean USE_THRIFT_AS_DEFAULT = SystemProperties
-      .getClientInstance().getBoolean(USE_THRIFT_AS_DEFAULT_PROP, false);
+  private static boolean USE_THRIFT_AS_DEFAULT = isUsingThrift(true);
 
   private static final Object[] staticZeroLenObjectArray = new Object[0];
+
+  public static final boolean isLittleEndian =
+      ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
 
   /**
    * all classes should use this variable to determine whether to use IPv4 or
@@ -103,6 +132,25 @@ public abstract class ClientSharedUtils {
           return System.getProperty("line.separator");
         }
       });
+
+  /**
+   * The default wait to use when waiting to read/write a channel
+   * (when there is no selector to signal)
+   */
+  public static final long PARK_NANOS_FOR_READ_WRITE = 50L;
+
+  public static boolean isUsingThrift(boolean defaultValue) {
+    return SystemProperties.getClientInstance().getBoolean(
+        USE_THRIFT_AS_DEFAULT_PROP, defaultValue);
+  }
+
+  public static boolean isThriftDefault() {
+    return USE_THRIFT_AS_DEFAULT;
+  }
+
+  public static void setThriftDefault(boolean defaultValue) {
+    USE_THRIFT_AS_DEFAULT = isUsingThrift(defaultValue);
+  }
 
   /** we cache localHost to avoid bug #40619, access-violation in native code */
   private static final InetAddress localHost;
@@ -153,47 +201,59 @@ public abstract class ClientSharedUtils {
   private static Logger DEFAULT_LOGGER = Logger.getLogger("");
   private static Logger logger = DEFAULT_LOGGER;
 
-  private static final JdkHelper helper;
-
+  private static final Constructor<?> stringInternalConstructor;
+  private static final int stringInternalConsVersion;
   private static final Field bigIntMagnitude;
 
-  static {
-    // JdkHelper instance initialization
-    final String[] classNames = new String[] {
-        "com.gemstone.gemfire.internal.shared.Jdk6Helper",
-        "com.gemstone.gemfire.internal.shared.Jdk5Helper"
-      };
-    JdkHelper impl = null;
-    Exception lastEx = null;
-    for (int index = 0; index < classNames.length; ++index) {
-      try {
-        final Class<?> c = Class.forName(classNames[index]);
-        if (c != null) {
-          impl = (JdkHelper)c.newInstance();
-          break;
-        }
-      } catch (Exception ex) {
-        // ignore and try to load next JdkHelper implementation
-        lastEx = ex;
-      }
-    }
-    if (impl == null) {
-      final IllegalStateException ise = new IllegalStateException(
-          "failed to load any JdkHelper class; last exception");
-      ise.initCause(lastEx);
-      throw ise;
-    }
-    helper = impl;
+  // JDK5/6 String(int, int, char[])
+  private static final int STRING_CONS_VER1 = 1;
+  // JDK7 String(char[], boolean)
+  private static final int STRING_CONS_VER2 = 2;
+  // GCJ String(char[], int, int, boolean)
+  private static final int STRING_CONS_VER3 = 3;
 
+  static {
     InetAddress lh = null;
     try {
       lh = getHostAddress();
     } catch (UnknownHostException e) {
       e.printStackTrace();
-    } catch (SocketException e) {
+    } catch (SocketException ignored) {
     }
     localHost = lh;
     cre = new ClientRunTimeException();
+
+    // string constructor search by reflection
+    Constructor<?> constructor = null;
+    int version = 0;
+    try {
+      // first check the JDK7 version since an inefficient version of JDK5/6 is
+      // present in JDK7
+      constructor = String.class.getDeclaredConstructor(char[].class,
+          boolean.class);
+      constructor.setAccessible(true);
+      version = STRING_CONS_VER2;
+    } catch (Exception e1) {
+      try {
+        // next check the JDK6 version
+        constructor = String.class.getDeclaredConstructor(int.class, int.class,
+            char[].class);
+        constructor.setAccessible(true);
+        version = STRING_CONS_VER1;
+      } catch (Exception e2) {
+        // gcj has a different version
+        try {
+          constructor = String.class.getDeclaredConstructor(char[].class,
+              int.class, int.class, boolean.class);
+          constructor.setAccessible(true);
+          version = STRING_CONS_VER3;
+        } catch (Exception e3) {
+          // ignored
+        }
+      }
+    }
+    stringInternalConstructor = constructor;
+    stringInternalConsVersion = version;
 
     Field mag;
     try {
@@ -219,8 +279,59 @@ public abstract class ClientSharedUtils {
     bigIntMagnitude = mag;
   }
 
-  public static final JdkHelper getJdkHelper() {
-    return helper;
+  public static String newWrappedString(final char[] chars, final int offset,
+      final int size) {
+    if (size >= 0) {
+      try {
+        switch (stringInternalConsVersion) {
+          case STRING_CONS_VER1:
+            return (String)stringInternalConstructor.newInstance(offset, size,
+                chars);
+          case STRING_CONS_VER2:
+            if (offset == 0 && size == chars.length) {
+              return (String)stringInternalConstructor.newInstance(chars, true);
+            }
+            else {
+              return new String(chars, offset, size);
+            }
+          case STRING_CONS_VER3:
+            return (String)stringInternalConstructor.newInstance(chars, offset,
+                size, true);
+          default:
+            return new String(chars, offset, size);
+        }
+      } catch (Exception ex) {
+        throw ClientSharedUtils.newRuntimeException("unexpected exception", ex);
+      }
+    }
+    else {
+      throw new AssertionError("unexpected size=" + size);
+    }
+  }
+
+  public static String readChars(final InputStream in, final boolean noecho) {
+    final Console console;
+    if (noecho && (console = System.console()) != null) {
+      return new String(console.readPassword());
+    } else {
+      final StringBuilder sb = new StringBuilder();
+      char c;
+      try {
+        int value = in.read();
+        if (value != -1 && (c = (char)value) != '\n' && c != '\r') {
+          // keep waiting till a key is pressed
+          sb.append(c);
+        }
+        while (in.available() > 0 && (value = in.read()) != -1
+            && (c = (char)value) != '\n' && c != '\r') {
+          // consume till end of line
+          sb.append(c);
+        }
+      } catch (IOException ioe) {
+        throw ClientSharedUtils.newRuntimeException(ioe.getMessage(), ioe);
+      }
+      return sb.toString();
+    }
   }
 
   /**
@@ -302,6 +413,49 @@ public abstract class ClientSharedUtils {
     return lh;
   }
 
+  public static Method getAnyMethod(Class<?> c, String name, Class<?> returnType,
+       Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
+    NoSuchMethodException firstEx = null;
+    Method method = null;
+    for (;;) {
+      try {
+        method =  c.getDeclaredMethod(name, parameterTypes);
+
+        if (returnType == null ||
+           (returnType != null && method.getReturnType().equals(returnType))) {
+          return method;
+        } else {
+          throw new NoSuchMethodException();
+        }
+      } catch (NoSuchMethodException nsme) {
+        if (firstEx == null) {
+          firstEx = nsme;
+        }
+        if ((c = c.getSuperclass()) == null) {
+          throw firstEx;
+        }
+        // else continue searching in superClass
+      }
+    }
+  }
+
+  public static Field getAnyField(Class<?> c, String name)
+          throws NoSuchFieldException, SecurityException {
+    NoSuchFieldException firstEx = null;
+    for (;;) {
+      try {
+        return c.getDeclaredField(name);
+      } catch (NoSuchFieldException nsfe) {
+        if (firstEx == null) {
+          firstEx = nsfe;
+        }
+        if ((c = c.getSuperclass()) == null) {
+          throw firstEx;
+        }
+        // else continue searching in superClass
+      }
+    }
+  }
   /**
    * This method uses JNDI to look up an address in DNS and return its name.
    * 
@@ -362,8 +516,7 @@ public abstract class ClientSharedUtils {
       NetworkInterface face = interfaces.nextElement();
       boolean faceIsUp = false;
       try {
-        // invoking using JdkHelper since GemFireXD JDBC3 clients require JDK 1.5
-        faceIsUp = helper.isInterfaceUp(face);
+        faceIsUp = face.isUp();
       } catch (SocketException se) {
         final Logger log = getLogger();
         if (log != null) {
@@ -401,44 +554,50 @@ public abstract class ClientSharedUtils {
   }
 
   /**
+   * Set the keep-alive options on the socket from server-side properties.
+   *
+   * @see #setKeepAliveOptions
+   */
+  public static void setKeepAliveOptionsServer(Socket socket,
+      InputStream socketStream) throws SocketException {
+    final SystemProperties props = SystemProperties
+        .getServerInstance();
+    int defaultIdle = props.getInteger(SystemProperties.KEEPALIVE_IDLE,
+        SystemProperties.DEFAULT_KEEPALIVE_IDLE);
+    int defaultInterval = props.getInteger(SystemProperties.KEEPALIVE_INTVL,
+        SystemProperties.DEFAULT_KEEPALIVE_INTVL);
+    int defaultCount = props.getInteger(SystemProperties.KEEPALIVE_CNT,
+        SystemProperties.DEFAULT_KEEPALIVE_CNT);
+    ClientSharedUtils.setKeepAliveOptions(socket, socketStream,
+        defaultIdle, defaultInterval, defaultCount);
+  }
+
+  /**
    * Enable TCP KeepAlive settings for the socket. This will use the native OS
    * API to set per-socket configuration, if available, else will log warning
    * (only once) if one or more settings cannot be enabled.
-   * 
-   * @param sock
-   *          the underlying Java {@link Socket} to set the keep-alive
-   * @param sockStream
-   *          the InputStream of the socket (can be null); if non-null then it
-   *          is used to determine the underlying socket kernel handle else if
-   *          null then reflection on the socket itself is used
-   * @param keepIdle
-   *          keep-alive time between two transmissions on socket in idle
-   *          condition (in seconds)
-   * @param keepInterval
-   *          keep-alive duration between successive transmissions on socket if
-   *          no reply to packet sent after idle timeout (in seconds)
-   * @param keepCount
-   *          number of retransmissions to be sent before declaring the other
-   *          end to be dead
-   * 
-   * @throws SocketException
-   *           if the base keep-alive cannot be enabled on the socket
-   * 
-   * @see <a
-   *      href="http://tldp.org/HOWTO/html_single/TCP-Keepalive-HOWTO/#programming">
-   *      TCP Keepalive HOWTO</a>
-   * @see <a
-   *      href="http://docs.oracle.com/cd/E19082-01/819-2724/6n50b07lr/index.html">
-   *      TCP Tunable Parameters</a>
-   * @see <a
-   *      href="http://msdn.microsoft.com/en-us/library/ms741621%28VS.85%29.aspx">
-   *      WSAIoctl function</a>
-   * @see <a 
-   *      href="http://technet.microsoft.com/en-us/library/dd349797%28WS.10%29.aspx>
-   *      TCP/IP-Related Registry Entries</a>
-   * @see <a
-   *      href="http://msdn.microsoft.com/en-us/library/dd877220%28v=vs.85%29.aspx">
-   *      SIO_KEEPALIVE_VALS control code</a>
+   *
+   * @param sock         the underlying Java {@link Socket} to set the keep-alive
+   * @param sockStream   the InputStream of the socket (can be null); if non-null then it
+   *                     is used to determine the underlying socket kernel handle else if
+   *                     null then reflection on the socket itself is used
+   * @param keepIdle     keep-alive time between two transmissions on socket in idle
+   *                     condition (in seconds)
+   * @param keepInterval keep-alive duration between successive transmissions on socket if
+   *                     no reply to packet sent after idle timeout (in seconds)
+   * @param keepCount    number of retransmissions to be sent before declaring the other
+   *                     end to be dead
+   * @throws SocketException if the base keep-alive cannot be enabled on the socket
+   * @see <a href="http://tldp.org/HOWTO/html_single/TCP-Keepalive-HOWTO/#programming">
+   * TCP Keepalive HOWTO</a>
+   * @see <a href="http://docs.oracle.com/cd/E19082-01/819-2724/6n50b07lr/index.html">
+   * TCP Tunable Parameters</a>
+   * @see <a href="http://msdn.microsoft.com/en-us/library/ms741621%28VS.85%29.aspx">
+   * WSAIoctl function</a>
+   * @see <a href="http://technet.microsoft.com/en-us/library/dd349797%28WS.10%29.aspx>
+   * TCP/IP-Related Registry Entries</a>
+   * @see <a href="http://msdn.microsoft.com/en-us/library/dd877220%28v=vs.85%29.aspx">
+   * SIO_KEEPALIVE_VALS control code</a>
    */
   public static void setKeepAliveOptions(Socket sock, InputStream sockStream,
       int keepIdle, int keepInterval, int keepCount) throws SocketException {
@@ -452,19 +611,17 @@ public abstract class ClientSharedUtils {
     sock.setKeepAlive(true);
     // now the OS-specific settings using NativeCalls
     NativeCalls nc = NativeCalls.getInstance();
-    Map<TCPSocketOptions, Object> optValueMap =
-        new HashMap<TCPSocketOptions, Object>(4);
+    Map<TCPSocketOptions, Object> optValueMap = new HashMap<>(4);
     if (keepIdle >= 0) {
-      optValueMap.put(TCPSocketOptions.OPT_KEEPIDLE, Integer.valueOf(keepIdle));
+      optValueMap.put(TCPSocketOptions.OPT_KEEPIDLE, keepIdle);
     }
     if (keepInterval >= 0) {
-      optValueMap.put(TCPSocketOptions.OPT_KEEPINTVL,
-          Integer.valueOf(keepInterval));
+      optValueMap.put(TCPSocketOptions.OPT_KEEPINTVL, keepInterval);
     }
     if (keepCount >= 0) {
-      optValueMap.put(TCPSocketOptions.OPT_KEEPCNT, Integer.valueOf(keepCount));
+      optValueMap.put(TCPSocketOptions.OPT_KEEPCNT, keepCount);
     }
-    Map<TCPSocketOptions, Throwable> failed = null;
+    Map<TCPSocketOptions, Throwable> failed;
     try {
       failed = nc.setSocketOptions(sock, sockStream, optValueMap);
     } catch (UnsupportedOperationException e) {
@@ -497,8 +654,7 @@ public abstract class ClientSharedUtils {
                   // log as a warning
                   doLogWarning = 1;
                 }
-              }
-              else {
+              } else {
                 doLogWarning = 1;
               }
               break;
@@ -509,8 +665,7 @@ public abstract class ClientSharedUtils {
                   // KEEPINTVL is not critical to have so log as information
                   doLogWarning = 2;
                 }
-              }
-              else {
+              } else {
                 doLogWarning = 2;
               }
               break;
@@ -521,8 +676,7 @@ public abstract class ClientSharedUtils {
                   // KEEPCNT is not critical to have so log as information
                   doLogWarning = 2;
                 }
-              }
-              else {
+              } else {
                 doLogWarning = 2;
               }
               break;
@@ -530,8 +684,7 @@ public abstract class ClientSharedUtils {
           if (doLogWarning > 0) {
             if (doLogWarning == 1) {
               log.warning("Failed to set " + opt + " on socket: " + ex);
-            }
-            else if (doLogWarning == 2) {
+            } else {
               // just log as an information rather than warning
               if (log != DEFAULT_LOGGER) { // SNAP-255
                 log.info("Failed to set " + opt + " on socket: "
@@ -546,8 +699,7 @@ public abstract class ClientSharedUtils {
           }
         }
       }
-    }
-    else if (log != null && log.isLoggable(Level.FINE)) {
+    } else if (log != null && log.isLoggable(Level.FINE)) {
       log.fine("setKeepAliveOptions(): successful for " + sock);
     }
   }
@@ -567,6 +719,68 @@ public abstract class ClientSharedUtils {
   public static void getStackTrace(final Throwable t, StringBuilder sb,
       String lineSep) {
     t.printStackTrace(new StringPrintWriter(sb, lineSep));
+  }
+
+  public static void dumpThreadStack(final ThreadInfo tInfo,
+      final StringBuilder msg, final String lineSeparator) {
+    msg.append('"').append(tInfo.getThreadName()).append('"').append(" Id=")
+        .append(tInfo.getThreadId()).append(' ')
+        .append(tInfo.getThreadState());
+    if (tInfo.getLockName() != null) {
+      msg.append(" on ").append(tInfo.getLockName());
+    }
+    if (tInfo.getLockOwnerName() != null) {
+      msg.append(" owned by \"").append(tInfo.getLockOwnerName())
+          .append("\" Id=").append(tInfo.getLockOwnerId());
+    }
+    if (tInfo.isSuspended()) {
+      msg.append(" (suspended)");
+    }
+    if (tInfo.isInNative()) {
+      msg.append(" (in native)");
+    }
+    msg.append(lineSeparator);
+    final StackTraceElement[] stackTrace = tInfo.getStackTrace();
+    for (int index = 0; index < stackTrace.length; ++index) {
+      msg.append("\tat ").append(stackTrace[index].toString())
+          .append(lineSeparator);
+      if (index == 0 && tInfo.getLockInfo() != null) {
+        final Thread.State ts = tInfo.getThreadState();
+        switch (ts) {
+          case BLOCKED:
+            msg.append("\t-  blocked on ").append(tInfo.getLockInfo())
+                .append(lineSeparator);
+            break;
+          case WAITING:
+            msg.append("\t-  waiting on ").append(tInfo.getLockInfo())
+                .append(lineSeparator);
+            break;
+          case TIMED_WAITING:
+            msg.append("\t-  waiting on ").append(tInfo.getLockInfo())
+                .append(lineSeparator);
+            break;
+          default:
+        }
+      }
+
+      for (MonitorInfo mi : tInfo.getLockedMonitors()) {
+        if (mi.getLockedStackDepth() == index) {
+          msg.append("\t-  locked ").append(mi)
+              .append(lineSeparator);
+        }
+      }
+    }
+
+    final LockInfo[] locks = tInfo.getLockedSynchronizers();
+    if (locks.length > 0) {
+      msg.append(lineSeparator)
+          .append("\tNumber of locked synchronizers = ").append(locks.length)
+          .append(lineSeparator);
+      for (LockInfo li : locks) {
+        msg.append("\t- ").append(li).append(lineSeparator);
+      }
+    }
+    msg.append(lineSeparator);
   }
 
   public static Object[] getZeroLenObjectArray() {
@@ -843,7 +1057,7 @@ public abstract class ClientSharedUtils {
   public static String toHexString(final byte[] data, int offset,
       final int length) {
     final char[] chars = toHexChars(data, offset, length);
-    return getJdkHelper().newWrappedString(chars, 0, chars.length);
+    return newWrappedString(chars, 0, chars.length);
   }
 
   /**
@@ -876,7 +1090,7 @@ public abstract class ClientSharedUtils {
       chars[++index] = HEX_DIGITS_UCASE[lowByte];
       ++offset;
     }
-    return getJdkHelper().newWrappedString(chars, 0, chars.length);
+    return newWrappedString(chars, 0, chars.length);
   }
 
   /**
@@ -938,7 +1152,7 @@ public abstract class ClientSharedUtils {
         ++pos;
         index = toHexChars(b, chars, index);
       }
-      return getJdkHelper().newWrappedString(chars, 0, chars.length);
+      return newWrappedString(chars, 0, chars.length);
     }
   }
 
@@ -946,6 +1160,24 @@ public abstract class ClientSharedUtils {
     return byteBuffer.hasArray() && byteBuffer.position() == 0
         && byteBuffer.arrayOffset() == 0
         && byteBuffer.remaining() == byteBuffer.capacity();
+  }
+
+  public static String toString(final ByteBuffer buffer) {
+    if (buffer != null) {
+      StringBuilder sb = new StringBuilder();
+      final int len = buffer.remaining();
+      for (int i = buffer.position(); i < len; i++) {
+        // terminate with ... for large number of bytes
+        if (i > 128 * 1024) {
+          sb.append(" ...");
+          break;
+        }
+        sb.append(buffer.get(i)).append(", ");
+      }
+      return sb.toString();
+    } else {
+      return "null";
+    }
   }
 
   /**
@@ -967,18 +1199,16 @@ public abstract class ClientSharedUtils {
     if (wrapsFullArray(buffer)) {
       final byte[] bytes = buffer.array();
       sb.append(toHexChars(bytes, 0, bytes.length));
-    }
-    else {
-      int pos = buffer.position();
+    } else {
       final int limit = buffer.limit();
-      while (pos++ < limit) {
+      for (int pos = buffer.position(); pos < limit; pos++) {
         byte b = buffer.get(pos);
         toHexChars(b, sb);
       }
     }
   }
 
-  static final int toHexChars(final byte b, final char[] chars, int index) {
+  static int toHexChars(final byte b, final char[] chars, int index) {
     final int highByte = (b & 0xf0) >>> 4;
     final int lowByte = (b & 0x0f);
     chars[index] = HEX_DIGITS[highByte];
@@ -1057,7 +1287,33 @@ public abstract class ClientSharedUtils {
     return cre.newRunTimeException(message, cause);
   }
 
+  // Convert log4j.Level to java.util.logging.Level
+  public static Level converToJavaLogLevel(org.apache.log4j.Level log4jLevel) {
+    Level javaLevel = Level.INFO;
+    if (log4jLevel != null) {
+      if (log4jLevel == org.apache.log4j.Level.ERROR) {
+        javaLevel = Level.SEVERE;
+      } else if (log4jLevel == org.apache.log4j.Level.WARN) {
+        javaLevel = Level.WARNING;
+      } else if (log4jLevel == org.apache.log4j.Level.INFO) {
+        javaLevel = Level.INFO;
+      } else if (log4jLevel == org.apache.log4j.Level.TRACE) {
+        javaLevel = Level.FINE;
+      } else if (log4jLevel == org.apache.log4j.Level.DEBUG) {
+        javaLevel = Level.ALL;
+      } else if (log4jLevel == org.apache.log4j.Level.OFF) {
+        javaLevel = Level.OFF;
+      }
+    }
+    return javaLevel;
+  }
+
   public static void initLog4J(String logFile,
+      Level level) throws IOException {
+    initLog4J(logFile, null, level);
+  }
+
+  public static void initLog4J(String logFile, Properties userProps,
       Level level) throws IOException {
     // set the log file location
     Properties props = new Properties();
@@ -1122,12 +1378,19 @@ public abstract class ClientSharedUtils {
         props.putAll(setProps);
       }
     }
+    if (userProps != null) {
+      props.putAll(userProps);
+    }
     LogManager.resetConfiguration();
     PropertyConfigurator.configure(props);
   }
 
-  public static void initLogger(String loggerName, String logFile,
-      boolean initLog4j, Level level, final Handler handler) {
+  public static synchronized void initLogger(String loggerName, String logFile,
+      boolean initLog4j, boolean skipIfInitialized, Level level,
+      final Handler handler) {
+    if (skipIfInitialized && logger != DEFAULT_LOGGER) {
+      return;
+    }
     clearLogger();
     if (initLog4j) {
       try {
@@ -1143,7 +1406,7 @@ public abstract class ClientSharedUtils {
     logger = log;
   }
 
-  public static void setLogger(Logger log) {
+  public static synchronized void setLogger(Logger log) {
     clearLogger();
     logger = log;
   }
@@ -1207,7 +1470,7 @@ public abstract class ClientSharedUtils {
 
   private static void clearLogger() {
     final Logger log = logger;
-    if (log != null) {
+    if (log != DEFAULT_LOGGER) {
       logger = DEFAULT_LOGGER;
       for (Handler h : log.getHandlers()) {
         log.removeHandler(h);
@@ -1295,6 +1558,183 @@ public abstract class ClientSharedUtils {
     }
   }
 
+  public static byte[] toBytes(ByteBuffer buffer) {
+    final int bufferSize = buffer.remaining();
+    return toBytes(buffer, bufferSize, bufferSize);
+  }
+
+  public static byte[] toBytes(ByteBuffer buffer, int bufferSize, int length) {
+    if (length >= bufferSize && wrapsFullArray(buffer)) {
+      return buffer.array();
+    } else {
+      return toBytesCopy(buffer, bufferSize, length);
+    }
+  }
+
+  public static byte[] toBytesCopy(ByteBuffer buffer, int bufferSize,
+      int length) {
+    final int numBytes = Math.min(bufferSize, length);
+    final byte[] bytes = new byte[numBytes];
+    final int initPosition = buffer.position();
+    buffer.get(bytes, 0, numBytes);
+    buffer.position(initPosition);
+    return bytes;
+  }
+
+  /**
+   * State constants used by the FSM inside getStatementToken.
+   *
+   * @see #getStatementToken
+   */
+  private static final int TOKEN_OUTSIDE = 0;
+  private static final int TOKEN_INSIDE_SIMPLECOMMENT = 1;
+  private static final int TOKEN_INSIDE_BRACKETED_COMMENT = 2;
+
+  /**
+   * Minion of getStatementToken. If the input string starts with an
+   * identifier consisting of letters only (like "select", "update"..),return
+   * it, else return supplied string.
+   *
+   * @param sql input string
+   * @return identifier or unmodified string
+   * @see #getStatementToken
+   */
+  private static String isolateAnyInitialIdentifier(String sql) {
+    int idx;
+    for (idx = 0; idx < sql.length(); idx++) {
+      char ch = sql.charAt(idx);
+      if (!Character.isLetter(ch)
+          && ch != '<' /* for <local>/<global> tags */) {
+        // first non-token char found
+        break;
+      }
+    }
+    // return initial token if one is found, or the entire string otherwise
+    return (idx > 0) ? sql.substring(0, idx) : sql;
+  }
+
+  /**
+   * Moved from Derby's <code>Statement.getStatementToken</code> to shared between
+   * client and server code.
+   * <p>
+   * Step past any initial non-significant characters to find first
+   * significant SQL token so we can classify statement.
+   *
+   * @return first significant SQL token
+   */
+  public static String getStatementToken(String sql, int idx) {
+    int bracketNesting = 0;
+    int state = TOKEN_OUTSIDE;
+    String tokenFound = null;
+    char next;
+
+    final int sqlLen = sql.length();
+    while (idx < sqlLen && tokenFound == null) {
+      next = sql.charAt(idx);
+
+      switch (state) {
+        case TOKEN_OUTSIDE:
+          switch (next) {
+            case '\n':
+            case '\t':
+            case '\r':
+            case '\f':
+            case ' ':
+            case '(':
+            case '{': // JDBC escape characters
+            case '=': //
+            case '?': //
+              idx++;
+              break;
+            case '/':
+              if (idx == sql.length() - 1) {
+                // no more characters, so this is the token
+                tokenFound = "/";
+              } else if (sql.charAt(idx + 1) == '*') {
+                state = TOKEN_INSIDE_BRACKETED_COMMENT;
+                bracketNesting++;
+                idx++; // step two chars
+              }
+
+              idx++;
+              break;
+            case '-':
+              if (idx == sql.length() - 1) {
+                // no more characters, so this is the token
+                tokenFound = "/";
+              } else if (sql.charAt(idx + 1) == '-') {
+                state = TOKEN_INSIDE_SIMPLECOMMENT;
+                idx++;
+              }
+
+              idx++;
+              break;
+            default:
+              // a token found
+              tokenFound = isolateAnyInitialIdentifier(
+                  sql.substring(idx));
+
+              break;
+          }
+
+          break;
+        case TOKEN_INSIDE_SIMPLECOMMENT:
+          switch (next) {
+            case '\n':
+            case '\r':
+            case '\f':
+
+              state = TOKEN_OUTSIDE;
+              idx++;
+
+              break;
+            default:
+              // anything else inside a simple comment is ignored
+              idx++;
+              break;
+          }
+
+          break;
+        case TOKEN_INSIDE_BRACKETED_COMMENT:
+          switch (next) {
+            case '/':
+              if (idx != sql.length() - 1 &&
+                  sql.charAt(idx + 1) == '*') {
+
+                bracketNesting++;
+                idx++; // step two chars
+              }
+              idx++;
+
+              break;
+            case '*':
+              if (idx != sql.length() - 1 &&
+                  sql.charAt(idx + 1) == '/') {
+
+                bracketNesting--;
+
+                if (bracketNesting == 0) {
+                  state = TOKEN_OUTSIDE;
+                  idx++; // step two chars
+                }
+              }
+
+              idx++;
+              break;
+            default:
+              idx++;
+              break;
+          }
+
+          break;
+        default:
+          break;
+      }
+    }
+
+    return tokenFound;
+  }
+
   public static boolean equalBuffers(final ByteBuffer connToken,
       final ByteBuffer otherId) {
     if (connToken == otherId) {
@@ -1325,101 +1765,105 @@ public abstract class ClientSharedUtils {
       return false;
     }
     // read in longs to minimize ByteBuffer get() calls
-    int index = 0;
     int pos = buffer.position();
     final int endPos = (pos + len);
+    final boolean sameOrder = ByteOrder.nativeOrder() == buffer.order();
     // round off to nearest factor of 8 to read in longs
     final int endRound8Pos = (len % 8) != 0 ? (endPos - 8) : endPos;
-    byte b;
-    if (buffer.order() == ByteOrder.BIG_ENDIAN) {
-      while (pos < endRound8Pos) {
-        // splitting into longs is faster than reading one byte at a time even
-        // though it costs more operations (about 20% in micro-benchmarks)
-        final long v = buffer.getLong(pos);
-        b = (byte)(v >>> 56);
-        if (b != bytes[index++]) {
+    long indexPos = Platform.BYTE_ARRAY_OFFSET;
+    while (pos < endRound8Pos) {
+      // splitting into longs is faster than reading one byte at a time even
+      // though it costs more operations (about 20% in micro-benchmarks)
+      final long s = Platform.getLong(bytes, indexPos);
+      final long v = buffer.getLong(pos);
+      if (sameOrder) {
+        if (s != v) {
           return false;
         }
-        b = (byte)(v >>> 48);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 40);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 32);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 24);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 16);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 8);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 0);
-        if (b != bytes[index++]) {
-          return false;
-        }
-
-        pos += 8;
+      } else if (s != Long.reverseBytes(v)) {
+        return false;
       }
-    }
-    else {
-      while (pos < endRound8Pos) {
-        // splitting into longs is faster than reading one byte at a time even
-        // though it costs more operations (about 20% in micro-benchmarks)
-        final long v = buffer.getLong(pos);
-        b = (byte)(v >>> 0);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 8);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 16);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 24);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 32);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 40);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 48);
-        if (b != bytes[index++]) {
-          return false;
-        }
-        b = (byte)(v >>> 56);
-        if (b != bytes[index++]) {
-          return false;
-        }
-
-        pos += 8;
-      }
+      pos += 8;
+      indexPos += 8;
     }
     while (pos < endPos) {
-      if (bytes[index] != buffer.get(pos)) {
+      if (Platform.getByte(bytes, indexPos) != buffer.get(pos)) {
         return false;
       }
       pos++;
-      index++;
+      indexPos++;
     }
     return true;
+  }
+
+  /**
+   * Allocate new ByteBuffer if capacity of given ByteBuffer has exceeded.
+   * The passed ByteBuffer may no longer be usable after this call.
+   */
+  public static ByteBuffer ensureCapacity(ByteBuffer buffer,
+      int newLength, boolean useDirectBuffer, String owner) {
+    if (newLength <= buffer.capacity()) {
+      return buffer;
+    }
+    BufferAllocator allocator = useDirectBuffer ? DirectBufferAllocator.instance()
+        : HeapBufferAllocator.instance();
+    ByteBuffer newBuffer = allocator.allocate(newLength, owner);
+    newBuffer.order(buffer.order());
+    buffer.flip();
+    newBuffer.put(buffer);
+    allocator.release(buffer);
+    return newBuffer;
+  }
+
+  public static int getUTFLength(final String str, final int strLen) {
+    int utfLen = strLen;
+    for (int i = 0; i < strLen; i++) {
+      final char c = str.charAt(i);
+      if ((c >= 0x0001) && (c <= 0x007F)) {
+        // 1 byte for character
+        continue;
+      } else if (c > 0x07FF) {
+        utfLen += 2; // 3 bytes for character
+      } else {
+        utfLen++; // 2 bytes for character
+      }
+    }
+    return utfLen;
+  }
+
+  public static final ThreadLocal ALLOW_THREADCONTEXT_CLASSLOADER =
+      new ThreadLocal();
+
+  /**
+   * allow using Thread context ClassLoader to load classes
+   */
+  public static final class ThreadContextObjectInputStream extends
+      ObjectInputStream {
+
+    protected ThreadContextObjectInputStream() throws IOException,
+        SecurityException {
+      super();
+    }
+
+    public ThreadContextObjectInputStream(final InputStream in)
+        throws IOException {
+      super(in);
+    }
+
+    protected Class resolveClass(final ObjectStreamClass desc)
+        throws IOException, ClassNotFoundException {
+      try {
+        return super.resolveClass(desc);
+      } catch (ClassNotFoundException cnfe) {
+        // try to load using Thread context ClassLoader, if required
+        final Object allowTCCL = ALLOW_THREADCONTEXT_CLASSLOADER.get();
+        if (allowTCCL == null || !Boolean.TRUE.equals(allowTCCL)) {
+          throw cnfe;
+        } else {
+          return Thread.currentThread().getContextClassLoader()
+              .loadClass(desc.getName());
+        }
+      }
+    }
   }
 }

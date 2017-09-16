@@ -44,10 +44,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.logging.Level;
 
 import com.pivotal.gemfirexd.internal.client.am.Agent;
 import com.pivotal.gemfirexd.internal.client.am.CallableStatement;
@@ -64,15 +63,12 @@ import com.pivotal.gemfirexd.internal.client.am.Utils;
 import com.pivotal.gemfirexd.internal.iapi.reference.DRDAConstants;
 import com.pivotal.gemfirexd.internal.jdbc.ClientBaseDataSource;
 import com.pivotal.gemfirexd.internal.client.ClientPooledConnection;
-import com.pivotal.gemfirexd.internal.client.LogHandler;
 
 // GemStone changes BEGIN
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.Attribute;
-import com.pivotal.gemfirexd.internal.jdbc.ClientDataSource;
 import com.pivotal.gemfirexd.internal.shared.common.BoundedLinkedQueue;
 import com.pivotal.gemfirexd.internal.shared.common.QueueObjectCreator;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
@@ -83,6 +79,7 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.jdbc.ClientAttribute;
 import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
+import io.snappydata.thrift.internal.ClientService;
 
 // made abstract to enable compilation with both JDK 1.4 and 1.6
 abstract
@@ -1510,7 +1507,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
             String host = SharedUtils.getHostPort(serverUrl, prefServerPort);
             conn = (NetConnection)java.sql.DriverManager.getConnection(
                 com.pivotal.gemfirexd.internal.client.am.Configuration
-                    .jdbcDerbyNETProtocol + host + ':' + prefServerPort[0],
+                    .jdbcDerbyNETProtocol() + host + ':' + prefServerPort[0],
                     locateProps);
             // force set the isolation-level,auto-commit to NONE,false
             try {
@@ -2493,77 +2490,11 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
         }
         this.connUrl = getServerUrl(serverName, portNumber);
       }
-      // also honour GemFireXD specific log-file setting for SanityManager
-      // but do not set it as agent's PrintWriter else all kinds of client
-      // network tracing will start
-      String gfxdLogFile = null;
-      Level logLevel = null;
       if (logWriter == null) {
-        gfxdLogFile = ClientBaseDataSource.readSystemProperty(
-            Attribute.CLIENT_JVM_PROPERTY_PREFIX + ClientAttribute.LOG_FILE);
-        if (gfxdLogFile == null && incomingProps != null) {
-          gfxdLogFile = incomingProps.getProperty(ClientAttribute.LOG_FILE);
-        }
-        if (gfxdLogFile == null) {
-          synchronized (ClientBaseDataSource.class) {
-            if (gfxdLogFileNS == null) {
-              final String logFileNS = ClientBaseDataSource
-                  .readSystemProperty(Attribute.CLIENT_JVM_PROPERTY_PREFIX
-                      + ClientAttribute.LOG_FILE_STAMP);
-              if (logFileNS != null) {
-                do {
-                  gfxdLogFileNS = logFileNS + '.' + System.nanoTime();
-                } while (new File(gfxdLogFileNS).exists());
-              }
-            }
-            if (gfxdLogFileNS != null) {
-              gfxdLogFile = gfxdLogFileNS;
-            }
-          }
-        }
-        if (gfxdLogFile != null) {
-          synchronized (ClientBaseDataSource.class) {
-            // try new file if it exists
-            String currentLogFile = SanityManager.clientGfxdLogFile;
-            if (currentLogFile == null || !gfxdLogFile.equals(currentLogFile)) {
-              if (new File(gfxdLogFile).exists()) {
-                int dotIndex = gfxdLogFile.lastIndexOf('.');
-                final String logName;
-                final String extension;
-                if (dotIndex > 0) {
-                  logName = gfxdLogFile.substring(0, dotIndex);
-                  extension = gfxdLogFile.substring(dotIndex);
-                }
-                else {
-                  logName = gfxdLogFile;
-                  extension = "";
-                }
-                int rollIndex = 1;
-                String logFile;
-                do {
-                  logFile = logName + '-' + rollIndex + extension;
-                  rollIndex++;
-                } while (((currentLogFile = SanityManager.clientGfxdLogFile)
-                    == null || !logFile.equals(currentLogFile))
-                    && new File(logFile).exists());
-                gfxdLogFile = logFile;
-              }
-            }
-            SanityManager.SET_DEBUG_STREAM(gfxdLogFile, pwFactory);
-            logLevel = Level.CONFIG;
-          }
-        }
-      }
-      else {
-        SanityManager.SET_DEBUG_STREAM_IFNULL(logWriter.getPrintWriter());
-        logLevel = logWriter.getLogLevel();
-      }
-      // also set the ClientSharedUtils logger
-      if (logLevel != null) {
-        if (ClientSharedUtils.getLogger() == null) {
-          ClientSharedUtils.initLogger(ClientSharedUtils.LOGGER_NAME,
-              gfxdLogFile, true, logLevel, new LogHandler(logLevel));
-        }
+        ClientService.initClientLogger(incomingProps, null, Level.CONFIG);
+      } else {
+        ClientService.initClientLogger(incomingProps,
+            logWriter.getPrintWriter(), logWriter.getLogLevel());
       }
       String singleHopEnabled = incomingProps == null ? null : incomingProps
           .getProperty(ClientAttribute.SINGLE_HOP_ENABLED);
@@ -3697,7 +3628,7 @@ public class NetConnection extends com.pivotal.gemfirexd.internal.client.am.Conn
     }
 
     public Object create() throws SQLException {
-      String connURL = com.pivotal.gemfirexd.internal.client.am.Configuration.jdbcDerbyNETProtocol
+      String connURL = com.pivotal.gemfirexd.internal.client.am.Configuration.jdbcDerbyNETProtocol()
           + this.serverhost + ':' + this.port;
       if (SanityManager.TraceSingleHop) {
         SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,

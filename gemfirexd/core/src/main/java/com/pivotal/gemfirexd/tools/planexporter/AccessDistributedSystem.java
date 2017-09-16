@@ -505,7 +505,7 @@ public final class AccessDistributedSystem {
           "Client driver is unsupported by this utility ... ", null);
     }
     else {
-      Class.forName("com.pivotal.gemfirexd.jdbc.EmbeddedDriver").newInstance();
+      Class.forName("io.snappydata.jdbc.EmbeddedDriver").newInstance();
     }
 
     // Get a connection

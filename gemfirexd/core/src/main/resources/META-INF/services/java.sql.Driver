@@ -1,1 +1,1 @@
-com.pivotal.gemfirexd.internal.jdbc.AutoloadedDriver
+io.snappydata.jdbc.AutoloadedDriver

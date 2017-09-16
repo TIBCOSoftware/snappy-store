@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -29,9 +29,8 @@ bool ColumnDescriptorBase::isSigned() const noexcept {
     case thrift::SnappyType::SMALLINT:
     case thrift::SnappyType::INTEGER:
     case thrift::SnappyType::BIGINT:
-    case thrift::SnappyType::REAL:
-    case thrift::SnappyType::DOUBLE:
     case thrift::SnappyType::FLOAT:
+    case thrift::SnappyType::DOUBLE:
     case thrift::SnappyType::DECIMAL:
       return true;
     default:
@@ -49,9 +48,8 @@ int16_t ColumnDescriptorBase::getScale() const noexcept {
       case thrift::SnappyType::SMALLINT:
       case thrift::SnappyType::INTEGER:
       case thrift::SnappyType::BIGINT:
-      case thrift::SnappyType::REAL:
-      case thrift::SnappyType::DOUBLE:
       case thrift::SnappyType::FLOAT:
+      case thrift::SnappyType::DOUBLE:
       case thrift::SnappyType::DATE:
       case thrift::SnappyType::TIME:
         return 0;
@@ -86,12 +84,10 @@ std::string ColumnDescriptorBase::getTypeName() const noexcept {
         return "INTEGER";
       case thrift::SnappyType::BIGINT:
         return "BIGINT";
-      case thrift::SnappyType::REAL:
+      case thrift::SnappyType::FLOAT:
         return "REAL";
       case thrift::SnappyType::DOUBLE:
         return "DOUBLE";
-      case thrift::SnappyType::FLOAT:
-        return "FLOAT";
       case thrift::SnappyType::DECIMAL:
         return "DECIMAL";
       case thrift::SnappyType::CHAR:
@@ -177,10 +173,9 @@ uint32_t ColumnDescriptor::getDisplaySize() const noexcept {
       return 11;
     case thrift::SnappyType::SMALLINT:
       return 6;
-    case thrift::SnappyType::REAL:
+    case thrift::SnappyType::FLOAT:
       return 13;
     case thrift::SnappyType::DOUBLE:
-    case thrift::SnappyType::FLOAT:
       return 22;
     case thrift::SnappyType::TINYINT:
       return 4;

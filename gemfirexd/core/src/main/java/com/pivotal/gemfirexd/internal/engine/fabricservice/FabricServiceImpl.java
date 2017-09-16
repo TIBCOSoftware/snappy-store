@@ -76,14 +76,12 @@ import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.services.monitor.FileMonitor;
-import com.pivotal.gemfirexd.internal.jdbc.AutoloadedDriver;
 import com.pivotal.gemfirexd.internal.shared.common.reference.MessageId;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import io.snappydata.jdbc.AutoloadedDriver;
 import io.snappydata.thrift.ServerType;
-import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.common.SocketParameters;
-import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
 import io.snappydata.thrift.server.SnappyDataServiceImpl;
 import io.snappydata.thrift.server.SnappyThriftServer;
@@ -99,8 +97,7 @@ import org.apache.thrift.transport.TTransportException;
  */
 public abstract class FabricServiceImpl implements FabricService {
 
-  private static final String driver =
-      "com.pivotal.gemfirexd.jdbc.EmbeddedDriver";
+  private static final String driver = "io.snappydata.jdbc.EmbeddedDriver";
 
   protected static final String fabapi = "FabricServiceAPI";
 
@@ -135,11 +132,11 @@ public abstract class FabricServiceImpl implements FabricService {
    */
   private static volatile FabricService theInstance;
 
-  public static final FabricService getInstance() {
+  public static FabricService getInstance() {
     return theInstance;
   }
 
-  public static final void setInstance(final FabricService instance) {
+  public static void setInstance(final FabricService instance) {
     theInstance = instance;
   }
 
@@ -160,14 +157,6 @@ public abstract class FabricServiceImpl implements FabricService {
 
   public String getNetProtocol() {
     return Attribute.DNC_PROTOCOL;
-  }
-
-  public String getDRDAProtocol() {
-    return Attribute.DRDA_PROTOCOL;
-  }
-
-  public String getThriftProtocol() {
-    return Attribute.THRIFT_PROTOCOL;
   }
 
   protected void startImpl(Properties bootProperties, boolean ignoreIfStarted,
@@ -548,7 +537,6 @@ public abstract class FabricServiceImpl implements FabricService {
    * the system properties that was promoted by this api.
    *
    * Under success condition, stop will clear these properties.
-   * @throws SQLException
    */
   protected void handleThrowable(Throwable t) throws SQLException {
 
@@ -571,7 +559,6 @@ public abstract class FabricServiceImpl implements FabricService {
       throw GemFireXDRuntimeException.newRuntimeException(
           "GemFireXD:FabricServer#start exception ... ", t);
     }
-
   }
 
   /**
@@ -609,6 +596,13 @@ public abstract class FabricServiceImpl implements FabricService {
     }
   }
 
+  private void notifyRunningInLauncher() {
+    CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+    if (launcher != null) {
+      launcher.running(Misc.getDistributedSystem(), true);
+    }
+  }
+
   /**
    * This method invoked from GemFire to end notify waiting for another JVM to
    * initialize for disk GII after a previous call to {@link #notifyWaiting}.
@@ -625,6 +619,8 @@ public abstract class FabricServiceImpl implements FabricService {
     }
     if (this.previousServerStatus == State.RUNNING) {
       this.serverstatus = State.RUNNING;
+      // if started from command-line then change the status in the file too
+      notifyRunningInLauncher();
     }
     this.previousServerStatus = State.UNINITIALIZED;
   }
@@ -633,24 +629,26 @@ public abstract class FabricServiceImpl implements FabricService {
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public synchronized final void notifyRunning() {
+  public void notifyRunning() {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
           "Accepting RUNNING notification");
     }
     serverstatus = State.RUNNING;
+    // if started from command-line then change the status in the file too
+    notifyRunningInLauncher();
   }
 
   /**
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public synchronized final void notifyStop(boolean reconnecting) {
+  public final void notifyStop(boolean reconnecting) {
     if (GemFireXDUtils.TraceFabricServiceBoot && SanityManager.isFinerEnabled) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
           "Accepting STOPPED notification");
     }
-    serverstatus = reconnecting? State.RECONNECTING : State.STOPPED;
+    serverstatus = reconnecting ? State.RECONNECTING : State.STOPPED;
     FabricServiceUtils.clearSystemProperties(monitorlite, sysProps);
   }
 
@@ -694,19 +692,7 @@ public abstract class FabricServiceImpl implements FabricService {
       }
     }
     if (port <= 0) {
-      if (!thriftServer) {
-        final String portStr = (String)networkProperties
-            .remove(com.pivotal.gemfirexd.Property.DRDA_PROP_PORTNUMBER);
-        if (portStr != null) {
-          port = Integer.parseInt(portStr);
-        }
-        else {
-          port = NETSERVER_DEFAULT_PORT;
-        }
-      }
-      else {
-        port = NETSERVER_DEFAULT_PORT;
-      }
+      port = NETSERVER_DEFAULT_PORT;
     }
 
     final InetAddress listenAddress = getListenAddress(bindAddress);
@@ -731,23 +717,24 @@ public abstract class FabricServiceImpl implements FabricService {
         ? new ThriftNetworkInterface(listenAddress, port)
         : new DRDANetworkInterface(listenAddress, port);
 
-    int numtries = 0;
+    int numTries = 0;
     boolean retry = (port == NETSERVER_DEFAULT_PORT);
     // Start the netserver on the specified port. If the specified port is the
     // default port and it is already occupied by another process, try creating port
     // on an incremented number. Try this for 10 times before failing.
     do {
       try {
-        numtries++;
+        numTries++;
+        this.clientPort = port;
         netImpl.internalStart(networkProperties);
         retry = false;
       } catch (GemFireXDRuntimeException e) {
-        if (retry && numtries <= 10) {
+        if (retry && numTries <= 10) {
           // retry with an incremented port.
-          netImpl.setPort(port++);
+          netImpl.setPort(++port);
         } else throw e;
       }
-    } while (retry && numtries <= 10);
+    } while (retry && numTries <= 10);
 
     if (netImpl.getServerType().isThrift()) {
       serverType += (" (" + netImpl.getServerType().getProtocolString() + ')');
@@ -761,7 +748,7 @@ public abstract class FabricServiceImpl implements FabricService {
   @Override
   public NetworkInterface startNetworkServer(String bindAddress, int port,
       Properties networkProperties) throws SQLException {
-    return ClientSharedUtils.USE_THRIFT_AS_DEFAULT
+    return ClientSharedUtils.isThriftDefault()
         ? startThriftServer(bindAddress, port, networkProperties)
         : startDRDAServer(bindAddress, port, networkProperties);
   }
@@ -906,7 +893,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
     private String initialLoad;
 
-    private Properties networkProps;
+    protected Properties networkProps;
 
     protected NetworkInterfaceImpl(boolean preStarted) {
       this.probe = new ConnectionCountProbe();
@@ -958,14 +945,6 @@ public abstract class FabricServiceImpl implements FabricService {
       }
 
       this.serialNumber = DistributionAdvisor.createSerialNumber();
-      // Create a distribution advisor to take make this NetworkServer appear
-      // as a GFE BridgeServer and enable publishing of load information.
-      // Ignore sending data if this is a stand-alone locator, but still
-      // have the advisor to reply with proper profile
-      this.advisor = BridgeServerAdvisor.createBridgeServerAdvisor(this);
-      if (isServer()) {
-        this.advisor.handshake();
-      }
 
       // [soubhik] honor drda system properties to be overridden from here. The
       // properties argument in boot() is not honored by DRDAServer so instead
@@ -1019,10 +998,19 @@ public abstract class FabricServiceImpl implements FabricService {
         }
       }
 
+      // Create a distribution advisor to make this NetworkServer appear
+      // as a GFE BridgeServer and enable publishing of load information.
+      // Ignore sending data if this is a stand-alone locator, but still
+      // have the advisor to reply with proper profile
+      this.advisor = BridgeServerAdvisor.createBridgeServerAdvisor(this);
+      if (isServer()) {
+        this.advisor.handshake();
+      }
+
       if (GemFireXDUtils.TraceFabricServiceBoot) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
             (!this.isPreStarted ? "Started " : "Wrapped ") + this
-                + " sucessfully (prefer-ipaddress="
+                + " successfully (prefer-ipaddress="
                 + this.preferIPAddressForClients + "). status "
                 + (status() ? State.RUNNING : " UNKNOWN "));
       }
@@ -1122,7 +1110,30 @@ public abstract class FabricServiceImpl implements FabricService {
       return setHostNameForClients(this.networkProps);
     }
 
+    private String getHostFromInetAddress(InetAddress address) {
+      if (this.preferIPAddressForClients) {
+        return address.getHostAddress();
+      } else {
+        // if the host name as specified in client-bind-address is already
+        // qualified name then use it for clients else resolve
+        String host = address.getHostName();
+        if (host != null && host.indexOf('.') > 0) {
+          return host;
+        } else {
+          return address.getCanonicalHostName();
+        }
+      }
+    }
+
     protected final String setHostNameForClients(Properties networkProps) {
+      // check for explicit address setting first
+      String host = PropertyUtil.findAndGetProperty(networkProps,
+          Attribute.HOSTNAME_FOR_CLIENTS, GfxdConstants.GFXD_PREFIX +
+              Attribute.HOSTNAME_FOR_CLIENTS, monitorlite);
+      if (host != null) {
+        this.hostName = host;
+        return host;
+      }
       this.preferIPAddressForClients = PropertyUtil.getBooleanProperty(
           Attribute.PREFER_NETSERVER_IP_ADDRESS,
           GfxdConstants.GFXD_PREFER_NETSERVER_IP_ADDRESS, networkProps, false,
@@ -1132,25 +1143,13 @@ public abstract class FabricServiceImpl implements FabricService {
         try {
           final InetAddress localHost = SocketCreator.getLocalHost();
           if (localHost != null && !localHost.isLoopbackAddress()) {
-            if (this.preferIPAddressForClients) {
-              this.hostName = localHost.getHostAddress();
-            }
-            else {
-              this.hostName = localHost.getCanonicalHostName();
-            }
-            return this.hostName;
+            return (this.hostName = getHostFromInetAddress(localHost));
           }
         } catch (UnknownHostException uhe) {
           // ignored
         }
       }
-      if (this.preferIPAddressForClients) {
-        this.hostName = this.inetAddress.getHostAddress();
-      }
-      else {
-        this.hostName = this.inetAddress.getCanonicalHostName();
-      }
-      return this.hostName;
+      return (this.hostName = getHostFromInetAddress(this.inetAddress));
     }
 
     @Override
@@ -1266,7 +1265,7 @@ public abstract class FabricServiceImpl implements FabricService {
         }
         */
       }
-      if (this.advisor != null && this.advisor.isInitialized()) {
+      if (isServer() && this.advisor != null && this.advisor.isInitialized()) {
         ConnectionSignaller.getInstance().add(this);
       }
     }
@@ -1305,7 +1304,7 @@ public abstract class FabricServiceImpl implements FabricService {
         }
         */
       }
-      if (this.advisor != null && this.advisor.isInitialized()) {
+      if (isServer() && this.advisor != null && this.advisor.isInitialized()) {
         ConnectionSignaller.getInstance().add(this);
       }
     }
@@ -1417,15 +1416,14 @@ public abstract class FabricServiceImpl implements FabricService {
 
     public SessionsVTI.SessionInfo getSessionInfo() {
       final SessionsVTI.SessionInfo info = new SessionsVTI.SessionInfo();
-      StringBuilder sb = new StringBuilder();
-      sb.append("InitialLoad=").append(this.initialLoad)
-          .append(SanityManager.lineSeparator);
-      sb.append("CurrentLoad=").append(this.probe.getLoad(this))
-          .append(SanityManager.lineSeparator);
+      String infoString = "InitialLoad=" + this.initialLoad +
+          SanityManager.lineSeparator +
+          "CurrentLoad=" + this.probe.getLoad(this) +
+          SanityManager.lineSeparator;
       info.memberid = getSystem().getMemberId();
       info.hostname = getHostName();
       info.serverListeningPort = getPort();
-      info.networkInterfaceInfo = sb.toString();
+      info.networkInterfaceInfo = infoString;
 
       fillServerSessionInfo(info);
 
@@ -1479,43 +1477,43 @@ public abstract class FabricServiceImpl implements FabricService {
         // determine the thrift protocol, SSL properties etc.
         String propValue;
         final boolean useBinaryProtocol;
+        final boolean useFramedTransport;
         boolean useSSL;
         if (networkProps != null) {
-          useBinaryProtocol = Boolean.parseBoolean((String)networkProps
-              .remove(Attribute.THRIFT_USE_BINARY_PROTOCOL));
-          useSSL = Boolean.parseBoolean((String)networkProps
-              .remove(Attribute.THRIFT_USE_SSL));
+          useBinaryProtocol = Boolean.parseBoolean(networkProps.getProperty(
+              Attribute.THRIFT_USE_BINARY_PROTOCOL));
+          useFramedTransport = Boolean.parseBoolean(networkProps.getProperty(
+              Attribute.THRIFT_USE_FRAMED_TRANSPORT));
+          useSSL = Boolean.parseBoolean(networkProps.getProperty(
+              Attribute.THRIFT_USE_SSL));
           // set SSL properties (csv format) into SSL params in SocketParameters
-          propValue = (String)networkProps
-              .remove(Attribute.THRIFT_SSL_PROPERTIES);
+          propValue = networkProps.getProperty(Attribute.THRIFT_SSL_PROPERTIES);
           if (propValue != null) {
             useSSL = true;
-            ThriftUtils.getSSLParameters(socketParams, propValue);
+            ThriftUtils.getSSLParameters(this.socketParams, propValue);
           }
           // parse remaining properties like socket buffer sizes, read timeout
           // and keep alive settings
           for (SocketParameters.Param param : SocketParameters
               .getAllParamsNoSSL()) {
-            propValue = (String)networkProps.remove(param.getPropertyName());
+            propValue = networkProps.getProperty(param.getPropertyName());
             if (propValue != null) {
               param.setParameter(this.socketParams, propValue);
             }
           }
-        }
-        else {
+        } else {
           useBinaryProtocol = false;
+          useFramedTransport = false;
           useSSL = false;
         }
         socketParams.setServerType(ServerType.getServerType(isServer,
             useBinaryProtocol, useSSL));
 
         this.thriftService.start(this.inetAddress, this.port, this.maxThreads,
-            isServer, useBinaryProtocol, useSSL, socketParams, this);
+            isServer, useBinaryProtocol, useFramedTransport, useSSL,
+            socketParams, this);
       } catch (TTransportException te) {
         throw new GemFireXDRuntimeException(te);
-      } catch (SnappyException se) {
-        throw new GemFireXDRuntimeException(
-            ThriftExceptionUtil.newSQLException(se));
       }
     }
 
@@ -1543,7 +1541,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
     @Override
     public void collectStatisticsSample() {
-      // TODO: SW:
+      this.thriftService.collectStatisticsSample();
     }
 
     @Override
@@ -1593,7 +1591,20 @@ public abstract class FabricServiceImpl implements FabricService {
 
     @Override
     public Properties getCurrentProperties() {
-      return null;
+      Properties props = new Properties();
+      final String[] thriftProps = new String[]{
+          Attribute.THRIFT_USE_BINARY_PROTOCOL,
+          Attribute.THRIFT_USE_FRAMED_TRANSPORT,
+          Attribute.THRIFT_USE_SSL,
+          Attribute.THRIFT_SSL_PROPERTIES};
+
+      for (String p : thriftProps) {
+        String v = networkProps.getProperty(p);
+        if (v != null) {
+          props.setProperty(p, v);
+        }
+      }
+      return props;
     }
 
     @Override
@@ -1608,8 +1619,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
     @Override
     protected void fillServerSessionInfo(SessionsVTI.SessionInfo info) {
-      // TODO: SW:
-      //this.netserver.getSessionInfo(info);
+      this.thriftService.getSessionInfo(info);
     }
   }
 
@@ -1836,8 +1846,6 @@ public abstract class FabricServiceImpl implements FabricService {
   }
 
   static void registerDrivers() {
-    // new com.pivotal.gemfirexd.jdbc.EmbeddedDriver();
-
     try {
       Class.forName(driver).newInstance();
     } catch (ClassNotFoundException cnfe) {
@@ -1893,6 +1901,7 @@ public abstract class FabricServiceImpl implements FabricService {
         FabricServiceImpl impl = ((FabricServiceImpl)getInstance());
         if (impl != null) {
           try {
+            // noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized(impl) {
               sys.getLogWriter().fine("FabricService stopping due to forced-disconnect");
               impl.stopNoSync(this.bootProperties, sys, true);
@@ -1927,6 +1936,7 @@ public abstract class FabricServiceImpl implements FabricService {
     public void reconnecting(InternalDistributedSystem oldsys) {
       FabricServiceImpl impl = ((FabricServiceImpl)getInstance());
       if (impl != null) {
+        // noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized(impl) {
           impl.reconnecting();
         }
@@ -1938,6 +1948,7 @@ public abstract class FabricServiceImpl implements FabricService {
       FabricServiceImpl impl = ((FabricServiceImpl)getInstance());
       if (impl != null) {
         try {
+          // noinspection SynchronizationOnLocalVariableOrMethodParameter
           synchronized(impl) {
             newSystem.getLogWriter().info("rebooting GemFireXD "+
                 (isLocator?"locator":"server") + " instance");

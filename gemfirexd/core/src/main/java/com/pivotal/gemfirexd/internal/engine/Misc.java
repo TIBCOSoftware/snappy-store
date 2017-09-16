@@ -20,17 +20,13 @@ package com.pivotal.gemfirexd.internal.engine;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.io.StringWriter;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.locks.Condition;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -63,6 +59,7 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
 import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider;
+import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
@@ -70,19 +67,25 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
+import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.NoneAuthenticationServiceImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.tools.planexporter.CreateXML;
@@ -234,6 +237,26 @@ public abstract class Misc {
     }
   }
 
+  public static Set<DistributedMember> getLeadNode() {
+    GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
+    InternalDistributedSystem ids = Misc.getDistributedSystem();
+    if (ids.isLoner()) {
+      return Collections.<DistributedMember>singleton(
+          ids.getDistributedMember());
+    }
+    Set<DistributedMember> allMembers = ids.getAllOtherMembers();
+    for (DistributedMember m : allMembers) {
+      GfxdDistributionAdvisor.GfxdProfile profile = advisor
+          .getProfile((InternalDistributedMember)m);
+      if (profile != null && profile.hasSparkURL()) {
+        Set<DistributedMember> s = new HashSet<DistributedMember>();
+        s.add(m);
+        return Collections.unmodifiableSet(s);
+      }
+    }
+    throw new NoMemberFoundException("SnappyData Lead node is not available");
+  }
+
   /**
    * Check if {@link GemFireCache} is closed or is in the process of closing and
    * throw {@link CacheClosedException} if so.
@@ -293,6 +316,92 @@ public abstract class Misc {
     if (isCancelling == null) {
       throw e;
     }
+  }
+
+  public static <K, V> PartitionResolver createPartitionResolverForSampleTable(final String reservoirRegionName) {
+    // TODO: Should this be serializable?
+    // TODO: Should this have call back from bucket movement module?
+    return new PartitionResolver() {
+
+      public String getName()
+      {
+        return "PartitionResolverForSampleTable";
+      }
+
+      public Serializable getRoutingObject(EntryOperation opDetails)
+      {
+        Object k = opDetails.getKey();
+        StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
+        int v = callback.getLastIndexOfRow(k);
+        if (v != -1) {
+          return (Serializable)v;
+        } else {
+          return (Serializable)k;
+        }
+      }
+
+      public void close() {}
+    };
+  }
+
+  public static <K, V> String getReservoirRegionNameForSampleTable(String schema, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
+  }
+
+  public volatile static boolean reservoirRegionCreated = false;
+
+  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+    if (childRegion == null) {
+      RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
+      PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
+      AttributesFactory afact = new AttributesFactory();
+      afact.setDataPolicy(attributesBase.getDataPolicy());
+      PartitionAttributesFactory paf = new PartitionAttributesFactory();
+      paf.setTotalNumBuckets(partitionAttributesBase.getTotalNumBuckets());
+      paf.setRedundantCopies(partitionAttributesBase.getRedundantCopies());
+      paf.setLocalMaxMemory(partitionAttributesBase.getLocalMaxMemory());
+      PartitionResolver partResolver = createPartitionResolverForSampleTable(reservoirRegionName);
+      paf.setPartitionResolver(partResolver);
+      paf.setColocatedWith(regionBase.getFullPath());
+      afact.setPartitionAttributes(paf.create());
+      childRegion = cache.createRegion(reservoirRegionName, afact.create());
+    }
+    reservoirRegionCreated = true;
+    return (PartitionedRegion)childRegion;
+  }
+
+  public static <K, V> PartitionedRegion getReservoirRegionForSampleTable(String reservoirRegionName) {
+    if (reservoirRegionName != null) {
+      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+      if (childRegion != null) {
+        return (PartitionedRegion) childRegion;
+      }
+    }
+    return null;
+  }
+
+  public static void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
+    if (reservoirRegion != null) {
+      reservoirRegion.destroyRegion(null);
+    }
+  }
+
+  public static PartitionedRegion.PRLocalScanIterator
+  getLocalBucketsIteratorForSampleTable(PartitionedRegion reservoirRegion,
+      Set<Integer> bucketSet, boolean fetchFromRemote) {
+    if (reservoirRegion != null && bucketSet != null) {
+      if (bucketSet.size() > 0) {
+        return reservoirRegion.getAppropriateLocalEntriesIterator(bucketSet,
+            true, false, true, null, fetchFromRemote);
+      }
+    }
+    return null;
   }
 
   /**
@@ -637,22 +746,36 @@ public abstract class Misc {
     return hash;
   }
 
-  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor dvd, int numPartitions) {
+  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor dvd,
+      int numPartitions) {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    int hash = 0;
     if (dvd != null) {
-      hash = callback.getHashCodeSnappy(dvd, numPartitions);
+      return callback.getHashCodeSnappy(dvd, numPartitions);
+    } else {
+      return 0;
     }
-    return hash;
   }
 
-  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor[] dvds, int numPartitions) {
+  public static int getUnifiedHashCodeFromDVD(DataValueDescriptor[] dvds,
+      int numPartitions) {
     StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-    int hash = 0;
     if (dvds != null) {
-      hash = callback.getHashCodeSnappy(dvds, numPartitions);
+      return callback.getHashCodeSnappy(dvds, numPartitions);
+    } else {
+      return 0;
     }
-    return hash;
+  }
+
+  public static boolean isSecurityEnabled() {
+    AuthenticationServiceBase authService = AuthenticationServiceBase.getPeerAuthenticationService();
+    return authService != null && !(authService instanceof NoneAuthenticationServiceImpl) &&
+        checkAuthProvider(getMemStore().getBootProperties());
+  }
+
+  /* Returns true if LDAP Security is Enabled */
+  public static boolean checkAuthProvider(Map map) {
+    return "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.AUTH_PROVIDER, "").toString()) ||
+        "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.SERVER_AUTH_PROVIDER, "").toString());
   }
 
   // added by jing for processing the exception
@@ -1227,5 +1350,26 @@ public abstract class Misc {
 
     return str;
   }
-  
+
+  public static final String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+
+  public static boolean isSnappyHiveMetaTable(String schemaName) {
+    return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);
+  }
+
+  public static boolean routeQuery(LanguageConnectionContext lcc) {
+    return Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingFlagTrue() &&
+        // if isolation level is not NONE, autocommit should be true to enable query routing
+        (lcc.getCurrentIsolationLevel() == ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL ||
+            lcc.getAutoCommit());
+  }
+
+  public static void invalidSnappyDataFeature(String featureDescription)
+      throws SQLException {
+    if(getMemStore().isSnappyStore()) {
+      throw Util.generateCsSQLException(SQLState.NOT_IMPLEMENTED,
+          featureDescription + " is not supported in SnappyData. " +
+              "This feature is supported when product is started in rowstore mode");
+    }
+  }
 }

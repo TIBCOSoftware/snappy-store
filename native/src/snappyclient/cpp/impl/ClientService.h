@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -61,7 +61,7 @@ namespace snappydata {
 namespace client {
 namespace impl {
 
-  class BufferedSocketTransport;
+  class ClientTransport;
   class ControlConnection;
 
   class SnappyDataClient : public thrift::SnappyDataServiceClient {
@@ -93,15 +93,16 @@ namespace impl {
     const thrift::OpenConnectionArgs m_connArgs;
     bool m_loadBalance;
     thrift::ServerType::type m_reqdServerType;
+    bool m_useFramedTransport;
     //const SSLSocketParameters m_sslParams;
     std::set<std::string> m_serverGroups;
 
-    boost::shared_ptr<BufferedSocketTransport> m_transport;
+    boost::shared_ptr<ClientTransport> m_transport;
     SnappyDataClient m_client;
 
     thrift::HostAddress m_currentHostAddr;
     std::vector<thrift::HostAddress> m_connHosts;
-    int32_t m_connId;
+    int64_t m_connId;
     std::string m_token;
     bool m_isOpen;
 
@@ -129,8 +130,9 @@ namespace impl {
     static protocol::TProtocol* createProtocol(
         thrift::HostAddress& hostAddr,
         const thrift::ServerType::type serverType,
+        const bool useFramedTransport,
         //const SSLSocketParameters& sslParams,
-        boost::shared_ptr<BufferedSocketTransport>& returnTransport);
+        boost::shared_ptr<ClientTransport>& returnTransport);
 
   protected:
     virtual void checkConnection(const char* op);
@@ -189,13 +191,21 @@ namespace impl {
       return m_isOpen;
     }
 
-    inline const boost::shared_ptr<BufferedSocketTransport>& getTransport()
+    inline const boost::shared_ptr<ClientTransport>& getTransport()
         const noexcept {
       return m_transport;
     }
 
     const char* getTokenStr() const noexcept {
       return m_token.empty() ? NULL : m_token.c_str();
+    }
+
+    const thrift::HostAddress& getCurrentHostAddress() const noexcept {
+      return m_currentHostAddr;
+    }
+
+    const thrift::OpenConnectionArgs& getConnectionArgs() const noexcept {
+      return m_connArgs;
     }
 
     IsolationLevel getCurrentIsolationLevel() const noexcept {
@@ -221,17 +231,21 @@ namespace impl {
 
     void executePrepared(thrift::StatementResult& result,
         thrift::PrepareResult& prepResult, const thrift::Row& params,
-        const std::map<int32_t, thrift::OutputParameter>& outputParams);
+        const std::map<int32_t, thrift::OutputParameter>& outputParams,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedUpdate(thrift::UpdateResult& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params);
+        thrift::PrepareResult& prepResult, const thrift::Row& params,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedQuery(thrift::RowSet& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params);
+        thrift::PrepareResult& prepResult, const thrift::Row& params,
+        const thrift::StatementAttrs& attrs);
 
     void executePreparedBatch(thrift::UpdateResult& result,
         thrift::PrepareResult& prepResult,
-        const std::vector<thrift::Row>& paramsBatch);
+        const std::vector<thrift::Row>& paramsBatch,
+        const thrift::StatementAttrs& attrs);
 
     void prepareAndExecute(thrift::StatementResult& result,
         const std::string& sql,
@@ -240,7 +254,7 @@ namespace impl {
         const thrift::StatementAttrs& attrs);
 
     void getNextResultSet(thrift::RowSet& result,
-        const int32_t cursorId, const int8_t otherResultSetBehaviour);
+        const int64_t cursorId, const int8_t otherResultSetBehaviour);
 
     void getBlobChunk(thrift::BlobChunk& result, const int32_t lobId,
         const int64_t offset, const int32_t size,
@@ -250,23 +264,23 @@ namespace impl {
         const int64_t offset, const int32_t size,
         const bool freeLobAtEnd);
 
-    int32_t sendBlobChunk(thrift::BlobChunk& chunk);
+    int64_t sendBlobChunk(thrift::BlobChunk& chunk);
 
-    int32_t sendClobChunk(thrift::ClobChunk& chunk);
+    int64_t sendClobChunk(thrift::ClobChunk& chunk);
 
     void freeLob(const int32_t lobId);
 
-    void scrollCursor(thrift::RowSet& result, const int32_t cursorId,
+    void scrollCursor(thrift::RowSet& result, const int64_t cursorId,
         const int32_t offset, const bool offsetIsAbsolute,
         const bool fetchReverse, const int32_t fetchSize);
 
-    void executeCursorUpdate(const int32_t cursorId,
+    void executeCursorUpdate(const int64_t cursorId,
         const thrift::CursorUpdateOperation::type operation,
         const thrift::Row& changedRow,
         const std::vector<int32_t>& changedColumns,
         const int32_t changedRowIndex);
 
-    void executeBatchCursorUpdate(const int32_t cursorId,
+    void executeBatchCursorUpdate(const int64_t cursorId,
         const std::vector<thrift::CursorUpdateOperation::type>& operations,
         const std::vector<thrift::Row>& changedRows,
         const std::vector<std::vector<int32_t> >& changedColumnsList,
@@ -285,12 +299,10 @@ namespace impl {
 
     void rollbackTransaction(const bool startNewTransaction);
 
-    bool prepareCommitTransaction();
-
     void fetchActiveConnections(
         std::vector<thrift::ConnectionProperties>& result);
 
-    void fetchActiveStatements(std::map<int32_t, std::string>& result);
+    void fetchActiveStatements(std::map<int64_t, std::string>& result);
 
     void getServiceMetaData(thrift::ServiceMetaData& result);
 
@@ -310,11 +322,11 @@ namespace impl {
         thrift::ServiceMetaDataArgs& metadataArgs, const int32_t scope,
         const bool nullable);
 
-    void closeResultSet(const int32_t cursorId);
+    void closeResultSet(const int64_t cursorId);
 
-    void cancelStatement(const int32_t stmtId);
+    void cancelStatement(const int64_t stmtId);
 
-    void closeStatement(const int32_t stmtId);
+    void closeStatement(const int64_t stmtId);
 
     void bulkClose(const std::vector<thrift::EntityId>& entities);
 

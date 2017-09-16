@@ -23,6 +23,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Collection;
@@ -145,17 +146,21 @@ public final class OplogIndex {
     // Create the idx file with a version of 1, or roll the version by
     // renaming a new file. This allows the incremental backup to detect
     // that the file contents have changed.
-    if (this.irf == null) {
+    final File irf = this.irf;
+    if (irf == null) {
       this.irf = getFileName(1);
     } else {
-      long version = getIndexFileVersion(this.irf.getName());
+      long version = getIndexFileVersion(irf.getName());
       version++;
       File newFile = getFileName(version);
       try {
-        Files.move(this.irf.toPath(), newFile.toPath());
+        Path irfPath = irf.toPath();
+        if (Files.exists(irfPath)) {
+          Files.move(irfPath, newFile.toPath());
+        }
       } catch (IOException ioe) {
         throw new DiskAccessException("Failed to rename index file " +
-            this.irf + " to " + newFile, ioe, this.dsi);
+            irf + " to " + newFile, ioe, this.dsi);
       }
       this.irf = newFile;
     }
@@ -304,6 +309,10 @@ public final class OplogIndex {
     public boolean equals(Object other) {
       return other instanceof IndexData &&
           this.index.equals(((IndexData)other).index);
+    }
+
+    public SortedIndexContainer getIndex(){
+      return this.index;
     }
   }
 
@@ -716,7 +725,6 @@ public final class OplogIndex {
                           diskEntry, currentIndex,
                           Arrays.toString(indexKeyBytes)));
                 }
-
                 currentIndexJob.addJob(currentIndex.getIndexKey(indexKeyBytes,
                     diskEntry), diskEntry);
               } else {

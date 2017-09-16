@@ -169,7 +169,24 @@ public interface Constants {
      * SELECT * FROM userTable t1 -- GEMFIREXD-PROPERTIES queryHDFS=true \n  
      *  WHERE t1.col1 is not null
      */
-    queryHDFS,    
+    queryHDFS,
+
+    /**
+     * Query hint to specify the execution engine for the query.
+     *
+     * <p>
+     * Possible values are 'Spark' or 'Store'.
+     *
+     * <p>
+     * This can only be used with FROM clause, in other words, this can only be
+     * mentioned between FROM clause and the first table name.
+     *
+     * <p>
+     * example: <br>
+     * SELECT * FROM userTable t1 -- GEMFIREXD-PROPERTIES executionEngine=Spark \n
+     *  WHERE t1.col1 is not null
+     */
+    executionEngine,
 
     /**
      * Memory Analytics sizer query hints.

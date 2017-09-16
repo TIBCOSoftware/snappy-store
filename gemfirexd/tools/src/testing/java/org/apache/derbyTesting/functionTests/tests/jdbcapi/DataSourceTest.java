@@ -51,11 +51,10 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import javax.sql.DataSource;
 
+import io.snappydata.jdbc.ClientDataSource;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import com.pivotal.gemfirexd.internal.jdbc.ClientDataSource;
-import com.pivotal.gemfirexd.internal.jdbc.EmbeddedDataSource;
 import com.pivotal.gemfirexd.internal.jdbc.EmbeddedSimpleDataSource;
 import org.apache.derbyTesting.functionTests.util.SecurityCheck;
 import org.apache.derbyTesting.junit.BaseJDBCTestCase;

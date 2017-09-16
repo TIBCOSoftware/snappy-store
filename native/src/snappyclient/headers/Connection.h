@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -200,6 +200,10 @@ namespace client {
       }
     }
 
+    const thrift::HostAddress& getCurrentHostAddress() const noexcept;
+
+    const thrift::OpenConnectionArgs& getConnectionArgs() const noexcept;
+
     void setSendBufferSize(uint32_t sz);
 
     void setReceiveBufferSize(uint32_t sz);
@@ -269,8 +273,6 @@ namespace client {
     void commitTransaction(bool startNewTransaction);
 
     void rollbackTransaction(bool startNewTransaction);
-
-    void prepareCommitTransaction();
 
     const std::string getNativeSQL(const std::string& sql) const;
 

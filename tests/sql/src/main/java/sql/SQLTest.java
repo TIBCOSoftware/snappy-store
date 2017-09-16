@@ -332,8 +332,11 @@ public class SQLTest {
   public static boolean dumpThreads = TestConfig.tab().booleanAt(SQLPrms.dumpThreads, false);
   public static int dumpThreadsInterval = (int) TestConfig.tab().longAt(SQLPrms.dumpThreadsInterval, 10000);
   public static int dumpThreadsTotalTime = (int) TestConfig.tab().longAt(SQLPrms.dumpThreadsTotalTime, 600); //maxResultWaitSec
-  //public static boolean enableConcurrencyCheck = isHATest ? true : (random.nextBoolean() && testUniqueKeys? false: true);
-  public static boolean enableConcurrencyCheck = false; //Not covered in this 1.0 cheetah release, and removed from docs
+  //public static boolean enableConcurrencyCheck = isHATest ? true : (random.nextBoolean() &&  testUniqueKeys? false: true);
+  //enableConcurrecyChecks : needs to true in case of snapshotIsolation is enabled.
+  //Was set to false earlier (Not covered in this 1.0 cheetah release, and removed from docs)
+  public static boolean enableConcurrencyCheck = TestConfig.tab().booleanAt(SQLPrms
+      .isSnapshotEnabled,true);
   public static String ENABLECONCURRENCYCHECKS = " ENABLE CONCURRENCY CHECKS ";
   private static boolean isTicket51584Fixed = false;
   public static boolean reproduceTicket51628 = false;
@@ -1086,7 +1089,8 @@ public class SQLTest {
           s.execute(derbyTables[i]);
         }
       } else if (url.equals(GFEDBManager.getUrl())
-          || url.startsWith(GFEDBClientManager.getProtocol())){
+          || url.startsWith(GFEDBClientManager.getProtocol())
+          || url.startsWith(GFEDBClientManager.getDRDAProtocol())) {
 
         if (hasHdfs) {
           SQLPrms.setHdfsDDL(SQLPrms.getCreateTablesStatements(false));
@@ -1122,7 +1126,7 @@ public class SQLTest {
             }
           }
         }
-        
+
         if (enableConcurrencyCheck) {
           for (int i =0; i<gfeDDL.length; i++) {
             gfeDDL[i] += ENABLECONCURRENCYCHECKS;
@@ -1230,8 +1234,9 @@ public class SQLTest {
       for (int i = 0; i < tables.length; i++) {
         aStr.append(tables[i] + "\n");
       }
-    } else if (url.equals(GFEDBManager.getUrl())||
-        url.startsWith(GFEDBClientManager.getProtocol())){
+    } else if (url.equals(GFEDBManager.getUrl())
+        || url.startsWith(GFEDBClientManager.getProtocol())
+        || url.startsWith(GFEDBClientManager.getDRDAProtocol())) {
       for (int i = 0; i < gfeDDL.length; i++) {
         aStr.append(gfeDDL[i] + "\n");
       }

@@ -949,7 +949,8 @@ implements Cloneable
       + Constants.QueryHints.hashMaxCapacity + ","
       + Constants.QueryHints.bulkFetch + ","
       + Constants.QueryHints.withSecondaries + ","
-      + Constants.QueryHints.queryHDFS;
+      + Constants.QueryHints.queryHDFS + ","
+      + Constants.QueryHints.executionEngine;
 
   // GemStone changes END
 	
@@ -1064,6 +1065,10 @@ implements Cloneable
 			else if (key.equals(Constants.QueryHints.joinStrategy.name()))
 			{
 			        setUserSpecifiedJoinStrategy(value);
+			}
+			else if (key.equals(Constants.QueryHints.executionEngine.name()))
+			{
+			        setUserSpecifiedExecutionEngine(value);
 			}
                         /*(original code) else if (key.equals("hashInitialCapacity"))*/
 			else if (key.equals(Constants.QueryHints.hashInitialCapacity.name()))

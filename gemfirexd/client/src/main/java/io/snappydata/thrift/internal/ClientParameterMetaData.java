@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -98,7 +98,6 @@ public class ClientParameterMetaData implements ParameterMetaData {
   public boolean isSigned(int param) throws SQLException {
     switch (getDescriptor(param).getType()) {
       case INTEGER:
-      case REAL:
       case DECIMAL:
       case SMALLINT:
       case BIGINT:
@@ -135,7 +134,6 @@ public class ClientParameterMetaData implements ParameterMetaData {
         case SMALLINT:
         case INTEGER:
         case BIGINT:
-        case REAL:
         case DOUBLE:
         case FLOAT:
         case DATE:
@@ -183,12 +181,10 @@ public class ClientParameterMetaData implements ParameterMetaData {
           return "INTEGER";
         case BIGINT:
           return "BIGINT";
-        case REAL:
-          return "REAL";
         case DOUBLE:
           return "DOUBLE";
         case FLOAT:
-          return "FLOAT";
+          return "REAL";
         case DECIMAL:
           return "DECIMAL";
         case CHAR:
@@ -253,10 +249,9 @@ public class ClientParameterMetaData implements ParameterMetaData {
         return "java.lang.Integer";
       case BIGINT:
         return "java.lang.Long";
-      case REAL:
+      case FLOAT:
         return "java.lang.Float";
       case DOUBLE:
-      case FLOAT:
         return "java.lang.Double";
       case DECIMAL:
         return "java.math.BigDecimal";
@@ -281,6 +276,7 @@ public class ClientParameterMetaData implements ParameterMetaData {
       case BLOB:
         return "java.sql.Blob";
       case CLOB:
+      case JSON:
         return "java.sql.Clob";
       case SQLXML:
         return "java.sql.SQLXML";
@@ -290,8 +286,6 @@ public class ClientParameterMetaData implements ParameterMetaData {
         return "java.sql.Struct";
       case MAP:
         return "java.util.Map";
-      case JSON:
-        return "io.snappydata.thrift.JSONObject";
       default:
         return "java.lang.Object";
     }

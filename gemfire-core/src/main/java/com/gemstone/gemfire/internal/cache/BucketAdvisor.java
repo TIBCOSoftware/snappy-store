@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gemstone.gemfire.CancelException;
@@ -105,6 +106,9 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    */
   private DistributedMemberLock primaryLock;
 
+  /** Local lock used by PRHARedundancyProvider */
+  protected final ReentrantLock redundancyLock;
+
   //private static final byte MASK_HOSTING       = 1; // 0001 
   //private static final byte MASK_VOLUNTEERING  = 2; // 0010
   //private static final byte MASK_OTHER_PRIMARY = 4; // 0100
@@ -123,7 +127,7 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * The current state of this BucketAdvisor which tracks which member is
    * primary and whether or not this member is hosting a real Bucket.
    */
-  private byte primaryState = NO_PRIMARY_NOT_HOSTING;
+  private volatile byte primaryState = NO_PRIMARY_NOT_HOSTING;
   
   /**
    * This delegate handles all volunteering for primary status. Lazily created.
@@ -203,6 +207,7 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
     super(bucket);
     this.regionAdvisor = regionAdvisor;
     this.pRegion = this.regionAdvisor.getPartitionedRegion();
+    this.redundancyLock = new ReentrantLock();
     resetParentAdvisor(bucket.getId());
   }
   
@@ -1122,9 +1127,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this advisor has been closed
    */
   protected boolean isClosed() {
+    return this.primaryState == CLOSED;
+    /*
     synchronized(this) {
       return this.primaryState == CLOSED;
     }
+    */
   }
 
   /** 
@@ -1133,9 +1141,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently marked as primary
    */
   public boolean isPrimary() {
+    return this.primaryState == IS_PRIMARY_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == IS_PRIMARY_HOSTING;
     }
+    */
   }
   
   /** 
@@ -1144,9 +1155,12 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently volunteering for primary
    */
   protected boolean isVolunteering() {
+    return this.primaryState == VOLUNTEERING_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == VOLUNTEERING_HOSTING;
     }
+    */
   }
 
   /** 
@@ -1168,6 +1182,13 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
    * @return true if this member is currently hosting real bucket
    */
   public boolean isHosting() {
+    final byte state = this.primaryState;
+    return state == NO_PRIMARY_HOSTING ||
+        state == OTHER_PRIMARY_HOSTING ||
+        state == VOLUNTEERING_HOSTING ||
+        state == BECOMING_HOSTING ||
+        state == IS_PRIMARY_HOSTING;
+    /*
     synchronized(this) {
       return this.primaryState == NO_PRIMARY_HOSTING ||
              this.primaryState == OTHER_PRIMARY_HOSTING ||
@@ -1175,6 +1196,7 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
              this.primaryState == BECOMING_HOSTING ||
              this.primaryState == IS_PRIMARY_HOSTING;
     }
+    */
   }
   
   /**

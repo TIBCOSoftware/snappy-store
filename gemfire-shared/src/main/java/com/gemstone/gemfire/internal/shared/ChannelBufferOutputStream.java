@@ -19,7 +19,9 @@ package com.gemstone.gemfire.internal.shared;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
+import javax.annotation.Nonnull;
 
 /**
  * OutputStream for use by buffered write abstractions over channel using direct
@@ -47,11 +49,15 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
   public ChannelBufferOutputStream(WritableByteChannel channel, int bufferSize)
       throws IOException {
     super(channel);
-    this.buffer = allocateBuffer(bufferSize);
+    if (bufferSize < 32) {
+      throw new IllegalArgumentException("buffer size " + bufferSize +
+          " should be at least 32");
+    }
+    this.buffer = allocateBuffer(bufferSize).order(ByteOrder.BIG_ENDIAN);
   }
 
   protected ByteBuffer allocateBuffer(int bufferSize) {
-    return ByteBuffer.allocateDirect(bufferSize);
+    return ByteBuffer.allocate(bufferSize);
   }
 
   /**
@@ -59,28 +65,20 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
    */
   @Override
   public final void write(int b) throws IOException {
-    if (this.buffer.hasRemaining()) {
-      this.buffer.put((byte)(b & 0xff));
-    }
-    else {
+    if (!this.buffer.hasRemaining()) {
       flushBufferBlocking(this.buffer);
-      this.buffer.put((byte)(b & 0xff));
     }
+    this.buffer.put((byte)(b & 0xff));
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public final void write(byte[] b, int off, int len) throws IOException {
+  public final void write(@Nonnull byte[] b,
+      int off, int len) throws IOException {
     if (len == 1) {
-      if (this.buffer.hasRemaining()) {
-        this.buffer.put(b[off]);
-      }
-      else {
-        flushBufferBlocking(this.buffer);
-        this.buffer.put(b[off]);
-      }
+      write(b[off]);
       return;
     }
 
@@ -114,8 +112,20 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
    * {@inheritDoc}
    */
   @Override
+  public final void writeInt(int v) throws IOException {
+    if (this.buffer.remaining() < 4) {
+      flushBufferBlocking(this.buffer);
+    }
+    // ByteBuffer will always be big-endian
+    this.buffer.putInt(v);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public void flush() throws IOException {
-    if (this.buffer.hasRemaining()) {
+    if (this.buffer.position() > 0) {
       flushBufferBlocking(this.buffer);
     }
   }
@@ -132,7 +142,7 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
    */
   @Override
   public void close() throws IOException {
-    flushBufferBlocking(this.buffer);
+    flush();
   }
 
   protected void flushBufferBlocking(final ByteBuffer buffer)
@@ -140,13 +150,12 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
     buffer.flip();
     try {
       do {
-        writeBuffer(buffer);
+        writeBuffer(buffer, this.channel);
       } while (buffer.hasRemaining());
     } finally {
       if (buffer.hasRemaining()) {
         buffer.compact();
-      }
-      else {
+      } else {
         buffer.clear();
       }
     }

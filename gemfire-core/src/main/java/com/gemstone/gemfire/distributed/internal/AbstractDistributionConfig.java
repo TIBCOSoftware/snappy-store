@@ -1090,6 +1090,14 @@ public abstract class AbstractDistributionConfig
   protected void checkOffHeapMemorySize(String value) {
     _checkIfModifiable(OFF_HEAP_MEMORY_SIZE_NAME);
   }
+
+  public boolean isMemorySizeModifiable() {
+    return _modifiableDefault();
+  }
+
+  protected void checkMemorySize(String value) {
+    _checkIfModifiable(MEMORY_SIZE_NAME);
+  }
   
   public boolean isLockMemoryModifiable() {
     return _modifiableDefault();
@@ -1192,7 +1200,8 @@ public abstract class AbstractDistributionConfig
       MEMCACHED_PROTOCOL_NAME,
       USER_COMMAND_PACKAGES,
       OFF_HEAP_MEMORY_SIZE_NAME,
-      LOCK_MEMORY_NAME
+      LOCK_MEMORY_NAME,
+      MEMORY_SIZE_NAME
     };
     Arrays.sort(myAtts);
     dcValidAttributeNames = myAtts;
@@ -1387,6 +1396,8 @@ public abstract class AbstractDistributionConfig
       this.setOffHeapMemorySize((String)attValue);
     } else if (attName.equalsIgnoreCase(LOCK_MEMORY_NAME)) {
       this.setLockMemory((Boolean)attValue);
+    } else if (attName.equalsIgnoreCase(MEMORY_SIZE_NAME)) {
+      this.setMemorySize((String)attValue);
     } else if (attName.startsWith(GFXD_USERDEFINED_PREFIX_NAME)) {
       //Do nothing its user defined property.
     } else {    
@@ -1569,6 +1580,8 @@ public abstract class AbstractDistributionConfig
       return this.getOffHeapMemorySize();
     } else if (attName.equalsIgnoreCase(LOCK_MEMORY_NAME)) {
       return this.getLockMemory();
+    } else if (attName.equalsIgnoreCase(MEMORY_SIZE_NAME)) {
+      return this.getMemorySize();
     } else {
       throw new InternalGemFireException(LocalizedStrings.AbstractDistributionConfig_UNHANDLED_ATTRIBUTE_NAME_0.toLocalizedString(attName));
     }
@@ -1750,6 +1763,8 @@ public abstract class AbstractDistributionConfig
       return this.isOffHeapMemorySizeModifiable();
     } else if (attName.equalsIgnoreCase(LOCK_MEMORY_NAME)) {
       return this.isLockMemoryModifiable();
+    } else if (attName.equalsIgnoreCase(MEMORY_SIZE_NAME)) {
+      return this.isMemorySizeModifiable();
     } else {
       throw new InternalGemFireException(LocalizedStrings.AbstractDistributionConfig_UNHANDLED_ATTRIBUTE_NAME_0.toLocalizedString(attName));
     }
@@ -1933,7 +1948,11 @@ public abstract class AbstractDistributionConfig
       return String.class;
     } else if (attName.equalsIgnoreCase(LOCK_MEMORY_NAME)) {
       return Boolean.class;
+    } else if (attName.equalsIgnoreCase(MEMORY_SIZE_NAME)) {
+      return String.class;
     } else if (attName.startsWith(GFXD_USERDEFINED_PREFIX_NAME)) {
+      return String.class;
+    } else if (attName.equalsIgnoreCase(MEMORY_SIZE_NAME)) {
       return String.class;
     } else {
       throw new InternalGemFireException(LocalizedStrings.AbstractDistributionConfig_UNHANDLED_ATTRIBUTE_NAME_0.toLocalizedString(attName));
@@ -2280,7 +2299,8 @@ public abstract class AbstractDistributionConfig
 
     m.put(OFF_HEAP_MEMORY_SIZE_NAME, LocalizedStrings.AbstractDistributionConfig_OFF_HEAP_MEMORY_SIZE_0.toLocalizedString(DEFAULT_OFF_HEAP_MEMORY_SIZE));
     m.put(LOCK_MEMORY_NAME, LocalizedStrings.AbstractDistributionConfig_LOCK_MEMORY.toLocalizedString(DEFAULT_LOCK_MEMORY));
-    
+    m.put(MEMORY_SIZE_NAME, LocalizedStrings.AbstractDistributionConfig_MEMORY_SIZE.toLocalizedString(DEFAULT_MEMORY_SIZE));
+
     dcAttDescriptions = Collections.unmodifiableMap(m);
    }
   }

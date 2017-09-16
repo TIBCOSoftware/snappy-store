@@ -21,13 +21,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.concurrent.TimeUnit;
 
-import com.gemstone.gemfire.cache.CacheTransactionManager;
-import com.gemstone.gemfire.cache.IsolationLevel;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionFlag;
-import com.gemstone.gemfire.cache.TransactionId;
-import com.gemstone.gemfire.cache.TransactionListener;
-import com.gemstone.gemfire.cache.TransactionWriter;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -151,4 +145,5 @@ public class CacheTransactionManagerCreation implements CacheTransactionManager 
   public boolean exists(TransactionId transactionId) {
     throw new UnsupportedOperationException(LocalizedStrings.CacheTransactionManagerCreation_TRANSACTIONS_NOT_SUPPORTED.toLocalizedString());
   }
+
 }

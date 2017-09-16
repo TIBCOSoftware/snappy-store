@@ -1,0 +1,3 @@
+This study was done for a POC using TPC-C at Santander to figure out why they saw a large increase in time to restart from disk with HDFS-enabled tables compared to non-HDFS tables. Although the topology here is quite different (Santander used DCA and did not colocate servers and data nodes), a different problem reproduced caused by unexpected GII in the HDFS case. Results with stack dumps during restart from disk are in /export/perf/users/lises/sqlfire/tpcc.santander. The stack dumps as well as statistics such as DistributionStats.sentBytes illustrate the problem.
+
+Update: This bug has been fixed. Restart times are only 27% slower now.

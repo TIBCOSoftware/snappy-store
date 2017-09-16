@@ -40,6 +40,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.SocketCreator;
@@ -83,13 +84,19 @@ public class GfxdServerLauncher extends CacheServerLauncher {
   protected static final long DEFAULT_HEAPSIZE_GB = 4L;
   protected static final long DEFAULT_HEAPSIZE_SMALL_GB = 2L;
 
+  // One network server on by default (Thrift with SnappyData, DRDA for GemXD)
   protected static final String RUN_NETSERVER = "run-netserver";
-  protected static final String LWC_BIND_ADDRESS_ARG = "client-bind-address";
-  protected static final String LWC_PORT_ARG = "client-port";
+  protected static final String NETWORK_BIND_ADDRESS_ARG = "client-bind-address";
+  protected static final String NETWORK_PORT_ARG = "client-port";
   protected static final String WAIT_FOR_SYNC = "sync";
-  // Thrift Related
+
+  // Thrift servers (can be multiple)
   protected static final String THRIFT_SERVER_ADDRESS = "thrift-server-address";
   protected static final String THRIFT_SERVER_PORT = "thrift-server-port";
+
+  // DRDA servers (can be multiple)
+  protected static final String DRDA_SERVER_ADDRESS = "drda-server-address";
+  protected static final String DRDA_SERVER_PORT = "drda-server-port";
 
   // key bytes used for encrypting the environment variable
   private static final byte[] ENV_B1 = new byte[] { 0x3e, (byte)0xee,
@@ -203,12 +210,11 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     if (gfxdLogFile == null || gfxdLogFile.length() == 0) {
       gfxdLogFile = props.getProperty(DistributionConfig.LOG_FILE_NAME);
       if (gfxdLogFile == null || gfxdLogFile.length() == 0) {
-        if (defaultLogFileName != null && defaultLogFileName.length() > 0) {
+        if (defaultLogFileName.length() > 0) {
           props.setProperty(DistributionConfig.LOG_FILE_NAME,
               defaultLogFileName);
           gfxdLogFile = defaultLogFileName;
-        }
-        else {
+        } else {
           gfxdLogFile = null;
         }
       }
@@ -216,6 +222,29 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     if (gfxdLogFile != null) {
       System.setProperty(GfxdConstants.GFXD_LOG_FILE, gfxdLogFile);
     }
+
+    // also set the statistic-archive-file if not provided
+    String statsFile = props.getProperty(
+        DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME);
+    if (statsFile == null) {
+      if (gfxdLogFile != null) {
+        statsFile = gfxdLogFile;
+      } else if ((statsFile = props.getProperty(
+          DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME)) == null) {
+        statsFile = defaultLogFileName;
+      }
+      if (statsFile.endsWith(".log")) {
+        statsFile = statsFile.replaceAll("\\.log$", ".gfs");
+      } else {
+        statsFile = statsFile + ".gfs";
+      }
+      props.setProperty(DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME,
+          statsFile);
+    } else if (statsFile.length() == 0) {
+      // disable stats file for this case
+      props.remove(DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME);
+    }
+
     // set the critical/eviction heap percentage if provided
     float threshold = getCriticalHeapPercent(options);
     if (threshold > 0.0f) {
@@ -369,11 +398,8 @@ public class GfxdServerLauncher extends CacheServerLauncher {
   protected void processStartOption(String key, String value,
       Map<String, Object> m, List<String> vmArgs, Map<String, String> envArgs,
       Properties props) throws Exception {
-    final String lwcBindAddressArg = getLWCAddressArgName();
-    final String lwcPortArg = getLWCPortArgName();
-    // THRIFT
-    final String thriftServerAddressArg = getThriftAddressArgName();
-    final String thriftServerPortArg = getThriftPortArgName();
+    final String netBindAddressArg = getNetworkAddressArgName();
+    final String netPortArg = getNetworkPortArgName();
 
     //first check for deprecated attributes and throw exception with appropriate error message
     if (deprecatedAttributes.keySet().contains(key)) {
@@ -400,28 +426,27 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     else if (RUN_NETSERVER.equals(key)) {
       m.put(RUN_NETSERVER, value);
     }
-    else if (lwcBindAddressArg.equals(key)) {
-      m.put(lwcBindAddressArg, value);
+    else if (netBindAddressArg.equals(key)) {
+      m.put(netBindAddressArg, value);
     }
-    else if (lwcPortArg.equals(key)) {
+    else if (netPortArg.equals(key)) {
       try {
-        int lwcPort = Integer.parseInt(value);
-        if (lwcPort < 1 || lwcPort > 65535) {
+        int netPort = Integer.parseInt(value);
+        if (netPort < 1 || netPort > 65535) {
           String msg = LocalizedResource.getMessage("SERVER_INVALID_PORT",
               value);
           throw new IllegalArgumentException(msg);
         }
-        m.put(lwcPortArg, value);
+        m.put(netPortArg, value);
       } catch (NumberFormatException nfe) {
         String msg = LocalizedResource.getMessage("SERVER_INVALID_PORT", value);
         throw new IllegalArgumentException(msg, nfe);
       }
     }
-    // THRIFT related Starts
-    else if (thriftServerAddressArg.equals(key)) {
-      m.put(thriftServerAddressArg, value);
-    }
-    else if (thriftServerPortArg.equals(key)) {
+    // THRIFT and DRDA related properties
+    else if (THRIFT_SERVER_ADDRESS.equals(key)) {
+      m.put(THRIFT_SERVER_ADDRESS, value);
+    } else if (THRIFT_SERVER_PORT.equals(key)) {
       try {
         int thriftPort = Integer.parseInt(value);
         if (thriftPort < 1 || thriftPort > 65535) {
@@ -429,13 +454,28 @@ public class GfxdServerLauncher extends CacheServerLauncher {
               value);
           throw new IllegalArgumentException(msg);
         }
-        m.put(thriftServerPortArg, value);
+        m.put(THRIFT_SERVER_PORT, value);
+      } catch (NumberFormatException nfe) {
+        String msg = LocalizedResource.getMessage("SERVER_INVALID_PORT", value);
+        throw new IllegalArgumentException(msg, nfe);
+      }
+    } else if (DRDA_SERVER_ADDRESS.equals(key)) {
+      m.put(DRDA_SERVER_ADDRESS, value);
+    } else if (DRDA_SERVER_PORT.equals(key)) {
+      try {
+        int drdaPort = Integer.parseInt(value);
+        if (drdaPort < 1 || drdaPort > 65535) {
+          String msg = LocalizedResource.getMessage("SERVER_INVALID_PORT",
+              value);
+          throw new IllegalArgumentException(msg);
+        }
+        m.put(DRDA_SERVER_PORT, value);
       } catch (NumberFormatException nfe) {
         String msg = LocalizedResource.getMessage("SERVER_INVALID_PORT", value);
         throw new IllegalArgumentException(msg, nfe);
       }
     }
-    // THRIFT related ends
+    // END THRIFT and DRDA related properties
     else if (com.pivotal.gemfirexd.Attribute.AUTH_PROVIDER.equals(key)) {
       props.setProperty(com.pivotal.gemfirexd.Attribute.AUTH_PROVIDER, value);
     }
@@ -592,15 +632,6 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     }
 
     final ArrayList<String> vmArgs = new ArrayList<String>();
-    
-    // increase the default perm gen size
-    if (this.maxPermGenSize == null 
-        && jvmVendor != null 
-        && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
-      this.maxPermGenSize = MAX_PERM_SIZE + MAX_PERM_DEFAULT;
-      vmArgs.add(this.maxPermGenSize);
-    }
-
     // If either the max heap or initial heap is null, set the one that is null
     // equal to the one that isn't.
     if (this.maxHeapSize == null) {
@@ -670,14 +701,18 @@ public class GfxdServerLauncher extends CacheServerLauncher {
         evictPercent = Integer.parseInt(evictHeapStr.substring(
             evictHeapStr.indexOf('=') + 1).trim());
       }
-      
-      if (jvmVendor != null
-          && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
-        vmArgs.add("-XX:+UseParNewGC");
-        vmArgs.add("-XX:+UseConcMarkSweepGC");
-        vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
-        vmArgs.add("-XX:+CMSClassUnloadingEnabled");
-      }
+    }
+    if (jvmVendor != null
+        && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
+      vmArgs.add("-XX:+UseParNewGC");
+      vmArgs.add("-XX:+UseConcMarkSweepGC");
+      vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
+      vmArgs.add("-XX:+CMSClassUnloadingEnabled");
+      vmArgs.add("-XX:-DontCompileHugeMethods");
+      // reduce the compile threshold for generated code of low latency jobs
+      vmArgs.add("-XX:CompileThreshold=2000");
+      vmArgs.add("-XX:+UnlockDiagnosticVMOptions");
+      vmArgs.add("-XX:ParGCCardsPerStrideChunk=4k");
     }
 
     // If heap and off-heap sizes were both specified, then the critical and
@@ -706,31 +741,20 @@ public class GfxdServerLauncher extends CacheServerLauncher {
           + HeapEvictor.EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP
           + "=true");
     }
-
+    vmArgs.add("-Dorg.codehaus.janino.source_debugging.enable=true");
     vmArgs.addAll(incomingVMArgs);
     processedDefaultGCParams = true;
 
     return vmArgs;
   }
 
-  protected String getLWCAddressArgName() {
-    return LWC_BIND_ADDRESS_ARG;
+  protected String getNetworkAddressArgName() {
+    return NETWORK_BIND_ADDRESS_ARG;
   }
 
-  protected String getLWCPortArgName() {
-    return LWC_PORT_ARG;
+  protected String getNetworkPortArgName() {
+    return NETWORK_PORT_ARG;
   }
-
-  // THRIFT related Starts
-  protected String getThriftAddressArgName() {
-    return THRIFT_SERVER_ADDRESS;
-  }
-
-  protected String getThriftPortArgName() {
-    return THRIFT_SERVER_PORT;
-  }
-
-  // THRIFT related Ends
 
   @Override
   protected void processUnknownStartOption(String key, String value,
@@ -778,6 +802,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
         }
         else if (args[0].equalsIgnoreCase("stop")) {
           stop(args);
+          System.clearProperty(Property.SYSTEM_HOME_PROPERTY);
         }
         else if (args[0].equalsIgnoreCase("status")) {
           status(args);
@@ -948,10 +973,12 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       System.out.println("-" + com.pivotal.gemfirexd.Attribute.SERVER_GROUPS);
       System.out.println("-" + com.pivotal.gemfirexd.Attribute.INIT_SCRIPTS);
       System.out.println("-" + RUN_NETSERVER);
-      System.out.println("-" + getLWCAddressArgName());
-      System.out.println("-" + getLWCPortArgName());
-      System.out.println("-" + getThriftAddressArgName());
-      System.out.println("-" + getThriftPortArgName());
+      System.out.println("-" + getNetworkAddressArgName());
+      System.out.println("-" + getNetworkPortArgName());
+      System.out.println("-" + THRIFT_SERVER_ADDRESS);
+      System.out.println("-" + THRIFT_SERVER_PORT);
+      System.out.println("-" + DRDA_SERVER_ADDRESS);
+      System.out.println("-" + DRDA_SERVER_PORT);
     }
   }
 
@@ -962,41 +989,58 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     super.addToServerCommand(cmds, options);
     String runNetServer = (String)options.get(RUN_NETSERVER);
     if (runNetServer != null) {
-      StringBuilder netServerOption = new StringBuilder("-");
-      netServerOption.append(RUN_NETSERVER).append('=');
-      netServerOption.append(runNetServer);
-      cmds.add(netServerOption.toString());
+      cmds.add("-" + RUN_NETSERVER + '=' + runNetServer);
     }
-    final String lwcAddressArg = getLWCAddressArgName();
-    String bindAddress = (String)options.get(lwcAddressArg);
+    final String netAddressArg = getNetworkAddressArgName();
+    String bindAddress = (String)options.get(netAddressArg);
     if (bindAddress != null) {
-      StringBuilder bindOption = new StringBuilder("-");
-      bindOption.append(lwcAddressArg).append('=').append(bindAddress);
-      cmds.add(bindOption.toString());
+      cmds.add("-" + netAddressArg + '=' + bindAddress);
     }
-    final String lwcPortArg = getLWCPortArgName();
-    String port = (String)options.get(lwcPortArg);
+    final String netPortArg = getNetworkPortArgName();
+    String port = (String)options.get(netPortArg);
     if (port != null) {
-      StringBuilder portOption = new StringBuilder("-");
-      portOption.append(lwcPortArg).append('=').append(port);
-      cmds.add(portOption.toString());
+      cmds.add("-" + netPortArg + '=' + port);
     }
-    // THRIFT Related Starts
-    final String thriftAddressArg = getThriftAddressArgName();
-    bindAddress = (String)options.get(thriftAddressArg);
+
+    // Additional THRIFT and DRDA servers
+    bindAddress = (String)options.get(THRIFT_SERVER_ADDRESS);
     if (bindAddress != null) {
-      StringBuilder bindOption = new StringBuilder("-");
-      bindOption.append(thriftAddressArg).append('=').append(bindAddress);
-      cmds.add(bindOption.toString());
+      cmds.add("-" + THRIFT_SERVER_ADDRESS + '=' + bindAddress);
     }
-    final String thriftPortArg = getThriftPortArgName();
-    String thriftPort = (String)options.get(thriftPortArg);
+    String thriftPort = (String)options.get(THRIFT_SERVER_PORT);
     if (thriftPort != null) {
-      StringBuilder thriftPortOption = new StringBuilder("-");
-      thriftPortOption.append(thriftPortArg).append('=').append(thriftPort);
-      cmds.add(thriftPortOption.toString());
+      cmds.add("-" + THRIFT_SERVER_PORT + '=' + thriftPort);
     }
-    // THRIFT Related Ends
+
+    bindAddress = (String)options.get(DRDA_SERVER_ADDRESS);
+    if (bindAddress != null) {
+      cmds.add("-" + DRDA_SERVER_ADDRESS + '=' + bindAddress);
+    }
+    String drdaPort = (String)options.get(DRDA_SERVER_PORT);
+    if (drdaPort != null) {
+      cmds.add("-" + DRDA_SERVER_PORT + '=' + drdaPort);
+    }
+  }
+
+  private String availablePort(String portStr) {
+    if (portStr != null) {
+      try {
+        int port = Integer.parseInt(portStr);
+        if (port == FabricService.NETSERVER_DEFAULT_PORT) {
+          for (int i = 0; i < 10; i++, port++) {
+            if (AvailablePort.isPortAvailable(port, AvailablePort.SOCKET)) {
+              portStr = Integer.toString(port);
+              break;
+            }
+            // wait a bit before trying next port
+            Thread.sleep(50);
+          }
+        }
+      } catch (NumberFormatException | InterruptedException e) {
+        // ignore
+      }
+    }
+    return portStr;
   }
 
   @Override
@@ -1015,8 +1059,8 @@ public class GfxdServerLauncher extends CacheServerLauncher {
 
     // check and print starting message for network server
     String runNetServer = (String)options.get(RUN_NETSERVER);
-    String bindAddress = (String)options.get(getLWCAddressArgName());
-    String port = (String)options.get(getLWCPortArgName());
+    String bindAddress = (String)options.get(getNetworkAddressArgName());
+    String port = (String)options.get(getNetworkPortArgName());
     final String thriftDisplay = "true".equalsIgnoreCase(props
         .getProperty(com.pivotal.gemfirexd.Attribute.THRIFT_USE_SSL))
             ? "Secure(SSL) Thrift" : "Thrift";
@@ -1029,16 +1073,28 @@ public class GfxdServerLauncher extends CacheServerLauncher {
 
       System.out.println(LocalizedStrings.GfxdServerLauncher_STARTING_NET_SERVER
           .toLocalizedString(new Object[] { this.useThriftServerDefault
-              ? thriftDisplay : "DRDA", "SnappyData", listenAddr, port }));
+              ? thriftDisplay : "DRDA", "SnappyData", listenAddr,
+              availablePort(port) }));
     }
+
     // check for thrift server arguments
-    if ((port = (String)options.get(getThriftPortArgName())) != null) {
-      bindAddress = (String)options.get(getThriftAddressArgName());
+    if ((port = (String)options.get(THRIFT_SERVER_PORT)) != null) {
+      bindAddress = (String)options.get(THRIFT_SERVER_ADDRESS);
       InetAddress listenAddr = FabricServiceUtils.getListenAddress(bindAddress,
           config);
       System.out.println(LocalizedStrings.GfxdServerLauncher_STARTING_NET_SERVER
           .toLocalizedString(new Object[] { thriftDisplay, this.baseName,
-              listenAddr, port }));
+              listenAddr, availablePort(port) }));
+    }
+
+    // check for DRDA server arguments
+    if ((port = (String)options.get(DRDA_SERVER_PORT)) != null) {
+      bindAddress = (String)options.get(DRDA_SERVER_ADDRESS);
+      InetAddress listenAddr = FabricServiceUtils.getListenAddress(bindAddress,
+          config);
+      System.out.println(LocalizedStrings.GfxdServerLauncher_STARTING_NET_SERVER
+          .toLocalizedString(new Object[] { "DRDA", this.baseName,
+              listenAddr, availablePort(port) }));
     }
   }
 
@@ -1095,38 +1151,54 @@ public class GfxdServerLauncher extends CacheServerLauncher {
   protected void startAdditionalServices(Cache cache,
       Map<String, Object> options, Properties props) throws Exception {
     String runNetServer = (String)options.get(RUN_NETSERVER);
-    if (runNetServer == null
-        || Boolean.valueOf(runNetServer).equals(Boolean.TRUE)) {
+    // default for run-netserver is true
+    if (runNetServer == null || "true".equalsIgnoreCase(runNetServer)) {
       Properties networkProperties = new Properties();
       if (props != null) {
         networkProperties.putAll(props);
       }
-      Object val = null;
+      Object netPortObj;
       String bindAddress = null;
       int port = -1;
-      if ((val = options.get(getLWCAddressArgName())) != null) {
-        bindAddress = (String)val;
+      if ((netPortObj = options.get(getNetworkAddressArgName())) != null) {
+        bindAddress = (String)netPortObj;
       }
-      if ((val = options.get(getLWCPortArgName())) != null) {
-        port = Integer.parseInt((String)val);
+      if ((netPortObj = options.get(getNetworkPortArgName())) != null) {
+        port = Integer.parseInt((String)netPortObj);
       }
       getFabricServiceInstance().startNetworkServer(bindAddress, port,
           networkProperties);
     }
 
     // check for thrift server arguments
-    Object val;
-    if ((val = options.get(getThriftPortArgName())) != null) {
-      final int port = Integer.parseInt((String)val);
+    Object thriftArg = options.get(THRIFT_SERVER_PORT);
+    if (thriftArg != null) {
+      final int port = Integer.parseInt((String)thriftArg);
       String bindAddress = null;
-      if ((val = options.get(getThriftAddressArgName())) != null) {
-        bindAddress = (String)val;
+      if ((thriftArg = options.get(THRIFT_SERVER_ADDRESS)) != null) {
+        bindAddress = (String)thriftArg;
       }
       Properties networkProperties = new Properties();
       if (props != null) {
         networkProperties.putAll(props);
       }
       getFabricServiceInstance().startThriftServer(bindAddress, port,
+          networkProperties);
+    }
+
+    // check for DRDA server arguments
+    Object drdaArg = options.get(DRDA_SERVER_PORT);
+    if (drdaArg != null) {
+      final int port = Integer.parseInt((String)drdaArg);
+      String bindAddress = null;
+      if ((drdaArg = options.get(DRDA_SERVER_ADDRESS)) != null) {
+        bindAddress = (String)drdaArg;
+      }
+      Properties networkProperties = new Properties();
+      if (props != null) {
+        networkProperties.putAll(props);
+      }
+      getFabricServiceInstance().startDRDAServer(bindAddress, port,
           networkProperties);
     }
   }
@@ -1181,26 +1253,24 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       Set<PersistentMemberID> membersToWaitFor, Set<Integer> missingBuckets,
       PersistentMemberID myId, String message) {
     StringBuilder otherMembers = new StringBuilder();
-    String tableName = Misc.getFullTableNameFromRegionPath(regionPath);
-    if (GemFireStore.DDL_STMTS_REGION.equals(tableName)) {
-      tableName = "DataDictionary";
+    String tableWithLocation = Misc.getFullTableNameFromRegionPath(regionPath);
+    if (GemFireStore.DDL_STMTS_REGION.equals(tableWithLocation)) {
+      tableWithLocation = "DataDictionary at location " + myId.directory;
     }
     else {
-      tableName = "table " + tableName;
+      tableWithLocation = "Table " + tableWithLocation + " at location " + myId.directory;
     }
     for (PersistentMemberID otherId : membersToWaitFor) {
-      otherMembers.append("\n [DiskId: ")
+      otherMembers.append("\n [" + otherId.host + "]");
+      otherMembers.append(" [DiskId: ")
           .append(otherId.diskStoreId.toUUID().toString())
           .append(", Location: ").append(otherId.directory).append(']');
     }
     if (missingBuckets != null && missingBuckets.size() > 0) {
       message = LocalizedResource.getMessage("FS_WAITING_MESSAGE_BUCKETS",
-          tableName, missingBuckets.toString(), myId.diskStoreId.toUUID()
-              .toString(), myId.directory, otherMembers.toString());
-    }
-    else {
-      message = LocalizedResource.getMessage("FS_WAITING_MESSAGE", tableName,
-          myId.diskStoreId.toUUID().toString(), myId.directory,
+          tableWithLocation, missingBuckets.toString(), otherMembers.toString());
+    } else {
+      message = LocalizedResource.getMessage("FS_WAITING_MESSAGE", tableWithLocation,
           otherMembers.toString());
     }
     super.setWaitingStatus(regionPath, membersToWaitFor, missingBuckets, myId,

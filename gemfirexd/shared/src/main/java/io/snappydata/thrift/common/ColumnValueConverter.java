@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -57,210 +57,249 @@ public abstract class ColumnValueConverter {
 
   public abstract SnappyType getType();
 
-  public boolean toBoolean(OptimizedElementArray row, int columnIndex)
+  public boolean toBoolean(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters
-        .newTypeConversionException(getType().toString(), "boolean");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "boolean", columnPosition);
   }
 
-  public byte toByte(OptimizedElementArray row, int columnIndex)
+  public byte toByte(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "byte", columnPosition);
   }
 
-  public short toShort(OptimizedElementArray row, int columnIndex)
+  public short toShort(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "short");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "short", columnPosition);
   }
 
-  public int toInteger(OptimizedElementArray row, int columnIndex)
+  public int toInteger(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "int");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "int", columnPosition);
   }
 
-  public long toLong(OptimizedElementArray row, int columnIndex)
+  public long toLong(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "long");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "long", columnPosition);
   }
 
-  public float toFloat(OptimizedElementArray row, int columnIndex)
+  public float toFloat(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "float");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "float", columnPosition);
   }
 
-  public double toDouble(OptimizedElementArray row, int columnIndex)
+  public double toDouble(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "double");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "double", columnPosition);
   }
 
-  public BigDecimal toBigDecimal(OptimizedElementArray row, int columnIndex)
+  public BigDecimal toBigDecimal(OptimizedElementArray row, int columnPosition)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "BigDecimal");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "BigDecimal", columnPosition);
   }
 
-  public abstract String toString(OptimizedElementArray row, int columnIndex,
+  public abstract String toString(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException;
 
-  public Date toDate(OptimizedElementArray row, int columnIndex, Calendar cal)
+  public Date toDate(OptimizedElementArray row, int columnPosition, Calendar cal)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Date");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Date", columnPosition);
   }
 
-  public Time toTime(OptimizedElementArray row, int columnIndex, Calendar cal)
+  public Time toTime(OptimizedElementArray row, int columnPosition, Calendar cal)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Time");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Time", columnPosition);
   }
 
-  public Timestamp toTimestamp(OptimizedElementArray row, int columnIndex,
+  public Timestamp toTimestamp(OptimizedElementArray row, int columnPosition,
       Calendar cal) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "Timestamp");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Timestamp", columnPosition);
   }
 
-  public byte[] toBytes(OptimizedElementArray row, int columnIndex,
+  public byte[] toBytes(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte[]");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "byte[]", columnPosition);
   }
 
-  public Blob toBlob(OptimizedElementArray row, int columnIndex,
+  public Blob toBlob(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Blob");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Blob", columnPosition);
   }
 
-  public InputStream toBinaryStream(OptimizedElementArray row, int columnIndex,
+  public InputStream toBinaryStream(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "InputStream");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "InputStream", columnPosition);
   }
 
-  public Clob toClob(OptimizedElementArray row, int columnIndex,
+  public Clob toClob(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Clob");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "Clob", columnPosition);
   }
 
-  public Reader toCharacterStream(OptimizedElementArray row, int columnIndex,
+  public Reader toCharacterStream(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "CharacterStream");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "CharacterStream", columnPosition);
   }
 
-  public InputStream toAsciiStream(OptimizedElementArray row, int columnIndex,
+  public InputStream toAsciiStream(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "AsciiStream");
+    throw Converters.newTypeConversionException(
+        getType().toString(), "AsciiStream", columnPosition);
   }
 
-  public abstract Object toObject(OptimizedElementArray row, int columnIndex,
+  public abstract Object toObject(OptimizedElementArray row, int columnPosition,
       LobService lobService) throws SQLException;
 
-  public void setBoolean(OptimizedElementArray row, int columnIndex, boolean x)
+  public void setBoolean(OptimizedElementArray row, int columnPosition, boolean x)
       throws SQLException {
-    throw Converters
-        .newTypeConversionException(getType().toString(), "boolean");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "boolean", columnPosition);
   }
 
-  public void setByte(OptimizedElementArray row, int columnIndex, byte x)
+  public void setByte(OptimizedElementArray row, int columnPosition, byte x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "byte", columnPosition);
   }
 
-  public void setShort(OptimizedElementArray row, int columnIndex, short x)
+  public void setShort(OptimizedElementArray row, int columnPosition, short x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "short");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "short", columnPosition);
   }
 
-  public void setInteger(OptimizedElementArray row, int columnIndex, int x)
+  public void setInteger(OptimizedElementArray row, int columnPosition, int x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "int");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "int", columnPosition);
   }
 
-  public void setLong(OptimizedElementArray row, int columnIndex, long x)
+  public void setLong(OptimizedElementArray row, int columnPosition, long x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "long");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "long", columnPosition);
   }
 
-  public void setFloat(OptimizedElementArray row, int columnIndex, float x)
+  public void setFloat(OptimizedElementArray row, int columnPosition, float x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "float");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "float", columnPosition);
   }
 
-  public void setDouble(OptimizedElementArray row, int columnIndex, double x)
+  public void setDouble(OptimizedElementArray row, int columnPosition, double x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "double");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "double", columnPosition);
   }
 
-  public void setBigDecimal(OptimizedElementArray row, int columnIndex,
+  public void setBigDecimal(OptimizedElementArray row, int columnPosition,
       BigDecimal x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "BigDecimal");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "BigDecimal", columnPosition);
   }
 
-  public abstract void setString(OptimizedElementArray row, int columnIndex,
+  public abstract void setString(OptimizedElementArray row, int columnPosition,
       String x) throws SQLException;
 
-  public void setDate(OptimizedElementArray row, int columnIndex, Date x)
+  public void setDate(OptimizedElementArray row, int columnPosition, Date x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Date");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "Date", columnPosition);
   }
 
-  public void setTime(OptimizedElementArray row, int columnIndex, Time x)
+  public void setTime(OptimizedElementArray row, int columnPosition, Time x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "Time");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "Time", columnPosition);
   }
 
-  public void setTimestamp(OptimizedElementArray row, int columnIndex,
+  public void setTimestamp(OptimizedElementArray row, int columnPosition,
       Timestamp x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "Timestamp");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "Timestamp", columnPosition);
   }
 
-  public void setBytes(OptimizedElementArray row, int columnIndex, byte[] x)
+  public void setBytes(OptimizedElementArray row, int columnPosition, byte[] x)
       throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(), "byte[]");
+    throw Converters.newTypeSetConversionException(
+        getType().toString(), "byte[]", columnPosition);
   }
 
-  public void setBlob(OptimizedElementArray row, int columnIndex, Blob x)
+  public void setBlob(OptimizedElementArray row, int columnPosition, Blob x)
       throws SQLException {
     long len = x.length();
     if (len <= Integer.MAX_VALUE) {
-      setBytes(row, columnIndex, x.getBytes(1, (int)len));
+      if (x instanceof BufferedBlob) {
+        row.setObject(columnPosition - 1, ((BufferedBlob)x).getAsLastChunk(),
+            SnappyType.BLOB);
+      } else {
+        setBytes(row, columnPosition, x.getBytes(1, (int)len));
+      }
     } else {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, len, Integer.MAX_VALUE);
     }
   }
 
-  public void setBinaryStream(OptimizedElementArray row, int columnIndex,
-      InputStream x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "InputStream");
+  public void setBinaryStream(OptimizedElementArray row, int columnPosition,
+      InputStream stream, long length,
+      LobService lobService) throws SQLException {
+    if (length <= Integer.MAX_VALUE) {
+      setBlob(row, columnPosition, lobService.createBlob(stream, length));
+    } else {
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, length, Integer.MAX_VALUE);
+    }
   }
 
-  public void setClob(OptimizedElementArray row, int columnIndex, Clob x)
+  public void setClob(OptimizedElementArray row, int columnPosition, Clob x)
       throws SQLException {
     long len = x.length();
     if (len <= Integer.MAX_VALUE) {
-      setString(row, columnIndex, x.getSubString(1, (int)len));
+      setString(row, columnPosition, x.getSubString(1, (int)len));
     } else {
       throw ThriftExceptionUtil.newSQLException(
           SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, len, Integer.MAX_VALUE);
     }
   }
 
-  public void setCharacterStream(OptimizedElementArray row, int columnIndex,
-      Reader x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "CharacterStream");
+  public void setCharacterStream(OptimizedElementArray row, int columnPosition,
+      Reader reader, long length, LobService lobService) throws SQLException {
+    if (length <= Integer.MAX_VALUE) {
+      setClob(row, columnPosition, lobService.createClob(reader, length));
+    } else {
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, length, Integer.MAX_VALUE);
+    }
   }
 
-  public void setAsciiStream(OptimizedElementArray row, int columnIndex,
-      InputStream x) throws SQLException {
-    throw Converters.newTypeConversionException(getType().toString(),
-        "AsciiStream");
+  public void setAsciiStream(OptimizedElementArray row, int columnPosition,
+      InputStream stream, long length,
+      LobService lobService) throws SQLException {
+    if (length <= Integer.MAX_VALUE) {
+      setClob(row, columnPosition, lobService.createClob(stream, length));
+    } else {
+      throw ThriftExceptionUtil.newSQLException(
+          SQLState.BLOB_TOO_LARGE_FOR_CLIENT, null, length, Integer.MAX_VALUE);
+    }
   }
 
-  public abstract void setObject(OptimizedElementArray row, int columnIndex,
+  public abstract void setObject(OptimizedElementArray row, int columnPosition,
       Object x) throws SQLException;
 
   public boolean isNull() {

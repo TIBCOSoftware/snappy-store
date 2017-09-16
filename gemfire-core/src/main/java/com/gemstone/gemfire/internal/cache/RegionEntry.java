@@ -26,7 +26,6 @@ import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.cache.EvictionCriteria;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
@@ -194,7 +193,8 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * Mark this entry as having been removed from the map that contained it
    * by setting its value to Token.REMOVED_PHASE2
    */
-  public void removePhase2();
+  public void removePhase2(LocalRegion r);
+
   /**
    * Returns true if this entry does not exist.  This is true if removal
    * has started (value == Token.REMOVED_PHASE1) or has completed
@@ -233,7 +233,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    */
   public boolean fillInValue(LocalRegion r,
       @Retained(ABSTRACT_REGION_ENTRY_FILL_IN_VALUE) InitialImageOperation.Entry entry,
-      ByteArrayDataInput in, DM mgr, Version targetVersion);
+      DM mgr, Version targetVersion);
 
   /**
    * Returns true if this entry has overflowed to disk.
@@ -278,7 +278,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   /**
    * Set the owner for this RegionEntry. Used only by GemFireXD.
    */
-  public void setOwner(LocalRegion owner);
+  public void setOwner(LocalRegion owner, Object previousOwner);
 
   /**
    * Obtain and return the value of this entry using {@link #_getValue()}.
@@ -427,10 +427,8 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   public Object getSerializedValueOnDisk(LocalRegion localRegion);
 
   /**
-   * Gets the value for this entry. For DiskRegions, unlike
-   * {@link #getValue(RegionEntryContext)} this will not fault in the value rather
-   * return a temporary copy. For GemFireXD this is used during table scans in
-   * queries when faulting in every value will be only an unnecessary overhead.
+   * Get the value in region or disk without faultin in raw form without any
+   * change in storage format (SnappyData off-heap will return off-heap buffer).
    */
   @Retained
   public Object getValueInVMOrDiskWithoutFaultIn(LocalRegion owner);
@@ -540,11 +538,16 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * @see Token#isInvalidOrRemoved(Object)
    */
   public boolean isInvalidOrRemoved();
-  
+
+  /**
+   * Returns true if the RegionEntry is for storing an off-heap value
+   */
+  public boolean isOffHeap();
+
   /**
    * Sets the entry value to null.
    */
-  public void setValueToNull();
+  public void setValueToNull(RegionEntryContext context);
 
   public void returnToPool();
   

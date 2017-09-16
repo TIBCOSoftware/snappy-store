@@ -593,4 +593,16 @@ public class RegionMBeanBridge<K, V> {
   public long getEstimatedSizeForHDFSRegion() {
     return -1;
   }
+
+  public boolean isColumnTable() {
+    return false;
+  }
+
+  public long getRowsInColumnBatches() {
+    return 0L;
+  }
+
+  public long getRowsInReservoir() {
+    return 0L;
+  }
 }

@@ -17,6 +17,8 @@
 
 package com.gemstone.gemfire.internal.cache.lru;
 
+import java.util.concurrent.locks.LockSupport;
+
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -28,6 +30,8 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
 import com.gemstone.gemfire.internal.cache.PlaceHolderDiskRegion;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 
 
 /**
@@ -57,6 +61,9 @@ public static final boolean debug = Boolean.getBoolean("gemfire.verbose-lru-cloc
 public static LogWriterI18n logWriter;
 
 static private final int maxEntries;
+
+private boolean snappyStore =
+    CallbackFactoryProvider.getStoreCallbacks().isSnappyStore();
 
 static {
   String squelch = System.getProperty("gemfire.lru.maxSearchEntries");
@@ -216,6 +223,18 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
     * be in the pipe (unless it is the last empty marker).
     */
   public LRUClockNode getLRUEntry() {
+    return getLRUEntry(false);
+  }
+
+  /**
+   * Return the Entry that is considered least recently used. The entry will no longer
+   * be in the pipe (unless it is the last empty marker).
+   *
+   * @param skipLockedEntries if true then skip any locked entries and return
+   *                          with unreleased monitor lock on entry that caller
+   *                          is required to release using Unsafe API (SNAP-2012)
+   */
+  public LRUClockNode getLRUEntry(boolean skipLockedEntries) {
     long numEvals = 0;
     
     for (;;) {
@@ -244,9 +263,34 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
         continue;
       }
 
+      // Checking whether this entry is outside lock ,
+      // so that we won;t attempt to evict an entry whose
+      // faultIn is in process
+      // TODO Remove SnappyStore check after 0.9 . Added this check to
+      // reduce regression cycles
+      if (snappyStore && (aNode.isValueNull()|| aNode.testEvicted())) {
+        if (debug) {
+          logWriter
+              .info(LocalizedStrings.NewLRUClockHand_DISCARDING_EVICTED_ENTRY);
+        }
+        continue;
+      }
+      boolean success = false;
+      // if required skip a locked entry and keep the lock (caller should release)
+      if (skipLockedEntries) {
+        if (!UnsafeHolder.getUnsafe().tryMonitorEnter(aNode)) {
+          // try once more after a small wait
+          LockSupport.parkNanos(10000L);
+          if (!UnsafeHolder.getUnsafe().tryMonitorEnter(aNode)) {
+            continue;
+          }
+        }
+      } else {
+        UnsafeHolder.getUnsafe().monitorEnter(aNode);
+      }
       // If this Entry is part of a transaction, skip it since
       // eviction should not cause commit conflicts
-      synchronized (aNode) {
+      try {
         if (aNode.testEvicted()) {
           if (debug) {
             logWriter
@@ -277,8 +321,13 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
 
         // Return the current node.
         this.stats.incEvaluations(numEvals);
+        success = true;
         return aNode;
-      } // synchronized
+      } finally { // synchronized
+        if (!success || !skipLockedEntries) {
+          UnsafeHolder.getUnsafe().monitorExit(aNode);
+        }
+      }
     } // for
   }
 
@@ -467,6 +516,11 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
 
     public int getState() {
       return 0;
+    }
+
+    @Override
+    public boolean isValueNull() {
+      return false; // Guard nodes can never be null
     }
   }
 }

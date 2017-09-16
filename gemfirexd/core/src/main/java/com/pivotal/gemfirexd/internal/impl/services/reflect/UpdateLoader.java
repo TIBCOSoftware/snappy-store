@@ -322,9 +322,11 @@ final class UpdateLoader implements LockOwner {
 		if (is != null)
 			return is;
 
-		// match behaviour of standard class loaders. 
-		if (name.endsWith(".class"))
-			return null;
+		// match behaviour of standard class loaders.
+		// Fix for issue # SNAP-2026 . Closure cleaner reads classes as stream. This piece of code below
+		// was returning null in such case. Hence commented to return proper stream.
+/*		if (name.endsWith(".class"))
+			return null;*/
 
 		boolean unlockLoader = false;
 		try {
@@ -422,7 +424,7 @@ final class UpdateLoader implements LockOwner {
 	}
 
 	private GfxdLockSet getLockSet() {
-	  ClassFactoryContext cfc = (ClassFactoryContext)ContextService
+/*	  ClassFactoryContext cfc = (ClassFactoryContext)ContextService
 	      .getContextOrNull(ClassFactoryContext.CONTEXT_ID);
 
 	  // This method can be called from outside of the database
@@ -440,7 +442,7 @@ final class UpdateLoader implements LockOwner {
 	      throw GemFireXDRuntimeException.newRuntimeException(
 	          "unexpected exception in getting lock set", se);
 	    }
-	  }
+	  }*/
 	  return this.compat;
 	}
 

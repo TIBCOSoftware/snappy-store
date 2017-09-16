@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -36,14 +36,17 @@
 package io.snappydata.thrift.common;
 
 import java.rmi.ServerException;
+import java.sql.BatchUpdateException;
 import java.sql.ClientInfoStatus;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import com.pivotal.gemfirexd.internal.shared.common.error.ClientExceptionUtil;
+import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.SnappyException;
 import io.snappydata.thrift.SnappyExceptionData;
@@ -62,12 +65,36 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
 
   public static SQLException newSQLException(SnappyException se) {
     SnappyExceptionData payload = se.getExceptionData();
+    List<SnappyExceptionData> nextList = se.getNextExceptions();
+    // if SQLState is null for top-level exception then it could be for
+    // a different kind of exception like XAException, so skip
+    if (payload.getSqlState() == null || payload.getSqlState().isEmpty()) {
+      boolean foundValidPayload = false;
+      // search for a SQLException with non-null state in nextList
+      if (nextList != null) {
+        Iterator<SnappyExceptionData> iter = nextList.iterator();
+        while (iter.hasNext()) {
+          SnappyExceptionData nextData = iter.next();
+          if (nextData.getSqlState() != null &&
+              nextData.getSqlState().length() > 0) {
+            payload = nextData;
+            iter.remove();
+            foundValidPayload = true;
+            break;
+          }
+        }
+      }
+      if (!foundValidPayload) {
+        // no valid exception state from server, so return a default one
+        payload.setSqlState(SQLState.DATA_UNEXPECTED_EXCEPTION.substring(0, 5));
+        payload.setErrorCode(ExceptionSeverity.STATEMENT_SEVERITY);
+      }
+    }
     SQLException sqle = newSQLException(payload, se.getCause(),
         se.getServerInfo());
     // since SnappyException is always a wrapper, no need to record the stack
     sqle.setStackTrace(se.getStackTrace());
     // build next exceptions
-    List<SnappyExceptionData> nextList = se.getNextExceptions();
     SQLException current = sqle, next;
     if (nextList != null) {
       for (SnappyExceptionData nextData : nextList) {
@@ -78,12 +105,16 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
           while (cause.getCause() != null) {
             cause = cause.getCause();
           }
-          cause.initCause(new ServerException(nextData.getReason()));
-        } else {
-          next = newSQLException(nextData, null, null);
-          current.setNextException(next);
-          current = next;
+          try {
+            cause.initCause(new ServerException(nextData.getReason()));
+            continue;
+          } catch (IllegalStateException ignored) {
+            // continue to default
+          }
         }
+        next = newSQLException(nextData, null, null);
+        current.setNextException(next);
+        current = next;
       }
     }
     return sqle;
@@ -95,8 +126,19 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
     if (serverInfo != null) {
       message = "(" + serverInfo + ") " + message;
     }
-    return factory.getSQLException(message, payload.getSqlState(),
-        payload.getSeverity(), null, cause);
+    List<Integer> updateCounts = payload.getUpdateCounts();
+    if (updateCounts != null) {
+      final int numUpdates = updateCounts.size();
+      int[] updates = new int[numUpdates];
+      for (int i = 0; i < numUpdates; i++) {
+        updates[i] = updateCounts.get(i);
+      }
+      return new BatchUpdateException(message, payload.getSqlState(),
+          payload.getErrorCode(), updates, cause);
+    } else {
+      return factory.getSQLException(message, payload.getSqlState(),
+          payload.getErrorCode(), null, cause);
+    }
   }
 
   public static SQLClientInfoException newSQLClientInfoException(
@@ -110,15 +152,15 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
   public static SQLWarning newSQLWarning(SnappyExceptionData payload,
       Throwable cause) {
     return new SQLWarning(payload.getReason(), payload.getSqlState(),
-        payload.getSeverity(), cause);
+        payload.getErrorCode(), cause);
   }
 
   public static SnappyException newSnappyException(String sqlState, Throwable t,
       String serverInfo, Object... args) {
     SnappyExceptionData payload = new SnappyExceptionData(getMessageUtil()
         .getCompleteMessage(sqlState, args),
-        getSQLStateFromIdentifier(sqlState),
-        getSeverityFromIdentifier(sqlState));
+        getSeverityFromIdentifier(sqlState))
+        .setSqlState(getSQLStateFromIdentifier(sqlState));
     SnappyException se = new SnappyException(payload, serverInfo);
     if (t != null) {
       if (t instanceof SnappyException) {
@@ -127,9 +169,8 @@ public abstract class ThriftExceptionUtil extends ClientExceptionUtil {
         if (next.getNextExceptions() != null) {
           se.getNextExceptions().addAll(next.getNextExceptions());
         }
-      } else {
-        se.initCause(t);
       }
+      se.initCause(t);
     }
     return se;
   }

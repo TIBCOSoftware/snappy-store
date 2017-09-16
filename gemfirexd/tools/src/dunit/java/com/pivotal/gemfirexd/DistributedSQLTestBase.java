@@ -34,12 +34,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.CacheListener;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
 import com.gemstone.gemfire.cache.wan.GatewayReceiver;
@@ -52,6 +47,7 @@ import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.PartitionAttributesImpl;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentHashSet;
 import com.pivotal.gemfirexd.NetworkInterface.ConnectionListener;
 import com.pivotal.gemfirexd.ddl.IndexPersistenceDUnit;
@@ -1616,13 +1612,14 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   }
 
   public static void _startNetworkServer(String className, String name,
-      int mcastPort, int netPort, String serverGroups, Properties extraProps, Boolean configureDefautHeap)
-      throws Exception {
+      int mcastPort, int netPort, String serverGroups, Properties extraProps,
+      Boolean configureDefautHeap) throws Exception {
     final Class<?> c = Class.forName(className);
 
     // start a DataNode first.
     if (TestUtil.getFabricService().status() != FabricService.State.RUNNING) {
-      _startNewServer(className, name, mcastPort, serverGroups, extraProps, configureDefautHeap);
+      _startNewServer(className, name, mcastPort, serverGroups, extraProps,
+          configureDefautHeap);
     }
 
     DistributedSQLTestBase test = (DistributedSQLTestBase)c.getConstructor(
@@ -2567,8 +2564,20 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     return vms;
   }
 
-  private String regionAttributesToXML(final RegionAttributes<?, ?> attrs,
-      VM vmForDiskDir) {
+  public static int getDefaultLocalMaxMemory() {
+    return PartitionAttributesFactory.LOCAL_MAX_MEMORY_DEFAULT;
+  }
+
+  private String regionAttributesToXML(RegionAttributes<?, ?> attrs, VM vm) {
+    // adjust default local-max-memory as per target VM size
+    PartitionAttributesImpl pa;
+    if (vm != null && attrs != null && (pa = (PartitionAttributesImpl)attrs
+        .getPartitionAttributes()) != null && !pa.getEnableOffHeapMemory() &&
+        !pa.hasLocalMaxMemory()) {
+      int localMaxMemory = (Integer)vm.invoke(getClass(),
+          "getDefaultLocalMaxMemory");
+      pa.setLocalMaxMemory(localMaxMemory);
+    }
     return TestUtil.regionAttributesToXML(attrs);
   }
 
@@ -2880,7 +2889,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
 
     }
   }
-  
+
   protected void derbyCleanup(Statement derbyStmt, Connection derbyConn,
       NetworkServerControl server) throws Exception {
 
@@ -2890,9 +2899,6 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     if (derbyStmt == null) {
       derbyStmt = derbyConn.createStatement();
     }
-    derbyStmt.execute("drop procedure validateTestEnd ");
-    derbyConn.commit();
-    
     for (int tries = 1; tries <= 5; tries++) {
       try {
         derbyStmt.execute("drop trigger test_ok");
@@ -2908,6 +2914,10 @@ public class DistributedSQLTestBase extends DistributedTestBase {
       }
     }
     derbyConn.commit();
+
+    derbyStmt.execute("drop procedure validateTestEnd ");
+    derbyConn.commit();
+
     derbyConn.close();
     
     cleanDerbyArtifacts(derbyStmt, new String[] {}, new String[] {},

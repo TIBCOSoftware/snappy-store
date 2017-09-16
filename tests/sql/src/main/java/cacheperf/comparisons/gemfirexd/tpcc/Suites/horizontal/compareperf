@@ -1,0 +1,50 @@
+#!/bin/bash
+
+compareperf()
+{
+  echo "Running $2 comparison using $1 for $3"
+  java -cp $GEMFIRE/lib/gemfire.jar:$JTESTS -Xmx750m -DomitFailedTests=true \
+        -DstatSpecFile=$JTESTS/cacheperf/comparisons/gemfirexd/tpcc/$1.spec \
+        -DgenerateCSVFile=true -DcsvFile=$2.$1.$3.csv \
+        -DcompReportFile=$2.$1.$3.txt -Dmode=$2 -DcompareByKey=true -DJTESTS=$JTESTS \
+        -Dgemfire.home=$GEMFIRE -DaddTestKey=true perffmwk.PerfComparer \
+        $4 $5 $6 $7 $8 $9
+}
+
+########################## HORIZONTAL SCALE ############################
+
+horizontal()
+{
+  echo "Running S vs M vs L horizontal scaling reports..."
+  for i in cpu heap load throughput responseTime
+  do
+    for j in ratio raw
+    do
+      compareperf $i $j peer.horiz SCALE.S/peerClient.gfxd/ SCALE.M/peerClient.gfxd/ SCALE.L/peerClient.gfxd/
+      compareperf $i $j thin.horiz SCALE.S/thinClient.gfxd/ SCALE.M/thinClient.gfxd/ SCALE.L/thinClient.gfxd/
+    done
+  done
+}
+
+########################## PEER VS THIN ############################
+
+client()
+{
+  echo "Running peer vs thin client scaling reports..."
+  for i in cpu heap load throughput responseTime
+  do
+    for j in ratio raw
+    do
+      compareperf $i $j S.client SCALE.S/peerClient.gfxd/ SCALE.S/thinClient.gfxd/
+      compareperf $i $j M.client SCALE.M/peerClient.gfxd/ SCALE.M/thinClient.gfxd/
+      compareperf $i $j L.client SCALE.L/peerClient.gfxd/ SCALE.L/thinClient.gfxd/
+    done
+  done
+}
+
+########################## COMPARE ############################
+
+trap 'exit 1' 2 #traps Ctrl-C (signal 2)
+
+horizontal
+client

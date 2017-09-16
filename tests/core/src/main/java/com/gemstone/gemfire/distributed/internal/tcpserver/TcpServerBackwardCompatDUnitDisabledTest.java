@@ -119,7 +119,8 @@ public class TcpServerBackwardCompatDUnitDisabledTest extends DistributedTestCas
       @Override
       public void run2() throws CacheException {
         try {
-          TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION-100, Version.CURRENT_ORDINAL);
+          TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION-100,
+              Version.CURRENT_GFE_ORDINAL);
           
           Locator.startLocatorAndDS(port0, logFile0, props);
         } catch (IOException e) {
@@ -134,7 +135,8 @@ public class TcpServerBackwardCompatDUnitDisabledTest extends DistributedTestCas
       @Override
       public void run2() throws CacheException {
         disconnectFromDS();
-        TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION-100, Version.CURRENT_ORDINAL);
+        TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION-100,
+            Version.CURRENT_GFE_ORDINAL);
         InternalDistributedSystem.connect(props);
       }
     });
@@ -148,7 +150,8 @@ public class TcpServerBackwardCompatDUnitDisabledTest extends DistributedTestCas
         try {
           TcpServer.TESTVERSION -= 100;
           TcpServer.OLDTESTVERSION -= 100;
-          TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION, Version.CURRENT_ORDINAL);
+          TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION,
+              Version.CURRENT_GFE_ORDINAL);
           TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.OLDTESTVERSION, Version.GFE_57.ordinal());
           assertEquals("Gossip Version and Test version are not same", GossipServer.GOSSIPVERSION, TcpServer.TESTVERSION);
           assertEquals("Previous Gossip Version and Test version are not same", GossipServer.OLDGOSSIPVERSION, TcpServer.OLDTESTVERSION);
@@ -208,7 +211,8 @@ public class TcpServerBackwardCompatDUnitDisabledTest extends DistributedTestCas
         try {
           TcpServer.TESTVERSION -= 100;
           TcpServer.OLDTESTVERSION -= 100;
-          TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION, Version.CURRENT_ORDINAL);
+          TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.TESTVERSION,
+              Version.CURRENT_GFE_ORDINAL);
           TcpServer.getGossipVersionMapForTestOnly().put(TcpServer.OLDTESTVERSION, Version.GFE_57.ordinal());
           assertEquals("Gossip Version and Test version are not same", GossipServer.GOSSIPVERSION, TcpServer.TESTVERSION);
           assertEquals("Previous Gossip Version and Test version are not same", GossipServer.OLDGOSSIPVERSION, TcpServer.OLDTESTVERSION);

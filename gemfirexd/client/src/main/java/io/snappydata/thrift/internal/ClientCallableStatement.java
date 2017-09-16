@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -45,9 +45,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.gemstone.gnu.trove.TIntArrayList;
 import com.gemstone.gnu.trove.TIntIntHashMap;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
+import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.ColumnValue;
 import io.snappydata.thrift.OutputParameter;
@@ -83,23 +83,12 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     super(conn, sql, rsType, rsConcurrency, rsHoldability);
   }
 
-  ClientCallableStatement(ClientConnection conn, String sql,
-      int[] autoIncColumns) throws SQLException {
-    super(conn, sql, autoIncColumns);
-  }
-
-  ClientCallableStatement(ClientConnection conn, String sql,
-      String[] autoIncColumnNames) throws SQLException {
-    super(conn, sql, autoIncColumnNames);
-  }
-
   private TreeMap<Integer, OutputParameter> getOutputParamsSet() {
     final TreeMap<Integer, OutputParameter> outParams = this.outParams;
     if (outParams != null) {
       return outParams;
-    }
-    else {
-      return (this.outParams = new TreeMap<Integer, OutputParameter>());
+    } else {
+      return (this.outParams = new TreeMap<>());
     }
   }
 
@@ -107,6 +96,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
   protected void reset() {
     super.reset();
     this.outParamValues = null;
+    this.outParamsPositionInRow = null;
   }
 
   @Override
@@ -114,8 +104,7 @@ public final class ClientCallableStatement extends ClientPreparedStatement
     final TreeMap<Integer, OutputParameter> outParams = this.outParams;
     if (outParams == null || outParams.isEmpty()) {
       return Collections.emptyMap();
-    }
-    else {
+    } else {
       return outParams;
     }
   }
@@ -136,24 +125,21 @@ public final class ClientCallableStatement extends ClientPreparedStatement
         // copy as a Row to outParamValues which also tracks ClientFinalizer
         // and makes the getters for all params in parent class uniform
         this.outParamValues = new Row();
+        this.outParamValues.initialize(outParams.size());
         for (Integer parameterIndex : outParams.keySet()) {
           ColumnValue outValue = outValues.get(parameterIndex);
-          if (outValue != null) {
-            this.outParamValues.addColumnValue(outValue);
-            this.outParamsPositionInRow.put(parameterIndex, outIndex);
-            outIndex++;
-          }
+          this.outParamValues.setColumnValue(outIndex - 1, outValue);
+          this.outParamsPositionInRow.put(parameterIndex, outIndex);
+          outIndex++;
         }
-        // initialize finalizers for LOBs in the row, if any
-        final TIntArrayList lobIndices =
-            this.outParamValues.requiresLobFinalizers();
-        if (lobIndices != null) {
-          this.outParamValues.initializeLobFinalizers(lobIndices,
-              this.service.new ClientCreateLobFinalizer(
-                  this.service.getCurrentHostConnection()));
-        }
+        // create LOBs in the row, if any
+        this.outParamValues.initializeLobs(this.service);
       }
     }
+  }
+
+  protected final int getOutputType(int parameterIndex) {
+    return this.outParamValues.getType(parameterIndex - 1);
   }
 
   final int getOutputParameterIndex(int parameterIndex) throws SQLException {
@@ -177,12 +163,15 @@ public final class ClientCallableStatement extends ClientPreparedStatement
       if (index > 0) {
         return index;
       }
-      else {
+      index = this.parameterNameToIndex.get(
+          SharedUtils.SQLToUpperCase(parameterName));
+      if (index > 0) {
+        return index;
+      } else {
         throw ThriftExceptionUtil.newSQLException(SQLState.COLUMN_NOT_FOUND,
             null, parameterName);
       }
-    }
-    else {
+    } else {
       throw ThriftExceptionUtil.newSQLException(SQLState.NULL_COLUMN_NAME);
     }
   }
@@ -264,16 +253,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getString(columnIndex, getType(parameterIndex), row);
+    return getString(columnIndex, type, row);
   }
 
   /**
@@ -285,16 +276,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getBoolean(columnIndex, getType(parameterIndex), row);
+    return getBoolean(columnIndex, type, row);
   }
 
   /**
@@ -306,16 +299,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getByte(columnIndex, getType(parameterIndex), row);
+    return getByte(columnIndex, type, row);
   }
 
   /**
@@ -327,16 +322,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getShort(columnIndex, getType(parameterIndex), row);
+    return getShort(columnIndex, type, row);
   }
 
   /**
@@ -348,16 +345,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getInt(columnIndex, getType(parameterIndex), row);
+    return getInt(columnIndex, type, row);
   }
 
   /**
@@ -369,16 +368,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getLong(columnIndex, getType(parameterIndex), row);
+    return getLong(columnIndex, type, row);
   }
 
   /**
@@ -390,16 +391,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getFloat(columnIndex, getType(parameterIndex), row);
+    return getFloat(columnIndex, type, row);
   }
 
   /**
@@ -411,16 +414,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getDouble(columnIndex, getType(parameterIndex), row);
+    return getDouble(columnIndex, type, row);
   }
 
   /**
@@ -433,16 +438,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getBigDecimal(columnIndex, getType(parameterIndex), row);
+    return getBigDecimal(columnIndex, type, row);
   }
 
   /**
@@ -455,16 +462,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getBigDecimal(columnIndex, scale, getType(parameterIndex), row);
+    return getBigDecimal(columnIndex, scale, type, row);
   }
 
   /**
@@ -476,16 +485,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getBytes(columnIndex, getType(parameterIndex), row);
+    return getBytes(columnIndex, type, row);
   }
 
   /**
@@ -522,16 +533,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getDate(columnIndex, cal, getType(parameterIndex), row);
+    return getDate(columnIndex, cal, type, row);
   }
 
   /**
@@ -544,16 +557,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getTime(columnIndex, cal, getType(parameterIndex), row);
+    return getTime(columnIndex, cal, type, row);
   }
 
   /**
@@ -566,16 +581,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getTimestamp(columnIndex, cal, getType(parameterIndex), row);
+    return getTimestamp(columnIndex, cal, type, row);
   }
 
   /**
@@ -587,16 +604,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getObject(columnIndex, getType(parameterIndex), row);
+    return getObject(columnIndex, type, row);
   }
 
   /**
@@ -609,16 +628,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getObject(columnIndex, map, getType(parameterIndex), row);
+    return getObject(columnIndex, map, type, row);
   }
 
   /**
@@ -630,16 +651,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getRef(columnIndex, getType(parameterIndex), row);
+    return getRef(columnIndex, type, row);
   }
 
   /**
@@ -651,16 +674,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getBlob(columnIndex, getType(parameterIndex), row);
+    return getBlob(columnIndex, type, row);
   }
 
   /**
@@ -672,16 +697,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getClob(columnIndex, getType(parameterIndex), row);
+    return getClob(columnIndex, type, row);
   }
 
   /**
@@ -693,16 +720,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getArray(columnIndex, getType(parameterIndex), row);
+    return getArray(columnIndex, type, row);
   }
 
   /**
@@ -714,16 +743,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getURL(columnIndex, getType(parameterIndex), row);
+    return getURL(columnIndex, type, row);
   }
 
   /**
@@ -735,16 +766,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getRowId(columnIndex, getType(parameterIndex), row);
+    return getRowId(columnIndex, type, row);
   }
 
   /**
@@ -756,16 +789,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getSQLXML(columnIndex, getType(parameterIndex), row);
+    return getSQLXML(columnIndex, type, row);
   }
 
   /**
@@ -777,16 +812,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getNString(columnIndex, getType(parameterIndex), row);
+    return getNString(columnIndex, type, row);
   }
 
   /**
@@ -799,16 +836,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getNCharacterStream(columnIndex, getType(parameterIndex), row);
+    return getNCharacterStream(columnIndex, type, row);
   }
 
   /**
@@ -821,16 +860,18 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getCharacterStream(columnIndex, getType(parameterIndex), row);
+    return getCharacterStream(columnIndex, type, row);
   }
 
   /**
@@ -842,35 +883,39 @@ public final class ClientCallableStatement extends ClientPreparedStatement
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getNClob(columnIndex, getType(parameterIndex), row);
+    return getNClob(columnIndex, type, row);
   }
 
   @Override
-  public <T> T getObject(final int parameterIndex, final Class<T> type)
+  public <T> T getObject(final int parameterIndex, final Class<T> tp)
       throws SQLException {
     checkValidParameterIndex(parameterIndex);
 
     final int columnIndex;
     final int outParamIndex = getOutputParameterIndex(parameterIndex);
+    final int type;
     final Row row;
     if (outParamIndex > 0) {
       row = this.outParamValues;
+      type = getOutputType(outParamIndex);
       columnIndex = outParamIndex;
-    }
-    else {
+    } else {
       row = this.paramsList;
+      type = getType(parameterIndex);
       columnIndex = parameterIndex;
     }
-    return getObject(columnIndex, type, getType(parameterIndex), row);
+    return getObject(columnIndex, tp, type, row);
   }
 
   /**

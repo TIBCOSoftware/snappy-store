@@ -47,4 +47,10 @@ public interface EnginePreparedStatement extends PreparedStatement {
      * @return version counter
      */
     public long getVersionCounter() throws SQLException;
+
+    /**
+     * Get the type of statement, one of the
+     * {@link com.pivotal.gemfirexd.internal.iapi.sql.StatementType}s
+     */
+    public int getStatementType() throws SQLException;
 }
