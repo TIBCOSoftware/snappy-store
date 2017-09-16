@@ -3098,13 +3098,12 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         throw new InternalGemFireError("Bucket " + this + " size (" +
             bSize + ") negative after applying delta of " + memoryDelta);
       }
+
+      final PartitionedRegionDataStore prDS = this.partitionedRegion.getDataStore();
+      prDS.updateMemoryStats(memoryDelta);
+      //cache.getLogger().fine("DEBUG updateBucketMemoryStats delta=" + memoryDelta + " newSize=" + bytesInMemory.get(), new RuntimeException("STACK"));
     }
-    
-    final PartitionedRegionDataStore prDS = this.partitionedRegion.getDataStore();
-    prDS.updateMemoryStats(memoryDelta);
-    //cache.getLogger().fine("DEBUG updateBucketMemoryStats delta=" + memoryDelta + " newSize=" + bytesInMemory.get(), new RuntimeException("STACK"));
   }
-  
 
   public static BucketRegionIndexCleaner getIndexCleaner() {
     BucketRegionIndexCleaner cleaner = bucketRegionIndexCleaner.get();

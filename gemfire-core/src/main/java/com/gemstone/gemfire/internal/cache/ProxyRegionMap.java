@@ -617,7 +617,7 @@ public final class ProxyRegionMap implements RegionMap {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
-    public void setOwner(LocalRegion owner) {
+    public void setOwner(LocalRegion owner, Object previousOwner) {
       throw new UnsupportedOperationException(LocalizedStrings
           .ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0
               .toLocalizedString(DataPolicy.EMPTY));

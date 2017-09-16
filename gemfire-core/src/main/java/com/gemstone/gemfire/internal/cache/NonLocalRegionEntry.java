@@ -377,7 +377,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     //throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
-  public void setOwner(LocalRegion owner) {
+  public void setOwner(LocalRegion owner, Object previousOwner) {
     throw new UnsupportedOperationException(LocalizedStrings
         .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
             .toLocalizedString());

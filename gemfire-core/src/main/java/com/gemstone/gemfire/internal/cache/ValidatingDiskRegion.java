@@ -551,7 +551,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
      * {@inheritDoc}
      */
     @Override
-    public void setOwner(LocalRegion owner) {
+    public void setOwner(LocalRegion owner, Object previousOwner) {
       // TODO Auto-generated method stub
       
     }

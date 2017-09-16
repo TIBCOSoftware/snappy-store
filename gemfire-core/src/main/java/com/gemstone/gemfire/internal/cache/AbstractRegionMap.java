@@ -350,7 +350,8 @@ abstract class AbstractRegionMap implements RegionMap {
         && !r.isUsedForPartitionedRegionBucket()
         && !(args != null && args.isUsedForPartitionedRegionBucket());
 
-    if (r == _getOwnerObject()) {
+    Object currentOwner = _getOwnerObject();
+    if (r == currentOwner) {
       return;
     }
     setOwner(r);
@@ -368,7 +369,7 @@ abstract class AbstractRegionMap implements RegionMap {
           .iterator();
       while (iter.hasNext()) {
         final RegionEntry re = iter.next();
-        re.setOwner(r);
+        re.setOwner(r, currentOwner);
       }
     }
   }
@@ -828,11 +829,13 @@ abstract class AbstractRegionMap implements RegionMap {
     OrderedTombstoneMap<RegionEntry> tombstones = new OrderedTombstoneMap<RegionEntry>();
     if (rm != null) {
       final LocalRegion owner = _getOwner();
+      final AbstractRegionMap arm = (AbstractRegionMap)rm;
+      final Object rmOwner = arm._getOwnerObject();
       // Read current time to later pass it to all calls to copyRecoveredEntry.  This is 
       // needed if a dummy version tag has to be created for a region entry
       final long currentTime = owner.getCache().cacheTimeMillis();
       
-      CustomEntryConcurrentHashMap<Object, Object> other = ((AbstractRegionMap)rm)._getMap();
+      CustomEntryConcurrentHashMap<Object, Object> other = arm._getMap();
       Iterator<Map.Entry<Object, Object>> it = other
           .entrySetWithReusableEntries().iterator();
       while (it.hasNext()) {
@@ -842,18 +845,15 @@ abstract class AbstractRegionMap implements RegionMap {
         Object key = me.getKey();
 
         if (!entriesIncompatible) {
-          oldRe.setOwner(_getOwner());
+          oldRe.setOwner(owner, rmOwner);
           _getMap().put(key, oldRe);
           // newRe is now in this._getMap().
           if (oldRe.isTombstone()) {
             VersionTag tag = oldRe.getVersionStamp().asVersionTag();
             tombstones.put(tag, oldRe);
           }
-          // only for incrementing count while size is updated below
+          // only for incrementing count while size is updated in RegionEntry.setOwner
           owner.updateSizeOnCreate(key, 0);
-          if (!oldRe.isOffHeap()) {
-            owner.updateMemoryStats(null, oldRe._getValue());
-          }
           // owner.calculateRegionEntryValueSize(oldRe));
           incEntryCount(1);
           lruEntryUpdate(oldRe);
@@ -861,23 +861,24 @@ abstract class AbstractRegionMap implements RegionMap {
           continue;
         }
         
-        @Retained @Released Object value = oldRe._getValueRetain((RegionEntryContext) ((AbstractRegionMap) rm)._getOwnerObject(), true);
+        @Retained @Released Object value = oldRe._getValueRetain((RegionEntryContext)rmOwner, true);
         try {
           if (value == Token.NOT_AVAILABLE) {
             // fix for bug 43993
             value = null;
           }
-          if (value == Token.TOMBSTONE && !_getOwner().getConcurrencyChecksEnabled()) {
+          if (value == Token.TOMBSTONE && !owner.getConcurrencyChecksEnabled()) {
             continue;
           }
-          RegionEntry newRe = getEntryFactory().createEntry((RegionEntryContext) _getOwnerObject(), key, value);
+          RegionEntry newRe = getEntryFactory().createEntry(owner, key, value);
           copyRecoveredEntry(oldRe, newRe, currentTime);
           // newRe is now in this._getMap().
           if (newRe.isTombstone()) {
             VersionTag tag = newRe.getVersionStamp().asVersionTag();
             tombstones.put(tag, newRe);
           }
-          _getOwner().updateSizeOnCreate(key, _getOwner().calculateRegionEntryValueSize(newRe));
+          // only for incrementing count while size is updated in RegionEntry constructor
+          owner.updateSizeOnCreate(key, 0);
           incEntryCount(1);
           lruEntryUpdate(newRe);
         } finally {
