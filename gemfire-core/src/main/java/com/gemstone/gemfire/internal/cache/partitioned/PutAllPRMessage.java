@@ -410,7 +410,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     final InternalDataView view = (tx != null && tx.isSnapshot()) ? r.getSharedDataView() : r.getDataView(tx);
     boolean lockedForPrimary = false;
     UMMMemoryTracker memoryTracker = null;
-    // needed for column store callback
+    // needed for column store callbacks
     EntryEventImpl[] allEvents = null;
     try {
     
