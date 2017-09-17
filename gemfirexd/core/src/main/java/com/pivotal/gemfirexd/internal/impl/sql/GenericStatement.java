@@ -699,14 +699,14 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
-                                                       if (observer != null) {
-                                                         observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
-                                                       }
-							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                  checkCancellation, false);
-						}
-						throw ex;
+					  if (routeQuery) {
+					    if (observer != null) {
+					      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+					    }
+					    return getPreparedStatementForSnappy(true, statementContext, lcc, false,
+					      checkCancellation, false);
+					  }
+					  throw ex;
 					}
 
 					bindTime += getCurrentTimeMillis(lcc);
