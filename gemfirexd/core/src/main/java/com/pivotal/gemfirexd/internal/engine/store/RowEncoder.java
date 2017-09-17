@@ -18,6 +18,8 @@ package com.pivotal.gemfirexd.internal.engine.store;
 
 import java.util.Map;
 
+import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
@@ -48,6 +50,12 @@ public interface RowEncoder {
    * for a set of rows in a bulk/batch insert.
    */
   PreProcessRow getPreProcessorForRows(GemFireContainer container);
+
+  /**
+   * Any actions required after column store put operations which happen
+   * outside of entry/region locks (unlike a CacheListener)
+   */
+  void afterColumnStorePuts(BucketRegion bucket, EntryEventImpl[] events);
 
   /**
    * An interface to do some common pre-processing for bulk/batch inserts.

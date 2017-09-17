@@ -771,11 +771,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           uuidAdvisor.handshake();
         }
       }
-      // attach CacheListener for object table if required
-      CacheListener<?, ?> listener = getObjectStoreListener();
-      if (listener != null) {
-        this.region.addCacheListener(listener);
-      }
       this.iargs = null; // free the internal region arguments
     } catch (TimeoutException e) {
       throw StandardException.newException(
@@ -2030,10 +2025,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       // before dropping the table, ensure that WAN queues, if any, are
       // drained completely         
       waitForGatewayQueuesToFlush();
-      CacheListener<?, ?> listener = getObjectStoreListener();
-      if (listener != null && !region.isDestroyed()) {
-        region.removeCacheListener(listener);
-      }
       // Do not distribute region destruction to other caches since the
       // distribution is already handled by GfxdDDLMessages.
       // [sumedh] Special treatment for partitioned region to skip the parent
@@ -5084,13 +5075,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public final RowEncoder getRowEncoder() {
     return this.encoder;
-  }
-
-  private CacheListener<?, ?> getObjectStoreListener() {
-    // doubling the encoder as CacheListener to avoid bloating grammar
-    // since this is internal to SnappyData in any case
-    return (this.encoder instanceof CacheListener<?, ?>)
-        ? (CacheListener<?, ?>)this.encoder : null;
   }
 
   private final boolean isCandidateForByteArrayStore() {

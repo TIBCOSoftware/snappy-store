@@ -732,6 +732,10 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         if (success && checkForColumnBatchCreation()) {
           createAndInsertColumnBatch(false);
         }
+        if (success && partitionedRegion.isInternalColumnTable()) {
+          CallbackFactoryProvider.getStoreCallbacks()
+              .invokeColumnStorePutCallbacks(this, new EntryEventImpl[]{event});
+        }
       }
     }
   }

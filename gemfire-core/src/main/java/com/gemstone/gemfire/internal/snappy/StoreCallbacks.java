@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public interface StoreCallbacks {
@@ -37,6 +38,8 @@ public interface StoreCallbacks {
 
   Set<Object> createColumnBatch(BucketRegion region, long batchID,
       int bucketID);
+
+  void invokeColumnStorePutCallbacks(BucketRegion bucket, EntryEventImpl[] events);
 
   List<String> getInternalTableSchemas();
 
