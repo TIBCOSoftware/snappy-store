@@ -706,7 +706,7 @@ public class GenericStatement
 					    boolean isUpdateOrDelete = false;
 					    if (DML_TABLE_PATTERN.matcher(source).matches()) {
 					    	isUpdateOrDelete = true;
-							}
+					    }
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
 							  checkCancellation, isUpdateOrDelete);
 					  }
