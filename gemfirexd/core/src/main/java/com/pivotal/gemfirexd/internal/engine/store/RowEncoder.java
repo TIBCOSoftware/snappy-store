@@ -53,7 +53,7 @@ public interface RowEncoder {
 
   /**
    * Any actions required after column store put operations which happen
-   * outside of entry/region locks (unlike a CacheListener)
+   * outside of entry locks (unlike a CacheListener)
    */
   void afterColumnStorePuts(BucketRegion bucket, EntryEventImpl[] events);
 
