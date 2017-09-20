@@ -459,6 +459,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     int bytesToEvict = delta;
     resetThreadLocals();
     LocalRegion owner = null;
+    LRUEntry removalEntry = null;
     if (_isOwnerALocalRegion()) {
       owner = _getOwner();
     }
@@ -505,7 +506,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           	  if(!region.getBucketAdvisor().isPrimary()){       	
               try {
                 bytesEvicted = ((AbstractLRURegionMap)region.entries)
-                    .centralizedLruUpdateCallback(false, false);
+                    .centralizedLruUpdateCallback(false, true);
                 if (bytesEvicted == 0) {
                   iter.remove();
                 } else {
@@ -534,7 +535,8 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
             }
           }
           if(evictFromThisRegion) {
-            LRUEntry removalEntry = (LRUEntry)_getLruList().getLRUEntry();
+            // skip locked entries in LRU and keep the lock till evictEntry (SNAP-2041)
+            removalEntry = (LRUEntry)_getLruList().getLRUEntry(true);
             if (removalEntry != null) {
               int sizeOfValue = evictEntry(removalEntry, stats);
               if (sizeOfValue != 0) {
@@ -552,7 +554,9 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
                   debugLogging("evictions=" + stats.getEvictions());
                 _getCCHelper().afterEviction();
               }
-
+              // release the lock held on by getLRUEntry
+              UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+              removalEntry = null;
             }
             else {
               if (debug && getTotalEntrySize() != 0) {
@@ -567,6 +571,10 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
         // TODO Auto-generated catch block
         if (debug) debugLogging("exception =" + e.getCause());
       } finally {
+        // release the extra lock by getLRUEntry if remaining
+        if (removalEntry != null) {
+          UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+        }
         if (tx != null) {
           txMgr.resume(tx);
         }
@@ -584,7 +592,8 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       try {
         // to fix bug 48285 do no evict if bytesToEvict <= 0.
         while (bytesToEvict > 0 && _getCCHelper().mustEvict(stats, _getOwner(), bytesToEvict)) {
-          LRUEntry removalEntry = (LRUEntry)_getLruList().getLRUEntry();
+          // skip locked entries in LRU and keep the lock till evictEntry (SNAP-2041)
+          removalEntry = (LRUEntry)_getLruList().getLRUEntry(true);
           if (removalEntry != null) {
             if (evictEntry(removalEntry, stats) != 0) {
               if (debug) {
@@ -604,7 +613,9 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
               _getCCHelper().afterEviction();
 
             }
-
+            // release the lock held on by getLRUEntry
+            UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+            removalEntry = null;
           }
           else {
             if (debug && getTotalEntrySize() != 0) {
@@ -619,6 +630,10 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
         // TODO Auto-generated catch block
         if (debug) debugLogging("exception =" + e.getCause());
       } finally {
+        // release the extra lock by getLRUEntry if remaining
+        if (removalEntry != null) {
+          UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+        }
         if (tx != null) {
           txMgr.resume(tx);
         }

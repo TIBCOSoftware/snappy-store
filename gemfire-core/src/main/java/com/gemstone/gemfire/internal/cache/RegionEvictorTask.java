@@ -99,7 +99,7 @@ public class RegionEvictorTask implements Callable<Object> {
             LocalRegion region = iter.next();
             try {
               bytesEvicted = ((AbstractLRURegionMap)region.entries)
-                  .centralizedLruUpdateCallback(false, false);
+                  .centralizedLruUpdateCallback(false, true);
               if (bytesEvicted == 0) {
                 iter.remove();
               }
