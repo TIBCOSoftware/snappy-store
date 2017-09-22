@@ -1221,7 +1221,9 @@ abstract class AbstractRegionMap implements RegionMap {
                     log.info(LocalizedStrings.DEBUG, "ARM::initialImagePut:oldRe = "+ oldRe + "; old value = "+ oldValue);
                   }
                   if (oldValue == Token.NOT_AVAILABLE) {
-                    oldValue = null;
+                    // get the value from disk without fault-in and if that is valid
+                    // use that as old value
+                    oldValue = oldRe.getValueInVMOrDiskWithoutFaultIn(owner);
                   }
                   else if (oldValue instanceof ListOfDeltas) {
                     // apply the deltas on this new value. update index
