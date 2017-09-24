@@ -193,7 +193,8 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * Mark this entry as having been removed from the map that contained it
    * by setting its value to Token.REMOVED_PHASE2
    */
-  public void removePhase2();
+  public void removePhase2(LocalRegion r);
+
   /**
    * Returns true if this entry does not exist.  This is true if removal
    * has started (value == Token.REMOVED_PHASE1) or has completed
@@ -277,7 +278,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   /**
    * Set the owner for this RegionEntry. Used only by GemFireXD.
    */
-  public void setOwner(LocalRegion owner);
+  public void setOwner(LocalRegion owner, Object previousOwner);
 
   /**
    * Obtain and return the value of this entry using {@link #_getValue()}.
@@ -546,7 +547,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   /**
    * Sets the entry value to null.
    */
-  public void setValueToNull();
+  public void setValueToNull(RegionEntryContext context);
 
   public void returnToPool();
   

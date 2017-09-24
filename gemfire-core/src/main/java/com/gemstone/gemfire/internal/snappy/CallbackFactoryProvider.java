@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public abstract class CallbackFactoryProvider {
@@ -37,6 +38,11 @@ public abstract class CallbackFactoryProvider {
     public Set<Object> createColumnBatch(BucketRegion region, long batchID,
         int bucketID) {
       return null;
+    }
+
+    @Override
+    public void invokeColumnStorePutCallbacks(BucketRegion bucket,
+        EntryEventImpl[] events) {
     }
 
     @Override

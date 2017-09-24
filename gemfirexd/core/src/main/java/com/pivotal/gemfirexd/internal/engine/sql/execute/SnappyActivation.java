@@ -17,8 +17,13 @@
 
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Vector;
+
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdQueryResultCollector;
@@ -27,7 +32,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeExecutorMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
-import com.pivotal.gemfirexd.internal.engine.distributed.metadata.TableQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
@@ -45,12 +49,6 @@ import com.pivotal.gemfirexd.internal.impl.sql.GenericResultDescription;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.BaseActivation;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
-
-import java.io.IOException;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Vector;
 
 /**
  * Activation implementation for getting results from lead node.
@@ -310,7 +308,7 @@ public class SnappyActivation extends BaseActivation {
     this.resultDescription = resultDescription;
   }
 
-  public static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc,
+  private static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc,
       String sql, boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
       boolean isPreparedStatement, boolean isUpdateOrDelete, LanguageConnectionContext lcc)
       throws StandardException {
@@ -322,6 +320,12 @@ public class SnappyActivation extends BaseActivation {
     // release all locks before sending the message else it can lead to deadlocks
     if (lcc != null) {
       lcc.getTransactionExecute().releaseAllLocks(true, true);
+    }
+    // wait for any pending transactions before routing new operations to lead
+    final TXManagerImpl.TXContext txContext = TXManagerImpl
+        .currentTXContext();
+    if (txContext != null) {
+      txContext.waitForPendingCommit();
     }
     try {
       msg.executeFunction(enableStreaming, false, rs, true);

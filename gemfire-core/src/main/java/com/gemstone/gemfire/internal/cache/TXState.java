@@ -2575,13 +2575,13 @@ public final class TXState implements TXStateInterface {
       final Object expectedOldValue) {
     final Operation op = event.getOperation();
     final LocalRegion region = event.getRegion();
-    final LocalRegion dataRegion = region.getDataRegionForWrite(event, op);
 
     if (isSnapshot()) {
-      dataRegion.getSharedDataView().destroyExistingEntry(event, cacheWrite, expectedOldValue);
+      region.getSharedDataView().destroyExistingEntry(event, cacheWrite, expectedOldValue);
       return true;
     }
 
+    final LocalRegion dataRegion = region.getDataRegionForWrite(event, op);
     // if coordinator, then wait for region to initialize
     if (isCoordinator()) {
       dataRegion.waitForData();

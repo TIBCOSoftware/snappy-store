@@ -59,7 +59,7 @@ public abstract class AbstractDiskRegionEntry
    */
   @Override
   public void setValueWithContext(RegionEntryContext context, Object value) {
-    _setValue(value);
+    _setValue(context, value);
     initDiskIdForOffHeap(context, value);
     if (value != null && context != null && context instanceof LocalRegion
         && ((LocalRegion)context).isThisRegionBeingClosedOrDestroyed()

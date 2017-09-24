@@ -111,10 +111,10 @@ INITTASK  taskClass = cacheperf.comparisons.gemfirexd.tpcc.TPCCClient
 //          taskMethod = dumpBucketsTask
 //          threadGroups = sender, receiver
 //          ;
-INITTASK  taskClass = cacheperf.comparisons.gemfirexd.QueryPerfClient
-          taskMethod = checkBucketsTask
-          threadGroups = server
-          ;
+//INITTASK  taskClass = cacheperf.comparisons.gemfirexd.QueryPerfClient
+//          taskMethod = checkBucketsTask
+//          threadGroups = server
+//          ;
 INITTASK  taskClass = cacheperf.comparisons.gemfirexd.tpcc.TPCCClient
           taskMethod = loadWarehouseDataTask
           threadGroups = server

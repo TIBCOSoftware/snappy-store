@@ -1483,6 +1483,19 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+      // void SET_LOG_LEVEL(String logClass, String level)
+      String[] argNames = new String[] { "LOGCLASS", "LEVEL" };
+      TypeDescriptor[] argTypes = new TypeDescriptor[] {
+              DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                  Types.VARCHAR, false, 1024).getCatalogType(),
+              DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                  Types.VARCHAR, false, 64).getCatalogType()};
+      super.createSystemProcedureOrFunction("SET_LOG_LEVEL", sysUUID,
+              argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
+              newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
+    }
+
+    {
       // void WAIT_FOR_SENDER_QUEUE_FLUSH(String id, Boolean isAsyncListener,
       //   Integer maxWaitTime)
       String[] argNames = new String[] { "ID", "IS_ASYNCLISTENER",

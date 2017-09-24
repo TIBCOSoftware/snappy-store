@@ -25,7 +25,7 @@ public final class SnappyUpdateDeleteResultSet extends SnappySelectResultSet {
 
   private int rowCount = -1;
 
-  public SnappyUpdateDeleteResultSet(Activation ac, boolean returnRows) {
+  SnappyUpdateDeleteResultSet(Activation ac, boolean returnRows) {
     super(ac, returnRows);
   }
 
@@ -40,9 +40,7 @@ public final class SnappyUpdateDeleteResultSet extends SnappySelectResultSet {
       rowCount = 0;
       try {
         ExecRow row;
-        while ((row = getNextRow()) != null
-            && row.nColumns() > 0 // TODO: Remove after SNAP-1944
-            ) {
+        while ((row = getNextRow()) != null && row.nColumns() > 0) {
           rowCount += row.getLastColumn().getInt();
         }
       } catch (Exception ex) {

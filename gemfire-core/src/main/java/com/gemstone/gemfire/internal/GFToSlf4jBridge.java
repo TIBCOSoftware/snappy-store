@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.gemstone.gemfire.GemFireIOException;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.org.jgroups.util.StringId;
+import org.apache.log4j.Level;
 import org.apache.log4j.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +82,38 @@ public class GFToSlf4jBridge extends LogWriterImpl {
         break;
       default:
         log.debug(msg, exception);
+        break;
+    }
+  }
+
+  public void setLevelForLog4jLevel(Level log4jlevel) {
+    switch (log4jlevel.toInt()) {
+      case Level.ALL_INT:
+        level = FINEST_LEVEL;
+        break;
+      case Level.DEBUG_INT:
+        level = FINE_LEVEL;
+        break;
+      case Level.INFO_INT:
+        level = INFO_LEVEL;
+        break;
+      case Level.WARN_INT:
+        level = WARNING_LEVEL;
+        break;
+      case Level.ERROR_INT:
+        level = ERROR_LEVEL;
+        break;
+      case Level.FATAL_INT:
+        level = SEVERE_LEVEL;
+        break;
+      case Level.OFF_INT:
+        level = NONE_LEVEL;
+        break;
+      case Level.TRACE_INT:
+        level = FINER_LEVEL;
+        break;
+      default:
+        level = CONFIG_LEVEL;
         break;
     }
   }

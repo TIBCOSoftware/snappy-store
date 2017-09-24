@@ -79,12 +79,13 @@ allprojects {
     DERBY_DRDA_MAINT = '1'
 
     PRODUCT_MAJOR = '1'
-    PRODUCT_MINOR = '5'
-    PRODUCT_MAINT = '6'
-    PRODUCT_CLASSIFIER = '-rc1.1'
+    PRODUCT_MINOR = '6'
+    PRODUCT_MAINT = '0'
+    PRODUCT_CLASSIFIER = ''
     PRODUCT_RELEASE_STAGE = ''
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"
-    PRODUCT_VENDOR = 'SnappyData, Inc.'
+    vendorName = 'SnappyData, Inc.'
+    PRODUCT_VENDOR = vendorName
     COPYRIGHT = "Copyright 2017, ${PRODUCT_VENDOR} All rights reserved."
 
     if (rootProject.name == 'snappy-store') {
@@ -98,6 +99,7 @@ allprojects {
     gitBranch = "${gitCmd} rev-parse --abbrev-ref HEAD".execute().text.trim()
     commitId = "${gitCmd} rev-parse HEAD".execute().text.trim()
     sourceDate = "${gitCmd} log -n 1 --format=%ai".execute().text.trim()
+    buildIdPrefix = System.env.USER + ' '
 
     osArch = System.getProperty('os.arch')
     osName = org.gradle.internal.os.OperatingSystem.current()
@@ -124,6 +126,9 @@ allprojects {
     buildDir = new File(buildRoot, osDir + '/' +  project.path.replace(':', '/'))
   } else {
     buildDir = 'build-artifacts/' + osDir
+  }
+  if (rootProject.hasProperty('enablePublish')) {
+    buildIdPrefix = "${vendorName} "
   }
 
   ext {
@@ -434,7 +439,7 @@ subprojects {
 
   test {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = Runtime.getRuntime().availableProcessors()
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() * 3) / 2
     minHeapSize = '1g'
     maxHeapSize = '1g'
 

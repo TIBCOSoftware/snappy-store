@@ -134,8 +134,8 @@ public interface DiskEntry extends RegionEntry {
    */
   public DiskId getDiskId();
 
-  public void _removePhase1();
-  
+  public void _removePhase1(LocalRegion r);
+
   public int updateAsyncEntrySize(EnableLRU capacityController);
   
   public DiskEntry getPrev();
@@ -624,7 +624,8 @@ public interface DiskEntry extends RegionEntry {
           incrementBucketStats(r, 0/*InVM*/, 1/*OnDisk*/, did.getValueLength());
         }
         else {
-          entry.setValueWithContext(drv, entry.prepareValueForCache((RegionEntryContext) r,
+          RegionEntryContext context = (RegionEntryContext)r;
+          entry.setValueWithContext(context, entry.prepareValueForCache(context,
               re.getValue(), false, false));
           drv.incNumEntriesInVM(1L);
           incrementBucketStats(r, 1/*InVM*/, 0/*OnDisk*/, 0);
@@ -1867,7 +1868,7 @@ public interface DiskEntry extends RegionEntry {
 //            + " with value " + entry._getValue() + "checkValue=" + checkValue);
         if (checkValue) {
           valueWasNull = entry.isValueNull();
-          entry._removePhase1();
+          entry._removePhase1(region);
         }
         if (valueWasNull) {
           dr.incNumOverflowOnDisk(-1L);

@@ -195,7 +195,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       throw new IllegalStateException("Should never be called");
     }
 
-    public void _removePhase1() {
+    public void _removePhase1(LocalRegion r) {
       throw new IllegalStateException("should never be called");
     }
 
@@ -311,7 +311,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       // TODO Auto-generated method stub
     }
     @Override
-    public void removePhase2() {
+    public void removePhase2(LocalRegion r) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -466,7 +466,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       return false;
     }
     @Override
-    public void setValueToNull() {
+    public void setValueToNull(RegionEntryContext context) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -551,7 +551,7 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
      * {@inheritDoc}
      */
     @Override
-    public void setOwner(LocalRegion owner) {
+    public void setOwner(LocalRegion owner, Object previousOwner) {
       // TODO Auto-generated method stub
       
     }

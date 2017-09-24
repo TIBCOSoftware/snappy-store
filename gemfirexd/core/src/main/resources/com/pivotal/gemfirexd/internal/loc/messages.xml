@@ -3816,7 +3816,7 @@ Guide.
            </msg>
            <msg>
                 <name>X0Z27.S</name>
-                <text>An unexpected exception occured during procedure execution: {0}.</text>
+                <text>An unexpected exception occured during procedure execution: {0}. Refer log file for exception details.</text>
                 <arg>value</arg>
            </msg>
            <msg>

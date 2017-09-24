@@ -350,7 +350,8 @@ abstract class AbstractRegionMap implements RegionMap {
         && !r.isUsedForPartitionedRegionBucket()
         && !(args != null && args.isUsedForPartitionedRegionBucket());
 
-    if (r == _getOwnerObject()) {
+    Object currentOwner = _getOwnerObject();
+    if (r == currentOwner) {
       return;
     }
     setOwner(r);
@@ -361,15 +362,12 @@ abstract class AbstractRegionMap implements RegionMap {
       // index manager or owner changed so we need to update the indexes
       // [sumedh] indexes are now updated by IndexRecoveryTask
     }
-    if (r.keyRequiresRegionContext()) {
-      // iterate over the entries of the map
-      // set ExtraTableInfo in the CompositeCompactRegionKey
-      final Iterator<RegionEntry> iter = r.getRegionMap().regionEntries()
-          .iterator();
-      while (iter.hasNext()) {
-        final RegionEntry re = iter.next();
-        re.setOwner(r);
-      }
+    // iterate over the entries of the map to call setOwner for each RegionEntry
+    final Iterator<RegionEntry> iter = r.getRegionMap().regionEntries()
+        .iterator();
+    while (iter.hasNext()) {
+      final RegionEntry re = iter.next();
+      re.setOwner(r, currentOwner);
     }
   }
 
@@ -500,13 +498,14 @@ abstract class AbstractRegionMap implements RegionMap {
   }
 
   public final void removeEntry(Object key, RegionEntry re, boolean updateStat) {
+    final LocalRegion owner = _getOwner();
     if (re.isTombstone() && _getMap().get(key) == re && !re.isMarkedForEviction()) {
-      _getOwner().getLogWriterI18n().severe(LocalizedStrings.AbstractRegionMap_ATTEMPT_TO_REMOVE_TOMBSTONE, key, new Exception("stack trace"));
+      owner.getLogWriterI18n().severe(LocalizedStrings.AbstractRegionMap_ATTEMPT_TO_REMOVE_TOMBSTONE, key, new Exception("stack trace"));
       return; // can't remove tombstones except from the tombstone sweeper
     }
 //    _getOwner().getLogWriterI18n().info(LocalizedStrings.DEBUG, "DEBUG: removing entry " + re, new Exception("stack trace"));
     if (_getMap().remove(key, re)) {
-      re.removePhase2();
+      re.removePhase2(owner);
       if (updateStat) {
         incEntryCount(-1);
       }
@@ -562,7 +561,7 @@ abstract class AbstractRegionMap implements RegionMap {
       }
       
       if (_getMap().remove(key, re)) {
-        re.removePhase2();
+        re.removePhase2(owner);
         success = true;
         if (updateStat) {
           incEntryCount(-1);
@@ -690,7 +689,7 @@ abstract class AbstractRegionMap implements RegionMap {
                 } catch (RegionClearedException e) {
                   //do nothing, it's already cleared.
                 }
-                re.removePhase2();
+                re.removePhase2(lr);
                 lruEntryDestroy(re);
                 if (tombstone) {
                   _getOwner().incTombstoneCount(-1);
@@ -826,11 +825,14 @@ abstract class AbstractRegionMap implements RegionMap {
     //so that they will be in the correct order.
     OrderedTombstoneMap<RegionEntry> tombstones = new OrderedTombstoneMap<RegionEntry>();
     if (rm != null) {
+      final LocalRegion owner = _getOwner();
+      final AbstractRegionMap arm = (AbstractRegionMap)rm;
+      final Object rmOwner = arm._getOwnerObject();
       // Read current time to later pass it to all calls to copyRecoveredEntry.  This is 
       // needed if a dummy version tag has to be created for a region entry
-      final long currentTime = ((LocalRegion)owner).getCache().cacheTimeMillis();
+      final long currentTime = owner.getCache().cacheTimeMillis();
       
-      CustomEntryConcurrentHashMap<Object, Object> other = ((AbstractRegionMap)rm)._getMap();
+      CustomEntryConcurrentHashMap<Object, Object> other = arm._getMap();
       Iterator<Map.Entry<Object, Object>> it = other
           .entrySetWithReusableEntries().iterator();
       while (it.hasNext()) {
@@ -840,38 +842,40 @@ abstract class AbstractRegionMap implements RegionMap {
         Object key = me.getKey();
 
         if (!entriesIncompatible) {
-          oldRe.setOwner(_getOwner());
+          oldRe.setOwner(owner, rmOwner);
           _getMap().put(key, oldRe);
           // newRe is now in this._getMap().
           if (oldRe.isTombstone()) {
             VersionTag tag = oldRe.getVersionStamp().asVersionTag();
             tombstones.put(tag, oldRe);
           }
-          _getOwner().updateSizeOnCreate(key,
-              _getOwner().calculateRegionEntryValueSize(oldRe));
+          // only for incrementing count while size is updated in RegionEntry.setOwner
+          owner.updateSizeOnCreate(key, 0);
+          // owner.calculateRegionEntryValueSize(oldRe));
           incEntryCount(1);
           lruEntryUpdate(oldRe);
           lruUpdateCallback();
           continue;
         }
         
-        @Retained @Released Object value = oldRe._getValueRetain((RegionEntryContext) ((AbstractRegionMap) rm)._getOwnerObject(), true);
+        @Retained @Released Object value = oldRe._getValueRetain((RegionEntryContext)rmOwner, true);
         try {
           if (value == Token.NOT_AVAILABLE) {
             // fix for bug 43993
             value = null;
           }
-          if (value == Token.TOMBSTONE && !_getOwner().getConcurrencyChecksEnabled()) {
+          if (value == Token.TOMBSTONE && !owner.getConcurrencyChecksEnabled()) {
             continue;
           }
-          RegionEntry newRe = getEntryFactory().createEntry((RegionEntryContext) _getOwnerObject(), key, value);
+          RegionEntry newRe = getEntryFactory().createEntry(owner, key, value);
           copyRecoveredEntry(oldRe, newRe, currentTime);
           // newRe is now in this._getMap().
           if (newRe.isTombstone()) {
             VersionTag tag = newRe.getVersionStamp().asVersionTag();
             tombstones.put(tag, newRe);
           }
-          _getOwner().updateSizeOnCreate(key, _getOwner().calculateRegionEntryValueSize(newRe));
+          // only for incrementing count while size is updated in RegionEntry constructor
+          owner.updateSizeOnCreate(key, 0);
           incEntryCount(1);
           lruEntryUpdate(newRe);
         } finally {
@@ -1987,7 +1991,7 @@ RETRY_LOOP:
                   // do this before basicDestroyPart2 to fix bug 31786
                   if (!inTokenMode) {
                     if ( re.getVersionStamp() == null) {
-                      re.removePhase2();
+                      re.removePhase2(owner);
                       // GFXD index maintenance will happen from destroyEntry call
                       removeEntry(event.getKey(), re, true);
                       removed = true;
@@ -2009,7 +2013,7 @@ RETRY_LOOP:
                     EntryLogger.logDestroy(event);
                     owner.recordEvent(event);
                     if (re.getVersionStamp() == null) {
-                      re.removePhase2();
+                      re.removePhase2(owner);
                       // GFXD index maintenance will happen from destroyEntry call
                       removeEntry(event.getKey(), re, true);
                       lruEntryDestroy(re);
@@ -2274,7 +2278,7 @@ RETRY_LOOP:
           }
           else {
             re.removePhase1(owner, false); // fix for bug 43063
-            re.removePhase2();
+            re.removePhase2(owner);
             removeEntry(key, re, true);
           }
           if (EntryLogger.isEnabled()) {
@@ -3268,7 +3272,7 @@ RETRY_LOOP:
     if (re != null) {
       synchronized (re) {
         if (!re.isValueNull()) {
-          re.setValueToNull();
+          re.setValueToNull(owner);
           owner.getDiskRegion().incNumEntriesInVM(-1L);
           owner.getDiskRegion().incNumOverflowOnDisk(1L);
           if(owner instanceof BucketRegion)
@@ -3377,7 +3381,7 @@ RETRY_LOOP:
                 ((ListOfDeltas)oVal).merge(owner, delta);
                 @Retained Object newVal = ((AbstractRegionEntry)re).prepareValueForCache(
                     owner, oVal, true, false);
-                ((AbstractRegionEntry)re)._setValue(newVal); // TODO:KIRK:48068
+                ((AbstractRegionEntry)re)._setValue(owner, newVal); // TODO:KIRK:48068
                                                              // prevent orphan
               }
               else {
@@ -3411,7 +3415,7 @@ RETRY_LOOP:
                 // here?
                 @Retained Object newVal = ((AbstractRegionEntry)re).prepareValueForCache(owner,
                     new ListOfDeltas(delta), true, false);
-                ((AbstractRegionEntry)re)._setValue(newVal); // TODO:KIRK:48068
+                ((AbstractRegionEntry)re)._setValue(owner, newVal); // TODO:KIRK:48068
                                                              // prevent orphan
                 ImageState imageState = owner.getImageState();
                 if (imageState != null) {
@@ -3872,8 +3876,8 @@ RETRY_LOOP:
     boolean indexLocked = false;
     // GemFireXD Changes - END
 
-    boolean retrieveOldValueForDelta = event.getDeltaBytes() != null
-        && event.getRawNewValue() == null;
+    boolean retrieveOldValueForDelta = event.hasDelta() ||
+        (event.getDeltaBytes() != null && event.getRawNewValue() == null);
     lockForCacheModification(owner, event);
     try {
       // take read lock for GFXD index initializations if required; the index
@@ -3958,7 +3962,7 @@ RETRY_LOOP:
                   // notify index of an update
                   notifyIndex(re, owner, true);
                   try {
-                    RegionEntry oldRe = null;
+                    NonLocalRegionEntry oldRe = null;
                     try {
                       final Object memoryValue = oldValueForDelta != null ? oldValueForDelta
                           : re._getValue();
@@ -3973,10 +3977,11 @@ RETRY_LOOP:
                           valueSize = memoryValue != null && oldSize > 0
                               ? oldSize : region.calculateValueSize(oldRe._getValue());
                           oldRe.setUpdateInProgress(true);
+                          oldRe.setValueSize(valueSize);
                           checkConflict(owner, event, re);
                         }
                         // need to put old entry in oldEntryMap for MVCC
-                        owner.getCache().addOldEntry(oldRe, re, owner, valueSize, false);
+                        owner.getCache().addOldEntry(oldRe, re, owner);
                       }
                       if ((cacheWrite && event.getOperation().isUpdate()) // if there is a cacheWriter, type of event has already been set
                           || !re.isRemoved()
@@ -4383,7 +4388,7 @@ RETRY_LOOP:
       throws CacheWriterException, TimeoutException, EntryNotFoundException,
       RegionClearedException {
 
-    RegionEntry oldRe = null;
+    NonLocalRegionEntry oldRe = null;
     boolean retVal = false;
     try {
       final Object memoryValue = re._getValue();
@@ -4397,7 +4402,9 @@ RETRY_LOOP:
         oldRe.setUpdateInProgress(true);
         final int valueSize = memoryValue != null && oldSize > 0
             ? oldSize : _getOwner().calculateValueSize(oldRe._getValue());
-        _getOwner().getCache().addOldEntry(oldRe, re, _getOwner(), valueSize, true);
+        oldRe.setValueSize(valueSize);
+        oldRe.setForDelete();
+        _getOwner().getCache().addOldEntry(oldRe, re, _getOwner());
       }
       processVersionTag(re, event);
 
@@ -5124,7 +5131,7 @@ RETRY_LOOP:
 //              if (makeTombstones) {
 //                re.makeTombstone(owner, re.getVersionStamp().asVersionTag());
 //              } else {
-              re.removePhase2();
+              re.removePhase2(owner);
               removeEntry(key, re, true);
             }
           }
@@ -5160,7 +5167,7 @@ RETRY_LOOP:
       LocalRegion owner = _getOwner();
       if (reHasDelta(owner, re)) {
         synchronized (re) {
-          re.removePhase2();
+          re.removePhase2(owner);
           removeEntry(key, re, true);
         }
       }

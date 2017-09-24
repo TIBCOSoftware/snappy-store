@@ -54,4 +54,6 @@ public interface ClusterCallbacks {
   void clearSnappySessionForConnection(Long connectionId);
 
   void publishColumnTableStats();
+
+  String getClusterType();
 }
