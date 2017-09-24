@@ -428,7 +428,8 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
 
   /**
    * Get the value in region or disk without faultin in raw form without any
-   * change in storage format (SnappyData off-heap will return off-heap buffer).
+   * change in storage format (SnappyData off-heap will return off-heap
+   *   buffer with a retain so caller should do a release once done).
    */
   @Retained
   public Object getValueInVMOrDiskWithoutFaultIn(LocalRegion owner);
