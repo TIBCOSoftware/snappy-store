@@ -66,8 +66,8 @@ import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.Constants;
 import com.pivotal.gemfirexd.Constants.QueryHints.SizerHints;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -996,8 +996,8 @@ public class ObjectSizer {
   }
 
   private static final Pattern columnTableRegex =
-      Pattern.compile(".*" + StoreCallbacks.SHADOW_SCHEMA_NAME + "(.*)" +
-          StoreCallbacks.SHADOW_TABLE_SUFFIX);
+      Pattern.compile(".*" + SystemProperties.SHADOW_SCHEMA_NAME + "(.*)" +
+          SystemProperties.SHADOW_TABLE_SUFFIX);
   private Boolean isColumnTable(String fullyQualifiedTable) {
     return columnTableRegex.matcher(fullyQualifiedTable).matches();
   }
