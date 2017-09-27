@@ -8963,7 +8963,7 @@ public class LocalRegion extends AbstractRegion
     // complete index is going to be blown away; bucket region will need to
     // override to clear in every case
     if (!setIsDestroyed) {
-      return indexUpdater.clearIndexes(this, lockForGII, true, null, false);
+      return indexUpdater.clearIndexes(this, getDiskRegion(), lockForGII, true, null, false);
     }
     return false;
   }

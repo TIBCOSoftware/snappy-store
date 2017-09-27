@@ -107,6 +107,12 @@ public abstract class AbstractOplogDiskRegionEntry
     return Helper.getValueOffHeapOrDiskWithoutFaultIn(this, owner, false);
   }
 
+  @Retained
+  @Override
+  public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner, DiskRegion dr) {
+    return Helper.getValueOffHeapOrDiskWithoutFaultIn(this, owner, dr, false);
+  }
+
   @Override
   public final Object getValueOnDisk(LocalRegion r)
   throws EntryNotFoundException
