@@ -1,8 +1,3 @@
-dependencies {
-  provided project(subprojectBase + 'snappydata-store-core')
-  provided 'org.hibernate:hibernate-core:4.3.11.Final'
-}
-
 if (rootProject.hasProperty('enablePublish')) {
   uploadArchives {
     repositories {
@@ -11,7 +6,7 @@ if (rootProject.hasProperty('enablePublish')) {
           licenses {
             license {
               name 'GNU Lesser General Public License 2.1'
-              url 'http://www.gnu.org/licenses/lgpl-2.1.html'
+              url 'http://www.opensource.org/licenses/lgpl-2.1.php'
             }
           }
         }
@@ -19,5 +14,3 @@ if (rootProject.hasProperty('enablePublish')) {
     }
   }
 }
-
-jar.baseName = 'snappydata-store-hibernate'

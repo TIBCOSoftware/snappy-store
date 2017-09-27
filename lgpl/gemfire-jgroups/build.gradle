@@ -14,6 +14,23 @@ task jgMagic (type: JavaExec, dependsOn: classes) {
   }
 }
 
+if (rootProject.hasProperty('enablePublish')) {
+  uploadArchives {
+    repositories {
+      mavenDeployer {
+        pom.project {
+          licenses {
+            license {
+              name 'GNU Lesser General Public License 2.1'
+              url 'http://www.opensource.org/licenses/lgpl-2.1.php'
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 jar {
   dependsOn jgMagic
 
