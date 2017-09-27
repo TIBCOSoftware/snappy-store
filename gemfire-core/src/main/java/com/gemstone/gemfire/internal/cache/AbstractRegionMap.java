@@ -1216,14 +1216,12 @@ abstract class AbstractRegionMap implements RegionMap {
                 VersionStamp stamp = null;
                 VersionTag lastDeltaVersionTag = null;
                 if (indexUpdater != null) {
-                  oldValue = oldRe.getValueInVM(owner); // OFFHEAP: ListOfDeltas
+                  oldValue = oldRe.getValueOffHeapOrDiskWithoutFaultIn(owner); // OFFHEAP: ListOfDeltas
                   if (log.fineEnabled() || InitialImageOperation.TRACE_GII_FINER) {
                     log.info(LocalizedStrings.DEBUG, "ARM::initialImagePut:oldRe = "+ oldRe + "; old value = "+ oldValue);
                   }
                   if (oldValue == Token.NOT_AVAILABLE) {
-                    // get the value from disk without fault-in and if that is valid
-                    // use that as old value
-                    oldValue = oldRe.getValueInVMOrDiskWithoutFaultIn(owner);
+                    oldValue = null;
                   }
                   else if (oldValue instanceof ListOfDeltas) {
                     // apply the deltas on this new value. update index
@@ -1376,7 +1374,7 @@ abstract class AbstractRegionMap implements RegionMap {
               if (result) {
                 if (indexUpdater != null) {
                   if (oldValue == null && oldRe != null) {
-                    oldValue = oldRe.getValueInVM(owner);
+                    oldValue = oldRe.getValueOffHeapOrDiskWithoutFaultIn(owner);
                     if (oldValue == Token.NOT_AVAILABLE) {
                       oldValue = null;
                     }
