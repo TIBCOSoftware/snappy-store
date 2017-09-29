@@ -38,7 +38,6 @@ allprojects {
 
   ext {
     scalaBinaryVersion = '2.11'
-    scalaVersion = scalaBinaryVersion + '.8'
     sparkVersion = '2.1.1'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
@@ -48,7 +47,7 @@ allprojects {
     pxfVersion = '2.5.1.0'
     osgiVersion = '6.0.0'
     jettyVersion = '9.2.22.v20170606'
-    hadoopVersion = '2.7.4'
+    hadoopVersion = '2.7.3'
     protobufVersion = '2.6.1'
     kryoVersion = '4.0.1'
     thriftVersion = '0.9.3'
