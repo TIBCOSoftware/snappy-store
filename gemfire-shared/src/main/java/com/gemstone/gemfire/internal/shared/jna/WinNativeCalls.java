@@ -72,7 +72,7 @@ final class WinNativeCalls extends NativeCalls {
     public int keepaliveinterval;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("enabled", "keepalivetime",
           "keepaliveinterval");
     }

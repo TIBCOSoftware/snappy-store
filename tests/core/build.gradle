@@ -47,7 +47,7 @@ dependencies {
   compile 'org.jmock:jmock-legacy:2.5.1'
   compile 'edu.umd.cs.mtc:multithreadedtc:1.01'
   compile 'cglib:cglib-nodep:2.1_3'
-  compile 'org.objenesis:objenesis:1.0'
+  compile 'org.objenesis:objenesis:2.6'
   compile 'net.spy:spymemcached:2.12.0'
   compile 'com.vmware:vijava:5.1'
   compile 'org.jdom:jdom:1.1.3'
@@ -58,6 +58,12 @@ dependencies {
   compile "org.eclipse.jetty:jetty-util:${jettyVersion}"
   compile "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
 
+  compile "org.apache.hbase:hbase-common:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-client:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  compile 'org.cloudera.htrace:htrace-core:2.05'
+
   compileOnly 'net.sourceforge.jline:jline:1.0.S2-B'
   compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
   compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
@@ -66,11 +72,10 @@ dependencies {
   compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
   compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
   compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
-  compileOnly "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  compileOnly "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  compileOnly "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  compileOnly "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  compileOnly "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-util:${jettyVersion}"
   compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
   compileOnly "org.springframework:spring-core:${springVersion}"
   compileOnly 'org.springframework.shell:spring-shell:1.0.0.RELEASE'

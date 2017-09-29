@@ -52,11 +52,10 @@ dependencies {
   compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
   compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
   compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
-  compileOnly "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  compileOnly "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  compileOnly "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  compileOnly "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  compileOnly "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-util:${jettyVersion}"
   compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
 
   compileOnly "org.springframework:spring-aop:${springVersion}"
@@ -69,11 +68,17 @@ dependencies {
   compileOnly "org.springframework:spring-webmvc:${springVersion}"
   compileOnly "org.springframework:spring-tx:${springVersion}"
 
+  compile "org.apache.hbase:hbase-common:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-client:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  compile 'org.cloudera.htrace:htrace-core:2.05'
+
   compile 'com.googlecode.json-simple:json-simple:1.1.1'
   compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
   compile 'javax.ejb:javax.ejb-api:3.2'
-  compile 'org.apache.tomcat:tomcat-juli:8.5.9'
-  compile 'org.apache.tomcat:tomcat-jdbc:8.5.9'
+  compile 'org.apache.tomcat:tomcat-juli:8.5.21'
+  compile 'org.apache.tomcat:tomcat-jdbc:8.5.21'
   compile 'com.mchange:c3p0:0.9.5.2'
   compile "org.apache.derby:derbytools:${derbyVersion}"
   runtime "org.apache.derby:derby:${derbyVersion}"

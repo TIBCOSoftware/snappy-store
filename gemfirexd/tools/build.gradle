@@ -29,7 +29,7 @@ dependencies {
   compile project(subprojectBase + 'snappydata-store-hibernate')
 
   // ddlutils dependencies
-  compile 'commons-beanutils:commons-beanutils:1.9.2'
+  compile 'commons-beanutils:commons-beanutils:1.9.3'
   compile 'commons-codec:commons-codec:1.10'
   compile 'commons-collections:commons-collections:3.2.2'
   compile 'commons-configuration:commons-configuration:1.10'
@@ -63,12 +63,8 @@ dependencies {
   compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
   compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
   compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
-  compileOnly "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  compileOnly "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  compileOnly "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  compileOnly "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  compileOnly "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  compileOnly "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
   compileOnly "org.eclipse.jetty:jetty-http:${jettyVersion}"
   compileOnly "org.eclipse.jetty:jetty-io:${jettyVersion}"
   compileOnly "org.eclipse.jetty:jetty-security:${jettyVersion}"
@@ -79,14 +75,14 @@ dependencies {
   compileOnly "org.eclipse.jetty:jetty-xml:${jettyVersion}"
   compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
 
-  testCompile "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  testCompile "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  testCompile "org.apache.hadoop:hadoop-common:${hadoopVersion}"
-  testCompile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
-  testCompile "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
-  testCompile "com.google.protobuf:protobuf-java:${protobufVersion}"
+  testCompile "org.apache.hbase:hbase-common:${hbaseVersion}"
+  testCompile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
+  testCompile "org.apache.hbase:hbase-client:${hbaseVersion}"
+  testCompile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  testCompile 'org.cloudera.htrace:htrace-core:2.05'
   testCompile "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
   testCompile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
+
   testCompile "com.pivotal:pxf-api:${pxfVersion}"
   testCompile "org.apache.ant:ant-launcher:${antVersion}"
   testCompile "org.apache.derby:derby:${derbyVersion}"
