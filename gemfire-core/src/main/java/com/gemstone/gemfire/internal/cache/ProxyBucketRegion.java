@@ -544,7 +544,7 @@ public final class ProxyBucketRegion implements Bucket {
       RegionMap rmap = diskRegion.getRecoveredEntryMap();
       if (rmap != null && rmap.regionEntries() != null) {
         if(logger.fineEnabled()) {
-          logger.fine("Goign to clear clear index from index manage : " + this.diskRegion + " ");
+          logger.fine("Going to clear indexes in ProxyBucketRegion: " + this.diskRegion + " ");
         }
         iup.clearIndexes(this.partitionedRegion, getDiskRegion(),
             true, false, rmap.regionEntries().iterator(), true);

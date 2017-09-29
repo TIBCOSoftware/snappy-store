@@ -105,7 +105,9 @@ public interface IndexUpdater {
    * 
    * @param region
    *          the {@link LocalRegion} being destroyed
-   * @param dr
+   * @param dr the {@link DiskRegion} to be used; normally is the DiskRegion
+   *           of the "region", but can be different in case a bucket region has
+   *           not yet been created in a failed GII when destroying the disk data
    *@param lockForGII
    *          if true then also acquire the {@link #lockForGII()}
    * @param holdIndexLock
