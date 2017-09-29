@@ -538,13 +538,13 @@ public final class ProxyBucketRegion implements Bucket {
   public void clearIndexes(LogWriterI18n logger) {
     IndexUpdater iup = this.partitionedRegion.getIndexUpdater();
     if(logger.fineEnabled()) {
-      logger.fine("clearing index for diskregion: " + this.diskRegion + " ");
+      logger.fine("clearing index for diskregion: " + this.diskRegion);
     }
     if (iup != null) {
       RegionMap rmap = diskRegion.getRecoveredEntryMap();
       if (rmap != null && rmap.regionEntries() != null) {
         if(logger.fineEnabled()) {
-          logger.fine("Going to clear indexes in ProxyBucketRegion: " + this.diskRegion + " ");
+          logger.fine("Going to clear indexes in ProxyBucketRegion: " + this.diskRegion);
         }
         iup.clearIndexes(this.partitionedRegion, getDiskRegion(),
             true, false, rmap.regionEntries().iterator(), true);
