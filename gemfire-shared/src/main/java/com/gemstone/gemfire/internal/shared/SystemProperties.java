@@ -188,8 +188,11 @@ public final class SystemProperties {
               .equals(frameCls) ||
           "com.pivotal.gemfirexd.internal.GemFireXDVersion"
               .equals(frameCls) ||
-          "io.snappydata.gemxd.SnappyDataVersion$"
-              .equals(frameCls)) {
+          "io.snappydata.gemxd.SnappyDataVersion$".equals(frameCls) ||
+          "io.snappydata.gemxd.SnappyDataVersion".equals(frameCls) ||
+          "org.apache.spark.sql.SnappySession$".equals(frameCls) ||
+          "org.apache.spark.sql.SnappySession".equals(frameCls) ||
+          "io.snappydata.gemxd.ClusterCallbacksImpl$".equals(frameCls)) {
         return true;
       }
     }

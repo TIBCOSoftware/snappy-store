@@ -79,6 +79,11 @@ dependencies {
   testCompile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
   testCompile "org.apache.hbase:hbase-client:${hbaseVersion}"
   testCompile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  testCompile "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  testCompile "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  testCompile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
+  testCompile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
+  testCompile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   testCompile 'org.cloudera.htrace:htrace-core:2.05'
   testCompile "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
   testCompile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
@@ -112,8 +117,7 @@ task deleteGenerated(type: Delete) {
 clean.dependsOn deleteGenerated
 
 sourceSets.main.java.srcDirs = [ 'src/main/java', javaccOut, 'src/ddlutils/java' ]
-sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/testing/java', 'src/dunit/java',
-                                 'src/demo/java', 'src/test-ddlutils/java' ]
+sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/testing/java', 'src/dunit/java', 'src/demo/java' ]
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
   def infoDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/info")

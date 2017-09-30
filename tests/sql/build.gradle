@@ -72,6 +72,11 @@ dependencies {
   compile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
   compile "org.apache.hbase:hbase-client:${hbaseVersion}"
   compile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  compile "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
+  compile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
+  compile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
   compile 'org.cloudera.htrace:htrace-core:2.05'
 
   compile 'com.googlecode.json-simple:json-simple:1.1.1'

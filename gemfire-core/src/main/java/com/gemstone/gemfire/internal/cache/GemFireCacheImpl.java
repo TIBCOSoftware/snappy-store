@@ -5617,7 +5617,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   public static void setGFXDSystem(final boolean v) {
     // check the stack to see if this is really from a GemFireXD system
-    gfxdSystem = v ? SystemProperties.isUsingGemFireXDEntryPoint() : false;
+    gfxdSystem = v && SystemProperties.isUsingGemFireXDEntryPoint();
   }
 
   /**
@@ -6098,6 +6098,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     public static synchronized void init() {
       // set custom entry factories for GemFireXD
       if (gfxdSystem || SystemProperties.isUsingGemFireXDEntryPoint()) {
+        gfxdSystem = true;
         String provider = SystemProperties.GFXD_FACTORY_PROVIDER;
         try {
           Class<?> factoryProvider = ClassPathLoader.getLatest().forName(

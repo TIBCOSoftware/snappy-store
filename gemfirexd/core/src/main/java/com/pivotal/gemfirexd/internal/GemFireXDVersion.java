@@ -43,7 +43,7 @@ public class GemFireXDVersion {
   static {
     GemFireCacheImpl.setGFXDSystem(true);
     isNativeLibLoaded = NativeCalls.getInstance().loadNativeLibrary()
-        ? SharedLibrary.register("gemfirexd") : false;
+        && SharedLibrary.register("gemfirexd");
     GemFireVersion instance = GemFireVersion.getInstance(
         GemFireXDVersion.class, SharedUtils.GFXD_VERSION_PROPERTIES);
     if (isNativeLibLoaded) {

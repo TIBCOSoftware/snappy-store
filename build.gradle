@@ -57,6 +57,8 @@ allprojects {
     derbyVersion = '10.12.1.1'
     // hbaseVersion = '0.98.17-hadoop2'
     hbaseVersion = '0.98.24-hadoop2'
+    hadoopJettyVersion = '6.1.26'
+    sunJerseyVersion = '1.19.4'
     guavaVersion = '14.0.1'
     nettyAllVersion = '4.0.51.Final'
     jlineVersion = '2.14.5'
@@ -345,15 +347,22 @@ subprojects {
 
   test {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() * 3) / 2
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() * 2)
     minHeapSize = '1g'
     maxHeapSize = '1g'
 
+    includes.clear()
+
     def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
+      single = rootProject.hasProperty('junit.single') ?
+          rootProject.property('junit.single') : null
+    }
+    if (single == null || single.length() == 0) {
       include '**/*Test.class'
-      exclude '**/*DUnitTest.class'
-      exclude '**/*DUnit.class'
+      exclude '**/*TestUtil*'
+      exclude '**/*TestBase.class'
+      exclude '**/*DUnit*.class'
       exclude '**/derbyTesting/**'
     } else {
       include single
@@ -385,7 +394,7 @@ subprojects {
     if (single == null || single.length() == 0) {
       def dunitTests = fileTree(dir: testClassesDir,
           includes: ['**/*DUnitTest.class', '**/*DUnit.class'],
-          excludes: ['**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
+          excludes: ['**/*DUnitSecurityTest.class', '**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
       FileTree includeTestFiles = dunitTests
       int dunitFrom = rootProject.hasProperty('dunit.from') ?
           getLast(includeTestFiles, rootProject.property('dunit.from')) : 0
@@ -403,6 +412,8 @@ subprojects {
     } else {
       include single
     }
+    exclude '**/*Suite.class'
+    exclude '**/*DUnitSecurityTest.class'
 
     workingDir = "${testResultsBase}/dunit"
 
@@ -421,6 +432,10 @@ subprojects {
     maxHeapSize = '1g'
 
     def single = System.getProperty('wan.single')
+    if (single == null || single.length() == 0) {
+      single = rootProject.hasProperty('wan.single') ?
+          rootProject.property('wan.single') : null
+    }
     if (single == null || single.length() == 0) {
       include '**/pivotal/gemfirexd/wan/**/*DUnit.class'
     } else {
