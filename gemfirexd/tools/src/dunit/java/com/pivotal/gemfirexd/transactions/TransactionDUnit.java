@@ -88,6 +88,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   @Override
   public void beforeClass() throws Exception {
     super.beforeClass();
+    super.baseShutDownAll();
     startVMs(1, 3);
   }
 
@@ -104,9 +105,18 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     resetObservers();
     invokeInEveryVM(TransactionDUnit.class, "resetObservers");
     String userName = TestUtil.currentUserName;
-    resetConnection(userName);
-    invokeInEveryVM(TransactionDUnit.class, "resetConnection",
+    setupConnection(userName);
+    invokeInEveryVM(TransactionDUnit.class, "setupConnection",
         new Object[]{userName});
+  }
+
+  public static void setupConnection(String userName) throws SQLException {
+    resetConnection();
+    TestUtil.currentUserName = userName;
+    TestUtil.currentUserPassword = userName;
+    if (GemFireCacheImpl.getInstance() != null) {
+      TestUtil.setupConnection();
+    }
   }
 
   @Override
@@ -132,21 +142,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       }
       txMgr.setObserver(null);
       GemFireXDQueryObserverHolder.clearInstance();
-    }
-  }
-
-  public static void resetConnection(String userName) throws SQLException {
-    Connection conn = TestUtil.jdbcConn;
-    if (conn != null) {
-      conn.rollback();
-      conn.close();
-      TestUtil.jdbcConn = null;
-    }
-    TestUtil.currentUserName = userName;
-    TestUtil.currentUserPassword = userName;
-    System.out.println("SW: current user=" + TestUtil.currentUserName);
-    if (GemFireCacheImpl.getInstance() != null) {
-      TestUtil.setupConnection();
     }
   }
 
@@ -1274,6 +1269,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   public static void checkIndexAndResetAll(int numInsertExpected,
       int numDeletesExpected) throws Exception {
 
+    TXManagerImpl.waitForPendingCommitForTest();
     long numInserted = 0;
     long numDeleted = 0;
     Map<?, ?> results = invokeInEveryVM(new SerializableCallable() {
@@ -1590,6 +1586,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       conn.commit();
     }
 
+    TXManagerImpl.waitForPendingCommitForTest();
     getServerVM(1).invoke(getClass(), "checkIndexAndReset",
         new Object[] { Integer.valueOf(numRows), Integer.valueOf(0) });
     getServerVM(2).invoke(getClass(), "checkIndexAndReset",
@@ -1611,6 +1608,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       conn.commit();
     }
 
+    TXManagerImpl.waitForPendingCommitForTest();
     getServerVM(1).invoke(getClass(), "checkIndexAndReset",
         new Object[] { Integer.valueOf(numRows), Integer.valueOf(numRows) });
     getServerVM(2).invoke(getClass(), "checkIndexAndReset",

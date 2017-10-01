@@ -237,12 +237,7 @@ public class BlobSetMethodsTest extends JdbcTestBase {
     assertTrue(Arrays.equals(bytes1, bytes2));
     assertFalse(rs.next());
   }
-  
-  public void testDummy() {
-    
-  }
-  
-  
+
   public void waitTillAllClear() {  
   }
   

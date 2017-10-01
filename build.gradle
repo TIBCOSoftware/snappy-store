@@ -364,6 +364,7 @@ subprojects {
       exclude '**/*TestBase.class'
       exclude '**/*DUnit*.class'
       exclude '**/derbyTesting/**'
+      exclude '**/pxf/**'
     } else {
       include single
     }
@@ -378,6 +379,9 @@ subprojects {
     binResultsDir = file("${workingDir}/binary/${project.name}")
     reports.html.destination = file("${workingDir}/html/${project.name}")
     reports.junitXml.destination = file(workingDir)
+
+    // try to avoid long "tail" in parallel runs where some workers finish early
+    forkEvery 20
   }
 
   task dunitTest(type:Test, overwrite: true) {
@@ -396,7 +400,9 @@ subprojects {
     if (single == null || single.length() == 0) {
       def dunitTests = fileTree(dir: testClassesDir,
           includes: ['**/*DUnit.class'],
-          excludes: ['**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
+          excludes: ['**/NCJ*DUnit.class', '**/BackwardCompatabilityPart*DUnit.class',
+                     '**/*Perf*DUnit.class', '**/ListAggDUnit.class', '**/SingleHop*TransactionDUnit.class',
+                     '**/*Parallel*AsyncEvent*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
       FileTree includeTestFiles = dunitTests
       int dunitFrom = rootProject.hasProperty('dunit.from') ?
           getLast(includeTestFiles, rootProject.property('dunit.from')) : 0
@@ -415,6 +421,11 @@ subprojects {
       include single
     }
     exclude '**/*NCJ*DUnit.class'
+    exclude '**/BackwardCompatabilityPart*DUnit.class'
+    exclude '**/*Perf*DUnit.class'
+    exclude '**/ListAggDUnit.class'
+    exclude '**/SingleHop*TransactionDUnit.class'
+    exclude '**/*Parallel*AsyncEvent*DUnit.class'
     exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
 
     workingDir = "${testResultsBase}/dunit"
@@ -455,6 +466,9 @@ subprojects {
 
     // increase the number of JVMs for WAN tests
     systemProperties 'gemfire.DUnitLauncher.NUM_VMS' : '8'
+
+    // try to avoid long "tail" in parallel runs where some workers finish early
+    forkEvery 2
   }
 
   task integrationTest(type:Test) {

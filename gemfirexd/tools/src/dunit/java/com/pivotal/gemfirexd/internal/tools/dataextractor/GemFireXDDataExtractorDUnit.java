@@ -83,10 +83,7 @@ public class GemFireXDDataExtractorDUnit  extends DistributedSQLTestBase {
     stopAllVMs();
     shutDownAll();
   }
- 
-  public void testDummy() throws Exception {
-  }
-  
+
   public void testHappyPathDataSalvager() throws Exception {
     String tableName = "REPLICATE_TABLE";
     String server1Name = "server1";

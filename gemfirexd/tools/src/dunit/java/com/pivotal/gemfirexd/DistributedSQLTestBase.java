@@ -299,6 +299,18 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     return "localhost[" + getDUnitLocatorPort() + ']';
   }
 
+  public static void resetConnection() throws SQLException {
+    Connection conn = TestUtil.jdbcConn;
+    if (conn != null) {
+      try {
+        conn.rollback();
+        conn.close();
+      } catch (SQLException ignored) {
+      }
+      TestUtil.jdbcConn = null;
+    }
+  }
+
   protected void commonSetUp() throws Exception {
     GemFireXDUtils.IS_TEST_MODE = true;
 
@@ -330,6 +342,8 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     if ((logLevel = reduceLogging()) != null) {
       reduceLogLevelForTest(logLevel);
     }
+    resetConnection();
+    invokeInEveryVM(DistributedSQLTestBase.class, "resetConnection");
   }
 
   @Override
