@@ -386,6 +386,8 @@ subprojects {
     minHeapSize = '2g'
     maxHeapSize = '2g'
 
+    includes.clear()
+
     def single = System.getProperty('dunit.single')
     if (single == null || single.length() == 0) {
       single = rootProject.hasProperty('dunit.single') ?
@@ -393,8 +395,8 @@ subprojects {
     }
     if (single == null || single.length() == 0) {
       def dunitTests = fileTree(dir: testClassesDir,
-          includes: ['**/*DUnitTest.class', '**/*DUnit.class'],
-          excludes: ['**/*DUnitSecurityTest.class', '**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
+          includes: ['**/*DUnit.class'],
+          excludes: ['**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
       FileTree includeTestFiles = dunitTests
       int dunitFrom = rootProject.hasProperty('dunit.from') ?
           getLast(includeTestFiles, rootProject.property('dunit.from')) : 0
@@ -412,8 +414,8 @@ subprojects {
     } else {
       include single
     }
-    exclude '**/*Suite.class'
-    exclude '**/*DUnitSecurityTest.class'
+    exclude '**/*NCJ*DUnit.class'
+    exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
 
     workingDir = "${testResultsBase}/dunit"
 
@@ -421,8 +423,8 @@ subprojects {
     reports.html.destination = file("${workingDir}/html/${project.name}")
     reports.junitXml.destination = file(workingDir)
 
-    //I'm hoping this might deal with SOME OOMEs I've seen
-    //forkEvery 30
+    // try to avoid long "tail" in parallel runs where some workers finish early
+    forkEvery 20
   }
 
   task wanTest(type:Test) {
@@ -430,6 +432,8 @@ subprojects {
     maxParallelForks = (int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1)
     minHeapSize = '1g'
     maxHeapSize = '1g'
+
+    includes.clear()
 
     def single = System.getProperty('wan.single')
     if (single == null || single.length() == 0) {
@@ -441,6 +445,7 @@ subprojects {
     } else {
       include single
     }
+    exclude '**/*NCJ*DUnit.class'
 
     workingDir = "${testResultsBase}/wan"
 
@@ -455,6 +460,8 @@ subprojects {
   task integrationTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = Runtime.getRuntime().availableProcessors()
+
+    includes.clear()
 
     include '**/*Test.class'
     exclude '**/*DUnitTest.class'

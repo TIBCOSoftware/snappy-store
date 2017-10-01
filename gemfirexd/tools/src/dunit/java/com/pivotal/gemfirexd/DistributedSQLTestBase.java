@@ -299,8 +299,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     return "localhost[" + getDUnitLocatorPort() + ']';
   }
 
-  protected void baseSetUp() throws Exception {
-    super.setUp();
+  protected void commonSetUp() throws Exception {
     GemFireXDUtils.IS_TEST_MODE = true;
 
     expectedDerbyExceptions.clear();
@@ -321,18 +320,22 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     setLogFile(this.getClass().getName(), this.getName(), numVMs);
     invokeInEveryVM(this.getClass(), "setLogFile", new Object[] {
         this.getClass().getName(), this.getName(), numVMs });
+  }
 
+  protected void baseSetUp() throws Exception {
+    super.setUp();
+    commonSetUp();
     // reduce logging if test so requests
     String logLevel;
     if ((logLevel = reduceLogging()) != null) {
       reduceLogLevelForTest(logLevel);
     }
-    IndexPersistenceDUnit.deleteAllOplogFiles();
   }
 
   @Override
   public void setUp() throws Exception {
     baseSetUp();
+    IndexPersistenceDUnit.deleteAllOplogFiles();
   }
 
   protected void reduceLogLevelForTest(String logLevel) {

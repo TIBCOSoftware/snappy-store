@@ -22,14 +22,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import javax.sql.XAConnection;
@@ -44,7 +42,6 @@ import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.ResourceManagerStats;
-import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
 import com.gemstone.gnu.trove.TIntHashSet;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
@@ -61,9 +58,9 @@ import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedPreparedStatement;
 import com.pivotal.gemfirexd.internal.jdbc.EmbeddedXADataSource;
-import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import io.snappydata.jdbc.ClientXADataSource;
 import io.snappydata.test.dunit.AsyncInvocation;
+import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import io.snappydata.test.dunit.standalone.AnyCyclicBarrier;
@@ -85,9 +82,76 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     super(name);
   }
 
+  private static List<VM> globalClientVMs;
+  private static List<VM> globalServerVMs;
+
+  @Override
+  public void beforeClass() throws Exception {
+    super.beforeClass();
+    startVMs(1, 3);
+  }
+
+  @Override
+  public void setUp() throws Exception {
+    super.commonSetUp();
+    super.baseSetUp();
+    if (globalClientVMs != null) {
+      clientVMs.clear();
+      clientVMs.addAll(globalClientVMs);
+      serverVMs.clear();
+      serverVMs.addAll(globalServerVMs);
+    }
+    resetObservers();
+    invokeInEveryVM(TransactionDUnit.class, "resetObservers");
+    String userName = TestUtil.currentUserName;
+    resetConnection(userName);
+    invokeInEveryVM(TransactionDUnit.class, "resetConnection",
+        new Object[]{userName});
+  }
+
+  @Override
+  protected void baseShutDownAll() throws Exception {
+    TestUtil.stopNetServer();
+    invokeInEveryVM(TestUtil.class, "stopNetServer");
+    globalClientVMs = clientVMs;
+    globalServerVMs = serverVMs;
+  }
+
+  @Override
+  public void afterClass() throws Exception {
+    super.baseShutDownAll();
+    super.afterClass();
+  }
+
+  public static void resetObservers() {
+    final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    if (cache != null) {
+      TXManagerImpl txMgr = cache.getCacheTransactionManager();
+      for (TXStateProxy tx : txMgr.getHostedTransactionsInProgress()) {
+        tx.setObserver(null);
+      }
+      txMgr.setObserver(null);
+      GemFireXDQueryObserverHolder.clearInstance();
+    }
+  }
+
+  public static void resetConnection(String userName) throws SQLException {
+    Connection conn = TestUtil.jdbcConn;
+    if (conn != null) {
+      conn.rollback();
+      conn.close();
+      TestUtil.jdbcConn = null;
+    }
+    TestUtil.currentUserName = userName;
+    TestUtil.currentUserPassword = userName;
+    System.out.println("SW: current user=" + TestUtil.currentUserName);
+    if (GemFireCacheImpl.getInstance() != null) {
+      TestUtil.setupConnection();
+    }
+  }
+
   // Uncomment after fixing
   public void DISABLED_testTransactionalInsertAsSubSelects_diffNullable() throws Exception {
-    startVMs(1, 2);
     java.sql.Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     Statement st = conn.createStatement();
@@ -116,7 +180,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testTransactionalInsertAsSubSelects() throws Exception {
-    startVMs(1, 2);
     java.sql.Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -152,7 +215,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testTransactionalInsertOnReplicatedTable() throws Exception {
-    startVMs(1, 2);
     java.sql.Connection conn = TestUtil.jdbcConn;
     conn.setAutoCommit(false);
     Statement st = conn.createStatement();
@@ -261,7 +323,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testTransactionalInsertOnPartitionedTable() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     conn.setAutoCommit(false);
     Statement st = conn.createStatement();
@@ -292,9 +353,26 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       numRows++;
     }
     assertEquals("ResultSet should contain two rows ", 2, numRows);
-    VM vm = this.serverVMs.get(0);
-    vm.invoke(getClass(), "checkData", new Object[] { "TRAN.T1",
-        Long.valueOf(2) });
+    final SerializableCallable getLocalSize = new SerializableCallable() {
+      @Override
+      public Object call() throws Exception {
+        if (GemFireCacheImpl.getInstance() != null) {
+          final PartitionedRegion r = (PartitionedRegion)Misc
+              .getRegionForTable("TRAN.T1", false);
+          if (r != null) {
+            return r.getLocalSize();
+          }
+        }
+        return 0L;
+      }
+    };
+    long result = 0;
+    for (VM vm : this.serverVMs) {
+      if (vm != null) {
+        result += (Long)vm.invoke(getLocalSize);
+      }
+    }
+    assertEquals(2, result);
 
     // Close connection, resultset etc...
     rs.close();
@@ -324,7 +402,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * Test conflicts.
    */
   public void testCommitWithConflicts() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     conn.setAutoCommit(false);
     Statement st = conn.createStatement();
@@ -436,7 +513,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    *           on failure.
    */
   public void testCommitOnPartitionedAndReplicatedTables() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("Create table t1 (c1 int not null , c2 int not null, "
@@ -483,7 +559,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testSelectIsolated() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("Create table t1 (c1 int not null , c2 int not null, "
@@ -534,9 +609,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testColocatedPrTransaction() throws Exception {
-    startVMs(1, 2);
-    // TestUtil.loadDriver();
-
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -613,7 +685,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testCommitAndRollBack() throws Exception {
-    startVMs(1, 2);
     // TestUtil.loadDriver();
     
     Properties props = new Properties();
@@ -644,10 +715,10 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       }
     }
 
-    TXManagerImpl.waitForPendingCommitForTest();
-    // approx. 240 commits/rollbacks gets distributed across 2 nodes. adjust these numbers to a little lower value
+    // approx. 160 commits/rollbacks gets distributed across 3 nodes.
+    // adjust these numbers to a little lower value
     // if unbalanced commits/rollbacks happen.
-    checkTxStatistics("commit-afterInserts", 240, 240, 240, 240, 500, 501); 
+    checkTxStatistics("commit-afterInserts", 160, 160, 160, 160, 500, 501);
     
     ResultSet rs = st.executeQuery("select * from t1");
     int numRows = 0;
@@ -661,9 +732,9 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.commit();
     conn.close();
     TXManagerImpl.waitForPendingCommitForTest();
-    checkTxStatistics("commit-afterSelects", 240, 240, 240, 240, 500, 501);
+    checkTxStatistics("commit-afterSelects", 160, 160, 160, 160, 500, 501);
   }
-  
+
   private void checkTxStatistics(final String comment, final int rCommits1,
       final int rRollback1, final int rCommits2, final int rRollback2,
       final int lCommit, final int lRollback) throws Exception {
@@ -732,7 +803,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
           assertTrue("txCommit=" + txCommit + "," + "lCommits=" + lCommit, txCommit >= lCommit );
         }
         else if (isRemoteCheck[0] == 1) {
-          assertTrue("server " + isRemoteCheck[0] + "txCommit=" + txCommit + "," + "rCommits=" + rCommits1, txCommit >= rCommits1 );
+          assertTrue("server " + isRemoteCheck[0] + " txCommit=" + txCommit + "," + "rCommits=" + rCommits1, txCommit >= rCommits1 );
         }
         else if (isRemoteCheck[0] == 2) {
           assertTrue("server " + isRemoteCheck[0] + " txCommit=" + txCommit + "," + "rCommits=" + rCommits2, txCommit >= rCommits2 );
@@ -754,9 +825,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testNonTransactionalCommitAndRollback() throws Exception {
-    startVMs(1, 2);
-    // TestUtil.loadDriver();
-
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
     conn.setAutoCommit(false);
@@ -795,157 +863,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.close();
   }
 
-  public void testNonColocatedInsertByPartitioning() throws Exception {
-    startServerVMs(1, 0, "sg1");
-    startServerVMs(1, 0, "sg2");
-    startClientVMs(1, 0, null);
-    // TestUtil.loadDriver();
-
-    Connection conn = TestUtil.jdbcConn;
-    System.out.println("XXXX the type of conneciton :  " + conn);
-    Statement st = conn.createStatement();
-    st.execute("create schema test default server groups (sg1, sg2)");
-    st.execute("create table test.t1 ( PkCol1 int not null, PkCol2 int not null , "
-        + "col3 int, col4 int, col5 varchar(10), Primary Key (PkCol1, PkCol2) ) "
-        + "Partition by column (PkCol1) server groups (sg1)"+ getSuffix());
-
-    st.execute("create table test.t2 (PkCol1 int not null, PkCol2 int not null, "
-        + " col3 int, col4 varchar(10)) Partition by column (PkCol1)"
-        + " server groups (sg2)"+ getSuffix());
-    conn.commit();
-    // conn.setTransactionIsolation(getIsolationLevel());
-    st.execute("insert into test.t1 values(10, 10, 10, 10, 'XXXX1')");
-    st.execute("insert into test.t2 values(10, 10, 10, 'XXXX1')");
-    conn.commit();
-
-  }
-
-  /**
-   * Test transactional key based updates.
-   * 
-   * @throws Exception
-   */
-  public void testTransactionalKeyBasedUpdates() throws Exception {
-    startServerVMs(2, 0, "sg1");
-    startClientVMs(1, 0, null);
-    Connection conn = TestUtil.jdbcConn;
-    conn.setAutoCommit(false);
-    System.out.println("XXXX the type of conneciton :  " + conn);
-    Statement st = conn.createStatement();
-    st.execute("create schema test default server groups (sg1, sg2)");
-    st.execute("create table test.t1 ( PkCol1 int not null, PkCol2 int not null , "
-        + "col3 int, col4 int, col5 varchar(10), Primary Key (PkCol1) ) "
-        + "Partition by column (PkCol1) server groups (sg1)"+ getSuffix());
-    conn.commit();
-    conn.setTransactionIsolation(getIsolationLevel());
-    PreparedStatement psInsert = conn.prepareStatement("insert into test.t1 "
-        + "values(?, 10, 10, 10, 'XXXX1')");
-    // st.execute("insert into test.t1 values(10, 10, 10, 10, 'XXXX1')");
-    for (int i = 0; i < 1000; i++) {
-      psInsert.setInt(1, i);
-      psInsert.executeUpdate();
-      conn.commit();
-    }
-    // conn.commit();
-    ResultSet rs = st.executeQuery("select * from test.t1");
-    int numRows = 0;
-    while (rs.next()) {
-      assertEquals("Column value should be 10", 10, rs.getInt(3));
-      assertEquals("Column value should be 10", 10, rs.getInt(4));
-      assertEquals("Column value should be XXXX1", "XXXX1", rs.getString(5)
-          .trim());
-      numRows++;
-    }
-    assertEquals("Numbers of rows in resultset should be one", 1000, numRows);
-    // conn.commit();
-    PreparedStatement psUpdate = conn.prepareStatement("update test.t1 set "
-        + "col3 = 20, col4 = 20, col5 = 'changed' where PkCol1=?");
-    // st.execute("update test.t1 set col3 = 20, col4 = 20, col5 = 'changed' where PkCol1=10");
-    for (int i = 0; i < 1000; i++) {
-      psUpdate.setInt(1, i);
-      psUpdate.executeUpdate();
-      conn.commit();
-    }
-    // conn.commit();
-    rs = st.executeQuery("select * from test.t1");
-    numRows = 0;
-    while (rs.next()) {
-      assertEquals("Column value should change", 20, rs.getInt(3));
-      assertEquals("Columns value should change", 20, rs.getInt(4));
-      assertEquals("Columns value should change", "changed", rs.getString(5)
-          .trim());
-      numRows++;
-    }
-    assertEquals("Numbers of rows in resultset should be one", 1000, numRows);
-    rs.close();
-    st.close();
-    conn.commit();
-    conn.close();
-
-  }
-
-  /**
-   * Test updates on tables partitioned by PK.
-   * 
-   * @throws Exception
-   */
-  public void testTransactionalKeyBasedUpdatePartitionedByPk() throws Exception {
-    startServerVMs(2, 0, "sg1");
-    startClientVMs(1, 0, null);
-    Connection conn = TestUtil.jdbcConn;
-    conn.setAutoCommit(false);
-    Statement st = conn.createStatement();
-    st.execute("create schema test default server groups (sg1, sg2)");
-    st.execute("create table test.t1 ( PkCol1 int not null, PkCol2 int not null , "
-        + "col3 int, col4 int, col5 varchar(10), Primary Key (PkCol1) ) "
-        + "Partition by Primary Key server groups (sg1) redundancy 1"+ getSuffix());
-
-    conn.setTransactionIsolation(getIsolationLevel());
-    PreparedStatement psInsert = conn.prepareStatement("insert into test.t1 "
-        + "values(?, 10, 10, 10, 'XXXX1')");
-    // st.execute("insert into test.t1 values(10, 10, 10, 10, 'XXXX1')");
-    for (int i = 0; i < 1000; i++) {
-      psInsert.setInt(1, i);
-      psInsert.executeUpdate();
-      conn.commit();
-    }
-    ResultSet rs = st.executeQuery("select * from test.t1");
-    int numRows = 0;
-    while (rs.next()) {
-      assertEquals("Column value should be 10", 10, rs.getInt(3));
-      assertEquals("Column value should be 10", 10, rs.getInt(4));
-      assertEquals("Column value should be XXXX1", "XXXX1", rs.getString(5)
-          .trim());
-      numRows++;
-    }
-    assertEquals("Numbers of rows in resultset should be one", 1000, numRows);
-
-    PreparedStatement psUpdate = conn.prepareStatement("update test.t1 set "
-        + "col3 = 20, col4 = 20, col5 = 'changed' where PkCol1=?");
-    // st.execute("update test.t1 set col3 = 20, col4 = 20, col5 = 'changed' where PkCol1=10");
-    for (int i = 0; i < 1000; i++) {
-      psUpdate.setInt(1, i);
-      psUpdate.executeUpdate();
-      conn.commit();
-    }
-
-    rs = st.executeQuery("select * from test.t1");
-    numRows = 0;
-    while (rs.next()) {
-      assertEquals("Column value should change", 20, rs.getInt(3));
-      assertEquals("Columns value should change", 20, rs.getInt(4));
-      assertEquals("Columns value should change", "changed", rs.getString(5)
-          .trim());
-      numRows++;
-    }
-    assertEquals("Numbers of rows in resultset should be one", 1000, numRows);
-    rs.close();
-    st.close();
-    conn.commit();
-    conn.close();
-
-  }
-
   /**
    * DDL followed imediately by commit and then DML.
    * 
@@ -954,8 +871,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   public void testNetworkTransactionDDLFollowedByCommitThenDML()
       throws Exception {
 
-    // start three network servers
-    startServerVMs(1, 0, null);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort,
         "/;user=q;password=q", null);
@@ -992,8 +907,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testNetworkDDLFollowedByInsert() throws Exception {
-    // start three network servers
-    startServerVMs(1, 0, null);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort,
         "/;user=q;password=q", null);
@@ -1049,7 +962,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testTransactionalUpdates() throws Exception {
-    startServerVMs(1, 0, null);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort,
         "/;user=q;password=q", null);
@@ -1121,66 +1033,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.close();
   }
 
-  public void testIndexMaintenanceOnPrimaryAndSecondary() throws Exception {
-    startServerVMs(2, 0, "sg1");
-    startClientVMs(1, 0, null);
-    Properties props = new Properties();
-    props.setProperty(Attribute.TX_SYNC_COMMITS, "true");
-    final Connection conn = TestUtil.getConnection(props);
-    Statement st = conn.createStatement();
-    st.execute("create schema test default server groups (sg1, sg2)");
-    st.execute("create table test.t1 ( PkCol1 int not null, PkCol2 int "
-        + "not null , col3 int, col4 int, col5 varchar(10), Primary Key(PkCol1)"
-        + ") Partition by Primary Key server groups (sg1) redundancy 1"+ getSuffix());
-    conn.commit();
-    st.execute("create index IndexCol4 on test.t1 (col4)");
-    conn.commit();
-
-    conn.setTransactionIsolation(getIsolationLevel());
-    conn.setAutoCommit(false);
-    final int numRows = 10;
-    VM server1 = this.serverVMs.get(0);
-    VM server2 = this.serverVMs.get(1);
-    server1.invoke(getClass(), "installIndexObserver",
-        new Object[] { "test.IndexCol4", null });
-    server2.invoke(getClass(), "installIndexObserver",
-        new Object[] { "test.IndexCol4", null });
-    PreparedStatement psInsert = conn.prepareStatement("insert into test.t1 "
-        + "values(?, 10, 10, 10, 'XXXX1')");
-    for (int i = 0; i < numRows; i++) {
-      psInsert.setInt(1, i);
-      psInsert.executeUpdate();
-      conn.commit();
-    }
-
-    server1.invoke(getClass(), "checkIndexAndReset",
-        new Object[] { Integer.valueOf(numRows), Integer.valueOf(0) });
-    server2.invoke(getClass(), "checkIndexAndReset",
-        new Object[] { Integer.valueOf(numRows), Integer.valueOf(0) });
-
-    PreparedStatement psUpdate = conn.prepareStatement("update test.t1 set "
-        + "col3 = 20, col4 = 20, col5 = 'changed' where PkCol1=?");
-    for (int i = 0; i < numRows; i++) {
-      psUpdate.setInt(1, i);
-      psUpdate.executeUpdate();
-      conn.commit();
-    }
-
-    server1.invoke(getClass(), "checkIndexAndReset", new Object[] {
-      Integer.valueOf(numRows * 2), Integer.valueOf(numRows) });
-    server2.invoke(getClass(), "checkIndexAndReset", new Object[] {
-      Integer.valueOf(numRows * 2), Integer.valueOf(numRows) });
-
-    server1.invoke(getClass(), "resetIndexObserver");
-    server2.invoke(getClass(), "resetIndexObserver");
-
-    st.close();
-    conn.close();
-  }
-
   public void testXATransactionFromClient_commit() throws Exception {
-    startServerVMs(2, 0, null);
-    startClientVMs(1, 0, null);
     final int netport = startNetworkServer(1, null, null);
     serverSQLExecute(1, "create schema test");
     serverSQLExecute(1, "create table test.XATT2 (intcol int not null, text varchar(100) not null)"+ getSuffix());
@@ -1236,9 +1089,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
   
   public void testXATransactionFromPeerClient_commit() throws Exception {
-    startServerVMs(2, 0, null);
-    startClientVMs(1, 0, null);
-
     serverSQLExecute(1, "create schema test");
     serverSQLExecute(1, "create table test.XATT2 (intcol int not null, text varchar(100) not null)"+ getSuffix());
     serverSQLExecute(1, "insert into test.XATT2 values (1, 'ONE')");
@@ -1288,8 +1138,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testXATransactionFromClient_rollback() throws Exception {
-    startServerVMs(2, 0, null);
-    startClientVMs(1, 0, null);
     final int netport = startNetworkServer(1, null, null);
     serverSQLExecute(1, "create schema test");
     serverSQLExecute(1, "create table test.XATT2 (intcol int not null, text varchar(100) not null)"+ getSuffix());
@@ -1345,9 +1193,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
   
   public void testXATransactionFromPeerClient_rollback() throws Exception {
-    startServerVMs(2, 0, null);
-    startClientVMs(1, 0, null);
-
     serverSQLExecute(1, "create schema test");
     serverSQLExecute(1, "create table test.XATT2 (intcol int not null, text varchar(100) not null)"+ getSuffix());
     serverSQLExecute(1, "insert into test.XATT2 values (1, 'ONE')");
@@ -1404,6 +1249,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * Install an observer called during index maintenance.
    */
   public static void installIndexObserver(String name, TXId txId) {
+    if (GemFireCacheImpl.getInstance() == null) return;
     CheckIndexOperations checkIndex = new CheckIndexOperations(name, txId);
     GemFireXDQueryObserver old = GemFireXDQueryObserverHolder
         .setInstance(checkIndex);
@@ -1423,10 +1269,42 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   /**
+   * Check index operations and reset the holder.
+   */
+  public static void checkIndexAndResetAll(int numInsertExpected,
+      int numDeletesExpected) throws Exception {
+
+    long numInserted = 0;
+    long numDeleted = 0;
+    Map<?, ?> results = invokeInEveryVM(new SerializableCallable() {
+      @Override
+      public Object call() throws Exception {
+        CheckIndexOperations checkIndex;
+        if (GemFireCacheImpl.getInstance() != null &&
+            (checkIndex = GemFireXDQueryObserverHolder.getObserver(
+                CheckIndexOperations.class)) != null) {
+          return ((long)checkIndex.numInserts << 32L) | (long)checkIndex.numDeletes;
+        } else {
+          return 0L;
+        }
+      }
+    });
+    for (Object o : results.values()) {
+      if (o != null) {
+        long v = (Long)o;
+        numInserted += (v >> 32L);
+        numDeleted += (v & 0xffffffffL);
+      }
+    }
+    assertEquals(numInsertExpected, numInserted);
+    assertEquals(numDeletesExpected, numDeleted);
+  }
+
+  /**
    * Reset index observer.
    */
   public static void resetIndexObserver() throws Exception {
-
+    if (GemFireCacheImpl.getInstance() == null) return;
     GemFireXDQueryObserverHolder.clearInstance();
   }
 
@@ -1492,87 +1370,11 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void testBug41694() throws Exception {
-    startServerVMs(2, 0, "sg1");
-    startClientVMs(1, 0, null);
-    Connection conn = TestUtil.jdbcConn;
-    Statement st = conn.createStatement();
-    st.execute("create schema test default server groups (sg1, sg2)");
-    st.execute("create table test.t1 ( PkCol1 int not null, PkCol2 int not null, "
-        + "col3 int, col4 int, col5 varchar(10),col6 int, col7 int, col8 int, "
-        + "col9 int, col10 int, col11 int, col12 int, col13 int, col14 int, "
-        + "col15 int, col16 int, col17 int, col18 int, col19 int, col20 int, "
-        + "col21 int,col22 int, col23 int, col24 int, col25 int, col26 int, "
-        + "col27 int, col28 int, col29 int, col30 int, col31 int, col32 int,"
-        + " col33 int, col34 int, col35 int, col36 int, col37 int, col38 int, "
-        + "col39 int, col40 int, col41 int, col42 int, col43 int, col44 int, "
-        + "col45 int, col46 int, col47 int, col48 int, col49 int, col50 int, "
-        + "col51 int, col52 int, col53 int, col54 int, col55 int, col56 int, "
-        + "col57 int, col58 int, col59 int, col60 int, col61 int, col62 int, "
-        + "col63 int, col64 int, col65 int, col66 int, col67 int, col68 int, "
-        + "col69 int, col70 int, col71 int, col72 int, col73 int, col74 int, "
-        + "col75 int, col76 int, col77 int, col78 int, col79 int, col80 int, "
-        + "col81 int, col82 int, col83 int, col84 int, col85 int, col86 int, "
-        + "col87 int, col88 int, col89 int, col90 int, col91 int, col92 int, "
-        + "col93 int, col94 int, col95 int, col96 int, col97 int, col98 int, "
-        + "col99 int, col100 int, Primary Key (PkCol1) ) "
-        + "Partition by Primary Key server groups (sg1) redundancy 1"+ getSuffix());
-    conn.commit();
-    st.execute("create index IndexCol4 on test.t1 (col4)");
-    conn.commit();
-
-    conn.setTransactionIsolation(getIsolationLevel());
-    conn.setAutoCommit(false);
-    final int numRows = 1;
-    PreparedStatement psInsert = conn.prepareStatement("insert into test.t1 "
-        + "values(?, 1000, 1000, 1000, 'XXXX1'"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000 "
-        + " , 1000, 1000, 1000, 1000, 1000 "
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000"
-        + " , 1000, 1000, 1000, 1000, 1000 )");
-    // st.execute("insert into test.t1 values(10, 10, 10, 10, 'XXXX1')");
-    for (int i = 0; i < numRows; i++) {
-      psInsert.setInt(1, i);
-      psInsert.executeUpdate();
-      conn.commit();
-    }
-
-    PreparedStatement psUpdate = conn.prepareStatement("update test.t1 set "
-        + "col3 = 20 where PkCol1=?");
-    // st.execute("update test.t1 set col3 = 20, col4 = 20, col5 = 'changed' where PkCol1=10");
-    for (int i = 0; i < 1000; i++) {
-      // Update the same row over and over should not cause #41694,
-      // negative bucket size(memory consumed by bucket).
-      psUpdate.setInt(1, 0);
-      psUpdate.executeUpdate();
-      conn.commit();
-    }
-
-    st.close();
-    conn.commit();
-  }
-
   /** Simple test case of timing inserts. */
   public void testUseCase_timeInserts() throws Exception {
     // reduce logs
     reduceLogLevelForTest("warning");
 
-    startVMs(0, 1);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort,
         "/;user=app;password=app", null);
@@ -1619,7 +1421,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testTransactionalKeyBasedDeletes() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema tran");
@@ -1649,7 +1450,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testTransactionalDeleteWithLocalIndexes() throws Exception {
-    startVMs(1, 1);
     Properties props = new Properties();
     props.setProperty(Attribute.TX_SYNC_COMMITS, "true");
     final Connection conn = TestUtil.getConnection(props);
@@ -1674,15 +1474,13 @@ public class TransactionDUnit extends DistributedSQLTestBase {
         + "where c1 = ?");
     conn.commit();
 
-    // GemFireXDQueryObserver old = null;
-    VM server1 = this.serverVMs.get(0);
     // below check also forces a new TX to start for getCurrentTXId() call
     ResultSet rs = conn.createStatement().executeQuery(
         "select count(*) from tran.t1");
     assertTrue(rs.next());
     assertEquals(numRows, rs.getInt(1));
     assertFalse(rs.next());
-    server1.invoke(getClass(), "installIndexObserver",
+    invokeInEveryVM(getClass(), "installIndexObserver",
         new Object[] { "tran.IndexCol2", TXManagerImpl.getCurrentTXId() });
     try {
       // old = GemFireXDQueryObserverHolder.setInstance(checkIndex);
@@ -1699,9 +1497,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       // GemFireXDQueryObserverHolder.clearInstance();
       // }
     }
-    server1.invoke(getClass(), "checkIndexAndReset",
-        new Object[] { Integer.valueOf(0), Integer.valueOf(numRows) });
-    server1.invoke(getClass(), "resetIndexObserver");
+    checkIndexAndResetAll(0, numRows);
+    invokeInEveryVM(getClass(), "resetIndexObserver");
 
     st.close();
     conn.close();
@@ -1714,7 +1511,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    */
   public void testTransactionalDeleteWithLocalIndexesClientServer()
       throws Exception {
-    // startServerVMs(1);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort,
         "/;user=app;password=app", null);
@@ -1738,8 +1534,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
 
     // GemFireXDQueryObserver old = null;
-    VM server1 = this.serverVMs.get(0);
-    server1.invoke(getClass(), "installIndexObserver",
+    invokeInEveryVM(getClass(), "installIndexObserver",
         new Object[] { "tran.IndexCol2", null });
     PreparedStatement psDelete = conn.prepareStatement("delete from tran.t1 "
         + "where c1 = ?");
@@ -1750,9 +1545,9 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       conn.commit();
     }
 
-    server1.invoke(getClass(), "checkIndexAndReset",
-        new Object[] { Integer.valueOf(0), Integer.valueOf(numRows) });
-    server1.invoke(getClass(), "resetIndexObserver");
+    checkIndexAndResetAll(0, numRows);
+    invokeInEveryVM(getClass(), "resetIndexObserver");
+
     st.execute("drop table tran.t1");
     st.execute("drop schema tran restrict");
 
@@ -1769,7 +1564,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    */
   public void testTransactionalDeleteWithLocalIndexesClientServerReplicatedTable()
       throws Exception {
-    // startServerVMs(1);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort,
         "/;user=app;password=app", null);
@@ -1783,8 +1577,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
     
-    VM server1 = this.serverVMs.get(0);
-    server1.invoke(getClass(), "installIndexObserver",
+    invokeInEveryVM(getClass(), "installIndexObserver",
         new Object[] { "tran.IndexCol2", null });
 
     int numRows = 1000;
@@ -1797,7 +1590,11 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       conn.commit();
     }
 
-    server1.invoke(getClass(), "checkIndexAndReset",
+    getServerVM(1).invoke(getClass(), "checkIndexAndReset",
+        new Object[] { Integer.valueOf(numRows), Integer.valueOf(0) });
+    getServerVM(2).invoke(getClass(), "checkIndexAndReset",
+        new Object[] { Integer.valueOf(numRows), Integer.valueOf(0) });
+    getServerVM(3).invoke(getClass(), "checkIndexAndReset",
         new Object[] { Integer.valueOf(numRows), Integer.valueOf(0) });
 
     // final CheckIndexOperations checkIndex = new
@@ -1806,20 +1603,21 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
     PreparedStatement psDelete = conn.prepareStatement("delete from tran.t1 "
         + "where c1 = ?");
-    try {
-      // old = GemFireXDQueryObserverHolder.setInstance(checkIndex);
-      for (int i = 0; i < numRows; i++) {
-        psDelete.setInt(1, i);
-        psDelete.executeUpdate();
-        conn.commit();
-      }
 
-    } finally {
+    // old = GemFireXDQueryObserverHolder.setInstance(checkIndex);
+    for (int i = 0; i < numRows; i++) {
+      psDelete.setInt(1, i);
+      psDelete.executeUpdate();
+      conn.commit();
     }
 
-    server1.invoke(getClass(), "checkIndexAndReset",
+    getServerVM(1).invoke(getClass(), "checkIndexAndReset",
         new Object[] { Integer.valueOf(numRows), Integer.valueOf(numRows) });
-    server1.invoke(getClass(), "resetIndexObserver");
+    getServerVM(2).invoke(getClass(), "checkIndexAndReset",
+        new Object[] { Integer.valueOf(numRows), Integer.valueOf(numRows) });
+    getServerVM(3).invoke(getClass(), "checkIndexAndReset",
+        new Object[] { Integer.valueOf(numRows), Integer.valueOf(numRows) });
+    invokeInEveryVM(getClass(), "resetIndexObserver");
 
     st.execute("drop table tran.t1");
     st.execute("drop schema tran restrict");
@@ -1835,7 +1633,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testUpdateWithFunctionExecution() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema trade");
@@ -1910,8 +1707,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testNetworkFailedDDLFollowedByInsert() throws Exception {
-    // start three network servers
-    startServerVMs(1, 0, null);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort,
         "/;user=q;password=q", null);
@@ -1946,7 +1741,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void test41679() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema trade");
@@ -2003,7 +1797,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * Unique constraint violation on remote node.
    */
   public void testUniquenessFailure() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema tran");
@@ -2071,7 +1864,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testUniquenessFailureReplicatedTable() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema tran");
@@ -2112,7 +1904,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testNonKeyBasedTransactionalUpdates() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema trade");
@@ -2180,7 +1971,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   public void testNonKeyBasedTransactionalUpdatesRollbackAndCommit()
       throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema trade");
@@ -2269,7 +2059,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testNonKeyBasedTransactionalUpdatesAndConflict() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema trade");
@@ -2588,7 +2377,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   public void testNonKeyBasedTransactionalUpdatesRollbackAndCommitReplicateTable()
       throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema trade");
@@ -2675,120 +2463,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.close();
   }
 
-  public void testBug41970_43473() throws Throwable {
-    startVMs(1, 1);
-    Connection conn = TestUtil.jdbcConn;
-    conn.setTransactionIsolation(getIsolationLevel());
-    conn.setAutoCommit(false);
-    Statement st = conn.createStatement();
-    st.execute("create table customers (cid int not null, cust_name "
-        + "varchar(100),  addr varchar(100), tid int, primary key (cid))");
-    st.execute("create table trades (tid int, cid int, eid int, primary Key "
-        + "(tid), foreign key (cid) references customers (cid))"+ getSuffix());
-    PreparedStatement pstmt = conn
-        .prepareStatement("insert into customers values(?,?,?,?)");
-    pstmt.setInt(1, 1);
-    pstmt.setString(2, "name1");
-    pstmt.setString(3, "add1");
-    pstmt.setInt(4, 1);
-    pstmt.executeUpdate();
-    pstmt.setInt(1, 2);
-    pstmt.setString(2, "name2");
-    pstmt.setString(3, "add2");
-    pstmt.setInt(4, 1);
-    pstmt.executeUpdate();
-    conn.commit();
-
-    ResultSet rs = st.executeQuery("Select * from customers");
-    int numRows = 0;
-    while (rs.next()) {
-      // Checking number of rows returned, since ordering of results
-      // is not guaranteed.
-      numRows++;
-    }
-    assertEquals("ResultSet should contain two rows ", 2, numRows);
-    rs.close();
-    conn.commit();
-
-    // test for #43473
-    st.execute("create table sellorders (oid int not null primary key, "
-        + "cid int, order_time timestamp, status varchar(10), "
-        + "constraint ch check (status in ('cancelled', 'open', 'filled')))"+ getSuffix());
-    pstmt = conn.prepareStatement("insert into sellorders values (?, ?, ?, ?)");
-    final long currentTime = System.currentTimeMillis();
-    final Timestamp ts = new Timestamp(currentTime - 100);
-    final Timestamp now = new Timestamp(currentTime);
-    for (int id = 1; id <= 100; id++) {
-      pstmt.setInt(1, id);
-      pstmt.setInt(2, id * 2);
-      pstmt.setTimestamp(3, ts);
-      pstmt.setString(4, "open");
-      pstmt.execute();
-    }
-    conn.commit();
-
-    final CyclicBarrier barrier = new CyclicBarrier(2);
-    final Throwable[] failure = new Throwable[1];
-    Thread t = new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          Connection conn2 = TestUtil.getConnection();
-          conn2.setTransactionIsolation(getIsolationLevel());
-          conn2.setAutoCommit(false);
-          PreparedStatement pstmt2 = conn2
-              .prepareStatement("update sellorders set cid = ? where oid = ?");
-          pstmt2.setInt(1, 7);
-          pstmt2.setInt(2, 3);
-          assertEquals(1, pstmt2.executeUpdate());
-          pstmt2.setInt(1, 3);
-          pstmt2.setInt(2, 1);
-          assertEquals(1, pstmt2.executeUpdate());
-
-          // use a barrier to force txn1 to wait after first EX lock upgrade
-          // and txn2 to wait before EX_SH lock acquisition
-          getServerVM(1).invoke(TransactionDUnit.class, "installObservers");
-          barrier.await();
-          conn2.commit();
-        } catch (Throwable t) {
-          failure[0] = t;
-        }
-      }
-    });
-    t.start();
-
-    pstmt = conn.prepareStatement("update sellorders "
-        + "set status = 'cancelled' where order_time < ? and status = 'open'");
-    pstmt.setTimestamp(1, now);
-    barrier.await();
-    try {
-      pstmt.executeUpdate();
-      fail("expected conflict exception");
-    } catch (SQLException sqle) {
-      if (!"X0Z02".equals(sqle.getSQLState())) {
-        throw sqle;
-      }
-    }
-    conn.close();
-
-    t.join();
-
-    if (failure[0] != null) {
-      throw failure[0];
-    }
-
-    // clear the observers
-    serverExecute(1, new SerializableRunnable() {
-      @Override
-      public void run() {
-        GemFireCacheImpl.getExisting().getTxManager().setObserver(null);
-        GemFireXDQueryObserverHolder.clearInstance();
-      }
-    });
-  }
-
   public void testBug41976() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -2849,7 +2524,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testBug41956() throws Exception {
-    startVMs(2, 2);
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -2923,7 +2597,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testBug41974() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -2956,9 +2629,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   public void testBug42014() throws Exception {
     // Create a table from client using partition by column
-    // Start one client and three servers
-    startVMs(1, 3);
-
     clientSQLExecute(1, "create table trade.portfolio (cid int not null, "
         + "sid int not null, qty int not null, availQty int not null, "
         + "subTotal decimal(30,20), tid int) "
@@ -3002,179 +2672,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.commit();
   }
 
-  public void testBug42031IsolationAndTXData() throws Exception {
-    // Create the controller VM as client which belongs to default server group
-    startClientVMs(1, 0, null);
-    startServerVMs(1, -1, "SG1");
-    // create table
-    clientSQLExecute(1, "create table TESTTABLE (ID int not null primary key, "
-        + "DESCRIPTION varchar(1024), ADDRESS varchar(1024), ID1 int)"+ getSuffix());
-
-    Connection conn = TestUtil.jdbcConn;
-    conn.setTransactionIsolation(getIsolationLevel());
-    conn.setAutoCommit(false);
-    Statement stmt = conn.createStatement();
-    // Do an insert in sql fabric. This will create a primary bucket on the lone
-    // server VM
-    // with bucket ID =1
-    stmt.executeUpdate("Insert into TESTTABLE values(114,'desc114','Add114',114)");
-
-    stmt.executeUpdate("Insert into TESTTABLE values(1,'desc1','Add1',1)");
-    stmt.executeUpdate("Insert into TESTTABLE values(227,'desc227','Add227',227)");
-    stmt.executeUpdate("Insert into TESTTABLE values(340,'desc340','Add340',340)");
-    conn.rollback();
-    stmt.executeUpdate("Insert into TESTTABLE values(114,'desc114','Add114',114)");
-    stmt.executeUpdate("Insert into TESTTABLE values(2,'desc1','Add1',1)");
-    stmt.executeUpdate("Insert into TESTTABLE values(224,'desc227','Add227',227)");
-    stmt.executeUpdate("Insert into TESTTABLE values(331,'desc340','Add340',340)");
-    conn.commit();
-    // Bulk Update
-    stmt.executeUpdate("update TESTTABLE set ID1 = ID1 +1 ");
-    ResultSet rs = stmt.executeQuery("select ID1 from  TESTTABLE");
-    Set<Integer> expected = new HashSet<Integer>();
-    expected.add(Integer.valueOf(1));
-    expected.add(Integer.valueOf(227));
-    expected.add(Integer.valueOf(340));
-    expected.add(Integer.valueOf(114));
-    Set<Integer> expected2 = new HashSet<Integer>();
-    expected2.add(Integer.valueOf(2));
-    expected2.add(Integer.valueOf(228));
-    expected2.add(Integer.valueOf(341));
-    expected2.add(Integer.valueOf(115));
-
-    int numRows = 0;
-    while (rs.next()) {
-      Integer got = Integer.valueOf(rs.getInt(1));
-      assertTrue(expected2.contains(got));
-      ++numRows;
-    }
-    assertEquals(expected2.size(), numRows);
-
-    // rollback and check original values
-    conn.rollback();
-
-    rs = stmt.executeQuery("select ID1 from TESTTABLE");
-    numRows = 0;
-    while (rs.next()) {
-      Integer got = Integer.valueOf(rs.getInt(1));
-      assertTrue(expected.contains(got));
-      ++numRows;
-    }
-    assertEquals(expected.size(), numRows);
-
-    // now commit and check success
-    stmt.executeUpdate("update TESTTABLE set ID1 = ID1 +1 ");
-    rs = stmt.executeQuery("select ID1 from TESTTABLE");
-    numRows = 0;
-    while (rs.next()) {
-      Integer got = Integer.valueOf(rs.getInt(1));
-      assertTrue(expected2.contains(got));
-      ++numRows;
-    }
-    assertEquals(expected2.size(), numRows);
-
-    conn.commit();
-
-    rs = stmt.executeQuery("select ID1 from TESTTABLE");
-    numRows = 0;
-    while (rs.next()) {
-      Integer got = Integer.valueOf(rs.getInt(1));
-      assertTrue(expected2.contains(got));
-      ++numRows;
-    }
-    assertEquals(expected2.size(), numRows);
-  }
-
-  public void testBug41873_1() throws Exception {
-
-    // Create the controller VM as client which belongs to default server group
-    startClientVMs(1, 0, null);
-    startServerVMs(2, -1, "SG1");
-    Connection conn = TestUtil.jdbcConn;
-    conn.setTransactionIsolation(getIsolationLevel());
-    conn.setAutoCommit(false);
-    // create table
-    clientSQLExecute(1, "Create table t1 (c1 int not null , c2 int not null, "
-        + "c3 int not null, c4 int not null) redundancy 1 "
-        + "partition by column (c1) "+ getSuffix());
-    conn.commit();
-    Statement st = conn.createStatement();
-    st.execute("insert into t1 values (1, 1,1,1)");
-    st.execute("insert into t1 values (114, 114,114,114)");
-    conn.commit();
-    st.execute("update t1 set c2 =2 where c1 =1");
-    st.execute("update t1 set c3 =3 where c1 =1");
-    st.execute("update t1 set c4 =4 where c1 =1");
-    st.execute("update t1 set c2 =3 where c1 = 114");
-    st.execute("update t1 set c3 =4 where c1 =114");
-    st.execute("update t1 set c4 =5 where c1 =114");
-    conn.commit();
-    ResultSet rs = st.executeQuery("Select * from t1 where c1 = 1");
-    rs.next();
-    assertEquals(1, rs.getInt(1));
-    assertEquals(2, rs.getInt(2));
-    assertEquals(3, rs.getInt(3));
-    assertEquals(4, rs.getInt(4));
-
-    rs = st.executeQuery("Select * from t1 where c1 = 114");
-    rs.next();
-    assertEquals(114, rs.getInt(1));
-    assertEquals(3, rs.getInt(2));
-    assertEquals(4, rs.getInt(3));
-    assertEquals(5, rs.getInt(4));
-    conn.commit();
-  }
-
-  public void testBug42067_1() throws Exception {
-
-    // Create the controller VM as client which belongs to default server group
-    startClientVMs(1, 0, null);
-    startServerVMs(2, -1, "SG1");
-    Connection conn = TestUtil.jdbcConn;
-    conn.setTransactionIsolation(getIsolationLevel());
-    conn.setAutoCommit(false);
-    // create table
-    clientSQLExecute(1, "Create table t1 (c1 int not null, "
-        + "c2 int not null, c3 int not null, c4 int not null) "
-        + "redundancy 1 partition by column (c1) "+ getSuffix());
-    conn.commit();
-    Statement st = conn.createStatement();
-    st.execute("insert into t1 values (1, 1,1,1)");
-    st.execute("insert into t1 values (114, 114,114,114)");
-    conn.commit();
-    st.execute("delete from t1 where c1 =1 and c3 =1");
-    st.execute("update t1 set c2 =2 where c1 =1 and c3 =1");
-    conn.commit();
-  }
-
-  public void testBug42067_2() throws Exception {
-
-    // Create the controller VM as client which belongs to default server group
-    startClientVMs(1, 0, null);
-    startServerVMs(2, -1, "SG1");
-    Connection conn = TestUtil.jdbcConn;
-    conn.setTransactionIsolation(getIsolationLevel());
-    conn.setAutoCommit(false);
-    // create table
-    clientSQLExecute(1, "Create table t1 (c1 int not null primary key, "
-        + "c2 int not null, c3 int not null, c4 int not null) "
-        + "redundancy 1 partition by column (c1) "+ getSuffix());
-    conn.commit();
-    Statement st = conn.createStatement();
-    st.execute("insert into t1 values (1, 1,1,1)");
-    st.execute("insert into t1 values (114, 114,114,114)");
-    conn.commit();
-    st.execute("delete from t1 where c1 =1 and c3 =1");
-    st.execute("update t1 set c2 =2 where c1 =1 and c3 =1");
-    conn.commit();
-    ResultSet rs = st.executeQuery("select * from t1");
-    assertTrue(rs.next());
-    assertEquals(114, rs.getInt(1));
-    assertFalse(rs.next());
-  }
-
   public void testBug42311_1() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -3191,7 +2689,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testBug42311_2() throws Exception {
-    startVMs(1, 1);
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -3216,7 +2713,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   public void testBugPutAllDataLossAsBuggyDistribution() throws Exception {
     reduceLogLevelForTest("config");
-    startServerVMs(2, 0, null);
     final int netPort = startNetworkServer(1, null, null);
     final Connection conn = TestUtil.getNetConnection(netPort, null, null);
 
@@ -3280,7 +2776,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testMultipleInsertFromThinClient_bug44242() throws Exception {
-    startServerVMs(2, 0, null);
     int port = startNetworkServer(1, null, null);
     Connection netConn = TestUtil.getNetConnection(port, null, null);
     netConn.createStatement().execute("create schema emp");
@@ -3343,7 +2838,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
   // FK related tests
   public void testFK_NoGlobalIndex_differentThread() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     clientSQLExecute(1, "Create table t1 (c1 int not null primary key, "
         + "c2 int not null, c3 int not null)"+ getSuffix());
@@ -3419,7 +2913,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testFK_NoGlobalIndexSameThread() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     clientSQLExecute(1, "Create table t1 (c1 int not null primary key, "
         + "c2 int not null, c3 int not null)"+ getSuffix());
@@ -3474,7 +2967,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testFK_GlobalIndexDifferentThread() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     clientSQLExecute(1, "Create table t1 (c1 int not null primary key, "
         + "c2 int not null, c3 int not null) partition by column(c2)"+ getSuffix());
@@ -3550,7 +3042,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testFK_GlobalIndexSameThread() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     clientSQLExecute(1, "Create table t1 (c1 int not null primary key, "
         + "c2 int not null, c3 int not null) partition by column(c2)"+ getSuffix());
@@ -3605,8 +3096,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   public void testFKWithBatching_49371() throws Throwable {
-    startVMs(1, 2);
-
     Connection conn = TestUtil.jdbcConn;
     Statement stmt = conn.createStatement();
 
@@ -3855,8 +3344,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * or updates) in another TX.
    */
   public void test42822() throws Exception {
-    startVMs(1, 3);
-
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -3923,8 +3410,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   /** Test for "sync-commits" property. */
   public void testSyncCommits() throws Throwable {
-    startVMs(1, 3);
-
     final int netPort = startNetworkServer(2, null, null);
 
     Properties props = new Properties();
@@ -4072,7 +3557,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * guaranteed. This is for testing that feature.
    */
   public void testBasicPersistence() throws Exception {
-    startVMs(1, 3);
     createDiskStore(false, 2);
 
     final int totalOps = 1000;
@@ -4194,7 +3678,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * Check that transaction continues fine after new node join.
    */
   public void testNewNodeHA() throws Throwable {
-    startVMs(1, 2);
+    stopVMNum(-3);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     st.execute("create schema tran");
@@ -4252,7 +3736,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     st.execute("insert into tran.t1 values (50, 50)");
 
     // start a new store VM and TXns should continue
-    startVMs(0, 1);
+    restartVMNums(-3);
 
     Connection conn2 = TestUtil.getConnection();
     Statement st2 = conn2.createStatement();
@@ -4305,9 +3789,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
         System.setProperty("gemfire.WRITE_LOCK_TIMEOUT", "-1");
       }
     });
-
-    startClientVMs(1, 0, null);
-    startServerVMs(1, 0, null);
 
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
@@ -4426,7 +3907,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   public void testDeltaGII_51366() throws Exception {
     reduceLogLevelForTest("config");
-    startVMs(1, 2);
+    stopVMNum(-3);
 
     Properties props = new Properties();
     props.setProperty("sync-commits", "true");
@@ -4465,7 +3946,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
 
     // start a new node in the middle of transaction
-    startVMs(0, 1);
+    restartVMNums(-3);
     stmt.execute("call sys.rebalance_all_buckets()");
 
     for (int i = 2 * numBaseInserts; i < 3 * numBaseInserts; i++) {
@@ -4580,6 +4061,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
     stopVMNum(-3);
     verify_test51366(6 * numBaseInserts);
+
+    restartVMNums(-1, -3);
   }
 
   private void verify_test51366(final int totalInserts)
@@ -4683,79 +4166,11 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public static void installObservers() {
-    final CyclicBarrier testBarrier = new CyclicBarrier(2);
-    final ConcurrentHashMap<TXStateProxy, Boolean> waitDone =
-        new ConcurrentHashMap<TXStateProxy, Boolean>(2);
-
-    TransactionObserver txOb1 = new TransactionObserverAdapter() {
-      boolean firstCall = true;
-
-      @Override
-      public void beforeIndividualLockUpgradeInCommit(TXStateProxy tx,
-          TXEntryState entry) {
-        if (this.firstCall) {
-          this.firstCall = false;
-          return;
-        }
-        if (waitDone.putIfAbsent(tx, Boolean.TRUE) == null) {
-          SanityManager.DEBUG_PRINT("info:TEST",
-              "TXObserver: waiting on testBarrier, count="
-                  + testBarrier.getNumberWaiting());
-          try {
-            testBarrier.await();
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        }
-      }
-
-      @Override
-      public void afterIndividualRollback(TXStateProxy tx, Object callbackArg) {
-        // release the barrier for the committing TX
-        if (waitDone.putIfAbsent(tx, Boolean.TRUE) == null) {
-          try {
-            testBarrier.await();
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        }
-      }
-    };
-
-    GemFireXDQueryObserver ob2 = new GemFireXDQueryObserverAdapter() {
-      @Override
-      public void lockingRowForTX(TXStateProxy tx, GemFireContainer container,
-          RegionEntry entry, boolean writeLock) {
-        if (!writeLock
-            && ExclusiveSharedSynchronizer.isExclusive(entry.getState())
-            && waitDone.putIfAbsent(tx, Boolean.TRUE) == null) {
-          SanityManager.DEBUG_PRINT("info:TEST",
-              "GFXDObserver: waiting on testBarrier, count="
-                  + testBarrier.getNumberWaiting());
-          try {
-            testBarrier.await();
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        }
-      }
-    };
-
-    final TXManagerImpl txMgr = GemFireCacheImpl.getExisting().getTxManager();
-    for (TXStateProxy tx : txMgr.getHostedTransactionsInProgress()) {
-      tx.setObserver(txOb1);
-    }
-    txMgr.setObserver(txOb1);
-    GemFireXDQueryObserverHolder.setInstance(ob2);
-  }
-
   protected int getIsolationLevel() {
     return Connection.TRANSACTION_READ_COMMITTED;
   }
 
   public void test49667() throws Exception {
-    startVMs(1, 2);
     Connection conn = TestUtil.jdbcConn;
     clientSQLExecute(
         1,
@@ -4811,8 +4226,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
   public void testGFXDDeleteWithConcurrency() throws Exception {
-    startVMs(0, 2);
-    startVMs(1, 0);
     createDiskStore(true, 1);
     // Create a schema
     clientSQLExecute(1, "create schema trade");
@@ -4835,7 +4248,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
     conn.commit();
     Statement st = conn.createStatement();
-    boolean b = st.execute("delete from trade.customers where cid = 4");
+    st.execute("delete from trade.customers where cid = 4");
     conn.commit();
     expected.remove(4);
 
@@ -4862,7 +4275,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       Statement s = conn.createStatement();
       s.execute("select * from trade.customers");
       ResultSet rs = s.getResultSet();
-      rs = s.getResultSet();
 
       Map<Integer, String> received = new HashMap();
       while(rs.next()) {
@@ -4870,5 +4282,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       }
       assertEquals(expected,received);
     }
+    restartVMNums(-1);
   }
 }
