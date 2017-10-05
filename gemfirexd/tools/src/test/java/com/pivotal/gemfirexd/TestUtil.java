@@ -230,11 +230,13 @@ public class TestUtil extends TestCase {
       logLevel = "config";
     }
     try {
-      // convert logLevel to slf4j name
-      String level = ClientSharedUtils.convertToLog4LogLevel(
-          java.util.logging.Level.parse(logLevel.toUpperCase(Locale.ENGLISH)));
-      GfxdSystemProcedureMessage.SysProcMethod.setLogLevel.processMessage(
-          new Object[] { "", level }, Misc.getMyId());
+      if (Misc.getGemFireCacheNoThrow() != null) {
+        // convert logLevel to slf4j name
+        String level = ClientSharedUtils.convertToLog4LogLevel(
+            java.util.logging.Level.parse(logLevel.toUpperCase(Locale.ENGLISH)));
+        GfxdSystemProcedureMessage.SysProcMethod.setLogLevel.processMessage(
+            new Object[]{"", level}, Misc.getMyId());
+      }
     } catch (Exception e) {
       getLogger().warn("Failed to set log-level " + logLevel, e);
     }

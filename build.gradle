@@ -468,7 +468,7 @@ subprojects {
     systemProperties 'gemfire.DUnitLauncher.NUM_VMS' : '8'
 
     // try to avoid long "tail" in parallel runs where some workers finish early
-    forkEvery 2
+    // forkEvery 2
   }
 
   task integrationTest(type:Test) {
