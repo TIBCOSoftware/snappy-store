@@ -23,6 +23,8 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 import org.apache.derbyTesting.junit.CleanDatabaseTestSetup;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -40,6 +42,8 @@ public class JUnit4TestBase {
 
   @Rule
   public TestName name = new TestName();
+
+  protected final Logger logger = LogManager.getLogger(getClass());
 
   @AfterClass
   public static void classTearDown() throws SQLException {
