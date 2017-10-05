@@ -170,17 +170,19 @@ public abstract class BackwardCompatabilityTestBase extends
       throws InterruptedException {
     for (ProcessStart procStart : procStarts) {
       final int exitValue = procStart.proc.waitFor();
+      String procType = procStart.isLocator ? "locator" : "server";
+      if (procStart.version != null) {
+        procType += (" version " + procStart.version);
+      }
+      else {
+        procType = "current version " + procType;
+      }
       if (exitValue != 0) {
-        String procType = procStart.isLocator ? "locator" : "server";
-        if (procStart.version != null) {
-          procType += (" version " + procStart.version);
-        }
-        else {
-          procType = "current version " + procType;
-        }
         throw new TestException("Unexpected exit value " + exitValue
             + " while starting " + procType + ". See logs in "
             + procStart.logFile + " and start file output.");
+      } else {
+        getLogWriter().info("Started " + procType);
       }
     }
   }

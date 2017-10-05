@@ -596,10 +596,15 @@ public abstract class FabricServiceImpl implements FabricService {
     }
   }
 
-  private void notifyRunningInLauncher() {
+  /**
+   * Only invoked to change the WAITING state to previous (STARTING/STANDBY).
+   * Actual RUNNING status in launcher should only be set by launcher code
+   * itself when it has started all the components (SNAP-1960).
+   */
+  private void notifyRunningInLauncher(int stateIfWaiting) {
     CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
     if (launcher != null) {
-      launcher.running(Misc.getDistributedSystem(), true);
+      launcher.running(Misc.getDistributedSystem(), stateIfWaiting);
     }
   }
 
@@ -617,12 +622,21 @@ public abstract class FabricServiceImpl implements FabricService {
           "Accepting END WAITING notification with previous status "
               + this.previousServerStatus);
     }
-    if (this.previousServerStatus == State.RUNNING) {
-      this.serverstatus = State.RUNNING;
-      // if started from command-line then change the status in the file too
-      notifyRunningInLauncher();
-    }
+    final State previousStatus = this.previousServerStatus;
     this.previousServerStatus = State.UNINITIALIZED;
+    switch (previousStatus) {
+      case STARTING:
+        notifyRunningInLauncher(CacheServerLauncher.STARTING);
+        break;
+      case STANDBY:
+        notifyRunningInLauncher(CacheServerLauncher.STANDBY);
+        break;
+      case RUNNING:
+        break;
+      default:
+        return;
+    }
+    this.serverstatus = previousStatus;
   }
 
   /**
@@ -635,8 +649,6 @@ public abstract class FabricServiceImpl implements FabricService {
           "Accepting RUNNING notification");
     }
     serverstatus = State.RUNNING;
-    // if started from command-line then change the status in the file too
-    notifyRunningInLauncher();
   }
 
   /**

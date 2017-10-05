@@ -1286,20 +1286,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       this.storeStats.init(this.gemFireCache.getDistributedSystem());
       this.indexPersistenceStats.init(this.gemFireCache.getDistributedSystem());
 
-      final FabricService service;
-      // get server or locator instance as appropriate
-      if (this.myKind.isLocator()) {
-        service = FabricServiceManager.getFabricLocatorInstance();
-      }
-      else if (this.myKind.isAgent()) {
-        service = FabricServiceManager.getFabricAgentInstance();
-      }
-      else {
-        service = FabricServiceManager.getFabricServerInstance();
-      }
-      assert service instanceof FabricServiceImpl;
-      ((FabricServiceImpl)service).notifyRunning();
-
       this.isShutdownAll = false;
 
       startExecutor();
