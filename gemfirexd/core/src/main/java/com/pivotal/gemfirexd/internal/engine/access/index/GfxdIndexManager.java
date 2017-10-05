@@ -4355,7 +4355,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   }
 
   @Override
-  public boolean clearIndexes(LocalRegion region, boolean lockForGII,
+  public boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
       boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
     EmbedConnection conn = null;
     GemFireContainer gfc = null;
@@ -4419,7 +4419,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           entry = (RegionEntry) bucketEntriesIter.next();
           try {
             if (indexes != null) {
-              basicClearEntry(region, tc, indexes, entry, destroyOffline);
+              basicClearEntry(region, dr, tc, indexes, entry, destroyOffline);
             }
           } catch (Throwable th) {
             if (logger != null) {
@@ -4455,14 +4455,14 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     return giiLockAcquired;
   }
 
-  void basicClearEntry(LocalRegion region, GemFireTransaction tc,
+  void basicClearEntry(LocalRegion region, DiskRegion dr, GemFireTransaction tc,
       final List<GemFireContainer> indexes, RegionEntry entry, boolean destroyOffline)
       throws StandardException, InternalGemFireError, Error {
     ExecRow oldRow;
     synchronized (entry) {
       if (!entry.isDestroyedOrRemoved()) {
         @Retained @Released
-        Object val = entry.getValueOffHeapOrDiskWithoutFaultIn(region);
+        Object val = ((AbstractRegionEntry)entry).getValueOffHeapOrDiskWithoutFaultIn(region, dr);
         if (val == null || val instanceof Token) {
           return;
         }

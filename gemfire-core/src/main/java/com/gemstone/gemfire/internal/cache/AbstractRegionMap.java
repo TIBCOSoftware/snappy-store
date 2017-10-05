@@ -1216,7 +1216,7 @@ abstract class AbstractRegionMap implements RegionMap {
                 VersionStamp stamp = null;
                 VersionTag lastDeltaVersionTag = null;
                 if (indexUpdater != null) {
-                  oldValue = oldRe.getValueInVM(owner); // OFFHEAP: ListOfDeltas
+                  oldValue = oldRe.getValueOffHeapOrDiskWithoutFaultIn(owner); // OFFHEAP: ListOfDeltas
                   if (log.fineEnabled() || InitialImageOperation.TRACE_GII_FINER) {
                     log.info(LocalizedStrings.DEBUG, "ARM::initialImagePut:oldRe = "+ oldRe + "; old value = "+ oldValue);
                   }
@@ -1374,7 +1374,7 @@ abstract class AbstractRegionMap implements RegionMap {
               if (result) {
                 if (indexUpdater != null) {
                   if (oldValue == null && oldRe != null) {
-                    oldValue = oldRe.getValueInVM(owner);
+                    oldValue = oldRe.getValueOffHeapOrDiskWithoutFaultIn(owner);
                     if (oldValue == Token.NOT_AVAILABLE) {
                       oldValue = null;
                     }

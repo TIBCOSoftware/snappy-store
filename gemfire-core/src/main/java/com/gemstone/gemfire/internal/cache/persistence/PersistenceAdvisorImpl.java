@@ -46,6 +46,8 @@ import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.InitialImage
 import com.gemstone.gemfire.internal.cache.DiskRegionStats;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
+import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
+import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberManager.MemberRevocationListener;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.process.StartupStatus;
@@ -754,6 +756,13 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   //send a message to peers indicating that they should remove this profile
     long viewVersion = advisor.startOperation();
     try {
+      if(logger.infoEnabled()) {
+        advisor.getLogWriter().info(LocalizedStrings.DEBUG, "The advisee is " + advisor.getAdvisee());
+      }
+      if (advisor.getAdvisee() != null && (advisor.getAdvisee() instanceof ProxyBucketRegion)) {
+        ((ProxyBucketRegion)advisor.getAdvisee()).clearIndexes(advisor.getLogWriter());
+      }
+
       RemovePersistentMemberMessage.send(advisor.adviseProfileUpdate(),
           advisor.getDistributionManager(), regionPath, getPersistentID(), getInitializingID());
       

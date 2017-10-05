@@ -574,6 +574,18 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     return result;
   }
 
+  /**
+   * Gets the value for this entry. For DiskRegions, unlike
+   * {@link #getValue(RegionEntryContext)} this will not fault in the value rather
+   * return a temporary copy. For GemFire XD this is used during table scans in
+   * queries when faulting in every value will be only an unnecessary overhead.
+   * The value returned will be kept off heap (and compressed) if possible.
+   */
+  @Retained
+  public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner, DiskRegion dr) {
+    return getValueOffHeapOrDiskWithoutFaultIn(owner);
+  }
+
   public Object getValueOnDisk(LocalRegion r)
   throws EntryNotFoundException
   {

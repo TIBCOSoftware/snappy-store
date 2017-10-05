@@ -1061,6 +1061,13 @@ public interface DiskEntry extends RegionEntry {
     @Retained
     public static Object getValueOffHeapOrDiskWithoutFaultIn(DiskEntry entry,
         LocalRegion region, boolean rawValue) {
+      return getValueOffHeapOrDiskWithoutFaultIn(entry, region,
+          region.getDiskRegion(), rawValue);
+    }
+
+    @Retained
+    public static Object getValueOffHeapOrDiskWithoutFaultIn(DiskEntry entry,
+        LocalRegion region, DiskRegion dr, boolean rawValue) {
       @Retained Object v = getValueRetain(entry, region, rawValue); // TODO:KIRK:OK Object v = entry.getValueWithContext(region);
       final boolean isRemovedFromDisk = Token.isRemovedFromDisk(v);
       if ((v == null || isRemovedFromDisk)
@@ -1069,7 +1076,7 @@ public interface DiskEntry extends RegionEntry {
           v = getValueRetain(entry, region, rawValue); // TODO:KIRK:OK v = entry.getValueWithContext(region);
           if (v == null) {
             v = Helper.getOffHeapValueOnDiskOrBuffer(entry,
-                region.getDiskRegion(), region, false, rawValue);
+                dr, region, false, rawValue);
           }
         }
       }
