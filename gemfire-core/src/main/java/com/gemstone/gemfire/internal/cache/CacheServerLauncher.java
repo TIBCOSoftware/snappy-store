@@ -747,7 +747,8 @@ public class CacheServerLauncher  {
   /**
    * Sets the status of the cache server to be {@link #RUNNING}.
    */
-  public void running(final InternalDistributedSystem system, boolean endWaiting) {
+  public void running(final InternalDistributedSystem system,
+      int stateIfWaiting) {
     Status stat = this.status;
     if (stat == null) {
       stat = this.status = createStatus(this.baseName, RUNNING, getProcessId());
@@ -755,9 +756,7 @@ public class CacheServerLauncher  {
     else {
       if (stat.state == WAITING) {
         stat.dsMsg = null;
-        if (endWaiting) {
-          stat.state = RUNNING;
-        }
+        stat.state = stateIfWaiting;
       } else {
         stat.state = RUNNING;
       }
@@ -912,7 +911,7 @@ public class CacheServerLauncher  {
 
     startAdditionalServices(cache, options, props);
 
-    this.running(system, false);
+    this.running(system, RUNNING);
 
     clearLogListener();
 

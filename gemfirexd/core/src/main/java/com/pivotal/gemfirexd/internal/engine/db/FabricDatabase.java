@@ -422,6 +422,15 @@ public final class FabricDatabase implements ModuleControl,
         this.memStore);
   }
 
+  private void notifyRunning() {
+    // notify FabricService
+    final FabricService service = FabricServiceManager
+        .currentFabricServiceInstance();
+    if (service instanceof FabricServiceImpl) {
+      ((FabricServiceImpl)service).notifyRunning();
+    }
+  }
+
   /**
    * Performs the initialization steps after creation of initial database,
    * including initialization of default disk stores in system tables, replay of
@@ -432,6 +441,7 @@ public final class FabricDatabase implements ModuleControl,
       com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection conn,
       Properties bootProps) throws StandardException {
     if (this.memStore.initialDDLReplayDone()) {
+      notifyRunning();
       return;
     }
 
@@ -497,12 +507,7 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
 
-      // notify FabricService
-      final FabricService service = FabricServiceManager
-          .currentFabricServiceInstance();
-      if (service != null) {
-        ((FabricServiceImpl)service).notifyRunning();
-      }
+      notifyRunning();
 
       // Execute any provided post SQL scripts last.
       final String postScriptsPath = bootProps

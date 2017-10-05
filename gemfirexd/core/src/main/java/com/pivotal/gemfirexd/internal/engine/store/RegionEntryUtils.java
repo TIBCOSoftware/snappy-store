@@ -1385,7 +1385,7 @@ public final class RegionEntryUtils {
       // set the service status
       final FabricService service = FabricServiceManager
           .currentFabricServiceInstance();
-      if (service != null) {
+      if (service instanceof FabricServiceImpl) {
         ((FabricServiceImpl) service).notifyWaiting(regionPath,
             membersToWaitFor, missingBuckets, myId, message);
       }

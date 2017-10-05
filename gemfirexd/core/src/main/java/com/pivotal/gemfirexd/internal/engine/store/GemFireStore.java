@@ -1298,7 +1298,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         service = FabricServiceManager.getFabricServerInstance();
       }
       assert service instanceof FabricServiceImpl;
-      ((FabricServiceImpl)service).notifyRunning();
 
       this.isShutdownAll = false;
 
