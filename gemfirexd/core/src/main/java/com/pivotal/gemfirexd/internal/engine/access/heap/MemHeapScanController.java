@@ -563,7 +563,8 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
     if (snashotTxStarted) {
       // clear the txState so that other thread local is cleared.
-      TXManagerImpl.getOrCreateTXContext().clearTXState();
+      TXManagerImpl.TXContext context = TXManagerImpl.getOrCreateTXContext();
+      context.clearTXState();
       // gemfire tx shouldn't be cleared in case of row buffer scan
       if (!(this.getGemFireContainer().isRowBuffer() && (fc == null))) {
         if (GemFireXDUtils.TraceQuery) {
@@ -571,7 +572,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
               "MemHeapScanController::positionAtInitScan bucketSet: " + " lcc.isSkipConstraintChecks " + lcc.isSkipConstraintChecks() +
           " " + "Setting snapshotTxStae to NULL.");
         }
-        TXManagerImpl.snapshotTxState.set(null);
+        context.setSnapshotTXState(null);
         this.localSnapshotTXState = this.txState;
       }
       this.txState = null;

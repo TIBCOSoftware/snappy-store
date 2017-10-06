@@ -98,6 +98,13 @@ public interface TXStateInterface extends InternalDataView {
    */
   public boolean isInProgress();
 
+  /**
+   * Only check if this TX (proxy or local) is closed.
+   * Differs from "isInProgress" in that this will not check for
+   * the state of inner TXState.
+   */
+  public boolean isClosed();
+
   public void commit(Object callbackArg) throws TransactionException;
 
   public void rollback(Object callbackArg);

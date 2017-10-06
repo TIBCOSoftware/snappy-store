@@ -190,6 +190,10 @@ public interface DMStats {
   
   public void incNumProcessingThreads(int threads);
 
+  public void incNumThriftProcessingThreads(int threads);
+
+  public void incThriftProcessingThreadStarts();
+
   public int getNumSerialThreads();
   
   public void incNumSerialThreads(int threads);

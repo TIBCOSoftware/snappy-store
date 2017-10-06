@@ -82,6 +82,7 @@ import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.UnsupportedGFXDVersionException;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -427,6 +428,7 @@ class DRDAConnThread extends Thread {
 				}
 			}
 		}
+		ConnectionTable.releaseThreadsSockets();
 		if (this.trace)
 			trace("Ending connection thread");
 		server.removeThread(this);
@@ -8990,9 +8992,7 @@ class DRDAConnThread extends Thread {
      * <p>
      * This method should behave like the corresponding method for
      * {@code ResultSet}, and changes made to one of these methods, must be
-     * reflected in the other method. See
-     * {@link #getObjectForWriteFdoca(java.sql.ResultSet, int, int)}
-     * for details.
+     * reflected in the other method.
      * </p>
      *
      * @param cs the callable statement to fetch the object from
@@ -9000,7 +9000,6 @@ class DRDAConnThread extends Thread {
      * @param drdaType the DRDA type of the object to fetch
      * @return an object with the value of the output parameter
      * @throws if a database error occurs while fetching the parameter value
-     * @see #getObjectForWriteFdoca(java.sql.ResultSet, int, int)
      */
     private Object getObjectForWriteFdoca(CallableStatement cs,
                                           int index, int drdaType)
