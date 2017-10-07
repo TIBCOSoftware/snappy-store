@@ -666,8 +666,23 @@ public final class TXManagerImpl implements CacheTransactionManager,
 
     /** clear the TXContext and remove from global list when thread closes */
     public final void threadClose() {
+      rollback(this.txState);
+      rollback(this.snapshotTXState);
       clearTXStateAll();
       hostedTXContexts.remove(this);
+    }
+
+    private void rollback(TXStateInterface tx) {
+      if (tx != null && !tx.isClosed()) {
+        // skip if cache is closing
+        GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+        if (cache != null && !cache.isClosing) {
+          try {
+            tx.rollback(null);
+          } catch (Throwable ignored) {
+          }
+        }
+      }
     }
 
     public final Transaction getJTA() {
