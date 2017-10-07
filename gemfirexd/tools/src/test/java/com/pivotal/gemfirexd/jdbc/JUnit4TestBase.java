@@ -22,6 +22,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import com.pivotal.gemfirexd.TestUtil;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import org.apache.derbyTesting.junit.CleanDatabaseTestSetup;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
@@ -30,9 +32,6 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TestName;
-
-import com.pivotal.gemfirexd.TestUtil;
-import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 
 /**
  * Base class for JUnit 4 tests that want to do common setup for boot properties
@@ -46,7 +45,7 @@ public class JUnit4TestBase {
   protected final Logger logger = LogManager.getLogger(getClass());
 
   @AfterClass
-  public static void classTearDown() throws SQLException {
+  public static void classTearDown() throws Exception {
     TestUtil.setCurrentTestClass(null);
     TestUtil.currentTest = null;
     // cleanup all tables
@@ -56,9 +55,16 @@ public class JUnit4TestBase {
         props.setProperty("user", TestUtil.bootUserName);
         props.setProperty("password", TestUtil.bootUserPassword);
       }
-      Connection conn = DriverManager.getConnection(TestUtil.getProtocol(),
-          props);
-      CleanDatabaseTestSetup.cleanDatabase(conn, false);
+      try {
+        Connection conn = DriverManager.getConnection(
+            TestUtil.getProtocol(), props);
+        CleanDatabaseTestSetup.cleanDatabase(conn, false);
+      } catch (SQLException ignored) {
+      }
+    }
+    try {
+      TestUtil.shutDown();
+    } catch (SQLException ignored) {
     }
   }
 

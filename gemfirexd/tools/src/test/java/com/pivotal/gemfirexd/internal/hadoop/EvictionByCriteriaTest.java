@@ -69,10 +69,14 @@ import static org.junit.Assert.*;
 @SuppressWarnings("unchecked")
 public class EvictionByCriteriaTest extends JUnit4TestBase {
 
-  static final String HDFS_DIR = "./evictHDFS";
+  private static final String HDFS_DIR = "./evictHDFS";
+
+  protected static Class<?> thisClass = EvictionByCriteriaTest.class;
 
   @BeforeClass
-  public static void createHDFSStore() throws SQLException {
+  public static void createHDFSStore() throws Exception {
+    TestUtil.setCurrentTestClass(thisClass);
+    TestUtil.currentTest = "all";
     TestUtil.setupConnection();
 
     Connection conn = jdbcConn;
@@ -82,8 +86,8 @@ public class EvictionByCriteriaTest extends JUnit4TestBase {
   }
 
   @AfterClass
-  public static void deleteHDFSStore() throws SQLException {
-    classTearDown();
+  public static void classTearDown() throws Exception {
+    JUnit4TestBase.classTearDown();
     delete(new File(HDFS_DIR));
   }
 
@@ -94,17 +98,21 @@ public class EvictionByCriteriaTest extends JUnit4TestBase {
     cache.getCachePerfStats().clearEvictionByCriteriaStatsForTest();
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
   private static void delete(File file) {
     if (!file.exists()) {
       return;
     }
     if (file.isDirectory()) {
-      if (file.list().length == 0) {
+      String[] contents = file.list();
+      if (contents == null || contents.length == 0) {
         file.delete();
       } else {
         File[] files = file.listFiles();
-        for (File f : files) {
-          delete(f);
+        if (files != null) {
+          for (File f : files) {
+            delete(f);
+          }
         }
         file.delete();
       }

@@ -16,8 +16,6 @@
  */
 package com.pivotal.gemfirexd.internal.hadoop.offheap;
 
-import java.sql.SQLException;
-
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.internal.hadoop.EvictionByCriteriaTest;
@@ -27,16 +25,17 @@ import org.junit.BeforeClass;
 public class OffHeapEvictionByCriteriaTest extends EvictionByCriteriaTest {
 
   @BeforeClass
-  public static void setProperties() throws SQLException {
+  public static void createHDFSStore() throws Exception {
+    thisClass = OffHeapEvictionByCriteriaTest.class;
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
     System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
     System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
-    createHDFSStore();
+    EvictionByCriteriaTest.createHDFSStore();
   }
 
   @AfterClass
-  public static void clearProperties() throws SQLException {
-    deleteHDFSStore();
+  public static void classTearDown() throws Exception {
+    EvictionByCriteriaTest.classTearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
     System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);

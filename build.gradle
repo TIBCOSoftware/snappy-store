@@ -381,7 +381,7 @@ subprojects {
     reports.junitXml.destination = file(workingDir)
 
     // try to avoid long "tail" in parallel runs where some workers finish early
-    forkEvery 20
+    // forkEvery 20
   }
 
   task dunitTest(type:Test, overwrite: true) {
@@ -435,7 +435,7 @@ subprojects {
     reports.junitXml.destination = file(workingDir)
 
     // try to avoid long "tail" in parallel runs where some workers finish early
-    forkEvery 20
+    // forkEvery 20
   }
 
   task wanTest(type:Test) {
