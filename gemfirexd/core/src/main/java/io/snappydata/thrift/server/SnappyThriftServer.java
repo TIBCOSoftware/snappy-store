@@ -147,7 +147,7 @@ public final class SnappyThriftServer {
           }
         };
         Thread thread = new Thread(interruptibleGroup, r,
-            "ThriftProcessor-" + threadNum.incrementAndGet());
+            "ThriftProcessor-" + threadNum.getAndIncrement());
         thread.setDaemon(true);
         return thread;
       }
