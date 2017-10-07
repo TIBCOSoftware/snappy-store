@@ -42,12 +42,19 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.Nonnull;
 
+import com.gemstone.gemfire.distributed.internal.DM;
+import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.SocketCreator;
+import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.NetworkInterface.ConnectionListener;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.diag.SessionsVTI;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -69,17 +76,6 @@ import org.apache.thrift.transport.TTransportException;
  */
 public final class SnappyThriftServer {
 
-  private InetAddress thriftAddress;
-  private int thriftPort;
-
-  public InetAddress getThriftAddress() {
-    return thriftAddress;
-  }
-
-  public int getThriftPort() {
-    return thriftPort;
-  }
-
   private LocatorServiceImpl service;
   private TServer thriftServer;
   private ThreadPoolExecutor thriftExecutor;
@@ -92,9 +88,6 @@ public final class SnappyThriftServer {
       final boolean useSSL, final SocketParameters socketParams,
       final ConnectionListener listener) throws TTransportException {
 
-    this.thriftAddress = thriftAddress;
-    this.thriftPort = thriftPort;
-
     if (isServing()) {
       throw GemFireXDRuntimeException.newRuntimeException(
           "A thrift server is already running", null);
@@ -103,12 +96,12 @@ public final class SnappyThriftServer {
     final TServerTransport serverTransport;
     final InetSocketAddress bindAddress;
     final String hostAddress;
-    if (this.thriftAddress != null) {
-      bindAddress = new InetSocketAddress(this.thriftAddress, this.thriftPort);
+    if (thriftAddress != null) {
+      bindAddress = new InetSocketAddress(thriftAddress, thriftPort);
     } else {
       try {
         bindAddress = new InetSocketAddress(SocketCreator.getLocalHost(),
-            this.thriftPort);
+            thriftPort);
       } catch (UnknownHostException uhe) {
         throw new TTransportException(
             "Could not determine localhost for default bind address.", uhe);
@@ -123,17 +116,42 @@ public final class SnappyThriftServer {
     final TProcessor processor;
     if (isServer) {
       SnappyDataServiceImpl service = new SnappyDataServiceImpl(hostAddress,
-          this.thriftPort);
+          thriftPort);
       processor = new SnappyDataServiceImpl.Processor(service);
       this.service = service;
     } else {
       // only locator service on non-server VMs
       LocatorServiceImpl service = new LocatorServiceImpl(hostAddress,
-          this.thriftPort);
+          thriftPort);
       processor = new LocatorService.Processor<>(service);
       this.service = service;
     }
 
+    final LogWriterImpl.LoggingThreadGroup interruptibleGroup = LogWriterImpl
+        .createThreadGroup("SnappyThriftServer Threads", Misc.getI18NLogWriter());
+    interruptibleGroup.setInterruptible();
+    final ThreadFactory tf = new ThreadFactory() {
+      private final AtomicInteger threadNum = new AtomicInteger(0);
+
+      @Override
+      public Thread newThread(@Nonnull final Runnable command) {
+        final DM dm = Misc.getDistributedSystem().getDistributionManager();
+        dm.getStats().incThriftProcessingThreadStarts();
+        Runnable r = () -> {
+          dm.getStats().incNumThriftProcessingThreads(1);
+          try {
+            command.run();
+          } finally {
+            dm.getStats().incNumThriftProcessingThreads(-1);
+            ConnectionTable.releaseThreadsSockets();
+          }
+        };
+        Thread thread = new Thread(interruptibleGroup, r,
+            "ThriftProcessor-" + threadNum.getAndIncrement());
+        thread.setDaemon(true);
+        return thread;
+      }
+    };
     final int parallelism = Math.max(
         Runtime.getRuntime().availableProcessors(), 4);
     if (!ThriftUtils.isThriftSelectorServer()) {
@@ -148,7 +166,7 @@ public final class SnappyThriftServer {
         serverArgs.transportFactory(new TFramedTransport.Factory());
       }
       this.thriftExecutor = new ThreadPoolExecutor(parallelism * 2,
-          maxThreads, 30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+          maxThreads, 30L, TimeUnit.SECONDS, new SynchronousQueue<>(), tf);
       serverArgs.setExecutorService(this.thriftExecutor).setConnectionListener(
           listener);
 
@@ -170,10 +188,10 @@ public final class SnappyThriftServer {
       int executorThreads = Math.min(Math.max(64, numThreads * 2), maxThreads);
       int maxQueued = Math.min(Math.max(1024, numThreads * 16), maxThreads);
       this.thriftExecutor = new ThreadPoolExecutor(executorThreads, executorThreads,
-          60L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(maxQueued));
+          60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(maxQueued), tf);
       this.thriftExecutor.allowCoreThreadTimeOut(true);
       this.thriftThreadPerConnExecutor = new ThreadPoolExecutor(1, numThreads,
-          30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+          30L, TimeUnit.SECONDS, new SynchronousQueue<>(), tf);
       serverArgs.setExecutorService(this.thriftExecutor);
       serverArgs.setThreadPerConnExecutor(this.thriftThreadPerConnExecutor);
       this.thriftServer = new SnappyThriftServerSelector(serverArgs);

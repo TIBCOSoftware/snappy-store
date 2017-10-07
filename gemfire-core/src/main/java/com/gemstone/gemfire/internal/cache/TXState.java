@@ -703,8 +703,14 @@ public final class TXState implements TXStateInterface {
     return changes;
   }
 
+  @Override
   public final boolean isInProgress() {
     return !this.state.isClosed();
+  }
+
+  @Override
+  public boolean isClosed() {
+    return this.state.isClosed();
   }
 
   public final boolean isCommitted() {

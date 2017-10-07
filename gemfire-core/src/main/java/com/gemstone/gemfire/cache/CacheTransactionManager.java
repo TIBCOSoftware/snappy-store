@@ -152,11 +152,6 @@ public interface CacheTransactionManager {
      * transaction data has departed. This is only relevant for transaction that
      * involve PartitionedRegions.
      * 
-     * @throws TransactionDataNotColocatedException if at commit time, the data
-     * involved in the transaction has moved away from the transaction hosting 
-     * node. This can only happen if rebalancing/recovery happens during a 
-     * transaction that involves a PartitionedRegion. 
-     *   
      * @throws TransactionInDoubtException when GemFire cannot tell which nodes
      * have applied the transaction and which have not. This only occurs if nodes
      * fail mid-commit, and only then in very rare circumstances.

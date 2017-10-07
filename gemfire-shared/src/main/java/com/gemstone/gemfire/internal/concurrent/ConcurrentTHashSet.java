@@ -67,6 +67,10 @@ public class ConcurrentTHashSet<T> extends THashParameters implements Set<T> {
         THash.DEFAULT_LOAD_FACTOR, null, null);
   }
 
+  public ConcurrentTHashSet(int concurrency, int initialCapacity) {
+    this(concurrency, initialCapacity, THash.DEFAULT_LOAD_FACTOR, null, null);
+  }
+
   public ConcurrentTHashSet(TObjectHashingStrategy strategy,
       HashingStats stats) {
     this(DEFAULT_CONCURRENCY, THash.DEFAULT_INITIAL_CAPACITY,

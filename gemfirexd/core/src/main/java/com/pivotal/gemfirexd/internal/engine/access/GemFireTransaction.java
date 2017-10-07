@@ -2232,7 +2232,11 @@ public final class GemFireTransaction extends RawTransaction implements
                 "unexpected commit on remote node or from function execution"));
       }
       try {
-        TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
+        if (context == null) {
+          context = TXManagerImpl.currentTXContext();
+        }
+        TXStateInterface gfTx = context != null
+            ? context.getSnapshotTXState() : null;
         // commit if implicitely snapshot tx was started
         if ((tx != gfTx && !tx.isSnapshot()) || (tx.isSnapshot() && implicitSnapshotTxStarted)) {
           context = this.txManager.commit(tx, this.connectionID, commitPhase,
@@ -2240,7 +2244,7 @@ public final class GemFireTransaction extends RawTransaction implements
 
           if (tx.isSnapshot() && implicitSnapshotTxStarted) {
             implicitSnapshotTxStarted = false;
-            this.txManager.snapshotTxState.set(null);
+            context.setSnapshotTXState(null);
           }
         }
         if (commitPhase != TXManagerImpl.PHASE_ONE_COMMIT) {
@@ -2440,12 +2444,15 @@ public final class GemFireTransaction extends RawTransaction implements
             // also don't rollback when no connection ID i.e. nested connection
             && this.connectionID.longValue() >= 0) {
           // In case, the tx is started by gemfire layer for snapshot, it should be rollbacked by gemfire layer.
-          TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
+          TXManagerImpl.TXContext context = TXManagerImpl.currentTXContext();
+          TXStateInterface gfTx = context != null ? context.getSnapshotTXState() : null;
           if ((tx.isSnapshot() && implicitSnapshotTxStarted) || (tx != gfTx && !tx.isSnapshot())) {
             this.txManager.rollback(tx, this.connectionID, false);
             if (tx.isSnapshot() && implicitSnapshotTxStarted) {
               implicitSnapshotTxStarted = false;
-              this.txManager.snapshotTxState.set(null);
+              if (context != null) {
+                context.setSnapshotTXState(null);
+              }
             }
           }
           setTXState(null);
@@ -2914,7 +2921,7 @@ public final class GemFireTransaction extends RawTransaction implements
       final TXId txId) throws StandardException {
     if (this.txManager != null) {
       final TXStateInterface tx = this.txState;
-      final TXStateInterface gemfireTx = TXManagerImpl.snapshotTxState.get();
+      final TXStateInterface gemfireTx = TXManagerImpl.getCurrentSnapshotTXState();
 
       if (tx != null && tx != TXStateProxy.TX_NOT_SET && gemfireTx != tx) {
         this.txManager.commit(tx, this.connectionID, TXManagerImpl.FULL_COMMIT,
@@ -3420,7 +3427,7 @@ public final class GemFireTransaction extends RawTransaction implements
 
   private final TXStateInterface getActiveTXState(final TXStateInterface myTX) {
     final IsolationLevel isolationLevel = this.isolationLevel;
-    final TXStateInterface gfTx = TXManagerImpl.snapshotTxState.get();
+    final TXStateInterface gfTx = TXManagerImpl.getCurrentSnapshotTXState();
     if (isolationLevel != IsolationLevel.NONE) {
       if (myTX != null && myTX != TXStateProxy.TX_NOT_SET) {
         return myTX;
