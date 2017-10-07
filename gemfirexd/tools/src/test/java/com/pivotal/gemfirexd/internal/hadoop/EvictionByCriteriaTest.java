@@ -75,6 +75,7 @@ public class EvictionByCriteriaTest extends JUnit4TestBase {
 
   @BeforeClass
   public static void createHDFSStore() throws Exception {
+    TestUtil.shutDown();
     TestUtil.setCurrentTestClass(thisClass);
     TestUtil.currentTest = "all";
     TestUtil.setupConnection();

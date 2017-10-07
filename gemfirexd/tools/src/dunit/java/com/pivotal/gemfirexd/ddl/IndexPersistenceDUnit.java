@@ -325,7 +325,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
           new Object[] { GfxdConstants.TRACE_PERSIST_INDEX, "false" });
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.TRACE_PERSIST_INDEX_FINEST, "false" });
-      stopAllVMs();
     }
   }
 
@@ -421,7 +420,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
       }
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "false" });
-      stopAllVMs();
     }
   }
 
@@ -485,7 +483,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
       }
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "false" });
-      stopAllVMs();
     }
   }
 
@@ -569,8 +566,7 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
     } finally {
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "false" });
-    invokeInEveryVM(IndexPersistenceDUnit.class, "unsetTestOplogToTestForCompaction");
-      stopAllVMs();
+      invokeInEveryVM(IndexPersistenceDUnit.class, "unsetTestOplogToTestForCompaction");
     }
   }
   
@@ -817,6 +813,9 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
       netPort3 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort1, 3,
           serverInfo, 8, "counti", persistIndexes);
 
+      // let everything settle down
+      serverSQLExecute(1, "call sys.rebalance_all_buckets()");
+
       verifyAtLastSNAP1933(maxValInsert, tableNames, indexNames);
       dropIndexesSNAP1933(indexNames);
       dropTablesSNAP1933(tableNames);
@@ -824,7 +823,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
     } finally {
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] {GfxdConstants.GFXD_PERSIST_INDEXES, "true"});
-      stopAllVMs();
     }
   }
 
