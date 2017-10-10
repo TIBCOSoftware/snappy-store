@@ -660,6 +660,12 @@ public final class TXManagerImpl implements CacheTransactionManager,
     }
 
     public final void clearTXStateAll() {
+      if (TXStateProxy.LOG_FINE) {
+        LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
+        if (logger != null) {
+          logger.info(LocalizedStrings.DEBUG, "clearAll for " + toString());
+        }
+      }
       clearTXState();
       this.snapshotTXState = null;
     }
@@ -1400,6 +1406,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
 
   //See #50072
   public void release() {
+    final TXContext selfContext = getOrCreateTXContext();
     TXState tx;
     for (TXStateProxy proxy : getHostedTransactionsInProgress()) {
       if ((tx = proxy.getLocalTXState()) != null) {
@@ -1418,6 +1425,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
       }
       if (!proxy.isClosed()) {
         try {
+          setTXState(tx, selfContext);
           proxy.rollback(null);
         } catch (Throwable ignored) {
         }
@@ -1427,7 +1435,6 @@ public final class TXManagerImpl implements CacheTransactionManager,
     for (TXContext context : hostedTXContexts) {
       context.clearTXStateAll();
     }
-    hostedTXContexts.clear();
   }
 
   public void close() {
