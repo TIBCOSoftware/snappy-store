@@ -103,7 +103,7 @@ public class GfxdRemoveGatewayEventErrorHandlerMessage extends AbstractGfxdRepla
    */
   @Override
   public boolean shouldBeConflated() {
-    return false;
+    return true;
   }
 
   /**

@@ -123,7 +123,7 @@ public class GfxdGatewaySenderStopMessage extends AbstractGfxdReplayableMessage 
    */
   @Override
   public boolean shouldBeConflated() {
-    return false;
+    return true;
   }
 
   /**

@@ -108,7 +108,7 @@ public class GfxdRemoveGatewayConflictResolverMessage extends AbstractGfxdReplay
    */
   @Override
   public boolean shouldBeConflated() {
-    return false;
+    return true;
   }
 
   /**
