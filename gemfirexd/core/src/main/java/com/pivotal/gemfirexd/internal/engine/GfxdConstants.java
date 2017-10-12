@@ -436,7 +436,6 @@ public interface GfxdConstants {
    */
   final Set<String> validExtraGFXDProperties = new HashSet<String>(
       Arrays.asList(new String[] {
-          Attribute.CONFIG_SCRIPTS,
           Attribute.DEFAULT_INITIAL_CAPACITY_PROP,
           Attribute.DEFAULT_RECOVERY_DELAY_PROP,
           DEFAULT_STARTUP_RECOVERY_DELAY_PROP,

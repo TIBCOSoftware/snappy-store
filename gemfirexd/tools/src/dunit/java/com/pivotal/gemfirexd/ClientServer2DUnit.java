@@ -186,192 +186,6 @@ public class ClientServer2DUnit extends ClientServerTestBase {
     executeForUser(userName, "drop table testTable");
   }
 
-  public void testConfigScripts() throws Exception {
-    String testsDir = TestUtil.getResourcesDir();
-
-    TestUtil.deletePersistentFiles = true;
-    // Start a second server with config script
-    Properties baseProps = new Properties();
-    baseProps.setProperty(com.pivotal.gemfirexd.Attribute.CONFIG_SCRIPTS, testsDir
-        + "/lib/checkInitialScript.sql");
-    startVMs(1, 2, 0, null, baseProps);
-
-    // check that regions have been created but with no data
-    String ckFile = testsDir + "/lib/checkQuery.xml";
-
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select cid, addr, tid from trade.customers", ckFile, "empty");
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select cid, qty, tid from trade.portfolio", ckFile, "empty");
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select tc.cid, tp.tid, cust_name, availQty from trade.portfolio tp, "
-            + "trade.customers tc where tp.cid=tc.cid", ckFile, "empty");
-
-    // drop the tables before restart
-    clientSQLExecute(1, "drop table trade.portfolio");
-    clientSQLExecute(1, "drop table trade.customers");
-    clientSQLExecute(1, "drop schema trade restrict");
-
-    // Restart with both the config and init SQL scripts
-    stopVMNums(1, -1, -2);
-    // verify that nothing is running
-    checkVMsDown(this.clientVMs.get(0), this.serverVMs.get(0),
-        this.serverVMs.get(1));
-
-    restartVMNums(new int[]{1, -1}, 0, null, baseProps);
-    // init-scripts on only one VM
-    Properties props = new Properties();
-
-    props.setProperty(com.pivotal.gemfirexd.Attribute.CONFIG_SCRIPTS, testsDir
-        + "/lib/checkInitialScript.sql");
-    props.setProperty(com.pivotal.gemfirexd.Attribute.INIT_SCRIPTS, testsDir
-        + "/lib/checkInitialScript2.sql");
-    restartVMNums(new int[]{-2}, 0, null, props);
-
-    // check that data has been correctly populated
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select cid, addr, tid from trade.customers", ckFile, "dd_cust_insert");
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select cid, qty, tid from trade.portfolio", ckFile, "is_port");
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select tc.cid, tp.tid, cust_name, availQty from trade.portfolio tp, "
-            + "trade.customers tc where tp.cid=tc.cid", ckFile, "is_cust_port");
-
-    // drop the tables before restart
-    clientSQLExecute(1, "drop table trade.portfolio");
-    clientSQLExecute(1, "drop table trade.customers");
-    clientSQLExecute(1, "drop schema trade restrict");
-
-    // Restart and check failure with SQL scripts in incorrect order
-    stopVMNums(-1, -2, 1);
-
-    // verify that nothing is running
-    checkVMsDown(this.clientVMs.get(0), this.serverVMs.get(0),
-        this.serverVMs.get(1));
-
-    restartVMNums(new int[]{-1, 1}, 0, null, baseProps);
-
-    // add expected exception to bgexec*
-    addExpectedException(null, new int[]{2}, new Object[]{"XJ040",
-        "java.sql.SQLSyntaxErrorException"});
-    props.setProperty(com.pivotal.gemfirexd.Attribute.CONFIG_SCRIPTS, testsDir
-        + "/lib/checkInitialScript2.sql," + testsDir
-        + "/lib/checkInitialScript.sql");
-    try {
-      joinVM(false, restartServerVMAsync(2, 0, null, props));
-      fail("Expected an SQLException while starting the VM.");
-    } catch (RMIException ex) {
-      if (ex.getCause() instanceof SQLException) {
-        SQLException sqlEx = (SQLException)ex.getCause();
-        if (!"XJ040".equals(sqlEx.getSQLState())) {
-          throw ex;
-        } else {
-          // Explicitly delete the newly timestamped persistent file.
-          this.serverVMs.get(1).invoke(DistributedSQLTestBase.class,
-              "deleteDataDictionaryDir");
-        }
-      } else {
-        throw ex;
-      }
-    }
-    removeExpectedException(null, new int[]{2}, new Object[]{"XJ040",
-        "java.sql.SQLSyntaxErrorException"});
-    // verify that failed server is not running
-    checkVMsDown(this.serverVMs.get(1));
-
-    // Restart everything and check that config script fails
-    // with already existing table
-    stopVMNums(1, -1);
-
-    // verify that nothing is running
-    checkVMsDown(this.clientVMs.get(0), this.serverVMs.get(0),
-        this.serverVMs.get(1));
-
-    restartVMNums(new int[]{1, -2}, 0, null, baseProps);
-
-    addExpectedException(new int[]{1}, new int[]{1, 2}, new Object[]{
-        "XJ040", "java.sql.SQLSyntaxErrorException", SQLException.class});
-    props.setProperty(com.pivotal.gemfirexd.Attribute.CONFIG_SCRIPTS, testsDir
-        + "/lib/checkInitialScript.sql," + testsDir
-        + "/lib/checkInitialScript2.sql");
-    try {
-      joinVM(false, restartServerVMAsync(1, 0, null, props));
-      fail("Expected an SQLException while starting the VM.");
-    } catch (RMIException ex) {
-      if (ex.getCause() instanceof SQLException) {
-        SQLException sqlEx = (SQLException)ex.getCause();
-        if (!"XJ040".equals(sqlEx.getSQLState())) {
-          throw ex;
-        } else {
-          // Explicitly delete the newly timestamped persistent file.
-          this.serverVMs.get(0).invoke(DistributedSQLTestBase.class,
-              "deleteDataDictionaryDir");
-        }
-      } else {
-        throw ex;
-      }
-    }
-    removeExpectedException(new int[]{1}, new int[]{1, 2}, new Object[]{
-        "XJ040", "java.sql.SQLSyntaxErrorException", SQLException.class});
-    // verify that failed server is not running
-    checkVMsDown(this.serverVMs.get(0));
-
-    // drop the tables before restart
-    clientSQLExecute(1, "drop table trade.portfolio");
-    clientSQLExecute(1, "drop table trade.customers");
-    clientSQLExecute(1, "drop schema trade restrict");
-
-    // Restart everything and check that config script fails when loading only
-    // data since it is executed before creating tables
-    stopVMNums(1, -2);
-
-    // verify that nothing is running
-    checkVMsDown(this.clientVMs.get(0), this.serverVMs.get(0),
-        this.serverVMs.get(1));
-
-    restartVMNums(new int[]{-2, 1}, 0, null, baseProps);
-
-    addExpectedException(new int[]{1}, new int[]{1, 2}, new Object[]{
-        "XJ040", "java.sql.SQLSyntaxErrorException", SQLException.class});
-    props.setProperty(com.pivotal.gemfirexd.Attribute.CONFIG_SCRIPTS, testsDir
-        + "/lib/checkInitialScript2.sql");
-    try {
-      joinVM(false, restartServerVMAsync(1, 0, null, props));
-      fail("Expected an SQLException while starting the VM.");
-    } catch (RMIException ex) {
-      if (ex.getCause() instanceof SQLException) {
-        SQLException sqlEx = (SQLException)ex.getCause();
-        if (!"XJ040".equals(sqlEx.getSQLState())) {
-          throw ex;
-        } else {
-          // Explicitly delete the newly timestamped persistent file.
-          this.serverVMs.get(0).invoke(DistributedSQLTestBase.class,
-              "deleteDataDictionaryDir");
-        }
-      } else {
-        throw ex;
-      }
-    }
-    removeExpectedException(new int[]{1}, new int[]{1, 2}, new Object[]{
-        "XJ040", "java.sql.SQLSyntaxErrorException", SQLException.class});
-    // verify that failed server is not running
-    checkVMsDown(this.serverVMs.get(0));
-
-    // start and recheck to see everything is in order.
-    props.setProperty(com.pivotal.gemfirexd.Attribute.CONFIG_SCRIPTS, testsDir
-        + "/lib/checkInitialScript.sql");
-    props.setProperty(com.pivotal.gemfirexd.Attribute.INIT_SCRIPTS, testsDir
-        + "/lib/checkInitialScript2.sql");
-    restartServerVMNums(new int[]{1}, 0, null, props);
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select cid, addr, tid from trade.customers", ckFile, "dd_cust_insert");
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select cid, qty, tid from trade.portfolio", ckFile, "is_port");
-    sqlExecuteVerify(new int[]{1}, new int[]{1, 2},
-        "select tc.cid, tp.tid, cust_name, availQty from trade.portfolio tp, "
-            + "trade.customers tc where tp.cid=tc.cid", ckFile, "is_cust_port");
-  }
-
   public void testInitialScripts() throws Exception {
     String testsDir = TestUtil.getResourcesDir();
 
@@ -544,7 +358,6 @@ public class ClientServer2DUnit extends ClientServerTestBase {
             + "trade.customers tc where tp.cid=tc.cid", ckFile, "is_cust_port");
   }
 
-
   /**
    * Bug#46682 test: do not allow a node to join the cluster if its locale is
    * different from the cluster.
@@ -599,7 +412,7 @@ public class ClientServer2DUnit extends ClientServerTestBase {
         "register function") {
       @Override
       public void run() throws CacheException {
-        FunctionService.registerFunction(new ClientServer2DUnit.TestFunction());
+        FunctionService.registerFunction(new TestFunction());
       }
     };
     serverExecute(1, registerFn);
@@ -650,7 +463,7 @@ public class ClientServer2DUnit extends ClientServerTestBase {
     GfxdListResultCollector gfxdRC = new GfxdListResultCollector();
     ResultCollector<?, ?> rc = ServerGroupUtils
         .onServerGroups("SG1, SG2, SG3, SG4", false).withCollector(gfxdRC)
-        .execute(ClientServer2DUnit.TestFunction.ID);
+        .execute(TestFunction.ID);
     List<?> result = (List<?>)rc.getResult();
     assertEquals("expected number of results: 4", 4, result.size());
     for (Object res : result) {

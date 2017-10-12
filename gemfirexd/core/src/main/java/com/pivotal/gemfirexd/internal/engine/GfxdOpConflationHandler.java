@@ -93,7 +93,7 @@ public final class GfxdOpConflationHandler<TValue> {
    *          be {@link Conflatable#getKeyToConflate()}
    * @param removeList
    *          if non-null then populate this list with conflated
-   *          {@link QueueValue}s instead of removing from
+   *          {@link GfxdDDLRegionQueue.QueueValue}s instead of removing from
    *          conflatable collection directly
    * @param collection
    *          if non-null then also remove directly from this collection
@@ -113,7 +113,7 @@ public final class GfxdOpConflationHandler<TValue> {
       boolean result = applyConflate(confVal, confKey, confValEntry,
           removeList, null, collection, removeFromIndex, skipExecuting);
       // the item being checked will also be conflated in this case
-      if (removeList != null) {
+      if (result && removeList != null) {
         removeList.add(confValEntry);
       }
       return result;
@@ -204,7 +204,7 @@ public final class GfxdOpConflationHandler<TValue> {
    *          be {@link Conflatable#getKeyToConflate()}
    * @param removeList
    *          if non-null then populate this list with conflated
-   *          {@link QueueValue}s
+   *          {@link GfxdDDLRegionQueue.QueueValue}s
    * @param removeConflatables
    *          if non-null then populate this list with the conflated keys
    * @param collection
@@ -223,7 +223,6 @@ public final class GfxdOpConflationHandler<TValue> {
       List<Map.Entry<Conflatable, TValue>> removeConflatables,
       Collection<TValue> collection, boolean removeFromIndex,
       boolean skipExecuting) {
-    boolean conflate = false;
     boolean conflationDone = false;
     // conflate all keys for the "region" or "keyToConflate"
     String regionName = confVal.getRegionToConflate();
@@ -231,24 +230,33 @@ public final class GfxdOpConflationHandler<TValue> {
     Conflatable eKey = new MinMaxConflatable(regionName, confKey, false);
     Iterator<Map.Entry<Conflatable, TValue>> sMapIter = this.conflationIndex
         .subMap(sKey, eKey).entrySet().iterator();
+    Conflatable conflatable;
     if (removeList == null && collection == null) {
       // don't need to do any updates so just return if this particular
       // Conflatable matches any other in the current index
-      conflate = sMapIter.hasNext();
+      while (sMapIter.hasNext()) {
+        // don't conflate same "DROP" statements, for example
+        conflatable = sMapIter.next().getKey();
+        if (!skipConflation(confVal, conflatable)) {
+          conflationDone = true;
+          break;
+        }
+      }
     }
     else {
-      final ArrayList<Conflatable> removeEntries =
-          new ArrayList<Conflatable>();
-      Conflatable conflatable;
+      final ArrayList<Conflatable> removeEntries = new ArrayList<>(4);
       while (sMapIter.hasNext()) {
         Map.Entry<Conflatable, TValue> confEntry = sMapIter.next();
+        conflatable = confEntry.getKey();
+        // don't conflate same "DROP" statements, for example
+        if (skipConflation(confVal, conflatable)) continue;
         if (removeList != null) {
           removeList.add(confEntry.getValue());
         }
         if (removeConflatables != null) {
           removeConflatables.add(confEntry);
         }
-        conflatable = confEntry.getKey();
+        conflationDone = true;
         // skip executing entries
         if (skipExecuting && conflatable instanceof ReplayableConflatable
             && ((ReplayableConflatable)conflatable).isExecuting()) {
@@ -262,13 +270,10 @@ public final class GfxdOpConflationHandler<TValue> {
         }
         if (collection != null) {
           collection.remove(confEntry.getValue());
-          conflationDone = true;
         }
         if (removeFromIndex) {
           removeEntries.add(conflatable);
-          conflationDone = true;
         }
-        conflate = true;
       }
       if (removeEntries.size() > 0) {
         for (Conflatable c : removeEntries) {
@@ -282,7 +287,15 @@ public final class GfxdOpConflationHandler<TValue> {
             this.logPrefix + ": conflated for entry [" + confValEntry + ']');
       }
     }
-    return conflate;
+    return conflationDone;
+  }
+
+  private static boolean skipConflation(Conflatable current, Conflatable check) {
+    return check.shouldBeConflated()
+        && current.shouldBeMerged() == check.shouldBeMerged()
+        && current.getClass().equals(check.getClass())
+        && ArrayUtils.objectEquals(current.getRegionToConflate(), check.getRegionToConflate())
+        && ArrayUtils.objectEquals(current.getKeyToConflate(), check.getKeyToConflate());
   }
 
   public TValue indexGet(Conflatable key) {

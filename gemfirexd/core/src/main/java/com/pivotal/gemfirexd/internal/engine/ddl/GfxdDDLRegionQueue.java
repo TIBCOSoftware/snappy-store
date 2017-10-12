@@ -163,8 +163,7 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
    * Initialize and populate the queue using the region as backing store.
    */
   public void initializeQueue(GfxdDataDictionary dd, boolean takeLock) {
-
-  final List<QueueValue> removeList;
+    final List<QueueValue> removeList;
     // take DD read lock to avoid missing DDLs whose update comes before queue
     // population actually starts but after region GII
     if (takeLock) {
@@ -187,7 +186,7 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
       unlockQueue(true);
     }
     // conflate the underlying region if possible
-    this.region.doConflate(removeList, null);
+    this.region.doConflate(removeList, "INITQUEUE");
   }
   
   
@@ -292,7 +291,10 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
         }
         if (GemFireXDUtils.TraceConflation) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONFLATION, toString()
-              + ": adding conflatable entry " + qValue);
+              + ": adding conflatable entry " + qValue
+              + " with region=" + confVal.getRegionToConflate()
+              + " key=" + confVal.getKeyToConflate()
+              + " value=" + confVal.getValueToConflate());
         }
         this.conflationHandler.addToConflationIndex(confVal, qValue);
       }
@@ -381,7 +383,7 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
    * @param sequenceId
    *          The sequence ID to be used for the object. Should normally be only
    *          used when updating an existing value using the return value of
-   *          {@link #put(Long, Object, boolean, boolean, boolean)}.
+   *          {@link #put(Long, long, Object, boolean, boolean)}.
    * @param object
    *          The object to put onto the queue.
    * @param conflate
@@ -410,13 +412,13 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
       event.setSkipDistributionOps();
     }
     if (conflate) {
-      final List<QueueValue> conflatedItems = new ArrayList<QueueValue>(5);
+      final List<QueueValue> conflatedItems = new ArrayList<>(4);
       putInQueue(qValue, true, conflatedItems);
       // put in the region in any case so all VMs get it in the queue region
       // and conflate independently
       this.region.validatedPut(event, CachePerfStats.getStatTime());
       // locally conflate entries from the region
-      this.region.doConflate(conflatedItems, key);
+      this.region.doConflate(conflatedItems, qValue);
     }
     else {
       putInQueue(qValue, false, null);
@@ -853,8 +855,7 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
           currentSchema = newSchema;
         }
         else if (ddl.shouldDelayRegionInitialization()) {
-          final ArrayList<QueueValue> conflatedItems =
-              new ArrayList<QueueValue>(5);
+          final ArrayList<QueueValue> conflatedItems = new ArrayList<>(4);
           if (conflate(ddl, ddl, false, conflatedItems)) {
             for (QueueValue confItem : conflatedItems) {
               Object confVal = confItem.getValue();

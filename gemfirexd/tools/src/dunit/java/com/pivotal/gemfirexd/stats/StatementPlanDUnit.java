@@ -718,13 +718,14 @@ public class StatementPlanDUnit extends DistributedSQLTestBase {
   public void testBug43228() throws Exception {
     startVMs(1, 3);
     checkLoadLib(getTestName());
+    Connection conn = null;
+    Statement st = null;
     try {
       Properties cp = new Properties();
       cp.setProperty("log-level", getLogLevel());
       setNativeNanoTimer();
-      Connection conn = TestUtil.getConnection(cp);
-      
-      Statement st = conn.createStatement();
+      conn = TestUtil.getConnection(cp);
+      st = conn.createStatement();
 
       if (GemFireXDUtils.hasTable(conn, "test_globalindex_plan_check")) {
         st.execute("drop table test_globalindex_plan_check");
@@ -748,7 +749,12 @@ public class StatementPlanDUnit extends DistributedSQLTestBase {
       String p = new String(planner.getPlanAsText(null));
       getLogWriter().info("plan = " + p);
     } finally {
-
+      if (st != null && GemFireXDUtils.hasTable(
+          conn, "test_globalindex_plan_check")) {
+        st.execute("drop table test_globalindex_plan_check");
+        st.close();
+        conn.close();
+      }
     }
   }
 

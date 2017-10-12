@@ -163,12 +163,6 @@ public interface Attribute {
   String LOG_FILE = "log-file";
 
   /**
-   * The property used to specify the initial SQL scripts to be executed before
-   * anything else including initial DDL replay.
-   */
-  String CONFIG_SCRIPTS = "config-scripts";
-
-  /**
    * The VM level property to specify the default initial capacity used for
    * underlying GFE regions on datastores.
    */
