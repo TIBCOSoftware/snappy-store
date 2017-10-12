@@ -183,24 +183,24 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
   }
 
   // Try some metadata calls
-  private void checkDBMetadata(Connection conn, String url)
-      throws SQLException {
-    checkDBMetadata(conn, url, null);
-  }
-
-  private void checkDBMetadata(Connection conn, String url,
-      String url2) throws SQLException {
+  private void checkDBMetadata(Connection conn, String... urls) throws SQLException {
     DatabaseMetaData dbmd = conn.getMetaData();
     String actualUrl = dbmd.getURL();
     // remove any trailing slash
     getLogWriter().info("Got DB " + dbmd.getDatabaseProductName() + ' '
         + dbmd.getDatabaseProductVersion() + " using URL " + actualUrl);
-    url = url.replaceFirst("/$", "");
     actualUrl = actualUrl.replaceFirst("/$", "");
-    if (!url.equals(actualUrl)) {
-      if (url2 == null || !url2.replaceFirst("/$", "").equals(actualUrl)) {
-        assertEquals("Expected the provided URL to match", url, actualUrl);
+    boolean foundMatch = false;
+    for (String url : urls) {
+      url = url.replaceFirst("/$", "");
+      if (url.equals(actualUrl)) {
+        foundMatch = true;
+        break;
       }
+    }
+    if (!foundMatch) {
+      fail("Expected one of the provided URLs "
+          + java.util.Arrays.toString(urls) + " to match " + actualUrl);
     }
     ResultSet rs = dbmd.getCatalogs();
     while (rs.next()) {
@@ -1615,10 +1615,11 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
    * Test if multiple connections from network clients failover successfully.
    */
   public void testNetworkClientFailover() throws Exception {
-    // start some servers not using locator
-    startVMs(0, 3);
-    // Start a network server
-    final int netPort = startNetworkServer(1, null, null);
+    // start some servers
+    startVMs(1, 3);
+    // Start a network server on locator and data store
+    final int netPort = startNetworkServer(0, null, null);
+    final int netPort1 = startNetworkServer(1, null, null);
 
     attachConnectionListener(1, connListener);
 
@@ -1628,6 +1629,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     final InetAddress localHost = SocketCreator.getLocalHost();
     String url = TestUtil.getNetProtocol(localHost.getCanonicalHostName(),
         netPort);
+    String url1 = TestUtil.getNetProtocol(localHost.getCanonicalHostName(),
+        netPort1);
     Connection conn = TestUtil.getNetConnection(
         localHost.getCanonicalHostName(), netPort, null, new Properties());
 
@@ -1636,7 +1639,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertNumConnections(0, 0, 2);
 
     // Some sanity checks for DB meta-data
-    checkDBMetadata(conn, url);
+    // URL remains the first control connection one for thrift
+    checkDBMetadata(conn, url, url1);
 
     // Create a table
     Statement stmt = conn.createStatement();
@@ -1685,11 +1689,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
     // Some sanity checks for DB meta-data
     // URL remains the first control connection one for thrift
-    if (ClientSharedUtils.isThriftDefault()) {
-      checkDBMetadata(conn2, url);
-    } else {
-      checkDBMetadata(conn2, url2);
-    }
+    checkDBMetadata(conn2, url, url1, url2);
 
     stmt = conn2.createStatement();
     rs = stmt.executeQuery("select * from TESTTABLE");
@@ -1713,7 +1713,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
         localHost.getCanonicalHostName(), netPort, null, new Properties());
 
     // Some sanity checks for DB meta-data
-    checkDBMetadata(conn3, url, url2);
+    checkDBMetadata(conn3, url, url1, url2);
 
     assertNumConnections(-4, -1, 1);
     assertNumConnections(-2, -1, 2);
@@ -1726,8 +1726,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertNumConnections(-2, -1, 2);
 
     PreparedStatement pstmt3 = conn3
-        .prepareStatement("select * from sys.members where kind <> ?");
-    pstmt3.setString(1, "locator(normal)");
+        .prepareStatement("select * from sys.members where kind = ?");
+    pstmt3.setString(1, "datastore(normal)");
     rs = pstmt3.executeQuery();
     assertTrue("expected three rows in meta-data query", rs.next());
     assertEquals("datastore(normal)", rs.getString(2));
@@ -1749,8 +1749,8 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     // keep one statement prepared with args to check if it works fine
     // after failover
     PreparedStatement pstmt31 = conn3
-        .prepareStatement("select * from sys.members where kind <> ?");
-    pstmt31.setString(1, "locator(normal)");
+        .prepareStatement("select * from sys.members where kind = ?");
+    pstmt31.setString(1, "datastore(normal)");
     // add expected exception for server connection failure
     addExpectedException(new int[] { 1 }, new int[] { 1, 2, 3 }, new Object[] {
         java.net.ConnectException.class,
@@ -1773,7 +1773,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertNumConnections(-2, -1, 2);
 
     // check failover for conn3 too
-    checkDBMetadata(conn3, url, url2);
+    checkDBMetadata(conn3, url, url1, url2);
 
     stmt = conn3.createStatement();
     rs = stmt.executeQuery("select * from TESTTABLE where ID = 1");
@@ -1874,6 +1874,9 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
 
     assertNumConnections(-4, -2, 1);
     assertNumConnections(-4, -4, 2);
+
+    // stop the network server on locator (rest will get stopped in tearDown)
+    stopNetworkServer(0);
   }
 
   /**
