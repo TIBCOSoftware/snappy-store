@@ -135,7 +135,7 @@ public class GfxdGatewaySenderStartMessage extends
   public String getRegionToConflate() {
     // match the region name with those returned by Create/Drop statements
     // so that these will be removed from queue after DROP
-    return SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME + (this.isAsyncQueue
+    return SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME + '.' + (this.isAsyncQueue
         ? CreateAsyncEventListenerConstantAction.REGION_PREFIX_FOR_CONFLATION
         : CreateGatewaySenderConstantAction.REGION_PREFIX_FOR_CONFLATION) + id;
   }

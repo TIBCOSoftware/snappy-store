@@ -476,7 +476,7 @@ public class SanityManager {
         }
 
         static void initCustomFlags() {
-          TraceClientHA = TRACE_ON(TRACE_CLIENT_HA);
+          TraceClientHA = true || TRACE_ON(TRACE_CLIENT_HA);
           TraceClientConn = TRACE_ON(TRACE_CLIENT_CONN);
           TraceClientStatementMillis = TRACE_ON(TRACE_CLIENT_STMT_MS);
           TraceClientStatement = TraceClientStatementMillis ||

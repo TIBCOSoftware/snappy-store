@@ -847,12 +847,14 @@ public final class FabricDatabase implements ModuleControl,
     // remote the initial SQL commands
 //    lcc.setIsConnectionForRemote(false);
 //    lcc.setSkipLocks(false);
+    /*
     String initScriptsPath = bootProps.getProperty(Attribute.CONFIG_SCRIPTS);
     if (initScriptsPath != null && initScriptsPath.length() > 0) {
       String[] initScriptPaths = initScriptsPath.split(",");
       GemFireXDUtils.executeSQLScripts(embedConn, initScriptPaths, false, logger,
           null, null, false);
     }
+    */
 
     // Execute DDLs in GfxdDDLRegionQueue next.
     final Object sync = this.memStore.getInitialDDLReplaySync();
