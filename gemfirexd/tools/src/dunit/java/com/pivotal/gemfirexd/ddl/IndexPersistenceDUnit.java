@@ -817,6 +817,9 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
       netPort3 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort1, 3,
           serverInfo, 8, "counti", persistIndexes);
 
+      // let everything settle down
+      serverSQLExecute(1, "call sys.rebalance_all_buckets()");
+
       verifyAtLastSNAP1933(maxValInsert, tableNames, indexNames);
       dropIndexesSNAP1933(indexNames);
       dropTablesSNAP1933(tableNames);

@@ -752,6 +752,8 @@ public class StatementPlanDUnit extends DistributedSQLTestBase {
       if (st != null && GemFireXDUtils.hasTable(
           conn, "test_globalindex_plan_check")) {
         st.execute("drop table test_globalindex_plan_check");
+        st.close();
+        conn.close();
       }
     }
   }
