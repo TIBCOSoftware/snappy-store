@@ -22,7 +22,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.sql.SQLException;
 
-import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.internal.cache.execute.InternalFunctionInvocationTargetException;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -31,6 +30,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplay
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 
 public class GfxdRemoveGatewayConflictResolverMessage extends AbstractGfxdReplayableMessage {
@@ -108,7 +108,7 @@ public class GfxdRemoveGatewayConflictResolverMessage extends AbstractGfxdReplay
    */
   @Override
   public boolean shouldBeConflated() {
-    return false;
+    return true;
   }
 
   /**
@@ -116,7 +116,7 @@ public class GfxdRemoveGatewayConflictResolverMessage extends AbstractGfxdReplay
    */
   @Override
   public String getRegionToConflate() {
-    return null;
+    return SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME;
   }
 
   /**
@@ -140,7 +140,6 @@ public class GfxdRemoveGatewayConflictResolverMessage extends AbstractGfxdReplay
    */
   @Override
   public String getSQLStatement() {
-    final StringBuilder sb = new StringBuilder();
-    return sb.append("CALL SYS.REMOVE_GATEWAY_CONFLICT_RESOLVER()").toString();
+    return "CALL SYS.REMOVE_GATEWAY_CONFLICT_RESOLVER()";
   }
 }
