@@ -64,11 +64,9 @@ abstract class ClientServerTestBase extends DistributedSQLTestBase {
       throws Throwable {
     if (result instanceof Integer) {
       id.set((Integer)result);
-    }
-    else if (result instanceof Throwable) {
+    } else if (result instanceof Throwable) {
       throw (Throwable)result;
-    }
-    else {
+    } else {
       fail("unexpected result " + result);
     }
   }
@@ -126,24 +124,24 @@ abstract class ClientServerTestBase extends DistributedSQLTestBase {
   }
 
   // Try some metadata calls
-  void checkDBMetadata(Connection conn, String url)
-      throws SQLException {
-    checkDBMetadata(conn, url, null);
-  }
-
-  void checkDBMetadata(Connection conn, String url,
-      String url2) throws SQLException {
+  void checkDBMetadata(Connection conn, String... urls) throws SQLException {
     DatabaseMetaData dbmd = conn.getMetaData();
     String actualUrl = dbmd.getURL();
     // remove any trailing slash
     getLogWriter().info("Got DB " + dbmd.getDatabaseProductName() + ' '
         + dbmd.getDatabaseProductVersion() + " using URL " + actualUrl);
-    url = url.replaceFirst("/$", "");
     actualUrl = actualUrl.replaceFirst("/$", "");
-    if (!url.equals(actualUrl)) {
-      if (url2 == null || !url2.replaceFirst("/$", "").equals(actualUrl)) {
-        assertEquals("Expected the provided URL to match", url, actualUrl);
+    boolean foundMatch = false;
+    for (String url : urls) {
+      url = url.replaceFirst("/$", "");
+      if (url.equals(actualUrl)) {
+        foundMatch = true;
+        break;
       }
+    }
+    if (!foundMatch) {
+      fail("Expected one of the provided URLs "
+          + java.util.Arrays.toString(urls) + " to match " + actualUrl);
     }
     ResultSet rs = dbmd.getCatalogs();
     while (rs.next()) {

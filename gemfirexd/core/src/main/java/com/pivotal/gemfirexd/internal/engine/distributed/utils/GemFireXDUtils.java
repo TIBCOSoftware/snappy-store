@@ -3285,7 +3285,7 @@ public final class GemFireXDUtils {
         .TRACE_ON(GfxdConstants.TRACE_AUTHENTICATION);
     TraceHeapThresh = SanityManager.TRACE_ON(GfxdConstants.TRACE_HEAPTHRESH);
     TraceMembers = SanityManager.TRACE_ON(GfxdConstants.TRACE_MEMBERS);
-    TraceDDLQueue = true || SanityManager.TRACE_ON(GfxdConstants.TRACE_DDLQUEUE);
+    TraceDDLQueue = SanityManager.TRACE_ON(GfxdConstants.TRACE_DDLQUEUE);
     TraceConglom = TraceQuery || TraceIndex || TraceDDLQueue
         || SanityManager.TRACE_ON(GfxdConstants.TRACE_CONGLOM);
     TraceDDLReplay = TraceDDLQueue
@@ -3330,7 +3330,7 @@ public final class GemFireXDUtils {
     TraceTempFileIO = SanityManager.TRACE_ON(GfxdConstants.TRACE_TEMP_FILE_IO);
 
     // trace flag for client HA
-    SanityManager.TraceClientHA = true || SanityManager
+    SanityManager.TraceClientHA = SanityManager
         .TRACE_ON(SanityManager.TRACE_CLIENT_HA);
 
     TraceApplicationJars = (TraceQuery || DistributionManager.VERBOSE

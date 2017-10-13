@@ -1653,6 +1653,33 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   }
 
   /**
+   * Start a network server on the locator.
+   */
+  public int startNetworkServerOnLocator(String serverGroups,
+      Properties extraProps) throws Exception {
+    int netPort = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
+    if (netPort <= 1024) {
+      throw new AssertionError("unexpected random port " + netPort);
+    }
+    startNetworkServerOnLocator(serverGroups, extraProps, netPort);
+    return netPort;
+  }
+
+  /**
+   * Start a network server on the locator.
+   */
+  public void startNetworkServerOnLocator(String serverGroups,
+      Properties extraProps, int netPort) throws Exception {
+    final VM locatorVM = Host.getLocator();
+    getLogWriter().info("Starting a network server on port=" + netPort +
+        " on locator with pid [" + locatorVM.getPid() + ']');
+    // Start a network server
+    locatorVM.invoke(DistributedSQLTestBase.class, "_startNetworkServer",
+        new Object[]{this.getClass().getName(), this.getName(), 0, netPort,
+            serverGroups, extraProps, Boolean.valueOf(this.configureDefaultOffHeap)});
+  }
+
+  /**
    * Start a network server on given VM number (1-based) started with
    * {@link #startServerVMs} and return the TCP port being used by the
    * server that is chosen randomly based on availability.
@@ -1816,6 +1843,13 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     final VM[] serverVMs = new VM[serverNums.length];
     assertNumConnections(expectedConnectionsOpened, expectedConnectionsClosed,
         getVMs(null, serverNums).toArray(serverVMs));
+  }
+
+  public boolean stopNetworkServerOnLocator() throws Exception {
+    final VM locatorVM = Host.getLocator();
+    getLogWriter().info("Stopping gemfirexd network server on locator with pid [" +
+        locatorVM.getPid() + ']');
+    return locatorVM.invokeBoolean(TestUtil.class, "stopNetServer");
   }
 
   public boolean stopNetworkServer(int vmNum) throws Exception {
