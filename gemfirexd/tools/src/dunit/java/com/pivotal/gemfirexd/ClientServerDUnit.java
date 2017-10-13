@@ -1618,7 +1618,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     // start some servers
     startVMs(1, 3);
     // Start a network server on locator and data store
-    final int netPort = startNetworkServer(0, null, null);
+    final int netPort = startNetworkServerOnLocator(null, null);
     final int netPort1 = startNetworkServer(1, null, null);
 
     attachConnectionListener(1, connListener);
@@ -1876,7 +1876,7 @@ public class ClientServerDUnit extends DistributedSQLTestBase {
     assertNumConnections(-4, -4, 2);
 
     // stop the network server on locator (rest will get stopped in tearDown)
-    stopNetworkServer(0);
+    stopNetworkServerOnLocator();
   }
 
   /**

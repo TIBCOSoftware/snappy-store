@@ -1636,6 +1636,33 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   }
 
   /**
+   * Start a network server on the locator.
+   */
+  public int startNetworkServerOnLocator(String serverGroups,
+      Properties extraProps) throws Exception {
+    int netPort = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
+    if (netPort <= 1024) {
+      throw new AssertionError("unexpected random port " + netPort);
+    }
+    startNetworkServerOnLocator(serverGroups, extraProps, netPort);
+    return netPort;
+  }
+
+  /**
+   * Start a network server on the locator.
+   */
+  public void startNetworkServerOnLocator(String serverGroups,
+      Properties extraProps, int netPort) throws Exception {
+    final VM locatorVM = Host.getLocator();
+    getLogWriter().info("Starting a network server on port=" + netPort +
+        " on locator with pid [" + locatorVM.getPid() + ']');
+    // Start a network server
+    locatorVM.invoke(DistributedSQLTestBase.class, "_startNetworkServer",
+        new Object[]{this.getClass().getName(), this.getName(), 0, netPort,
+            serverGroups, extraProps, Boolean.valueOf(this.configureDefaultOffHeap)});
+  }
+
+  /**
    * Start a network server on given VM number (1-based) started with
    * {@link #startServerVMs} and return the TCP port being used by the
    * server that is chosen randomly based on availability.
@@ -1656,7 +1683,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
    */
   protected void startNetworkServer(int vmNum, String serverGroups,
       Properties extraProps, int netPort) throws Exception {
-    assertTrue("VM number should be >= 0", vmNum >= 0);
+    assertTrue("VM number should be >= 1", vmNum >= 1);
     final int maxVMs = Host.getHost(0).getVMCount();
     assertTrue("Maximum number of servers is "+ maxVMs, vmNum <= maxVMs);
     final int totalVMs = this.clientVMs.size() + vmNum;
@@ -1664,7 +1691,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
 
     final Host host = Host.getHost(0);
     extraProps = setMasterCommonProperties(extraProps);
-    final VM newVM = vmNum == 0 ? Host.getLocator() : host.getVM(vmNum - 1);
+    final VM newVM = host.getVM(vmNum - 1);
     getLogWriter().info(
         "Starting VM with pid [" + newVM.getPid()
             + "] as gemfirexd network server on port: " + netPort);
@@ -1801,12 +1828,19 @@ public class DistributedSQLTestBase extends DistributedTestBase {
         getVMs(null, serverNums).toArray(serverVMs));
   }
 
+  public boolean stopNetworkServerOnLocator() throws Exception {
+    final VM locatorVM = Host.getLocator();
+    getLogWriter().info("Stopping gemfirexd network server on locator with pid [" +
+        locatorVM.getPid() + ']');
+    return locatorVM.invokeBoolean(TestUtil.class, "stopNetServer");
+  }
+
   public boolean stopNetworkServer(int vmNum) throws Exception {
     int currentServerVms = this.serverVMs.size();
-    assertTrue("Server number [" + vmNum + "] should be >= 0", vmNum >= 0);
+    assertTrue("Server number [" + vmNum + "] should be >= 1", vmNum >= 1);
     assertTrue("Total number of server VMs is " + currentServerVms,
         vmNum <= currentServerVms);
-    final VM vm = vmNum == 0 ? Host.getLocator() : this.serverVMs.get(vmNum - 1);
+    final VM vm = this.serverVMs.get(vmNum - 1);
     getLogWriter().info("Stopping VM with pid [" + vm.getPid()
         + "] as gemfirexd network server.");
     return vm.invokeBoolean(TestUtil.class, "stopNetServer");
