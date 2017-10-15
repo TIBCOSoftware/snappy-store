@@ -1950,8 +1950,8 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
     if(withAuth){
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, 
-          "-log-file=" + logFile, "-peer-discovery-port=" + locatorPort1, 
-          "-auth-provider=BUILTIN",
+          "-log-file=" + logFile, "-peer-discovery-port=" + locatorPort1,
+          "-heap-size=512m", "-auth-provider=BUILTIN",
           "-gemfirexd.sql-authorization=TRUE",
           "-gemfirexd.user.SYSADMIN=SA",
           "-user=SYSADMIN",
@@ -1964,7 +1964,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, 
           "-log-file=" + logFile, "-peer-discovery-port=" + locatorPort1,
-          "-locators=localhost:" + locatorPort2,
+          "-heap-size=512m", "-locators=localhost:" + locatorPort2,
           "-J-Dgemfirexd.thrift-default=false",
           "-client-port=" + clientPort};
     }

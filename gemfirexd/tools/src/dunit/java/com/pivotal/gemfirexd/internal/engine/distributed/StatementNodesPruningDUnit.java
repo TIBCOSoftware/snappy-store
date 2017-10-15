@@ -36,21 +36,20 @@ import io.snappydata.test.dunit.VM;
 /**
  * Tests the pruning behaviour of distributed queries based on partition
  * resolver, global indexes etc
- * 
+ *
  * @author Asif
  * @since 6.0
  */
 @SuppressWarnings("serial")
-public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
+public class StatementNodesPruningDUnit extends DistributedSQLTestBase {
 
-  public StatementNodesPrunningDUnit(String name) {
+  public StatementNodesPruningDUnit(String name) {
     super(name);
   }
 
   /**
    * Tests node pruning for a query with single condition with inequality
    * operator for range partitioning. All the conditions are parameterized
-   * 
    */
   public void testMultiConditionWhereClauseWithRangePartitioning()
       throws Exception {
@@ -121,7 +120,6 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
    * Tests node pruning for a query with single condition where range
    * partitioning is defined but the partitioning column is an equality which
    * falls outside the range
-   * 
    */
   public void testRangePartitionBehaviourForPartitioningColumnEqualityOutsideRange()
       throws Exception {
@@ -162,12 +160,12 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
     }
   }
 
-  /* Tests node pruning for a query with single condition USING lIST 
+  /**
+   * Tests node pruning for a query with single condition USING lIST
    * where range partitioning is defined
-  * but the partitioning column is an equality which falls
-  * outside the range & within the range 
-  * 
-  */
+   * but the partitioning column is an equality which falls
+   * outside the range & within the range
+   */
   public void testRangePartitionBehaviourForPartitioningColumnEqualityListOutsideRange()
       throws Exception {
     // Create a table from client using range partitioning enabled.
@@ -211,7 +209,6 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
    * Tests node pruning for a query with single condition where range
    * partitioning is defined but the partitioning column is an equality which
    * falls outside the range
-   * 
    */
   public void testBug39911() throws Exception {
     // Create a table from client using range partitioning enabled.
@@ -273,7 +270,6 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
   /**
    * Tests node pruning for a query with single condition with inequality
    * operator for range partitioning. All the conditions are parameterized
-   * 
    */
   public void testSingleConditionWhereClauseWithRangePartitioning_1()
       throws Exception {
@@ -340,7 +336,6 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
   /**
    * Tests node pruning for a query with single condition with inequality
    * operator for range partitioning. All the conditions are parameterized
-   * 
    */
   public void testSingleConditionWhereClauseWithRangePartitioning_2()
       throws Exception {
@@ -410,7 +405,6 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
   /**
    * If partition by clause is not defined, then default resolver should be
    * attached to the primary key
-   * 
    */
   public void testNoExplicitResolverDefined_Bug39680() throws Exception {
     // Create a table from client using range partitioning enabled.
@@ -471,7 +465,6 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
   /**
    * If partition by clause is not defined, then default resolver should be
    * attached to the primary key
-   * 
    */
   public void testListPartitioningForDefaultResolver() throws Exception {
     // Create a table from client using range partitioning enabled.
@@ -535,11 +528,10 @@ public class StatementNodesPrunningDUnit extends DistributedSQLTestBase {
     }
   }
 
- 
   public String getSuffix() {
     return  "  ";
   }
-  
+
   @Override
   protected void vmTearDown() throws Exception {
     super.vmTearDown();

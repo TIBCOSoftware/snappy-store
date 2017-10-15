@@ -48,11 +48,11 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkNonPKBasedSelect(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(6000);
+    Thread.sleep(2000);
     st1.execute("select col1 from t1");
     ResultSet rs1 = st1.getResultSet();
     assertTrue(rs1.next());
-    Thread.sleep(6000);
+    Thread.sleep(10000);
     st1.execute("select col1 from t1");
     rs1 = st1.getResultSet();
     assertFalse(rs1.next());

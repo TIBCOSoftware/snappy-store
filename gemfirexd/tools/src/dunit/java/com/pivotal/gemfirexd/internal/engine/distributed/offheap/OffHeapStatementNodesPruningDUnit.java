@@ -16,26 +16,23 @@
  */
 package com.pivotal.gemfirexd.internal.engine.distributed.offheap;
 
-import com.pivotal.gemfirexd.internal.engine.distributed.StatementNodesPrunningDUnit;
+import com.pivotal.gemfirexd.internal.engine.distributed.StatementNodesPruningDUnit;
 
-public class OffHeapStatementNodesPrunningDUnit extends StatementNodesPrunningDUnit {
+public class OffHeapStatementNodesPruningDUnit extends StatementNodesPruningDUnit {
 
-
-
-  public OffHeapStatementNodesPrunningDUnit(String name) {
-    super(name);    
+  public OffHeapStatementNodesPruningDUnit(String name) {
+    super(name);
   }
-  
+
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    this.configureDefaultOffHeap(true);  
-  }
-  
-  @Override
-  public String getSuffix() {
-    return  " offheap ";
+    this.configureDefaultOffHeap(true);
   }
 
+  @Override
+  public String getSuffix() {
+    return " offheap ";
+  }
 
 }
