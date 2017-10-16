@@ -648,7 +648,7 @@ public class InitialImageOperation  {
   private boolean requestUnappliedDeltas(DistributionManager dm, InternalDistributedMember recipient) {
     ImageState imgState = region.getImageState();
     LogWriterI18n logger = region.getLogWriterI18n();
-    
+    region.writeLockEnqueueDelta();
     //See if there are any deltas that have not yet been merged
     Iterator<Object> deltas = imgState.getDeltaEntries();
     Set<Object> unappliedDeltas = new HashSet<Object>();

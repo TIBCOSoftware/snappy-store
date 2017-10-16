@@ -1620,6 +1620,7 @@ public class DistributedRegion extends LocalRegion implements
     } finally {
       try {
         doPostEntryDestructionCleanup(true, null, false, giiIndexLockAcquired);
+        writeUnlockEnqueueDelta();
       } finally {
         // reacquire the index read lock
         if (indexLocked) {

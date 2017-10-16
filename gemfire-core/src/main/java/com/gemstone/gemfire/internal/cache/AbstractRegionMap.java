@@ -3865,9 +3865,16 @@ RETRY_LOOP:
       // until this testLatch is counted down from the test code
       if (DistributedRegion.testLatch == null) {
         if (!owner.isInitialized()) {
-          if (enqueDelta(event, ifOld, indexManager)) {
-            // owner.recordEvent(event);
-            return ProxyRegionMap.markerEntry;
+          owner.readLockEnqueueDelta();
+          try {
+            if (!owner.isInitialized()) {
+              if (enqueDelta(event, ifOld, indexManager)) {
+                // owner.recordEvent(event);
+                return ProxyRegionMap.markerEntry;
+              }
+            }
+          } finally {
+            owner.readUnlockEnqueueDelta();
           }
         }
       }
