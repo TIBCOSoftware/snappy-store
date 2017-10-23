@@ -31,9 +31,9 @@ import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalLocator;
 import com.gemstone.gemfire.internal.ClassPathLoader;
-import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 
 /**
  * Enables off-heap storage by creating a MemoryAllocator.
@@ -124,7 +124,7 @@ public class OffHeapStorage implements OffHeapMemoryStats {
     if (value == null || value.length() == 0) {
       return 0;
     }
-    final long parsed = parseLongWithUnits(value, 0L, 1024*1024);
+    final long parsed = ClientSharedUtils.parseMemorySize(value, 0L, 20);
     if (parsed < 0) {
       return 0;
     }
@@ -135,7 +135,8 @@ public class OffHeapStorage implements OffHeapMemoryStats {
     final String offHeapSlabConfig = System.getProperty("gemfire.OFF_HEAP_SLAB_SIZE");
     long result = 0;
     if (offHeapSlabConfig != null && !offHeapSlabConfig.equals("")) {
-      result = parseLongWithUnits(offHeapSlabConfig, MAX_SLAB_SIZE, 1024*1024);
+      result = ClientSharedUtils.parseMemorySize(
+          offHeapSlabConfig, MAX_SLAB_SIZE, 20);
       if (result > offHeapMemorySize) {
         result = offHeapMemorySize;
       }
@@ -179,7 +180,8 @@ public class OffHeapStorage implements OffHeapMemoryStats {
     if (offHeapMemorySize == 0 && !Boolean.getBoolean(InternalLocator.FORCE_LOCATOR_DM_TYPE)) {
       String offHeapConfig = System.getProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
       if (offHeapConfig != null && !offHeapConfig.equals("")) {
-        offHeapMemorySize = parseLongWithUnits(offHeapConfig, 0L, 1024*1024);
+        offHeapMemorySize = ClientSharedUtils.parseMemorySize(
+            offHeapConfig, 0L, 20);
       }
     }
     
@@ -238,28 +240,6 @@ public class OffHeapStorage implements OffHeapMemoryStats {
     return (int)result;
   }
 
-  private static long parseLongWithUnits(String v, long defaultValue, int defaultMultiplier) {
-    if (v == null || v.equals("")) {
-      return defaultValue;
-    }
-    int unitMultiplier = defaultMultiplier;
-    if (v.toLowerCase().endsWith("g")) {
-      unitMultiplier = 1024*1024*1024;
-      v = v.substring(0, v.length()-1);
-    } else if (v.toLowerCase().endsWith("m")) {
-      unitMultiplier = 1024*1024;
-      v = v.substring(0, v.length()-1);
-    }
-    try {
-      long result = Long.parseLong(v);
-      result *= unitMultiplier;
-      return result;
-    } catch (NumberFormatException e) {
-      throw new IllegalArgumentException(
-          "Memory size must be specified as <n>[g|m], where <n> is the size and [g|m] specifies the units in gigabytes or megabytes.");
-    }
-  }
-  
   private final Statistics stats;
   
   private OffHeapStorage(StatisticsFactory f) {
