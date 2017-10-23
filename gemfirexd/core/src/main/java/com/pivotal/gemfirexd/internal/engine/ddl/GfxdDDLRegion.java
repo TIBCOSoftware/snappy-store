@@ -55,6 +55,7 @@ import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.Oplog;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.TLongHashSet;
@@ -623,7 +624,8 @@ public final class GfxdDDLRegion extends DistributedRegion {
    * 
    * @author swale
    */
-  public static final class RegionValue extends GfxdDataSerializable {
+  public static final class RegionValue extends GfxdDataSerializable
+      implements Sizeable {
 
     private Object value;
 
@@ -660,6 +662,11 @@ public final class GfxdDDLRegion extends DistributedRegion {
       super.fromData(in);
       this.value = DataSerializer.readObject(in);
       this.sequenceId = in.readLong();
+    }
+
+    @Override
+    public int getSizeInBytes() {
+      return Misc.getMemStoreBooting().getObjectSizer().sizeof(this.value) + 8;
     }
 
     @Override

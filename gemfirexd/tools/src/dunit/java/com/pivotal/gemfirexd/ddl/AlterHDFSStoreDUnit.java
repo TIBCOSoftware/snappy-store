@@ -470,7 +470,8 @@ public class AlterHDFSStoreDUnit extends DistributedSQLTestBase {
          } catch (Exception e) {
            getLogWriter().warn("EXCEPTION " + e);
          }
-         assertTrue(ddlconflatables.size() == 3);
+         assertEquals("Unexpected DDLs: " + ddlconflatables,
+             3, ddlconflatables.size());
          assertTrue(ddlconflatables.get(0).getValueToConflate().startsWith("create hdfsstore"));
          assertTrue(ddlconflatables.get(1).getValueToConflate().startsWith("create table"));
          assertTrue(ddlconflatables.get(2).getValueToConflate().startsWith("alter hdfsstore"));

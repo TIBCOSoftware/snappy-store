@@ -946,8 +946,8 @@ public class CreateHDFSStoreDUnit extends DistributedSQLTestBase {
         } catch (Exception e) {
           Misc.getGemFireCache().getLoggerI18n().fine("EXCEPTION " + e);
         }
-        
-        assertTrue(ddlconflatables.size() == 5);
+        assertEquals("Unexpected DDLs: " + ddlconflatables,
+            5, ddlconflatables.size());
         assertTrue(ddlconflatables.get(0).getValueToConflate().startsWith("create schema"));
         assertTrue(ddlconflatables.get(1).getValueToConflate().startsWith("create hdfsstore"));
         assertTrue(ddlconflatables.get(2).getValueToConflate().startsWith("create table"));

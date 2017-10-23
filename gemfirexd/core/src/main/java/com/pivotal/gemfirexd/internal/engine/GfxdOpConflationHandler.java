@@ -35,6 +35,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
 import com.pivotal.gemfirexd.internal.engine.ddl.ReplayableConflatable;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLQueueEntry;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue;
+import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
@@ -113,7 +114,12 @@ public final class GfxdOpConflationHandler<TValue> {
       boolean result = applyConflate(confVal, confKey, confValEntry,
           removeList, null, collection, removeFromIndex, skipExecuting);
       // the item being checked will also be conflated in this case
-      if (result && removeList != null) {
+      // remove DROP DDLs in every case since those imply a corresponding
+      // CREATE statement else its an "if exists" case where there was
+      // no existing entity in which case also it should be cleaned up
+      if (removeList != null && (result ||
+          (confVal instanceof DDLConflatable) ||
+          (confVal instanceof GfxdSystemProcedureMessage))) {
         removeList.add(confValEntry);
       }
       return result;
