@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2015 Pivotal Software, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -14,21 +14,19 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package com.pivotal.gemfirexd.jdbc;
 
-/**
- * @author vivekb
- * Dummy Test for Debugging - Please do not remove this
- * 
- * Don't have more than one test
- */
-public class DummyTest extends JdbcTestBase {
-  
-  public DummyTest(String name) {
+package com.pivotal.gemfirexd.internal.transactions;
+
+import java.sql.Connection;
+
+public class Transaction2RRDUnit extends Transaction2DUnit {
+
+  public Transaction2RRDUnit(String name) {
     super(name);
   }
 
-  public void testDummy() {
-    // Dummy
+  @Override
+  protected int getIsolationLevel() {
+    return Connection.TRANSACTION_REPEATABLE_READ;
   }
 }

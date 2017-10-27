@@ -46,15 +46,15 @@ public class ListAggDUnit extends DistributedSQLTestBase {
 	
 	static volatile Exception exceptiongot = null;
 
-	protected String reduceLogLevel() {
+	@Override
+	protected String reduceLogging() {
 	  // these tests generate lots of logs, so reducing them
 	  return "config";
 	}
 
 	public void testDummy() {
-		
 	}
-	
+
 	public void _testListAggUnderLoad() throws Exception {
 		startVMs(1, 4);
 		startNetworkServer(1, null, null);

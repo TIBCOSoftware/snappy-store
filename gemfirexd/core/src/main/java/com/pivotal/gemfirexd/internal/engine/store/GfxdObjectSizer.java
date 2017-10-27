@@ -21,6 +21,7 @@ import java.util.Properties;
 
 import com.gemstone.gemfire.cache.Declarable;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
+import com.gemstone.gemfire.internal.cache.CachedDeserializableFactory;
 import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -83,13 +84,13 @@ public final class GfxdObjectSizer implements ObjectSizer, Declarable {
         return (Long.SIZE / 8) + ReflectionSingleObjectSizer.OBJECT_SIZE;
       }
       else if (c == DataValueDescriptor[].class) {
-        DataValueDescriptor[] tmpdvdarr = (DataValueDescriptor[])o;
+        DataValueDescriptor[] dvdArr = (DataValueDescriptor[])o;
         int size = 0;
-        for (int i = 0; i < tmpdvdarr.length; i++) {
-          size += tmpdvdarr[i].getLengthInBytes(null);
+        for (DataValueDescriptor dvd : dvdArr) {
+          size += dvd.getLengthInBytes(null);
           size += ReflectionSingleObjectSizer.OBJECT_SIZE;
         }
-        size += tmpdvdarr.length * ReflectionSingleObjectSizer.REFERENCE_SIZE;
+        size += dvdArr.length * ReflectionSingleObjectSizer.REFERENCE_SIZE;
         size += ReflectionSingleObjectSizer.OBJECT_SIZE;
         return size;
       }
@@ -98,11 +99,8 @@ public final class GfxdObjectSizer implements ObjectSizer, Declarable {
       }
       else if (Token.isInvalidOrRemoved(o)) {
         return 0;
-      }
-      else {
-        throw GemFireXDRuntimeException.newRuntimeException(
-            "unknown data type passed to GfxdObjectSizer: " + o.getClass(),
-            null);
+      } else {
+        return CachedDeserializableFactory.calcMemSize(o);
       }
     } catch (StandardException e) {
       throw GemFireXDRuntimeException.newRuntimeException(

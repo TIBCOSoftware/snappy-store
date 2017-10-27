@@ -20,6 +20,7 @@
 package org.apache.derbyTesting.junit;
 
 // GemStone changes BEGIN
+import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.cache.CacheObserverAdapter;
@@ -467,11 +468,24 @@ public class JDBC {
 		
         // First collect the set of DROP SQL statements.
         ArrayList ddl = new ArrayList();
+        GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
 		while (rs.next())
 		{
             String objectName = rs.getString(mdColumn);
             String raw = dropLeadIn + JDBC.escape(schema, objectName);
             if ( "TYPE".equals( dropType ) ) { raw = raw + " restrict "; }
+            // move child tables at the start
+            if (cache != null) {
+              Region<?, ?> region = Misc.getRegionByPath(
+                  Misc.getRegionPath(schema, objectName, null), false);
+              PartitionAttributes<?, ?> pattrs;
+              if (region != null &&
+                  (pattrs = region.getAttributes().getPartitionAttributes()) != null &&
+                  pattrs.getColocatedWith() != null) {
+                ddl.add(0, raw);
+                continue;
+              }
+            }
             ddl.add( raw );
 		}
 		rs.close();

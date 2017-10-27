@@ -1261,7 +1261,8 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
       server = LdapTestServer.getInstance();
     }
     if (!server.isServerStarted()) {
-      server.startServer();
+      int port = AvailablePortHelper.getRandomAvailableTCPPort();
+      server.startServer("localhost", port);
     }
     Properties bootProps = new Properties();
     setLdapServerBootProperties(server, locatorPort, mcastPort,

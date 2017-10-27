@@ -133,7 +133,7 @@ class POSIXNativeCalls extends NativeCalls {
     public long rlim_max;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("rlim_cur", "rlim_max");
     }
   }

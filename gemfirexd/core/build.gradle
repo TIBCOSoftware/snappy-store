@@ -16,20 +16,20 @@
  */
 
 plugins {
-  id 'ca.coglinc.javacc' version '2.3.1'
-  id 'com.github.johnrengelman.shadow' version '1.2.3'
+  id 'ca.coglinc.javacc' version '2.4.0'
+  id 'com.github.johnrengelman.shadow' version '2.0.1'
 }
 
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
   compile project(subprojectBase + 'snappydata-store-shared')
   compile project(subprojectBase + 'snappydata-store-client')
-  provided project(subprojectBase + 'snappydata-store-prebuild')
+  compileOnly project(subprojectBase + 'snappydata-store-prebuild')
 
-  provided files("${System.getProperty('java.home')}/../lib/tools.jar")
-  provided 'xalan:xalan:2.7.2'
-  provided 'xalan:serializer:2.7.2'
-  provided "com.pivotal:pxf-api:${pxfVersion}"
+  compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
+  compileOnly 'xalan:xalan:2.7.2'
+  compileOnly 'xalan:serializer:2.7.2'
+  compileOnly "com.pivotal:pxf-api:${pxfVersion}"
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
   compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
@@ -37,18 +37,17 @@ dependencies {
   compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
   compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
-  provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
-  provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "com.google.code.findbugs:jsr305:${jsr305Version}"
+  compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
+  compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
 }
 
 // move javacc output directory to a place where IDEA can easily register

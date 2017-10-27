@@ -16,7 +16,7 @@
  */
 
 dependencies {
-  provided project(subprojectBase + 'gemfire-core')
+  compileOnly project(subprojectBase + 'gemfire-core')
 
   compile "org.osgi:org.osgi.core:${osgiVersion}"
 }

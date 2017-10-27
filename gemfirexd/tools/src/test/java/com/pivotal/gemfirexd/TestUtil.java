@@ -57,6 +57,7 @@ import com.gemstone.gemfire.internal.cache.xmlcache.CacheCreation;
 import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlGenerator;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionCreation;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.jna.OSType;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
@@ -76,6 +77,7 @@ import com.pivotal.gemfirexd.internal.engine.access.index.MemIndex;
 import com.pivotal.gemfirexd.internal.engine.access.index.MemIndexScanController;
 import com.pivotal.gemfirexd.internal.engine.access.index.SortedMap2IndexScanController;
 import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
+import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.SelectQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -225,6 +227,18 @@ public class TestUtil extends TestCase {
       System.setProperty("DistributionManager.VERBOSE",
           Boolean.toString(oldDMVerbose));
       System.clearProperty("gemfire.log-level");
+      logLevel = "config";
+    }
+    try {
+      if (Misc.getGemFireCacheNoThrow() != null) {
+        // convert logLevel to slf4j name
+        String level = ClientSharedUtils.convertToLog4LogLevel(
+            java.util.logging.Level.parse(logLevel.toUpperCase(Locale.ENGLISH)));
+        GfxdSystemProcedureMessage.SysProcMethod.setLogLevel.processMessage(
+            new Object[]{"", level}, Misc.getMyId());
+      }
+    } catch (Exception e) {
+      getLogger().warn("Failed to set log-level " + logLevel, e);
     }
   }
 

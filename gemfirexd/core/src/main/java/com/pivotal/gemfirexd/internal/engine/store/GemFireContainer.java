@@ -529,9 +529,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public static String getRowBufferTableName(String columnBatchTableName) {
     String tableName = columnBatchTableName.replace(
-        StoreCallbacks.SHADOW_SCHEMA_NAME_WITH_SEPARATOR, "");
+        SystemProperties.SHADOW_SCHEMA_NAME_WITH_SEPARATOR, "");
     return tableName.substring(0, tableName.length() -
-        StoreCallbacks.SHADOW_TABLE_SUFFIX.length());
+        SystemProperties.SHADOW_TABLE_SUFFIX.length());
   }
 
   public boolean cachesGlobalIndex() {
@@ -5100,7 +5100,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     // object store, but still added the check for possible future use
     // (e.g. local index table on column store)
     return isObjectStore() &&
-        this.tableName.endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+        this.tableName.endsWith(SystemProperties.SHADOW_TABLE_SUFFIX);
   }
 
   public final boolean isOffHeap() {

@@ -22,17 +22,12 @@ import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public interface StoreCallbacks {
 
-  String SHADOW_SCHEMA_NAME = "SNAPPYSYS_INTERNAL";
-
-  String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
-
-  String SHADOW_SCHEMA_SEPARATOR = "____";
-
-  String SHADOW_SCHEMA_NAME_WITH_SEPARATOR = SHADOW_SCHEMA_NAME + SHADOW_SCHEMA_SEPARATOR;
+  String SHADOW_TABLE_SUFFIX = SystemProperties.SHADOW_TABLE_SUFFIX;
 
   void registerTypes();
 

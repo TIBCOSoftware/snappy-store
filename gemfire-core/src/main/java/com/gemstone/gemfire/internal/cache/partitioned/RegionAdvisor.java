@@ -70,7 +70,7 @@ import com.gemstone.gemfire.internal.concurrent.Q;
 import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashSet;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import io.snappydata.collection.ObjectLongHashMap;
 
 public final class RegionAdvisor extends CacheDistributionAdvisor {
 
@@ -1555,13 +1555,13 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
    */
   public ArrayList<DataStoreBuckets> adviseFilteredDataStores(final Set<InternalDistributedMember> memberFilter)
   {
-    final Object2IntOpenHashMap<InternalDistributedMember> memberToPrimaryCount =
-        new Object2IntOpenHashMap<>();
+    final ObjectLongHashMap<InternalDistributedMember> memberToPrimaryCount =
+        ObjectLongHashMap.withExpectedSize(16);
     for (ProxyBucketRegion pbr : this.buckets) {
       // quick dirty check
       InternalDistributedMember p=pbr.getBucketAdvisor().basicGetPrimaryMember(); 
       if (p!=null) {
-        memberToPrimaryCount.addTo(p, 1);
+        memberToPrimaryCount.put(p, memberToPrimaryCount.getLong(p) + 1);
       }
     }
     
@@ -1571,7 +1571,7 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
         if (profile instanceof PartitionProfile) {
           PartitionProfile p = (PartitionProfile)profile;
           if(memberFilter.contains(p.getDistributedMember())) {
-            int primaryCount = memberToPrimaryCount.getInt(p.getDistributedMember());
+            int primaryCount = (int)memberToPrimaryCount.getLong(p.getDistributedMember());
             ds.add(new DataStoreBuckets(p.getDistributedMember(), p.numBuckets, primaryCount, p.localMaxMemory));
           }
         }

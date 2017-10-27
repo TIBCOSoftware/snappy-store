@@ -40,54 +40,80 @@ import com.gemstone.gemfire.cache.EvictionAction;
 import com.gemstone.gemfire.cache.EvictionAlgorithm;
 import com.gemstone.gemfire.cache.EvictionAttributes;
 import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdEvictionCriteria;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDumpLocalResultMessage;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.RegionKey;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLVarchar;
-import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
+import com.pivotal.gemfirexd.jdbc.JUnit4TestBase;
+import org.apache.derbyTesting.junit.CleanDatabaseTestSetup;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import static com.pivotal.gemfirexd.TestUtil.jdbcConn;
+import static org.junit.Assert.*;
 
 /**
  * Unit tests for GemFireXD EVICTION BY CRITERIA.
  */
-public class EvictionByCriteriaTest extends JdbcTestBase {
+@SuppressWarnings("unchecked")
+public class EvictionByCriteriaTest extends JUnit4TestBase {
 
-  static final String HDFS_DIR = "./evictHDFS";
+  private static final String HDFS_DIR = "./evictHDFS";
 
-  public EvictionByCriteriaTest(String name) {
-    super(name);
+  protected static Class<?> thisClass = EvictionByCriteriaTest.class;
+
+  @BeforeClass
+  public static void createHDFSStore() throws Exception {
+    TestUtil.shutDown();
+    TestUtil.setCurrentTestClass(thisClass);
+    TestUtil.currentTest = "all";
+    TestUtil.setupConnection();
+
+    Connection conn = jdbcConn;
+    Statement stmt = conn.createStatement();
+    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
+        + HDFS_DIR + "' QUEUEPERSISTENT true");
   }
-    
-  @Override
-  protected void tearDown() throws Exception {    
-    super.tearDown();
+
+  @AfterClass
+  public static void classTearDown() throws Exception {
+    JUnit4TestBase.classTearDown();
     delete(new File(HDFS_DIR));
   }
 
-  @Override
-  protected String reduceLogging() {
-    return "config";
+  @After
+  public void dropTables() throws SQLException {
+    CleanDatabaseTestSetup.cleanDatabase(jdbcConn, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
+    cache.getCachePerfStats().clearEvictionByCriteriaStatsForTest();
   }
 
-  private void delete(File file) {
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  private static void delete(File file) {
     if (!file.exists()) {
       return;
     }
     if (file.isDirectory()) {
-      if (file.list().length == 0) {
+      String[] contents = file.list();
+      if (contents == null || contents.length == 0) {
         file.delete();
       } else {
         File[] files = file.listFiles();
-        for (File f : files) {
-          delete(f);
+        if (files != null) {
+          for (File f : files) {
+            delete(f);
+          }
         }
         file.delete();
       }
@@ -96,14 +122,10 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     }
   }
 
+  @Test
   public void testDDLSupport() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
-
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
 
     // eviction of data more than 10 seconds old
     final String evictClause = "{fn TIMESTAMPDIFF(SQL_TSI_SECOND, "
@@ -111,7 +133,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     stmt.execute("create table e.evictTable("
         + "id varchar(20) primary key, qty int, ts timestamp"
         + ")  " +  getOffHeapSuffix() + " partition by column(id) "
-        + "persistent hdfsstore (hdfsdata) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria (" + evictClause
         + ") eviction frequency 8 seconds");
 
@@ -155,7 +177,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
       assertFalse(criteria.doEvict(event));
     }
 
-    // sleep for 14 secs
+    // sleep for 12 secs
     Thread.sleep(12000);
     // more inserts
     for (int i = 11; i <= 20; i++) {
@@ -207,25 +229,20 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     }
   }
 
+  @Test
   public void testEvictionService_AlterFrequency() throws Exception {
-    reduceLogLevelForTest("config");
-
-    setupConnection();
+    setLogLevelForTest("config");
 
     Connection conn = jdbcConn;
-    
     Statement stmt = conn.createStatement();
-
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
 
     final String evictClause = "qty > 500";
     stmt.execute("create table e.evictTable("
         + "id varchar(20) primary key, qty int, ts timestamp"
         + ")  " + getOffHeapSuffix() + "  partition by column(id) "
-        + "persistent hdfsstore (hdfsdata) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria (" + evictClause
-        + ") eviction frequency 15 seconds");
+        + ") eviction frequency 8 seconds");
 
     LocalRegion lr = (LocalRegion)Misc.getRegion("/E/EVICTTABLE", true, false);
     CustomEvictionAttributes evictionAttrs = lr.getAttributes()
@@ -239,7 +256,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     assertEquals(EvictionAction.OVERFLOW_TO_DISK, defEvictAttrs.getAction());
     assertNotNull(evictionAttrs);
     assertEquals(0, evictionAttrs.getEvictorStartTime());
-    assertEquals(15000, evictionAttrs.getEvictorInterval());
+    assertEquals(8000, evictionAttrs.getEvictorInterval());
     GfxdEvictionCriteria criteria = (GfxdEvictionCriteria)evictionAttrs
         .getCriteria();
     assertEquals(evictClause, criteria.getPredicateString());
@@ -265,7 +282,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     }
     
     //allow eviction to happen
-    Thread.sleep(32000);
+    Thread.sleep(17000);
     assertTrue(stmt.execute("select * from e.evictTable"));
     rs = stmt.getResultSet();
 
@@ -312,8 +329,8 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
         .getCriteria();
     assertEquals(evictClause, criteria.getPredicateString());
     
-    //Sleep to allow eviction to happen by previous frequency of 15 sec. So 100(101-200) entries will be evicted
-    Thread.sleep(30000);
+    //Sleep to allow eviction to happen by previous frequency of 8 sec. So 100(101-200) entries will be evicted
+    Thread.sleep(17000);
     
     //another 100 entries added
     for (int i = 201; i <= 300; i++) {
@@ -333,18 +350,13 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     }
     assertEquals(50, ids.size());
   }
-  
-  public void testEvictionService() throws Exception {
-    reduceLogLevelForTest("config");
 
-    setupConnection();
+  @Test
+  public void testEvictionService() throws Exception {
+    setLogLevelForTest("config");
 
     Connection conn = jdbcConn;
-    
     Statement stmt = conn.createStatement();
-
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
 
     // eviction of data more than 10 seconds old
     final String evictClause = "{fn TIMESTAMPDIFF(SQL_TSI_SECOND, "
@@ -352,7 +364,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     stmt.execute("create table e.evictTable("
         + "id varchar(20) primary key, qty int, ts timestamp"
         + ")  " + getOffHeapSuffix() + "  partition by column(id) "
-        + "persistent hdfsstore (hdfsdata) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria (" + evictClause
         + ") eviction frequency 5 seconds");
 
@@ -395,7 +407,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     Set ids = new HashSet();
     while (rs.next()) {
       int id = rs.getInt("id");
-      getLogger().info("The id is " + id);
+      logger.info("The id is " + id);
       ids.add(id);
     }
     assertEquals(10, ids.size());
@@ -410,16 +422,16 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
       assertEquals(30, lr.getCachePerfStats().getEvaluations());
     }
   }
-  
-  public void testBug49900() throws Exception {
-    setupConnection();
 
+  @Test
+  public void testBug49900() throws Exception {
     Connection conn = jdbcConn;
     Statement st = conn.createStatement();
 
     try {
       // EVICTION BY CRITERIA for replicated persistent non-HDFS table
-      st.execute("create table t1 (col1 int)  " + getOffHeapSuffix() + "  replicate persistent eviction by criteria (col1 > 0) evict incoming");
+      st.execute("create table t1 (col1 int)  " + getOffHeapSuffix()
+          + " replicate persistent eviction by criteria (col1 > 0) evict incoming");
       fail("EVICTION BY CRITERIA is not supported for non-HDFS tables");
     }
     catch (SQLException e) {
@@ -431,7 +443,8 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
 
     try {
       // EVICTION BY CRITERIA for replicated non-HDFS table
-      st.execute("create table t2 (col1 int)  " + getOffHeapSuffix() + "  replicate eviction by criteria (col1 > 0) evict incoming");
+      st.execute("create table t2 (col1 int)  " + getOffHeapSuffix()
+          + " replicate eviction by criteria (col1 > 0) evict incoming");
       fail("EVICTION BY CRITERIA is not supported for non-HDFS tables");
     }
     catch (SQLException e) {
@@ -443,7 +456,9 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
 
     try {
       // EVICTION BY CRITERIA for partitioned persistent non-HDFS table
-      st.execute("create table t3 (col1 int)  " + getOffHeapSuffix() + "  partition by column (col1) persistent eviction by criteria (col1 > 0) evict incoming");
+      st.execute("create table t3 (col1 int)  " + getOffHeapSuffix()
+          + " partition by column (col1) persistent "
+          + "eviction by criteria (col1 > 0) evict incoming");
       fail("EVICTION BY CRITERIA is not supported for non-HDFS tables");
     }
     catch (SQLException e) {
@@ -455,7 +470,8 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
 
     try {
       // EVICTION BY CRITERIA for partitioned non-HDFS table
-      st.execute("create table t4 (col1 int)  " + getOffHeapSuffix() + "   partition by column (col1) eviction by criteria (col1 > 0) evict incoming");
+      st.execute("create table t4 (col1 int)  " + getOffHeapSuffix()
+          + " partition by column (col1) eviction by criteria (col1 > 0) evict incoming");
       fail("EVICTION BY CRITERIA is not supported for non-HDFS tables");
     }
     catch (SQLException e) {
@@ -467,7 +483,9 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
 
     try {
       // EVICTION BY CRITERIA for partitioned non-HDFS table
-      st.execute("create table t5 (col1 varchar(20) primary key, col2 int)  " + getOffHeapSuffix() + "  partition by column (col1) eviction by lrucount 1 evictaction destroy hdfsstore (hstore)");
+      st.execute("create table t5 (col1 varchar(20) primary key, col2 int)  "
+          + getOffHeapSuffix() + " partition by column (col1) "
+          + "eviction by lrucount 1 evictaction destroy hdfsstore (hstore)");
       fail("EVICTION action is not supported for HDFS tables");
     }
     catch (SQLException e) {
@@ -476,22 +494,16 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
         throw e;
       }
     }
-    
   }
+
   /**
    * Check by querying the table if everything is right.
    * @throws Exception
    */
+  @Test
   public void testEvictionServiceIndex() throws Exception {
-
-    setupConnection();
-
     Connection conn = jdbcConn;
-    
     Statement stmt = conn.createStatement();
-
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
 
     // eviction of data more than 10 seconds old
     final String evictClause = "{fn TIMESTAMPDIFF(SQL_TSI_SECOND, "
@@ -499,7 +511,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     stmt.execute("create table e.evictTable("
         + "id varchar(20) primary key, qty int, ts timestamp"
         + ")  " + getOffHeapSuffix() + "  partition by column(id) "
-        + "persistent hdfsstore (hdfsdata) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria (" + evictClause
         + ") eviction frequency 5 seconds");
 
@@ -586,25 +598,21 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     // TODO: This validation may change
     //assertEquals(30, lr.getCachePerfStats().getEvaluations());
   }
-  
-  public void testEvictIncomingDDLSupport() throws Exception {
-    setupConnection();
 
+  @Test
+  public void testEvictIncomingDDLSupport() throws Exception {
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
-
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
 
     // eviction of data more than 10 seconds old
     final String evictClause = "qty > 100";
     stmt.execute("create table e.evictTable("
         + "id varchar(20) primary key, qty int, ts timestamp"
-        + ")  " + getOffHeapSuffix() + "  partition by column(id) " + "persistent hdfsstore (hdfsdata) "
+        + ")  " + getOffHeapSuffix() + "  partition by column(id) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria (" + evictClause + ") EVICT INCOMING ");
 
     LocalRegion lr = (LocalRegion)Misc.getRegion("/E/EVICTTABLE", true, false);
-    GemFireContainer container = (GemFireContainer)lr.getUserAttribute();
     CustomEvictionAttributes evictionAttrs = lr.getAttributes()
         .getCustomEvictionAttributes();
     EvictionAttributes defEvictAttrs = lr.getAttributes()
@@ -632,17 +640,15 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     assertEquals(0, stats.getEvictionsInProgress());
     assertEquals(20, stats.getEvaluations());
   }
-  
-  public void testEvictIncomingQueryHDFS() throws Exception {
-    setupConnection();
 
+  @Test
+  public void testEvictIncomingQueryHDFS() throws Exception {
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table e.evictTable( id int primary key, qty int, abc int )  " + getOffHeapSuffix() + "   partition by column(id) persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table e.evictTable( id int primary key, qty int, abc int )  "
+        + getOffHeapSuffix() + " partition by column(id) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( qty > 100 ) EVICT INCOMING ");
 
     stmt.execute("create index idx on e.evictTable (qty, abc)");
@@ -710,20 +716,15 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     assertEquals(0, ids.size());
     
   }
-  
-  /**
-   * Uncomment this test once defect #49965 is fixed.
-   */
-  public void testEvictIncomingWithPartitionKey() throws Exception {
-    setupConnection();
 
+  @Test
+  public void testEvictIncomingWithPartitionKey() throws Exception {
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table e.evictTable( id int primary key, partkey int not null )  " + getOffHeapSuffix() + "  partition by column(partkey) persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table e.evictTable( id int primary key, partkey int not null) "
+        + getOffHeapSuffix() + " partition by column(partkey) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( id > 10 ) EVICT INCOMING ");
 
     // some inserts
@@ -740,12 +741,11 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     
     stmt.executeUpdate("insert into e.evictTable values (30, 201 )");
     stmt.executeUpdate("delete from e.evictTable where id=30");
-    
-    
-    //Bounce the system.
-    shutDown();
-    
-  //Delete the krf to force recovery from the crf
+
+    // Bounce the system.
+    TestUtil.shutDown();
+
+    // Delete the krf to force recovery from the crf
     String currDir = System.getProperty("user.dir");
     File cdir = new File(currDir);
     String[] files = cdir.list();
@@ -757,20 +757,20 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
         }
       }
     }
-    
-    setupConnection();
-  }
-  
-  public void testEvictIncomingWithUniqueIndex() throws Exception {
-    setupConnection();
 
+    // restart
+    TestUtil.setupConnection();
+  }
+
+  @Test
+  public void testEvictIncomingWithUniqueIndex() throws Exception {
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table e.evictTable( id int primary key, partkey int not null, qty int, constraint uq unique (partkey, qty) )  " + getOffHeapSuffix() + "  partition by column(partkey) persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table e.evictTable( id int primary key, "
+        + "partkey int not null, qty int, constraint uq unique (partkey, qty)) "
+        + getOffHeapSuffix() + "  partition by column(partkey) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( qty > 100 ) EVICT INCOMING ");
 
     // some inserts
@@ -788,19 +788,20 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     }
   }
 
+  @Test
   public void testEvictIncomingWithUniqueIndexDelete() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table e.evictTable( id int primary key, partkey int not null, qty int, constraint uq unique (partkey, qty) )  " + getOffHeapSuffix() + "  partition by column(partkey) persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table e.evictTable( id int primary key, "
+        + "partkey int not null, qty int, constraint uq unique (partkey, qty)) "
+        + getOffHeapSuffix() + " partition by column(partkey) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( qty > 100 ) EVICT INCOMING ");
 
-    stmt.execute("create table e.simpleTable( id int primary key, partkey int not null, qty int, constraint uq2 unique (partkey, qty) )  " + getOffHeapSuffix() + "  partition by column(partkey) " );
+    stmt.execute("create table e.simpleTable( id int primary key, "
+        + "partkey int not null, qty int, constraint uq2 unique (partkey, qty)) "
+        + getOffHeapSuffix() + " partition by column(partkey)");
 
     // some inserts
     for (int i = 20; i <= 20; i++) {
@@ -835,6 +836,7 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     stmt.executeUpdate("insert into e.simpleTable values (21, 200, 2000)");
     stmt.executeUpdate("insert into e.evictTable values (21, 200, 2000)");
   }
+
   /**
    * Table with unique constraint
    * Insert one row
@@ -843,19 +845,20 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * try inserting a row with same unique value again
    * @throws Exception
    */
+  @Test
   public void testEvictIncomingWithUniqueIndexUpdateDelete() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table e.evictTable( id int primary key, partkey int not null, qty int, constraint uq unique (partkey, qty) )  " + getOffHeapSuffix() + "  partition by column(partkey) persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table e.evictTable( id int primary key, "
+        + "partkey int not null, qty int, constraint uq unique (partkey, qty)) "
+        + getOffHeapSuffix() + " partition by column(partkey) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( qty > 100 ) EVICT INCOMING ");
 
-    stmt.execute("create table e.simpleTable( id int primary key, partkey int not null, qty int, constraint uq2 unique (partkey, qty) )  " + getOffHeapSuffix() + "  partition by column(partkey) " );
+    stmt.execute("create table e.simpleTable( id int primary key, "
+        + "partkey int not null, qty int, constraint uq2 unique (partkey, qty)) "
+        + getOffHeapSuffix() + " partition by column(partkey)");
 
     int i = 20;
     stmt.executeUpdate("insert into e.evictTable values (" + i + ", " + (i * 10) +", " + (i * 100) + ")");
@@ -885,16 +888,17 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * insert the row with same unique keys again. it should succeed
    * @throws Exception
    */
+  @Test
   public void testEvictIncomingWithUniqueIndexUpdateDelete2() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table trade.portfolio (cid int not null, sid int not null, qty int not null, availQty int not null, subTotal decimal(30,20), tid int, constraint portf_pk primary key (cid, sid), constraint qty_ck check (qty>=0), constraint avail_ch check (availQty>=0 and availQty<=qty))  " + getOffHeapSuffix() + "  persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.portfolio (cid int not null, "
+        + "sid int not null, qty int not null, availQty int not null, "
+        + "subTotal decimal(30,20), tid int, constraint portf_pk "
+        + "primary key (cid, sid), constraint qty_ck check (qty>=0), "
+        + "constraint avail_ch check (availQty>=0 and availQty<=qty)) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "EVICTION BY CRITERIA ( qty > 500  ) EVICT INCOMING ");
 
     stmt.executeUpdate("insert into trade.portfolio  values(3, 120, 1592, 1592, 14264.32000000000000000000 ,18)");
@@ -911,21 +915,20 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     assertFalse(rs.next());
     stmt.executeUpdate("insert into trade.portfolio  values(3, 120, 1374, 1374, 12311.04000000000000000000, 8)");
   }
-  
-  
-  public void testEvictIncomingWithUniqueIndexUpdate() throws Exception {
-    setupConnection();
 
+  @Test
+  public void testEvictIncomingWithUniqueIndexUpdate() throws Exception {
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table e.evictTable( id int primary key, partkey int not null, qty int, constraint uq unique (partkey, qty) )  " + getOffHeapSuffix() + "  persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table e.evictTable( id int primary key, "
+        + "partkey int not null, qty int, constraint uq unique (partkey, qty)) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( qty > 100 ) EVICT INCOMING ");
 
-    stmt.execute("create table e.simpleTable( id int primary key, partkey int not null, qty int, constraint uq2 unique (partkey, qty) )  " + getOffHeapSuffix() + "  " );
+    stmt.execute("create table e.simpleTable( id int primary key, "
+        + "partkey int not null, qty int, constraint uq2 unique (partkey, qty)) "
+        + getOffHeapSuffix());
 
     // some inserts
     for (int i = 20; i <= 20; i++) {
@@ -952,16 +955,17 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * 3. Validate there is no data in operational
    * @throws Exception
    */
+  @Test
   public void testEvictIncomingWithUniqueIndexUpdate2() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table trade.portfolio (cid int not null, sid int not null, qty int not null, availQty int not null, subTotal decimal(30,20), tid int, constraint portf_pk primary key (cid, sid), constraint qty_ck check (qty>=0), constraint avail_ch check (availQty>=0 and availQty<=qty))  " + getOffHeapSuffix() + "  persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.portfolio (cid int not null, "
+        + "sid int not null, qty int not null, availQty int not null, "
+        + "subTotal decimal(30,20), tid int, constraint portf_pk "
+        + "primary key (cid, sid), constraint qty_ck check (qty>=0), "
+        + "constraint avail_ch check (availQty>=0 and availQty<=qty)) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "EVICTION BY CRITERIA ( qty > 500  ) EVICT INCOMING ");
 
     // some inserts
@@ -1031,31 +1035,34 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * For cheetah, foreign key constraint won't be supported with custom eviction to HDFS.
    * Defect # 49367/49452.
    */
+  @Test
   public void testEvictIncomingWithForeignKey() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table trade.customers (cid int not null, cust_name int, primary key (cid))  " + getOffHeapSuffix() + "  " 
-    	+ "persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.customers (cid int not null, "
+        + "cust_name int, primary key (cid))  "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( cid > 5 ) EVICT INCOMING ");
     
     String expectedMessage = "Foreign key constraint is not supported with custom eviction criteria for HDFS tables.";
     try {
-      stmt.execute("create table trade.networth (netid int not null, cid int not null, cash decimal (30, 20), constraint netw_pk primary key (netid), constraint cust_newt_fk foreign key (cid) references trade.customers (cid) on delete restrict)  " + getOffHeapSuffix() + "  "
-          + "persistent hdfsstore (hdfsdata) "
+      stmt.execute("create table trade.networth (netid int not null, "
+          + "cid int not null, cash decimal (30, 20), constraint netw_pk "
+          + "primary key (netid), constraint cust_newt_fk foreign key (cid) "
+          + "references trade.customers (cid) on delete restrict) "
+          + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
           + "eviction by criteria ( cash > 1000 ) EVICT INCOMING ");
       fail("Expected SQLFeatureNotSupportedException as FK is not supported with custom eviction to HDFS.");
     } catch (SQLFeatureNotSupportedException e) {
       assertTrue(e.getMessage().equals(expectedMessage));
     } 
     
-    stmt.execute("create table trade.networth (netid int not null, cid int not null, cash decimal (30, 20), constraint netw_pk primary key (netid), constraint cust_newt_fk foreign key (cid) references trade.customers (cid) on delete restrict)  " + getOffHeapSuffix() + "  "
-        + "persistent hdfsstore (hdfsdata) ");
+    stmt.execute("create table trade.networth (netid int not null, "
+        + "cid int not null, cash decimal (30, 20), constraint netw_pk "
+        + "primary key (netid), constraint cust_newt_fk foreign key (cid) "
+        + "references trade.customers (cid) on delete restrict) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5");
   }
   
   
@@ -1065,17 +1072,14 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * Update the second non-operational such that it remains non-operational
    * @throws Exception
    */
+  @Test
   public void testEvictIncomingWithLocalIndexes() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table trade.customers (cid int not null, cust_name int, addr int, primary key (cid))  " + getOffHeapSuffix() + "  " 
-        + "persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.customers (cid int not null, "
+        + "cust_name int, addr int, primary key (cid)) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( cust_name > 5 ) EVICT INCOMING ");
     
     // index on cust_name and addr
@@ -1217,17 +1221,14 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * 
    * @throws Exception
    */
+  @Test
   public void testEvictIncomingWithLocalIndexesMultipleOperations() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table trade.customers (cid int not null, cust_name int, addr int, primary key (cid))  " + getOffHeapSuffix() + "  " 
-        + "persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.customers (cid int not null, "
+        + "cust_name int, addr int, primary key (cid)) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( cust_name > 5 ) EVICT INCOMING ");
     
     // index on cust_name and addr
@@ -1322,18 +1323,18 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     LocalRegion lr = (LocalRegion)Misc.getRegion("/TRADE/CUSTOMERS", true, false);
     assertEquals(0, lr.size());
   }
-  
-  public void testEvictIncomingWithLocalIndexesFailedOperation() throws Exception {
-    setupConnection();
 
+  @Test
+  public void testEvictIncomingWithLocalIndexesFailedOperation() throws Exception {
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table trade.portfolio (cid int not null, sid int not null, qty int not null, availQty int not null, constraint portf_pk primary key (cid, sid), constraint qty_ck check (qty>=0), constraint avail_ch check (availQty>=0 and availQty<=qty))  " + getOffHeapSuffix() + "  " 
-        + "persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.portfolio (cid int not null, "
+        + "sid int not null, qty int not null, availQty int not null, "
+        + "constraint portf_pk primary key (cid, sid), "
+        + "constraint qty_ck check (qty>=0), "
+        + "constraint avail_ch check (availQty>=0 and availQty<=qty)) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( qty > 100 ) EVICT INCOMING ");
     
     // some inserts
@@ -1363,14 +1364,14 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     LocalRegion lr = (LocalRegion)Misc.getRegion("/TRADE/PORTFOLIO", true, false);
     //assertEquals(0, lr.size());
   }
-  
-  
-  public void testEvictIncomingWithTrigger() throws Exception {
-    setupConnection();
 
+  @Test
+  public void testEvictIncomingWithTrigger() throws Exception {
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
-    stmt.execute("create table e.evictTable_history( id int primary key, qty int, abc int )  " + getOffHeapSuffix() + "  ");
+
+    stmt.execute("create table e.evictTable_history( id int primary key, "
+        + "qty int, abc int )  " + getOffHeapSuffix());
     
     String insertStmt =  "INSERT INTO e.evictTable_history  VALUES (  NEWROW.id ,  NEWROW.qty , NEWROW.abc )";
     String delStmt =  "DELETE FROM e.evictTable_history  WHERE id=OLDROW.id";
@@ -1380,10 +1381,9 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
     String updateTriggerStmt =  "CREATE TRIGGER  e.evictTable_DELETEFORUPDATE AFTER UPDATE ON e.evictTable REFERENCING NEW AS NEWROW OLD AS OLDROW FOR EACH ROW  " + delStmt;
     String updateTriggerStmt1 = "CREATE TRIGGER  e.evictTable_INSERTFORUPDATE AFTER UPDATE ON e.evictTable REFERENCING NEW AS NEWROW OLD AS OLDROW FOR EACH ROW " + insertStmt;
     
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table e.evictTable( id int primary key, qty int, abc int )  " + getOffHeapSuffix() + "  partition by column(id) persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table e.evictTable( id int primary key, qty int, abc int ) "
+        + getOffHeapSuffix() + " partition by column(id) "
+        + "persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( qty > 100 ) EVICT INCOMING ");
     
     stmt.execute(insertTriggerStmt);
@@ -1426,21 +1426,22 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * Insert on child table should not throw SQLIntegrityException though parent row is
    * evicted.
    */
+  @Test
   public void testEvictIncomingWithForeignKey2() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-
-    stmt.execute("create table trade.customers (cid int not null, cust_name int, primary key (cid))  " + getOffHeapSuffix() + "  " 
-        + "persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.customers (cid int not null, "
+        + "cust_name int, primary key (cid))  "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( cid > 5 ) EVICT INCOMING ");
     
-    stmt.execute("create table trade.networth (netid int not null, cid int not null, cash decimal (30, 20), constraint netw_pk primary key (netid), constraint cust_newt_fk foreign key (cid) references trade.customers (cid) on delete restrict)  " + getOffHeapSuffix() + "  "
-        + " persistent hdfsstore (hdfsdata) ");
+    stmt.execute("create table trade.networth (netid int not null, "
+        + "cid int not null, cash decimal (30, 20), "
+        + "constraint netw_pk primary key (netid), "
+        + "constraint cust_newt_fk foreign key (cid) references "
+        + "trade.customers (cid) on delete restrict) "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5");
 
     // some inserts
     stmt.executeUpdate("insert into trade.customers values (" + 12 + ", " + (12 * 100) + ")");
@@ -1470,23 +1471,21 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
   }
   
   /**
-   * Eviction already defined on HDFS table. Alter the table to add a foreign key constraint.
+   * Eviction already defined on HDFS table.
+   * Alter the table to add a foreign key constraint.
    */
+  @Test
   public void testEvictIncomingWithAlterTableAddForeignKeyConstraint() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
 
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
-    
-    stmt.execute("create table trade.customers (cid int not null, cust_name int, primary key (cid))  " + getOffHeapSuffix() + "  " 
-        + "persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.customers (cid int not null, "
+        + "cust_name int, primary key (cid))  "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( cid > 5 ) EVICT INCOMING ");
     
     stmt.execute("create table trade.networth (netid int not null, cid int not null, cash decimal (30, 20), constraint netw_pk primary key (netid))  " + getOffHeapSuffix() + "  "
-        + " persistent hdfsstore (hdfsdata)"
+        + " persistent hdfsstore (hdfsdata) buckets 5"
         + " eviction by criteria ( cash > 1000 ) EVICT INCOMING ");
     
     try {
@@ -1501,42 +1500,27 @@ public class EvictionByCriteriaTest extends JdbcTestBase {
    * No eviction criteria defined on HDFS table. 
    * Alter the table to add a foreign key constraint.
    */
+  @Test
   public void testEvictIncomingWithAlterTableAddForeignKeyConstraint_2() throws Exception {
-    setupConnection();
-
     Connection conn = jdbcConn;
     Statement stmt = conn.createStatement();
-
-    stmt.execute("create hdfsstore hdfsdata namenode 'localhost' homedir '"
-        + HDFS_DIR + "' QUEUEPERSISTENT true");
     
-    stmt.execute("create table trade.customers (cid int not null, cust_name int, primary key (cid))  " + getOffHeapSuffix() + "  " 
-        + "persistent hdfsstore (hdfsdata) "
+    stmt.execute("create table trade.customers (cid int not null, "
+        + "cust_name int, primary key (cid))  "
+        + getOffHeapSuffix() + " persistent hdfsstore (hdfsdata) buckets 5 "
         + "eviction by criteria ( cid > 5 ) EVICT INCOMING ");
     
-    stmt.execute("create table trade.networth (netid int not null, cid int not null, cash decimal (30, 20), constraint netw_pk primary key (netid))  " + getOffHeapSuffix() + "  "
-        + " persistent hdfsstore (hdfsdata)");
+    stmt.execute("create table trade.networth (netid int not null, "
+        + "cid int not null, cash decimal (30, 20), constraint netw_pk "
+        + "primary key (netid))  " + getOffHeapSuffix()
+        + " persistent hdfsstore (hdfsdata) buckets 5");
     
     stmt.execute("alter table trade.networth add constraint " +
         "cust_newt_fk foreign key (cid) references trade.customers (cid)");
 
   }
-  
-  public static void dumpAll() {
-    try {
-      GfxdDumpLocalResultMessage msg = new GfxdDumpLocalResultMessage();
-      InternalDistributedSystem sys = InternalDistributedSystem
-          .getConnectedInstance();
-      msg.send(sys, null);
-      msg.executeLocally(sys.getDistributionManager(), false);
-      GfxdDumpLocalResultMessage.sendBucketInfoDumpMsg(null, false);
-    } catch (Throwable t) {
-      throw new RuntimeException(t.getMessage());
-    }
-  }
-  
+
   protected String getOffHeapSuffix() {
     return " ";
   }
-  
 }

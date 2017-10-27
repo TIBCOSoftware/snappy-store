@@ -64,6 +64,7 @@ import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
@@ -75,7 +76,6 @@ import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
-import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
@@ -1351,7 +1351,8 @@ public abstract class Misc {
     return str;
   }
 
-  public static final String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+  public static final String SNAPPY_HIVE_METASTORE =
+      SystemProperties.SNAPPY_HIVE_METASTORE;
 
   public static boolean isSnappyHiveMetaTable(String schemaName) {
     return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);

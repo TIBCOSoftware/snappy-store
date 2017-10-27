@@ -22,6 +22,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheFactory;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.org.jgroups.oswego.concurrent.WriterPreferenceReadWriteLock;
 import com.pivotal.gemfirexd.internal.engine.locks.impl.GfxdReentrantReadWriteLock;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
@@ -47,6 +48,12 @@ public class GfxdLocalLockTest extends JdbcTestBase {
   private static AcquireReleaseLocks currentLock;
 
   private static final AtomicInteger globalId = new AtomicInteger(0);
+
+  @Override
+  protected void setUp() throws Exception {
+    GemFireCacheImpl.setGFXDSystemForTests();
+    super.setUp();
+  }
 
   public void testReadWriteLockWithPerf() throws Exception {
     final int numReaders = 100;

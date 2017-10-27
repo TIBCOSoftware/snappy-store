@@ -19,29 +19,28 @@ package com.pivotal.gemfirexd.internal.hadoop.offheap;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.internal.hadoop.EvictionByCriteriaTest;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
-public class OffHeapEvictionByCriteriaTest  extends EvictionByCriteriaTest{
-  
-  public OffHeapEvictionByCriteriaTest(String name) {
-    super(name);
-  }
- 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
+public class OffHeapEvictionByCriteriaTest extends EvictionByCriteriaTest {
+
+  @BeforeClass
+  public static void createHDFSStore() throws Exception {
+    thisClass = OffHeapEvictionByCriteriaTest.class;
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
+    EvictionByCriteriaTest.createHDFSStore();
   }
-  
-  @Override
-  public void tearDown() throws Exception {
-    super.tearDown();
-    System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"");
+
+  @AfterClass
+  public static void classTearDown() throws Exception {
+    EvictionByCriteriaTest.classTearDown();
+    System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
-  
+
   @Override
   protected String getOffHeapSuffix() {
     return " offheap ";

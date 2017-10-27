@@ -452,6 +452,9 @@ public class BugsDUnit extends DistributedSQLTestBase {
       assertEquals(10000, rs.getInt(1));
       assertFalse(rs.next());
 
+      // drop the explicitly created app user
+      sysSt.execute("call sys.drop_user('app')");
+
       sysConn.close();
       conn.close();
     } catch (Throwable t) {

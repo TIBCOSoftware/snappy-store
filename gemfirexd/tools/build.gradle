@@ -16,8 +16,8 @@
  */
 
 plugins {
-  id 'ca.coglinc.javacc' version '2.3.1'
-  id 'com.github.johnrengelman.shadow' version '1.2.3'
+  id 'ca.coglinc.javacc' version '2.4.0'
+  id 'com.github.johnrengelman.shadow' version '2.0.1'
 }
 
 artifacts {
@@ -25,11 +25,11 @@ artifacts {
 }
 
 dependencies {
-  provided project(subprojectBase + 'snappydata-store-core')
+  compileOnly project(subprojectBase + 'snappydata-store-core')
   compile project(subprojectBase + 'snappydata-store-hibernate')
 
   // ddlutils dependencies
-  compile 'commons-beanutils:commons-beanutils:1.9.2'
+  compile 'commons-beanutils:commons-beanutils:1.9.3'
   compile 'commons-codec:commons-codec:1.10'
   compile 'commons-collections:commons-collections:3.2.2'
   compile 'commons-configuration:commons-configuration:1.10'
@@ -52,35 +52,43 @@ dependencies {
   testCompile project(subprojectBase + 'snappydata-store-client')
   testCompile project(subprojectBase + 'gemfire-junit')
 
-  provided files("${System.getProperty('java.home')}/../lib/tools.jar")
-  provided 'xalan:xalan:2.7.2'
-  provided 'xalan:serializer:2.7.2'
-  provided "com.pivotal:pxf-api:${pxfVersion}"
+  compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
+  compileOnly 'xalan:xalan:2.7.2'
+  compileOnly 'xalan:serializer:2.7.2'
+  compileOnly "com.pivotal:pxf-api:${pxfVersion}"
 
-  provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
-  provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "org.eclipse.jetty:jetty-http:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-io:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-security:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-server:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-util:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-xml:${jettyVersion}"
-  provided "com.google.code.findbugs:jsr305:${jsr305Version}"
+  compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
+  compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-http:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-io:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-security:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-xml:${jettyVersion}"
+  compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
 
+  testCompile "org.apache.hbase:hbase-common:${hbaseVersion}"
+  testCompile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
+  testCompile "org.apache.hbase:hbase-client:${hbaseVersion}"
+  testCompile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  testCompile "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  testCompile "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  testCompile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
+  testCompile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
+  testCompile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
+  testCompile 'org.cloudera.htrace:htrace-core:2.05'
   testCompile "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
   testCompile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
+
+  testCompile "com.pivotal:pxf-api:${pxfVersion}"
   testCompile "org.apache.ant:ant-launcher:${antVersion}"
   testCompile "org.apache.derby:derby:${derbyVersion}"
   testCompile "org.apache.derby:derbynet:${derbyVersion}"
@@ -109,8 +117,7 @@ task deleteGenerated(type: Delete) {
 clean.dependsOn deleteGenerated
 
 sourceSets.main.java.srcDirs = [ 'src/main/java', javaccOut, 'src/ddlutils/java' ]
-sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/testing/java', 'src/dunit/java',
-                                 'src/demo/java', 'src/test-ddlutils/java' ]
+sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/testing/java', 'src/dunit/java', 'src/demo/java' ]
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
   def infoDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/info")

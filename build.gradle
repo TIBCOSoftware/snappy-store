@@ -38,11 +38,10 @@ allprojects {
 
   ext {
     scalaBinaryVersion = '2.11'
-    scalaVersion = scalaBinaryVersion + '.8'
     sparkVersion = '2.1.1'
     springVersion = '3.2.17.RELEASE'
     log4jVersion = '1.2.17'
-    slf4jVersion = '1.7.21'
+    slf4jVersion = '1.7.25'
     junitVersion = '4.12'
     antVersion = '1.9.7'
     pxfVersion = '2.5.1.0'
@@ -50,21 +49,22 @@ allprojects {
     jettyVersion = '9.2.22.v20170606'
     hadoopVersion = '2.7.3'
     protobufVersion = '2.6.1'
-    kryoVersion = '4.0.0'
+    kryoVersion = '4.0.1'
     thriftVersion = '0.9.3'
-    sunJerseyVersion = '1.19.1'
-    hadoopJettyVersion = '6.1.26'
-    jsr305Version = '3.0.1'
+    jerseyVersion = '2.26'
+    jsr305Version = '3.0.2'
     servletAPIVersion = '3.1.0'
     derbyVersion = '10.12.1.1'
-    hbaseVersion = '0.98.17-hadoop2'
+    // hbaseVersion = '0.98.17-hadoop2'
+    hbaseVersion = '0.98.24-hadoop2'
+    hadoopJettyVersion = '6.1.26'
+    sunJerseyVersion = '1.19.4'
     guavaVersion = '14.0.1'
-    nettyAllVersion = '4.0.42.Final'
-    jlineVersion = '2.14.2'
-    fastutilVersion = '8.1.0'
-    //hbaseVersion = '0.94.4-gemfire-r45047'
-    //hadoopVersion = '2.2.0-gphd-3.1.0.0'
-    //hadoopVersion = '2.4.1-gphd-3.2.0.0-54'
+    nettyAllVersion = '4.0.51.Final'
+    jlineVersion = '2.14.5'
+    jackson1Version = '1.9.13'
+    kolobokeVersion = '1.0.0'
+    kolobokeCompileVersion = '0.5.1'
 
     // product and release properties
     PRODUCT_NAME = 'SnappyData RowStore'
@@ -232,132 +232,36 @@ def getStackTrace(def t) {
   return sw.toString()
 }
 
-task cleanTestOutput << {
+def now() {
+  return new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
+}
+
+task cleanTestOutput { doLast {
   def testDir = "${testResultsBase}/junit"
   delete testDir
   file(testDir).mkdirs()
-}
-task cleanDUnitOutput << {
+} }
+task cleanDUnitOutput { doLast {
   def testDir = "${testResultsBase}/dunit"
   delete testDir
   file(testDir).mkdirs()
   // writeTestProperties(testDir, '.')
-}
-task cleanWanOutput << {
+} }
+task cleanWanOutput { doLast {
   def testDir = "${testResultsBase}/wan"
   delete testDir
   file(testDir).mkdirs()
-}
-task cleanIntegrationOutput << {
+} }
+task cleanIntegrationOutput { doLast {
   def testDir = "${testResultsBase}/integration"
   delete testDir
   file(testDir).mkdirs()
-}
-task cleanReports << {
+} }
+task cleanReports { doLast {
   def reportsDir = "${testResultsBase}/combined-reports"
   delete reportsDir
   file(reportsDir).mkdirs()
-}
-
-
-def parallelTests(def proj, def testClasses, def testObj, def prefix, def splitSize, def parallelism) {
-  proj.task("${prefix}Parallel") {
-    dependsOn proj.testClasses, "${subprojectBase}storeProduct"
-    def ntestClasses = testClasses.size()
-    def testClassesGroups = testClasses.collate(splitSize)
-    def ntestClassesGroups = testClassesGroups.size()
-    def lastTestClass = new ThreadLocal<String>()
-    def testCount = new java.util.concurrent.atomic.AtomicInteger(0)
-    def failureCount = new java.util.concurrent.atomic.AtomicInteger(0)
-    def testTasks = (0..<ntestClassesGroups).collect { index ->
-      proj.task("${prefix}Parallel${index}", type: Test) {
-        maxParallelForks = 1
-        minHeapSize = testObj.minHeapSize
-        maxHeapSize = testObj.maxHeapSize
-
-        def baseURI = getTestClassesDir().toURI()
-        include testClassesGroups[index].collect {
-          baseURI.relativize(it.toURI()).getPath()
-        }
-
-        workingDir = testObj.workingDir
-        binResultsDir = file("${testObj.binResultsDir}_${index}")
-        reports.html.enabled = false
-        reports.junitXml.destination = file(workingDir)
-
-        systemProperties testObj.systemProperties
-
-        beforeTest { desc ->
-          def lastClass = lastTestClass.get()
-          if (desc.className != lastClass) {
-            def count = testCount.incrementAndGet()
-            def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-            def threadId = Long.toHexString(Thread.currentThread().getId())
-            if (lastClass != null) {
-              println "$now <0x$threadId> END $lastClass"
-            }
-            println "$now <0x$threadId> Start ${desc.className} ($count/$ntestClasses)"
-            lastTestClass.set(desc.className)
-          }
-        }
-        afterTest { desc, result ->
-          if (result.exceptions.size() > 0) {
-            failureCount.incrementAndGet()
-          }
-        }
-      }
-    }
-    doLast {
-      if (ntestClasses > 0) {
-        def count = new java.util.concurrent.atomic.AtomicInteger(0)
-        def threadProcess = new Runnable() {
-          @Override
-          void run() {
-            def index = 0
-            def thread = Thread.currentThread()
-            while ((index = count.getAndIncrement()) < ntestClassesGroups) {
-              def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-              def threadId = Long.toHexString(Thread.currentThread().getId())
-              def test = testTasks[index]
-              println "$now <0x$threadId> STARTING tests: ${test.getIncludes()}"
-              try {
-                test.executeTests()
-                def lastClass = lastTestClass.get()
-                if (lastClass != null) {
-                  println "$now <0x$threadId> END $lastClass"
-                }
-              } catch (Exception e) {
-                print "Exception in thread '${thread.getName()}' $e "
-                e.printStackTrace()
-              }
-              now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-              println "$now <0x$threadId> ENDED tests: ${test.getIncludes()}"
-            }
-          }
-        }
-        def threads = new Thread[parallelism]
-        parallelism.times { threads[it] = new Thread(threadProcess) }
-        threads.each { it.start() }
-        threads.each { it.join() }
-
-        def progressTxt = file("${testObj.workingDir}/progress.txt").getAbsolutePath().toURI()
-        def report = file("${testObj.workingDir}/html/${proj.name}/index.html").getAbsolutePath().toURI()
-        if (failureCount.get() > 0) {
-          println()
-          def failureMsg = "FAILED: There were ${failureCount.get()} failures.\n"
-          failureMsg    += "        See the progress report in: file://$progressTxt\n"
-          failureMsg    += "        HTML report in: file://$report"
-          throw new GradleException(failureMsg)
-        } else {
-          println()
-          println("SUCCESS: See the progress report in: file://$progressTxt")
-          println("         HTML report in: file://$report")
-          println()
-        }
-      }
-    }
-  }
-}
+} }
 
 
 subprojects {
@@ -378,11 +282,6 @@ subprojects {
   }
 
   configurations {
-    provided {
-      description 'a dependency that is provided externally at runtime'
-      visible true
-    }
-
     testOutput {
       extendsFrom testCompile
       description 'a dependency that exposes test artifacts'
@@ -405,50 +304,33 @@ subprojects {
     }
   }
 
+  sourceSets {
+    test.compileClasspath += configurations.compileOnly
+    test.runtimeClasspath += configurations.compileOnly
+  }
+
+  cleanEclipse.doLast {
+    delete '.settings/org.eclipse.core.resources.prefs'
+  }
+
   eclipse {
     classpath {
-      defaultOutputDir = file('build-eclipse')
-      plusConfigurations += [ configurations.provided ]     
+      defaultOutputDir = file('build-artifacts/eclipse')
+      downloadSources = true
     }
     // Several files have UTF-8 encoding and Eclipse running on Windows
     // will have trouble unless we tell it to use UTF-8 encoding.
     // This setting needs to go into the core.resources.prefs file,
     // which the JDT script isn't set up to configure
-    eclipseJdt << {
+    eclipseJdt.doLast {
       File f = file('.settings/org.eclipse.core.resources.prefs')
       f.write('eclipse.preferences.version=1\n')
       f.append('encoding/<project>=utf-8')
     }
   }
 
-  cleanEclipse << {
-    delete '.settings/org.eclipse.core.resources.prefs'
-  }
-
-  idea {
-    module {
-      scopes.PROVIDED.plus += [ configurations.provided ]
-    }
-  }
-  eclipse {
-    classpath {
-      defaultOutputDir = file('build-artifacts/eclipse')
-      downloadSources = true
-      plusConfigurations += [ configurations.provided ]
-    }
-  }
-
-  sourceSets {
-    main.compileClasspath += configurations.provided
-    main.runtimeClasspath -= configurations.provided
-    test.compileClasspath += configurations.provided
-    test.runtimeClasspath += configurations.provided
-  }
-
-  javadoc.classpath += configurations.provided
-
   dependencies {
-    provided 'com.google.code.findbugs:annotations:3.0.1'
+    compileOnly 'com.google.code.findbugs:annotations:3.0.1'
     compile "log4j:log4j:${log4jVersion}"
     compile "org.slf4j:slf4j-api:${slf4jVersion}"
     compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
@@ -460,21 +342,29 @@ subprojects {
     testCompile 'org.jmock:jmock-legacy:2.5.1'
     testCompile 'edu.umd.cs.mtc:multithreadedtc:1.01'
     testRuntime 'cglib:cglib-nodep:2.1_3'
-    testRuntime 'org.objenesis:objenesis:1.0'
+    testRuntime 'org.objenesis:objenesis:2.6'
   }
 
   test {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() * 3) / 2
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
     minHeapSize = '1g'
     maxHeapSize = '1g'
 
+    includes.clear()
+
     def single = System.getProperty('junit.single')
     if (single == null || single.length() == 0) {
+      single = rootProject.hasProperty('junit.single') ?
+          rootProject.property('junit.single') : null
+    }
+    if (single == null || single.length() == 0) {
       include '**/*Test.class'
-      exclude '**/*DUnitTest.class'
-      exclude '**/*DUnit.class'
+      exclude '**/*TestUtil*'
+      exclude '**/*TestBase.class'
+      exclude '**/*DUnit*.class'
       exclude '**/derbyTesting/**'
+      exclude '**/pxf/**'
     } else {
       include single
     }
@@ -490,50 +380,14 @@ subprojects {
     reports.html.destination = file("${workingDir}/html/${project.name}")
     reports.junitXml.destination = file(workingDir)
   }
-  task junitSingle1(type: Test) {
-    def single = System.getProperty('junit.single')
-    if (single == null || single.length() == 0) {
-      include '**/BugsTest.class'
-      include '**/DDLPersistenceHDFSTest.class'
-    } else {
-      include single
-    }
-  }
-  task junitSingle2(type: Test) {
-    include '**/*Test.class'
-    exclude '**/BugsTest.class'
-    exclude '**/DDLPersistenceHDFSTest.class'
-    exclude '**/*DUnitTest.class'
-    exclude '**/*DUnit.class'
-    exclude '**/derbyTesting/**'
-    exclude '**/client/am/**'
-  }
-  task junit {
-    def testClasses = new ArrayList()
-    testClasses.addAll(junitSingle1.getCandidateClassFiles().getFiles())
-    def single = System.getProperty('junit.single')
-    if (single == null || single.length() == 0) {
-      testClasses.addAll(junitSingle2.getCandidateClassFiles().getFiles())
-    }
-    parallelTests(project, testClasses, test, 'junit', 3, test.maxParallelForks)
-  }
-  task junitReport(type: TestReport) {
-    description 'Combines the parallel junit test reports.'
-    destinationDir = file("${testResultsBase}/junit/html/${project.name}")
-    mustRunAfter junitParallel
-  }
-  gradle.taskGraph.whenReady({ graph ->
-    project.tasks.getByName('junitReport').reportOn project.tasks.withType(Test).matching {
-      it.getName().startsWith('junitParallel')
-    }
-  })
-  junit.dependsOn junitParallel, junitReport
 
   task dunitTest(type:Test, overwrite: true) {
     dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
     minHeapSize = '2g'
     maxHeapSize = '2g'
+
+    includes.clear()
 
     def single = System.getProperty('dunit.single')
     if (single == null || single.length() == 0) {
@@ -542,8 +396,10 @@ subprojects {
     }
     if (single == null || single.length() == 0) {
       def dunitTests = fileTree(dir: testClassesDir,
-          includes: ['**/*DUnitTest.class', '**/*DUnit.class'],
-          excludes: ['**/NCJ*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
+          includes: ['**/*DUnit.class'],
+          excludes: ['**/NCJ*DUnit.class', '**/BackwardCompatabilityPart*DUnit.class',
+                     '**/*Perf*DUnit.class', '**/ListAggDUnit.class', '**/SingleHop*TransactionDUnit.class',
+                     '**/*Parallel*AsyncEvent*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
       FileTree includeTestFiles = dunitTests
       int dunitFrom = rootProject.hasProperty('dunit.from') ?
           getLast(includeTestFiles, rootProject.property('dunit.from')) : 0
@@ -561,6 +417,13 @@ subprojects {
     } else {
       include single
     }
+    exclude '**/*NCJ*DUnit.class'
+    exclude '**/BackwardCompatabilityPart*DUnit.class'
+    exclude '**/*Perf*DUnit.class'
+    exclude '**/ListAggDUnit.class'
+    exclude '**/SingleHop*TransactionDUnit.class'
+    exclude '**/*Parallel*AsyncEvent*DUnit.class'
+    exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
 
     workingDir = "${testResultsBase}/dunit"
 
@@ -568,24 +431,9 @@ subprojects {
     reports.html.destination = file("${workingDir}/html/${project.name}")
     reports.junitXml.destination = file(workingDir)
 
-    //I'm hoping this might deal with SOME OOMEs I've seen
-    //forkEvery 30
+    // try to avoid long "tail" in parallel runs where some workers finish early
+    forkEvery 10
   }
-  task dunit {
-    def testClasses = dunitTest.getCandidateClassFiles().getFiles()
-    parallelTests(project, testClasses, dunitTest, 'dunit', 4, dunitTest.maxParallelForks)
-  }
-  task dunitReport(type: TestReport) {
-    description 'Combines the parallel dunit test reports.'
-    destinationDir = file("${testResultsBase}/dunit/html/${project.name}")
-    mustRunAfter dunitParallel
-  }
-  gradle.taskGraph.whenReady({ graph ->
-    project.tasks.getByName('dunitReport').reportOn project.tasks.withType(Test).matching {
-      it.getName().startsWith('dunitParallel')
-    }
-  })
-  dunit.dependsOn dunitParallel, dunitReport
 
   task wanTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
@@ -593,12 +441,19 @@ subprojects {
     minHeapSize = '1g'
     maxHeapSize = '1g'
 
+    includes.clear()
+
     def single = System.getProperty('wan.single')
+    if (single == null || single.length() == 0) {
+      single = rootProject.hasProperty('wan.single') ?
+          rootProject.property('wan.single') : null
+    }
     if (single == null || single.length() == 0) {
       include '**/pivotal/gemfirexd/wan/**/*DUnit.class'
     } else {
       include single
     }
+    exclude '**/*NCJ*DUnit.class'
 
     workingDir = "${testResultsBase}/wan"
 
@@ -609,25 +464,12 @@ subprojects {
     // increase the number of JVMs for WAN tests
     systemProperties 'gemfire.DUnitLauncher.NUM_VMS' : '8'
   }
-  task wan {
-    def wanClasses = wanTest.getCandidateClassFiles().getFiles()
-    parallelTests(project, wanClasses, wanTest, 'wan', 1, wanTest.maxParallelForks)
-  }
-  task wanReport(type: TestReport) {
-    description 'Combines the parallel wan test reports.'
-    destinationDir = file("${testResultsBase}/wan/html/${project.name}")
-    mustRunAfter wanParallel
-  }
-  gradle.taskGraph.whenReady({ graph ->
-    project.tasks.getByName('wanReport').reportOn project.tasks.withType(Test).matching {
-      it.getName().startsWith('wanParallel')
-    }
-  })
-  wan.dependsOn wanParallel, wanReport
 
   task integrationTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = Runtime.getRuntime().availableProcessors()
+
+    includes.clear()
 
     include '**/*Test.class'
     exclude '**/*DUnitTest.class'
@@ -678,32 +520,65 @@ subprojects {
         environment 'GEMFIREXD'                           : productDir.getAbsolutePath(),
                     'JUNIT_JAR'                           : sourceSets.test.output.classesDir
 
+        int numTestClasses = test.getCandidateClassFiles().getFiles().size()
+        def testCount = new java.util.concurrent.atomic.AtomicInteger(0)
+
+        beforeSuite { desc ->
+          if (desc.className != null) {
+            def count = testCount.incrementAndGet()
+            println "${now()} Start ${desc.className} ($count/$numTestClasses)"
+          }
+        }
+        afterSuite { desc, result ->
+          if (desc.className != null) {
+            println "${now()} END ${desc.className}"
+          }
+        }
+
         if (rootProject.name == 'snappy-store') {
+          def failureCount = new java.util.concurrent.atomic.AtomicInteger(0)
+          def progress = new File(workingDir, 'progress.txt')
+          def output = new File(workingDir, 'output.txt')
+
           def eol = System.getProperty('line.separator')
           beforeTest { desc ->
-            def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-            def progress = new File(workingDir, 'progress.txt')
-            def output = new File(workingDir, 'output.txt')
+            String now = now()
             progress << "${now} Starting test ${desc.className} ${desc.name}${eol}"
             output << "${now} STARTING TEST ${desc.className} ${desc.name}${eol}${eol}"
           }
           onOutput { desc, event ->
-            def output = new File(workingDir, 'output.txt')
             def msg = event.message
             if (event.destination.toString() == 'StdErr') {
-              msg = msg.replace('\n', '\n[stderr]  ')
+              msg = msg.replace(eol, "${eol}[error]  ")
             }
             output << msg
           }
           afterTest { desc, result ->
-            def now = new Date().format('yyyy-MM-dd HH:mm:ss.SSS Z')
-            def progress = new File(workingDir, 'progress.txt')
-            def output = new File(workingDir, 'output.txt')
+            String now = now()
             progress << "${now} Completed test ${desc.className} ${desc.name} with result: ${result.resultType}${eol}"
             output << "${eol}${now} COMPLETED TEST ${desc.className} ${desc.name} with result: ${result.resultType}${eol}${eol}"
-            result.exceptions.each { t ->
-              progress << "  EXCEPTION: ${getStackTrace(t)}${eol}"
-              output << "${getStackTrace(t)}${eol}"
+            def exceptions = result.exceptions
+            if (exceptions.size() > 0) {
+              exceptions.each { t ->
+                progress << "  EXCEPTION: ${getStackTrace(t)}${eol}"
+                output << "${getStackTrace(t)}${eol}"
+              }
+              failureCount.incrementAndGet()
+            }
+          }
+          doLast {
+            def report = "${test.reports.html.destination}/index.html"
+            if (failureCount.get() > 0) {
+              println()
+              def failureMsg = "FAILED: There were ${failureCount.get()} failures.${eol}"
+              failureMsg    += "        See the progress report in: file://$progress${eol}"
+              failureMsg    += "        HTML report in: file://$report"
+              throw new GradleException(failureMsg)
+            } else {
+              println()
+              println("SUCCESS: See the progress report in: file://$progress")
+              println("         HTML report in: file://$report")
+              println()
             }
           }
         }
@@ -712,14 +587,11 @@ subprojects {
   })
 
   test.dependsOn subprojectBase + 'cleanTestOutput'
-  junitParallel.dependsOn subprojectBase + 'cleanTestOutput'
   dunitTest.dependsOn subprojectBase + 'cleanDUnitOutput'
-  dunitParallel.dependsOn subprojectBase + 'cleanDUnitOutput'
   wanTest.dependsOn subprojectBase + 'cleanWanOutput'
-  wanParallel.dependsOn subprojectBase + 'cleanWanOutput'
   integrationTest.dependsOn subprojectBase + 'cleanIntegrationOutput'
   check.dependsOn.clear()
-  check.dependsOn junit, dunit, wan
+  check.dependsOn test, dunitTest, wanTest
 }
 
 // maven publish tasks
@@ -801,13 +673,13 @@ int getLast(includeTestFiles, pattern) {
 }
 
 task junit {
-  dependsOn subprojects.junit
+  dependsOn subprojects.test
 }
 task dunit {
-  dependsOn "${subprojectBase}snappydata-store-tools:dunit"
+  dependsOn "${subprojectBase}snappydata-store-tools:dunitTest"
 }
 task wan {
-  dependsOn "${subprojectBase}snappydata-store-tools:wan"
+  dependsOn "${subprojectBase}snappydata-store-tools:wanTest"
 }
 task integrationTest {
   dependsOn subprojects.integrationTest
@@ -824,10 +696,9 @@ gradle.taskGraph.whenReady({ graph ->
   tasks.getByName('combineReports').reportOn rootProject.subprojects.collect{ it.tasks.withType(Test) }.flatten()
 })
 
-junit.dependsOn subprojects.junit
 check.dependsOn.clear()
 check.dependsOn junit, dunit
-if (!Boolean.getBoolean('skip.wanTest')) {
+if (!rootProject.hasProperty('wan.skip')) {
   check.dependsOn wan
 }
 // skip combineReports for top-level builds which has its own combineReports
@@ -837,6 +708,7 @@ if (!rootProject.hasProperty('store')) {
 
 task generateSources {
   dependsOn subprojectBase + 'gemfire-jgroups:jgMagic'
+  dependsOn subprojectBase + 'gemfire-util:compileJava'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'
   dependsOn subprojectBase + 'snappydata-store-core:compileJavacc'
   dependsOn subprojectBase + 'snappydata-store-core:generatePropertiesFiles'
@@ -864,7 +736,7 @@ install.enabled = false
 // pack the entire GemFireXD product tree
 task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJar',
     subprojectBase + 'snappydata-store-core:shadowJar',
-    subprojectBase + 'snappydata-store-tools:shadowJar' ]) << {
+    subprojectBase + 'snappydata-store-tools:shadowJar' ]) { doLast {
 
   delete productDir
 
@@ -876,9 +748,9 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
 
   def gcmDir = System.getProperty('GCMDIR', '/gcm')
 
-  def extraJars = (gemcoreProject.configurations.provided - gemcoreProject.configurations.runtime +
-        coreProject.configurations.provided - coreProject.configurations.runtime +
-        toolsProject.configurations.provided - toolsProject.configurations.runtime).filter {
+  def extraJars = (gemcoreProject.configurations.compileOnly - gemcoreProject.configurations.runtime +
+        coreProject.configurations.compileOnly - coreProject.configurations.runtime +
+        toolsProject.configurations.compileOnly - toolsProject.configurations.runtime).filter {
     includeJar(it)
   }
   // first copy the product and dependent jars
@@ -1021,7 +893,7 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
     }
     into (project(subprojectBase + 'snappydata-store-tests').buildDir.getAbsolutePath() + '/classes/main')
   }
-}
+} }
 if (rootProject.hasProperty('docs')) {
   storeProduct.dependsOn subprojectBase + 'snappydata-store-shared:javadoc',
                     subprojectBase + 'snappydata-store-core:javadoc'

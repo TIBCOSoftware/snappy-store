@@ -393,7 +393,7 @@ public final class ConnectionTable  {
 
       @Override
       public boolean validateObject(ConnKey key, PooledObject<Connection> p) {
-        return p.getObject().connected;
+        return !p.getObject().isClosing();
       }
 
       @Override

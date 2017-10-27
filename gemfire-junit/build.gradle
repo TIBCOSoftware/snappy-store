@@ -27,45 +27,54 @@ dependencies {
   compile 'org.jmock:jmock-legacy:2.5.1'
   compile 'edu.umd.cs.mtc:multithreadedtc:1.01'
   compile 'cglib:cglib-nodep:2.1_3'
-  compile 'org.objenesis:objenesis:1.0'
+  compile 'org.objenesis:objenesis:2.6'
   compile 'antlr:antlr:2.7.7'
 
-  provided 'net.sourceforge.jline:jline:1.0.S2-B'
-  provided "org.eclipse.jetty:jetty-http:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-io:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-security:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-server:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-util:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
-  provided "org.eclipse.jetty:jetty-xml:${jettyVersion}"
+  compile 'net.sourceforge.jline:jline:1.0.S2-B'
+  compile "org.eclipse.jetty:jetty-http:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-io:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-security:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-xml:${jettyVersion}"
 
-  provided "org.springframework:spring-aop:${springVersion}"
-  provided "org.springframework:spring-beans:${springVersion}"
-  provided "org.springframework:spring-context:${springVersion}"
-  provided "org.springframework:spring-context-support:${springVersion}"
-  provided "org.springframework:spring-core:${springVersion}"
-  provided "org.springframework:spring-expression:${springVersion}"
-  provided "org.springframework:spring-web:${springVersion}"
-  provided "org.springframework:spring-webmvc:${springVersion}"
-  provided "org.springframework:spring-tx:${springVersion}"
-  provided 'org.springframework.shell:spring-shell:1.0.0.RELEASE'
+  compile "org.springframework:spring-aop:${springVersion}"
+  compile "org.springframework:spring-beans:${springVersion}"
+  compile "org.springframework:spring-context:${springVersion}"
+  compile "org.springframework:spring-context-support:${springVersion}"
+  compile "org.springframework:spring-core:${springVersion}"
+  compile "org.springframework:spring-expression:${springVersion}"
+  compile "org.springframework:spring-web:${springVersion}"
+  compile "org.springframework:spring-webmvc:${springVersion}"
+  compile "org.springframework:spring-tx:${springVersion}"
+  compile 'org.springframework.shell:spring-shell:1.0.0.RELEASE'
 
-  provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
-  provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "com.google.code.findbugs:jsr305:${jsr305Version}"
+  compile "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
+  compile "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+  compile "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  compile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+  compile "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
+  compile "com.google.protobuf:protobuf-java:${protobufVersion}"
+  compile "org.apache.hbase:hbase-common:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-client:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  compile "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
+  compile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
+  compile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
+  compile 'org.cloudera.htrace:htrace-core:2.05'
+  compile "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compile "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compile "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  compile "com.google.code.findbugs:jsr305:${jsr305Version}"
 
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
+  compile "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
+  compile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
 
   // use dunit support from snappydata
   if (subprojectBase == ':') {

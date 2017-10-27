@@ -279,6 +279,54 @@ public abstract class ClientSharedUtils {
     bigIntMagnitude = mag;
   }
 
+  private static int getShiftMultipler(char unitChar) {
+    switch (Character.toLowerCase(unitChar)) {
+      case 'p': return 50;
+      case 't': return 40;
+      case 'g': return 30;
+      case 'm': return 20;
+      case 'k': return 10;
+      case 'b': return 0;
+      default: return -1;
+    }
+  }
+
+  public static long parseMemorySize(String v, long defaultValue,
+      int defaultShiftMultiplier) {
+    if (v == null || v.length() == 0) {
+      return defaultValue;
+    }
+    final int len = v.length();
+    int unitShiftMultiplier = getShiftMultipler(v.charAt(len - 1));
+    int trimChars = unitShiftMultiplier >= 0 ? 1 : 0;
+    if (unitShiftMultiplier == 0) {
+      // ends with 'b' so could be 'mb', 'gb' etc
+      if (len > 1) {
+        unitShiftMultiplier = getShiftMultipler(v.charAt(len - 2));
+        if (unitShiftMultiplier > 0) {
+          trimChars = 2;
+        } else {
+          unitShiftMultiplier = 0;
+        }
+      }
+    } else if (unitShiftMultiplier < 0) {
+      unitShiftMultiplier = defaultShiftMultiplier;
+    }
+    if (trimChars > 0) {
+      v = v.substring(0, len - trimChars);
+    }
+    try {
+      return Long.parseLong(v) << unitShiftMultiplier;
+    } catch (NumberFormatException nfe) {
+      throw new IllegalArgumentException("Memory size specification = " + v +
+          ": memory size must be specified as <n>[p|t|g|m|k], where <n> is " +
+          "the size and and [p|t|g|m|k] specifies the units in peta|tera|giga|" +
+          "mega|kilobytes. No unit or with 'b' specifies in bytes. " +
+          "Each of these units can be followed optionally by 'b' i.e. " +
+          "pb|tb|gb|mb|kb.", nfe);
+    }
+  }
+
   public static String newWrappedString(final char[] chars, final int offset,
       final int size) {
     if (size >= 0) {
@@ -1288,7 +1336,7 @@ public abstract class ClientSharedUtils {
   }
 
   // Convert log4j.Level to java.util.logging.Level
-  public static Level converToJavaLogLevel(org.apache.log4j.Level log4jLevel) {
+  public static Level convertToJavaLogLevel(org.apache.log4j.Level log4jLevel) {
     Level javaLevel = Level.INFO;
     if (log4jLevel != null) {
       if (log4jLevel == org.apache.log4j.Level.ERROR) {
@@ -1306,6 +1354,26 @@ public abstract class ClientSharedUtils {
       }
     }
     return javaLevel;
+  }
+
+  public static String convertToLog4LogLevel(Level level) {
+    String levelStr = "INFO";
+    // convert to log4j level
+    if (level == Level.SEVERE) {
+      levelStr = "ERROR";
+    } else if (level == Level.WARNING) {
+      levelStr = "WARN";
+    } else if (level == Level.INFO || level == Level.CONFIG) {
+      levelStr = "INFO";
+    } else if (level == Level.FINE || level == Level.FINER ||
+        level == Level.FINEST) {
+      levelStr = "TRACE";
+    } else if (level == Level.ALL) {
+      levelStr = "DEBUG";
+    } else if (level == Level.OFF) {
+      levelStr = "OFF";
+    }
+    return levelStr;
   }
 
   public static void initLog4J(String logFile,
@@ -1327,22 +1395,7 @@ public abstract class ClientSharedUtils {
 
     // override file location and level
     if (level != null) {
-      String levelStr = "INFO";
-      // convert to log4j level
-      if (level == Level.SEVERE) {
-        levelStr = "ERROR";
-      } else if (level == Level.WARNING) {
-        levelStr = "WARN";
-      } else if (level == Level.INFO || level == Level.CONFIG) {
-        levelStr = "INFO";
-      } else if (level == Level.FINE || level == Level.FINER ||
-          level == Level.FINEST) {
-        levelStr = "TRACE";
-      } else if (level == Level.ALL) {
-        levelStr = "DEBUG";
-      } else if (level == Level.OFF) {
-        levelStr = "OFF";
-      }
+      final String levelStr = convertToLog4LogLevel(level);
       if (logFile != null) {
         props.setProperty("log4j.rootCategory", levelStr + ", file");
       } else {

@@ -72,6 +72,20 @@ public final class SystemProperties {
   public static final String DEFAULT_GFXDCLIENT_PROPERTY_NAME_PREFIX =
       "gemfirexd.client.";
 
+  /** The prefix used for SnappyData properties set through java system properties */
+  public static final String SNAPPY_PREFIX = "snappydata.store.";
+
+  public static final String SHADOW_SCHEMA_NAME = "SNAPPYSYS_INTERNAL";
+
+  public static final String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
+
+  public static final String SHADOW_SCHEMA_SEPARATOR = "____";
+
+  public static final String SHADOW_SCHEMA_NAME_WITH_SEPARATOR =
+      SHADOW_SCHEMA_NAME + SHADOW_SCHEMA_SEPARATOR;
+
+  public static final String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+
   public static final String GFXD_FACTORY_PROVIDER = "com.pivotal.gemfirexd."
       + "internal.engine.store.entry.GfxdObjectFactoriesProvider";
 
@@ -174,8 +188,11 @@ public final class SystemProperties {
               .equals(frameCls) ||
           "com.pivotal.gemfirexd.internal.GemFireXDVersion"
               .equals(frameCls) ||
-          "io.snappydata.gemxd.SnappyDataVersion$"
-              .equals(frameCls)) {
+          "io.snappydata.gemxd.SnappyDataVersion$".equals(frameCls) ||
+          "io.snappydata.gemxd.SnappyDataVersion".equals(frameCls) ||
+          "org.apache.spark.sql.SnappySession$".equals(frameCls) ||
+          "org.apache.spark.sql.SnappySession".equals(frameCls) ||
+          "io.snappydata.gemxd.ClusterCallbacksImpl$".equals(frameCls)) {
         return true;
       }
     }

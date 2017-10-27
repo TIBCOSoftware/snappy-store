@@ -2940,7 +2940,7 @@ public class CreateTableTest extends JdbcTestBase {
             se.getSQLState(), se_ser);
         SqlExceptionTest.assertSQLExceptionEquals(se, se_ser);
       } finally {
-        stmt.execute("delete from tableWithPK where 1=1");
+        stmt.execute("delete from tableWithPK");
         if (i == 2) {
           stopNetServer();
         }

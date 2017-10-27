@@ -18,25 +18,20 @@ package com.pivotal.gemfirexd.internal.engine.distributed.offheap.transactions;
 
 import com.pivotal.gemfirexd.transactions.TransactionDUnit;
 
-public class OffHeapTransactionDUnit  extends TransactionDUnit{
-
-
+public class OffHeapTransactionDUnit extends TransactionDUnit {
 
   public OffHeapTransactionDUnit(String name) {
-    super(name);    
+    super(name);
   }
-  
+
   @Override
   public void setUp() throws Exception {
+    this.configureDefaultOffHeap(true);
     super.setUp();
-    this.configureDefaultOffHeap(true);  
   }
-  
+
   @Override
   public String getSuffix() {
-    return  " offheap ";
+    return " offheap ";
   }
-
- 
-
 }

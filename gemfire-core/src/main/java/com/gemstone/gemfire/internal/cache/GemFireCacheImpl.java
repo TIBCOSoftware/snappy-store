@@ -146,9 +146,9 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jndi.JNDIInvoker;
 import com.gemstone.gemfire.internal.jta.TransactionManagerImpl;
 import com.gemstone.gemfire.internal.offheap.MemoryAllocator;
-import com.gemstone.gemfire.internal.offheap.OffHeapStorage;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.ChunkType;
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
@@ -1104,16 +1104,16 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       GemFireCacheImpl.pdxInstance = this;
 
       // set the buffer allocator for the cache (off-heap or heap)
-      long memorySize = OffHeapStorage.parseOffHeapMemorySize(
-          getSystem().getConfig().getMemorySize());
+      String memorySizeStr = getSystem().getConfig().getMemorySize();
+      long memorySize = ClientSharedUtils.parseMemorySize(memorySizeStr, 0L, 0);
       if (memorySize == 0) {
         // check in callbacks
         StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
         memorySize = callbacks.getExecutionPoolSize(true) +
             callbacks.getStoragePoolSize(true);
       }
-      this.memorySize = memorySize;
       if (memorySize > 0) {
+        this.memorySize = memorySize;
         if (!GemFireVersion.isEnterpriseEdition()) {
           throw new IllegalArgumentException("The off-heap column store (enabled by property " +
               "memory-size) is not supported in SnappyData OSS version.");
@@ -1126,6 +1126,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             InvocationTargetException e) {
           throw new IllegalStateException("Could not configure managed buffer allocator.", e);
         }
+      } else if (memorySize < 0) {
+        throw new IllegalArgumentException("Invalid memory-size: " + memorySizeStr);
       } else {
         // the allocation sizes will be initialized from the heap size
         this.bufferAllocator = HeapBufferAllocator.instance();
@@ -5617,7 +5619,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   public static void setGFXDSystem(final boolean v) {
     // check the stack to see if this is really from a GemFireXD system
-    gfxdSystem = v ? SystemProperties.isUsingGemFireXDEntryPoint() : false;
+    gfxdSystem = v && SystemProperties.isUsingGemFireXDEntryPoint();
   }
 
   /**
@@ -6098,6 +6100,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     public static synchronized void init() {
       // set custom entry factories for GemFireXD
       if (gfxdSystem || SystemProperties.isUsingGemFireXDEntryPoint()) {
+        gfxdSystem = true;
         String provider = SystemProperties.GFXD_FACTORY_PROVIDER;
         try {
           Class<?> factoryProvider = ClassPathLoader.getLatest().forName(

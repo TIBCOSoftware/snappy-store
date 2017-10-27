@@ -16,7 +16,7 @@
  */
 
 plugins {
-  id 'com.github.johnrengelman.shadow' version '1.2.3'
+  id 'com.github.johnrengelman.shadow' version '2.0.1'
 }
 
 sourceSets.main.java {
@@ -40,40 +40,50 @@ ext {
 }
 
 dependencies {
-  provided project(subprojectBase + 'gemfire-core')
+  compileOnly project(subprojectBase + 'gemfire-core')
   compile project(subprojectBase + 'gemfire-tests')
   compile project(subprojectBase + 'snappydata-store-client')
-  provided project(subprojectBase + 'snappydata-store-tools')
-  provided project(subprojectBase + 'snappydata-store-core')
+  compileOnly project(subprojectBase + 'snappydata-store-tools')
+  compileOnly project(subprojectBase + 'snappydata-store-core')
 
-  provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
-  provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "com.google.code.findbugs:jsr305:${jsr305Version}"
+  compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
+  compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
 
-  provided "org.springframework:spring-aop:${springVersion}"
-  provided "org.springframework:spring-beans:${springVersion}"
-  provided "org.springframework:spring-context:${springVersion}"
-  provided "org.springframework:spring-context-support:${springVersion}"
-  provided "org.springframework:spring-core:${springVersion}"
-  provided "org.springframework:spring-expression:${springVersion}"
-  provided "org.springframework:spring-web:${springVersion}"
-  provided "org.springframework:spring-webmvc:${springVersion}"
-  provided "org.springframework:spring-tx:${springVersion}"
+  compileOnly "org.springframework:spring-aop:${springVersion}"
+  compileOnly "org.springframework:spring-beans:${springVersion}"
+  compileOnly "org.springframework:spring-context:${springVersion}"
+  compileOnly "org.springframework:spring-context-support:${springVersion}"
+  compileOnly "org.springframework:spring-core:${springVersion}"
+  compileOnly "org.springframework:spring-expression:${springVersion}"
+  compileOnly "org.springframework:spring-web:${springVersion}"
+  compileOnly "org.springframework:spring-webmvc:${springVersion}"
+  compileOnly "org.springframework:spring-tx:${springVersion}"
+
+  compile "org.apache.hbase:hbase-common:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-client:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  compile "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
+  compile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
+  compile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
+  compile 'org.cloudera.htrace:htrace-core:2.05'
 
   compile 'com.googlecode.json-simple:json-simple:1.1.1'
   compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
   compile 'javax.ejb:javax.ejb-api:3.2'
-  compile 'org.apache.tomcat:tomcat-juli:8.5.9'
-  compile 'org.apache.tomcat:tomcat-jdbc:8.5.9'
+  compile 'org.apache.tomcat:tomcat-juli:8.5.21'
+  compile 'org.apache.tomcat:tomcat-jdbc:8.5.21'
   compile 'com.mchange:c3p0:0.9.5.2'
   compile "org.apache.derby:derbytools:${derbyVersion}"
   runtime "org.apache.derby:derby:${derbyVersion}"
