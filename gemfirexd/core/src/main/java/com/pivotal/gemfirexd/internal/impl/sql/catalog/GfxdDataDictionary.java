@@ -1723,10 +1723,11 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
     {
       // DROP_SNAPPY_TABLE
-      String[] arg_names = new String[] { "TABLE_IDENT", "IF_EXISTS"};
+      String[] arg_names = new String[] { "TABLE_IDENT", "IF_EXISTS", "IS_EXTERNAL" };
       TypeDescriptor[] arg_types = new TypeDescriptor[] {
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN) };
       super.createSystemProcedureOrFunction("DROP_SNAPPY_TABLE",
           sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
