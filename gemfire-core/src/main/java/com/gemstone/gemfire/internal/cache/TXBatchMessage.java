@@ -139,6 +139,8 @@ public final class TXBatchMessage extends TXMessage {
       final EntryEventImpl eventTemplate = EntryEventImpl.create(null,
           Operation.UPDATE, null, null, null, true, null);
       eventTemplate.setTXState(txState);
+      // apply as PUT DML so duplicate entry inserts etc. will go through fine
+      eventTemplate.setPutDML(true);
       Object entry;
       TXRegionState txrs;
       LocalRegion region, baseRegion;
