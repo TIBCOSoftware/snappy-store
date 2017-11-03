@@ -1573,14 +1573,17 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   public static void DROP_SNAPPY_TABLE(String tableIdentifier,
-      Boolean ifExists) throws SQLException {
+      Boolean ifExists, Boolean isExternal) throws SQLException {
     if (GemFireXDUtils.TraceSysProcedures) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
           "executing DROP_SNAPPY_TABLE ");
     }
     LeadNodeSmartConnectorOpContext ctx = new LeadNodeSmartConnectorOpContext(
+        // in smart connector calls, either the table will be builtin or
+        // an external one and cannot be a temporary one so !isExternal is
+        // same as isBuiltIn
         LeadNodeSmartConnectorOpContext.OpType.DROP_TABLE,
-        tableIdentifier, null, null, null, null, null, true, ifExists,
+        tableIdentifier, null, null, null, null, null, !isExternal, ifExists,
         null, null, null, null, null, null,false, null, null, false);
 
     sendConnectorOpToLead(ctx);

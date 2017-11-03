@@ -13970,6 +13970,9 @@ viewDefinition(Token beginToken) throws StandardException :
 		[ <LEFT_PAREN> resultColumns = viewColumnList() <RIGHT_PAREN> ]
 		<AS> queryExpression = queryExpression(null, NO_SET_OP)
 	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
 		checkOptionType = ViewDescriptor.NO_CHECK_OPTION;
 		endToken = getToken(0);
 		/* Parameters not allowed in create view */
@@ -17017,6 +17020,9 @@ dropViewStatement() throws StandardException :
 // GemStone changes END
 	viewName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH) 
 	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
 		return (StatementNode) nodeFactory.getNode(
 								C_NodeTypes.DROP_VIEW_NODE,
 								viewName,

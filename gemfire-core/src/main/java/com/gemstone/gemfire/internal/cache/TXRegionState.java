@@ -473,9 +473,7 @@ public final class TXRegionState extends ReentrantLock {
         Operation.UPDATE, null, null, null, true, null);
     eventTemplate.setTXState(tx);
     // apply as PUT DML so duplicate entry inserts etc. will go through fine
-    // [sumedh] this is a strange duplication of functionality to combine
-    // fetchFromHDFS with PUT DML -- should have separate flag
-    //eventTemplate.setFetchFromHDFS(false);
+    eventTemplate.setPutDML(true);
     final LocalRegion region = this.region;
     final LocalRegion baseRegion;
     if (region.isUsedForPartitionedRegionBucket()) {
