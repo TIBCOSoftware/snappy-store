@@ -3864,10 +3864,9 @@ RETRY_LOOP:
       // wait for the initialization to get over which will not finish
       // until this testLatch is counted down from the test code
       if (DistributedRegion.testLatch == null) {
-        if (!owner.isInitialized()) {
           owner.readLockEnqueueDelta();
           try {
-            if (!owner.isInitialized()) {
+            if (!owner.getImageState().requestedUnappliedDelta()) {
               if (enqueDelta(event, ifOld, indexManager)) {
                 // owner.recordEvent(event);
                 return ProxyRegionMap.markerEntry;
@@ -3876,7 +3875,6 @@ RETRY_LOOP:
           } finally {
             owner.readUnlockEnqueueDelta();
           }
-        }
       }
     }
 

@@ -3652,8 +3652,6 @@ public class LocalRegion extends AbstractRegion
           + getFullPath());
     }
     releaseLatch(this.initializationLatchAfterGetInitialImage);
-
-    writeUnlockEnqueueDelta();
   }
 
   protected final void readLockEnqueueDelta() {
@@ -3665,14 +3663,11 @@ public class LocalRegion extends AbstractRegion
   }
 
   protected final void writeLockEnqueueDelta() {
-    if (!deltaLock.isWriteLocked())
-      deltaLock.writeLock().lock();
+    deltaLock.writeLock().lock();
   }
 
   protected final void writeUnlockEnqueueDelta() {
-    if (deltaLock.isWriteLocked()) {
-      deltaLock.writeLock().unlock();
-    }
+    deltaLock.writeLock().unlock();
   }
   /**
    * Called after we have delivered our REGION_CREATE event.
