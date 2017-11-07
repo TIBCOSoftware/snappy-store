@@ -17,12 +17,7 @@
 
 package io.snappydata.log4j;
 
-import java.util.Enumeration;
-
-import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
-import org.apache.log4j.helpers.AppenderAttachableImpl;
-import org.apache.log4j.spi.AppenderAttachable;
 import org.apache.log4j.spi.LoggingEvent;
 
 /**
@@ -33,65 +28,11 @@ import org.apache.log4j.spi.LoggingEvent;
  * this appender needs to be attached on top of AsyncAppender to display
  * the thread ID in logs.
  */
-public class ThreadIdAppender extends AppenderSkeleton implements AppenderAttachable {
-
-  private final AppenderAttachableImpl appenders = new AppenderAttachableImpl();
+public class ThreadIdAppender extends AppenderSkeleton {
 
   @Override
   protected void append(LoggingEvent event) {
-    synchronized (appenders) {
-      appenders.appendLoopOnAppenders(PatternLayout.addThreadIdToEvent(event));
-    }
-  }
-
-  @Override
-  public void addAppender(final Appender newAppender) {
-    synchronized (appenders) {
-      appenders.addAppender(newAppender);
-    }
-  }
-
-  @Override
-  public Enumeration getAllAppenders() {
-    synchronized (appenders) {
-      return appenders.getAllAppenders();
-    }
-  }
-
-  @Override
-  public Appender getAppender(final String name) {
-    synchronized (appenders) {
-      return appenders.getAppender(name);
-    }
-  }
-
-
-  @Override
-  public boolean isAttached(final Appender appender) {
-    synchronized (appenders) {
-      return appenders.isAttached(appender);
-    }
-  }
-
-  @Override
-  public void removeAllAppenders() {
-    synchronized (appenders) {
-      appenders.removeAllAppenders();
-    }
-  }
-
-  @Override
-  public void removeAppender(final Appender appender) {
-    synchronized (appenders) {
-      appenders.removeAppender(appender);
-    }
-  }
-
-  @Override
-  public void removeAppender(final String name) {
-    synchronized (appenders) {
-      appenders.removeAppender(name);
-    }
+    PatternLayout.addThreadIdToEvent(event);
   }
 
   @Override
@@ -102,16 +43,5 @@ public class ThreadIdAppender extends AppenderSkeleton implements AppenderAttach
   @Override
   public void close() {
     closed = true;
-    synchronized (appenders) {
-      Enumeration<?> iter = appenders.getAllAppenders();
-      if (iter != null) {
-        while (iter.hasMoreElements()) {
-          Object next = iter.nextElement();
-          if (next instanceof Appender) {
-            ((Appender)next).close();
-          }
-        }
-      }
-    }
   }
 }
