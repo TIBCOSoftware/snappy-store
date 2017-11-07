@@ -60,7 +60,8 @@ public class PatternLayout extends org.apache.log4j.PatternLayout {
     final sun.misc.Unsafe unsafe = UnsafeHolder.getUnsafe();
     String currentName = (String)unsafe.getObject(event, threadNameOffset);
     if (currentName == null ||
-        currentName.charAt(currentName.length() - 1) != '>') {
+        currentName.charAt(currentName.length() - 1) != '>' ||
+        !currentName.contains("<tid=0x")) {
       Thread currentThread = Thread.currentThread();
       String threadNameAndId = currentThread.getName() + "<tid=0x" +
           Long.toHexString(currentThread.getId()) + '>';
