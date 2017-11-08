@@ -59,6 +59,7 @@ import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.cache.versions.CompactVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantLock;
@@ -586,11 +587,13 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
      */
     final StoppableReentrantLock currentTombstoneLock;
     /**
-     * tombstones that have expired and are awaiting batch removal.  This
-     * variable is only accessed by the sweeper thread and so is not guarded
+     * Tombstones that have expired and are awaiting batch removal.
+     * Needs to be thread-safe (GEODE-2240).
      */
-    Set<Tombstone> expiredTombstones;
-    
+    final ConcurrentTHashSet<Tombstone> expiredTombstones;
+
+    private static final Tombstone[] ZERO_ARRAY = new Tombstone[0];
+
     /**
      * count of entries to forcibly expire due to memory events
      */
@@ -630,8 +633,8 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
       this.queueSize = queueSize;
       if (batchMode) {
         this.batchMode = true;
-        this.expiredTombstones = new HashSet<Tombstone>();
       }
+      this.expiredTombstones = new ConcurrentTHashSet<>(1);
       this.currentTombstoneLock = new StoppableReentrantLock(cache.getCancelCriterion());
     }
     
@@ -712,10 +715,9 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
       boolean batchScheduled = false;
       try {
         final Set<DistributedRegion> regionsAffected = new HashSet<DistributedRegion>();
-        Set<Tombstone> expired = expiredTombstones;
+        Tombstone[] expired = expiredTombstones.drainTo(ZERO_ARRAY);
         long removalSize = 0;
-        expiredTombstones = new HashSet<Tombstone>();
-        if (expired.size() == 0) {
+        if (expired.length == 0) {
           return;
         }
 
