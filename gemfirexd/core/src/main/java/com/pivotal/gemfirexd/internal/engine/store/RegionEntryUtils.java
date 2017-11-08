@@ -787,7 +787,7 @@ public final class RegionEntryUtils {
     @Override
     public String getSystemPropertyNamePrefix() {
       return CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
-      ? GfxdConstants.SNAPPY_PREFIX : GfxdConstants.GFXD_PREFIX;
+          ? GfxdConstants.SNAPPY_PREFIX : GfxdConstants.GFXD_PREFIX;
     }
 
     @Override
