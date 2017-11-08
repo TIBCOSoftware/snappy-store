@@ -384,7 +384,7 @@ public final class FabricServiceUtils {
           && !propName.startsWith(Attribute.SQLF_PREFIX)
           && !propName.startsWith(DistributionConfig.USERDEFINED_PREFIX_NAME) 
           && !propName.startsWith("derbyTesting.")
-          && !propName.startsWith("snappydata.")
+          && !propName.startsWith(GfxdConstants.SNAPPY_PREFIX)
           && !propName.startsWith("metastore-")
           && !propName.startsWith("spark.")
           && !propName.startsWith("jobserver.")

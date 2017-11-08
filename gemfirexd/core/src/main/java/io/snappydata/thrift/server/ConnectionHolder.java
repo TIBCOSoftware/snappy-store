@@ -42,6 +42,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Properties;
 
@@ -632,7 +633,24 @@ final class ConnectionHolder {
   }
 
   final boolean sameToken(ByteBuffer otherId) {
-    return ClientSharedUtils.equalBuffers(this.token, otherId);
+    final ByteBuffer connToken = this.token;
+    if (connToken == otherId) {
+      return true;
+    }
+
+    // this.connId always wraps full array
+    assert ClientSharedUtils.wrapsFullArray(connToken);
+
+    if (otherId != null) {
+      if (ClientSharedUtils.wrapsFullArray(otherId)) {
+        return Arrays.equals(otherId.array(), connToken.array());
+      } else {
+        // don't create intermediate byte[]
+        return ClientSharedUtils.equalBuffers(connToken.array(), otherId);
+      }
+    } else {
+      return false;
+    }
   }
 
   @Override

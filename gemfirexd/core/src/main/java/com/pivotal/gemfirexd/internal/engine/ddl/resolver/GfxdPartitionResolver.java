@@ -381,6 +381,10 @@ public abstract class GfxdPartitionResolver implements
   public void updateDistributionDescriptor(DistributionDescriptor desc) {
   }
 
+  public String[] getPartitioningColumns() {
+    return getColumnNames();
+  }
+
   public int getPartitioningColumnsCount() {
     return 1;
   }

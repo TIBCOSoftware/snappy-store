@@ -93,6 +93,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ScrollInsensitiveResultSet;
 import io.snappydata.ResultSetWithNull;
+import io.snappydata.thrift.common.BufferedBlob;
 
 
 
@@ -4656,6 +4657,10 @@ public abstract class EmbedResultSet extends ConnectionChild
 
 // GemStone changes BEGIN
 				//return new EmbedBlob(dvd, getEmbedConnection());
+				Object blob = dvd.getObject();
+				if (blob instanceof BufferedBlob) {
+					return (BufferedBlob)blob;
+				}
 				return HarmonySerialBlob.wrapBytes(dvd.getBytes());
 				/* (original code)
 				return new EmbedBlob(dvd, getEmbedConnection());

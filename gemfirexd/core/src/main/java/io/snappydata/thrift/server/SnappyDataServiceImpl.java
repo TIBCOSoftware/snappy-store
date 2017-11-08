@@ -2236,7 +2236,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                 }
               } else if (chunk.last) {
                 // set as a Blob
-                pstmt.setBlob(paramPosition, new ClientBlob(chunk.chunk, true));
+                pstmt.setBlob(paramPosition, new ClientBlob(chunk.chunk));
                 break;
               } else {
                 blob = conn.createBlob();
@@ -2245,9 +2245,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               if (chunk.isSetOffset()) {
                 offset += chunk.offset;
               }
+              // TODO: need an EmbedBlob that can deal directly with BlobChunks
               blob.setBytes(offset, chunk.getChunk());
               // free any direct buffer immediately
-              ThriftUtils.releaseBlobChunk(chunk);
+              chunk.free();
               pstmt.setBlob(paramPosition, blob);
             }
             break;
@@ -3442,9 +3443,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (chunk.isSetOffset()) {
         offset += chunk.offset;
       }
+      // TODO: need an EmbedBlob that can deal directly with BlobChunks
       blob.setBytes(offset, chunk.getChunk());
       // free any direct buffer immediately
-      ThriftUtils.releaseBlobChunk(chunk);
+      chunk.free();
       return lobId;
     } catch (Throwable t) {
       checkSystemFailure(t);

@@ -641,8 +641,7 @@ public interface DiskEntry extends RegionEntry {
       }
     }
 
-    public static final ByteBuffer NULL_BUFFER =
-        ByteBuffer.wrap(ClientSharedData.ZERO_ARRAY);
+    public static final ByteBuffer NULL_BUFFER = ClientSharedData.NULL_BUFFER;
     public static final ByteBuffer INVALID_BUFFER =
         ByteBuffer.wrap(INVALID_BYTES);
     public static final ByteBuffer LOCAL_INVALID_BUFFER =

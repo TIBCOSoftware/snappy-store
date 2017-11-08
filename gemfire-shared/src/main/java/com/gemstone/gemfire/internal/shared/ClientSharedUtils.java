@@ -137,7 +137,13 @@ public abstract class ClientSharedUtils {
    * The default wait to use when waiting to read/write a channel
    * (when there is no selector to signal)
    */
-  public static final long PARK_NANOS_FOR_READ_WRITE = 50L;
+  public static final long PARK_NANOS_FOR_READ_WRITE = 500L;
+
+  /**
+   * Maximum nanos to park thread to wait for reading/writing data in
+   * non-blocking mode (if selector is present then it will explicitly signal)
+   */
+  public static final long PARK_NANOS_MAX = 30000000000L;
 
   public static boolean isUsingThrift(boolean defaultValue) {
     return SystemProperties.getClientInstance().getBoolean(
@@ -1786,29 +1792,6 @@ public abstract class ClientSharedUtils {
     }
 
     return tokenFound;
-  }
-
-  public static boolean equalBuffers(final ByteBuffer connToken,
-      final ByteBuffer otherId) {
-    if (connToken == otherId) {
-      return true;
-    }
-
-    // this.connId always wraps full array
-    assert ClientSharedUtils.wrapsFullArray(connToken);
-
-    if (otherId != null) {
-      if (ClientSharedUtils.wrapsFullArray(otherId)) {
-        return Arrays.equals(otherId.array(), connToken.array());
-      }
-      else {
-        // don't create intermediate byte[]
-        return equalBuffers(connToken.array(), otherId);
-      }
-    }
-    else {
-      return false;
-    }
   }
 
   public static boolean equalBuffers(final byte[] bytes,

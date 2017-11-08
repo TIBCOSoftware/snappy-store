@@ -214,6 +214,7 @@ import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import com.pivotal.gemfirexd.Constants;
+import com.gemstone.gemfire.internal.cache.InternalPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.ddl.EvictionTableAttribute;
@@ -12408,8 +12409,21 @@ partitioningClause(DistributionDefinitionNode distributionNode,
       }
       repPartPersFlags[1] = true;
       try {
-        return (PartitionResolver)ClassPathLoader.getLatest().forName(
+        PartitionResolver resolver = (PartitionResolver)ClassPathLoader.getLatest().forName(
             resolverClass).getConstructor(TableName.class).newInstance(tableName);
+        if (resolver instanceof InternalPartitionResolver) {
+          InternalPartitionResolver internalResolver = (InternalPartitionResolver)resolver;
+          String[] partCols = internalResolver.getPartitioningColumns();
+          if (partCols != null && partCols.length > 0) {
+            for (String partCol : partCols) {
+               ColumnReference ref = (ColumnReference)nodeFactory.getNode(
+                   C_NodeTypes.COLUMN_REFERENCE, partCol, null, getContextManager());
+               distributionNode.addColumnReference(ref);
+            }
+            distributionNode.setPolicy(DistributionDescriptor.PARTITIONBYEXPRESSION);
+          }
+        }
+        return resolver;
       } catch (Exception e) {
         throw StandardException.newException(
             SQLState.UNEXPECTED_EXCEPTION_FOR_PARTITION_RESOLVER, e, tableName);
@@ -14623,6 +14637,20 @@ literal() throws StandardException :
 NumericConstantNode
 intLiteral() throws StandardException :
 {
+    NumericConstantNode result;
+}
+{
+    result = integral(true)
+    {
+        return result;
+    }
+}
+
+/*
+ * <A NAME="int">integral</A>
+ */
+NumericConstantNode integral(boolean intsOnly) throws StandardException :
+{
     Token   tok;
     String sign = null;
     NumericConstantNode result;
@@ -14641,7 +14669,7 @@ intLiteral() throws StandardException :
             num = sign.concat(num);
 
         try {
-            result = getNumericNode(num, true);
+            result = getNumericNode(num, intsOnly);
         } catch (NumberFormatException e) {
             throw StandardException.newException(
                 SQLState.LANG_INTEGER_LITERAL_EXPECTED);
@@ -15446,7 +15474,7 @@ simpleValueSpecification_int() throws StandardException :
 	ValueNode	value;
 }
 {
-	value = literal()
+	value = intLiteral()
 	{
 	    // Negative numbers are always illegal for all tokens that require int values
 	    // But sometimes zero is legal
@@ -15466,7 +15494,7 @@ simpleValueSpecification_long() throws StandardException :
 	ValueNode	value;
 }
 {
-	value = literal()
+	value = integral(false)
 	{
 	    // A negative number is valid for this value
 	    // Currently only used for RECOVERYDELAY and STARTUPRECOVERYDELAY
@@ -17736,6 +17764,7 @@ reservedKeyword() :
 |	tok = <GROUP>
 |	tok = <HAVING>
 |	tok = <IDENTITY>
+|	tok = <IF>
 |	tok = <IMMEDIATE>
 |	tok = <IN>
 |	tok = <INDICATOR>
@@ -18080,7 +18109,6 @@ nonReservedKeyword()  :
 	|   tok = <GROUPS>
 	|   tok = <HASH> // for CREATE INDEX GLOBAL HASH extension
 	|   tok = <IDLETIME>
-	|   tok = <IF>
 	|   tok = <INCOMING>
 	|   tok = <INITSIZE>
 	|   tok = <INFINITY>

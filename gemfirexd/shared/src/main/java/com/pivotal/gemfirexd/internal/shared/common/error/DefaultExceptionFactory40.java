@@ -93,7 +93,8 @@ public class DefaultExceptionFactory40 extends DefaultExceptionFactory30 {
       sqle = new SQLIntegrityConstraintViolationException(getMessage(message,
           sqlState, errCode), sqlState, errCode, t);
     }
-    else if (sqlState.startsWith(SQLState.AUTHORIZATION_SPEC_PREFIX)) {
+    else if (sqlState.startsWith(SQLState.AUTHORIZATION_SPEC_PREFIX)
+        || sqlState.startsWith(SQLState.AUTH_FAILURE_PREFIX)) {
       sqle = new SQLInvalidAuthorizationSpecException(getMessage(message,
           sqlState, errCode), sqlState, errCode, t);
     }
