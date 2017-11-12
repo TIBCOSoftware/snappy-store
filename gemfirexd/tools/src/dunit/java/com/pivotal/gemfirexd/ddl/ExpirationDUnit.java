@@ -62,13 +62,13 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkPKBasedSelect(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(3000);
+    Thread.sleep(2000);
     st1.execute("select col1 from t1 where col1 = 1");
     ResultSet rs1 = st1.getResultSet();
     assertTrue(rs1.next());
     assertEquals(1, rs1.getInt(1));
     long then = System.currentTimeMillis();
-    Thread.sleep(7000);
+    Thread.sleep(8000);
     st1.execute("select col1 from t1 where col1 = 1");
     long delta = System.currentTimeMillis() - then;
     rs1 = st1.getResultSet();
@@ -85,10 +85,10 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkNonPKBasedUpdate(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(3000);
+    Thread.sleep(2000);
     st1.execute("update t1 set col2 = 2");
     long then = System.currentTimeMillis();
-    Thread.sleep(7000);
+    Thread.sleep(8000);
     // after parallel run this can cause issue..3 seconds of wait and row is gone.
     st1.execute("select col1 from t1");
     long delta = System.currentTimeMillis() - then;
@@ -104,10 +104,10 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkPKBasedUpdate(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(3000);
+    Thread.sleep(2000);
     st1.execute("update t1 set col2 = 2 where col1 = 1");
     long then = System.currentTimeMillis();
-    Thread.sleep(7000);
+    Thread.sleep(8000);
     st1.execute("select col1 from t1 where col1 = 1");
     long delta = System.currentTimeMillis() - then;
     ResultSet rs1 = st1.getResultSet();
