@@ -815,7 +815,8 @@ public class DistributionDefinitionNode extends TableElementNode {
   private DistributionDescriptor validatePartitionByExpression(
       TableElementIterator elementList, DataDictionary dd)
       throws StandardException {
-    String[] columnNames = validatePartitionColumns(elementList);
+    String[] columnNames = this.columns != null
+        ? validatePartitionColumns(elementList) : null;
     return dd.getDataDescriptorGenerator()
         .newDistributionDescriptor(this.policy, columnNames, this.redundancy,
             this.maxPartSize, null, this.isPersistent, this.serverGroups);

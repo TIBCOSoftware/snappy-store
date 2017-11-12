@@ -37,10 +37,8 @@ package io.snappydata.thrift.common;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
-import java.util.concurrent.locks.LockSupport;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -163,19 +161,17 @@ public abstract class ThriftUtils {
     }
     buffer.limit(length);
     try {
-      long parkNanos = 0L;
+      long parkedNanos = 0L;
+      int numTries = 0;
       while (length > 0) {
         int numReadBytes = transport.read(buffer);
         if (numReadBytes > 0) {
           length -= numReadBytes;
         } else if (numReadBytes == 0) {
-          // sleep a bit before retrying
+          // sleep a bit after some retries
           // TODO: this should use selector signal if available
-          LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
-          if ((parkNanos += ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE) >
-              ClientSharedUtils.PARK_NANOS_MAX) {
-            throw new SocketTimeoutException("Connection read timed out.");
-          }
+          parkedNanos = ClientSharedUtils.parkThreadForAsyncOperationIfRequired(
+              null, parkedNanos, ++numTries);
         } else {
           throw new EOFException("Socket channel closed in read.");
         }
@@ -196,7 +192,8 @@ public abstract class ThriftUtils {
           length);
     } else if (nonBlockingTransport != null) {
       try {
-        long parkNanos = 0L;
+        long parkedNanos = 0L;
+        int numTries = 0;
         final int position = buffer.position();
         boolean flushed = false;
         while (length > 0) {
@@ -209,13 +206,10 @@ public abstract class ThriftUtils {
               nonBlockingTransport.flush();
               flushed = true;
             } else {
-              // sleep a bit before retrying
+              // sleep a bit after some retries
               flushed = false;
-              LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
-              if ((parkNanos += ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE) >
-                  ClientSharedUtils.PARK_NANOS_MAX) {
-                throw new SocketTimeoutException("Connection read timed out.");
-              }
+              parkedNanos = ClientSharedUtils.parkThreadForAsyncOperationIfRequired(
+                  null, parkedNanos, ++numTries);
             }
           } else {
             throw new EOFException("Socket channel closed in write.");

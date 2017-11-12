@@ -49,17 +49,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.PrivilegedAction;
 import java.util.*;
+import java.util.concurrent.locks.LockSupport;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -137,7 +132,13 @@ public abstract class ClientSharedUtils {
    * The default wait to use when waiting to read/write a channel
    * (when there is no selector to signal)
    */
-  public static final long PARK_NANOS_FOR_READ_WRITE = 500L;
+  public static final long PARK_NANOS_FOR_READ_WRITE = 100L;
+
+  /**
+   * Retries before waiting for {@link #PARK_NANOS_FOR_READ_WRITE}
+   * (when there is no selector to signal)
+   */
+  public static final int RETRIES_BEFORE_PARK = 20;
 
   /**
    * Maximum nanos to park thread to wait for reading/writing data in
@@ -1865,6 +1866,28 @@ public abstract class ClientSharedUtils {
       }
     }
     return utfLen;
+  }
+
+  public static long parkThreadForAsyncOperationIfRequired(
+      final StreamChannel channel, long parkedNanos, int numTries)
+      throws SocketTimeoutException {
+    // at this point we are out of the selector thread and don't want to
+    // create unlimited size buffers upfront in selector, so will use
+    // simple signalling between selector and this thread to proceed
+    if ((numTries % RETRIES_BEFORE_PARK) == 0) {
+      if (channel != null) {
+        channel.setParkedThread(Thread.currentThread());
+      }
+      LockSupport.parkNanos(PARK_NANOS_FOR_READ_WRITE);
+      if (channel != null) {
+        channel.setParkedThread(null);
+        if ((parkedNanos += ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE) >
+            channel.getParkNanosMax()) {
+          throw new SocketTimeoutException("Connection operation timed out.");
+        }
+      }
+    }
+    return parkedNanos;
   }
 
   public static final ThreadLocal ALLOW_THREADCONTEXT_CLASSLOADER =

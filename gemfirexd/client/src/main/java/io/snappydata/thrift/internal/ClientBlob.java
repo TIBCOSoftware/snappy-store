@@ -84,7 +84,7 @@ import io.snappydata.thrift.snappydataConstants;
  * layer as is for storage. This happens for connector doing puts into
  * a column table where the thrift-layer ByteBuffer will be put into
  * the corresponding region. In that case the chunk buffer is replaced
- * with an empty one and no furher reads are expected on the blob.
+ * with an empty one and no further reads are expected on the blob.
  */
 public final class ClientBlob extends ClientLobBase implements BufferedBlob {
 

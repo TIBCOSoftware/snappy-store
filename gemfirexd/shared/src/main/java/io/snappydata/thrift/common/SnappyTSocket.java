@@ -36,6 +36,7 @@
 package io.snappydata.thrift.common;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -46,6 +47,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.locks.LockSupport;
 import javax.net.ssl.SSLEngine;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -304,12 +306,27 @@ public final class SnappyTSocket extends TNonblockingTransport implements
           "Cannot open without port.");
     }
 
-    final Socket socket = getSocket();
-    socket.connect(this.socketAddress, this.timeout);
+    long timeout = this.timeout;
+    timeout = timeout == 0 ? 30000 : (timeout < 0 ? Integer.MAX_VALUE : timeout);
+    final long connectTimeNanos = timeout * 1000000L;
+    long start = 0L;
+    this.socketChannel.connect(this.socketAddress);
+    while (!this.socketChannel.finishConnect()) {
+      if (start == 0L && connectTimeNanos > 0) {
+        start = System.nanoTime();
+      }
+      LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
+      if (connectTimeNanos > 0 &&
+          (System.nanoTime() - start) > connectTimeNanos) {
+        throw new ConnectException("Connect to " + this.socketAddress +
+            " timed out after " + timeout + "millis");
+      }
+    }
     if (clientId == null) {
-      clientId = socket.getLocalSocketAddress().toString();
+      clientId = getSocket().getLocalSocketAddress().toString();
     }
     ByteChannel channel = initChannel(clientId, null, useSSL, params, true);
+
     this.inputStream = UnsafeHolder.newChannelBufferFramedInputStream(
         channel, this.inputBufferSize);
     this.outputStream = this.framedWrites

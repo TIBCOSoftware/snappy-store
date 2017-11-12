@@ -38,7 +38,6 @@ package com.gemstone.gemfire.internal.shared.unsafe;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
 import javax.annotation.Nonnull;
 
@@ -201,10 +200,6 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     // reflection to get src's native address in case it is a direct
     // byte buffer. Avoiding the complication since the benefit will be
     // very small in any case (and reflection cost may well offset that).
-
-    if (!isOpen()) {
-      throw new ClosedChannelException();
-    }
 
     // adjust this buffer position first
     this.buffer.position((int)(this.addrPosition - this.baseAddress));
