@@ -125,7 +125,19 @@ public class UnsharedImageState implements ImageState {
       this.wasRegionClearedDuringGII = false;
     }
   }
-  
+
+  private volatile boolean requestedDelta;
+
+  @Override
+  public void setRequestedUnappliedDelta(boolean flag) {
+    requestedDelta = flag;
+  }
+
+  @Override
+  public boolean requestedUnappliedDelta() {
+    return requestedDelta;
+  }
+
   public boolean getRegionInvalidated() {
     if (isReplicate()) {
       return this.regionInvalidated;

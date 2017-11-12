@@ -177,7 +177,11 @@ public interface ImageState /* extends Lock */ {
   public boolean isClient();
   
   public void init();
-  
+
+  boolean requestedUnappliedDelta();
+  public void setRequestedUnappliedDelta(boolean flag);
+
+
   public interface VersionTagEntry {
     public Object getKey();
     public VersionSource getMemberID();
