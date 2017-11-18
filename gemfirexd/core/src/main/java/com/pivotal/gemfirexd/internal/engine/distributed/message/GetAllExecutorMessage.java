@@ -251,8 +251,11 @@ public class GetAllExecutorMessage extends RegionMultiKeyExecutorMessage {
     {
       // duplicate bucket-id given count times
       if (SanityManager.DEBUG) {
-        SanityManager.ASSERT(this.keysCountPerBucket.size() == this.bucketBitSet
-            .size());
+        if (this.keysCountPerBucket.size() != this.bucketBitSet.size()) {
+          SanityManager.ASSERT(false, "keysCountPerBucket=" +
+              keysCountPerBucket + " bucketBitSet=" + bucketBitSet +
+              " allMembersBuckets=" + allMembersAndBucketsAndKeys);
+        }
       }
       Iterator<Integer> countItr = keysCountPerBucket.iterator();
       for (int bucketId = this.bucketBitSet.nextSetBit(0, 0); bucketId >= 0;
