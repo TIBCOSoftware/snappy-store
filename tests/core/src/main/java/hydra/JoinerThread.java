@@ -31,7 +31,7 @@ public class JoinerThread extends Thread {
   /** The thread group in which joiner threads run */
   private static ThreadGroup group =
                 LogWriterImpl.createThreadGroup( "Joiner Threads",
-                                                  Log.getLogWriter());
+                                                  Log.getLogWriter().convertToLogWriterI18n());
 
   /** Holds the ExceptionThread on whose behalf this thread was created */
   private ExceptionThread thread;

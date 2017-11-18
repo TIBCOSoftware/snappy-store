@@ -556,7 +556,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     
     int MAXT = DiskStoreImpl.MAX_CONCURRENT_COMPACTIONS;
     final ThreadGroup compactThreadGroup = LogWriterImpl.createThreadGroup("Oplog Compactor Thread Group", this.logger);
-    final ThreadFactory compactThreadFactory = GemfireCacheHelper.CreateThreadFactory(compactThreadGroup, "Idle OplogCompactor");
+    final ThreadFactory compactThreadFactory = GemfireCacheHelper.createThreadFactory(compactThreadGroup, "Idle OplogCompactor");
     this.diskStoreTaskPool = new ThreadPoolExecutor(MAXT, MAXT, 10, TimeUnit.SECONDS,
                                              new LinkedBlockingQueue(),
                                              compactThreadFactory);
@@ -565,7 +565,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     
     final ThreadGroup deleteThreadGroup = LogWriterImpl.createThreadGroup("Oplog Delete Thread Group", this.logger);
 
-    final ThreadFactory deleteThreadFactory = GemfireCacheHelper.CreateThreadFactory(deleteThreadGroup, "Oplog Delete Task");
+    final ThreadFactory deleteThreadFactory = GemfireCacheHelper.createThreadFactory(deleteThreadGroup, "Oplog Delete Task");
     this.delayedWritePool = new ThreadPoolExecutor(1, 5, 10, TimeUnit.SECONDS,
                  new LinkedBlockingQueue(MAX_PENDING_TASKS),
                  deleteThreadFactory, new ThreadPoolExecutor.CallerRunsPolicy());

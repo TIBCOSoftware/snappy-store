@@ -371,43 +371,6 @@ implements LogWriterI18n, LogWriter {
     return group;
   }
 
-  /**
-   * @deprecated Only for use by hydra for backwards compatability reasons.
-   * Returns a <code>ThreadGroup</code> whose {@link
-   * ThreadGroup#uncaughtException} method logs to both {#link
-   * System#err} and the given <code>LogWriterI18n</code>.
-   *
-   * @param name
-   *        The name of the <code>ThreadGroup</code>
-   * @param logger
-   *        A <code>LogWriter</code> to log uncaught exceptions to.  It
-   *        is okay for this argument to be <code>null</code>.
-   *
-   * author kbanks 
-   * @since 6.0
-   */
-  @Deprecated public static LoggingThreadGroup createThreadGroup(String name,
-                                              final LogWriter logger) {
-    return createThreadGroup(name,
-        logger != null ? logger.convertToLogWriterI18n() : null);
-  }
-
-  /* (use cleanUpThreadGroups)
-  public static void destroyThreadGroups() {
-    for (Iterator i = loggingThreadGroups.iterator(); i.hasNext(); ) {
-      LoggingThreadGroup group = (LoggingThreadGroup) i.next();
-      if (group.getName().equals(InternalDistributedSystem.SHUTDOWN_HOOK_NAME)
-         || group.getName().equals("GemFireConnectionFactory Shutdown Hook")) {
-      } else {
-        if (group.activeCount() == 0) {
-          //group.destroy();
-          //i.remove();
-        }
-      }
-    }
-  }
-  */
-
   public static void cleanUpThreadGroups() {
     synchronized (loggingThreadGroups) {
       LoggingThreadGroup group;
@@ -1276,6 +1239,7 @@ implements LogWriterI18n, LogWriter {
         if (ex instanceof Error && SystemFailure.isJVMFailureError((Error)ex)) {
           SystemFailure.setFailure((Error)ex); // don't throw
         }
+        final LogWriterI18n logger = this.logger;
         // Hack for Adobe to treat the shutdown hook error as a special case.
         // Do not change the hook's thread name without also changing it here.
         String threadName = t.getName();  
@@ -1285,13 +1249,13 @@ implements LogWriterI18n, LogWriter {
           final StringId msg = LocalizedStrings.UNCAUGHT_EXCEPTION_IN_THREAD_0_THIS_MESSAGE_CAN_BE_DISREGARDED_IF_IT_OCCURED_DURING_AN_APPLICATION_SERVER_SHUTDOWN_THE_EXCEPTION_MESSAGE_WAS_1;
           final Object[] msgArgs = new Object[] {t, ex.getLocalizedMessage()};
           local.info(msg, msgArgs);
-          if (this.logger != null) {
-            this.logger.info(msg, msgArgs);
+          if (logger != null) {
+            logger.info(msg, msgArgs);
           }
         } else { 
           local.severe(LocalizedStrings.UNCAUGHT_EXCEPTION_IN_THREAD_0, t, ex);
-          if (this.logger != null) {
-            this.logger.severe(LocalizedStrings.UNCAUGHT_EXCEPTION_IN_THREAD_0, t, ex);
+          if (logger != null) {
+            logger.severe(LocalizedStrings.UNCAUGHT_EXCEPTION_IN_THREAD_0, t, ex);
           }
         }
         //if (!(ex instanceof RuntimeException) && (ex instanceof Exception)) {

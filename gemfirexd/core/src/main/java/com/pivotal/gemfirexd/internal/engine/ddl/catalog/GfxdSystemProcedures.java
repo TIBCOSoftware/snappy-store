@@ -111,7 +111,6 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.LDAPAuthenticationSchemeImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
-import com.pivotal.gemfirexd.internal.impl.sql.conn.GenericLanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.JarUtil;
 import com.pivotal.gemfirexd.internal.impl.store.raw.data.GfxdJarMessage;
 import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
@@ -1848,14 +1847,20 @@ public class GfxdSystemProcedures extends SystemProcedures {
     int cnt = 0;
     Map<InternalDistributedMember, String> mbrToServerMap = GemFireXDUtils
         .getGfxdAdvisor().getAllNetServersWithMembers();
-    for (Integer bid : bidToAdvsrMap.keySet()) {
+    for (Map.Entry<Integer, BucketAdvisor> entry : bidToAdvsrMap.entrySet()) {
       cnt++;
-      bucketInfo.append(bid);
+      bucketInfo.append(entry.getKey());
       bucketInfo.append(';');
-      BucketAdvisor bad = bidToAdvsrMap.get(bid);
-      InternalDistributedMember pmbr = bad.getPrimary();
-      Set<InternalDistributedMember> bOwners = bad.getProxyBucketRegion()
-          .getBucketOwners();
+      BucketAdvisor advisor = entry.getValue();
+      ProxyBucketRegion pbr = advisor.getProxyBucketRegion();
+      // throws PartitionOfflineException if appropriate
+      try {
+        pbr.checkBucketRedundancyBeforeGrab(null, false);
+      } catch (Exception e) {
+        throw TransactionResourceImpl.wrapInSQLException(e);
+      }
+      InternalDistributedMember pmbr = advisor.getPrimary();
+      Set<InternalDistributedMember> bOwners = pbr.getBucketOwners();
       bOwners.remove(pmbr);
       String primaryServer = mbrToServerMap.get(pmbr);
       if (primaryServer == null || primaryServer.length() == 0) {
@@ -2419,9 +2424,11 @@ public class GfxdSystemProcedures extends SystemProcedures {
    * This procedure sets the local execution mode for a particular bucket.
    */
   public static void setBucketsForLocalExecution(String tableName,
-      Set<Integer> bucketSet, @Nonnull LanguageConnectionContext lcc) {
+      Set<Integer> bucketSet, boolean retain,
+      @Nonnull LanguageConnectionContext lcc) {
     Region region = Misc.getRegionForTable(tableName, true);
     lcc.setExecuteLocally(bucketSet, region, false, null);
+    lcc.setBucketRetentionForLocalExecution(retain);
   }
 
   /**
@@ -2452,9 +2459,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     while(st.hasMoreTokens()){
       bucketSet.add(Integer.parseInt(st.nextToken()));
     }
-    setBucketsForLocalExecution(tableName, bucketSet, lcc);
-    if (lcc instanceof GenericLanguageConnectionContext)
-      ((GenericLanguageConnectionContext) lcc).setBucketRetentionForLocalExecution(true);
+    setBucketsForLocalExecution(tableName, bucketSet, true, lcc);
   }
 
 
@@ -2634,11 +2639,20 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   public static void USE_SNAPSHOT_TXID(String txId) throws SQLException {
-    StringTokenizer st = new StringTokenizer(txId, ":");
-    long memberId = Long.parseLong(st.nextToken());
-    int uniqId = Integer.parseInt(st.nextToken());
-    TXId txId1 = TXId.valueOf(memberId, uniqId);
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    useSnapshotTXId(txId, lcc);
+  }
+
+  public static void useSnapshotTXId(String txId,
+      LanguageConnectionContext lcc) throws SQLException {
+    int splitAt = txId.indexOf(':');
+    if (splitAt == -1) {
+      throw PublicAPI.wrapStandardException(StandardException.newException(
+          SQLState.GFXD_TRANSACTION_ILLEGAL, "Invalid snapshot transaction ID = " + txId));
+    }
+    long memberId = Long.parseLong(txId.substring(0, splitAt));
+    int uniqId = Integer.parseInt(txId.substring(splitAt + 1));
+    TXId txId1 = TXId.valueOf(memberId, uniqId);
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     TXManagerImpl txManager = tc.getTransactionManager();
     TXStateProxy state = txManager.getHostedTXState(txId1);
@@ -2646,9 +2660,10 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
     if (state == null) {
       if (GemFireXDUtils.TraceExecution) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure USE_SNAPSHOT_TXID()  creating a txState for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
-              + " txId  " +txId);
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "In useSnapshotTXId() creating a txState for conn " +
+                tc.getConnectionID() + " tc id" + tc.getTransactionIdString() +
+                " for " + txId1.shortToString());
       }
       // if state is null then create txstate and use
       state =  txManager.getOrCreateHostedTXState(txId1,
@@ -2658,13 +2673,12 @@ public class GfxdSystemProcedures extends SystemProcedures {
     context.setSnapshotTXState(state);
     tc.setActiveTXState(state, false);
     // If already then throw exception?
-    if (GemFireXDUtils.TraceExecution) {
+    if (GemFireXDUtils.TraceProcedureExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure USE_SNAPSHOT_TXID()  for txid  " + txId1 +
+          "In useSnapshotTXId() for txid " + txId1 +
               " txState : " + state + " connId" + tc.getConnectionID());
     }
   }
-
 
   /**
    * Get whether the NanoTimer is internally making a native call to get the nanoTime. 

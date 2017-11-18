@@ -82,8 +82,8 @@ dependencies {
   compile 'com.googlecode.json-simple:json-simple:1.1.1'
   compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
   compile 'javax.ejb:javax.ejb-api:3.2'
-  compile 'org.apache.tomcat:tomcat-juli:8.5.21'
-  compile 'org.apache.tomcat:tomcat-jdbc:8.5.21'
+  compile 'org.apache.tomcat:tomcat-juli:8.5.23'
+  compile 'org.apache.tomcat:tomcat-jdbc:8.5.23'
   compile 'com.mchange:c3p0:0.9.5.2'
   compile "org.apache.derby:derbytools:${derbyVersion}"
   runtime "org.apache.derby:derby:${derbyVersion}"

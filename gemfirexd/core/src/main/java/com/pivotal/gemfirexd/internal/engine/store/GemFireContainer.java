@@ -5223,6 +5223,15 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+  public final ExecRow newExecRow(final Object rawKey,
+      @Unretained final Object rawStoreRow) {
+    if (isObjectStore()) {
+      return this.encoder.toRow(rawKey, rawStoreRow, this);
+    } else {
+      return newExecRow(rawStoreRow);
+    }
+  }
+
   /**
    * Create the appropriate ExecRow instance for a complete base row given a
    * rawStoreRow and the ExtraTableInfo.
@@ -5259,7 +5268,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
               + rawStoreRow);
         }
       } else if (isObjectStore()) {
-        return this.encoder.toRow(entry, rawStoreRow, this);
+        return this.encoder.toRow(entry.getRawKey(), rawStoreRow, this);
       }
       else {
         assert rawStoreRow instanceof DataValueDescriptor[]:
