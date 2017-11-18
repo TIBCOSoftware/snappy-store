@@ -60,6 +60,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
@@ -676,6 +677,11 @@ public final class RegionEntryUtils {
   public static final StaticSystemCallbacks gfxdSystemCallbacks =
       new StaticSystemCallbacks() {
 
+    private final String[] allPrefixes = new String[]{
+        GfxdConstants.SNAPPY_PREFIX,
+        GfxdConstants.GFXD_PREFIX,
+        DistributionConfig.GEMFIRE_PREFIX};
+
     @Override
     public void logAsync(final Object []line) {
       SanityManager.DEBUG_PRINT_COMPACT_LINE(line);
@@ -780,7 +786,8 @@ public final class RegionEntryUtils {
      */
     @Override
     public String getSystemPropertyNamePrefix() {
-      return GfxdConstants.GFXD_PREFIX;
+      return CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+          ? GfxdConstants.SNAPPY_PREFIX : GfxdConstants.GFXD_PREFIX;
     }
 
     @Override
@@ -799,21 +806,19 @@ public final class RegionEntryUtils {
         throw GemFireXDRuntimeException.newRuntimeException(null, se);
       }
 
-      String lookupKey = key;
-      boolean hasPrefix = key.startsWith(GfxdConstants.GFXD_PREFIX)
-          || key.startsWith(DistributionConfig.GEMFIRE_PREFIX);
-      if (!hasPrefix) {
-        lookupKey = GfxdConstants.GFXD_PREFIX + key;
-      }
-      propValue = PropertyUtil.getSystemProperty(lookupKey, null);
-      if (propValue != null) {
-        return propValue;
+      boolean hasPrefix = false;
+      for (String prefix : allPrefixes) {
+        if (key.startsWith(prefix)) {
+          hasPrefix = true;
+          break;
+        }
       }
       if (!hasPrefix) {
-        lookupKey = DistributionConfig.GEMFIRE_PREFIX + key;
-        propValue = PropertyUtil.getSystemProperty(lookupKey, null);
-        if (propValue != null) {
-          return propValue;
+        for (String prefix : allPrefixes) {
+          propValue = PropertyUtil.getSystemProperty(prefix + key, null);
+          if (propValue != null) {
+            return propValue;
+          }
         }
       }
       return null;
@@ -1217,9 +1222,6 @@ public final class RegionEntryUtils {
                   || bytes[2] != GfxdDataSerializable.DDL_REGION_VALUE) {
                 return bytes;
               } else {
-                  // TODO: SW: this should be avoided completely for objects
-                  // that have not changed serialization as per
-                  // SerializationVersions
                 in.initialize(bytes, 0, bytesLen, version);
                 hdos.clearForReuse();
                 // register GemFireXD types explicitly for offline mode
@@ -1388,7 +1390,7 @@ public final class RegionEntryUtils {
       // set the service status
       final FabricService service = FabricServiceManager
           .currentFabricServiceInstance();
-      if (service != null) {
+      if (service instanceof FabricServiceImpl) {
         ((FabricServiceImpl) service).notifyWaiting(regionPath,
             membersToWaitFor, missingBuckets, myId, message);
       }

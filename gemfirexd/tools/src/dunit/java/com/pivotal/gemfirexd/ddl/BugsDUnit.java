@@ -452,6 +452,9 @@ public class BugsDUnit extends DistributedSQLTestBase {
       assertEquals(10000, rs.getInt(1));
       assertFalse(rs.next());
 
+      // drop the explicitly created app user
+      sysSt.execute("call sys.drop_user('app')");
+
       sysConn.close();
       conn.close();
     } catch (Throwable t) {
@@ -4964,6 +4967,9 @@ public class BugsDUnit extends DistributedSQLTestBase {
 
       // Now bring down the first server
       new ServerDowner(1, exceptions2).run();
+
+      // wait for recovery to complete on restarted server 2
+      GfxdSystemProcedures.REBALANCE_ALL_BUCKETS();
 
       // At this point a bucket should each be on the first new server and the restarted server
 

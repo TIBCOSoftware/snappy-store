@@ -17,11 +17,14 @@ import com.gemstone.gemfire.cache.persistence.PersistentID;
 import com.gemstone.gemfire.internal.FileUtil;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.TXId;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
+import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.persistence.BackupManager;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import io.snappydata.test.dunit.SerializableCallable;
+import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 
 public class MVCCBackupRestoreDUnit extends DistributedSQLTestBase {
@@ -101,6 +104,20 @@ public class MVCCBackupRestoreDUnit extends DistributedSQLTestBase {
     if (e != null) {
       throw e;
     }
+
+    server1.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+        TXStateProxy txStateProxy = GemFireCacheImpl.getInstance().getCacheTransactionManager()
+            .getHostedTXState(txid);
+        //To invoke this operation without tx we need to unmasquerade
+        TXManagerImpl.TXContext context=GemFireCacheImpl.getInstance()
+            .getCacheTransactionManager().masqueradeAs(txStateProxy);
+        GemFireCacheImpl.getInstance()
+            .getCacheTransactionManager().commit();
+      }
+    });
+
     getLogWriter().info("SK Passed test.");
   }
 }

@@ -30,6 +30,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplay
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 
 public class GfxdSetGatewayEventErrorHandlerMessage extends AbstractGfxdReplayableMessage {
@@ -133,7 +134,7 @@ public class GfxdSetGatewayEventErrorHandlerMessage extends AbstractGfxdReplayab
    */
   @Override
   public String getRegionToConflate() {
-    return null;
+    return SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME;
   }
 
   /**
@@ -157,9 +158,7 @@ public class GfxdSetGatewayEventErrorHandlerMessage extends AbstractGfxdReplayab
    */
   @Override
   public String getSQLStatement() {
-    final StringBuilder sb = new StringBuilder();
-    return sb.append("CALL SYS.ATTACH_GATEWAY_EVENT_ERROR_HANDLER('")
-        .append(this.implementation).append("','").append(this.initInfoStr)
-        .append("')").toString();
+    return "CALL SYS.ATTACH_GATEWAY_EVENT_ERROR_HANDLER('" +
+        this.implementation + "','" + this.initInfoStr + "')";
   }
 }

@@ -79,7 +79,6 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.SerializationException;
 import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.OplogCancelledException;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -843,6 +842,7 @@ public final class Oplog implements CompactableOplog {
       if (ex instanceof DiskAccessException) {
         throw (DiskAccessException) ex;
       }
+      logger.warning(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0, ex);
       throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0.toLocalizedString(ex), getParent());
     }
   }
@@ -1188,7 +1188,7 @@ public final class Oplog implements CompactableOplog {
   
   private void preblow(OplogFile olf, long maxSize) throws IOException {
     GemFireCacheImpl.StaticSystemCallbacks ssc = GemFireCacheImpl.getInternalProductCallbacks();
-    if (ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
+    if (!getParent().isOfflineCompacting() && ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
         && this.getParent().getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
       logger.warning(LocalizedStrings.SHOULDNT_INVOKE, "Pre blow is invoked on Accessor Node.");
       return;
@@ -7383,7 +7383,7 @@ public final class Oplog implements CompactableOplog {
           diskRecoveryStores.remove(diskRegionId);
           this.logger.info(LocalizedStrings.ONE_ARG,
               "Oplog::recoverValuesIfNeeded: stopping recovery of " +
-                  diskRegionId + "as memory consumed is 90% of maxStorageSize");
+                  diskRegionId + " as memory consumed is 90% of maxStorageSize");
           continue;
         }
 
@@ -7653,9 +7653,9 @@ public final class Oplog implements CompactableOplog {
       }
 
       @Override
-      protected int writeBufferNonBlocking(final ByteBuffer buffer,
+      protected int writeBufferNoWait(final ByteBuffer buffer,
           final WritableByteChannel channel) throws IOException {
-        int numWritten = super.writeBufferNonBlocking(buffer, channel);
+        int numWritten = super.writeBufferNoWait(buffer, channel);
         if (numWritten > 0) {
           bytesFlushed += numWritten;
         }
@@ -8385,7 +8385,7 @@ public final class Oplog implements CompactableOplog {
     public Object prepareValueForCache(RegionEntryContext r, Object val, boolean isEntryUpdate,
         boolean valHasMetadataForGfxdOffHeapUpdate)
     { throw new IllegalStateException("Should never be called");  }
-    public void _removePhase1() {throw new IllegalStateException();}
+    public void _removePhase1(LocalRegion r) {throw new IllegalStateException();}
     public DiskId getDiskId() {throw new IllegalStateException();}
     public long getLastModified() {throw new IllegalStateException();}
     public boolean isRecovered() {throw new IllegalStateException();}
@@ -8398,7 +8398,7 @@ public final class Oplog implements CompactableOplog {
     public void setLastModified(long lastModifiedTime) { throw new IllegalStateException(); }
     public boolean isLockedForCreate() {throw new IllegalStateException();}
     public Object getRawKey() { throw new IllegalStateException(); }
-    public void setOwner(LocalRegion owner) { throw new IllegalStateException(); }
+    public void setOwner(LocalRegion owner, Object previousOwner) { throw new IllegalStateException(); }
     public Object getContainerInfo() { throw new IllegalStateException();
     }
 
@@ -8509,7 +8509,7 @@ public final class Oplog implements CompactableOplog {
       // TODO Auto-generated method stub
     }
     @Override
-    public void removePhase2() {
+    public void removePhase2(LocalRegion r) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -8665,7 +8665,7 @@ public final class Oplog implements CompactableOplog {
       return false;
     }
     @Override
-    public void setValueToNull() {
+    public void setValueToNull(RegionEntryContext context) {
       // TODO Auto-generated method stub
     }
     @Override

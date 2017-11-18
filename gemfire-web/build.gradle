@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -31,12 +31,12 @@ dependencies {
   runtime "org.springframework:spring-oxm:${springVersion}"
   runtime 'commons-fileupload:commons-fileupload:1.3.2'
 
-  provided "javax.servlet:javax.servlet-api:${servletAPIVersion}"
+  testCompile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
 
   // have to use output since we exclude the dependent classes from jar :(
-  provided project(subprojectBase + 'gemfire-core').sourceSets.main.output
-  provided project(subprojectBase + 'gemfire-core')
-  provided project(subprojectBase + 'gemfire-junit')
+  testCompile project(subprojectBase + 'gemfire-core').sourceSets.main.output
+  testCompile project(subprojectBase + 'gemfire-core')
+  testCompile project(subprojectBase + 'gemfire-junit')
 }
 
 war {

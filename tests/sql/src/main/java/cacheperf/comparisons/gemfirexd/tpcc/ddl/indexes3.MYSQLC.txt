@@ -1,0 +1,18 @@
+create index ndx_customer_name
+  on customer (c_w_id, c_d_id, c_last)
+  ;
+create unique index ndx_oorder_carrier
+  on oorder (o_w_id, o_d_id, o_carrier_id, o_id)
+  ;
+create index ndx_oorder_w_id_d_id_c_id
+  on oorder (o_w_id, o_d_id, o_c_id)
+  ;
+create index ndx_neworder_w_id_d_id
+  on new_order (no_w_id, no_d_id)
+  ;
+create index ndx_neworder_w_id_d_id_o_id
+  on new_order (no_w_id, no_d_id, no_o_id)
+  ;
+create index ndx_order_line_o_id_w_id_d_id
+  on order_line (ol_w_id, ol_d_id, ol_o_id)
+  ;

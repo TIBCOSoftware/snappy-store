@@ -19,6 +19,7 @@ package com.gemstone.gemfire.internal.shared;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 import javax.annotation.Nonnull;
 
@@ -52,7 +53,7 @@ public class ChannelBufferOutputStream extends OutputStreamChannel {
       throw new IllegalArgumentException("buffer size " + bufferSize +
           " should be at least 32");
     }
-    this.buffer = allocateBuffer(bufferSize);
+    this.buffer = allocateBuffer(bufferSize).order(ByteOrder.BIG_ENDIAN);
   }
 
   protected ByteBuffer allocateBuffer(int bufferSize) {

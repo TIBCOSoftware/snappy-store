@@ -651,7 +651,11 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       // No constraint checking for destroy since that is done by
       // ReferencedKeyCheckerMessage if required.
       // Also check if foreign key constraint check is really required.
-      final TXStateInterface tx = event.getTXState(owner);
+      TXStateInterface tx = event.getTXState(owner);
+      if (tx != null && tx.isSnapshot()) {
+        tx = null;
+      }
+
       final RowLocation rl = entry instanceof RowLocation ? (RowLocation)entry
           : null;
       final boolean skipDistribution;
@@ -1044,7 +1048,10 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
     final Operation op = event.getOperation();
     //try {
-    final TXStateInterface tx = event.getTXState(owner);
+    TXStateInterface tx = event.getTXState(owner);
+    if (tx != null && tx.isSnapshot()) {
+      tx = null;
+    }
     if (success && tx == null /* txnal ops will update this at commit */) {
       if (!(op.isUpdate() && event.hasDelta())) {
         this.container.updateNumRows(op.isDestroy());
@@ -4348,7 +4355,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   }
 
   @Override
-  public boolean clearIndexes(LocalRegion region, boolean lockForGII,
+  public boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
       boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
     EmbedConnection conn = null;
     GemFireContainer gfc = null;
@@ -4390,8 +4397,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       }
       if (needToAcquireWriteLockOnGIILock) {
         if (lockForGII) {
-          lockForGII(holdIndexLock, tc);
-          giiLockAcquired = true;
+          giiLockAcquired = lockForGII(holdIndexLock, tc);
         }
       }
 
@@ -4413,7 +4419,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           entry = (RegionEntry) bucketEntriesIter.next();
           try {
             if (indexes != null) {
-              basicClearEntry(region, tc, indexes, entry, destroyOffline);
+              basicClearEntry(region, dr, tc, indexes, entry, destroyOffline);
             }
           } catch (Throwable th) {
             if (logger != null) {
@@ -4440,7 +4446,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           lcc, null, null);
     } finally {
       if (!holdIndexLock) {
-        unlockForGII(holdIndexLock, tc);
+        unlockForGII(false, tc);
       }
       if (tableLockAcquired) {
         gfc.closeForEndTransaction(tc, false);
@@ -4449,14 +4455,14 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     return giiLockAcquired;
   }
 
-  void basicClearEntry(LocalRegion region, GemFireTransaction tc,
+  void basicClearEntry(LocalRegion region, DiskRegion dr, GemFireTransaction tc,
       final List<GemFireContainer> indexes, RegionEntry entry, boolean destroyOffline)
       throws StandardException, InternalGemFireError, Error {
     ExecRow oldRow;
     synchronized (entry) {
       if (!entry.isDestroyedOrRemoved()) {
         @Retained @Released
-        Object val = entry.getValueOffHeapOrDiskWithoutFaultIn(region);
+        Object val = ((AbstractRegionEntry)entry).getValueOffHeapOrDiskWithoutFaultIn(region, dr);
         if (val == null || val instanceof Token) {
           return;
         }

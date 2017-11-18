@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -50,17 +50,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.thrift.Row;
-import io.snappydata.thrift.RowSet;
-import io.snappydata.thrift.SnappyException;
-import io.snappydata.thrift.SnappyExceptionData;
-import io.snappydata.thrift.TransactionAttribute;
-import io.snappydata.thrift.UpdateResult;
+import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.SocketTimeout;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.common.ThriftUtils;
 import io.snappydata.thrift.internal.types.InternalSavepoint;
-import io.snappydata.thrift.snappydataConstants;
 import org.apache.thrift.transport.TTransport;
 
 /**
@@ -82,6 +76,7 @@ public final class ClientConnection extends ReentrantLock implements Connection 
   private volatile int rsHoldability = DEFAULT_RS_HOLDABILITY;
   final EnumSet<TransactionAttribute> pendingTXFlags = EnumSet
       .noneOf(TransactionAttribute.class);
+  StatementAttrs commonAttrs;
 
   private volatile SnappyExceptionData warnings;
   private int xaState;
@@ -148,6 +143,16 @@ public final class ClientConnection extends ReentrantLock implements Connection 
             pendingFlag, false));
       }
       return txFlags;
+    }
+  }
+
+  /** a set of attributes shared by all statements of this connection */
+  public void setCommonStatementAttributes(StatementAttrs attrs) {
+    super.lock();
+    try {
+      this.commonAttrs = attrs;
+    } finally {
+      super.unlock();
     }
   }
 
@@ -258,7 +263,11 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     super.lock();
     try {
       checkClosedConnection();
-      service.commitTransaction(txHost, true, null);
+      if (getTransactionIsolation() == TRANSACTION_NONE) {
+        service.commitTransaction(service.getCurrentHostConnection(), true, null);
+      } else {
+        service.commitTransaction(txHost, true, null);
+      }
       initTXHost(service);
     } catch (SnappyException se) {
       throw informListeners(ThriftExceptionUtil.newSQLException(se));
@@ -276,7 +285,11 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     super.lock();
     try {
       checkClosedConnection();
-      service.rollbackTransaction(txHost, true, null);
+      if (getTransactionIsolation() == TRANSACTION_NONE) {
+        service.rollbackTransaction(service.getCurrentHostConnection(), true, null);
+      } else {
+        service.rollbackTransaction(txHost, true, null);
+      }
       initTXHost(service);
     } catch (SnappyException se) {
       throw informListeners(ThriftExceptionUtil.newSQLException(se));

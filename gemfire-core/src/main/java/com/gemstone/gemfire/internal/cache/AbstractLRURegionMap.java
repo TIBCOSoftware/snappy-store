@@ -44,6 +44,7 @@ import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
@@ -458,6 +459,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     int bytesToEvict = delta;
     resetThreadLocals();
     LocalRegion owner = null;
+    LRUEntry removalEntry = null;
     if (_isOwnerALocalRegion()) {
       owner = _getOwner();
     }
@@ -504,7 +506,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           	  if(!region.getBucketAdvisor().isPrimary()){       	
               try {
                 bytesEvicted = ((AbstractLRURegionMap)region.entries)
-                    .centralizedLruUpdateCallback(false);
+                    .centralizedLruUpdateCallback(false, true);
                 if (bytesEvicted == 0) {
                   iter.remove();
                 } else {
@@ -533,7 +535,8 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
             }
           }
           if(evictFromThisRegion) {
-            LRUEntry removalEntry = (LRUEntry)_getLruList().getLRUEntry();
+            // skip locked entries in LRU and keep the lock till evictEntry (SNAP-2041)
+            removalEntry = (LRUEntry)_getLruList().getLRUEntry(true);
             if (removalEntry != null) {
               int sizeOfValue = evictEntry(removalEntry, stats);
               if (sizeOfValue != 0) {
@@ -551,7 +554,9 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
                   debugLogging("evictions=" + stats.getEvictions());
                 _getCCHelper().afterEviction();
               }
-
+              // release the lock held on by getLRUEntry
+              UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+              removalEntry = null;
             }
             else {
               if (debug && getTotalEntrySize() != 0) {
@@ -566,6 +571,10 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
         // TODO Auto-generated catch block
         if (debug) debugLogging("exception =" + e.getCause());
       } finally {
+        // release the extra lock by getLRUEntry if remaining
+        if (removalEntry != null) {
+          UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+        }
         if (tx != null) {
           txMgr.resume(tx);
         }
@@ -583,7 +592,8 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       try {
         // to fix bug 48285 do no evict if bytesToEvict <= 0.
         while (bytesToEvict > 0 && _getCCHelper().mustEvict(stats, _getOwner(), bytesToEvict)) {
-          LRUEntry removalEntry = (LRUEntry)_getLruList().getLRUEntry();
+          // skip locked entries in LRU and keep the lock till evictEntry (SNAP-2041)
+          removalEntry = (LRUEntry)_getLruList().getLRUEntry(true);
           if (removalEntry != null) {
             if (evictEntry(removalEntry, stats) != 0) {
               if (debug) {
@@ -603,7 +613,9 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
               _getCCHelper().afterEviction();
 
             }
-
+            // release the lock held on by getLRUEntry
+            UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+            removalEntry = null;
           }
           else {
             if (debug && getTotalEntrySize() != 0) {
@@ -618,6 +630,10 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
         // TODO Auto-generated catch block
         if (debug) debugLogging("exception =" + e.getCause());
       } finally {
+        // release the extra lock by getLRUEntry if remaining
+        if (removalEntry != null) {
+          UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+        }
         if (tx != null) {
           txMgr.resume(tx);
         }
@@ -651,7 +667,8 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
    * evicted in the LSB integer, and the (new SerializedDiskBuffer) off-heap
    * evicted bytes in the MSB integer if "includeOffHeapBytes" is true.
    */
-  public final long centralizedLruUpdateCallback(boolean includeOffHeapBytes) {
+  public final long centralizedLruUpdateCallback(boolean includeOffHeapBytes,
+      boolean skipLockedEntries) {
     long evictedBytes = 0;
     int offHeapSize = 0;
     if (getCallbackDisabled()) {
@@ -665,10 +682,11 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       debugLogging("limit is: " + getLimit());
     }
     LRUStatistics stats = _getLruList().stats();
+    LRUEntry removalEntry = null;
     try {
       while (mustEvict() && (evictedBytes == 0 ||
           (includeOffHeapBytes && offHeapSize == 0))) {
-        LRUEntry removalEntry = (LRUEntry)_getLruList().getLRUEntry();
+        removalEntry = (LRUEntry)_getLruList().getLRUEntry(skipLockedEntries);
         if (removalEntry != null) {
           // get the handle to off-heap entry before eviction
           SerializedDiskBuffer buffer = null;
@@ -680,6 +698,11 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
             }
           }
           int evicted = evictEntry(removalEntry, stats);
+          if (skipLockedEntries) {
+            // release the lock held on by getLRUEntry
+            UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+            removalEntry = null;
+          }
           evictedBytes += evicted;
           if (evicted != 0) {
             // check if off-heap entry was evicted
@@ -703,10 +726,14 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           break;
         }
       }
-    }
-    catch (RegionClearedException rce) {
+    } catch (RegionClearedException rce) {
       // Ignore
       if (debug) debugLogging("exception =" + rce.getCause());
+    } finally {
+      // release the extra lock by getLRUEntry if remaining
+      if (skipLockedEntries && removalEntry != null) {
+        UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+      }
     }
     if (debug)
       debugLogging("callback complete");

@@ -59,7 +59,7 @@ public abstract class AbstractGfxdReplayableMessage extends GfxdMessage
     this.skipInLocalExecution = store != null
         && (ddlQ = store.getDDLQueueNoThrow()) != null
         && !(ddlQ.isInitialized() && (store.initialDDLReplayInProgress()
-            || store.initialDDLReplayInProgress()));
+            || store.initialDDLReplayDone()));
   }
 
   public void setReplayKey(long replayKey) {

@@ -812,6 +812,10 @@ public interface LanguageConnectionContext extends Context {
 	 */
 	public int getCurrentIsolationLevel();
 
+	public void setAutoCommit(boolean autoCommit);
+
+	public boolean getAutoCommit();
+
 	/**
 	 * Get the current isolation level in DB2 format.
 	 *
@@ -1432,6 +1436,10 @@ public interface LanguageConnectionContext extends Context {
   public void setExecuteLocally(Set<Integer> bucketIds, Region<?, ?> region,
       boolean dbSync, Checkpoint cp);
 
+  public void setBucketRetentionForLocalExecution(boolean retain);
+
+  public void clearExecuteLocally();
+
   public Set<Integer> getBucketIdsForLocalExecution();
   
   public Region<?, ?> getRegionForBucketSet();
@@ -1495,9 +1503,13 @@ public interface LanguageConnectionContext extends Context {
    * Query routing will be attempted only when this flag is true
    * @param routeQuery
    */
-   void setQueryRouting(boolean routeQuery);
+   void setQueryRoutingFlag(boolean routeQuery);
 
-   boolean isQueryRoutingEnabled();
+   boolean isQueryRoutingFlagTrue();
+
+   void setSnappyInternalConnection(boolean internalConnection);
+
+   boolean isSnappyInternalConnection();
 
 	/**
 	 * Query routing will be attempted only when this flag is true

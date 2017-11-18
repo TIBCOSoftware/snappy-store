@@ -310,7 +310,7 @@ public abstract class BasicDatabase implements ModuleControl, ModuleSupportable,
 		// we also need to push a language connection context.
 // GemStone changes BEGIN
 		LanguageConnectionContext lctx = lcf.newLanguageConnectionContext(
-		    cm, tc, lf, this, user, drdaID, -1, false, dbname);
+		    cm, tc, lf, this, user, null, drdaID, -1, false, dbname);
 		/* (original code)
 		LanguageConnectionContext lctx = lcf.newLanguageConnectionContext(cm, tc, lf, this, user, drdaID, dbname);
 		*/
@@ -872,7 +872,7 @@ public abstract class BasicDatabase implements ModuleControl, ModuleSupportable,
   }
 
   public LanguageConnectionContext setupConnection(ContextManager cm,
-      String user, String drdaID, String dbname, long connectionID,
+      String user, String authToken, String drdaID, String dbname, long connectionID,
       boolean isRemote) throws StandardException {
     throw new AssertionError("This shouldn't have been called.");
   }

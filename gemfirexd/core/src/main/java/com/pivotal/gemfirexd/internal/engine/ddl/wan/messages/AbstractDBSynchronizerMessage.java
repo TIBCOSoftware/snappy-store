@@ -141,8 +141,6 @@ public abstract class AbstractDBSynchronizerMessage extends GfxdMessage {
     try {
       // Write EventID
       DataSerializer.writeObject(this.event.getEventId(), out);
-      // Write Member; TODO: SW: why is this required? get rid of it by
-      // having an additional flag and getSender will get the origin
       ((InternalDistributedMember)event.getDistributedMember()).toData(out);
       // Write Region name
       DataSerializer.writeString(this.event.getRegion().getFullPath(), out);

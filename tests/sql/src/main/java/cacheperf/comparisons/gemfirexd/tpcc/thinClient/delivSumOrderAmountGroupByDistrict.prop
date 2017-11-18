@@ -1,0 +1,38 @@
+locatorHosts=1
+locatorVMsPerHost=1
+locatorThreadsPerVM=1
+
+A=client
+clientHosts=1
+clientVMsPerHost=1
+clientThreadsPerVM=1
+
+B=server
+serverHosts=1
+serverVMsPerHost=1
+serverThreadsPerVM=1
+
+api=GFXD
+
+tableFileNum = 3
+indexFileNum = 2
+createIndexes = true
+
+txIsolation = read_committed
+
+numWarehouses = 10
+numDistrictsPerWarehouse = 10
+numItems = 100000
+numCustomersPerDistrict = 3000
+
+clientHeapMB = 256
+serverHeapMB = 3500
+
+trimSeconds =  60
+workSeconds = 180
+
+logQueries = false
+queryPlanFrequency = 0
+enableHistogram = true
+
+perffmwk.comparisonKey = delivSumOrderAmountGroupByDistrict

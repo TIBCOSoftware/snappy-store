@@ -798,7 +798,8 @@ public interface SQLState {
 	String AUTH_INTERNAL_BAD_UUID                                      = "4250E";
     String AUTH_ROLE_DBO_ONLY                                          = "4251A";
 // GemStone changes BEGIN
-        String AUTH_INVALID_LDAP_GROUP                                     = "4251B";
+	String AUTH_FAILURE_PREFIX                                         = "425";
+	String AUTH_INVALID_LDAP_GROUP                                     = "4251B";
 // GemStone changes END
 
 	String LANG_DB2_NOT_NULL_COLUMN_INVALID_DEFAULT                    = "42601";
@@ -1710,6 +1711,7 @@ public interface SQLState {
     String LOB_OBJECT_INVALID = "XJ215.S";
     String LOB_OBJECT_LENGTH_UNKNOWN_YET = "XJ216.S";
     String LOB_LOCATOR_INVALID = "XJ217.S";
+    String SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES = "XJ218.S";
     
     //XN - Network-level messages
     String NET_CONNECTION_RESET_NOT_ALLOWED_IN_UNIT_OF_WORK         = "XN001.S";

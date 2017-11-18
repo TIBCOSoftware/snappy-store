@@ -197,6 +197,8 @@ public class DistributedRegion extends LocalRegion implements
    */
   private final Object clearLock = new Object();
 
+  protected volatile boolean indexLockedForGII;
+
   private static AtomicBoolean loggedNetworkPartitionWarning = new AtomicBoolean(false);
   
   // For testing
@@ -1193,7 +1195,6 @@ public class DistributedRegion extends LocalRegion implements
     }
 
     final IndexUpdater indexUpdater = getIndexUpdater();
-    boolean indexLocked = false;
     // this try block is to release the GFXD GII lock in finally
     // which should be done after bucket status will be set
     // properly in LocalRegion#initialize()
@@ -1204,7 +1205,7 @@ public class DistributedRegion extends LocalRegion implements
         // index list for GemFireXD (#41330 and others)
         if (indexUpdater != null) {
           indexUpdater.lockForGII();
-          indexLocked = true;
+          indexLockedForGII = true;
         }
         
         PersistentMemberID persistentId = null;
@@ -1245,8 +1246,9 @@ public class DistributedRegion extends LocalRegion implements
       }
      }
     } finally {
-      if (indexLocked) {
+      if (indexUpdater != null && indexLockedForGII) {
         indexUpdater.unlockForGII();
+        indexLockedForGII = false;
       }
     }
   }
@@ -1572,8 +1574,17 @@ public class DistributedRegion extends LocalRegion implements
   /** remove any partial entries received in a failed GII */
   protected void cleanUpAfterFailedGII(boolean recoverFromDisk) {    
     boolean isProfileExchanged = isProfileExchanged();
-    boolean giiIndexLockAcquired = this.doPreEntryDestructionCleanup(true, null, false);
+    // release read lock on index if required because cleanup will need
+    // write lock on index
+    final IndexUpdater indexUpdater = getIndexUpdater();
+    final boolean indexLocked = indexUpdater != null && indexLockedForGII;
+    boolean giiIndexLockAcquired = false;
     try {
+      if (indexLocked) {
+        indexUpdater.unlockForGII();
+        indexLockedForGII = false;
+      }
+      giiIndexLockAcquired = this.doPreEntryDestructionCleanup(true, null, false);
       // reset the profile exchanged flag after this since we will continue with
       // GII from next source
       setProfileExchanged(isProfileExchanged);
@@ -1607,7 +1618,15 @@ public class DistributedRegion extends LocalRegion implements
         }
       }
     } finally {
-      doPostEntryDestructionCleanup(true, null, false, giiIndexLockAcquired);
+      try {
+        doPostEntryDestructionCleanup(true, null, false, giiIndexLockAcquired);
+      } finally {
+        // reacquire the index read lock
+        if (indexLocked) {
+          indexUpdater.lockForGII();
+          indexLockedForGII = true;
+        }
+      }
     }
   }
 
@@ -1767,14 +1786,22 @@ public class DistributedRegion extends LocalRegion implements
 
         // in the first loop apply the committed/rolled back transactions
         if (!pendingTXStates.isEmpty()) {
+
+          final TXRegionState[] orderedTXRegionState = pendingTXStates
+              .toArray(new TXRegionState[pendingTXStates.size()]);
+
+          Arrays.sort(orderedTXRegionState,
+              Comparator.comparing(t -> t.getTXState().getTransactionId()));
+
           final ArrayList<TXRegionState> inProgressTXStates =
               new ArrayList<TXRegionState>();
           final ArrayList<TXRegionState> finishedTXStates =
               new ArrayList<TXRegionState>();
           final TXManagerImpl txMgr = getCache().getCacheTransactionManager();
-          for (TXRegionState txrs : pendingTXStates) {
+          for (TXRegionState txrs : orderedTXRegionState) {
             TXState txState = txrs.getTXState();
             int txOrder = 0;
+            getLogWriterI18n().info(LocalizedStrings.DEBUG, "Locking txState = " + txState);
             txState.lockTXState();
             if (txState.isInProgress() && (txOrder = is.getFinishedTXOrder(
                 txState.getTransactionId())) == 0) {
@@ -1861,7 +1888,7 @@ public class DistributedRegion extends LocalRegion implements
               }
             }
           } finally {
-            for (TXRegionState txrs : pendingTXStates) {
+            for (TXRegionState txrs : orderedTXRegionState) {
               txrs.getTXState().unlockTXState();
             }
           }

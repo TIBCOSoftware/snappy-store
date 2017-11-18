@@ -16,8 +16,6 @@
  */
 package com.gemstone.gemfire.internal.cache;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -101,7 +99,7 @@ public class RegionEvictorTask implements Callable<Object> {
             LocalRegion region = iter.next();
             try {
               bytesEvicted = ((AbstractLRURegionMap)region.entries)
-                  .centralizedLruUpdateCallback(false);
+                  .centralizedLruUpdateCallback(false, true);
               if (bytesEvicted == 0) {
                 iter.remove();
               }

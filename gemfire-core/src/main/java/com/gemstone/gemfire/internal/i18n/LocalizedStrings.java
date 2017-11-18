@@ -2086,7 +2086,7 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId GemFireCacheImpl_REST_SERVER_ON_PORT_0_IS_SHUTTING_DOWN = new StringIdImpl(5873, "Rest Server on port {0} is shutting down");
 
   public static final StringId InternalDistributedSystem_QUORUM_OF_MEMBERS_CONTACTED = new StringIdImpl(5874, "quorum check passed - now attempting multicast discovery");
-  
+
   /** JGroups strings, messageId 15000-90000 **/
   /** Testing strings, messageId 90000-99999 **/
   /** These are simple messages for testing, translated with Babelfish. **/

@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.internal.tcp;
 
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import java.io.*;
 import java.lang.ref.Reference;
@@ -392,7 +393,7 @@ public final class ConnectionTable  {
 
       @Override
       public boolean validateObject(ConnKey key, PooledObject<Connection> p) {
-        return p.getObject().connected;
+        return !p.getObject().isClosing();
       }
 
       @Override
@@ -1299,6 +1300,11 @@ public final class ConnectionTable  {
   }
 
   public static void releaseThreadsSockets() {
+    // clear TXContext from global list
+    TXManagerImpl.TXContext context = TXManagerImpl.currentTXContext();
+    if (context != null) {
+      context.threadClose();
+    }
     ConnectionTable ct = (ConnectionTable) lastInstance.get();
     if (ct == null) {
       return;

@@ -32,14 +32,14 @@ public class BucketRegionIndexCleaner {
       this.region = region;
      
     }
-    
+
   public void clearEntries(List<RegionEntry> entries) {
     IndexUpdater indexUpdater = region.getIndexUpdater();
-    boolean indexGiiLockTaken = indexUpdater.clearIndexes(region, lockForGII,
-        holdIndexLock, entries.iterator(), false);
-    if (indexGiiLockTaken) {
-      indexUpdater.unlockForGII(indexGiiLockTaken);
+    if (indexUpdater == null) return;
+    boolean indexGiiLockTaken = indexUpdater.clearIndexes(region, region.getDiskRegion(),
+        lockForGII, holdIndexLock, entries.iterator(), false);
+    if (indexGiiLockTaken && holdIndexLock) {
+      indexUpdater.unlockForGII(true);
     }
   }    
-   
 }

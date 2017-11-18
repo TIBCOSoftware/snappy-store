@@ -21,21 +21,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Properties;
-import java.util.Set;
-
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import java.util.*;
 
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
@@ -60,6 +46,10 @@ import com.pivotal.gemfirexd.internal.impl.sql.catalog.SYSTABLEPERMSRowFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.TabInfoImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.GranteeIterator;
 import com.pivotal.gemfirexd.jdbc.JUnit4TestBase;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 public class LdapGroupAuthTest extends JUnit4TestBase {
 
@@ -85,10 +75,9 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
   }
 
   @AfterClass
-  public static void stopServer() throws Exception {
+  public static void classTearDown() throws Exception {
     SQLException failure = closeStatements(conns, stmts);
-    classTearDown();
-    TestUtil.shutDown();
+    JUnit4TestBase.classTearDown();
     netPort = 0;
     final LdapTestServer server = LdapTestServer.getInstance();
     if (server.isServerStarted()) {
@@ -152,7 +141,7 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
    */
   @Test
   public void ldapADGroupMembers() throws Exception {
-    stopServer();
+    classTearDown();
     Properties bootProperties = SecurityTestUtils
         .startLdapServerAndGetBootProperties(0, 0, sysUser,
             TestUtil.getResourcesDir() + "/lib/ldap/authAD.ldif");
@@ -191,7 +180,7 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
     Set<String> group7Members = getLdapGroupMembers("gemgroup7");
     Assert.assertEquals(expectedGroup7Members, group7Members);
 
-    stopServer();
+    classTearDown();
     startServer();
   }
 

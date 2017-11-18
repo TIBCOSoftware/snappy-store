@@ -205,7 +205,13 @@ public class CacheServerLauncher  {
    */
   protected void status(final String[] args) throws Exception {
     workingDir = (File) getStopOptions(args).get(DIR);
-    System.out.println(getStatus());
+    Status s = getStatus();
+    if (args.length >= 1 && args[1].equalsIgnoreCase("verbose")) {
+      System.out.println(s);
+    }
+    else {
+      System.out.println(s.shortStatus());
+    }
     if (DONT_EXIT_AFTER_LAUNCH) {
       return;
     }
@@ -614,7 +620,8 @@ public class CacheServerLauncher  {
     options.put(DIR, new File("."));
 
     for (final String arg : args) {
-      if (arg.equals("stop") || arg.equals("status") || arg.equals("wait")) {
+      if (arg.equals("stop") || arg.equals("status") || arg.equals("wait")
+              || arg.equals("verbose")) {
         // expected
       }
       else if (arg.startsWith("-dir=")) {
@@ -740,7 +747,8 @@ public class CacheServerLauncher  {
   /**
    * Sets the status of the cache server to be {@link #RUNNING}.
    */
-  public void running(final InternalDistributedSystem system, boolean endWaiting) {
+  public void running(final InternalDistributedSystem system,
+      int stateIfWaiting) {
     Status stat = this.status;
     if (stat == null) {
       stat = this.status = createStatus(this.baseName, RUNNING, getProcessId());
@@ -748,9 +756,7 @@ public class CacheServerLauncher  {
     else {
       if (stat.state == WAITING) {
         stat.dsMsg = null;
-        if (endWaiting) {
-          stat.state = RUNNING;
-        }
+        stat.state = stateIfWaiting;
       } else {
         stat.state = RUNNING;
       }
@@ -905,7 +911,7 @@ public class CacheServerLauncher  {
 
     startAdditionalServices(cache, options, props);
 
-    this.running(system, false);
+    this.running(system, RUNNING);
 
     clearLogListener();
 
@@ -1281,6 +1287,15 @@ public class CacheServerLauncher  {
     @Override
     public String toString() {
       final StringBuilder buffer = new StringBuilder();
+      buffer.append(shortStatus());
+      if (this.dsMsg != null) {
+        buffer.append('\n').append(this.dsMsg);
+      }
+      return buffer.toString();
+    }
+
+    public String shortStatus() {
+      final StringBuilder buffer = new StringBuilder();
       buffer.append(this.baseName).append(" pid: ").append(pid).append(" status: ");
       switch (state) {
         case SHUTDOWN:
@@ -1316,9 +1331,6 @@ public class CacheServerLauncher  {
           buffer.append(" - ").append(LocalizedStrings
               .CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS.toLocalizedString());
         }
-      }
-      if (this.dsMsg != null) {
-        buffer.append('\n').append(this.dsMsg);
       }
       return buffer.toString();
     }
@@ -1533,7 +1545,7 @@ public class CacheServerLauncher  {
           }
       }
       writePidToFile(status);
-      System.out.println( status );
+      System.out.println(status);
     }
   }
 

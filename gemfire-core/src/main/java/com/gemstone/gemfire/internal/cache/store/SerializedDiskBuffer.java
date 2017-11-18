@@ -126,6 +126,13 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   }
 
   /**
+   * Copy any off-heap data to heap. Not thread-safe and should
+   * be invoked before handing out to other threads.
+   */
+  public void copyToHeap(String owner) {
+  }
+
+  /**
    * Get as buffer to write to disk. Callers must ensure {@link #release()}
    * is invoked in all paths after the write is done (or fails).
    */
@@ -146,6 +153,14 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
    * {@link com.gemstone.gemfire.DataSerializer#writeObject}.
    */
   public abstract void write(OutputStreamChannel channel) throws IOException;
+
+  /**
+   * Write the serialization header separately if required.
+   */
+  public boolean writeSerializationHeader(ByteBuffer src,
+      ByteBuffer writeBuf) throws IOException {
+    return true;
+  }
 
   /**
    * The total number of bytes that will be written to a channel

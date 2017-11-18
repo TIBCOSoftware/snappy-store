@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -72,7 +72,7 @@ final class WinNativeCalls extends NativeCalls {
     public int keepaliveinterval;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("enabled", "keepalivetime",
           "keepaliveinterval");
     }

@@ -53,7 +53,6 @@ import java.util.Set;
 // GemStone changes BEGIN
 import java.util.Properties;
 
-import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
@@ -129,7 +128,6 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
-import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
@@ -274,6 +272,7 @@ public final class GenericLanguageConnectionContext
     protected Authorizer authorizer;
 	protected String userName = null; //The name the user connects with.
 	                                  //May still be quoted.
+	private String authToken = null;
 	protected String currentRole;
 	protected SchemaDescriptor	sd;
 
@@ -318,6 +317,8 @@ public final class GenericLanguageConnectionContext
 	// if unspecified, the statement won't be prepared with a specific 
 	// scan isolationlevel
 	protected int prepareIsolationLevel = ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
+
+	private boolean autoCommit = false;
 
 	// Whether or not to write executing statement info to db2j.log
 	private boolean logStatementText;
@@ -381,6 +382,7 @@ public final class GenericLanguageConnectionContext
 	 LanguageConnectionFactory lcf,
 	 Database db,
 	 String userName,
+	 String authToken,
 	 int instanceNumber,
 	 String drdaID,
 // GemStone changes BEGIN
@@ -406,6 +408,7 @@ public final class GenericLanguageConnectionContext
 		connFactory =  lcf;
         this.db = db;
 		this.userName = userName;
+		this.authToken = authToken;
 		this.instanceNumber = instanceNumber;
 		this.drdaID = drdaID;
 		this.dbname = dbname;
@@ -1423,6 +1426,16 @@ public final class GenericLanguageConnectionContext
 	public int getUniqueSavepointID()
 	{
 		return nextSavepointId-1;
+	}
+
+	public String getUserName()
+	{
+		return this.userName;
+	}
+
+	public String getAuthToken()
+	{
+		return this.authToken;
 	}
 
 	/**
@@ -3218,7 +3231,6 @@ public final class GenericLanguageConnectionContext
 	 */
 	public void setIsolationLevel(int isolationLevel) throws StandardException
 	{
-        
 		StatementContext stmtCtxt = getStatementContext();
 		if (stmtCtxt!= null && stmtCtxt.inTrigger())
 			throw StandardException.newException(SQLState.LANG_NO_XACT_IN_TRIGGER, getTriggerExecutionContext().toString());
@@ -3321,6 +3333,14 @@ public final class GenericLanguageConnectionContext
 			return prepareIsolationLevel;
 		else
 			return ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL;
+	}
+
+	public void setAutoCommit(boolean autoCommit) {
+		this.autoCommit = autoCommit;
+	}
+
+	public boolean getAutoCommit() {
+		return autoCommit;
 	}
 
 	/**
@@ -4054,22 +4074,22 @@ public final class GenericLanguageConnectionContext
 		}
 	}
       
-        /** @see LanguageConnectionContext#getExplainConnection() */
+        @Override
         public final boolean explainConnection() {
           return explainConnection;
         }
       
-        /** @see LanguageConnectionContext#setExplainConnectionMode(boolean) */
+        @Override
         public final void setExplainConnection(final boolean onOrOff) {
           explainConnection = onOrOff;
         }
       
-        /** @see LanguageConnectionContext#getExplainSchema() */
+        @Override
         public final boolean getExplainSchema() {
           return create_explain_schema_objects;
         }
       
-        /** @see LanguageConnectionContext#setExplainSchema(String) */
+        @Override
         public void setExplainSchema(boolean s) {
           create_explain_schema_objects = s;
         }
@@ -4128,6 +4148,8 @@ public final class GenericLanguageConnectionContext
 	private static final int DEFAULT_PERSISTENT = 0x4000;
 
 	private static final int BUCKET_RETENTION_FOR_LOCAL_EXECUTION = 0x8000;
+
+	private static final int SNAPPY_INTERNAL_CONNECTION = 0x10000;
 
   private static final int FLAGS_DEFAULT = 0x0;
 
@@ -4468,6 +4490,7 @@ public final class GenericLanguageConnectionContext
     return connFactory.getStatement(getDefaultSchema(), sqlText, execFlags,false, null);
   }
 
+	@Override
 	public void setBucketRetentionForLocalExecution(boolean bucketRetentionForLocalExecution) {
 		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, BUCKET_RETENTION_FOR_LOCAL_EXECUTION,
 				bucketRetentionForLocalExecution);
@@ -4725,7 +4748,7 @@ public final class GenericLanguageConnectionContext
    * Default QueryTimeOut of the statement/preparedStatement that is being
    * created via nestedConnection.
    * 
-   * @see EmbedConnection#defaultQueryTimeOutMillis
+   * @see EmbedConnection#defaultNestedConnQueryTimeOutMillis
    */
   private long lastStatementQueryTimeOutMillis = 0L;
   
@@ -4850,8 +4873,13 @@ public final class GenericLanguageConnectionContext
 	  if (bucketIds == null && GemFireXDUtils.isSet(this.gfxdFlags, BUCKET_RETENTION_FOR_LOCAL_EXECUTION) ) {
 		  return;
 	  }
+	  forceSetExecuteLocally(bucketIds, region, dbSync, cp);
+  }
 
-    if (SanityManager.TraceSingleHop) {
+  private void forceSetExecuteLocally(Set<Integer> bucketIds, Region<?, ?> region,
+      boolean dbSync, Checkpoint cp) {
+
+    if (GemFireXDUtils.TraceQuery || SanityManager.TraceSingleHop) {
       SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,
           "GenericLanguageConnectionContext::"
               + "setExecuteLocally setting bucketSet in lcc: " + this + " to: "
@@ -4861,6 +4889,11 @@ public final class GenericLanguageConnectionContext
     this.bucketSetForRegion = region;
     this.dbSyncToBeDone = dbSync;
     this.chkPoint = cp;
+  }
+
+  @Override
+  public void clearExecuteLocally() {
+    forceSetExecuteLocally(null, null, false, null);
   }
 
 
@@ -4955,14 +4988,25 @@ public final class GenericLanguageConnectionContext
   }
 
 	@Override
-	public void setQueryRouting(boolean routeQuery) {
+	public void setQueryRoutingFlag(boolean routeQuery) {
 		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, ROUTE_QUERY,
 				routeQuery);
 	}
 
 	@Override
-	public boolean isQueryRoutingEnabled() {
+	public boolean isQueryRoutingFlagTrue() {
 		return GemFireXDUtils.isSet(this.gfxdFlags, ROUTE_QUERY);
+	}
+
+	@Override
+	public void setSnappyInternalConnection(boolean internalConnection) {
+		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, SNAPPY_INTERNAL_CONNECTION,
+				internalConnection);
+	}
+
+	@Override
+	public boolean isSnappyInternalConnection() {
+		return GemFireXDUtils.isSet(this.gfxdFlags, SNAPPY_INTERNAL_CONNECTION);
 	}
 
 	@Override

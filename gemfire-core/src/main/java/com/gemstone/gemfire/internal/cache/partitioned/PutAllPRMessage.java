@@ -62,7 +62,6 @@ import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.snappy.UMMMemoryTracker;
 import com.gemstone.gnu.trove.THashMap;
 
@@ -411,6 +410,8 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     final InternalDataView view = (tx != null && tx.isSnapshot()) ? r.getSharedDataView() : r.getDataView(tx);
     boolean lockedForPrimary = false;
     UMMMemoryTracker memoryTracker = null;
+    // needed for column store callbacks
+    EntryEventImpl[] allEvents = null;
     try {
     
     if (!notificationOnly) {
@@ -506,11 +507,14 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
           }
 
           if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
-                  && !r.isInternalRegion()){
+                  && !r.isInternalRegion()) {
             // Setting thread local buffer to 0 here.
             // UMM will provide an initial estimation based on the first row
             memoryTracker = new UMMMemoryTracker(
                 Thread.currentThread().getId(), putAllPRDataSize);
+            if (r.isInternalColumnTable()) {
+              allEvents = new EntryEventImpl[putAllPRDataSize];
+            }
           }
 
         /* The real work to be synchronized, it will take long time. We don't
@@ -556,7 +560,9 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
                   didPut = view.putEntryOnRemote(ev, false, false, null,
                       false, cacheWrite, lastModified, true);
                   putAllPRData[i].setTailKey(ev.getTailKey());
-                  putAllPRData[i].setBatchUUID(ev.getBatchUUID());
+                }
+                if (didPut && allEvents != null) {
+                  allEvents[i] = ev;
                 }
                 if (didPut && logger.fineEnabled()) {
                   logger.fine("PutAllPRMessage.doLocalPutAll:putLocally success for " + ev);
@@ -682,9 +688,13 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
         if (success && bucketRegion.checkForColumnBatchCreation()) {
           bucketRegion.createAndInsertColumnBatch(false);
         }
-          if (lockedForPrimary) {
-            bucketRegion.doUnlockForPrimary();
-          }
+        if (success && allEvents != null) {
+           CallbackFactoryProvider.getStoreCallbacks()
+               .invokeColumnStorePutCallbacks(bucketRegion, allEvents);
+        }
+        if (lockedForPrimary) {
+          bucketRegion.doUnlockForPrimary();
+        }
       }
     } else {
       for (int i=0; i<putAllPRDataSize; i++) {
@@ -770,7 +780,6 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
     } else {
       ev.setTailKey(prd.getTailKey());
     }
-    ev.setBatchUUID(prd.getBatchUUID());
     ev.setPutDML(isPutDML);
     evReturned = true;
     return ev;

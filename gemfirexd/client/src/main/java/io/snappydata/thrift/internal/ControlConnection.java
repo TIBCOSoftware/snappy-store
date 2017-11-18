@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -73,14 +73,11 @@ final class ControlConnection {
   private final SocketParameters socketParams;
   private final boolean framedTransport;
   private final Set<ServerType> snappyServerTypeSet;
-  // TODO: SW: the initial set of locators created from initial connection
-  // into this DS need not be static; we should refresh/adjust if later
-  // connections specify different combination of locators
   private final List<HostAddress> locators;
   private HostAddress controlHost;
   private LocatorService.Client controlLocator;
   private final ArrayList<HostAddress> controlHosts;
-  final THashSet controlHostSet;
+  private final THashSet controlHostSet;
 
   public static final class SearchRandomServer implements TObjectProcedure {
 

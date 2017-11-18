@@ -68,23 +68,7 @@ public class GemFireActivationFactory {
       }
     }
 
-    boolean doRoute = false;
-    if (qi.isSelect() && qi.isPreparedStatementQuery()) {
-      boolean routeQuery = Misc.getMemStore().isSnappyStore() && _lcc.isQueryRoutingEnabled();
-      if (routeQuery) {
-        doRoute = SnappyActivation.isColumnTable((DMLQueryInfo) qi, false);
-        if (GemFireXDUtils.TraceQuery) {
-          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-              "GemFireActivationFactory. Not prepared statement. SQL=" + st.getSource()
-                  + " ,doRoute=" + doRoute);
-        }
-      }
-    }
-
-    if (doRoute) {
-      actvn = new PrepStatementSnappyActivation(st, _lcc, qi, true);
-    }
-    else if (qi.isPrimaryKeyBased()) {
+    if (qi.isPrimaryKeyBased()) {
       if (qi.isSelect() || qi.isSelectForUpdateQuery()) {
         actvn = new GemFireSelectActivation(st, _lcc, qi, gc,
             qi.isSelectForUpdateQuery());

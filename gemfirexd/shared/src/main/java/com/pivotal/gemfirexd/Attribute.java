@@ -187,12 +187,6 @@ public interface Attribute {
   String LOG_FILE = "log-file";
 
   /**
-   * The property used to specify the initial SQL scripts to be executed before
-   * anything else including initial DDL replay.
-   */
-  String CONFIG_SCRIPTS = "config-scripts";
-
-  /**
    * The VM level property to specify the default initial capacity used for
    * underlying GFE regions on datastores.
    */
@@ -463,6 +457,8 @@ public interface Attribute {
    * Connection property to enable/disable query routing for Spark.
    */
   String ROUTE_QUERY = "route-query";
+
+  String INTERNAL_CONNECTION = "internal-connection";
 
   /**
    * Embedded connection property to create tables as persistent by default

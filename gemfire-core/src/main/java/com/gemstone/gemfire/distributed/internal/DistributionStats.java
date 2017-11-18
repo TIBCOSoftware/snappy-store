@@ -59,6 +59,7 @@ public class DistributionStats implements DMStats {
   private final static int nodesId;
   private final static int overflowQueueSizeId;
   private final static int processingThreadsId;
+  private final static int thriftProcessingThreadsId;
   private final static int serialThreadsId;
   private final static int waitingThreadsId;
   private final static int highPriorityThreadsId;
@@ -227,6 +228,7 @@ public class DistributionStats implements DMStats {
   private static final int serialThreadStartsId;
   private static final int viewThreadStartsId;
   private static final int processingThreadStartsId;
+  private static final int thriftProcessingThreadStartsId;
   private static final int highPriorityThreadStartsId;
   private static final int waitingThreadStartsId;
   private static final int partitionedRegionThreadStartsId;
@@ -281,6 +283,7 @@ public class DistributionStats implements DMStats {
     final String serialQueueThrottleCountDesc = "The total number of times a thread was delayed in adding a ordered message to the serial queue.";
     final String serialThreadsDesc = "The number of threads currently processing serial/ordered messages.";
     final String processingThreadsDesc = "The number of threads currently processing normal messages.";
+    final String thriftProcessingThreadsDesc = "The number of threads currently processing thrift messages.";
     final String highPriorityThreadsDesc = "The number of threads currently processing high priority messages.";
     final String partitionedRegionThreadsDesc = "The number of threads currently processing partitioned region messages.";
     final String functionExecutionThreadsDesc = "The number of threads currently processing function execution messages.";
@@ -393,6 +396,7 @@ public class DistributionStats implements DMStats {
         f.createLongCounter("serialQueueThrottleTime", serialQueueThrottleTimeDesc, "nanoseconds", false),
         f.createIntGauge("serialThreads", serialThreadsDesc, "threads"),
         f.createIntGauge("processingThreads", processingThreadsDesc, "threads"),
+        f.createIntGauge("thriftProcessingThreads", thriftProcessingThreadsDesc, "threads"),
         f.createIntGauge("highPriorityThreads", highPriorityThreadsDesc, "threads"),
         f.createIntGauge("partitionedRegionThreads", partitionedRegionThreadsDesc, "threads"),
         f.createIntGauge("functionExecutionThreads", functionExecutionThreadsDesc, "threads"),
@@ -566,6 +570,7 @@ public class DistributionStats implements DMStats {
         f.createLongCounter("serialThreadStarts", "Total number of times a thread has been created for the serial message executor.", "starts", false),
         f.createLongCounter("viewThreadStarts", "Total number of times a thread has been created for the view message executor.", "starts", false),
         f.createLongCounter("processingThreadStarts", "Total number of times a thread has been created for the pool processing normal messages.", "starts", false),
+        f.createLongCounter("thriftProcessingThreadStarts", "Total number of times a thread has been created for the pool processing thrift messages.", "starts", false),
         f.createLongCounter("highPriorityThreadStarts", "Total number of times a thread has been created for the pool handling high priority messages.", "starts", false),
         f.createLongCounter("waitingThreadStarts", "Total number of times a thread has been created for the waiting pool.", "starts", false),
         f.createLongCounter("partitionedRegionThreadStarts", "Total number of times a thread has been created for the pool handling partitioned region messages.", "starts", false),
@@ -631,6 +636,7 @@ public class DistributionStats implements DMStats {
     serialQueueThrottleCountId = type.nameToId("serialQueueThrottleCount");
     serialThreadsId = type.nameToId("serialThreads");
     processingThreadsId = type.nameToId("processingThreads");
+    thriftProcessingThreadsId = type.nameToId("thriftProcessingThreads");
     highPriorityThreadsId = type.nameToId("highPriorityThreads");
     partitionedRegionThreadsId = type.nameToId("partitionedRegionThreads");
     functionExecutionThreadsId = type.nameToId("functionExecutionThreads");
@@ -774,6 +780,7 @@ public class DistributionStats implements DMStats {
     serialThreadStartsId = type.nameToId("serialThreadStarts");
     viewThreadStartsId = type.nameToId("viewThreadStarts");
     processingThreadStartsId = type.nameToId("processingThreadStarts");
+    thriftProcessingThreadStartsId = type.nameToId("thriftProcessingThreadStarts");
     highPriorityThreadStartsId = type.nameToId("highPriorityThreadStarts");
     waitingThreadStartsId = type.nameToId("waitingThreadStarts");
     partitionedRegionThreadStartsId = type.nameToId("partitionedRegionThreadStarts");
@@ -1128,6 +1135,10 @@ public class DistributionStats implements DMStats {
 
   public void incNumProcessingThreads(int threads) {
     this.stats.incInt(processingThreadsId, threads);
+  }
+
+  public void incNumThriftProcessingThreads(int threads) {
+    this.stats.incInt(thriftProcessingThreadsId, threads);
   }
 
   public int getNumSerialThreads() {
@@ -2021,6 +2032,9 @@ public class DistributionStats implements DMStats {
   }
   public void incProcessingThreadStarts() {
     stats.incLong(processingThreadStartsId, 1);
+  }
+  public void incThriftProcessingThreadStarts() {
+    stats.incLong(thriftProcessingThreadStartsId, 1);
   }
   public void incHighPriorityThreadStarts() {
     stats.incLong(highPriorityThreadStartsId, 1);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -16,8 +16,8 @@
  */
 
 dependencies {
-  compile 'net.java.dev.jna:jna:4.2.2'
+  compile 'net.java.dev.jna:jna:4.5.0'
   compile 'commons-io:commons-io:2.5'
   compile project(subprojectBase + 'gemfire-trove')
-  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 }

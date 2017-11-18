@@ -18,7 +18,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -66,7 +66,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDumpLocalResultMess
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction.QueryCancelFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.distributed.ReferencedKeyCheckerMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.ResultHolder;
-import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction.SnappyRemoveCachedObjectsFunctionArgs;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.StatementCloseExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.*;
@@ -82,6 +81,7 @@ import com.pivotal.gemfirexd.internal.engine.procedure.DistributedProcedureCallF
 import com.pivotal.gemfirexd.internal.engine.procedure.ProcedureChunkMessage;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.GemFireRegionSizeResultSet;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.IdentityValueManager;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.MemberLogsMessage;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.MemberStatisticsMessage;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.CompactExecRow;
@@ -202,9 +202,9 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
     registerSqlSerializable(LeadNodeExecutionContext.class);
     registerSqlSerializable(LeadNodeExecutorMsg.class);
     registerSqlSerializable(SnappyResultHolder.class);
-    registerSqlSerializable(SnappyRemoveCachedObjectsFunctionArgs.class);
     registerSqlSerializable(SnappyRegionStatsCollectorResult.class);
     registerSqlSerializable(MemberStatisticsMessage.class);
+    registerSqlSerializable(MemberLogsMessage.class);
     registerSqlSerializable(LeadNodeSmartConnectorOpContext.class);
     registerSqlSerializable(LeadNodeSmartConnectorOpMsg.class);
     registerSqlSerializable(LeadNodeGetStatsMessage.class);

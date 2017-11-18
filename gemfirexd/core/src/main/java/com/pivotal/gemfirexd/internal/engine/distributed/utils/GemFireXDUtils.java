@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.engine.distributed.utils;
 
@@ -242,11 +260,11 @@ public final class GemFireXDUtils {
     }
     try {
       if (defaultStartupRecoveryDelayStr != null) {
-        defaultStartupRecoveryDelay = Long.parseLong(defaultStartupRecoveryDelayStr);
+        setDefaultStartupRecoveryDelay(Long.parseLong(defaultStartupRecoveryDelayStr));
       }
       else {
-        defaultStartupRecoveryDelay = PartitionAttributesFactory
-            .STARTUP_RECOVERY_DELAY_DEFAULT;
+        setDefaultStartupRecoveryDelay(PartitionAttributesFactory
+            .STARTUP_RECOVERY_DELAY_DEFAULT);
       }
     } catch (Exception ex) {
       throw StandardException.newException(SQLState.LANG_FORMAT_EXCEPTION,
@@ -1495,18 +1513,13 @@ public final class GemFireXDUtils {
   /** write to DataOutput compressing high and low integers of given long */
   public static void writeCompressedHighLow(final DataOutput out, final long val)
       throws IOException {
-    final long low = (val & 0xffffffffL);
-    final long high = (val >>> 32);
-    InternalDataSerializer.writeUnsignedVL(low, out);
-    InternalDataSerializer.writeUnsignedVL(high, out);
+    InternalDataSerializer.writeVLHighLow(val, out);
   }
 
-  /** read from DataInputcompressing high and low integers of given long */
+  /** read from DataInput compressing high and low integers of given long */
   public static long readCompressedHighLow(final DataInput in)
       throws IOException {
-    final long low = InternalDataSerializer.readUnsignedVL(in);
-    final long high = InternalDataSerializer.readUnsignedVL(in);
-    return ((high << 32) | low);
+    return InternalDataSerializer.readVLHighLow(in);
   }
 
   public static void executeSQLScripts(Connection conn, String[] scripts,
@@ -2103,13 +2116,8 @@ public final class GemFireXDUtils {
           + constraintType + " violation for (" + msg + "), oldValue=("
           + oldValue + ") index=" + indexName, eee);
     }
-    StandardException se = StandardException.newException(
-        SQLState.NOT_IMPLEMENTED, eee, constraintType, indexName);
-    // don't report constraint violations to logs by default
-    if (!GemFireXDUtils.TraceExecution) {
-      se.setReport(StandardException.REPORT_NEVER);
-    }
-    return se;
+    return StandardException.newException(SQLState.NOT_IMPLEMENTED,
+        eee, "Modification of partitioning column in PUT INTO");
   }
 
   public static StandardException newDuplicateEntryViolation(String indexName,
@@ -2218,9 +2226,13 @@ public final class GemFireXDUtils {
   public static long getDefaultRecoveryDelay() {
     return defaultRecoveryDelay;
   }
-  
+
   public static long getDefaultStartupRecoveryDelay() {
     return defaultStartupRecoveryDelay;
+  }
+
+  public static void setDefaultStartupRecoveryDelay(long delay) {
+    defaultStartupRecoveryDelay = delay;
   }
 
   public static int getDefaultInitialCapacity() {

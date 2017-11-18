@@ -107,6 +107,9 @@ public class GfxdSystemAdmin extends SystemAdmin {
     GemFireCacheImpl.setGFXDSystem(true);
   }
 
+  protected String UTIL_Tools_DSProps = "UTIL_GFXD_Tools_DSProps";
+  protected String UTIL_DSProps_HelpPost = "UTIL_GFXD_Tools_DSProps_HelpPost";
+
   protected void initMapsForGFXD() {
     usageMap.put("encrypt-password", "encrypt-password [external]");
     helpMap.put("encrypt-password",
@@ -129,11 +132,11 @@ public class GfxdSystemAdmin extends SystemAdmin {
     }
 
     final String dsPropsArgs = LocalizedResource
-        .getMessage("UTIL_GFXD_Tools_DSProps");
+        .getMessage(UTIL_Tools_DSProps);
     final String dsPropsHelpPre = LocalizedResource
         .getMessage("UTIL_GFXD_Tools_DSProps_HelpPre");
     final String dsPropsHelpPost = LocalizedResource
-        .getMessage("UTIL_GFXD_Tools_DSProps_HelpPost");
+        .getMessage(UTIL_DSProps_HelpPost);
     for (String cmd : commandsWithDSProps) {
       // append the system properties information
       final String usage = usageMap.get(cmd).toString();
@@ -547,8 +550,9 @@ public class GfxdSystemAdmin extends SystemAdmin {
     System.out.print("Connecting to distributed system:");
     if (!"".equals(dsc.getLocators())) {
       System.out.println(" locators=" + dsc.getLocators());
-    }
-    else {
+    } else if (GfxdUtilLauncher.isSnappyStore()) {
+      throw new IllegalArgumentException("option -locators must be specified");
+    } else {
       System.out.println(" mcast=" + dsc.getMcastAddress() + ":"
           + dsc.getMcastPort());
     }

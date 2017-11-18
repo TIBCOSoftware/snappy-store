@@ -2246,4 +2246,5 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     }
     return criteria;
   }
+
 }

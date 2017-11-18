@@ -781,7 +781,7 @@ public abstract class RegionExecutorMessage<T> extends GfxdFunctionMessage<T>
    * Sub-classes can do a flush of batched messages if required just before
    * execution on a member. This allows StatementExecutorMessage, for example,
    * to skip the flush for all update messages in
-   * {@link #requiresTXFlushForExecution()} and only do it for messages that
+   * {@link #requiresTXFlushBeforeExecution()} and only do it for messages that
    * will not go to the TX coordinator itself.
    * 
    * @param members

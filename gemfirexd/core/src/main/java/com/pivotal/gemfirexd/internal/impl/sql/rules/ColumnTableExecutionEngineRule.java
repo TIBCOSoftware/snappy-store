@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -25,7 +25,7 @@ class ColumnTableExecutionEngineRule extends ExecutionEngineRule {
 
   @Override
   protected ExecutionEngine findExecutionEngine(DMLQueryInfo qInfo,ExecutionRuleContext context) {
-    if (SnappyActivation.isColumnTable(qInfo, false)) {
+    if (SnappyActivation.isColumnTable(qInfo)) {
       return ExecutionEngine.SPARK;
     }
     return ExecutionEngine.NOT_DECIDED;

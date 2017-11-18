@@ -22,6 +22,7 @@ import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.distributed.LockNotHeldException;
+import com.gemstone.gemfire.internal.cache.DiskRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
@@ -104,6 +105,9 @@ public interface IndexUpdater {
    * 
    * @param region
    *          the {@link LocalRegion} being destroyed
+   * @param dr the {@link DiskRegion} to be used; normally is the DiskRegion
+   *           of the "region", but can be different in case a bucket region has
+   *           not yet been created in a failed GII when destroying the disk data
    * @param lockForGII
    *          if true then also acquire the {@link #lockForGII()}
    * @param holdIndexLock
@@ -119,12 +123,12 @@ public interface IndexUpdater {
    * @return  Returns whether write lock was acqired by clearIndex or not
    */
 
-  boolean clearIndexes(LocalRegion region, boolean lockForGII,
+  boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
       boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline);
 
   /**
    * should be invoked if "holdIndexLock" argument was true in
-   * {@link #clearIndexes(LocalRegion, boolean, boolean, Iterator, boolean)}
+   * {@link #clearIndexes(LocalRegion, DiskRegion, boolean, boolean, Iterator, boolean)}
    */
   public void releaseIndexLock(LocalRegion region);
 

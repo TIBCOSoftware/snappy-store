@@ -214,6 +214,7 @@ import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import com.pivotal.gemfirexd.Constants;
+import com.gemstone.gemfire.internal.cache.InternalPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.ddl.EvictionTableAttribute;
@@ -1112,6 +1113,9 @@ public class SQLParser
 		  case INTEGER:
 		  case INT:
 		  case SMALLINT:
+		  case SHORT:
+		  case BYTE:
+		  case TINYINT:
 		  case LONGINT:
 		  case FLOAT:
 		  case REAL:
@@ -1142,6 +1146,9 @@ public class SQLParser
 				  case BIT:
 					retval = true;
 					break;
+				  default:
+				    retval = true;
+				    break;
 				}
 				break;
 			}
@@ -2600,6 +2607,7 @@ TOKEN [IGNORE_CASE] :
 |	<BIT: "bit">
 |	<BOTH: "both">
 |	<BY: "by">
+|	<BYTE: "byte">
 |	<CASCADE: "cascade">
 |	<CASCADED: "cascaded">
 |	<CASE: "case">
@@ -2741,6 +2749,7 @@ TOKEN [IGNORE_CASE] :
 |	<SELECT: "select">
 |	<SESSION_USER: "session_user">
 |	<SET: "set">
+|	<SHORT: "short">
 |	<SMALLINT: "smallint">
 |	<SOME: "some">
 |	<SPACE: "space">
@@ -2756,6 +2765,7 @@ TOKEN [IGNORE_CASE] :
 |	<TEMPORARY: "temporary">
 |	<TIMEZONE_HOUR: "timezone_hour">
 |	<TIMEZONE_MINUTE: "timezone_minute">
+|	<TINYINT: "tinyint">
 |	<TO: "to">
 |	<TRANSACTION: "transaction">
 |	<TRANSLATE: "translate">
@@ -5386,6 +5396,11 @@ exactIntegerType() throws StandardException :
 	{
 		return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.BIGINT);
 	}
+|
+	(<SHORT> | <TINYINT> | <BYTE> )
+	{
+		return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.SMALLINT);
+	}
 }
 
 /*
@@ -5496,6 +5511,10 @@ longSubType() throws StandardException :
 		throw StandardException.newException(SQLState.NOT_IMPLEMENTED, TypeId.NATIONAL_LONGVARCHAR_NAME);
 		// return DataTypeDescriptor.getBuiltInDataTypeDescriptor(TypeId.NATIONAL_LONGVARCHAR_NAME);
 	}
+|
+    {
+        return DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.BIGINT);
+    }
 }
 
 /*
@@ -7996,7 +8015,10 @@ miscBuiltins() throws StandardException :
 		        lookAhead.kind == INTEGER ||
 		        lookAhead.kind == INT || 
 		        lookAhead.kind == SMALLINT ||
+		        lookAhead.kind == BYTE ||
+		        lookAhead.kind == SHORT ||
 		        lookAhead.kind == LONGINT ||
+		        lookAhead.kind == TINYINT ||
                 lookAhead.kind == YEAR ||
                 lookAhead.kind == MONTH ||
                 lookAhead.kind == DAY ||
@@ -8037,6 +8059,9 @@ miscBuiltins() throws StandardException :
 		getToken(1).kind == INT || 
 		getToken(1).kind == SMALLINT ||
 		getToken(1).kind == LONGINT ||
+		getToken(1).kind == SHORT ||
+		getToken(1).kind == TINYINT ||
+		getToken(1).kind == BYTE ||
                 getToken(1).kind == YEAR ||
                 getToken(1).kind == MONTH ||
                 getToken(1).kind == DAY ||
@@ -11649,6 +11674,11 @@ StatementNode gatewaySenderDefinition() throws StandardException :
 {
     
    <GATEWAYSENDER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <REMOTEDSID > remoteDsId = simpleValueSpecification_int()
     (  populateGatewaySenderAttributes(attrs))*
@@ -11699,6 +11729,11 @@ StatementNode asyncEventListenerDefinition() throws StandardException :
 {
     
    <ASYNCLISTENER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <LISTENERCLASS>  listenerClass = string()
    <INITPARAMS>  initParams = string()   
@@ -11748,6 +11783,11 @@ StatementNode dropAsyncEventListenerStatement() throws StandardException :
     
    <ASYNCLISTENER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
@@ -11775,6 +11815,11 @@ StatementNode dropGatewaySenderStatement() throws StandardException :
     
    <GATEWAYSENDER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    
@@ -11796,6 +11841,11 @@ StatementNode dropGatewayReceiverStatement() throws StandardException :
 {
 	String id  = null;
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	Boolean onlyIfExists = Boolean.FALSE;
 // GemStone changes END
 }
@@ -11827,7 +11877,12 @@ gatewayReceiverDefinition() throws StandardException :
 	String id  = null;
 }
 {
-	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true) 
+	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+	{
+       CompilerContext cc = getCompilerContext();
+       cc.markAsDDLForSnappyUse(false);
+       cc.setForcedDDLrouting(false);
+    }
 	[ <LEFT_PAREN>
      ( populateGatewarReceiverAttributes(attrs) )*
 	 <RIGHT_PAREN>
@@ -12354,8 +12409,21 @@ partitioningClause(DistributionDefinitionNode distributionNode,
       }
       repPartPersFlags[1] = true;
       try {
-        return (PartitionResolver)ClassPathLoader.getLatest().forName(
+        PartitionResolver resolver = (PartitionResolver)ClassPathLoader.getLatest().forName(
             resolverClass).getConstructor(TableName.class).newInstance(tableName);
+        if (resolver instanceof InternalPartitionResolver) {
+          InternalPartitionResolver internalResolver = (InternalPartitionResolver)resolver;
+          String[] partCols = internalResolver.getPartitioningColumns();
+          if (partCols != null && partCols.length > 0) {
+            for (String partCol : partCols) {
+               ColumnReference ref = (ColumnReference)nodeFactory.getNode(
+                   C_NodeTypes.COLUMN_REFERENCE, partCol, null, getContextManager());
+               distributionNode.addColumnReference(ref);
+            }
+            distributionNode.setPolicy(DistributionDescriptor.PARTITIONBYEXPRESSION);
+          }
+        }
+        return resolver;
       } catch (Exception e) {
         throw StandardException.newException(
             SQLState.UNEXPECTED_EXCEPTION_FOR_PARTITION_RESOLVER, e, tableName);
@@ -13916,6 +13984,9 @@ viewDefinition(Token beginToken) throws StandardException :
 		[ <LEFT_PAREN> resultColumns = viewColumnList() <RIGHT_PAREN> ]
 		<AS> queryExpression = queryExpression(null, NO_SET_OP)
 	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
 		checkOptionType = ViewDescriptor.NO_CHECK_OPTION;
 		endToken = getToken(0);
 		/* Parameters not allowed in create view */
@@ -14566,6 +14637,20 @@ literal() throws StandardException :
 NumericConstantNode
 intLiteral() throws StandardException :
 {
+    NumericConstantNode result;
+}
+{
+    result = integral(true)
+    {
+        return result;
+    }
+}
+
+/*
+ * <A NAME="int">integral</A>
+ */
+NumericConstantNode integral(boolean intsOnly) throws StandardException :
+{
     Token   tok;
     String sign = null;
     NumericConstantNode result;
@@ -14584,7 +14669,7 @@ intLiteral() throws StandardException :
             num = sign.concat(num);
 
         try {
-            result = getNumericNode(num, true);
+            result = getNumericNode(num, intsOnly);
         } catch (NumberFormatException e) {
             throw StandardException.newException(
                 SQLState.LANG_INTEGER_LITERAL_EXPECTED);
@@ -15389,7 +15474,7 @@ simpleValueSpecification_int() throws StandardException :
 	ValueNode	value;
 }
 {
-	value = literal()
+	value = intLiteral()
 	{
 	    // Negative numbers are always illegal for all tokens that require int values
 	    // But sometimes zero is legal
@@ -15409,7 +15494,7 @@ simpleValueSpecification_long() throws StandardException :
 	ValueNode	value;
 }
 {
-	value = literal()
+	value = integral(false)
 	{
 	    // A negative number is valid for this value
 	    // Currently only used for RECOVERYDELAY and STARTUPRECOVERYDELAY
@@ -16963,6 +17048,9 @@ dropViewStatement() throws StandardException :
 // GemStone changes END
 	viewName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH) 
 	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
 		return (StatementNode) nodeFactory.getNode(
 								C_NodeTypes.DROP_VIEW_NODE,
 								viewName,
@@ -17605,6 +17693,7 @@ reservedKeyword() :
 |	tok = <BIT>
 |	tok = <BOTH>
 |	tok = <BY>
+|	tok = <BYTE>
 |	tok = <CASCADE>
 |	tok = <CASCADED>
 |	tok = <CASE>
@@ -17675,6 +17764,7 @@ reservedKeyword() :
 |	tok = <GROUP>
 |	tok = <HAVING>
 |	tok = <IDENTITY>
+|	tok = <IF>
 |	tok = <IMMEDIATE>
 |	tok = <IN>
 |	tok = <INDICATOR>
@@ -17747,6 +17837,7 @@ reservedKeyword() :
 |	tok = <SELECT>
 |	tok = <SESSION_USER>
 |	tok = <SET>
+|	tok = <SHORT>
 |	tok = <SMALLINT>
 |	tok = <SOME>
 |	tok = <SPACE>
@@ -17761,6 +17852,7 @@ reservedKeyword() :
 |	tok = <TEMPORARY>
 |	tok = <TIMEZONE_HOUR>
 |	tok = <TIMEZONE_MINUTE>
+|	tok = <TINYINT>
 |	tok = <TO>
 |	tok = <TRAILING>
 |	tok = <TRANSACTION>
@@ -18017,7 +18109,6 @@ nonReservedKeyword()  :
 	|   tok = <GROUPS>
 	|   tok = <HASH> // for CREATE INDEX GLOBAL HASH extension
 	|   tok = <IDLETIME>
-	|   tok = <IF>
 	|   tok = <INCOMING>
 	|   tok = <INITSIZE>
 	|   tok = <INFINITY>

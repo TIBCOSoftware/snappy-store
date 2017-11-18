@@ -1,0 +1,105 @@
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/delivGetCustId.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/delivGetOrderId.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/delivGetOrderId_opt.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/delivSumOrderAmount.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/delivSumOrderAmountGroupByWarehouse.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/delivSumOrderAmountGroupByDistrict.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/ordStatCountCust.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/ordStatGetCust.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/ordStatGetNewestOrd.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/payCursorCustByName.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+//cacheperf/comparisons/gemfirexd/tpcc/thinClient/payCursorCustByName_scroll.conf
+//  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+//  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+//  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+//  clientHeapMB = 256 serverHeapMB = 500
+//  trimSeconds = 60 workSeconds = 120
+//  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/payGetDist.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/payGetWhse.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/stmtGetCustWhse.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15
+cacheperf/comparisons/gemfirexd/tpcc/thinClient/stockGetCountStock.conf
+  clientHosts=1 clientVMsPerHost=3 clientThreadsPerVM=6
+  serverHosts=1 serverVMsPerHost=3 serverThreadsPerVM=1
+  numWarehouses=6 numItems=400 numCustomersPerDistrict = 400
+  clientHeapMB = 256 serverHeapMB = 500
+  trimSeconds = 60 workSeconds = 120
+  logQueries = true queryPlanFrequency = 0 //15

@@ -200,6 +200,7 @@ public class GenericLanguageConnectionFactory
 		LanguageFactory lf,
 		Database db,
 		String userName,
+		String authToken,
 		String drdaID,
 // GemStone changes BEGIN
 		long connId,
@@ -209,7 +210,7 @@ public class GenericLanguageConnectionFactory
 		
 		return new GenericLanguageConnectionContext(cm,tc,lf,this,db,userName,
 // GemStone changes BEGIN
-		    getNextLCCInstanceNumber(), drdaID, connId, isRemote, dbname);
+		    authToken, getNextLCCInstanceNumber(), drdaID, connId, isRemote, dbname);
 		    /* (original code)
 		    getNextLCCInstanceNumber(),	drdaID, dbname);
 		    */

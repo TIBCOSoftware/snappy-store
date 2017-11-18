@@ -403,7 +403,7 @@ public final class DistributionPlanCollector implements
     if (considerTimingInformation) {
       UUID timingID = dd.getUUIDFactory().createUUID();
       final long fetchTime = stat.seekTime;
-      baseCollector.createResultSetTimingDescriptor(
+      time_desc = baseCollector.createResultSetTimingDescriptor(
           timingID,
           0,
           0,

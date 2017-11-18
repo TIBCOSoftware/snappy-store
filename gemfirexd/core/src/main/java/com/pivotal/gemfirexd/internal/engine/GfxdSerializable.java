@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -211,6 +211,8 @@ public interface GfxdSerializable extends GfxdDSFID {
 
   byte LEAD_NODE_GET_STATS = 58;
 
+  byte MEMBER_LOGS_MESSAGE = 59;
+
   /**
    * Marker to indicate that tests can use an ID >= this. Note whenever adding a
    * new message increment this to be greater than the last one.
@@ -318,13 +320,15 @@ public interface GfxdSerializable extends GfxdDSFID {
 
   byte SNAPPY_RESULT_HOLDER = 110;
 
-  byte SNAPPY_REMOVE_CACHED_OBJECTS_ARGS = 111;
+  byte SNAPPY_REGION_STATS_RESULT = 111;
 
-  byte SNAPPY_REGION_STATS_RESULT = 112;
+  byte LEAD_NODE_CONN_OP_CTX = 112;
 
-  byte LEAD_NODE_CONN_OP_CTX = 113;
+  byte COLUMN_FORMAT_KEY = 113;
 
-  byte COLUMN_FORMAT_KEY = 114;
+  byte COLUMN_FORMAT_VALUE = 114;
 
-  byte COLUMN_FORMAT_VALUE = 115;
+  byte COLUMN_FORMAT_DELTA = 115;
+
+  byte COLUMN_DELETE_DELTA = 116;
 }

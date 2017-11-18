@@ -1468,4 +1468,12 @@ public class CachePerfStats implements HashingStats {
   public long getEvaluationTime() {
     return stats.getLong(evictByCriteria_evaluationTimeId);
   }
+
+  /** only used by tests */
+  public void clearEvictionByCriteriaStatsForTest() {
+    stats.setLong(evictByCriteria_evictionsId, 0L);
+    stats.setLong(evictByCriteria_evictionsInProgressId, 0L);
+    stats.setLong(evictByCriteria_evaluationsId, 0L);
+    stats.setLong(evictByCriteria_evaluationTimeId, 0L);
+  }
 }

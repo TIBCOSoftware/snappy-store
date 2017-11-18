@@ -744,7 +744,8 @@ public final class DSFIDFactory implements DataSerializableFixedID {
         CommitPhase1ReplyMessage.class);
     registerDSFID(TOBJECTLONGHASHMAP, TObjectLongHashMapDSFID.class);
     registerDSFID(SERVER_PING_MESSAGE, ServerPingMessage.class);
-
+    registerDSFID(SNAPSHOT_GII_UNLOCK_MESSAGE,
+        InitialImageOperation.SnapshotBucketLockReleaseMessage.class);
     typesRegistered = true;
   }
 

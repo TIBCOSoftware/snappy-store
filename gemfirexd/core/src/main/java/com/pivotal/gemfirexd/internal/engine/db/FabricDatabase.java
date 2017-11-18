@@ -56,6 +56,7 @@ import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.locks.DLockService;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -87,7 +88,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
-import com.pivotal.gemfirexd.internal.engine.locks.DefaultGfxdLockable;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
@@ -241,8 +241,8 @@ public final class FabricDatabase implements ModuleControl,
 
   private DirFile tempDir;
 
-  private final DefaultGfxdLockable hiveClientObject = new DefaultGfxdLockable(
-      "HiveMetaStoreClient", GfxdConstants.TRACE_DDLOCK);
+  // private final DefaultGfxdLockable hiveClientObject = new DefaultGfxdLockable(
+  //    "HiveMetaStoreClient", GfxdConstants.TRACE_DDLOCK);
 
   /**
    * flag for tests to avoid precompiling SPS descriptors to reduce unit test
@@ -422,6 +422,15 @@ public final class FabricDatabase implements ModuleControl,
         this.memStore);
   }
 
+  private void notifyRunning() {
+    // notify FabricService
+    final FabricService service = FabricServiceManager
+        .currentFabricServiceInstance();
+    if (service instanceof FabricServiceImpl) {
+      ((FabricServiceImpl)service).notifyRunning();
+    }
+  }
+
   /**
    * Performs the initialization steps after creation of initial database,
    * including initialization of default disk stores in system tables, replay of
@@ -432,6 +441,7 @@ public final class FabricDatabase implements ModuleControl,
       com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection conn,
       Properties bootProps) throws StandardException {
     if (this.memStore.initialDDLReplayDone()) {
+      notifyRunning();
       return;
     }
 
@@ -497,12 +507,7 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
 
-      // notify FabricService
-      final FabricService service = FabricServiceManager
-          .currentFabricServiceInstance();
-      if (service != null) {
-        ((FabricServiceImpl)service).notifyRunning();
-      }
+      notifyRunning();
 
       // Execute any provided post SQL scripts last.
       final String postScriptsPath = bootProps
@@ -530,18 +535,18 @@ public final class FabricDatabase implements ModuleControl,
         // Take write lock on data dictionary. Because of this all the servers will will initiate their
         // hive client one by one. This is important as we have downgraded the ISOLATION LEVEL from
         // SERIALIZABLE to REPEATABLE READ
-        boolean writeLockTaken = false;
+        final String hiveClientObject = "HiveMetaStoreClient";
+        final DLockService lockService = memStore.getDDLLockService();
+        final boolean writeLockTaken = lockService.lock(hiveClientObject,
+            GfxdLockSet.MAX_LOCKWAIT_VAL, -1);
         try {
           //writeLockTaken = this.dd.lockForWriting(tc, false);
           // Changed from ddlLockObject
-          writeLockTaken = GemFireXDUtils.lockObject(hiveClientObject, null, true, false, tc,
-              GfxdLockSet.MAX_LOCKWAIT_VAL);
           this.memStore.initExternalCatalog();
-        }
-        finally {
+        } finally {
           if (writeLockTaken) {
             //this.dd.unlockAfterWriting(tc, false);
-            GemFireXDUtils.unlockObject(hiveClientObject, null, true, false, tc);
+            lockService.unlock(hiveClientObject);
           }
         }
       }
@@ -618,10 +623,19 @@ public final class FabricDatabase implements ModuleControl,
     // remove Hive store's own tables
     gfDBTablesMap.remove(
         Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
-    // tables in SNAPPYSYS_INTERNAL
-    List<String> internalColumnTablesList =
-        gfDBTablesMap.remove(com.gemstone.gemfire.internal.snappy.
-            CallbackFactoryProvider.getStoreCallbacks().snappyInternalSchemaName());
+    // CachedBatch tables (earlier stored in SNAPPYSYS_INTERNAL)
+    List<String> internalColumnTablesList = new LinkedList<>();
+    List<String> internalColumnTablesListPerSchema = new LinkedList<>();
+    for (Map.Entry<String, List<String>> e : gfDBTablesMap.entrySet()) {
+      for (String t : e.getValue()) {
+        if (CallbackFactoryProvider.getStoreCallbacks().isColumnTable(e.getKey() + "." + t)) {
+            internalColumnTablesListPerSchema.add(t);
+        }
+      }
+      e.getValue().removeAll(internalColumnTablesListPerSchema);
+      internalColumnTablesList.addAll(internalColumnTablesListPerSchema);
+      internalColumnTablesListPerSchema.clear();
+    }
     // creating a set here just for lookup, will not consume too much
     // memory as size limited by no of tables
     Set<String> internalColumnTablesSet = new HashSet<>();
@@ -817,7 +831,7 @@ public final class FabricDatabase implements ModuleControl,
     lcc.setIsConnectionForRemote(true);
     lcc.setIsConnectionForRemoteDDL(false);
     lcc.setSkipLocks(true);
-    lcc.setQueryRouting(false);
+    lcc.setQueryRoutingFlag(false);
     tc.resetActiveTXState(false);
     // for admin VM types do not compile here
     final GemFireStore.VMKind vmKind = this.memStore.getMyVMKind();
@@ -833,12 +847,14 @@ public final class FabricDatabase implements ModuleControl,
     // remote the initial SQL commands
 //    lcc.setIsConnectionForRemote(false);
 //    lcc.setSkipLocks(false);
+    /*
     String initScriptsPath = bootProps.getProperty(Attribute.CONFIG_SCRIPTS);
     if (initScriptsPath != null && initScriptsPath.length() > 0) {
       String[] initScriptPaths = initScriptsPath.split(",");
       GemFireXDUtils.executeSQLScripts(embedConn, initScriptPaths, false, logger,
           null, null, false);
     }
+    */
 
     // Execute DDLs in GfxdDDLRegionQueue next.
     final Object sync = this.memStore.getInitialDDLReplaySync();
@@ -1427,6 +1443,7 @@ public final class FabricDatabase implements ModuleControl,
         for (GemFireContainer c : allIndexes) {
           if (c.isLocalIndex()) {
             c.getSkipListMap().clear();
+            c.resetInitialAccounting();
           }
         }
       }
@@ -1709,6 +1726,7 @@ public final class FabricDatabase implements ModuleControl,
 
   public LanguageConnectionContext setupConnection(ContextManager cm,
                                                    String user,
+                                                   String authToken,
                                                    String drdaID,
                                                    String dbname,
                                                    long connectionID,
@@ -1722,7 +1740,7 @@ public final class FabricDatabase implements ModuleControl,
     // push a database shutdown context
     // we also need to push a language connection context.
     LanguageConnectionContext lctx = lcf.newLanguageConnectionContext(cm, tc,
-        lf, this, user, drdaID, connectionID, isRemote, dbname);
+        lf, this, user, authToken, drdaID, connectionID, isRemote, dbname);
 
     // push the context that defines our class factory
     pushClassFactoryContext(cm, lcf.getClassFactory());
@@ -1827,6 +1845,16 @@ public final class FabricDatabase implements ModuleControl,
     }
 
     return this.authenticationService;
+  }
+
+  /**
+   * @throws com.gemstone.gemfire.cache.CacheClosedException if store is null
+   * @return
+   */
+  public static AuthenticationServiceBase getAuthenticationServiceBase() {
+    return (AuthenticationServiceBase)Monitor.findServiceModule(
+        Misc.getMemStoreBooting().getDatabase(), AuthenticationService.MODULE,
+        GfxdConstants.AUTHENTICATION_SERVICE);
   }
 
   public final AuthenticationService getPeerAuthenticationService() {

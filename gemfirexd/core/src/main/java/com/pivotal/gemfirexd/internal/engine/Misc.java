@@ -64,9 +64,11 @@ import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -79,8 +81,11 @@ import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.NoneAuthenticationServiceImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.tools.planexporter.CreateXML;
@@ -249,9 +254,7 @@ public abstract class Misc {
         return Collections.unmodifiableSet(s);
       }
     }
-    throw new NoDataStoreAvailableException(LocalizedStrings
-        .DistributedRegion_NO_DATA_STORE_FOUND_FOR_DISTRIBUTION
-        .toLocalizedString("SnappyData Lead Node"));
+    throw new NoMemberFoundException("SnappyData Lead node is not available");
   }
 
   /**
@@ -761,6 +764,18 @@ public abstract class Misc {
     } else {
       return 0;
     }
+  }
+
+  public static boolean isSecurityEnabled() {
+    AuthenticationServiceBase authService = AuthenticationServiceBase.getPeerAuthenticationService();
+    return authService != null && !(authService instanceof NoneAuthenticationServiceImpl) &&
+        checkAuthProvider(getMemStore().getBootProperties());
+  }
+
+  /* Returns true if LDAP Security is Enabled */
+  public static boolean checkAuthProvider(Map map) {
+    return "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.AUTH_PROVIDER, "").toString()) ||
+        "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.SERVER_AUTH_PROVIDER, "").toString());
   }
 
   // added by jing for processing the exception
@@ -1336,9 +1351,26 @@ public abstract class Misc {
     return str;
   }
 
-  public static final String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+  public static final String SNAPPY_HIVE_METASTORE =
+      SystemProperties.SNAPPY_HIVE_METASTORE;
 
   public static boolean isSnappyHiveMetaTable(String schemaName) {
     return SNAPPY_HIVE_METASTORE.equalsIgnoreCase(schemaName);
+  }
+
+  public static boolean routeQuery(LanguageConnectionContext lcc) {
+    return Misc.getMemStore().isSnappyStore() && lcc.isQueryRoutingFlagTrue() &&
+        // if isolation level is not NONE, autocommit should be true to enable query routing
+        (lcc.getCurrentIsolationLevel() == ExecutionContext.UNSPECIFIED_ISOLATION_LEVEL ||
+            lcc.getAutoCommit());
+  }
+
+  public static void invalidSnappyDataFeature(String featureDescription)
+      throws SQLException {
+    if(getMemStore().isSnappyStore()) {
+      throw Util.generateCsSQLException(SQLState.NOT_IMPLEMENTED,
+          featureDescription + " is not supported in SnappyData. " +
+              "This feature is supported when product is started in rowstore mode");
+    }
   }
 }

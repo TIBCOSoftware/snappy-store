@@ -126,7 +126,7 @@ public final class GfxdTXStateProxy extends TXStateProxy {
   }
 
   final void addGemFireTransaction(final GemFireTransaction tran) {
-    if (GemFireXDUtils.TraceTran | GemFireXDUtils.TraceQuery) {
+    if (GemFireXDUtils.TraceTran) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN,
           "addGemFireTransaction: adding " + tran + " to " + toString(), new Exception());
     }

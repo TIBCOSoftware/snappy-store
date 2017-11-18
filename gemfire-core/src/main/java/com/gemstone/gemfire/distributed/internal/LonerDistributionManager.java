@@ -285,7 +285,7 @@ public class LonerDistributionManager implements DM {
   }
 
   @Override
-  public Executor getFunctionExcecutor() {
+  public ExecutorService getFunctionExcecutor() {
     return executor;
   }
 
@@ -362,6 +362,8 @@ public class LonerDistributionManager implements DM {
     public void incOverflowQueueSize(int messages) {}
     public int getNumProcessingThreads() {return 0;}
     public void incNumProcessingThreads(int threads) {}
+    public void incNumThriftProcessingThreads(int threads) {}
+    public void incThriftProcessingThreadStarts() {}
     public int getNumSerialThreads() {return 0;}
     public void incNumSerialThreads(int threads) {}
     public void incMessageChannelTime(long val) {}
@@ -765,7 +767,6 @@ public class LonerDistributionManager implements DM {
 
     @Override
     public String cancelInProgress() {
-      checkFailure();
       return null;
     }
 

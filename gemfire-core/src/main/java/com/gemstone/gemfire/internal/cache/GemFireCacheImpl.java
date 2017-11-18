@@ -14,10 +14,29 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.URL;
@@ -101,7 +120,7 @@ import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberManager;
 import com.gemstone.gemfire.internal.cache.persistence.query.TemporaryResultSetFactory;
 import com.gemstone.gemfire.internal.cache.snapshot.CacheSnapshotServiceImpl;
-import com.gemstone.gemfire.internal.cache.store.ManagedDirectBufferAllocator;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientProxy;
@@ -127,9 +146,9 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jndi.JNDIInvoker;
 import com.gemstone.gemfire.internal.jta.TransactionManagerImpl;
 import com.gemstone.gemfire.internal.offheap.MemoryAllocator;
-import com.gemstone.gemfire.internal.offheap.OffHeapStorage;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.ChunkType;
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
@@ -137,6 +156,7 @@ import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
@@ -224,8 +244,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   public boolean DEFAULT_SNAPSHOT_ENABLED = SystemProperties.getServerInstance().getBoolean(
       "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", false);
 
-  private final boolean DEFAULT_SNAPSHOT_ENABLED_TX = SystemProperties.getServerInstance().getBoolean(
-      "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TX", false);
+  private final boolean DEFAULT_SNAPSHOT_ENABLED_TEST = SystemProperties.getServerInstance().getBoolean(
+      "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", false);
 
   /**
    * Property set to true if resource manager heap percentage is set and query monitor is required
@@ -508,7 +528,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   private String vmIdRegionPath;
 
   //TODO:Suranjan This has to be replcaed with better approach. guava cache or WeakHashMap.
-  protected final Map<String, Map<Object, BlockingQueue<RegionEntry>
+  private final Map<String, Map<Object, BlockingQueue<RegionEntry>
     /*RegionEntry*/>>  oldEntryMap;
   
   private ScheduledExecutorService oldEntryMapCleanerService;
@@ -517,7 +537,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    * Time interval after which oldentries cleaner thread run
    */
   public static long OLD_ENTRIES_CLEANER_TIME_INTERVAL = Long.getLong("gemfire" +
-      ".snapshot-oldentries-cleaner-time-interval", 60000);
+      ".snapshot-oldentries-cleaner-time-interval", 20000);
 
 
   /**
@@ -540,30 +560,56 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   // For each entry this should be in sync
   public void removeRegionFromOldEntryMap(String regionPath) {
     synchronized (this.oldEntryMap) {
-      oldEntryMap.remove(regionPath);
+      Map<Object, BlockingQueue<RegionEntry>> map = oldEntryMap.remove(regionPath);
+      if (GemFireCacheImpl.hasNewOffHeap() && map != null) {
+        for (BlockingQueue<RegionEntry> values : map.values()) {
+          if (values != null) {
+            for (RegionEntry re : values) {
+              Object value = re._getValue();
+              if (value instanceof SerializedDiskBuffer) {
+                ((SerializedDiskBuffer)value).release();
+              }
+            }
+          }
+        }
+      }
     }
   }
 
-  public long getOldEntryRemovalPerid() {
+  public long getOldEntryRemovalPeriod() {
     return OLD_ENTRIES_CLEANER_TIME_INTERVAL;
   }
   // For each entry this should be in sync
 
-  public void addOldEntry(RegionEntry oldRe, LocalRegion region, int oldSize) {
-    if(!snapshotEnabled()) {
+  public void addOldEntry(NonLocalRegionEntry oldRe, RegionEntry newEntry,
+      LocalRegion region) {
+    if (!snapshotEnabled()) {
+      return;
+    }
+
+    // Insert specific case
+    // just add the newEntry in TXState for rollback.
+    if (region.getTXState() != null) {
+      TXState txState = region.getTXState().getLocalTXState();
+      if (txState != null) {
+        txState.addCommittedRegionEntryReference(oldRe == null ? Token.TOMBSTONE : oldRe, newEntry, region);
+      }
+    }
+
+    if (oldRe == null) {
       return;
     }
 
     final String regionPath = region.getFullPath();
-    // ask for pool memory befor continuing
+    // ask for pool memory before continuing
     if (!region.reservedTable() && region.needAccounting()) {
       region.calculateEntryOverhead(oldRe);
       LocalRegion.regionPath.set(region.getFullPath());
-      region.acquirePoolMemory(0, oldSize, false, null, true);
+      region.acquirePoolMemory(0, oldRe.getValueSize(), oldRe.isForDelete(), null, true);
     }
 
     if(getLoggerI18n().fineEnabled()) {
-      getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + regionPath + " adding " +
+      getLoggerI18n().fine("For region  " + regionPath + " adding " +
           oldRe + " to oldEntrMap");
     }
 
@@ -585,13 +631,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       }
     }
 
-    for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
-      if (txProxy.getLocalTXState() != null) {
-        txProxy.getLocalTXState().addRegionEntryReference(oldRe);
-      }
-    }
     if (getLoggerI18n().fineEnabled()) {
-      getLoggerI18n().info(LocalizedStrings.DEBUG, "For key  " + oldRe.getKeyCopy() + " " +
+      getLoggerI18n().fine("For key  " + oldRe.getKeyCopy() + " " +
           "the entries are " + snapshot.get(oldRe.getKeyCopy()));
     }
   }
@@ -616,7 +657,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       RegionEntry oldRegionEntry = NonLocalRegionEntry.newEntry(re.getKeyCopy(), Token.TOMBSTONE,
           (LocalRegion)region, re.getVersionStamp().asVersionTag());
       if (getLoggerI18n().fineEnabled()) {
-        getLoggerI18n().info(LocalizedStrings.DEBUG, "Returning TOMBSTONE");
+        getLoggerI18n().fine("Returning TOMBSTONE");
       }
       return oldRegionEntry;
     } else {
@@ -624,7 +665,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       Map<Object, BlockingQueue<RegionEntry>> regionMap = oldEntryMap.get(regionPath);
       if (regionMap == null) {
         if (getLoggerI18n().fineEnabled()) {
-          getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
+          getLoggerI18n().fine("For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
               "are entries present in the region" +
               " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
               ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + "against the key " + entryKey +
@@ -636,7 +677,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       BlockingQueue<RegionEntry> entries = regionMap.get(entryKey);
       if (entries == null) {
         if (getLoggerI18n().fineEnabled()) {
-        getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
+        getLoggerI18n().fine("For region  " + region + " the snapshot doesn't have any snapshot yet but there " +
             "are entries present in the region" +
             " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
             ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + " the entries are " + entries + " against the key " + entryKey +
@@ -645,7 +686,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         return null;
       }
       for (RegionEntry value : entries) {
-        if (txState.checkEntryVersion(region, value)) {
+        if (TXState.checkEntryInSnapshot(txState, region, value)) {
           oldEntries.add(value);
         }
       }
@@ -661,7 +702,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         }
       }
       if (getLoggerI18n().fineEnabled()) {
-        getLoggerI18n().info(LocalizedStrings.DEBUG, "For region  " + region +
+        getLoggerI18n().fine("For region  " + region +
             " the RVV " + ((LocalRegion)region).getVersionVector().fullToString() + " and snapshot RVV " +
             ((LocalRegion)region).getVersionVector().getSnapShotOfMemberVersion() + " the entries are " + entries +
             "against the key " + entryKey +
@@ -700,36 +741,49 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
+  public void runOldEntriesCleanerThread(){
+    new OldEntriesCleanerThread().run();
+  }
+
   class OldEntriesCleanerThread implements Runnable {
-    // Keep each entry alive for atleast 5 mins.
+    // Keep each entry alive for at least 20 secs.
     public void run() {
       try {
         if (!oldEntryMap.isEmpty()) {
           for (Entry<String,Map<Object, BlockingQueue<RegionEntry>>> entry : oldEntryMap.entrySet()) {
             Map<Object, BlockingQueue<RegionEntry>> regionEntryMap = entry.getValue();
             LocalRegion region = (LocalRegion)getRegion(entry.getKey());
+            if (region == null) continue;
             for (BlockingQueue<RegionEntry> oldEntriesQueue : regionEntryMap.values()) {
               for (RegionEntry re : oldEntriesQueue) {
                 boolean entryFoundInTxState = false;
                 for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
                   TXState txState = txProxy.getLocalTXState();
-                  if (re.isUpdateInProgress() || (txState != null && !txState.isCommitted() && txState.checkEntryVersion
-                          (region, re))) {
+                  if (re.isUpdateInProgress() || (txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+                      (txState, region, re))) {
                     entryFoundInTxState = true;
                     break;
                   }
                 }
                 if (!entryFoundInTxState) {
                   if (getLoggerI18n().fineEnabled()) {
-                    getLoggerI18n().info(LocalizedStrings.DEBUG,
+                    getLoggerI18n().fine(
                         "OldEntriesCleanerThread : Removing the entry " + re + " entry update in progress : " +
                             re.isUpdateInProgress());
                   }
-                  oldEntriesQueue.remove(re);
+                  // continue if some explicit call removed the entry
+                  if (!oldEntriesQueue.remove(re)) continue;
+                  if (GemFireCacheImpl.hasNewOffHeap()) {
+                    // also remove reference to region buffer, if any
+                    Object value = re._getValue();
+                    if (value instanceof SerializedDiskBuffer) {
+                      ((SerializedDiskBuffer)value).release();
+                    }
+                  }
                   // free the allocated memory
                   if (!region.reservedTable() && region.needAccounting()) {
-                    int size = region.calculateRegionEntryValueSize(re);
-                    region.freePoolMemory(size, false);
+                    NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
+                    region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
                   }
                 }
               }
@@ -737,21 +791,23 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
           }
         }
 
+       synchronized (oldEntryMap) {
         for (Map<Object, BlockingQueue<RegionEntry>> regionEntryMap : oldEntryMap.values()) {
           for (Entry<Object, BlockingQueue<RegionEntry>> entry : regionEntryMap.entrySet()) {
             if (entry.getValue().size() == 0) {
               regionEntryMap.remove(entry.getKey());
               if (getLoggerI18n().fineEnabled()) {
-                getLoggerI18n().info(LocalizedStrings.DEBUG,
+                getLoggerI18n().fine(
                     "OldEntriesCleanerThread : Removing the map against the key " + entry.getKey());
               }
             }
           }
         }
+       }
       }
       catch (Exception e) {
         if (getLoggerI18n().warningEnabled()) {
-          getLoggerI18n().info(LocalizedStrings.DEBUG,
+          getLoggerI18n().warning(LocalizedStrings.DEBUG,
               "OldEntriesCleanerThread : Error occured while cleaning the oldentries map.Actual " +
                   "Exception:", e);
         }
@@ -1048,17 +1104,30 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       GemFireCacheImpl.pdxInstance = this;
 
       // set the buffer allocator for the cache (off-heap or heap)
-      long memorySize = OffHeapStorage.parseOffHeapMemorySize(
-          getSystem().getConfig().getMemorySize());
+      String memorySizeStr = getSystem().getConfig().getMemorySize();
+      long memorySize = ClientSharedUtils.parseMemorySize(memorySizeStr, 0L, 0);
       if (memorySize == 0) {
         // check in callbacks
         StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
         memorySize = callbacks.getExecutionPoolSize(true) +
             callbacks.getStoragePoolSize(true);
       }
-      this.memorySize = memorySize;
       if (memorySize > 0) {
-        this.bufferAllocator = ManagedDirectBufferAllocator.instance().initialize();
+        this.memorySize = memorySize;
+        if (!GemFireVersion.isEnterpriseEdition()) {
+          throw new IllegalArgumentException("The off-heap column store (enabled by property " +
+              "memory-size) is not supported in SnappyData OSS version.");
+        }
+        try {
+          Class clazz = Class.forName("com.gemstone.gemfire.internal.cache.store.ManagedDirectBufferAllocator");
+          Method method = clazz.getDeclaredMethod("instance");
+          this.bufferAllocator = (DirectBufferAllocator)method.invoke(null);
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+            InvocationTargetException e) {
+          throw new IllegalStateException("Could not configure managed buffer allocator.", e);
+        }
+      } else if (memorySize < 0) {
+        throw new IllegalArgumentException("Invalid memory-size: " + memorySizeStr);
       } else {
         // the allocation sizes will be initialized from the heap size
         this.bufferAllocator = HeapBufferAllocator.instance();
@@ -1210,8 +1279,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     startColocatedJmxManagerLocator();
 
     startMemcachedServer();
+    addMemoryManagerStats();
 
     return this;
+  }
+
+  private void addMemoryManagerStats() {
+    MemoryManagerStats stats = new MemoryManagerStats(this.getDistributedSystem(), "MemoryManagerStats");
+    CallbackFactoryProvider.getStoreCallbacks().initMemoryStats(stats);
   }
 
   private void startMemcachedServer() {
@@ -1403,12 +1478,12 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   public boolean snapshotEnabled() {
     // if rowstore return false
     // if snappy return true
-    return DEFAULT_SNAPSHOT_ENABLED;
+    return snapshotEnabledForTest() || DEFAULT_SNAPSHOT_ENABLED;
   }
 
-  public boolean snapshotEnabledForTX() {
+  public boolean snapshotEnabledForTest() {
     // snapshot should be enabled and if LockingPolicy is RC/RR then it should not be disabled
-    return snapshotEnabled() &&  DEFAULT_SNAPSHOT_ENABLED_TX;
+    return DEFAULT_SNAPSHOT_ENABLED_TEST;
   }
 
   // currently it will wait for a long time
@@ -5544,7 +5619,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   public static void setGFXDSystem(final boolean v) {
     // check the stack to see if this is really from a GemFireXD system
-    gfxdSystem = v ? SystemProperties.isUsingGemFireXDEntryPoint() : false;
+    gfxdSystem = v && SystemProperties.isUsingGemFireXDEntryPoint();
   }
 
   /**
@@ -6025,6 +6100,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     public static synchronized void init() {
       // set custom entry factories for GemFireXD
       if (gfxdSystem || SystemProperties.isUsingGemFireXDEntryPoint()) {
+        gfxdSystem = true;
         String provider = SystemProperties.GFXD_FACTORY_PROVIDER;
         try {
           Class<?> factoryProvider = ClassPathLoader.getLatest().forName(

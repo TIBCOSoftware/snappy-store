@@ -51,6 +51,8 @@ public interface GfxdConstants {
   final String GFXD_PREFIX = PropertyUtil.isSQLFire ? Attribute.SQLF_PREFIX
       : Attribute.GFXD_PREFIX;
 
+  String SNAPPY_PREFIX = "snappydata.";
+
   /** property name for schema name */
   final String PROPERTY_SCHEMA_NAME = GFXD_PREFIX + "schema-name";
 
@@ -436,9 +438,9 @@ public interface GfxdConstants {
    */
   final Set<String> validExtraGFXDProperties = new HashSet<String>(
       Arrays.asList(new String[] {
-          Attribute.CONFIG_SCRIPTS,
           Attribute.DEFAULT_INITIAL_CAPACITY_PROP,
           Attribute.DEFAULT_RECOVERY_DELAY_PROP,
+          DEFAULT_STARTUP_RECOVERY_DELAY_PROP,
           Attribute.DUMP_TIME_STATS_FREQ,
           Attribute.ENABLE_STATS,
           Attribute.ENABLE_TIMESTATS,
@@ -455,6 +457,7 @@ public interface GfxdConstants {
           Attribute.SYS_HDFS_ROOT_DIR,
           Attribute.TABLE_DEFAULT_PARTITIONED,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.COLLATE,
+          com.pivotal.gemfirexd.internal.iapi.reference.Attribute.INTERNAL_CONNECTION,
           Attribute.COLLATION,
           Attribute.CREATE_ATTR,
           Attribute.DISABLE_STREAMING,
@@ -744,6 +747,8 @@ public interface GfxdConstants {
   final String GFXD_QUERY_HDFS = GFXD_PREFIX + Attribute.QUERY_HDFS;
 
   final String GFXD_ROUTE_QUERY = GFXD_PREFIX + Attribute.ROUTE_QUERY;
+
+  final String INTERNAL_CONNECTION = GFXD_PREFIX + Attribute.INTERNAL_CONNECTION;
   /*
    * @see Attribute.NCJ_BATCH_SIZE
    */

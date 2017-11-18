@@ -188,7 +188,7 @@ public class Bug43522DUnit extends CacheTestCase {
               }
 
               @Override
-              public boolean clearIndexes(LocalRegion region, boolean lockForGII,
+              public boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
                   boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
                 return false;
               }
@@ -518,7 +518,7 @@ public class Bug43522DUnit extends CacheTestCase {
               }
 
               @Override
-              public boolean clearIndexes(LocalRegion region, boolean lockForGII,
+              public boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
                   boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
                 return false;
               }
@@ -851,7 +851,7 @@ public class Bug43522DUnit extends CacheTestCase {
               }
 
               @Override
-              public boolean clearIndexes(LocalRegion region, boolean lockForGII,
+              public boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
                   boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
                 return false;
               }

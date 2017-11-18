@@ -322,9 +322,11 @@ final class UpdateLoader implements LockOwner {
 		if (is != null)
 			return is;
 
-		// match behaviour of standard class loaders. 
-		if (name.endsWith(".class"))
-			return null;
+		// match behaviour of standard class loaders.
+		// Fix for issue # SNAP-2026 . Closure cleaner reads classes as stream. This piece of code below
+		// was returning null in such case. Hence commented to return proper stream.
+/*		if (name.endsWith(".class"))
+			return null;*/
 
 		boolean unlockLoader = false;
 		try {

@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -108,7 +108,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCl
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
-import com.pivotal.gemfirexd.internal.engine.distributed.SnappyRemoveCachedObjectsFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl.NetworkInterfaceImpl;
@@ -875,9 +874,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
 
     Map<String, String> gfeGridMappings = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
-        GemFireSparkConnectorCacheFactory.gfeGridNamePrefix);
+        GemFireSparkConnectorCacheImpl.gfeGridNamePrefix);
     Map<String, String> gfeGridPoolProps = PropertyUtil.findAndGetPropertiesWithPrefix(properties,
-        GemFireSparkConnectorCacheFactory.gfeGridPropsPrefix);
+        GemFireSparkConnectorCacheImpl.gfeGridPropsPrefix);
 
     propName = Attribute.DUMP_TIME_STATS_FREQ;
     propValue = PropertyUtil.findAndGetProperty(props,
@@ -1069,7 +1068,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
       try {
         CacheFactory c = null;
-        if (!gfeGridMappings.isEmpty()) {
+        if (!(gfeGridMappings.isEmpty() && gfeGridPoolProps.isEmpty())) {
           c = new GemFireSparkConnectorCacheFactory(dsProps, gfeGridMappings, gfeGridPoolProps);
         } else {
           c = new CacheFactory(dsProps);
@@ -1160,7 +1159,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
       FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
-      FunctionService.registerFunction(new SnappyRemoveCachedObjectsFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
       if (logger.fineEnabled()) {
@@ -1300,7 +1298,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         service = FabricServiceManager.getFabricServerInstance();
       }
       assert service instanceof FabricServiceImpl;
-      ((FabricServiceImpl)service).notifyRunning();
 
       this.isShutdownAll = false;
 
@@ -1637,6 +1634,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   
   public String getBootProperty(String propName) {
     return this.serviceProperties.getProperty(propName);
+  }
+
+  public void setBootProperty(String propName, String propValue) {
+    if (propValue != null) {
+      this.serviceProperties.setProperty(propName, propValue);
+    } else {
+      this.serviceProperties.remove(propName);
+    }
   }
 
   public Map<Object, Object> getBootProperties() {

@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -51,6 +51,7 @@ import com.gemstone.gemfire.internal.shared.ReverseListIterator;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import io.snappydata.ResultSetWithNull;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.ColumnValueConverter;
 import io.snappydata.thrift.common.Converters;
@@ -59,8 +60,9 @@ import io.snappydata.thrift.common.ThriftExceptionUtil;
 /**
  * Implementation of {@link ResultSet} for JDBC client.
  */
+@SuppressWarnings("WeakerAccess")
 public final class ClientResultSet extends ClientFetchColumnValue implements
-    ResultSet {
+    ResultSetWithNull {
 
   private final ClientStatement statement;
   private final StatementAttrs attrs;
@@ -207,7 +209,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   }
 
   final void checkScrollable() throws SQLException {
-    if (this.attrs.resultSetType == snappydataConstants.RESULTSET_TYPE_FORWARD_ONLY) {
+    if (this.attrs.getResultSetType() == snappydataConstants.RESULTSET_TYPE_FORWARD_ONLY) {
       throw ThriftExceptionUtil
           .newSQLException(SQLState.CURSOR_MUST_BE_SCROLLABLE);
     }
@@ -362,6 +364,15 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     } finally {
       reset();
     }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final boolean isNull(int columnIndex) throws SQLException {
+    final Row currentRow = checkValidColumn(columnIndex);
+    return currentRow.isNull(columnIndex - 1);
   }
 
   /**
@@ -1325,7 +1336,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public int getType() throws SQLException {
     checkClosed();
 
-    return Converters.getJdbcResultSetType(this.attrs.resultSetType);
+    // noinspection MagicConstant
+    return Converters.getJdbcResultSetType(this.attrs.getResultSetType());
   }
 
   /**

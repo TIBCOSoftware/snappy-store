@@ -17,21 +17,28 @@
 
 package com.pivotal.gemfirexd.internal.engine.locks;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+import com.gemstone.gemfire.DataSerializable;
+import com.gemstone.gemfire.DataSerializer;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 /**
  * A default implementation of {@link GfxdLockable} that can be used to create
  * an {@link GfxdLockable} from a given object that is used as the
  * {@link #getName()} method.
- * 
+ *
  * @author swale
  * @since 6.5
  */
-public final class DefaultGfxdLockable extends AbstractGfxdLockable {
+public final class DefaultGfxdLockable extends AbstractGfxdLockable
+    implements DataSerializable {
 
-  private final Object name;
+  private Object name;
 
-  private final String traceFlag;
+  private transient final String traceFlag;
 
   public DefaultGfxdLockable(Object name, String traceFlag) {
     this.name = name;
@@ -46,10 +53,17 @@ public final class DefaultGfxdLockable extends AbstractGfxdLockable {
 
   @Override
   protected boolean traceThisLock() {
-    if (this.traceFlag != null) {
-      return SanityManager.TRACE_ON(this.traceFlag);
-    }
-    return false;
+    return this.traceFlag != null && SanityManager.TRACE_ON(this.traceFlag);
+  }
+
+  @Override
+  public void toData(DataOutput out) throws IOException {
+    DataSerializer.writeObject(this.name, out);
+  }
+
+  @Override
+  public void fromData(DataInput in) throws IOException, ClassNotFoundException {
+    this.name = DataSerializer.readObject(in);
   }
 
   @Override

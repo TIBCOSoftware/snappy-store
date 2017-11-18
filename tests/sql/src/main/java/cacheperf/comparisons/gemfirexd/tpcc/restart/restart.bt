@@ -1,0 +1,16 @@
+cacheperf/comparisons/gemfirexd/tpcc/restart/tpccRestart.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=20
+  serverHosts=4 serverVMsPerHost=1 serverThreadsPerVM=20
+  numWarehouses = 48
+  clientHeapMB=1024 serverHeapMB=15000
+  trimSeconds=60 workSeconds=300
+  sleepBeforeShutdownSec = 0
+/*
+cacheperf/comparisons/gemfirexd/tpcc/restart/tpccRestart.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=20
+  serverHosts=4 serverVMsPerHost=4 serverThreadsPerVM=20
+  numWarehouses = 320
+  clientHeapMB=1024 serverHeapMB=25000
+  trimSeconds=60 workSeconds=600
+  sleepBeforeShutdownSec = 0
+*/

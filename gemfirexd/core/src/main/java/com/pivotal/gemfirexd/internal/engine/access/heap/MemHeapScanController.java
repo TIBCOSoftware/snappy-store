@@ -379,7 +379,6 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
     boolean restoreBatching = false;
     if (this.txState != null) {
-      // TODO: Suranjan take snapshot, each time we open a scan controller.
       this.txId = this.txState.getTransactionId();
       this.lockPolicy = this.txState.getLockingPolicy();
       if (this.forUpdate != 0) {
@@ -406,16 +405,17 @@ public class MemHeapScanController implements MemScanController, RowCountable,
             .getReadLocksForScanContext(this.lcc);
         restoreBatching = this.localTXState.getProxy().remoteBatching(true);
       }
-    }
-    else if (Misc.getGemFireCache().snapshotEnabled()) {
+    }// if fc is null then the query is from snappy side.
+    else if (this.gfContainer.isRowBuffer() ||
+        (region.getCache().snapshotEnabledForTest() && region.getConcurrencyChecksEnabled())) {
+
       // Start snapshot tx only for read operations.but not for read_only mode
-      boolean forReadOnly = (this.openMode & GfxdConstants
-          .SCAN_OPENMODE_FOR_READONLY_LOCK) != 0;
+      //boolean forReadOnly = (this.openMode & GfxdConstants
+      //    .SCAN_OPENMODE_FOR_READONLY_LOCK) != 0;
       if (region.getConcurrencyChecksEnabled() &&
-          region.getCache().snapshotEnabled() &&
           (region.getCache().getCacheTransactionManager().getTXState() == null)
-          && (this.forUpdate == 0)
-          && !forReadOnly) {
+          /*&& (this.forUpdate == 0)*/
+          /*&& !forReadOnly*/) {
 
         if (GemFireXDUtils.TraceQuery) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -500,7 +500,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
         }
       }
       if (prpLEItr) {
-        if (SanityManager.TraceSingleHop) {
+        if (GemFireXDUtils.TraceQuery || SanityManager.TraceSingleHop) {
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,
               "MemHeapScanController::positionAtInitScan bucketSet: " + bset
                   + " and forUpdate=" + (this.forUpdate != 0) + " this table: "
@@ -563,15 +563,16 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
     if (snashotTxStarted) {
       // clear the txState so that other thread local is cleared.
-      TXManagerImpl.getOrCreateTXContext().clearTXState();
+      TXManagerImpl.TXContext context = TXManagerImpl.getOrCreateTXContext();
+      context.clearTXState();
       // gemfire tx shouldn't be cleared in case of row buffer scan
-      if (!(this.getGemFireContainer().isRowBuffer() && lcc.isSkipConstraintChecks())) {
+      if (!(this.getGemFireContainer().isRowBuffer() && (fc == null))) {
         if (GemFireXDUtils.TraceQuery) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
               "MemHeapScanController::positionAtInitScan bucketSet: " + " lcc.isSkipConstraintChecks " + lcc.isSkipConstraintChecks() +
           " " + "Setting snapshotTxStae to NULL.");
         }
-        TXManagerImpl.snapshotTxState.set(null);
+        context.setSnapshotTXState(null);
         this.localSnapshotTXState = this.txState;
       }
       this.txState = null;
@@ -867,7 +868,8 @@ public class MemHeapScanController implements MemScanController, RowCountable,
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM_READ,
                 "MemHeapScanController#next: current entry="
                     + this.currentRowLocation + " bucketId=" + this.bucketId
-                    + ", isIterOnPR=" + this.gfContainer.isPartitioned());
+                    + ", isIterOnPR=" + this.gfContainer.isPartitioned()
+                    + (owner != null ? ", owner=" + owner.getFullPath() : ""));
           }
           // a null owner in full scan will happen for remote entries
           if (owner == null && !isGlobalScan &&

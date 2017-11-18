@@ -3338,8 +3338,6 @@ public class RemoteTransactionDUnitTest extends CacheTestCase {
   }
 
   /**
-   * @param ds1
-   * @param pr
    * @return first key found on the given member
    */
   CustId getKeyOnMember(final DistributedMember owner,
@@ -3355,10 +3353,7 @@ public class RemoteTransactionDUnitTest extends CacheTestCase {
     }
     return retVal;
   }
-  /**
-   * @param i
-   * @return
-   */
+
   protected Set<Customer> getCustomerSet(int size) {
     Set<Customer> expectedSet = new HashSet<Customer>();
     for (int i=0; i<size; i++) {
@@ -4708,7 +4703,7 @@ protected static class ClientListener extends CacheListenerAdapter {
         return null;
       }
     });
-    final TransactionId txid = (TransactionId)accessor
+    final TXId txid = (TXId)accessor
         .invoke(new SerializableCallable() {
           @Override
           public Object call() throws Exception {

@@ -40,7 +40,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 /**
- * Miscellaneous tools for gfxd utility. Currently only "gfxd run <script>".
+ * Miscellaneous tools for gfxd utility. Currently only "gfxd run &lt;script&gt;".
  * 
  * @author swale
  * @since 7.0

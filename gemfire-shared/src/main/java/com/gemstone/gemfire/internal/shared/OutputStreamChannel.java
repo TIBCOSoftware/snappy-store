@@ -35,13 +35,10 @@
 
 package com.gemstone.gemfire.internal.shared;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * Intermediate class that extends both an OutputStream and WritableByteChannel.
@@ -50,17 +47,11 @@ import java.util.concurrent.locks.LockSupport;
  * @since gfxd 1.1
  */
 public abstract class OutputStreamChannel extends OutputStream implements
-    WritableByteChannel, Closeable {
+    WritableByteChannel, StreamChannel {
 
   protected final WritableByteChannel channel;
-  protected volatile Thread parkedThread;
+  private volatile Thread parkedThread;
   protected volatile long bytesWritten;
-
-  /**
-   * Maximum nanos to park reader thread to wait for writing data in
-   * non-blocking mode (if selector is present then it will explicitly signal)
-   */
-  protected static final long PARK_NANOS_MAX = 15000000000L;
 
   protected OutputStreamChannel(WritableByteChannel channel) {
     this.channel = channel;
@@ -109,7 +100,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
       } else {
         // flush directly if there is nothing in the channel buffer
         if (flushBuffer && channelBuffer.position() == 0) {
-          return numWritten + writeBufferNonBlocking(src, this.channel);
+          return numWritten + writeBufferNoWait(src, this.channel);
         }
         // copy src to buffer and flush
         if (remaining > 0) {
@@ -132,7 +123,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
         if (!flushBufferNonBlockingBase(channelBuffer)) {
           return numWritten;
         } else if (flushBuffer) {
-          return numWritten + writeBufferNonBlocking(src, this.channel);
+          return numWritten + writeBufferNoWait(src, this.channel);
         }
         // for non-direct buffers use channel buffer for best performance
         // so loop back and try again
@@ -147,7 +138,7 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
     final boolean flushed;
     try {
-      writeBufferNonBlocking(buffer, this.channel);
+      writeBufferNoWait(buffer, this.channel);
     } finally {
       // if we failed to write the full buffer then compact the remaining bytes
       // to the start so we can start filling it again
@@ -165,19 +156,16 @@ public abstract class OutputStreamChannel extends OutputStream implements
 
   protected int writeBuffer(final ByteBuffer buffer,
       final WritableByteChannel channel) throws IOException {
-    long parkNanos = 0;
+    long parkedNanos = 0;
+    int numTries = 0;
     int numWritten;
     while ((numWritten = channel.write(buffer)) == 0) {
-      // at this point we are out of the selector thread and don't want to
-      // create unlimited size buffers upfront in selector, so will use
-      // simple signalling between selector and this thread to proceed
-      this.parkedThread = Thread.currentThread();
-      LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
-      this.parkedThread = null;
-      if ((parkNanos += ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE) >
-          getParkNanosMax()) {
-        throw new SocketTimeoutException("Connection write timed out.");
+      if (!buffer.hasRemaining()) {
+        break;
       }
+      // wait for a bit after some retries
+      parkedNanos = ClientSharedUtils.parkThreadForAsyncOperationIfRequired(
+          this, parkedNanos, ++numTries);
     }
     if (numWritten > 0) {
       this.bytesWritten += numWritten;
@@ -185,21 +173,28 @@ public abstract class OutputStreamChannel extends OutputStream implements
     return numWritten;
   }
 
-  protected long getParkNanosMax() {
-    return PARK_NANOS_MAX;
+  @Override
+  public final Thread getParkedThread() {
+    return this.parkedThread;
   }
 
-  protected int writeBufferNonBlocking(final ByteBuffer buffer,
+  @Override
+  public final void setParkedThread(Thread thread) {
+    this.parkedThread = thread;
+  }
+
+  @Override
+  public long getParkNanosMax() {
+    return ClientSharedUtils.PARK_NANOS_MAX;
+  }
+
+  protected int writeBufferNoWait(final ByteBuffer buffer,
       final WritableByteChannel channel) throws IOException {
     int numWritten = channel.write(buffer);
     if (numWritten > 0) {
       this.bytesWritten += numWritten;
     }
     return numWritten;
-  }
-
-  public final Thread getParkedThread() {
-    return this.parkedThread;
   }
 
   public final long getBytesWritten() {

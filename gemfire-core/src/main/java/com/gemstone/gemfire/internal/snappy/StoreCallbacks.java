@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -19,34 +19,32 @@ package com.gemstone.gemfire.internal.snappy;
 
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.EntryEventImpl;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public interface StoreCallbacks {
 
-  String SHADOW_SCHEMA_NAME = "SNAPPYSYS_INTERNAL";
-
-  String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
-
-  String SHADOW_SCHEMA_SEPARATOR = "____";
+  String SHADOW_TABLE_SUFFIX = SystemProperties.SHADOW_TABLE_SUFFIX;
 
   void registerTypes();
 
-  Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
+  Set<Object> createColumnBatch(BucketRegion region, long batchID,
       int bucketID);
 
+  void invokeColumnStorePutCallbacks(BucketRegion bucket, EntryEventImpl[] events);
+
   List<String> getInternalTableSchemas();
+
+  boolean isColumnTable(String qualifiedName);
 
   int getHashCodeSnappy(Object dvd, int numPartitions);
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
-  public String columnBatchTableName(String tableName);
-
-  public String snappyInternalSchemaName();
-
-  void cleanUpCachedObjects(String table, Boolean sentFromExternalCluster);
+  String columnBatchTableName(String tableName);
 
   void registerRelationDestroyForHiveStore();
 
@@ -102,4 +100,9 @@ public interface StoreCallbacks {
    * Log the used memory breakdown as maintained by the MemoryManager.
    */
   void logMemoryStats();
+
+  /**
+   * Initializes different memory manager related stats
+   */
+  void initMemoryStats(MemoryManagerStats stats);
 }

@@ -556,10 +556,13 @@ public class DiskRegion extends AbstractDiskRegion {
       BucketRegion owner=(BucketRegion)region;
       long curInVM = owner.getNumEntriesInVM()*-1;
       long curOnDisk = owner.getNumOverflowOnDisk()*-1;
+      long curBytesOnDisk = owner.getNumOverflowBytesOnDisk()*-1;
       incNumEntriesInVM(curInVM);
       incNumOverflowOnDisk(curOnDisk);
+      incNumOverflowBytesOnDisk(curBytesOnDisk);
       owner.incNumEntriesInVM(curInVM);
       owner.incNumOverflowOnDisk(curOnDisk);
+      owner.incNumOverflowBytesOnDisk(curBytesOnDisk);
     } else {
       // set them both to zero
       incNumEntriesInVM(getNumEntriesInVM()*-1);
@@ -810,7 +813,7 @@ public class DiskRegion extends AbstractDiskRegion {
    * Only called on overflow-only regions.
    * Needs to take every entry currently using disk storage and free up that storage
    */
-  void freeAllEntriesOnDisk(LocalRegion region) {
+  void freeAllEntriesOnDisk(final LocalRegion region) {
     if(region == null) {
       return;
     }
@@ -822,8 +825,8 @@ public class DiskRegion extends AbstractDiskRegion {
             synchronized (id) {
               // GemFireXD: give a chance to copy key from value bytes when key
               // is just a pointer to value row
-              re.setValueToNull(); // TODO why call _setValue twice in a row?
-              re.removePhase2();
+              re.setValueToNull(region); // TODO why call _setValue twice in a row?
+              re.removePhase2(region);
               id.unmarkForWriting();
               if (EntryBits.isNeedsValue(id.getUserBits())) {
                 long oplogId = id.getOplogId();

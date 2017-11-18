@@ -385,7 +385,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
           }
         }
         
-        if (SanityManager.TraceSingleHop) {
+        if (GemFireXDUtils.TraceQuery || SanityManager.TraceSingleHop) {
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,
               "SortedMap2IndexScanController::initEnumerator bucketSet: "
                   + bset + " and forUpdate=" + (this.forUpdate != 0)

@@ -170,17 +170,19 @@ public abstract class BackwardCompatabilityTestBase extends
       throws InterruptedException {
     for (ProcessStart procStart : procStarts) {
       final int exitValue = procStart.proc.waitFor();
+      String procType = procStart.isLocator ? "locator" : "server";
+      if (procStart.version != null) {
+        procType += (" version " + procStart.version);
+      }
+      else {
+        procType = "current version " + procType;
+      }
       if (exitValue != 0) {
-        String procType = procStart.isLocator ? "locator" : "server";
-        if (procStart.version != null) {
-          procType += (" version " + procStart.version);
-        }
-        else {
-          procType = "current version " + procType;
-        }
         throw new TestException("Unexpected exit value " + exitValue
             + " while starting " + procType + ". See logs in "
             + procStart.logFile + " and start file output.");
+      } else {
+        getLogWriter().info("Started " + procType);
       }
     }
   }
@@ -228,7 +230,7 @@ public abstract class BackwardCompatabilityTestBase extends
 
     startOps = new String[] { utilLauncher, "locator", "start",
         "-dir=" + directory, "-run-netserver=false", "-log-file=" + logFile,
-        "-peer-discovery-port=" + peerDiscoveryPort
+        "-heap-size=512m", "-peer-discovery-port=" + peerDiscoveryPort
     // ,"-log-level=fine"
     };
 
@@ -274,7 +276,7 @@ public abstract class BackwardCompatabilityTestBase extends
         + ".log";
     final String[] startOps = new String[] { utilLauncher, "server", "start",
         "-dir=" + directory, "-J-Dgemfirexd.thrift-default=false",
-        "-client-port=" + clientPort,
+        "-heap-size=1g", "-client-port=" + clientPort,
         "-log-file=" + logFile, "-locators=localhost[" + locatorPort + "]"
     // ,"-log-level=fine"
     };
@@ -337,7 +339,7 @@ public abstract class BackwardCompatabilityTestBase extends
       if (withAuth) {
         startOps = new String[] { utilLauncher, "server", "start",
             "-dir=" + workingDir, "-client-port=" + clientPort,
-            "-J-Dgemfirexd.thrift-default=false",
+            "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
             "-log-file=" + logFile, "-locators=localhost[" + locatorPort + "]",
             "-auth-provider=BUILTIN", "-gemfirexd.sql-authorization=TRUE",
             "-gemfirexd.user.SYSADMIN=SA", "-user=SYSADMIN", "-password=SA" };
@@ -345,7 +347,7 @@ public abstract class BackwardCompatabilityTestBase extends
       else {
         startOps = new String[] { utilLauncher, "server", "start",
             "-dir=" + workingDir, "-client-port=" + clientPort,
-            "-J-Dgemfirexd.thrift-default=false",
+            "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
             "-log-file=" + logFile, "-locators=localhost[" + locatorPort + "]"
         // ,"-log-level=fine"
         };
@@ -355,7 +357,7 @@ public abstract class BackwardCompatabilityTestBase extends
     else {
       startOps = new String[] { utilLauncher, "server", "start",
           "-dir=" + workingDir, "-client-port=" + clientPort,
-          "-J-Dgemfirexd.thrift-default=false",
+          "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
           "-log-file=" + logFile, "-mcast-port=" + mcastPort };
     }
     getLogWriter().info(
@@ -384,7 +386,7 @@ public abstract class BackwardCompatabilityTestBase extends
       if (withAuth) {
         startOps = new String[] { utilLauncher, "server", "start",
             "-dir=" + workingDir, "-client-port=" + clientPort,
-            "-J-Dgemfirexd.thrift-default=false",
+            "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
             "-log-file=" + logFile, "-locators=" + locators,
             "-auth-provider=BUILTIN", "-gemfirexd.sql-authorization=TRUE",
             "-gemfirexd.user.SYSADMIN=SA", "-user=SYSADMIN", "-password=SA",
@@ -393,7 +395,7 @@ public abstract class BackwardCompatabilityTestBase extends
       else {
         startOps = new String[] { utilLauncher, "server", "start",
             "-dir=" + workingDir, "-client-port=" + clientPort,
-            "-J-Dgemfirexd.thrift-default=false",
+            "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
             "-log-file=" + logFile, "-locators=" + locators,
             "-persist-dd=" + persistDD };
       }
@@ -402,7 +404,7 @@ public abstract class BackwardCompatabilityTestBase extends
     else {
       startOps = new String[] { utilLauncher, "server", "start",
           "-dir=" + workingDir, "-client-port=" + clientPort,
-          "-J-Dgemfirexd.thrift-default=false",
+          "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
           "-log-file=" + logFile, "-mcast-port=" + mcastPort };
     }
     getLogWriter().info(
@@ -442,13 +444,13 @@ public abstract class BackwardCompatabilityTestBase extends
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, "-log-file=" + logFile,
           "-peer-discovery-port=" + peerDiscoveryPort, "-run-netserver=false",
-          "-auth-provider=BUILTIN", "-gemfirexd.sql-authorization=TRUE",
+          "-heap-size=512m", "-auth-provider=BUILTIN", "-gemfirexd.sql-authorization=TRUE",
           "-gemfirexd.user.SYSADMIN=SA", "-user=SYSADMIN", "-password=SA" };
     }
     else {
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, "-run-netserver=false", "-log-file=" + logFile,
-          "-peer-discovery-port=" + peerDiscoveryPort };
+          "-heap-size=512m", "-peer-discovery-port=" + peerDiscoveryPort };
     }
 
     getLogWriter().info(
@@ -482,7 +484,7 @@ public abstract class BackwardCompatabilityTestBase extends
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, "-log-file=" + logFile,
           "-peer-discovery-port=" + peerDiscoveryPort, "-run-netserver=false",
-          "-auth-provider=BUILTIN", "-gemfirexd.sql-authorization=TRUE",
+          "-heap-size=512m", "-auth-provider=BUILTIN", "-gemfirexd.sql-authorization=TRUE",
           "-gemfirexd.user.SYSADMIN=SA", "-locators=" + locators,
           "-user=SYSADMIN", "-password=SA", "-persist-dd=" + persistDD };
     }
@@ -490,7 +492,7 @@ public abstract class BackwardCompatabilityTestBase extends
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, "-run-netserver=false",
           "-locators=" + locators, "-log-file=" + logFile,
-          "-peer-discovery-port=" + peerDiscoveryPort,
+          "-heap-size=512m", "-peer-discovery-port=" + peerDiscoveryPort,
           "-persist-dd=" + persistDD };
     }
 
@@ -613,7 +615,7 @@ public abstract class BackwardCompatabilityTestBase extends
       if (withAuth) {
         startOps = new String[] { utilLauncher, "server", "start",
             "-dir=" + workingDir, "-client-port=" + clientPort,
-            "-J-Dgemfirexd.thrift-default=false",
+            "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
             "-log-file=" + logFile, "-locators=localhost[" + locatorPort + "]",
             "-auth-provider=BUILTIN", "-gemfirexd.sql-authorization=TRUE",
             "-gemfirexd.user.SYSADMIN=SA", "-user=SYSADMIN", "-password=SA",
@@ -622,7 +624,7 @@ public abstract class BackwardCompatabilityTestBase extends
       else {
         startOps = new String[] { utilLauncher, "server", "start",
             "-dir=" + workingDir, "-client-port=" + clientPort,
-            "-J-Dgemfirexd.thrift-default=false",
+            "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
             "-log-file=" + logFile, "-locators=localhost[" + locatorPort + "]",
             "-server-groups=" + serverGroups, "-sync=false" };
       }
@@ -631,7 +633,7 @@ public abstract class BackwardCompatabilityTestBase extends
     else {
       startOps = new String[] { utilLauncher, "server", "start",
           "-dir=" + workingDir, "-client-port=" + clientPort,
-          "-J-Dgemfirexd.thrift-default=false",
+          "-heap-size=1g", "-J-Dgemfirexd.thrift-default=false",
           "-log-file=" + logFile, "-mcast-port=" + mcastPort,
           "-server-groups=" + serverGroups, "-sync=false" };
     }

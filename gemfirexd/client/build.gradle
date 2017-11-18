@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -16,14 +16,14 @@
  */
 
 plugins {
-  id 'com.github.johnrengelman.shadow' version '1.2.3'
+  id 'com.github.johnrengelman.shadow' version '2.0.1'
 }
 
 dependencies {
-  provided "org.apache.thrift:libthrift:${thriftVersion}"
-  provided "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+  compileOnly "org.apache.thrift:libthrift:${thriftVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
-  compile project(subprojectBase + 'gemfirexd-shared')
+  compile project(subprojectBase + 'snappydata-store-shared')
 }
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
@@ -59,7 +59,7 @@ compileJava {
 archivesBaseName = 'snappydata-store-client'
 
 jar {
-  dependsOn subprojectBase + 'gemfirexd-core:doSplit'
+  dependsOn subprojectBase + 'snappydata-store-core:doSplit'
   baseName = 'snappydata-store-client'
   manifest {
     attributes = getManifest('gemfirexdclient', '*',
@@ -78,7 +78,7 @@ shadowJar {
   // avoid conflict with the older incompatible thrift versions
   relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
 
-  configurations = [ project.configurations.runtime, project.configurations.provided ]
+  configurations = [ project.configurations.runtime, project.configurations.compileOnly ]
 
   mergeServiceFiles()
 }

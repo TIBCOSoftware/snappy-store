@@ -3816,7 +3816,7 @@ Guide.
            </msg>
            <msg>
                 <name>X0Z27.S</name>
-                <text>An unexpected exception occured during procedure execution: {0}.</text>
+                <text>An unexpected exception occured during procedure execution: {0}. Refer log file for exception details.</text>
                 <arg>value</arg>
            </msg>
            <msg>
@@ -4546,14 +4546,14 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
             </msg>
 <!-- GemStone changes BEGIN -->
             <msg>
-                <name>XCL54</name>
+                <name>XCL54.T</name>
                 <text>Query/DML/DDL '{0}' canceled due to low memory on member '{1}'. Try reducing the search space by adding more filter conditions to the where clause.</text>
                 <arg>query</arg>
                 <arg>memberid</arg>
             </msg>
             
             <msg>
-                <name>XCL56.S</name>
+                <name>XCL56.T</name>
                 <text>The statement has been cancelled due to a user request.</text>
             </msg>
             <msg>
@@ -5418,6 +5418,10 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
             <msg>
                 <name>XJ217.S</name>
                 <text>The locator that was supplied for this CLOB/BLOB is invalid</text>
+            </msg>
+            <msg>
+                <name>XJ218.S</name>
+                <text>Operations on column tables are not supported when query routing is disabled or autocommit is false</text>
             </msg>
 
         </family>

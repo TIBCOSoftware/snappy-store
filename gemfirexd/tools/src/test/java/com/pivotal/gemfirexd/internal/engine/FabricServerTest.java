@@ -294,9 +294,9 @@ public class FabricServerTest extends TestUtil implements UnitTest {
           conn = getNetConnection(port, null, null);
           break;
         } catch (SQLException sqle) {
-          if (tries++ < 5 && ("08006".equals(sqle.getSQLState()) ||
+          if (tries++ < 30 && ("08006".equals(sqle.getSQLState()) ||
               "08001".equals(sqle.getSQLState()))) {
-            Thread.sleep(100);
+            Thread.sleep(200);
             continue;
           }
           else {
@@ -1161,9 +1161,26 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       // start the JVM process and try to connect using a client
       final Process proc = Runtime.getRuntime().exec(cmdOps, null, file);
       assertEquals(0, waitForProcess(proc, 120000));
-      
+
       Connection conn;
-      conn = getNetConnection(port, null, null);
+      // try a few times in case of disconnect exception
+      int tries = 1;
+      for (;;) {
+        try {
+          conn = getNetConnection(port, null, null);
+          break;
+        } catch (SQLException sqle) {
+          if (tries++ < 30 && ("08006".equals(sqle.getSQLState()) ||
+              "08001".equals(sqle.getSQLState()))) {
+            Thread.sleep(200);
+            continue;
+          }
+          else {
+            throw sqle;
+          }
+        }
+      }
+
       int rs = conn.createStatement().executeUpdate(
           "create gatewayreceiver ok (hostnameforsenders 'NICJVM');");
 

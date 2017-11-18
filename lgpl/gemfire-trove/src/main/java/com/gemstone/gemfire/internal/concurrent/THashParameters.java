@@ -84,7 +84,7 @@ public class THashParameters {
 
     @Override
     public int computeHashCode(Object o) {
-      return o.hashCode();
+      return o != null ? o.hashCode() : 0;
     }
 
     @Override

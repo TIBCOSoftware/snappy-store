@@ -535,7 +535,7 @@ public final class ProxyBucketRegion implements Bucket {
     }
   }
 
-  private void clearIndexes(LogWriterI18n logger) {
+  public void clearIndexes(LogWriterI18n logger) {
     IndexUpdater iup = this.partitionedRegion.getIndexUpdater();
     if(logger.fineEnabled()) {
       logger.fine("clearing index for diskregion: " + this.diskRegion);
@@ -543,7 +543,11 @@ public final class ProxyBucketRegion implements Bucket {
     if (iup != null) {
       RegionMap rmap = diskRegion.getRecoveredEntryMap();
       if (rmap != null && rmap.regionEntries() != null) {
-        iup.clearIndexes(this.partitionedRegion, true, false, rmap.regionEntries().iterator(), true);
+        if(logger.fineEnabled()) {
+          logger.fine("Going to clear indexes in ProxyBucketRegion: " + this.diskRegion);
+        }
+        iup.clearIndexes(this.partitionedRegion, getDiskRegion(),
+            true, false, rmap.regionEntries().iterator(), true);
       }
     }
   }

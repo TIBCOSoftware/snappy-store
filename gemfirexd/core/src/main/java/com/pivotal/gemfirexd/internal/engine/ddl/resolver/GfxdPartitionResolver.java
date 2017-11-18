@@ -381,6 +381,10 @@ public abstract class GfxdPartitionResolver implements
   public void updateDistributionDescriptor(DistributionDescriptor desc) {
   }
 
+  public String[] getPartitioningColumns() {
+    return getColumnNames();
+  }
+
   public int getPartitioningColumnsCount() {
     return 1;
   }
@@ -741,7 +745,7 @@ public abstract class GfxdPartitionResolver implements
         bOwners.remove(pmbr);
         String primaryServer = mbrToServerMap.get(pmbr);
         if (primaryServer == null) {
-          if (SanityManager.TraceSingleHop) {
+          if (GemFireXDUtils.TraceQuery || SanityManager.TraceSingleHop) {
             SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,
                 "GfxdPartitionResolver::isValidTypeForSingleHop server "
                     + "location of primary bucket server corresponding "

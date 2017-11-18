@@ -799,6 +799,8 @@ public interface DataSerializableFixedID extends SerializationVersions {
   public static final short TOBJECTLONGHASHMAP = 2161;
   
   public static final short SERVER_PING_MESSAGE = 2162;
+
+  public static final short SNAPSHOT_GII_UNLOCK_MESSAGE = 2163;
   // NOTE, codes > 65535 will take 4 bytes to serialize
   
   /**

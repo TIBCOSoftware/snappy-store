@@ -33,6 +33,7 @@ import com.gemstone.gemfire.cache.RegionAttributes;
 
 import com.gemstone.gemfire.internal.cache.EvictionAttributesImpl;
 import com.gemstone.gemfire.internal.cache.PartitionAttributesImpl;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -278,9 +279,7 @@ public class DistributionDefinitionNode extends TableElementNode {
         break;
       }
       case DistributionDescriptor.PARTITIONBYEXPRESSION: {
-        distributionDesc = dd.getDataDescriptorGenerator()
-            .newDistributionDescriptor(this.policy, null, this.redundancy,
-                this.maxPartSize, null, this.isPersistent, this.serverGroups);
+        distributionDesc = validatePartitionByExpression(elementList, dd);
         break;
       }
       case DistributionDescriptor.PARTITIONBYLIST:
@@ -744,6 +743,12 @@ public class DistributionDefinitionNode extends TableElementNode {
               || tgt.getType().getScale() != src.getType().getScale()
               || tgt.getType().getMaximumWidth() != src.getType()
               .getMaximumWidth()) {
+            // SQLChar types can be collocated
+            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                && DataTypeDescriptor.isCharacterStreamAssignable(tgt.getType().getJDBCTypeId())
+                && DataTypeDescriptor.isCharacterStreamAssignable(src.getType().getJDBCTypeId())) {
+              continue;
+            }
           /*
           * if( !tgt.getType().equals(src.getType()) ) {
           *
@@ -805,6 +810,16 @@ public class DistributionDefinitionNode extends TableElementNode {
       columnNames[index] = colName;
     }
     return columnNames;
+  }
+
+  private DistributionDescriptor validatePartitionByExpression(
+      TableElementIterator elementList, DataDictionary dd)
+      throws StandardException {
+    String[] columnNames = this.columns != null
+        ? validatePartitionColumns(elementList) : null;
+    return dd.getDataDescriptorGenerator()
+        .newDistributionDescriptor(this.policy, columnNames, this.redundancy,
+            this.maxPartSize, null, this.isPersistent, this.serverGroups);
   }
 
   private DistributionDescriptor validatePartitionByPrimaryKey(

@@ -55,6 +55,7 @@ import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.Oplog;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.TLongHashSet;
@@ -476,10 +477,9 @@ public final class GfxdDDLRegion extends DistributedRegion {
           // and possibly in incorrect order (i.e. drop => create can remove
           //   create when conflation is done in queue populate after GII)
           if (this.queue.isInitialized()) {
-            final ArrayList<QueueValue> conflatedItems =
-              new ArrayList<QueueValue>(5);
+            final ArrayList<QueueValue> conflatedItems = new ArrayList<>(4);
             this.queue.addToQueue(qVal, true, conflatedItems);
-            doConflate(conflatedItems, ddlQueueId);
+            doConflate(conflatedItems, qVal);
           }
           else {
             this.queue.addToQueue(qVal, false, null);
@@ -531,7 +531,7 @@ public final class GfxdDDLRegion extends DistributedRegion {
    * Conflate given items from this region taking the appropriate lock to avoid
    * GII from happening concurrently on partially destroyed entries.
    */
-  void doConflate(List<QueueValue> conflateItems, Long currentKey) {
+  void doConflate(List<QueueValue> conflateItems, Object qVal) {
     if (conflateItems != null && conflateItems.size() > 0) {
       final boolean doLog = GemFireXDUtils.TraceConflation
           | DistributionManager.VERBOSE;
@@ -544,8 +544,8 @@ public final class GfxdDDLRegion extends DistributedRegion {
           if (doLog) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONFLATION,
                 "GfxdDDLRegion: conflating entry {key=" + val.getKey()
-                    + ", value=" + val.getValue() + "} from region for key "
-                    + currentKey);
+                    + ", value=" + val.getValue() + "} for entry {" + qVal
+                    + "} from region");
           }
           this.conflatedDDLIds .add(val.getKey());
           try {
@@ -624,7 +624,8 @@ public final class GfxdDDLRegion extends DistributedRegion {
    * 
    * @author swale
    */
-  public static final class RegionValue extends GfxdDataSerializable {
+  public static final class RegionValue extends GfxdDataSerializable
+      implements Sizeable {
 
     private Object value;
 
@@ -661,6 +662,11 @@ public final class GfxdDDLRegion extends DistributedRegion {
       super.fromData(in);
       this.value = DataSerializer.readObject(in);
       this.sequenceId = in.readLong();
+    }
+
+    @Override
+    public int getSizeInBytes() {
+      return Misc.getMemStoreBooting().getObjectSizer().sizeof(this.value) + 8;
     }
 
     @Override

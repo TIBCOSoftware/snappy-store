@@ -66,17 +66,17 @@ public abstract class AbstractOplogDiskRegionEntry
   {
     synchronized (this) {
       Helper.removeFromDisk(this, r, isClear);
-      _removePhase1();
+      _removePhase1(r);
     }
   }
   @Override
-  public void removePhase2() {
+  public void removePhase2(LocalRegion r) {
     Object syncObj = getDiskId();
     if (syncObj == null) {
       syncObj = this;
     }
     synchronized (syncObj) {
-      super.removePhase2();
+      super.removePhase2(r);
     }
   }
 
@@ -99,12 +99,18 @@ public abstract class AbstractOplogDiskRegionEntry
   
   @Override
   public final Object getValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
-    return Helper.getValueInVMOrDiskWithoutFaultIn(this, owner);
+    return Helper.getValueOffHeapOrDiskWithoutFaultIn(this, owner, true);
   }
   @Retained
   @Override
   public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner) {
-    return Helper.getValueOffHeapOrDiskWithoutFaultIn(this, owner);
+    return Helper.getValueOffHeapOrDiskWithoutFaultIn(this, owner, false);
+  }
+
+  @Retained
+  @Override
+  public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner, DiskRegion dr) {
+    return Helper.getValueOffHeapOrDiskWithoutFaultIn(this, owner, dr, false);
   }
 
   @Override

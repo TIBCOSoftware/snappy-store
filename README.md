@@ -21,9 +21,8 @@ Some details on the directories in GemFire layout are mentioned below:
 
  gemfire-shared/src/main/java                   ===> Code shared between GemFire and GemFireXD client.
 
- gemfire-joptsimple/src/main/java               ===> A copy of JOpt Simple adapted for GemFire.
-
- gemfire-json/src/main/java                     ===> A copy of org.json adapted for GemFire.
+ gemfire-util/src/main/java                     ===> Utility classes including copy of JOpt Simple and org.json
+                                                     adapted for GemFire.
 
  gemfire-core/src/main/java                     ===> Core GemFire code.
 

@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.LongBinaryOperator;
 import java.util.regex.Pattern;
 
@@ -171,6 +172,7 @@ import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
 import com.gemstone.gemfire.internal.cache.locks.QueuedSynchronizer;
+import com.gemstone.gemfire.internal.cache.locks.ReentrantReadWriteWriteShareLock;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.partitioned.RedundancyAlreadyMetException;
 import com.gemstone.gemfire.internal.cache.persistence.DiskExceptionHandler;
@@ -337,7 +339,7 @@ public class LocalRegion extends AbstractRegion
   public static final ReadEntryUnderLock READ_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj).getValue((LocalRegion)context);
+      return ((RegionEntry)lockObj).getValue((LocalRegion)context);
     }
   };
 
@@ -345,7 +347,7 @@ public class LocalRegion extends AbstractRegion
     @Retained
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj)._getValueRetain((LocalRegion)context,
+      return ((RegionEntry)lockObj)._getValueRetain((LocalRegion)context,
           false);
     }
   };
@@ -353,7 +355,7 @@ public class LocalRegion extends AbstractRegion
   public static final ReadEntryUnderLock READ_TOKEN = new ReadEntryUnderLock() {
     public final Token readEntry(final ExclusiveSharedLockObject lockObj,
         Object context, int iContext, boolean allowTombstones) {
-      return ((AbstractRegionEntry)lockObj).getValueAsToken();
+      return ((RegionEntry)lockObj).getValueAsToken();
     }
   };
 
@@ -361,14 +363,14 @@ public class LocalRegion extends AbstractRegion
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, int iContext, boolean allowTombstones) {
       return ((LocalRegion)context)
-          .getREValueForTXRead((AbstractRegionEntry)lockObj);
+          .getREValueForTXRead((RegionEntry)lockObj);
     }
   };
 
   public static final ReadEntryUnderLock GET_VALUE = new ReadEntryUnderLock() {
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, int iContext, boolean allowTombstones) {
-      return ((LocalRegion)context).getEntryValue((AbstractRegionEntry)lockObj);
+      return ((LocalRegion)context).getEntryValue((RegionEntry)lockObj);
     }
   };
 
@@ -376,7 +378,7 @@ public class LocalRegion extends AbstractRegion
     public final Object readEntry(final ExclusiveSharedLockObject lockObj,
         final Object context, final int iContext, boolean allowTombstones) {
       return ((LocalRegion)context).getDeserialized(
-          (AbstractRegionEntry)lockObj, (iContext & DESER_UPDATE_STATS) != 0,
+          (RegionEntry)lockObj, (iContext & DESER_UPDATE_STATS) != 0,
           (iContext & DESER_DISABLE_COPY_ON_READ) != 0,
           (iContext & DESER_PREFER_CD) != 0);
     }
@@ -441,6 +443,7 @@ public class LocalRegion extends AbstractRegion
 
   protected final StoppableCountDownLatch initializationLatchAfterGetInitialImage;
 
+  private final ReentrantReadWriteLock deltaLock = new ReentrantReadWriteLock();
   /**
    * Used to hold off cache listener events until the afterRegionCreate is
    * called
@@ -592,7 +595,6 @@ public class LocalRegion extends AbstractRegion
       // ---
       // This grossness is necessary because there are instances where the
       // region can exist without having a cache (XML creation)
-      checkFailure();
       Cache c = LocalRegion.this.getCache();
       if (c == null) {
         return LocalizedStrings.LocalRegion_THE_CACHE_IS_NOT_AVAILABLE.toLocalizedString();
@@ -609,7 +611,6 @@ public class LocalRegion extends AbstractRegion
       // ---
       // This grossness is necessary because there are instances where the
       // region can exist without having a cache (XML creation)
-      checkFailure();
       Cache c = LocalRegion.this.getCache();
       if (c == null) {
         return new CacheClosedException("No cache", e);
@@ -738,9 +739,8 @@ public class LocalRegion extends AbstractRegion
     Assert.assertTrue(regionName != null, "regionName must not be null");
     this.sharedDataView = buildDataView();
     this.regionName = regionName;
-    if (regionName.toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
-      this.isInternalColumnTable = true;
-    }
+    this.isInternalColumnTable = regionName.toUpperCase().endsWith(
+        StoreCallbacks.SHADOW_TABLE_SUFFIX);
     this.parentRegion = parentRegion;
     this.fullPath = calcFullPath(regionName, parentRegion);
     final GemFireCacheImpl.StaticSystemCallbacks sysCb =
@@ -877,7 +877,6 @@ public class LocalRegion extends AbstractRegion
     }
 
     this.testCallable = internalRegionArgs.getTestCallable();
-    
   }
 
   private HdfsRegionManager initHDFSManager() {
@@ -2400,16 +2399,6 @@ public class LocalRegion extends AbstractRegion
   }
 
   /**
-   * Get a new unique java UUID that is guaranteed to be unique in the
-   * distributed system for this region.
-   */
-  public final UUID newJavaUUID() throws IllegalStateException {
-    long msb = newUUID(true);
-    long lsb = rand.nextLong();
-    return new UUID(msb, lsb);
-  }
-
-  /**
    * Reset the UUID to given start value. It will return a value starting from
    * the value provided to this method and the next call to
    * {@link #newUUID(boolean)} will return a value greater than it.
@@ -2675,7 +2664,7 @@ public class LocalRegion extends AbstractRegion
 
   protected Region.Entry<?, ?> txGetEntryForIterator(KeyInfo keyInfo,
       boolean access, final TXStateInterface tx, boolean allowTombstones) {
-    final AbstractRegionEntry re = (AbstractRegionEntry)keyInfo.getKey();
+    final RegionEntry re = (RegionEntry)keyInfo.getKey();
     return txGetEntry(re, re.getKey(), access, tx, allowTombstones);
   }
 
@@ -3155,7 +3144,7 @@ public class LocalRegion extends AbstractRegion
   /**
    * @return size after considering imageState and TX uncommitted entries
    */
-  protected int getRegionSize() {
+  public int getRegionSize() {
     int result;
     final ReentrantLock regionLock = getSizeGuard();
     if (regionLock == null) {
@@ -3665,6 +3654,21 @@ public class LocalRegion extends AbstractRegion
     releaseLatch(this.initializationLatchAfterGetInitialImage);
   }
 
+  protected final void readLockEnqueueDelta() {
+    deltaLock.readLock().lock();
+  }
+
+  protected final void readUnlockEnqueueDelta() {
+    deltaLock.readLock().unlock();
+  }
+
+  protected final void writeLockEnqueueDelta() {
+    deltaLock.writeLock().lock();
+  }
+
+  protected final void writeUnlockEnqueueDelta() {
+    deltaLock.writeLock().unlock();
+  }
   /**
    * Called after we have delivered our REGION_CREATE event.
    *
@@ -8977,7 +8981,7 @@ public class LocalRegion extends AbstractRegion
     // complete index is going to be blown away; bucket region will need to
     // override to clear in every case
     if (!setIsDestroyed) {
-      return indexUpdater.clearIndexes(this, lockForGII, true, null, false);
+      return indexUpdater.clearIndexes(this, getDiskRegion(), lockForGII, true, null, false);
     }
     return false;
   }
@@ -14382,7 +14386,7 @@ public class LocalRegion extends AbstractRegion
   }
 
   protected long calculateEntryOverhead(RegionEntry entry) {
-    if (!this.reservedTable() && entryOverHead == -1L && needAccounting()) {
+    if (entryOverHead == -1L && !this.reservedTable() && needAccounting()) {
       synchronized (this) {
         if (entryOverHead == -1L) {
           entryOverHead = getEntryOverhead(entry);
@@ -14539,6 +14543,9 @@ public class LocalRegion extends AbstractRegion
     return isInternalColumnTable;
   }
 
-  private boolean isInternalColumnTable = false;
+  private final boolean isInternalColumnTable;
 
+  public boolean isSnapshotEnabledRegion() {
+    return (getCache().snapshotEnabledForTest() && !isUsedForMetaRegion() && concurrencyChecksEnabled);
+  }
 }
