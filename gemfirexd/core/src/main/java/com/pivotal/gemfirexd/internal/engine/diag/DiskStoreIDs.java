@@ -106,7 +106,7 @@ public class DiskStoreIDs extends GfxdVTITemplate {
 
   public static final String ID = "ID";
 
-  public static final String DIRS = "DIRECTORIES";
+  public static final String DIRS = "DIRS";
 
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(MEMBERID,
