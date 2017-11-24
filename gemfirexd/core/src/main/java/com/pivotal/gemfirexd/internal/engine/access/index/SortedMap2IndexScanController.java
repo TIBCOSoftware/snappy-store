@@ -926,7 +926,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
           if (GfxdTXStateProxy.LOG_FINEST | GemFireXDUtils.TraceIndex) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_INDEX,
                 "SortedMap2IndexScanController#isRowLocationValid: returning "
-                    + "null RowLocation due to TX mismatch");
+                    + "null RowLocation due to TX mismatch (" + rlTXId + ')');
           }
           return null;
         }
@@ -939,7 +939,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
           if (GemFireXDUtils.TraceIndex) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_INDEX,
                 "SortedMap2IndexScanController#isRowLocationValid: returning "
-                    + "null RowLocation due to bucketId mismatch");
+                    + "null RowLocation due to bucketId mismatch for " + rowloc);
           }
           return null;
         }

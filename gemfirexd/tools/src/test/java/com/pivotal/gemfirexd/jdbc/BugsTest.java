@@ -469,22 +469,33 @@ public class BugsTest extends JdbcTestBase {
       this.deleteDirs[0] = locDir.getAbsolutePath();
       String remDirName;
       boolean hasExportDir;
-      String exportDir = "/srv/users/" + System.getenv().get("USER");
-      if (new File(exportDir).exists()) {
+      String userName = System.getenv("USER");
+      String exportDir = "/srv/users/" + userName;
+      File exportFile = new File(exportDir);
+      if (exportFile.exists() && exportFile.isDirectory()) {
         hasExportDir = true;
         remDirName = exportDir + "/preBlow-" + currTime;
       } else {
-        hasExportDir = false;
-        remDirName = "/home/" + System.getenv().get("USER")
-            + "/preBlow-" + currTime;
+        exportDir = "/export/shared/users/" + userName;
+        exportFile = new File(exportDir);
+        if (exportFile.mkdirs() ||
+            (exportFile.exists() && exportFile.isDirectory())) {
+          hasExportDir = true;
+          remDirName = exportDir + "/preBlow-" + currTime;
+        } else {
+          hasExportDir = false;
+          remDirName = "/home/" + System.getenv().get("USER") + "/preBlow-"
+              + currTime;
+        }
       }
       File remDir = new File(remDirName);
+      getLogger().info("Using remote directory " + remDir.getAbsolutePath());
       assertTrue(remDir.mkdir());
       this.deleteDirs[1] = remDir.getAbsolutePath();
       st.execute("create diskstore teststore_loc ('" + locDirName + "') MAXLOGSIZE 2");
-      String str1k = new String();
+      StringBuilder str1k = new StringBuilder();
       for (int i = 0; i < 1024; i++) {
-        str1k += "a";
+        str1k.append('a');
       }
       st.execute("create table emp(id int not null primary key, name varchar(20) not null, "
           + "addr varchar(2000) not null) persistent 'teststore_loc'");
@@ -493,7 +504,7 @@ public class BugsTest extends JdbcTestBase {
       for (int i = 0; i < 5000; i++) {
         ps.setInt(1, i);
         ps.setString(2, "name" + i);
-        ps.setString(3, str1k);
+        ps.setString(3, str1k.toString());
         int j = ps.executeUpdate();
         assertEquals(1, j);
       }
@@ -502,11 +513,11 @@ public class BugsTest extends JdbcTestBase {
       rs.next();
       assertEquals(5000, rs.getInt(1));
 
-      HashSet<String> preBlowDoneDirs = new HashSet<String>();
+      HashSet<String> preBlowDoneDirs = new HashSet<>();
       preBlowDoneDirs.addAll(NativeCalls.TEST_CHK_FALLOC_DIRS);
       NativeCalls.TEST_CHK_FALLOC_DIRS.clear();
       // Test remote now
-      NativeCalls.TEST_NO_FALLOC_DIRS = new HashSet<String>();
+      NativeCalls.TEST_NO_FALLOC_DIRS = new HashSet<>();
       st.execute("create diskstore teststore_rem ('" + remDirName + "') MAXLOGSIZE 2");
       st.execute("create table emp2(id int not null primary key, name varchar(20) not null, "
           + "addr varchar(2000) not null) persistent 'teststore_rem'");
@@ -514,7 +525,7 @@ public class BugsTest extends JdbcTestBase {
       for (int i = 0; i < 5000; i++) {
         ps.setInt(1, i);
         ps.setString(2, "name" + i);
-        ps.setString(3, str1k);
+        ps.setString(3, str1k.toString());
         int j = ps.executeUpdate();
         assertEquals(1, j);
       }
@@ -522,7 +533,7 @@ public class BugsTest extends JdbcTestBase {
       rs = st.getResultSet();
       rs.next();
       assertEquals(5000, rs.getInt(1));
-      HashSet<String> preBlowNotDoneDirs = new HashSet<String>();
+      HashSet<String> preBlowNotDoneDirs = new HashSet<>();
       preBlowNotDoneDirs.addAll(NativeCalls.TEST_NO_FALLOC_DIRS);
       if (hasExportDir) {
         assertTrue(NativeCalls.TEST_CHK_FALLOC_DIRS.isEmpty());

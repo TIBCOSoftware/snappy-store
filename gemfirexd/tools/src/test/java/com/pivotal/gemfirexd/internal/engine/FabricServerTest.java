@@ -60,6 +60,7 @@ import io.snappydata.test.dunit.DistributedTestBase;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
+@SuppressWarnings("ResultOfMethodCallIgnored")
 public class FabricServerTest extends TestUtil implements UnitTest {
 
   public FabricServerTest(String name) {
@@ -340,7 +341,6 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       validateProperties(outProps);
 
     } finally {
-      //noinspection ResultOfMethodCallIgnored
       f.delete();
       try {
         if (jdbcConn != null) {
@@ -388,7 +388,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     Properties outProps = new Properties();
 
-    //no accidental left out of the properties file.
+    // no accidental left out of the properties file.
     File checkNoFile = new File(".", com.pivotal.gemfirexd.Property.PROPERTIES_FILE);
     assertFalse(checkNoFile.exists());
     
@@ -472,14 +472,13 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     Properties outProps = new Properties();
 
-    //no accidental left out of the properties file.
+    // no accidental left out of the properties file.
     File checkLocalFile = new File(".",
         com.pivotal.gemfirexd.Property.PROPERTIES_FILE);
     assertFalse(checkLocalFile.exists());
 
     File f = new File(".", com.pivotal.gemfirexd.Property.PROPERTIES_FILE);
     try {
-      //noinspection ResultOfMethodCallIgnored
       f.createNewFile();
     }
     catch(IOException ioe) {
@@ -501,7 +500,6 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       validateProperties(outProps);
 
     } finally {
-      //noinspection ResultOfMethodCallIgnored
       f.delete();
       try {
         if (jdbcConn != null) {
@@ -544,7 +542,6 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     } finally {
       try {
-        //noinspection ResultOfMethodCallIgnored
         f.delete();
         if (jdbcConn != null) {
           shutDown();
@@ -594,7 +591,6 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       validateProperties(outProps);
 
     } finally {
-      //noinspection ResultOfMethodCallIgnored
       f.delete();
       try {
         if (jdbcConn != null) {
@@ -656,7 +652,6 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       validateProperties(outProps);
 
     } finally {
-      //noinspection ResultOfMethodCallIgnored
       f.delete();
       try {
         if (jdbcConn != null) {
@@ -993,7 +988,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
     // wait for OS to release the socket
     Thread.sleep(3000);
 
-    ni = locator.startNetworkServer("localhost", netPort, socketProps);
+    locator.startNetworkServer("localhost", netPort, socketProps);
     getLogger().info("GemFire XD started. State: " + locator.status());
 
     if (locator.status() == FabricService.State.RUNNING) {
@@ -1012,7 +1007,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
     shutdownProp.setProperty("user", "sysUser1");
     shutdownProp.setProperty("password", "pwd_sysUser1");
     
-     Properties sysprop = null;
+     Properties sysprop;
 
      int locatorPort = AvailablePort
           .getRandomAvailablePort(AvailablePort.SOCKET);
@@ -1181,7 +1176,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
         }
       }
 
-      int rs = conn.createStatement().executeUpdate(
+      conn.createStatement().executeUpdate(
           "create gatewayreceiver ok (hostnameforsenders 'NICJVM');");
 
       final ResultSet rs1 = conn.createStatement().executeQuery(
@@ -1234,7 +1229,6 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
   private File createPropertyFile(Properties outProps) throws IOException {
     final File file = new File(PROP_FILE_NAME);
-    //noinspection ResultOfMethodCallIgnored
     file.createNewFile();
     createPropertyFile(outProps, file, null);
     return file;
