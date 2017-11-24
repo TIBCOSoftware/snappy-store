@@ -8140,10 +8140,15 @@ public class PartitionedRegion extends LocalRegion implements
         }
         int count = 0;
         while (!this.lockOwned) {
+          cache.getCancelCriterion().checkCancelInProgress(null);
           // wait in multiples of ackWaitThreshold, before trying again.
           // once wait increases to 60sec, wait for 60 sec.
           if (count > 0) {
             try {
+              for (int i = 0; i < (ackWaitThreshold * count) / 200; i++) {
+                  cache.getCancelCriterion().checkCancelInProgress(null);
+                  Thread.sleep(200);
+              }
               Thread.sleep(ackWaitThreshold * count);
             } catch (InterruptedException e) {
             }
@@ -8151,8 +8156,6 @@ public class PartitionedRegion extends LocalRegion implements
           if (count < 4) {
             count++;
           }
-          cache.getLoggerI18n().fine("Goign to take lock " + count);
-          cache.getCancelCriterion().checkCancelInProgress(null);
           this.lockOwned = this.lockService.lock(this.lockName,
               waitInterval, -1);
           if (!this.lockOwned && ackSAThreshold > 0 && enableAlerts) {
