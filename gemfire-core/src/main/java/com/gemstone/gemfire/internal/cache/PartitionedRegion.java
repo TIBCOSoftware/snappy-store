@@ -8138,8 +8138,20 @@ public class PartitionedRegion extends LocalRegion implements
           waitInterval = PartitionedRegion.VM_OWNERSHIP_WAIT_TIME;
           startTime = 0;
         }
-  
+        int count = 0;
         while (!this.lockOwned) {
+          // wait in multiples of ackWaitThreshold, before trying again.
+          // once wait increases to 60sec, wait for 60 sec.
+          if (count > 0) {
+            try {
+              Thread.sleep(ackWaitThreshold * count);
+            } catch (InterruptedException e) {
+            }
+          }
+          if (count < 4) {
+            count++;
+          }
+          cache.getLoggerI18n().fine("Goign to take lock " + count);
           cache.getCancelCriterion().checkCancelInProgress(null);
           this.lockOwned = this.lockService.lock(this.lockName,
               waitInterval, -1);

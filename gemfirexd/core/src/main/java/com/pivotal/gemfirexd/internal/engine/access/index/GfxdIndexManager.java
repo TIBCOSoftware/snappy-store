@@ -4422,7 +4422,9 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
               basicClearEntry(region, dr, tc, indexes, entry, destroyOffline);
             }
           } catch (Throwable th) {
-            if (logger != null) {
+            // in case of not destroyOffline, no need to log.
+            // However, after the index fix we shouldn't reach here.
+            if (logger != null && !destroyOffline) {
               logger.error("Exception in removing the entry from index. "
                   + "Ignoring & continuing the loop ", th);
             }

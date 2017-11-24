@@ -409,7 +409,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
           trace(" We still have an initializing id: " + initializingId + "  Telling peers to remove the old id " + oldId + " and transitioning this initializing id to old id. recipients " + profileUpdateRecipients);
         }
         //TODO prpersist - clean this up
-        long viewVersion = advisor.startOperation();
+        long viewVersion = -1;
+        viewVersion = advisor.startOperation();
         try {
           PrepareNewPersistentMemberMessage.send(profileUpdateRecipients,
               dm, regionPath, oldId, initializingId);
@@ -754,7 +755,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   
   public void finishPendingDestroy() {
   //send a message to peers indicating that they should remove this profile
-    long viewVersion = advisor.startOperation();
+    long viewVersion = -1;
+    viewVersion = advisor.startOperation();
     try {
       if(logger.infoEnabled()) {
         advisor.getLogWriter().info(LocalizedStrings.DEBUG, "The advisee is " + advisor.getAdvisee());

@@ -51,8 +51,13 @@ public class PersistentPartitionPreparedStatementDUnit extends
 
   @Override
   public String getSuffix() throws Exception {
-    String suffix = " PERSISTENT " + "'" + DISKSTORE + "'";
+    String suffix = "REDUNDANCY 1 PERSISTENT " + "'" + DISKSTORE + "'";
     return suffix;
+  }
+
+  @Override
+  protected String reduceLogging() {
+    return "fine";
   }
 
   @Override
@@ -82,29 +87,29 @@ public class PersistentPartitionPreparedStatementDUnit extends
     dataPersistenceOfPR(prClause);
   }
 
-  public void testDataPersistenceOfPRWithDefaultPartitioning() throws Exception {
+  public void SURtestDataPersistenceOfPRWithDefaultPartitioning() throws Exception {
     String prClause = " ";
     dataPersistenceOfPR(prClause);
   }
 
-  public void testDataPersistenceOfPRWithColumnPartitioning() throws Exception {
+  public void SURtestDataPersistenceOfPRWithColumnPartitioning() throws Exception {
     String prClause = " partition by column (cid) ";
     dataPersistenceOfPR(prClause);
   }
 
-  public void testDataPersistenceOfPRWithPrimaryKeyPartitioning()
+  public void SURtestDataPersistenceOfPRWithPrimaryKeyPartitioning()
       throws Exception {
     String prClause = " partition by primary key ";
     dataPersistenceOfPR(prClause);
   }
 
-  public void testDataPersistenceOfPRWithListPartitioning() throws Exception {
+  public void SURtestDataPersistenceOfPRWithListPartitioning() throws Exception {
     String prClause = " PARTITION BY LIST ( cid ) ( VALUES (0, 10 ), "
         + " VALUES (11, 20), VALUES (21, 45) ) ";
     dataPersistenceOfPR(prClause);
   }
 
-  public void testDiskTableNodeRecycle() throws Exception {
+  public void SURtestDiskTableNodeRecycle() throws Exception {
      //create a persistence disk table with a unique constraint.
     //Set redundancy 0. Insert some data . bring one of nodes down & then restart.
     // Add some data which is expected to throw constraint violation.
@@ -211,23 +216,36 @@ public class PersistentPartitionPreparedStatementDUnit extends
     Connection conn = TestUtil.getConnection();
     PreparedStatement ps = conn
         .prepareStatement("insert into trade.customers values (?,?,?)");
-    for (int i = 1; i < 31; ++i) {
+    for (int i = 1; i < 2231; ++i) {
       ps.setInt(1, i);
       ps.setString(2, "name" + i);
       ps.setInt(3, i);
       ps.executeUpdate();
     }
     
-    stopVMNum(1);
-    stopVMNums(-3, -2, -1);
-    restartVMNums(-3, -2, -1);
-    restartVMNums(1);
+    //stopVMNum(1);
+    stopVMNums(-3);
+    //restartVMNums(-3);
+    //restartVMNums(1);
+
+    Thread.sleep(60000);
+    Statement stmt = conn.createStatement();
+    ResultSet rs = null;
+
+    try {
+      rs = stmt.executeQuery("select * from trade.customers");
+      rs.next();
+    } catch (SQLException sqle) {
+      sqle.printStackTrace();
+      getLogWriter().info("The exception is ", sqle);
+      assertEquals(sqle.getSQLState(), "X0Z08");
+    }
+
     stopVMNums(-3, -2, -1);
     conn = TestUtil.getConnection();
-    Statement stmt = conn.createStatement();
+
     addExpectedException(new int[] { 1 }, null,
         PartitionedRegionStorageException.class);
-    ResultSet rs = null;
     try {
       rs = stmt.executeQuery("select * from trade.customers");
       rs.next();
@@ -411,7 +429,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
    * 
    * @throws Exception
    */
-  public void testPartitionOfflineBehaviourBug42447_2() throws Exception {
+  public void SURtestPartitionOfflineBehaviourBug42447_2() throws Exception {
     startVMs(1, 1);
     createDiskStore(true, 1);
     // Create a schema
@@ -683,7 +701,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
         PartitionOfflineException.class);
   }
   
-  public void testPartitionOfflineBehaviourBug42443_1() throws Exception {
+  public void SURtestPartitionOfflineBehaviourBug42443_1() throws Exception {
 
     startVMs(1, 1);
     createDiskStore(true, 1);
@@ -715,7 +733,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
     restartVMNums(-1);
   }
 
-  public void testPartitionOfflineBehaviourBug42443_2() throws Exception {
+  public void SURtestPartitionOfflineBehaviourBug42443_2() throws Exception {
 
     startVMs(1, 1);
     createDiskStore(true, 1);
@@ -747,7 +765,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
     restartVMNums(-1);
   }
   
-  public void testPartitionOfflineBehaviourBug49563() throws Exception {
+  public void SURtestPartitionOfflineBehaviourBug49563() throws Exception {
     stopAllVMs();
     startVMs(0, 1);
     startVMs(1,0);
@@ -810,7 +828,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
     restartVMNums(-1);
   }
 
-  public void testPartitionOfflineBehaviourBug42443_3() throws Exception {
+  public void SURtestPartitionOfflineBehaviourBug42443_3() throws Exception {
 
     startVMs(1, 1);
     createDiskStore(true, 1);
@@ -849,7 +867,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
     restartVMNums(-1);
   }
   
-  public void testBug49193_1() throws Exception {
+  public void SURtestBug49193_1() throws Exception {
     startVMs(1, 2);
     createDiskStore(true, 1);
     // Create a schema
@@ -862,7 +880,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
 
   }
 
-  public void testBug49193_2() throws Exception {
+  public void SURtestBug49193_2() throws Exception {
     startVMs(1, 2);
     createDiskStore(true, 1);
     // Create a schema
@@ -966,7 +984,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
 
   }
 
-  public void testBug43104_1() throws Exception {
+  public void SURtestBug43104_1() throws Exception {
     startVMs(1, 2);
     createDiskStore(true, 1);
     // Create a schema
@@ -1036,7 +1054,7 @@ public class PersistentPartitionPreparedStatementDUnit extends
     
   }
   
-  public void testBug43104_2() throws Exception {
+  public void SURtestBug43104_2() throws Exception {
     startVMs(1, 2);
     createDiskStore(true, 1);
     // Create a schema

@@ -474,7 +474,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       final long[] viewVersions = this.viewVersions;
       final DistributionAdvisor[] advisors;
       LogWriterI18n logger = null;
-      long viewVersion;
+      long viewVersion = -1;
       if (viewVersions != null) {
         advisors = this.viewAdvisors;
         if (LOG_VERSIONS) {
@@ -483,7 +483,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         int numOps = viewVersions.length;
         while (--numOps >= 0) {
           viewVersion = viewVersions[numOps];
-          if (viewVersion > 0) {
+          if (viewVersion != -1) {
             advisors[numOps].endOperation(viewVersion);
             if (logger != null) {
               logger.info(LocalizedStrings.DEBUG, "TXCommit: "
@@ -1497,7 +1497,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             DistributionAdvisor advisor = dataRegion.getDistributionAdvisor();
             int insertionIndex = versions.getInsertionIndex(advisor);
             if (insertionIndex >= 0) {
-              long viewVersion = advisor.startOperation();
+              long viewVersion = -1;
+              viewVersion = advisor.startOperation();
               if (viewVersion > 0) {
                 versions.putAtIndex(advisor, viewVersion, insertionIndex);
                 if (LOG_VERSIONS) {
@@ -3112,7 +3113,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
               flags);
         }
         // message distribution, if any, is done at this point
-        if (viewVersion > 0) {
+        if (viewVersion != -1) {
           advisor.endOperation(viewVersion);
           if (LOG_VERSIONS) {
             logger.info(LocalizedStrings.DEBUG, "TX: "
@@ -3191,7 +3192,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       }
       throw te;
     } finally {
-      if (viewVersion > 0) {
+      if (viewVersion != -1) {
         advisor.endOperation(viewVersion);
         if (LOG_VERSIONS) {
           logger.info(LocalizedStrings.DEBUG, "TX: " + performOp
