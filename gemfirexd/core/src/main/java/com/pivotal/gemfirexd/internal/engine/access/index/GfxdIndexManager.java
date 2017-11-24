@@ -4434,7 +4434,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           } finally {
             if (logger != null && totalExceptionCount > 1) {
               logger.error("Exception in removing the entry from index. "
-                  + "Total exception count :" + totalExceptionCount);
+                  + "Total exception count : " + totalExceptionCount);
             }
             if (isOffHeapEnabled) {
               ((AbstractRegionEntry) entry).release();
