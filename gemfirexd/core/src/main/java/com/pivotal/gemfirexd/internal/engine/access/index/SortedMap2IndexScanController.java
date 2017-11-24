@@ -257,7 +257,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
     if (this.init_startSearchOperator == MAX) {
       this.sourceIterator = this.skipListMap
           .descendingMap(this.statNumRowsVisited).entrySet().iterator();
-      container.incRangeScanStat();
+      container.incRangeScanStats();
     }
     else {
 
@@ -270,7 +270,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
       if ((this.init_startKeyValue == null) &&
           (this.init_stopKeyValue == null)) {
         this.sourceIterator = this.skipListMap.entrySet().iterator();
-        container.incRangeScanStat();
+        container.incRangeScanStats();
         if (this.statNumRowsVisited != null) {
           this.fullIteratorForStats = true;
         }
@@ -281,7 +281,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
             OpenMemIndex.newLocalKeyObject(this.init_stopKeyValue,
                 this.openConglom.getGemFireContainer()), toInclusive,
             this.statNumRowsVisited).entrySet().iterator();
-        container.incRangeScanStat();
+        container.incRangeScanStats();
       }
       else if ((this.init_startKeyValue != null)
           && (this.init_stopKeyValue == null)) {
@@ -289,7 +289,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
             OpenMemIndex.newLocalKeyObject(this.init_startKeyValue,
                 this.openConglom.getGemFireContainer()), fromInclusive,
             this.statNumRowsVisited).entrySet().iterator();
-        container.incRangeScanStat();
+        container.incRangeScanStats();
       }
       else {
         // check if we can do just a get lookup and use the passed start key
@@ -343,7 +343,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
                 OpenMemIndex.newLocalKeyObject(this.init_stopKeyValue,
                     container), toInclusive,
                 this.statNumRowsVisited).entrySet().iterator();
-            container.incRangeScanStat();
+            container.incRangeScanStats();
           }
         }
         else {

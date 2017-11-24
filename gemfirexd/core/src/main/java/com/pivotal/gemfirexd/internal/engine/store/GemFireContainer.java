@@ -492,7 +492,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
-  public void incRangeScanStat() {
+  public void incRangeScanStats() {
     if (this.stats != null) {
       this.stats.incScanStats();
     }

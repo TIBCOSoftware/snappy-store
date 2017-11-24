@@ -47,10 +47,10 @@ public class IndexStats {
         typeName,
         "Stats for checking index effectiveness",
         new StatisticDescriptor[] {
-            f.createIntCounter(INDEX_SCAN_POINT_LOOKUP,
+            f.createLongCounter(INDEX_SCAN_POINT_LOOKUP,
                 "Number of Times index used for point lookups.",
                 "operations", true),
-            f.createIntCounter(INDEX_SCAN_RANGE,
+            f.createLongCounter(INDEX_SCAN_RANGE,
                 "Number of Times index used for range lookups.",
                 "operations", true) });
 
@@ -71,10 +71,10 @@ public class IndexStats {
   }
 
   public void incPointLookupStats() {
-    this.stats.incInt(pointLookupId, 1);
+    this.stats.incLong(pointLookupId, 1);
   }
 
   public void incScanStats() {
-    this.stats.incInt(indexSubmapId, 1);
+    this.stats.incLong(indexSubmapId, 1);
   }
 }
