@@ -38,7 +38,6 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 public class DiskStoreIDs extends GfxdVTITemplate {
 
   private Iterator<DiskStoreImpl> diskStores;
-
   private DiskStoreImpl currentDiskStore;
 
   @Override
@@ -47,8 +46,7 @@ public class DiskStoreIDs extends GfxdVTITemplate {
     if (this.diskStores == null) {
       final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
       if (cache != null && !cache.isClosed()) {
-        this.diskStores = cache.listDiskStoresIncludingRegionOwned()
-            .iterator();
+        this.diskStores = cache.listDiskStoresIncludingRegionOwned().iterator();
       }
     }
     if (this.diskStores != null && this.diskStores.hasNext()) {
@@ -106,14 +104,11 @@ public class DiskStoreIDs extends GfxdVTITemplate {
   public static final String DIRS = "DIRS";
 
   private static final ResultColumnDescriptor[] columnInfo = {
-      EmbedResultSetMetaData.getResultColumnDescriptor(MEMBERID,
-          Types.VARCHAR, false, 128),
-      EmbedResultSetMetaData.getResultColumnDescriptor(NAME, Types.VARCHAR,
-          false, 128),
+      EmbedResultSetMetaData.getResultColumnDescriptor(MEMBERID, Types.VARCHAR, false, 128),
+      EmbedResultSetMetaData.getResultColumnDescriptor(NAME, Types.VARCHAR, false, 128),
       EmbedResultSetMetaData.getResultColumnDescriptor(ID, Types.CHAR, false, 36),
       EmbedResultSetMetaData.getResultColumnDescriptor(DIRS, Types.VARCHAR,
           false, Limits.DB2_VARCHAR_MAXWIDTH) };
 
-  private static final ResultSetMetaData metadata = new EmbedResultSetMetaData(
-      columnInfo);
+  private static final ResultSetMetaData metadata = new EmbedResultSetMetaData(columnInfo);
 }
