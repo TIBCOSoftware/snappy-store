@@ -132,7 +132,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     };
   }
 
-  public void SURtestBug41222() throws Exception
+  public void testBug41222() throws Exception
   {
   
     try {
@@ -244,7 +244,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestSerializationData() throws Exception
+  public void testSerializationData() throws Exception
   {
     try {
       // Start one client and two servers
@@ -335,7 +335,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
    * query string passed on every execution
    * 
    */
-  public void SURtestQueryStringNotPassedEveryTime() throws Exception
+  public void testQueryStringNotPassedEveryTime() throws Exception
   {
     try {
       startServerVMs(2, 0, "SG2");
@@ -442,7 +442,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
    * string should not be sent to any node.
    * 
    */
-  public void SURtestPopluationOfPrepStmntIDToNodes() throws Exception {
+  public void testPopluationOfPrepStmntIDToNodes() throws Exception {
     // Disabling create statement will need a primary key or explicit
     // partitioned by.
     startVMs(1, 1);
@@ -580,7 +580,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug39364_1() throws Exception
+  public void testBug39364_1() throws Exception
   {
     try {
       startServerVMs(1, 0, "SG2");
@@ -626,7 +626,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug39364_2() throws Exception
+  public void testBug39364_2() throws Exception
   {
     try {
       startVMs(1, 1);
@@ -671,7 +671,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug39369_1() throws Exception
+  public void testBug39369_1() throws Exception
   {
     try {
       startServerVMs(2, 0, "SG2");
@@ -802,7 +802,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug39369_2() throws Exception
+  public void testBug39369_2() throws Exception
   {
     try {
       startVMs(1, 2);
@@ -846,7 +846,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug39321() throws Exception
+  public void testBug39321() throws Exception
   {
     try {
       startServerVMs(2, 0, "SG2");
@@ -934,7 +934,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
    * 
    * @throws Exception
    */
-  public void SURtestDistributedConnectionCloseForPRTable_Bug40135_1()
+  public void testDistributedConnectionCloseForPRTable_Bug40135_1()
       throws Exception
   {
     try {
@@ -1061,7 +1061,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
    * 
    * @throws Exception
    */
-  public void SURtestDistributedConnectionCloseForReplicatedTable_Bug40135_2()
+  public void testDistributedConnectionCloseForReplicatedTable_Bug40135_2()
       throws Exception
   {
     try {
@@ -1197,7 +1197,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
    * 
    * @throws Exception
    */
-  public void SURtestDistributedPrepStatementCloseForPRTable_Bug40136_1()
+  public void testDistributedPrepStatementCloseForPRTable_Bug40136_1()
       throws Exception
   {
     try {
@@ -1312,7 +1312,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
    * 
    * @throws Exception
    */
-  public void SURtestDistributedPrepStatementCloseForPRTable_Bug40136_2()
+  public void testDistributedPrepStatementCloseForPRTable_Bug40136_2()
       throws Exception
   {
     try {
@@ -1466,7 +1466,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
    * @throws Exception
    */
 
-  public void SURtestDistributedPrepStatementCloseForReplicatedTable_Bug40136_1()
+  public void testDistributedPrepStatementCloseForReplicatedTable_Bug40136_1()
       throws Exception
   {
 
@@ -1600,7 +1600,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestCommon() throws Exception
+  public void testCommon() throws Exception
   {
     try {
       startVMs(1, 3);
@@ -1650,7 +1650,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestForBug40209And40220NoDistributionOccurs() throws Exception
+  public void testForBug40209And40220NoDistributionOccurs() throws Exception
   {
     try {
       startServerVMs(2, 0, "SG2");
@@ -1696,7 +1696,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug40997() throws Exception
+  public void testBug40997() throws Exception
   {
     try {
       startVMs(1, 1);
@@ -1797,7 +1797,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug41005_1() throws Exception
+  public void testBug41005_1() throws Exception
   {
     try {      
       startVMs(1, 3);
@@ -1845,7 +1845,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestCallbackArgBehaviour() throws Exception
+  public void testCallbackArgBehaviour() throws Exception
   {
     startVMs(1, 4);
     createDiskStore(true,1);
@@ -1897,7 +1897,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBugFixTicket5921_UseCase8() throws Exception {
+  public void testBugFixTicket5921_UseCase8() throws Exception {
     // Start two servers
     // startClientVMs(1);
     startServerVMs(2, 0, null);
@@ -2008,7 +2008,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     dataStore1.invoke(queryExecutor);
   }
 
-  public void SURtestMainQueryOnPRAndNonCorrelatedSubqueryOnReplicatedRegion_WhereClause()
+  public void testMainQueryOnPRAndNonCorrelatedSubqueryOnReplicatedRegion_WhereClause()
       throws Exception {
     nestedQuerySetupForPR_Main_RR_Sub();
     String[] queries = new String[] { "select ID1, DESCRIPTION1 from TESTTABLE1"
@@ -2069,7 +2069,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug41607() throws Exception {
+  public void testBug41607() throws Exception {
 
     try {
       startVMs(1, 1);
@@ -2215,7 +2215,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug47299() throws Exception {
+  public void testBug47299() throws Exception {
 
     startVMs(2, 1);
     createDiskStore(true,1);
@@ -2304,7 +2304,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
   
-  public void SURtestMainQueryOnPRAndNonCorrelatedSubqueryOnReplicatedRegion_WhereClause_Unsupported_For_Now_ServerGrp_Mismatch()
+  public void testMainQueryOnPRAndNonCorrelatedSubqueryOnReplicatedRegion_WhereClause_Unsupported_For_Now_ServerGrp_Mismatch()
       throws Exception
   {
     // Create a table from client using partition by column
@@ -2394,7 +2394,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void SURtestBug42840_45715() throws Exception {
+  public void testBug42840_45715() throws Exception {
     startVMs(1, 1);
 
     clientSQLExecute(1, "create table trade.buyordersRep(oid int not null "
@@ -2708,7 +2708,7 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
     return pvsManip;
   }
 
-  public void SURtestStmntMapCleanupInGfxdConnWrapper() throws Exception {
+  public void testStmntMapCleanupInGfxdConnWrapper() throws Exception {
     startVMs(1, 1);
     
     Connection qConn = TestUtil.getConnection();
