@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.impl.sql.catalog;
 
@@ -43,6 +61,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.WanProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.DiagProcedures;
+import com.pivotal.gemfirexd.internal.engine.diag.DiskStoreIDs;
 import com.pivotal.gemfirexd.internal.engine.diag.HdfsProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.HiveTablesVTI;
 import com.pivotal.gemfirexd.internal.engine.diag.JSONProcedures;
@@ -2090,6 +2109,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
   public static final String HIVETABLES_TABLENAME = "HIVETABLES";
 
+  public static final String DISKSTOREIDS_TABLENAME = "DISKSTOREIDS";
+
   private static final String[][] VTI_TABLE_CLASSES = {
       { DIAG_MEMBERS_TABLENAME,
           "com.pivotal.gemfirexd.internal.engine.diag.DistributedMembers" },
@@ -2110,6 +2131,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { SESSIONS_TABLENAME,
           "com.pivotal.gemfirexd.internal.engine.diag.SessionsVTI" },
       { HIVETABLES_TABLENAME, HiveTablesVTI.class.getName() },
+      { DISKSTOREIDS_TABLENAME, DiskStoreIDs.class.getName() },
   };
 
   private final HashMap<String, TableDescriptor> diagVTIMap =
