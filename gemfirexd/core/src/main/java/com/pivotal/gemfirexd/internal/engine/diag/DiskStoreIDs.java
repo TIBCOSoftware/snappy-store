@@ -101,11 +101,8 @@ public class DiskStoreIDs extends GfxdVTITemplate {
   /** Metadata */
 
   public static final String MEMBERID = "MEMBERID";
-
   public static final String NAME = "NAME";
-
   public static final String ID = "ID";
-
   public static final String DIRS = "DIRS";
 
   private static final ResultColumnDescriptor[] columnInfo = {
@@ -113,8 +110,7 @@ public class DiskStoreIDs extends GfxdVTITemplate {
           Types.VARCHAR, false, 128),
       EmbedResultSetMetaData.getResultColumnDescriptor(NAME, Types.VARCHAR,
           false, 128),
-      EmbedResultSetMetaData.getResultColumnDescriptor(ID, Types.CHAR, false,
-          36),
+      EmbedResultSetMetaData.getResultColumnDescriptor(ID, Types.CHAR, false, 36),
       EmbedResultSetMetaData.getResultColumnDescriptor(DIRS, Types.VARCHAR,
           false, Limits.DB2_VARCHAR_MAXWIDTH) };
 
