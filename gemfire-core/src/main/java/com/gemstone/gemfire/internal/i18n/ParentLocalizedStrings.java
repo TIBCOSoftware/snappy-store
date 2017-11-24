@@ -989,7 +989,7 @@ class ParentLocalizedStrings {
   public static final StringId ReplyProcessor21_RECEIVED_REPLY_FROM_MEMBER_0_BUT_WAS_NOT_EXPECTING_ONE_MORE_THAN_ONE_REPLY_MAY_HAVE_BEEN_RECEIVED_THE_REPLY_THAT_WAS_NOT_EXPECTED_IS_1 = new StringIdImpl(1976, "Received reply from member {0} but was not expecting one. More than one reply may have been received. The reply that was not expected is: {1}");
   public static final StringId ReplyProcessor21_UNEXPECTED_EXECUTION_REJECTION = new StringIdImpl(1977, "Unexpected execution rejection");
   public static final StringId ReplyProcessor21_VIEW_NO_LONGER_HAS_0_AS_AN_ACTIVE_MEMBER_SO_WE_WILL_NO_LONGER_WAIT_FOR_IT = new StringIdImpl(1978, "View no longer has {0} as an active member, so we will no longer wait for it.");
-  public static final StringId ReplyProcessor21_WAIT_FOR_REPLIES_COMPLETED = new StringIdImpl(1979, "wait for replies continuing for next round");
+  public static final StringId ReplyProcessor21_WAIT_FOR_REPLIES_COMPLETED = new StringIdImpl(1979, "wait for replies completed");
   public static final StringId ReplyProcessor21_WAIT_FOR_REPLIES_TIMING_OUT_AFTER_0_SEC = new StringIdImpl(1980, "wait for replies timing out after {0} seconds");
   public static final StringId TXStateProxyImpl_Distributed_Region_In_Client_TX = new StringIdImpl(1981, "Distributed region {0} is being used in a client-initiated transaction.  The transaction will only affect servers and this client.  To keep from seeing this message use ''local'' scope in client regions used in transactions.");
   public static final StringId Request_THE_INPUT_KEY_FOR_THE_GET_REQUEST_IS_NULL = new StringIdImpl(1982, "The input key for the get request is null.");
