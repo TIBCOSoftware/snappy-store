@@ -111,10 +111,8 @@ public class BugsDUnit extends DistributedSQLTestBase {
   }
 
   @Override
-  public void tearDown2() throws Exception {
-    super.tearDown2();
-
-    // to do
+  public String reduceLogging() {
+    return "config";
   }
 
   public static class CacheCloser extends GemFireXDQueryObserverAdapter {
@@ -175,17 +173,16 @@ public class BugsDUnit extends DistributedSQLTestBase {
     st.execute("CREATE TABLE app.t1 (c1 int not null, c2 int not null) persistent asynchronous");
 
     PreparedStatement ps = conn.prepareStatement("insert into app.t1 values (?, ?)");
-    final int batchSize = 230000;
-    for (int run = 1; run <= 10; run++) {
-      for (int i = 0; i < batchSize; i++) {
-        ps.setInt(1, i * run);
-        ps.setInt(2, i * run);
-        ps.addBatch();
-      }
-      int[] cnts = ps.executeBatch();
-      assertEquals(batchSize, cnts.length);
-      for (int cnt : cnts) {
-        assertEquals(1, cnt);
+    for (int i = 0; i < 2300000; i++) {
+      ps.setInt(1, i);
+      ps.setInt(2, i);
+      ps.addBatch();
+      if ((i + 1) % 1000 == 0) {
+        int[] cnts = ps.executeBatch();
+        assertEquals(1000, cnts.length);
+        for (int cnt : cnts) {
+          assertEquals(1, cnt);
+        }
       }
     }
     st.execute("ALTER TABLE app.t1 ADD OPP_ID int");
@@ -3386,7 +3383,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
 
   }
 
-  public void testTSMCImportFailureBug() throws Exception {
+  public void testUseCase2ImportFailureBug() throws Exception {
     startVMs(1, 2);
     try {
       Connection conn = TestUtil.getConnection();
@@ -3446,7 +3443,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     }
   }
 
-  public void testTSMCExecuteBatchBug() throws Exception {
+  public void testUseCase2ExecuteBatchBug() throws Exception {
     final int locPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     final Properties props = new Properties();
@@ -4615,7 +4612,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
 
   }
 
-  public void testTMG_GEMXD_1() throws Exception {
+  public void testBugGEMXD_1() throws Exception {
     reduceLogLevelForTest("config");
     // Start a client and some server VMs
     startVMs(1, 3);

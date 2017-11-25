@@ -32,6 +32,7 @@ import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueFactoryImpl
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import com.gemstone.gemfire.cache.wan.GatewayReceiver;
 import com.gemstone.gemfire.cache.wan.GatewaySender;
+import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.AbstractRegion;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
@@ -1016,12 +1017,14 @@ public class WanTest extends JdbcTestBase {
 
   public void testAsyncEventListenerForSkipListenerForPRUsingNetConnection()
       throws Exception {
-    asyncEventListenerForSkipListener(false, true, 1535);
+    asyncEventListenerForSkipListener(false, true,
+        AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET));
   }
 
   public void testAsyncEventListenerForSkipListenerForReplicateUsingNetConnection()
       throws Exception {
-    asyncEventListenerForSkipListener(true, true, 1536);
+    asyncEventListenerForSkipListener(true, true,
+        AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET));
   }
 
   private void asyncEventListenerForSkipListener(boolean useReplicate,
@@ -1676,32 +1679,35 @@ public class WanTest extends JdbcTestBase {
       fail("There should not be any row present in the "
           + "SYS.GATEWAYRECEIVERS table");
     }
+    int startPort = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
+    int endPort = startPort + 3;
+    String portRange = "startport " + startPort + " endport " + endPort + ' ';
     con.createStatement().execute(
-        "CREATE GATEWAYRECEIVER R1 ( startport 11111 endport 11114 "
+        "CREATE GATEWAYRECEIVER R1 (" + portRange
             + "socketbuffersize 1000 bindaddress '0.0.0.0'"
             + " maxtimebetweenpings 10000) server groups (sg1)");
 
     con.createStatement().execute(
-        "CREATE GATEWAYRECEIVER R2 ( startport 11111 endport "
-            + "11114 socketbuffersize 1000 bindaddress '0.0.0.0' "
+        "CREATE GATEWAYRECEIVER R2 (" + portRange
+            + "socketbuffersize 1000 bindaddress '0.0.0.0' "
             + "maxtimebetweenpings 10000) server groups (sg1)");
     con.createStatement().execute(
-        "CREATE GATEWAYRECEIVER R3 ( startport 11111 endport "
-            + "11114 socketbuffersize 1000 bindaddress '0.0.0.0' "
+        "CREATE GATEWAYRECEIVER R3 (" + portRange
+            + "socketbuffersize 1000 bindaddress '0.0.0.0' "
             + "maxtimebetweenpings 10000) server groups (sg1)");
     con.createStatement().execute(
-        "CREATE GATEWAYRECEIVER R4 ( startport 11111 endport "
-            + "11114 socketbuffersize 1000 bindaddress '0.0.0.0' "
+        "CREATE GATEWAYRECEIVER R4 (" + portRange
+            + "socketbuffersize 1000 bindaddress '0.0.0.0' "
             + "maxtimebetweenpings 10000) server groups (sg1)");
     hubRs = con.createStatement().executeQuery(
         "select * from SYS.GATEWAYRECEIVERS");
     rsmd = hubRs.getMetaData();
     while (hubRs.next()) {
       runningPort = hubRs.getInt(2);
-      assertTrue(Integer.toString(runningPort), (11111 <= runningPort)
-          && (11114 >= runningPort));
-      assertEquals(11111, hubRs.getInt(3));
-      assertEquals(11114, hubRs.getInt(4));
+      assertTrue(Integer.toString(runningPort), (startPort <= runningPort)
+          && (endPort >= runningPort));
+      assertEquals(startPort, hubRs.getInt(3));
+      assertEquals(endPort, hubRs.getInt(4));
       assertEquals("SG1", hubRs.getString(5));
       assertEquals(1000, hubRs.getInt(6));
       assertEquals(10000, hubRs.getInt(7));
@@ -1709,8 +1715,8 @@ public class WanTest extends JdbcTestBase {
     }
     try {
       con.createStatement().execute(
-          "CREATE GATEWAYRECEIVER R4 ( startport 11111 endport "
-              + "11114 socketbuffersize 1000 bindaddress '0.0.0.0' "
+          "CREATE GATEWAYRECEIVER R4 (" + portRange
+              + "socketbuffersize 1000 bindaddress '0.0.0.0' "
               + "maxtimebetweenpings 10000) server groups (sg1)");
       fail("Test was expected to throw BindException ");
     }
@@ -1721,8 +1727,8 @@ public class WanTest extends JdbcTestBase {
       fail("Test was expected to throw SQLException ");
     }
     con.createStatement().execute(
-        "CREATE GATEWAYRECEIVER R5 ( startport 11111 endport "
-            + "11115 socketbuffersize 1000 bindaddress '0.0.0.0' "
+        "CREATE GATEWAYRECEIVER R5 (startport " + startPort + " endport "
+            + (endPort + 1) + " socketbuffersize 1000 bindaddress '0.0.0.0' "
             + "maxtimebetweenpings 10000) server groups (sg1)");
 
     for (GatewayReceiver rcvr : Misc.getGemFireCache().getGatewayReceivers()) {

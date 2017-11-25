@@ -339,6 +339,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   private AtomicReference<ExternalTableMetaData> externalTableMetaData =
       new AtomicReference<ExternalTableMetaData>(null);
 
+  private final IndexStats stats;
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -423,6 +424,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       this.region = null;
       this.singleSchema = this.baseContainer.getCurrentRowFormatter();
       this.oldTableInfos = null;
+
+      if (this.baseContainer.isApplicationTable() &&
+          !Misc.isSnappyHiveMetaTable(getSchemaName())) {
+        this.stats = new IndexStats(gfCache.getDistributedSystem(), qualifiedName);
+      }
+      else {
+        this.stats = null;
+      }
       // Write the index creation records to disk store if table is persistent.
       // It doesn't really matter if the index creation ultimately fails due
       // to some reason (e.g. uniqueness violation on some other node) and this
@@ -445,6 +454,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       this.encoder = null;
       return;
     }
+
+    this.stats = null;
 
     Region<?, ?> rootRegion = gfCache.getRegion(schemaName);
     // if schema not found, create it now
@@ -473,6 +484,18 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     this.singleSchema = getCurrentRowFormatter();
     this.oldTableInfos = new ArrayList<ExtraTableInfo>();
     initTableFlags();
+  }
+
+  public void incPointStats() {
+    if (this.stats != null) {
+      this.stats.incPointLookupStats();
+    }
+  }
+
+  public void incRangeScanStats() {
+    if (this.stats != null) {
+      this.stats.incScanStats();
+    }
   }
 
   private ExternalCatalog waitForHiveCatalogInit() {
@@ -1999,6 +2022,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
                 + this.qualifiedName + " in " + dsImpl);
           }
           dsImpl.writeIndexDelete(this.uuid);
+        }
+        if (this.stats != null) {
+          this.stats.close();
         }
       }
     }

@@ -352,7 +352,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     final ArrayList<PreparedStatement> pslist = new ArrayList<PreparedStatement>();
 
     final Throwable[] failure = new Throwable[1];
-    final int totOps = 50000;
+    final int totOps = 20000;
     pslist.add(pselect);
     pslist.add(pselectNOSHOP);
     pslist.add(pupdate);
@@ -373,9 +373,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
             getLogWriter().info(
                 "going to stop server vm: "
                     + serverNumber
-                    + " with netport: "
-                    + serverNumberToNetworkPort.get(Integer
-                        .valueOf(serverNumber)));
+                    + " with netport: " + netport);
             stopVMNum(-serverNumber);
             getLogWriter().info(
                 "stopped server vm: " + serverNumber
@@ -390,6 +388,8 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
                 "started network server on vm: " + serverNumber + " netport: "
                     + netPort + " and putting in map");
             serverNumberToNetworkPort.put(serverNumber, netPort);
+            // wait a bit before next stop/restart
+            Thread.sleep(1000);
           } catch (Exception e) {
             serverStopStartStatus[0] = 1;
             getLogWriter().error(
@@ -650,7 +650,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     if (isTransactional) {
       return;
     }
-    int numTimes = 1000;
+    int numTimes = 500;
     final boolean warmup = numTimes > 100 ? true : false;
     final Properties props = new Properties();
     props.put("log-level", "config");
@@ -748,10 +748,10 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
 
   public void testCompareSingleHopVsSimpleClientConnection_allDMLs_noPK()
       throws Exception {
-	  if(isTransactional){
-		  return;
-	  }
-    int numTimes = 10000;
+    if (isTransactional) {
+      return;
+    }
+    int numTimes = 500;
     final boolean warmup = numTimes > 100 ? true : false;
     final Properties props = new Properties();
     props.put("log-level", "config");
@@ -850,10 +850,19 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
   }
 
   private void populate(Statement st, int numTimes) throws SQLException {
+    String insertSQL = "insert into EMP.PARTITIONTESTTABLE values (?,?,?)";
+    PreparedStatement pstmt = st.getConnection().prepareStatement(insertSQL);
     for (int i = 0; i < numTimes; i++) {
-      String insertSQL = "insert into EMP.PARTITIONTESTTABLE values (" + i
-          + ", " + i + ", 'number" + i + "')";
-      st.execute(insertSQL);
+      pstmt.setInt(1, i);
+      pstmt.setInt(2,  i);
+      pstmt.setString(3, "number" + i);
+      pstmt.addBatch();
+      if (((i + 1) % 1000) == 0) {
+        pstmt.executeBatch();
+      }
+    }
+    if ((numTimes % 1000) != 0) {
+      pstmt.executeBatch();
     }
   }
 

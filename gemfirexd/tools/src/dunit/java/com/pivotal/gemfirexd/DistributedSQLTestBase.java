@@ -369,6 +369,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     // also set the client driver properties
     TestUtil.setPropertyIfAbsent(null, GfxdConstants.GFXD_CLIENT_LOG_FILE,
         logFilePrefix + "-client.log");
+    GemFireXDUtils.initFlags();
     // set preallocate to false in all the dunit
     setPreallocateSysPropsToFalse();
     vmCount = numVMs;
