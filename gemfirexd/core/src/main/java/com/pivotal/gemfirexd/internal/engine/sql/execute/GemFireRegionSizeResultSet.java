@@ -107,7 +107,7 @@ public class GemFireRegionSizeResultSet extends AbstractGemFireResultSet
       if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
             "looked up container with conglomId=" + conglomId + " ("
-                + tableName + ") : " + this.gfContainer);
+                + tableName + ") : " + container);
       }
     }
 

@@ -742,7 +742,7 @@ public class MemoryAnalyticsTest extends JdbcTestBase {
       g.resume();
       
       while(((AbstractGatewaySender)g).getQueue().size() > 0) {
-        Thread.currentThread().sleep(1000);
+        Thread.sleep(1000);
         rs = st
             .executeQuery("select * from sys.memoryanalytics where queue_type is not null");
         //  or table_name like 'APP.TF%'
