@@ -34,7 +34,12 @@ public interface RegionEntryContext extends HasCachePerfStats {
    * @return null if no compressor is assigned or available for the entry.
    */
   public Compressor getCompressor();
-  
+
+  /**
+   * Returns the name for compression codec to be used for column store.
+   */
+  public String getColumnCompressionCodec();
+
   /**
    * Returns true if region entries are stored off heap.
    */

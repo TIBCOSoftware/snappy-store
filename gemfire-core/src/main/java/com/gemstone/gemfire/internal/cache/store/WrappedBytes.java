@@ -20,8 +20,6 @@ package com.gemstone.gemfire.internal.cache.store;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import com.gemstone.gemfire.internal.cache.DiskId;
-import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 
@@ -45,7 +43,7 @@ public final class WrappedBytes extends SerializedDiskBuffer {
   }
 
   @Override
-  public int refCount() {
+  public int referenceCount() {
     return 0;
   }
 
@@ -56,6 +54,11 @@ public final class WrappedBytes extends SerializedDiskBuffer {
 
   @Override
   public ByteBuffer getBufferRetain() {
+    return getBuffer();
+  }
+
+  @Override
+  public ByteBuffer getBuffer() {
     return ByteBuffer.wrap(this.buffer, this.offset, this.length);
   }
 
@@ -70,10 +73,6 @@ public final class WrappedBytes extends SerializedDiskBuffer {
 
   @Override
   protected void releaseBuffer() {
-  }
-
-  @Override
-  public void setDiskId(DiskId id, DiskRegionView dr) {
   }
 
   @Override
@@ -93,6 +92,6 @@ public final class WrappedBytes extends SerializedDiskBuffer {
 
   @Override
   public String toString() {
-    return ClientSharedUtils.toString(getBufferRetain());
+    return ClientSharedUtils.toString(getBuffer());
   }
 }

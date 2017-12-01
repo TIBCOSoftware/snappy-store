@@ -50,11 +50,17 @@ public abstract class OutputStreamChannel extends OutputStream implements
     WritableByteChannel, StreamChannel {
 
   protected final WritableByteChannel channel;
+  private final boolean socketToSameHost;
   private volatile Thread parkedThread;
   protected volatile long bytesWritten;
 
   protected OutputStreamChannel(WritableByteChannel channel) {
     this.channel = channel;
+    this.socketToSameHost = ClientSharedUtils.isSocketToSameHost(channel);
+  }
+
+  public final boolean isSocketToSameHost() {
+    return this.socketToSameHost;
   }
 
   /**

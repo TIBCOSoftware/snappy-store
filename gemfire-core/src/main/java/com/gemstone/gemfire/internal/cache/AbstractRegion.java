@@ -2159,6 +2159,11 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     return this.compressor;
   }
 
+  @Override
+  public String getColumnCompressionCodec() {
+    return null;
+  }
+
   public final boolean getEnableOffHeapMemory() {
     return this.enableOffHeapMemory;
   }

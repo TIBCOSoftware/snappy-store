@@ -52,6 +52,8 @@ import java.math.BigInteger;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.Channel;
+import java.nio.channels.SocketChannel;
 import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.locks.LockSupport;
@@ -1866,6 +1868,31 @@ public abstract class ClientSharedUtils {
       }
     }
     return utfLen;
+  }
+
+  public static boolean isSocketToSameHost(Channel channel) {
+    try {
+      if (channel instanceof SocketChannel) {
+        SocketChannel socketChannel = (SocketChannel)channel;
+        return isSocketToSameHost(socketChannel.getLocalAddress(),
+            socketChannel.getRemoteAddress());
+      }
+    } catch (IOException ignored) {
+    }
+    return false;
+  }
+
+  public static boolean isSocketToSameHost(SocketAddress localSockAddress,
+      SocketAddress remoteSockAddress) {
+    if ((localSockAddress instanceof InetSocketAddress) &&
+        (remoteSockAddress instanceof InetSocketAddress)) {
+      InetAddress localAddress = ((InetSocketAddress)localSockAddress)
+          .getAddress();
+      return localAddress != null && localAddress.equals(
+          ((InetSocketAddress)remoteSockAddress).getAddress());
+    } else {
+      return false;
+    }
   }
 
   public static long parkThreadForAsyncOperationIfRequired(

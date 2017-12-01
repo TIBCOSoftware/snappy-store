@@ -182,7 +182,7 @@ public abstract class UnsafeHolder {
     public void run() {
       final long address = tryFree();
       if (address != 0) {
-        Platform.freeMemory(address);
+        getUnsafe().freeMemory(address);
       }
     }
   }
@@ -202,22 +202,24 @@ public abstract class UnsafeHolder {
       FreeMemoryFactory factory) {
     final int allocSize = getAllocationSize(size);
     final ByteBuffer buffer = allocateDirectBuffer(
-        Platform.allocateMemory(allocSize), allocSize, factory);
+        getUnsafe().allocateMemory(allocSize), allocSize, factory);
     buffer.limit(size);
     return buffer;
   }
 
-  private static ByteBuffer allocateDirectBuffer(long address, int size,
+  public static ByteBuffer allocateDirectBuffer(long address, int size,
       FreeMemoryFactory factory) {
     try {
       ByteBuffer buffer = (ByteBuffer)Wrapper.directBufferConstructor
           .newInstance(address, size);
-      sun.misc.Cleaner cleaner = sun.misc.Cleaner.create(buffer,
-          factory.newFreeMemory(address, size));
-      Wrapper.cleanerField.set(buffer, cleaner);
+      if (factory != null) {
+        sun.misc.Cleaner cleaner = sun.misc.Cleaner.create(buffer,
+            factory.newFreeMemory(address, size));
+        Wrapper.cleanerField.set(buffer, cleaner);
+      }
       return buffer;
     } catch (Exception e) {
-      Platform.throwException(e);
+      getUnsafe().throwException(e);
       throw new IllegalStateException("unreachable");
     }
   }
@@ -318,14 +320,8 @@ public abstract class UnsafeHolder {
     }
   }
 
-  static void releaseDirectBuffer(ByteBuffer buffer) {
-    sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
-    sun.misc.Cleaner cleaner = directBuffer.cleaner();
-    Object attachment;
-    if (cleaner == null &&
-        (attachment = directBuffer.attachment()) instanceof sun.nio.ch.DirectBuffer) {
-      cleaner = ((sun.nio.ch.DirectBuffer)attachment).cleaner();
-    }
+  public static void releaseDirectBuffer(ByteBuffer buffer) {
+    sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer)buffer).cleaner();
     if (cleaner != null) {
       cleaner.clean();
       cleaner.clear();

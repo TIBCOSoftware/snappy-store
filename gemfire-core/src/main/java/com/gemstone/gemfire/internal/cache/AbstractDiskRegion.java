@@ -1042,7 +1042,13 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
   public Compressor getCompressor() {
     return this.compressor;
   }
-  
+
+  @Override
+  public String getColumnCompressionCodec() {
+    // only expected to be invoked for BucketRegion
+    return null;
+  }
+
   @Override
   public boolean getEnableOffHeapMemory() {
     return this.enableOffHeapMemory;

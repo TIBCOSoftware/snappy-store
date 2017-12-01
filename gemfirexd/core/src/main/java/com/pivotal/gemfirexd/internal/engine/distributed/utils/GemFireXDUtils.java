@@ -164,6 +164,7 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import org.apache.log4j.Logger;
+import org.apache.spark.unsafe.hash.Murmur3_x86_32;
 
 /**
  * Various static utility methods used by GemFireXD.
@@ -2116,8 +2117,10 @@ public final class GemFireXDUtils {
           + constraintType + " violation for (" + msg + "), oldValue=("
           + oldValue + ") index=" + indexName, eee);
     }
-    return StandardException.newException(SQLState.NOT_IMPLEMENTED,
+    StandardException se = StandardException.newException(SQLState.NOT_IMPLEMENTED,
         eee, "Modification of partitioning column in PUT INTO");
+    se.setReport(StandardException.REPORT_NEVER);
+    return se;
   }
 
   public static StandardException newDuplicateEntryViolation(String indexName,
@@ -3455,14 +3458,9 @@ public final class GemFireXDUtils {
 
     @Override
     public int hashCode() {
-      int h = 0;
-      if (this.key != null) {
-        h ^= this.key.hashCode();
-      }
-      if (this.val != null) {
-        h ^= this.val.hashCode();
-      }
-      return h;
+      long h1 = this.key != null ? this.key.hashCode() : 0;
+      long h2 = this.val != null ? this.val.hashCode() : 0;
+      return Murmur3_x86_32.hashLong(h1 | (h2 << 32L), 42);
     }
 
     @Override

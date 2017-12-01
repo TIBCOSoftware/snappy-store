@@ -706,7 +706,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           evictedBytes += evicted;
           if (evicted != 0) {
             // check if off-heap entry was evicted
-            if (buffer != null && buffer.refCount() <= 0) {
+            if (buffer != null && buffer.referenceCount() <= 0) {
               offHeapSize += buffer.getOffHeapSizeInBytes();
             }
             Object owner = _getOwnerObject();

@@ -94,6 +94,7 @@ public abstract class BufferAllocator implements Closeable {
     final int position = buffer.position();
     final ByteBuffer newBuffer = allocate(buffer.limit(), owner);
     buffer.rewind();
+    newBuffer.order(buffer.order());
     newBuffer.put(buffer);
     buffer.position(position);
     newBuffer.position(position);

@@ -78,13 +78,7 @@ public abstract class AbstractDiskRegionEntry
     // copy DiskId to value if required
     if (GemFireCacheImpl.hasNewOffHeap() &&
         value instanceof SerializedDiskBuffer) {
-      DiskRegionView dr;
-      if (context instanceof LocalRegion) {
-        dr = ((LocalRegion)context).getDiskRegionView();
-      } else {
-        dr = (DiskRegionView)context;
-      }
-      ((SerializedDiskBuffer)value).setDiskId(getDiskId(), dr);
+      ((SerializedDiskBuffer)value).setDiskLocation(getDiskId(), context);
     }
   }
 

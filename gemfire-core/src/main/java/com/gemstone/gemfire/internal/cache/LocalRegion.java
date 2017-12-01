@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.LongBinaryOperator;
 import java.util.regex.Pattern;
 
@@ -172,7 +171,6 @@ import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
 import com.gemstone.gemfire.internal.cache.locks.QueuedSynchronizer;
-import com.gemstone.gemfire.internal.cache.locks.ReentrantReadWriteWriteShareLock;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.partitioned.RedundancyAlreadyMetException;
 import com.gemstone.gemfire.internal.cache.persistence.DiskExceptionHandler;
@@ -443,7 +441,6 @@ public class LocalRegion extends AbstractRegion
 
   protected final StoppableCountDownLatch initializationLatchAfterGetInitialImage;
 
-  private final ReentrantReadWriteLock deltaLock = new ReentrantReadWriteLock();
   /**
    * Used to hold off cache listener events until the afterRegionCreate is
    * called
@@ -451,6 +448,8 @@ public class LocalRegion extends AbstractRegion
    * @since 5.0
    */
   private final StoppableCountDownLatch afterRegionCreateEventLatch;
+
+  private final StoppableReentrantReadWriteLock deltaLock;
 
   /**
    * For test purpose to, especially for AbstractRegionMap.applyAllSuspects
@@ -762,6 +761,8 @@ public class LocalRegion extends AbstractRegion
         this.stopper, 1);
     this.afterRegionCreateEventLatch = new StoppableCountDownLatch(
         this.stopper, 1);
+
+    this.deltaLock = new StoppableReentrantReadWriteLock(this.stopper);
 
     String myName = getFullPath();
     if (internalRegionArgs.getPartitionedRegion() != null) {
