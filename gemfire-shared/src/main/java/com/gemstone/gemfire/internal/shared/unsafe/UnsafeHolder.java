@@ -44,7 +44,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferFramedInputStream;
 import com.gemstone.gemfire.internal.shared.ChannelBufferFramedOutputStream;
@@ -278,14 +278,14 @@ public abstract class UnsafeHolder {
    * argument specifies that target Runnable type that factory will produce.
    * If the existing Runnable already matches "to" then its a no-op.
    * <p>
-   * The provided {@link Consumer} is used to apply any action before actually
+   * The provided {@link BiConsumer} is used to apply any action before actually
    * changing the runnable field with the boolean argument indicating whether
    * the current field matches "from" or if it is something else.
    */
   public static void changeDirectBufferCleaner(
       ByteBuffer buffer, int size, Class<? extends FreeMemory> from,
       Class<? extends FreeMemory> to, FreeMemoryFactory factory,
-      final Consumer<String> changeOwner) throws IllegalAccessException {
+      final BiConsumer<String, Object> changeOwner) throws IllegalAccessException {
     sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
     final sun.misc.Cleaner cleaner = directBuffer.cleaner();
     if (cleaner != null) {
@@ -296,9 +296,9 @@ public abstract class UnsafeHolder {
       if (!to.isInstance(runnable)) {
         if (changeOwner != null) {
           if (from.isInstance(runnable)) {
-            changeOwner.accept(((FreeMemory)runnable).objectName());
+            changeOwner.accept(((FreeMemory)runnable).objectName(), runnable);
           } else {
-            changeOwner.accept(null);
+            changeOwner.accept(null, runnable);
           }
         }
         Runnable newFree = factory.newFreeMemory(directBuffer.address(), size);
