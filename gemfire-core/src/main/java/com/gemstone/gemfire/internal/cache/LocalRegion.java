@@ -14367,18 +14367,8 @@ public class LocalRegion extends AbstractRegion
 
   private long getEntryOverhead(RegionEntry entry) {
     long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
-    Object key = entry.getRawKey();
-    if (key != null) {
-      entryOverhead += CachedDeserializableFactory.calcMemSize(key);
-    } else {
-      // first key.
-      Object firstKey = this.getRegionMap().keySet().iterator().next();
-      if (firstKey != null) {
-        entryOverhead += CachedDeserializableFactory.calcMemSize(firstKey);
-      }
-    }
     if (entry instanceof DiskEntry) {
-      DiskId diskId = ((DiskEntry) entry).getDiskId();
+      DiskId diskId = ((DiskEntry)entry).getDiskId();
       if (diskId != null) {
         entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(diskId);
       }
@@ -14548,5 +14538,33 @@ public class LocalRegion extends AbstractRegion
 
   public boolean isSnapshotEnabledRegion() {
     return (getCache().snapshotEnabledForTest() && !isUsedForMetaRegion() && concurrencyChecksEnabled);
+  }
+
+  private final AtomicLong keyBytesInMemory = new AtomicLong();
+
+  /**
+   * Increase the in memory counter keyBytesInMemory with key size
+   * @param key
+   */
+  @Override
+  public void incInMemoryKeySize(Object key) {
+    int keySize = CachedDeserializableFactory.calcMemSize(key);
+    keyBytesInMemory.addAndGet(keySize);
+    this.acquirePoolMemory(0L, keySize, false, null, true);
+  }
+
+  /**
+   * Decrease the in memory counter keyBytesInMemory with key size
+   * @param key
+   */
+  @Override
+  public void decInMemoryKeySize(Object key) {
+    int keySize = CachedDeserializableFactory.calcMemSize(key);
+    keyBytesInMemory.addAndGet(-1 * keySize);
+    this.freePoolMemory(keySize, false);
+  }
+
+  public long getKeySizeInMemory() {
+    return Math.max(this.keyBytesInMemory.get(), 0L);
   }
 }

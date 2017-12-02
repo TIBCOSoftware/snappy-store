@@ -783,7 +783,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     SimpleMemoryAllocatorImpl.unskipRefCountTracking();
     try {
     if (curValue == null) curValue = Token.NOT_AVAILABLE;
-    
+
+    Object key = getRawKey();
+    if (key != null) {
+      region.decInMemoryKeySize(key);
+    }
     if (curValue == Token.NOT_AVAILABLE) {
       // In some cases we need to get the current value off of disk.
       
@@ -1433,12 +1437,17 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     // release old SerializedDiskBuffer explicitly for eager cleanup
     final boolean isOffHeap = isOffHeap();
     Object rawOldVal = null;
+    Object keyBefore = getRawKey();
+    boolean newEntry = (getValueAsToken() == Token.REMOVED_PHASE1);
     if (!isOffHeap) {
       rawOldVal = getValueField();
       if (rawOldVal != val && rawOldVal instanceof SerializedDiskBuffer) {
         setValueField(val);
         if (context != null) context.updateMemoryStats(rawOldVal, val);
         ((SerializedDiskBuffer)rawOldVal).release();
+        if (newEntry) {
+          context.incInMemoryKeySize(keyBefore);
+        }
         return;
       }
     }
@@ -1453,6 +1462,9 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       setValueField(val);
       if (!isOffHeap && context != null) {
         context.updateMemoryStats(rawOldVal, val);
+        if (newEntry) {
+          context.incInMemoryKeySize(keyBefore);
+        }
       }
     }
     else {
@@ -1463,6 +1475,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       SimpleMemoryAllocatorImpl.skipRefCountTracking();
       @Retained @Released Object oldValue = _getValueRetain(region, true);
       SimpleMemoryAllocatorImpl.unskipRefCountTracking();
+
       try {
       int tries = 1;
       for (;;) {
@@ -1485,6 +1498,12 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
           }
           if (!isOffHeap && context != null) {
             context.updateMemoryStats(rawOldVal, val);
+
+            if(keyBefore == null && key != null) {
+              context.incInMemoryKeySize(key); // Evictions
+            } else if (keyBefore != null && key == null && !newEntry) {
+              context.decInMemoryKeySize(keyBefore); // Fault-ins
+            }
           }
           // also upgrade GemFireXD schema information if required; there is no
           // problem of concurrency since GFXD DDL cannot happen concurrently

@@ -177,16 +177,13 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           entryOverhead = getEntryOverhead(re, sizer);
         }
         size += entryOverhead;
-        Object key = re.getRawKey();
         Object value = re._getValue();
-        if (key != null) {
-          size += CachedDeserializableFactory.calcMemSize(key);
-        }
         if (value != null) {
           size += CachedDeserializableFactory.calcMemSize(value);
         }
         entryCount++;
       }
+      size +=  lr.getKeySizeInMemory();
       tableStats.setSizeInMemory(size);
       DiskRegion dr = lr.getDiskRegion();
       if (dr != null) {
@@ -227,6 +224,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
             }
           }
           sizeInMemory += constantOverhead + br.getSizeInMemory();
+          sizeInMemory += br.getKeySizeInMemory();
           sizeOfRegion += constantOverhead + br.getTotalBytes();
           entryCount += br.entryCount();
         }
