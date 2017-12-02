@@ -269,6 +269,10 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
   
   public abstract String getName();
 
+  public String getFullPath() {
+    return getName();
+  }
+
   public final DiskStoreImpl getDiskStore() {
     return this.ds;
   }

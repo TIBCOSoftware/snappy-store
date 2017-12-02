@@ -74,7 +74,6 @@ public class DirectBufferAllocator extends BufferAllocator {
 
   public void changeOwnerToStorage(ByteBuffer buffer, int capacity,
       BiConsumer<String, Object> changeOwner) {
-    return;
   }
 
   @Override

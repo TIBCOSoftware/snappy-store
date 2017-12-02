@@ -40,6 +40,9 @@ public interface RegionEntryContext extends HasCachePerfStats {
    */
   public String getColumnCompressionCodec();
 
+  /** Get the full path of the corresponding region */
+  public String getFullPath();
+
   /**
    * Returns true if region entries are stored off heap.
    */
