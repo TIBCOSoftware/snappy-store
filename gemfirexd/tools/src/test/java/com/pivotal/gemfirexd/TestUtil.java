@@ -507,6 +507,11 @@ public class TestUtil extends TestCase {
           testName + "-client.log");
     }
 
+    // set default bind-address to localhost so tests can be run
+    // even if network interfaces change
+    setPropertyIfAbsent(props, DistributionConfig.BIND_ADDRESS_NAME,
+        "localhost");
+
     // set mcast port to zero if not set
     setPropertyIfAbsent(props, "mcast-port", "0");
     return props;

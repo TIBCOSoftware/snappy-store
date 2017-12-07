@@ -516,6 +516,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
         testLogPrefix + ".gfs");
     //setGFXDProperty(props, DistributionConfig.STATISTIC_SAMPLING_ENABLED_NAME,
     //    "true");
+    setGFXDProperty(props, DistributionConfig.BIND_ADDRESS_NAME, "localhost");
 
     // get the VM specific properties from DUnitEnv
     Properties dsProps = DUnitEnv.get().getDistributedSystemProperties();

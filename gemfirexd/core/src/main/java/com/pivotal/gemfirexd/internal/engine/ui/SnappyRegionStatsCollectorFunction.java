@@ -273,8 +273,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
   }
 
   public Boolean isReplicatedTable(DataPolicy dataPolicy) {
-    return dataPolicy == DataPolicy.PERSISTENT_REPLICATE ||
-        dataPolicy == DataPolicy.REPLICATE;
+    return dataPolicy.withReplication();
   }
 
   @Override
