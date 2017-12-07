@@ -353,7 +353,9 @@ public interface DiskEntry extends RegionEntry {
 
     static boolean isOverflowedToDisk(DiskEntry de, DiskRegionView dr,
         DistributedRegion.DiskPosition dp, RegionEntryContext context) {
-      Object v = null;
+      if (!de.isValueNull()) {
+        return false;
+      }
       DiskId did;
       synchronized (de) {
         did = de.getDiskId();
@@ -689,7 +691,18 @@ public interface DiskEntry extends RegionEntry {
         else {
           SerializedDiskBuffer buffer;
           boolean isSerializedObject = true;
-          if (value instanceof CachedDeserializable) {
+          if (value instanceof byte[]) {
+            isSerializedObject = false;
+            buffer = new WrappedBytes((byte[])value);
+          } else if ((value instanceof SerializedDiskBuffer) ||
+              !(value instanceof CachedDeserializable)) {
+            Assert.assertTrue(!Token.isRemovedFromDisk(value));
+            buffer = EntryEventImpl.serializeBuffer(value, null);
+            if (buffer.channelSize() == 0) {
+              throw new IllegalStateException("serializing <" + value +
+                  "> produced empty byte array");
+            }
+          } else {
             byte[] bytes;
             CachedDeserializable proxy = (CachedDeserializable)value;
             if (proxy instanceof StoredObject) {
@@ -709,18 +722,6 @@ public interface DiskEntry extends RegionEntry {
               bytes = proxy.getSerializedValue();
             }
             buffer = bytes != null ? new WrappedBytes(bytes) : NULL_VW.buffer;
-          }
-          else if (value instanceof byte[]) {
-            isSerializedObject = false;
-            buffer = new WrappedBytes((byte[])value);
-          }
-          else {
-            Assert.assertTrue(!Token.isRemovedFromDisk(value));
-            buffer = EntryEventImpl.serializeBuffer(value, null);
-            if (buffer.channelSize() == 0) {
-              throw new IllegalStateException("serializing <" + value +
-                  "> produced empty byte array");
-            }
           }
           return new ValueWrapper(isSerializedObject, buffer);
         }
@@ -1373,9 +1374,9 @@ public interface DiskEntry extends RegionEntry {
         @Unretained Object preparedValue = setValueOnFaultIn(value, did, entry, dr, region);
         // For Gemfirexd we want to return the offheap representation.
         // So we need to retain it for the caller to release.
-        if (preparedValue instanceof ByteSource) {
+        if (preparedValue instanceof Chunk) {
           // This is the only case in which we return a retained off-heap ref.
-          ((ByteSource)preparedValue).retain();
+          ((Chunk)preparedValue).retain();
           return preparedValue;
         } else {
           return value;

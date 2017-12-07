@@ -1323,8 +1323,11 @@ public final class Oplog implements CompactableOplog {
     if (prevOlf != null) {
       synchronized (prevOplog.crf) {
         // release the old stream buffer
-        prevOlf.outputStream.close();
-        prevOlf.outputStream = null;
+        final OplogFile.FileChannelOutputStream outputStream = prevOlf.outputStream;
+        if (outputStream != null) {
+          outputStream.close();
+          prevOlf.outputStream = null;
+        }
       }
     }
     final int bufSize = Integer.getInteger("WRITE_BUF_SIZE", 32768);

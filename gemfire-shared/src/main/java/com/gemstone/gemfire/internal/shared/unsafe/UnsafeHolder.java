@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferFramedInputStream;
@@ -350,6 +351,23 @@ public abstract class UnsafeHolder {
 
   public static sun.misc.Unsafe getUnsafe() {
     return Wrapper.unsafe;
+  }
+
+  public static boolean tryMonitorEnter(Object obj, boolean checkSelf) {
+    if (checkSelf && Thread.holdsLock(obj)) {
+      return false;
+    } else if (!getUnsafe().tryMonitorEnter(obj)) {
+      // try once more after a small wait
+      LockSupport.parkNanos(100L);
+      if (!getUnsafe().tryMonitorEnter(obj)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static void monitorExit(Object obj) {
+    getUnsafe().monitorExit(obj);
   }
 
   @SuppressWarnings("resource")

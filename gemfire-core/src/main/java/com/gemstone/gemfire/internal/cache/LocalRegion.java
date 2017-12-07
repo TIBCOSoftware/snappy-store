@@ -3209,6 +3209,11 @@ public class LocalRegion extends AbstractRegion
     return getDiskRegion().isBackup();
   }
 
+  @Override
+  public void updateMemoryStats(Object oldValue, Object newValue) {
+    // only used by BucketRegion as of now
+  }
+
   /**
    * Lets the customer do an explicit evict of a value to disk and removes the value
    * from memory. This was added for customer.
@@ -13504,6 +13509,32 @@ public class LocalRegion extends AbstractRegion
 
       cachePerfStats.stats.incLong(compressionPreCompressedBytesId, startSize);
       cachePerfStats.stats.incLong(compressionPostCompressedBytesId, endSize); 
+    }
+
+    @Override
+    public void endCompressionSkipped(long startTime, long startSize) {
+      if (enableClockStats) {
+        long time = getStatTime() - startTime;
+        stats.incLong(compressionSkippedTimeId, time);
+        cachePerfStats.stats.incLong(compressionSkippedTimeId, time);
+      }
+      stats.incLong(compressionSkippedId, 1);
+      stats.incLong(compressionSkippedBytesId, startSize);
+
+      cachePerfStats.stats.incLong(compressionSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionSkippedBytesId, startSize);
+    }
+
+    @Override
+    public void incDecompressedReplaceSkipped() {
+      stats.incLong(compressionDecompressedReplaceSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionDecompressedReplaceSkippedId, 1);
+    }
+
+    @Override
+    public void incCompressedReplaceSkipped() {
+      stats.incLong(compressionCompressedReplaceSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionCompressedReplaceSkippedId, 1);
     }
 
     public long startDecompression() {

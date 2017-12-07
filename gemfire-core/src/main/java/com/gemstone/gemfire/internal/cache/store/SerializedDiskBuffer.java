@@ -92,8 +92,7 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   }
 
   protected final boolean incrementReference() {
-    final int refCount = this.refCount;
-    if (refCount > 0) {
+    if (this.refCount > 0) {
       this.refCount++;
       return true;
     } else {
@@ -113,13 +112,18 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
    */
   @Override
   public synchronized void release() {
-    final int refCount = this.refCount;
-    if (refCount > 0) {
-      this.refCount--;
-      if (refCount == 1) {
+    decrementReference();
+  }
+
+  protected final boolean decrementReference() {
+    if (this.refCount > 0) {
+      if (--this.refCount == 0) {
         // reference count has gone down to zero so release the buffer
         releaseBuffer();
       }
+      return true;
+    } else {
+      return false;
     }
   }
 

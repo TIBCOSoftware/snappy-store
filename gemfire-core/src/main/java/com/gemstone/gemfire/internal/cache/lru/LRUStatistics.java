@@ -43,6 +43,7 @@ public class LRUStatistics  {
   protected int counterId;
   /** entries that have been evicted from the LRU list */
   protected  int evictionsId;
+  protected int faultInsId;
   /** entries that have been destroyed, but not yet evicted from the LRU list */
   protected int destroysId;
   protected  int evaluationsId;
@@ -81,6 +82,7 @@ public class LRUStatistics  {
     destroysLimitId = helper.getDestroysLimitStatId();
     counterId = helper.getCountStatId();
     evictionsId = helper.getEvictionsStatId();
+    faultInsId = helper.getFaultInsStatId();
     destroysId = helper.getDestroysStatId();
     this.evaluationsId = helper.getEvaluationsStatId();
     this.greedyReturnsId = helper.getGreedyReturnsStatId();
@@ -94,6 +96,7 @@ public class LRUStatistics  {
     destroysLimitId = 0;
     counterId = 0;
     evictionsId = 0;
+    faultInsId = 0;
     destroysId = 0;
     this.evaluationsId = 0;
     this.greedyReturnsId = 0;
@@ -201,7 +204,11 @@ public class LRUStatistics  {
     this.evictions.getAndAdd(delta);
     stats.incLong( evictionsId, delta );
   }
-  
+
+  public void incFaultins() {
+    stats.incLong(faultInsId, 1);
+  }
+
   public long getEvictions( ) {
     return this.evictions.get();
   }

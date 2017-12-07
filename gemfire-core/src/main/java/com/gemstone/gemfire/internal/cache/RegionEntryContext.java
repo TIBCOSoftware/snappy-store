@@ -37,6 +37,7 @@ public interface RegionEntryContext extends HasCachePerfStats {
 
   /**
    * Returns the name for compression codec to be used for column store.
+   * Null is returned if no codec is defined or node has not initialized.
    */
   public String getColumnCompressionCodec();
 
@@ -53,7 +54,5 @@ public interface RegionEntryContext extends HasCachePerfStats {
    */
   public boolean isBackup();
 
-  default void updateMemoryStats(Object oldValue, Object newValue) {
-    // only used by BucketRegion as of now
-  }
+  public void updateMemoryStats(Object oldValue, Object newValue);
 }

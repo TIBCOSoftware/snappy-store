@@ -836,6 +836,11 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
     return this.backup;
   }
 
+  @Override
+  public void updateMemoryStats(Object oldValue, Object newValue) {
+    // only used by BucketRegion as of now
+  }
+
   protected final void setBackup(boolean v) {
     this.backup = v;
   }

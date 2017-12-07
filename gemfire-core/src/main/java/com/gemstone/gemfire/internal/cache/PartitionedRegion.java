@@ -428,13 +428,7 @@ public class PartitionedRegion extends LocalRegion implements
     columnMinDeltaRows = minDeltaRows;
   }
 
-  private synchronized void initFromHiveMetaData() {
-    if (this.columnBatchSize != -1 &&
-        this.columnMaxDeltaRows != -1 &&
-        this.columnCompressionCodec != null) {
-      return;
-    }
-
+  private void initFromHiveMetaData() {
     final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
         .getInternalProductCallbacks();
     if (sysCb != null) {
@@ -475,7 +469,7 @@ public class PartitionedRegion extends LocalRegion implements
 
   public String getColumnCompressionCodec() {
     String codec = this.columnCompressionCodec;
-    if (codec == null) {
+    if (codec == null && !cache.isUnInitializedMember(cache.getMyId())) {
       initFromHiveMetaData();
       return this.columnCompressionCodec;
     }
