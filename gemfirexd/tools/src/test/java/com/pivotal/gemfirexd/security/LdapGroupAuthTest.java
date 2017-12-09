@@ -23,7 +23,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.auth.callback.UserAuthenticator;
@@ -944,7 +943,7 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
     // should fail without credentials
     try {
       DriverManager.getConnection(TestUtil.getNetProtocol(
-          SocketCreator.getLocalHost().getHostName(), netPort));
+          "localhost", netPort));
       Assert.fail("expected connection failure with no credentials");
     } catch (SQLException sqle) {
       if (!"08004".equals(sqle.getSQLState())) {

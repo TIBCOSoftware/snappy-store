@@ -17,7 +17,6 @@
 
 package com.pivotal.gemfirexd;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -28,7 +27,6 @@ import java.util.Properties;
 
 import org.apache.derby.drda.NetworkServerControl;
 
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.pivotal.gemfirexd.dbsync.DBSynchronizerTestBase;
 import com.pivotal.gemfirexd.ddl.IndexPersistenceDUnit;
@@ -160,8 +158,7 @@ public class SingleHopTransactionDUnit extends DBSynchronizerTestBase {
       connSHOPProps.setProperty("single-hop-max-connections", "5");
       connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
 
-      final InetAddress localHost = SocketCreator.getLocalHost();
-      String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+      String url = TestUtil.getNetProtocol("localhost", netPort);
       connSHOP = DriverManager.getConnection(url,
           TestUtil.getNetProperties(connSHOPProps));
       connSHOP.setTransactionIsolation(getIsolationLevel());
@@ -456,8 +453,7 @@ public class SingleHopTransactionDUnit extends DBSynchronizerTestBase {
     connSHOPProps.setProperty("single-hop-max-connections", "5");
     connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     connSHOP = DriverManager.getConnection(url,
         TestUtil.getNetProperties(connSHOPProps));
     connSHOP.setTransactionIsolation(isolationLevel);

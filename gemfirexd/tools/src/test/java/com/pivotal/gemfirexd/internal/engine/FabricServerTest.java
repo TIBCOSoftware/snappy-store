@@ -40,7 +40,6 @@ import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalLocator;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -277,7 +276,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       }
       final String[] cmdOps = new String[] { launcher, "server", "start",
           "-dir=" + workingdir, "-client-bind-address=0.0.0.0",
-          "-client-port=" + port,
+          "-client-port=" + port, "-bind-address=localhost",
           "-log-file=./" + getTestName() + "-utilLauncher.log",
           "-log-level=config",
           "-mcast-port=" + mcastPort, "-heap-size=512m" };
@@ -305,13 +304,12 @@ public class FabricServerTest extends TestUtil implements UnitTest {
           }
         }
       }
-      final InetAddress host = SocketCreator.getLocalHost();
       final ResultSet rs = conn.createStatement().executeQuery(
           "select id from sys.members");
       assertTrue(rs.next());
       assertTrue("member ID " + rs.getString(1)
-          + " does not contain this host: " + host.getHostName(),
-          rs.getString(1).contains(host.getHostName()));
+          + " does not contain localhost",
+          rs.getString(1).contains("localhost"));
       assertFalse(rs.next());
       conn.close();
     } finally {
@@ -426,8 +424,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
     wrongf.createNewFile();
     
     Properties distort = new Properties();
-    String locatoradd = InetAddress.getLocalHost().getHostName()
-        + "["
+    String locatoradd = "localhost["
         + String.valueOf(AvailablePort
             .getRandomAvailablePort(AvailablePort.SOCKET)) + "]";
     distort.setProperty(DistributionConfig.MCAST_PORT_NAME, String
@@ -815,7 +812,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
   }
 
   public void testLocatorStartupAPI() throws Exception {
-    final InetAddress localHost = SocketCreator.getLocalHost();
+    final InetAddress localHost = InetAddress.getByName("localhost");
     int port, netPort;
     Properties props = doCommonSetup(null);
 
@@ -854,7 +851,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     // next check with a specified non-localhost bind-address
     fabapi = FabricServiceManager.getFabricLocatorInstance();
-    port = startLocator(null, -1, props);
+    port = startLocator(localHost.getHostName(), -1, props);
     try {
       // verify that no tables can be created in this VM
       final Connection conn = getConnection();
@@ -874,7 +871,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
           .executeQuery("select KIND, LOCATOR from SYS.MEMBERS");
       assertTrue("expected one row in meta-data query", rs.next());
       assertEquals("locator(normal)", rs.getString(1));
-      assertEquals("0.0.0.0[" + port + ']', rs.getString(2));
+      assertEquals("127.0.0.1[" + port + ']', rs.getString(2));
       assertFalse("expected no more than one row from SYS.MEMBERS", rs.next());
     } finally {
       try {
@@ -915,8 +912,9 @@ public class FabricServerTest extends TestUtil implements UnitTest {
         assertEquals(getFullHost(localHost) + '[' + port2 + ']',
             rs.getString(2));
       }
-      assertEquals(localHost.getCanonicalHostName() + "/0.0.0.0[" + netPort
-          + ']', rs.getString(3));
+      String netStr = rs.getString(3);
+      assertTrue("Unexpected network server address " + netStr,
+          netStr.endsWith("/0.0.0.0[" + netPort + ']'));
       assertFalse("expected no more than one row from SYS.MEMBERS", rs.next());
     } finally {
       try {
@@ -974,7 +972,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     int locPort = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
     FabricLocator locator = FabricServiceManager.getFabricLocatorInstance();
-    locator.start(null, locPort, startProps);
+    locator.start("localhost", locPort, startProps);
 
     Properties socketProps = new Properties();
     socketProps.put("gemfirexd.drda.sslMode", "peerAuthentication");
@@ -1177,7 +1175,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       }
 
       conn.createStatement().executeUpdate(
-          "create gatewayreceiver ok (hostnameforsenders 'NICJVM');");
+          "create gatewayreceiver ok (bindaddress 'localhost' hostnameforsenders 'NICJVM');");
 
       final ResultSet rs1 = conn.createStatement().executeQuery(
           "select * from SYS.GATEWAYRECEIVERS");
@@ -1239,8 +1237,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     assertTrue(file.canWrite());
 
-    String locatoradd = InetAddress.getLocalHost().getHostName()
-        + "["
+    String locatoradd = "localhost["
         + String.valueOf(AvailablePort
             .getRandomAvailablePort(AvailablePort.SOCKET)) + "]";
 
@@ -1255,6 +1252,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
     outProps.setProperty("gemfirexd.host-data", "true");
     outProps.setProperty(DistributionConfig.MCAST_PORT_NAME, "0");
+    outProps.setProperty(DistributionConfig.BIND_ADDRESS_NAME, "localhost");
     outProps.setProperty(DistributionConfig.LOG_LEVEL_NAME, "config");
     outProps.setProperty(DistributionConfig.CONSERVE_SOCKETS_NAME, "false");
     outProps

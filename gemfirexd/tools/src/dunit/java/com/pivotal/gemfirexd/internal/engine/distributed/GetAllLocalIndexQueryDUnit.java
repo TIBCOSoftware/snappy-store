@@ -19,7 +19,6 @@
  */
 package com.pivotal.gemfirexd.internal.engine.distributed;
 
-import java.net.InetAddress;
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Properties;
@@ -27,7 +26,6 @@ import java.util.Set;
 import javax.sql.rowset.serial.SerialBlob;
 
 import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -303,8 +301,7 @@ public class GetAllLocalIndexQueryDUnit extends DistributedSQLTestBase {
       connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
     }
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     Connection conn = DriverManager.getConnection(url,
         TestUtil.getNetProperties(connSHOPProps));
 
@@ -492,8 +489,7 @@ public class GetAllLocalIndexQueryDUnit extends DistributedSQLTestBase {
       connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
     }
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     Connection conn = DriverManager.getConnection(url,
         TestUtil.getNetProperties(connSHOPProps));
 
@@ -2945,8 +2941,7 @@ public class GetAllLocalIndexQueryDUnit extends DistributedSQLTestBase {
       connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
     }
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     Connection conn = DriverManager.getConnection(url,
         TestUtil.getNetProperties(connSHOPProps));
 

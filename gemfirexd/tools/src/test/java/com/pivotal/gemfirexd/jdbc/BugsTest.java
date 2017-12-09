@@ -37,7 +37,6 @@ import com.gemstone.gemfire.cache.util.CacheWriterAdapter;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.GemFireTerminateError;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.LocalDataSet;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
@@ -7679,7 +7678,7 @@ public class BugsTest extends JdbcTestBase {
 
     Class<?>[] expectedexceptionlist = new Class[] { SQLNonTransientConnectionException.class };
     // INSTALL/REPLACE/REMOVE_JAR
-    final String localHostName = SocketCreator.getLocalHost().getHostName();
+    final String localHostName = "localhost";
     try {
       TestUtil.addExpectedException(expectedexceptionlist);
       JarTools.main(new String[] { "install-jar", "-file=" + myjar,

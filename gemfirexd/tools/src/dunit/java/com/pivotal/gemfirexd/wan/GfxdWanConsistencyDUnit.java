@@ -96,7 +96,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
     executeSql(SITE_A,
         "insert into EMP.PARTITIONED_TABLE values (1, 'First', 'A714', 'city1')");
 
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
 
     final String createGWS = "CREATE gatewaysender MySender (remotedsid 2 isparallel true ) server groups (sg1)";
@@ -147,7 +147,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
     executeSql(SITE_A,
         "insert into EMP.PARTITIONED_TABLE values (1, 'First', 'A714', 'city1')");
 
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
 
     final String createGWS = "CREATE gatewaysender MySender (remotedsid 2 isparallel true ) server groups (sg1)";
@@ -207,7 +207,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
         "insert into EMP.PARTITIONED_TABLE values (1, 'First', 'A714')");
 
     // Create receiver on B
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
 
     // Create sender on A
@@ -264,7 +264,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
     executeSql(SITE_B, createChildTable + getSQLSuffixClause());
 
     // Create receiver on B
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
 
     executeSql(SITE_B, "CALL SYS.SET_GATEWAY_FK_CHECKS('FALSE')");
@@ -531,7 +531,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
 
     // Set up serial sender and receiver
     executeSql(SITE_B,
-        "create gatewayreceiver myrcvr() server groups(sgSender)");
+        "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)");
     executeSql(
         SITE_A,
         "create gatewaysender MySender (remotedsid 2 isparallel " +
@@ -594,7 +594,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
 
     // Set up serial sender and receiver
     executeSql(SITE_B,
-        "create gatewayreceiver siteBReceiver() server groups(sgSender)");
+        "create gatewayreceiver siteBReceiver(bindaddress 'localhost') server groups(sgSender)");
     
     executeSql(
         SITE_A,
@@ -605,7 +605,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
 
     // Set up serial sender and receiver
     executeSql(SITE_A,
-        "create gatewayreceiver siteAReceiver() server groups(sgSender)");
+        "create gatewayreceiver siteAReceiver(bindaddress 'localhost') server groups(sgSender)");
     
     executeSql(
         SITE_B,
@@ -682,7 +682,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
 
     // Set up serial sender and receiver
     executeSql(SITE_B,
-        "create gatewayreceiver siteBReceiver() server groups(sgSender)");
+        "create gatewayreceiver siteBReceiver(bindaddress 'localhost') server groups(sgSender)");
 
     executeSql(
         SITE_A,
@@ -693,7 +693,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
     
     // Set up serial sender and receiver
     executeSql(SITE_A,
-        "create gatewayreceiver siteAReceiver() server groups(sgSender)");
+        "create gatewayreceiver siteAReceiver(bindaddress 'localhost') server groups(sgSender)");
     
     executeSql(
         SITE_B,
@@ -1006,7 +1006,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
 
     // Set up serial sender and receiver
     executeSql(SITE_B,
-        "create gatewayreceiver siteBReceiver() server groups(sgSender)");
+        "create gatewayreceiver siteBReceiver(bindaddress 'localhost') server groups(sgSender)");
     
     executeSql(
         SITE_A,
@@ -1017,7 +1017,7 @@ public class GfxdWanConsistencyDUnit extends GfxdWanTestBase {
 
     // Set up serial sender and receiver
     executeSql(SITE_A,
-        "create gatewayreceiver siteAReceiver() server groups(sgSender)");
+        "create gatewayreceiver siteAReceiver(bindaddress 'localhost') server groups(sgSender)");
     
     executeSql(
         SITE_B,

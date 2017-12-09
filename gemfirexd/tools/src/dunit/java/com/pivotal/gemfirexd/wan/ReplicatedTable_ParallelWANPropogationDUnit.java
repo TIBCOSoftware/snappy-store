@@ -47,7 +47,7 @@ public class ReplicatedTable_ParallelWANPropogationDUnit extends GfxdWanTestBase
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { ForceReattemptException.class });
 
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     
     executeSql(SITE_A,"CREATE gatewaysender mySender (remotedsid 2 isparallel true ) server groups (sg1)");
@@ -93,7 +93,7 @@ public class ReplicatedTable_ParallelWANPropogationDUnit extends GfxdWanTestBase
 
     startSites(2);
 
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     
     executeSql(SITE_A,"CREATE gatewaysender mySender (remotedsid 2 isparallel true ) server groups (sg1)");
@@ -143,7 +143,7 @@ public class ReplicatedTable_ParallelWANPropogationDUnit extends GfxdWanTestBase
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { ForceReattemptException.class });
     
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     
     executeSql(SITE_A,"CREATE gatewaysender mySender (remotedsid 2 isparallel true ) server groups (sg1)");

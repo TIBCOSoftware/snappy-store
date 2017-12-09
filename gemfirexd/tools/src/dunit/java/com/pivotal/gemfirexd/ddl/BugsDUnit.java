@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
-import java.net.InetAddress;
 import java.sql.*;
 import java.util.*;
 import javax.sql.rowset.serial.SerialBlob;
@@ -31,10 +30,8 @@ import javax.sql.rowset.serial.SerialClob;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.control.ResourceManager;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.ForceReattemptException;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
@@ -72,8 +69,6 @@ import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.depend.DependencyManager;
-import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
-import com.pivotal.gemfirexd.internal.iapi.types.UserType;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
@@ -380,9 +375,8 @@ public class BugsDUnit extends DistributedSQLTestBase {
       skipLocksProps.setProperty("password", "app");
       Connection connC, netConnC;
 
-      final String hostName = SocketCreator.getLocalHost().getHostName();
       final String skipUrl = TestUtil.getProtocol();
-      final String skipNetUrl = TestUtil.getNetProtocol(hostName, netPort);
+      final String skipNetUrl = TestUtil.getNetProtocol("localhost", netPort);
       // check that it is disallowed for normal user
       try {
         connC = DriverManager.getConnection(skipUrl, skipLocksProps);
@@ -598,8 +592,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
         .getRandomAvailablePort(AvailablePort.SOCKET);
     NetworkServerControl netServer = DBSynchronizerTestBase
         .startNetworkServer(dbPort);
-    final String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + dbPort + "/newDB3;";
+    final String derbyDbUrl = "jdbc:derby://localhost:" + dbPort + "/newDB3;";
     Connection dbConn = DriverManager.getConnection(derbyDbUrl + "create=true");
     Statement dbSt = dbConn.createStatement();
 
@@ -937,12 +930,11 @@ public class BugsDUnit extends DistributedSQLTestBase {
 //      connProps.setProperty("gemfirexd.debug.true",
 //          "TraceSingleHop,TraceClientHA");
 
-      final InetAddress localHost = SocketCreator.getLocalHost();
       //String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
       // Connection connClient = DriverManager.getConnection(url,
       // TestUtil.getNetProperties(connProps));
       Connection connClient = TestUtil.getNetConnection(
-          localHost.getHostAddress(), netPort, null, null);
+          "localhost", netPort, null, null);
       connClient.createStatement().execute("create schema trade");
       Statement s = connClient.createStatement();
       s.execute("set current schema trade");
@@ -1031,8 +1023,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     // Use this VM as the network client
     TestUtil.loadNetDriver();
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort1);
+    String url = TestUtil.getNetProtocol("localhost", netPort1);
     Connection conn = DriverManager.getConnection(url);
     Statement st = conn.createStatement();
     ResultSet rs = null;
@@ -1073,8 +1064,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     TestUtil.loadNetDriver();
     Connection conn = null;
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     conn = DriverManager.getConnection(url,
         TestUtil.getNetProperties(new Properties()));
     Statement s = conn.createStatement();
@@ -1200,8 +1190,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     TestUtil.loadNetDriver();
     Connection conn = null;
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     conn = DriverManager.getConnection(url, new Properties());
     Statement s = conn.createStatement();
 
@@ -1248,7 +1237,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     TestUtil.loadNetDriver();
     conn = null;
 
-    url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    url = TestUtil.getNetProtocol("localhost", netPort);
     conn = DriverManager.getConnection(url, (new Properties()));
     s = conn.createStatement();
 
@@ -1366,7 +1355,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     }
     final Properties locatorProps = new Properties();
     setMasterCommonProperties(locatorProps);
-    String locatorBindAddress = SocketCreator.getLocalHost().getHostName();
+    String locatorBindAddress = "localhost";
     int locatorPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     _startNewLocator(this.getClass().getName(), getName(), locatorBindAddress,
@@ -4433,8 +4422,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     Connection conn;
     final Properties connProps = new Properties();
     connProps.setProperty("load-balance", "false");
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     conn = DriverManager.getConnection(url, connProps);
 
     Statement stmt = conn.createStatement();
@@ -4463,7 +4451,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
     restartVMNums(-2);
     startNetworkServer(2, null, null);
 
-    url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    url = TestUtil.getNetProtocol("localhost", netPort);
     conn = DriverManager.getConnection(url, connProps);
     ps = conn.prepareStatement("insert into trade.txhistory values (?,?,?)");
 
@@ -4587,13 +4575,12 @@ public class BugsDUnit extends DistributedSQLTestBase {
         null, null, true);
 
     getLogWriter().info("About to import data that takes around one minute.");
-    final String localHostName = SocketCreator.getLocalHost().getHostName();
     final ByteArrayOutputStream output = new ByteArrayOutputStream(20 * 1024);
     try {
       MiscTools.outputStream = new PrintStream(output);
       MiscTools.main(new String[] { "run", "-path=" + basePath + "/data/",
           "-file=" + basePath + "/queries/import.sql",
-          "-client-port=" + netPort1, "-client-bind-address=" + localHostName,
+          "-client-port=" + netPort1, "-client-bind-address=localhost",
           "-user=" + sysUser, "-password=" + sysPwd });
       getLogWriter().info(output.toString());
     } finally {

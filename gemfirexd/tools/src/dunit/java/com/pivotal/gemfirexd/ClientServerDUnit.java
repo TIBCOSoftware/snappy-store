@@ -38,7 +38,6 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -355,7 +354,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
     if (extraConnProps != null) {
       connProps.putAll(extraConnProps);
     }
-    final InetAddress localHost = SocketCreator.getLocalHost();
+    final InetAddress localHost = InetAddress.getByName("localhost");
     String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
     conn = DriverManager.getConnection(url, connProps);
     conn2 = DriverManager.getConnection(
@@ -1214,8 +1213,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
     connProps.setProperty("framed-transport", "true");
     int[] netPorts = networkClientTests(props, connProps);
     // also check with direct thrift client
-    TestThrift.run(SocketCreator.getLocalHost().getHostName(),
-        netPorts[1], true);
+    TestThrift.run("localhost", netPorts[1], true);
   }
 
   public void test44240() throws Exception {
@@ -1241,11 +1239,10 @@ public class ClientServerDUnit extends ClientServerTestBase {
     Connection conn, conn2;
     final Properties connProps = new Properties();
     connProps.setProperty("load-balance", "false");
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     conn = DriverManager.getConnection(url, connProps);
     conn2 = DriverManager.getConnection(
-        TestUtil.getNetProtocol(localHost.getHostName(), netPort2),
+        TestUtil.getNetProtocol("localhost", netPort2),
         TestUtil.getNetProperties(connProps));
 
     // Create a table
@@ -1367,12 +1364,11 @@ public class ClientServerDUnit extends ClientServerTestBase {
     Connection conn, conn2;
     final Properties connProps = new Properties();
     connProps.setProperty("load-balance", "false");
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
     conn = DriverManager.getConnection(url,
         TestUtil.getNetProperties(connProps));
     conn2 = DriverManager.getConnection(
-        TestUtil.getNetProtocol(localHost.getHostName(), netPort2), connProps);
+        TestUtil.getNetProtocol("localhost", netPort2), connProps);
 
     // Create a table
     Statement stmt = conn.createStatement();
@@ -1485,7 +1481,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
     // Use this VM as the network client
     TestUtil.loadNetDriver();
     TestUtil.deletePersistentFiles = true;
-    final InetAddress localHost = SocketCreator.getLocalHost();
+    final InetAddress localHost = InetAddress.getByName("localhost");
     String url = TestUtil.getNetProtocol(localHost.getCanonicalHostName(),
         netPort);
     String url1 = TestUtil.getNetProtocol(localHost.getCanonicalHostName(),
@@ -1750,9 +1746,8 @@ public class ClientServerDUnit extends ClientServerTestBase {
     // Use this VM as the network client
     TestUtil.loadNetDriver();
     TestUtil.deletePersistentFiles = true;
-    final InetAddress localHost = SocketCreator.getLocalHost();
     Connection conn = TestUtil.getNetConnection(
-        localHost.getCanonicalHostName(), netPort, null, new Properties());
+        "localhost", netPort, null, new Properties());
 
     int port;
     if (ClientSharedUtils.isThriftDefault()) {
@@ -1834,7 +1829,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
     final VM locator = Host.getHost(0).getVM(3);
     final int netPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
-    final InetAddress localHost = SocketCreator.getLocalHost();
+    final InetAddress localHost = InetAddress.getByName("localhost");
     Properties props = new Properties();
     setCommonProperties(props, 0, null, null);
     props.remove("locators");
@@ -2276,7 +2271,6 @@ public class ClientServerDUnit extends ClientServerTestBase {
   }
 
   public void testLocatorStartupAPIWithBUILTINAuthentication() throws Exception {
-    final InetAddress localHost = SocketCreator.getLocalHost();
     final Properties startProps = doSecuritySetup(new Properties(), true);
     final Properties stopProps = doSecuritySetup(new Properties(), false);
 
@@ -2292,12 +2286,11 @@ public class ClientServerDUnit extends ClientServerTestBase {
     final Properties props = new Properties();
     setCommonProperties(props, 0, null, startProps);
     props.remove("locators");
-    final int port = TestUtil.startLocator(localHost.getHostAddress(), -1,
+    final int port = TestUtil.startLocator("localhost", -1,
         props);
 
     final Properties serverProps = doSecuritySetup(new Properties(), true);
-    serverProps.setProperty("locators", localHost.getHostName() + '[' + port
-        + ']');
+    serverProps.setProperty("locators", "localhost[" + port + ']');
     startServerVMs(1, 0, null, serverProps);
 
     // start off network servers
@@ -2354,8 +2347,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
       assertNull(rs.getString(2));
       assertTrue("expected two rows in meta-data query", rs.next());
       assertEquals("locator(normal)", rs.getString(1));
-      assertEquals(localHost.getHostAddress() + '[' + port + ']',
-          rs.getString(2));
+      assertEquals("127.0.0.1[" + port + ']', rs.getString(2));
       assertFalse("expected no more than two rows from SYS.MEMBERS", rs.next());
     } finally {
       try {

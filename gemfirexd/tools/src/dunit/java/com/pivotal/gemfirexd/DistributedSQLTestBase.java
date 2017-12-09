@@ -42,7 +42,6 @@ import com.gemstone.gemfire.cache.wan.GatewaySender;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
@@ -516,6 +515,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
         testLogPrefix + ".gfs");
     //setGFXDProperty(props, DistributionConfig.STATISTIC_SAMPLING_ENABLED_NAME,
     //    "true");
+    setGFXDProperty(props, DistributionConfig.BIND_ADDRESS_NAME, "localhost");
 
     // get the VM specific properties from DUnitEnv
     Properties dsProps = DUnitEnv.get().getDistributedSystemProperties();
@@ -607,7 +607,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
         .getConstructor(String.class).newInstance(name);
     if (extraProps != null && !extraProps.containsKey("locators")) {
       if (locatorBindAdress == null) {
-        locatorBindAdress = SocketCreator.getLocalHost().getHostName();
+        locatorBindAdress = "localhost";
       }
       extraProps.setProperty("locators", locatorBindAdress + '[' + locatorPort
           + ']');
@@ -1732,14 +1732,6 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     public void close() {
       // nothing by default
     }
-  }
-
-  public static final String getQualifiedInetAddress(final InetAddress addr) {
-    final String hostName = addr.getCanonicalHostName();
-    if (hostName != null) {
-      return hostName + '/' + addr.getHostAddress();
-    }
-    return "/" + addr.getHostAddress();
   }
 
   protected final static AtomicInteger numConnectionsOpened =
