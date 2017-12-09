@@ -70,10 +70,11 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     long then = System.currentTimeMillis();
     Thread.sleep(8000);
     st1.execute("select col1 from t1 where col1 = 1");
-    long delta = System.currentTimeMillis() - then;
     rs1 = st1.getResultSet();
+    boolean result = rs1.next();
+    long delta = System.currentTimeMillis() - then;
     if (delta < 9000) {
-      assertTrue(rs1.next());
+      assertTrue(result);
       assertEquals(1, rs1.getInt(1));
       assertFalse(rs1.next());
     } else {
@@ -91,10 +92,11 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     Thread.sleep(8000);
     // after parallel run this can cause issue..3 seconds of wait and row is gone.
     st1.execute("select col1 from t1");
-    long delta = System.currentTimeMillis() - then;
     ResultSet rs1 = st1.getResultSet();
+    boolean result = rs1.next();
+    long delta = System.currentTimeMillis() - then;
     if (delta < 9000) {
-      assertTrue(rs1.next());
+      assertTrue(result);
     } else {
       rs1.close();
     }
@@ -109,10 +111,11 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     long then = System.currentTimeMillis();
     Thread.sleep(8000);
     st1.execute("select col1 from t1 where col1 = 1");
-    long delta = System.currentTimeMillis() - then;
     ResultSet rs1 = st1.getResultSet();
+    boolean result = rs1.next();
+    long delta = System.currentTimeMillis() - then;
     if (delta < 9000) {
-      assertTrue(rs1.next());
+      assertTrue(result);
       assertEquals(1, rs1.getInt(1));
       assertFalse(rs1.next());
     } else {

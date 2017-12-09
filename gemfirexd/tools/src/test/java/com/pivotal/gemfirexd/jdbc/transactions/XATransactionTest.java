@@ -30,7 +30,6 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.client.ClientXid;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -107,8 +106,7 @@ public class XATransactionTest extends JdbcTestBase {
     }
     Xid xid = new ClientXid(0x1234, gid, bid);
 
-    String localhost = SocketCreator.getLocalHost().getHostName(); 
-    xaDataSource.setServerName(localhost);
+    xaDataSource.setServerName("localhost");
     xaDataSource.setPortNumber(netport);
 
     xaDataSource.setDatabaseName("gemfirexd");

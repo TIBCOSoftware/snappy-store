@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.internal.client.am.SingleHopPreparedStatement;
 
@@ -66,9 +65,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     connSHOPProps.setProperty("single-hop-max-connections", "5");
     connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    
-    connSHOP = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, connSHOPProps);
+    connSHOP = TestUtil.getNetConnection("localhost", netPort, null, connSHOPProps);
 
     Statement st = connSHOP.createStatement();
     st.execute("create schema trade");
@@ -126,7 +123,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
 
     final Properties locatorProps = new Properties();
     setMasterCommonProperties(locatorProps);
-    String locatorBindAddress = SocketCreator.getLocalHost().getHostName();
+    String locatorBindAddress = "localhost";
     int locatorPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     _startNewLocator(this.getClass().getName(), getName(), locatorBindAddress,
@@ -226,9 +223,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     connSHOPProps.setProperty("single-hop-max-connections", "5");
     connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
     
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    
-    Connection connSHOP = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, connSHOPProps);
+    Connection connSHOP = TestUtil.getNetConnection("localhost", netPort, null, connSHOPProps);
     
     Statement st = connSHOP.createStatement();
     
@@ -292,7 +287,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     // Start a locator in this VM
     final Properties locatorProps = new Properties();
     setMasterCommonProperties(locatorProps);
-    String locatorBindAddress = SocketCreator.getLocalHost().getHostName();
+    String locatorBindAddress = "localhost";
     int locatorPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     _startNewLocator(this.getClass().getName(), getName(), locatorBindAddress,
@@ -535,9 +530,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     connSHOPProps.setProperty("single-hop-max-connections", "5");
     connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    
-    connSHOP = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, connSHOPProps);
+    connSHOP = TestUtil.getNetConnection("localhost", netPort, null, connSHOPProps);
     
     Statement st = connSHOP.createStatement();
     String ddl = "create table EMP.PARTITIONTESTTABLE (ID int NOT NULL,"
@@ -679,9 +672,8 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     connSHOPProps.setProperty("single-hop-max-connections", "5");
     connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    connSHOP = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, connSHOPProps);
-    connSimple = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, new Properties());
+    connSHOP = TestUtil.getNetConnection("localhost", netPort, null, connSHOPProps);
+    connSimple = TestUtil.getNetConnection("localhost", netPort, null, new Properties());
 
     Statement st = connSimple.createStatement();
 
@@ -781,10 +773,8 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     connSHOPProps.setProperty("single-hop-max-connections", "5");
     connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    
-    connSHOP = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, connSHOPProps);
-    connSimple = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, new Properties());
+    connSHOP = TestUtil.getNetConnection("localhost", netPort, null, connSHOPProps);
+    connSimple = TestUtil.getNetConnection("localhost", netPort, null, new Properties());
     
     Statement st = connSimple.createStatement();
 
@@ -1067,8 +1057,7 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
         connSHOPProps.setProperty("single-hop-max-connections", "5");
         connSHOPProps.setProperty("gemfirexd.debug.true", "TraceSingleHop");
         
-        final InetAddress localHost = SocketCreator.getLocalHost();
-        Connection connSHOP = TestUtil.getNetConnection(localHost.getHostName(), netPort, null, connSHOPProps);
+        Connection connSHOP = TestUtil.getNetConnection("localhost", netPort, null, connSHOPProps);
 
         {
           String query = "select c_first, max(c_id) as amount "

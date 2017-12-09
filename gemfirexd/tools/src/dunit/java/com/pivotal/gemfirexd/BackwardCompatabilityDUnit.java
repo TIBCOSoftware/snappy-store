@@ -20,7 +20,6 @@ package com.pivotal.gemfirexd;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.InetAddress;
 import java.net.URI;
 import java.sql.*;
 import java.util.HashSet;
@@ -30,7 +29,6 @@ import java.util.Set;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
@@ -260,8 +258,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
 
     Properties props = new Properties();
     props.setProperty(Attribute.TABLE_DEFAULT_PARTITIONED, "false");
-    props.setProperty("locators", SocketCreator.getLocalHost().getHostAddress()
-        + '[' + rollingVersionLocatorPort + ']');
+    props.setProperty("locators", "localhost[" + rollingVersionLocatorPort + ']');
 
     getLogWriter().info("Starting current version server" );
     startServerVMs(1, 0, null, props);
@@ -1375,9 +1372,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
         dropDatabaseObjects(null, clientPort);
 
         // execute a client from "verIdx" against the above server
-        final String localHostName = SocketCreator.getLocalHost().getHostName();
-        runVersionedClient(listIdx, verIdx, localHostName, clientPort, 10,
-            10000);
+        runVersionedClient(listIdx, verIdx, "localhost", clientPort, 10, 10000);
 
         // drop all tables and indexes for next server
         dropDatabaseObjects(null, clientPort);
@@ -2420,8 +2415,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
       insertData_TestBug47753(oldConn, "2");
       verifyData_TestBug47753(oldConn, getQuery_TestBug47753("2"));
 
-      final InetAddress localHost = SocketCreator.getLocalHost();
-      String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+      String url = TestUtil.getNetProtocol("localhost", netPort);
       Connection newConn = DriverManager.getConnection(url,
           TestUtil.getNetProperties(connClientProps));
       serverExecute(3, clearStmtCache);
@@ -2470,8 +2464,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
       final int netPort = startNetworkServer(4, null, null);
 
       TestUtil.loadNetDriver();
-      final InetAddress localHost = SocketCreator.getLocalHost();
-      String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+      String url = TestUtil.getNetProtocol("localhost", netPort);
       Connection conn = DriverManager.getConnection(url,
           TestUtil.getNetProperties(connClientProps));
       serverExecute(4, clearStmtCache);

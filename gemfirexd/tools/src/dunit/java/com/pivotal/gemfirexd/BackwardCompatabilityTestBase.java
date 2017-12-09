@@ -681,7 +681,6 @@ public abstract class BackwardCompatabilityTestBase extends
     javaCommandLine.add(ProductClient.class.getName());
     // arguments to ClientRun.main
     javaCommandLine.add(product);
-    // String host = SocketCreator.getLocalHost().getHostName();
     String host = "localhost";
     javaCommandLine.add(host);
     javaCommandLine.add(String.valueOf(clientPort));

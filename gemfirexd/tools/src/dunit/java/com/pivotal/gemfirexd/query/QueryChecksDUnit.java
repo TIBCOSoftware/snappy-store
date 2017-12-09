@@ -21,7 +21,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Properties;
 
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 
@@ -141,9 +140,7 @@ public class QueryChecksDUnit  extends DistributedSQLTestBase {
     startVMs(0, 1, 0, null, p);
     startVMs(1, 2, 0, null, p);
     final int netPort = startNetworkServer(1, null, null);
-    final String hostName = SocketCreator.getLocalHost().getHostName();
-    
-    final Connection netConn = TestUtil.getNetConnection(hostName, netPort,
+    final Connection netConn = TestUtil.getNetConnection("localhost", netPort,
         null, null);
     Statement st = netConn.createStatement();
     st

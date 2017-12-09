@@ -45,7 +45,6 @@ import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.NanoTimer;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -661,7 +660,7 @@ public class TestUtil extends TestCase {
     final Connection conn;
     try {
       if (host == null) {
-        host = SocketCreator.getLocalHost().getHostName();
+        host = "localhost";
       }
       conn = DriverManager.getConnection(
           getNetProtocol(host, port) + urlSuffix, getNetProperties(props));
@@ -675,7 +674,7 @@ public class TestUtil extends TestCase {
       }
       */
       return conn;
-    } catch (UnknownHostException e) {
+    } catch (RuntimeException e) {
       throw new AssertionError(e);
     }
   }
@@ -2052,8 +2051,7 @@ public class TestUtil extends TestCase {
 
   public static String startNetServer(int netPort, Properties extraProps)
       throws Exception {
-    final String localHostName = SocketCreator.getLocalHost().getHostName();
-    return startNetServer(localHostName, netPort, extraProps);
+    return startNetServer("localhost", netPort, extraProps);
   }
 
   public static String startNetServer(String hostName, int netPort,
@@ -2080,8 +2078,7 @@ public class TestUtil extends TestCase {
       try {
         logger = getLogger();
         netServer.stop();
-        logger.info(netServer.status() + " gemfirexd network server on host "
-            + SocketCreator.getLocalHost().getHostName());
+        logger.info(netServer.status() + " gemfirexd network server on localhost");
       } catch (Exception ex) {
         if (logger != null) {
           logger.error("Failed in gemfirexd network server shutdown", ex);
