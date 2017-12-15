@@ -23,7 +23,6 @@ import com.gemstone.gemfire.GemFireIOException;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.org.jgroups.util.StringId;
 import org.apache.log4j.Level;
-import org.apache.log4j.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +35,7 @@ public class GFToSlf4jBridge extends LogWriterImpl {
   private final String logFile;
   private final String logName;
   private int level;
-  private final AtomicReference<Logger> logRef = new AtomicReference<Logger>();
+  private final AtomicReference<Logger> logRef = new AtomicReference<>();
 
   public GFToSlf4jBridge(String logName, String logFile) {
     this(logName, logFile, INFO_LEVEL);
@@ -60,7 +59,6 @@ public class GFToSlf4jBridge extends LogWriterImpl {
   @Override
   public void put(int level, String msg, Throwable exception) {
     Logger log = getLogger();
-    MDC.put("tid", Long.toHexString(Thread.currentThread().getId()));
     switch (level) {
       case SEVERE_LEVEL:
       case ERROR_LEVEL:

@@ -63,6 +63,7 @@ import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
@@ -1602,24 +1603,49 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         target.setBucketIds(source.getBucketIds());
         target.setBucketIdsTable(source.getBucketIdsTable());
       }
+      if (source.isSetRetainBucketIds() && !target.isSetRetainBucketIds()) {
+        target.setRetainBucketIds(source.isRetainBucketIds());
+      }
+      if (source.isSetMetadataVersion() && !target.isSetMetadataVersion()) {
+        target.setMetadataVersion(source.getMetadataVersion());
+      }
+      if (source.isSetSnapshotTransactionId() && !target.isSetSnapshotTransactionId()) {
+        target.setSnapshotTransactionId(source.getSnapshotTransactionId());
+      }
     }
     if (target != null) {
-      // apply the remaining attributes to statement
-      if (target.isSetTimeout()) {
-        stmt.setQueryTimeout(target.getTimeout());
-      }
-      if (target.isSetMaxRows()) {
-        stmt.setMaxRows(target.getMaxRows());
-      }
-      if (target.isSetMaxFieldSize()) {
-        stmt.setMaxFieldSize(target.getMaxFieldSize());
-      }
-      if (target.isSetCursorName()) {
-        stmt.setCursorName(target.getCursorName());
+      // apply the attributes to statement and connection
+      if (stmt != null) {
+        if (target.isSetTimeout()) {
+          stmt.setQueryTimeout(target.getTimeout());
+        }
+        if (target.isSetMaxRows()) {
+          stmt.setMaxRows(target.getMaxRows());
+        }
+        if (target.isSetMaxFieldSize()) {
+          stmt.setMaxFieldSize(target.getMaxFieldSize());
+        }
+        if (target.isSetCursorName()) {
+          stmt.setCursorName(target.getCursorName());
+        }
       }
       if (target.isSetBucketIds()) {
         GfxdSystemProcedures.setBucketsForLocalExecution(
             target.getBucketIdsTable(), target.getBucketIds(),
+            target.isRetainBucketIds(), conn.getLanguageConnectionContext());
+      }
+      if (target.isSetMetadataVersion()) {
+        final GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.
+            getGfxdProfile(Misc.getMyId());
+        final int actualVersion = profile.getRelationDestroyVersion();
+        final int metadataVersion = target.getMetadataVersion();
+        if (metadataVersion != -1 && actualVersion != metadataVersion) {
+          throw Util.generateCsSQLException(
+              SQLState.SNAPPY_RELATION_DESTROY_VERSION_MISMATCH);
+        }
+      }
+      if (target.isSetSnapshotTransactionId()) {
+        GfxdSystemProcedures.useSnapshotTXId(target.getSnapshotTransactionId(),
             conn.getLanguageConnectionContext());
       }
     }
@@ -1899,6 +1925,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ArrayList<ColumnDescriptor> pmDescs;
       SnappyExceptionData sqlw = null;
 
+      applyMergeAttributes(null, attrs, conn, null);
       final int resultSetType = getResultType(attrs);
       final int resultSetConcurrency = getResultSetConcurrency(attrs);
       final int resultSetHoldability = getResultSetHoldability(attrs);
@@ -2236,7 +2263,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                 }
               } else if (chunk.last) {
                 // set as a Blob
-                pstmt.setBlob(paramPosition, new ClientBlob(chunk.chunk, true));
+                pstmt.setBlob(paramPosition, new ClientBlob(chunk.chunk));
                 break;
               } else {
                 blob = conn.createBlob();
@@ -2245,9 +2272,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               if (chunk.isSetOffset()) {
                 offset += chunk.offset;
               }
+              // TODO: need an EmbedBlob that can deal directly with BlobChunks
               blob.setBytes(offset, chunk.getChunk());
               // free any direct buffer immediately
-              ThriftUtils.releaseBlobChunk(chunk);
+              chunk.free();
               pstmt.setBlob(paramPosition, blob);
             }
             break;
@@ -3442,9 +3470,10 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (chunk.isSetOffset()) {
         offset += chunk.offset;
       }
+      // TODO: need an EmbedBlob that can deal directly with BlobChunks
       blob.setBytes(offset, chunk.getChunk());
       // free any direct buffer immediately
-      ThriftUtils.releaseBlobChunk(chunk);
+      chunk.free();
       return lobId;
     } catch (Throwable t) {
       checkSystemFailure(t);

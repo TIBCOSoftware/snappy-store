@@ -713,6 +713,8 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       vmArgs.add("-XX:CompileThreshold=2000");
       vmArgs.add("-XX:+UnlockDiagnosticVMOptions");
       vmArgs.add("-XX:ParGCCardsPerStrideChunk=4k");
+      // limit thread-local cached direct buffers to reduce overhead
+      vmArgs.add("-Djdk.nio.maxCachedBufferSize=131072");
     }
 
     // If heap and off-heap sizes were both specified, then the critical and

@@ -197,6 +197,23 @@ public class JdbcApiTest extends JdbcTestBase {
     verifyResults(netConn);
   }
 
+  // check the meta-data of meta-data queries
+  public void testMetadataOfMetadata_SNAP2083() throws Exception {
+    // check for embedded connection
+    Connection conn = getConnection();
+    checkMetadataOfMetadata(conn);
+    conn.close();
+
+    // check for thin connection
+    final int netPort = startNetserverAndReturnPort();
+    // use this VM as network client and also peer client
+    final Connection netConn = getNetConnection(netPort, null, null);
+    checkMetadataOfMetadata(netConn);
+    netConn.close();
+
+    stopNetServer();
+  }
+
   private void verifyResults(Connection conn) throws SQLException {
     Statement stmt = conn.createStatement();
     ResultSet rs = stmt.executeQuery("select * from o.owner o, o.ownername n "
@@ -315,5 +332,33 @@ public class JdbcApiTest extends JdbcTestBase {
       assertEquals("addr" + id, rs.getObject("O.OWNER.ADDRESS"));
       assertEquals("addr" + id, rs.getObject("Owner.address"));
     }
+  }
+
+  private void checkMetadataOfMetadata(Connection conn) throws SQLException {
+    ResultSet rs = conn.getMetaData().getColumns("", "APP", "", "%");
+    ResultSetMetaData rsmd = rs.getMetaData();
+
+    // check that NULLABLE column should be of type INTEGER
+    assertEquals("NULLABLE", rsmd.getColumnName(11));
+    assertEquals(Types.INTEGER, rsmd.getColumnType(11));
+
+    // check the width of TABLE_CAT, TABLE_SCHEM, TABLE_NAME, COLUMN_NAME, TYPE_NAME
+    assertEquals("TABLE_CAT", rsmd.getColumnName(1));
+    assertEquals(Types.VARCHAR, rsmd.getColumnType(1));
+    assertEquals(128, rsmd.getPrecision(1));
+    assertEquals("TABLE_SCHEM", rsmd.getColumnName(2));
+    assertEquals(Types.VARCHAR, rsmd.getColumnType(2));
+    assertEquals(128, rsmd.getPrecision(2));
+    assertEquals("TABLE_NAME", rsmd.getColumnName(3));
+    assertEquals(Types.VARCHAR, rsmd.getColumnType(3));
+    assertEquals(128, rsmd.getPrecision(3));
+    assertEquals("COLUMN_NAME", rsmd.getColumnName(4));
+    assertEquals(Types.VARCHAR, rsmd.getColumnType(4));
+    assertEquals(128, rsmd.getPrecision(4));
+    assertEquals("TYPE_NAME", rsmd.getColumnName(6));
+    assertEquals(Types.VARCHAR, rsmd.getColumnType(6));
+    assertEquals(128, rsmd.getPrecision(6));
+
+    rs.close();
   }
 }

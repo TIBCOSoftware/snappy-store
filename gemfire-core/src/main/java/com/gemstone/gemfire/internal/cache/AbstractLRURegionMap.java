@@ -17,6 +17,7 @@
 
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -30,15 +31,7 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
-import com.gemstone.gemfire.internal.cache.lru.EnableLRU;
-import com.gemstone.gemfire.internal.cache.lru.HeapEvictor;
-import com.gemstone.gemfire.internal.cache.lru.HeapLRUCapacityController;
-import com.gemstone.gemfire.internal.cache.lru.LRUAlgorithm;
-import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
-import com.gemstone.gemfire.internal.cache.lru.LRUStatistics;
-import com.gemstone.gemfire.internal.cache.lru.MemLRUCapacityController;
-import com.gemstone.gemfire.internal.cache.lru.NewLIFOClockHand;
-import com.gemstone.gemfire.internal.cache.lru.NewLRUClockHand;
+import com.gemstone.gemfire.internal.cache.lru.*;
 import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
@@ -458,6 +451,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     final int delta = getDelta();
     int bytesToEvict = delta;
     resetThreadLocals();
+    final NewLRUClockHand lruList = _getLruList();
     LocalRegion owner = null;
     LRUEntry removalEntry = null;
     if (_isOwnerALocalRegion()) {
@@ -466,7 +460,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     if (debug && owner != null) {
       debugLogging("lruUpdateCallback"
           + "; list size is: " + getTotalEntrySize()
-          + "; actual size is: " + this._getLruList().getExpensiveListCount()
+          + "; actual size is: " + lruList.getExpensiveListCount()
           + "; map size is: " + sizeInVM()
           + "; delta is: " + delta + "; limit is: " + getLimit()
           + "; tombstone count=" + owner.getTombstoneCount()
@@ -476,13 +470,14 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       //  _getLruList().dumpList(logWriter);
       //}
     }
-    LRUStatistics stats = _getLruList().stats();
+    LRUStatistics stats = lruList.stats();
     if (owner == null) {
       changeTotalEntrySize(delta);
       // instead of evicting we just quit faulting values in
     } else
     if (_getCCHelper().getEvictionAlgorithm().isLRUHeap()) {
       changeTotalEntrySize(delta);
+      final ArrayList<LRUClockNode> skipped = new ArrayList<>(2);
       // suspend tx otherwise this will go into transactional size read etc.
       // again leading to deadlock (#44081, #44175)
       TXStateInterface tx = null;
@@ -536,7 +531,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           }
           if(evictFromThisRegion) {
             // skip locked entries in LRU and keep the lock till evictEntry (SNAP-2041)
-            removalEntry = (LRUEntry)_getLruList().getLRUEntry(true);
+            removalEntry = (LRUEntry)lruList.getLRUEntry(skipped);
             if (removalEntry != null) {
               int sizeOfValue = evictEntry(removalEntry, stats);
               if (sizeOfValue != 0) {
@@ -555,7 +550,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
                 _getCCHelper().afterEviction();
               }
               // release the lock held on by getLRUEntry
-              UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+              UnsafeHolder.monitorExit(removalEntry);
               removalEntry = null;
             }
             else {
@@ -573,14 +568,19 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       } finally {
         // release the extra lock by getLRUEntry if remaining
         if (removalEntry != null) {
-          UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+          UnsafeHolder.monitorExit(removalEntry);
         }
         if (tx != null) {
           txMgr.resume(tx);
         }
+        final int numSkipped = skipped.size();
+        for (int i = 0; i < numSkipped; i++) {
+          lruList.appendEntry(skipped.get(i));
+        }
       }
     }
     else {
+      final ArrayList<LRUClockNode> skipped = new ArrayList<>(2);
       // suspend tx otherwise this will go into transactional size read etc.
       // again leading to deadlock (#44081, #44175)
       TXStateInterface tx = null;
@@ -593,7 +593,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
         // to fix bug 48285 do no evict if bytesToEvict <= 0.
         while (bytesToEvict > 0 && _getCCHelper().mustEvict(stats, _getOwner(), bytesToEvict)) {
           // skip locked entries in LRU and keep the lock till evictEntry (SNAP-2041)
-          removalEntry = (LRUEntry)_getLruList().getLRUEntry(true);
+          removalEntry = (LRUEntry)lruList.getLRUEntry(skipped);
           if (removalEntry != null) {
             if (evictEntry(removalEntry, stats) != 0) {
               if (debug) {
@@ -614,7 +614,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
 
             }
             // release the lock held on by getLRUEntry
-            UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+            UnsafeHolder.monitorExit(removalEntry);
             removalEntry = null;
           }
           else {
@@ -632,15 +632,19 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       } finally {
         // release the extra lock by getLRUEntry if remaining
         if (removalEntry != null) {
-          UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+          UnsafeHolder.monitorExit(removalEntry);
         }
         if (tx != null) {
           txMgr.resume(tx);
         }
+        final int numSkipped = skipped.size();
+        for (int i = 0; i < numSkipped; i++) {
+          lruList.appendEntry(skipped.get(i));
+        }
       }
     }
     if (debug)
-      debugLogging("callback complete.  LRU size is now " + _getLruList().stats().getCounter());
+      debugLogging("callback complete.  LRU size is now " + stats.getCounter());
     // If in transaction context (either local or message)
     // reset the tx thread local
  } 
@@ -662,6 +666,13 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
     return monitorStateIsEviction && this.sizeInVM() > 0;
   }
 
+  private void monitorExit(LRUEntry entry, SerializedDiskBuffer buffer) {
+    if (buffer != null) {
+      UnsafeHolder.monitorExit(buffer);
+    }
+    UnsafeHolder.monitorExit(entry);
+  }
+
   /**
    * Evict an entry as per LRU and return a long value having heap bytes
    * evicted in the LSB integer, and the (new SerializedDiskBuffer) off-heap
@@ -681,15 +692,19 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
           + getTotalEntrySize());
       debugLogging("limit is: " + getLimit());
     }
-    LRUStatistics stats = _getLruList().stats();
+    final NewLRUClockHand lruList = _getLruList();
+    final ArrayList<LRUClockNode> skipped = skipLockedEntries
+        ? new ArrayList<>(2) : null;
+    LRUStatistics stats = lruList.stats();
     LRUEntry removalEntry = null;
+    SerializedDiskBuffer buffer = null;
     try {
       while (mustEvict() && (evictedBytes == 0 ||
           (includeOffHeapBytes && offHeapSize == 0))) {
-        removalEntry = (LRUEntry)_getLruList().getLRUEntry(skipLockedEntries);
+        buffer = null;
+        removalEntry = (LRUEntry)lruList.getLRUEntry(skipped);
         if (removalEntry != null) {
           // get the handle to off-heap entry before eviction
-          SerializedDiskBuffer buffer = null;
           if (includeOffHeapBytes && !removalEntry.isOffHeap()) {
             // add off-heap size to the MSB of evictedBytes
             Object value = removalEntry._getValue();
@@ -697,16 +712,24 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
               buffer = (SerializedDiskBuffer)value;
             }
           }
+          if (skipLockedEntries && buffer != null) {
+            if (!UnsafeHolder.tryMonitorEnter(buffer, true)) {
+              UnsafeHolder.monitorExit(removalEntry);
+              skipped.add(removalEntry);
+              removalEntry = null;
+              continue;
+            }
+          }
           int evicted = evictEntry(removalEntry, stats);
           if (skipLockedEntries) {
             // release the lock held on by getLRUEntry
-            UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+            monitorExit(removalEntry, buffer);
             removalEntry = null;
           }
           evictedBytes += evicted;
           if (evicted != 0) {
             // check if off-heap entry was evicted
-            if (buffer != null && buffer.refCount() <= 0) {
+            if (buffer != null && buffer.referenceCount() <= 0) {
               offHeapSize += buffer.getOffHeapSizeInBytes();
             }
             Object owner = _getOwnerObject();
@@ -731,8 +754,15 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       if (debug) debugLogging("exception =" + rce.getCause());
     } finally {
       // release the extra lock by getLRUEntry if remaining
-      if (skipLockedEntries && removalEntry != null) {
-        UnsafeHolder.getUnsafe().monitorExit(removalEntry);
+      if (skipLockedEntries) {
+        if (removalEntry != null) {
+          monitorExit(removalEntry, buffer);
+        }
+        // add back any skipped entries due to locks to LRU list
+        final int numSkipped = skipped.size();
+        for (int i = 0; i < numSkipped; i++) {
+          lruList.appendEntry(skipped.get(i));
+        }
       }
     }
     if (debug)
@@ -950,6 +980,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
       lruEntryUpdate(e);
       lruList.appendEntry(e);
     }
+    lruList.stats().incFaultins();
   }
 
   /*

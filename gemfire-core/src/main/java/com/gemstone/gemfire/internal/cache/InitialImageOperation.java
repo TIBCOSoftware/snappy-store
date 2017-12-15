@@ -557,13 +557,20 @@ public class InitialImageOperation  {
           }
 
           int numTimesRequested = 0;
-          while(requestUnappliedDeltas(dm, recipient)) {
-            LogWriterI18n logger = this.region.getLogWriterI18n();
-            if(TRACE_GII || logger.fineEnabled()) {
-              region.getLogWriterI18n().info(LocalizedStrings.DEBUG, 
-                  "Requested the base value for unapplied deltas for region: " + 
-                  this.region + " for " + (++numTimesRequested) + " time");
+          region.writeLockEnqueueDelta();
+          try {
+            ImageState imgState = region.getImageState();
+            while (requestUnappliedDeltas(dm, recipient)) {
+              imgState.setRequestedUnappliedDelta(true);
+              LogWriterI18n logger = this.region.getLogWriterI18n();
+              if (TRACE_GII || logger.fineEnabled()) {
+                region.getLogWriterI18n().info(LocalizedStrings.DEBUG,
+                    "Requested the base value for unapplied deltas for region: " +
+                        this.region + " for " + (++numTimesRequested) + " time");
+              }
             }
+          } finally {
+            region.writeUnlockEnqueueDelta();
           }
           continue;
         } catch (InternalGemFireException ex) {
@@ -648,7 +655,6 @@ public class InitialImageOperation  {
   private boolean requestUnappliedDeltas(DistributionManager dm, InternalDistributedMember recipient) {
     ImageState imgState = region.getImageState();
     LogWriterI18n logger = region.getLogWriterI18n();
-    
     //See if there are any deltas that have not yet been merged
     Iterator<Object> deltas = imgState.getDeltaEntries();
     Set<Object> unappliedDeltas = new HashSet<Object>();

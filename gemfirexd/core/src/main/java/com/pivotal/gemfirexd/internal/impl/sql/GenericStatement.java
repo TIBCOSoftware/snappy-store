@@ -349,9 +349,10 @@ public class GenericStatement
 		 * relevant Derby property) then the value of cacheMe is irrelevant.
 		 */
 		boolean foundInCache = false;
+		final boolean isSnappyStore = Misc.getMemStore().isSnappyStore();
 		if (preparedStmt == null)
 		{
-                        boolean isRemoteDDLAndSnappyStore =  Misc.getMemStore().isSnappyStore() && lcc.isConnectionForRemoteDDL() && !routeQuery;
+                        boolean isRemoteDDLAndSnappyStore =  isSnappyStore && lcc.isConnectionForRemoteDDL() && !routeQuery;
                         if (cacheMe && !isRemoteDDLAndSnappyStore) {
                                 preparedStmt = (GenericPreparedStatement)((GenericLanguageConnectionContext)lcc).lookupStatement(this);
                         }
@@ -665,8 +666,9 @@ public class GenericStatement
 				  StringBuilder queryTextForStats = null;
 				  boolean continueLoop = true;
 			    int i = 0;
-			    boolean forceSkipQueryInfoCreation = Misc.getMemStore().isSnappyStore()
-					  && lcc.getBucketIdsForLocalExecution() != null;
+			    // allow checking for get/getAll convertibles even with bucketIds
+			    final boolean isLocalScan = lcc.getBucketIdsForLocalExecution() != null;
+			    boolean forceSkipQueryInfoCreation = false;
 			    while (continueLoop) {
 			      i++;
 			      continueLoop = false;
@@ -808,6 +810,13 @@ public class GenericStatement
                                           final QueryInfoContext qic = new QueryInfoContext(
                                               this.createQueryInfo(),  paramDTDS != null ? paramDTDS.length : 0, isPreparedStatement());
                                           qinfo = qt.computeQueryInfo(qic);
+                                          // only allow get/getAll convertibles for local scan
+                                          if (isLocalScan &&
+                                              !(qinfo.isSelect() && qinfo.isPrimaryKeyBased())) {
+                                            qinfo = null;
+                                            forceSkipQueryInfoCreation = true;
+                                            continue;
+                                          }
                                           // Only rerouting selects to lead node. Inserts will be handled separately.
                                           // The below should be connection specific.
                                           if ((routeQuery && qinfo != null && qinfo.isDML()
@@ -836,7 +845,7 @@ public class GenericStatement
                                             qinfo = handleInsertAndInsertSubSelect(qinfo, qt);
                                           }
 
-                                          if (Misc.getMemStore().isSnappyStore() &&
+                                          if (isSnappyStore && !isLocalScan &&
                                               qinfo != null && qinfo.isDML() &&
                                               invalidQueryOnColumnTable(lcc, (DMLQueryInfo)qinfo)) {
                                             throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
@@ -1037,10 +1046,7 @@ public class GenericStatement
                                         // populate statistics object before class generation, so that subquery capture it in sub-activation.
                                         fetchOrCreateStatementStats(lcc, qt, cc, queryTextForStats);
 
-                                        if( (lcc.getBucketIdsForLocalExecution() != null) || ! createGFEPrepStmt || !cc.isGlobalScope()) {
-                                        //if( ! createGFEPrepStmt || (statementType == StatementType.DELETE && !cc.isGlobalScope())) {
-                                          //Asif: create Derby's byte codes only if it is not a Select Query
-                                          //or if the Select Query is on the  data node
+                                        if (!createGFEPrepStmt || !cc.isGlobalScope()) {
                                           ac = qt.generate(preparedStmt.getByteCodeSaver());
                                           //Neeraj: If local execution due to cc.isGlobalScope returning false then force all the queries to run
                                           // only on primary buckets. Ideal would be to either select primaries only or secondaries only,

@@ -607,6 +607,34 @@ public class ConcurrentTHashSet<T> extends THashParameters implements Set<T> {
     return toArray(a, null, null);
   }
 
+  /** copy the contents in array and clear the map as atomic operation */
+  @SuppressWarnings("unchecked")
+  public <E> E[] drainTo(E[] a) {
+    int size = 0;
+    int offset = 0;
+    E[] result;
+    acquireAllLocks(true);
+    try {
+      for (ConcurrentTHashSegment<T> seg : this.segments) {
+        size += seg.size;
+      }
+      if (a.length >= size) {
+        result = a;
+      } else {
+        Class<?> c = a.getClass();
+        result = (E[])(c == Object[].class ? new Object[size]
+            : Array.newInstance(c.getComponentType(), size));
+      }
+      for (ConcurrentTHashSegment<T> seg : this.segments) {
+        offset = seg.toArray(result, seg.set, offset);
+        seg.clear();
+      }
+    } finally {
+      releaseAllLocks(true);
+    }
+    return result;
+  }
+
   /**
    * This is a variant of toArray to send back the result as a set.
    */

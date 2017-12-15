@@ -149,7 +149,7 @@ public class HiveTablesVTI extends GfxdVTITemplate
 
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(SCHEMA,
-          Types.VARCHAR, false, 512),
+          Types.VARCHAR, false, 128),
       EmbedResultSetMetaData.getResultColumnDescriptor(TABLE,
           Types.VARCHAR, false, 512),
       EmbedResultSetMetaData.getResultColumnDescriptor(TYPE,

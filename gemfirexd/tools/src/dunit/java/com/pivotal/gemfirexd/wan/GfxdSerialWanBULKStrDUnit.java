@@ -45,7 +45,7 @@ public class GfxdSerialWanBULKStrDUnit extends GfxdWanCommonTestBase {
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { PRLocallyDestroyedException.class });
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();

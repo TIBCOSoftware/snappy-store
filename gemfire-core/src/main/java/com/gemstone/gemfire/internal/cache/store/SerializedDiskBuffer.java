@@ -18,11 +18,10 @@ package com.gemstone.gemfire.internal.cache.store;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.locks.LockSupport;
+import javax.annotation.concurrent.GuardedBy;
 
 import com.gemstone.gemfire.internal.cache.DiskId;
-import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
-import com.gemstone.gemfire.internal.concurrent.unsafe.UnsafeAtomicIntegerFieldUpdater;
+import com.gemstone.gemfire.internal.cache.RegionEntryContext;
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ByteBufferReference;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
@@ -56,24 +55,28 @@ import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
  * with {@link #write} calls if an intervening {@link #release()} call happened
  * to release the underlying buffer due to more {@link #release()}s.</li>
  * </ul>
+ * <p>
+ * The default implementation of reference counting now uses synchronized
+ * blocks instead of atomic integer for the main child column value that needs
+ * synchronized blocks to deal with compression/decompression atomically.
+ * Child classes that do not need full synchronization may use atomic field
+ * updater on refCount field instead if performance of these is a concern.
+ * </p>
  */
 public abstract class SerializedDiskBuffer extends ByteBufferReference {
 
   /**
    * Reference count for {@link #retain()} and {@link #release()}.
    */
-  protected volatile int refCount = 1;
-
-  protected static final UnsafeAtomicIntegerFieldUpdater<SerializedDiskBuffer>
-      refCountUpdate = new UnsafeAtomicIntegerFieldUpdater<>(
-      SerializedDiskBuffer.class, "refCount");
+  @GuardedBy("this")
+  protected int refCount = 1;
 
   /**
    * Get the current reference count for this object.
    */
   @Override
-  public int refCount() {
-    return refCountUpdate.get(this);
+  public synchronized int referenceCount() {
+    return this.refCount;
   }
 
   /**
@@ -84,17 +87,17 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
    * underlying data has already been released (and will lead to empty writes).
    */
   @Override
-  public boolean retain() {
-    while (true) {
-      final int refCount = refCountUpdate.get(this);
-      if (refCount > 0) {
-        if (refCountUpdate.compareAndSet(this, refCount, refCount + 1)) {
-          return true;
-        }
-      } else {
-        // already released
-        return false;
-      }
+  public synchronized boolean retain() {
+    return incrementReference();
+  }
+
+  protected final boolean incrementReference() {
+    if (this.refCount > 0) {
+      this.refCount++;
+      return true;
+    } else {
+      // already released
+      return false;
     }
   }
 
@@ -108,20 +111,19 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
    * release automatically in the GC cycles when no references remain.
    */
   @Override
-  public void release() {
-    while (true) {
-      final int refCount = refCountUpdate.get(this);
-      if (refCount > 0) {
-        if (refCountUpdate.compareAndSet(this, refCount, refCount - 1)) {
-          if (refCount == 1) {
-            // reference count has gone down to zero so release the buffer
-            releaseBuffer();
-          }
-          break;
-        }
-      } else {
-        break;
+  public synchronized void release() {
+    decrementReference();
+  }
+
+  protected final boolean decrementReference() {
+    if (this.refCount > 0) {
+      if (--this.refCount == 0) {
+        // reference count has gone down to zero so release the buffer
+        releaseBuffer();
       }
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -132,11 +134,12 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   public void copyToHeap(String owner) {
   }
 
-  /**
-   * Get as buffer to write to disk. Callers must ensure {@link #release()}
-   * is invoked in all paths after the write is done (or fails).
-   */
-  public SerializedDiskBuffer getDiskBufferRetain() {
+  @Override
+  public SerializedDiskBuffer getValueRetain(boolean decompress,
+      boolean compress) throws IllegalArgumentException {
+    if (decompress && compress) {
+      throw new IllegalArgumentException("both decompress and compress true");
+    }
     return retain() ? this : null;
   }
 
@@ -145,7 +148,8 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   /**
    * For buffers which are stored in region, set its DiskId.
    */
-  public abstract void setDiskId(DiskId id, DiskRegionView dr);
+  public void setDiskLocation(DiskId id, RegionEntryContext context) {
+  }
 
   /**
    * Write the underlying data in the buffer fully to the channel.
@@ -184,9 +188,12 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
       ByteBuffer buffer) throws IOException {
     final int position = buffer.position();
     while (buffer.hasRemaining()) {
-      if (channel.write(buffer) == 0) {
-        // wait for a bit before retrying
-        LockSupport.parkNanos(ClientSharedUtils.PARK_NANOS_FOR_READ_WRITE);
+      long parkedNanos = 0;
+      int numTries = 0;
+      while (channel.write(buffer) == 0) {
+        // wait for a bit after some retries
+        parkedNanos = ClientSharedUtils.parkThreadForAsyncOperationIfRequired(
+            channel, parkedNanos, ++numTries);
       }
     }
     // rewind back just in case bytes is to be read again

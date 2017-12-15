@@ -32,7 +32,6 @@ import java.sql.Timestamp;
 import java.util.Properties;
 
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.tools.internal.JarTools;
@@ -268,7 +267,7 @@ public class GfxdJarInstallationTest extends JdbcTestBase {
     checkMergeResults(cs);
 
     // now check with the jar tools
-    final String localHostName = SocketCreator.getLocalHost().getHostName();
+    final String localHostName = "localhost";
     if (netPort <= 0) {
       netPort = startNetserverAndReturnPort();
     }

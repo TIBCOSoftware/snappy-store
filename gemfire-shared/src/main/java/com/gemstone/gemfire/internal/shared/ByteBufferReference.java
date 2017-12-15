@@ -27,7 +27,7 @@ public abstract class ByteBufferReference {
   /**
    * Get the current reference count for this object.
    */
-  public abstract int refCount();
+  public abstract int referenceCount();
 
   /**
    * Explicitly mark the buffer to be retained so it is not released until
@@ -44,6 +44,28 @@ public abstract class ByteBufferReference {
    * release of the buffer (if it is direct).
    */
   public abstract ByteBuffer getBufferRetain();
+
+  /**
+   * Return the data as a ByteBuffer. Should be invoked only after a
+   * {@link #retain()} or {@link #getValueRetain(boolean, boolean)} call.
+   */
+  public abstract ByteBuffer getBuffer();
+
+  /**
+   * Get a compressed/decompressed/original version of the underlying value
+   * after a {@link #retain()}
+   *
+   * @param decompress decompress the underlying data and return a new value
+   *                   if compressed
+   * @param compress   compress the underlying data and return a new value
+   *                   if decompressed
+   *
+   * @return a decompressed version of data if compressed when decompress is true
+   * or vice-versa if compress is true or else return as is if both are false
+   * @throws IllegalArgumentException if both decompress and compress are true
+   */
+  public abstract ByteBufferReference getValueRetain(boolean decompress,
+      boolean compress) throws IllegalArgumentException;
 
   /**
    * An optional explicit release of the underlying data. The buffer may no

@@ -30,7 +30,6 @@ import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.PartitionAttributes;
 import com.gemstone.gemfire.cache.PartitionAttributesFactory;
 import com.gemstone.gemfire.distributed.DistributedMember;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
@@ -363,8 +362,7 @@ public class GfxdDiagsDUnit extends DistributedSQLTestBase {
     assertTrue("expected 4 results but failed on " + (++numResults), rs.next());
     assertEquals("datastore(normal)", rs.getString(1));
     assertEquals(null, rs.getString(2));
-    assertEquals(getQualifiedInetAddress(SocketCreator.getLocalHost()) + '['
-        + netPort + ']', rs.getString(3));
+    assertEquals("localhost/127.0.0.1[" + netPort + ']', rs.getString(3));
     // last hydra's GemFireXD locator
     assertTrue("expected 4 results but failed on " + (++numResults), rs.next());
     assertEquals("locator(normal)", rs.getString(1));

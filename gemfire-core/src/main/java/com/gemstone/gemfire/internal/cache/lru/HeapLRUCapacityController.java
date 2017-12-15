@@ -91,6 +91,8 @@ public class HeapLRUCapacityController extends LRUAlgorithm {
 
     final String entryBytesDesc = "The amount of memory currently used by regions configured for eviction.";
     final String lruEvictionsDesc = "Number of total entry evictions triggered by LRU.";
+    final String lruFaultInsDesc =
+        "Number of total entry faultIns triggered by read/write operations.";
     final String lruDestroysDesc = "Number of entries destroyed in the region through both destroy cache operations and eviction. Reset to zero each time it exceeds lruDestroysLimit.";
     final String lruDestroysLimitDesc = "Maximum number of entry destroys triggered by LRU before scan occurs.";
     final String lruEvaluationsDesc = "Number of entries evaluated during LRU operations.";
@@ -103,6 +105,7 @@ public class HeapLRUCapacityController extends LRUAlgorithm {
             new StatisticDescriptor[] {
                 f.createLongGauge("entryBytes", entryBytesDesc, "bytes"),
                 f.createLongCounter("lruEvictions", lruEvictionsDesc, "entries"),
+                f.createLongCounter("lruFaultIns", lruFaultInsDesc, "entries"),
                 f.createLongCounter("lruDestroys", lruDestroysDesc, "entries"),
                 f.createLongGauge("lruDestroysLimit", lruDestroysLimitDesc, "entries"),
                 f.createLongCounter("lruEvaluations", lruEvaluationsDesc, "entries"),
@@ -255,6 +258,10 @@ public class HeapLRUCapacityController extends LRUAlgorithm {
 
       public int getEvictionsStatId() {
         return statType.nameToId("lruEvictions");
+      }
+
+      public int getFaultInsStatId() {
+        return statType.nameToId("lruFaultIns");
       }
 
       public int getDestroysStatId() {

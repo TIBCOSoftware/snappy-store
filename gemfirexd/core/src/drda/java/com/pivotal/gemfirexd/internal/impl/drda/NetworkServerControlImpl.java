@@ -404,9 +404,9 @@ public final class NetworkServerControlImpl {
         }catch(Exception e)
         {
             if (GemFireXDUtils.TraceAuthentication) {
-              SanityManager.DEBUG_PRINT("warning:",
+              SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,
                   "DecryptionManager implementation raised exception "
-                      + e.getMessage(), e);
+                      + e.getMessage());
             }
             // if an exception is thrown, ignore exception.
             // set SUPPORTS_EUSRIDPWD to false indicating that the server 

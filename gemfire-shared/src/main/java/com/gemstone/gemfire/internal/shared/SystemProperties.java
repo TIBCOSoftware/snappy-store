@@ -65,7 +65,7 @@ public final class SystemProperties {
 
   // these are the defaults for the per-socket TCP keepalive parameters
   public static final int DEFAULT_KEEPALIVE_IDLE = 20;
-  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
+  public static final int DEFAULT_KEEPALIVE_INTVL = 4;
   public static final int DEFAULT_KEEPALIVE_CNT = 10;
 
   public static final String DEFAULT_PROPERTY_NAME_PREFIX = "gemfire.";

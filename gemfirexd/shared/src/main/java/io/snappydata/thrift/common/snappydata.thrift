@@ -513,6 +513,13 @@ struct StatementAttrs {
  // (i.e. queries will scan only these bucketIds)
  18: optional set<i32>                                     bucketIds
  19: optional string                                       bucketIdsTable
+ // retain bucketIds for the connection till an explicit commit/rollback
+ 20: optional bool                                         retainBucketIds
+ // the last meta-data version recorded by client which will throw exception
+ // on mismatch so that caller can refresh meta-data (if being cached)
+ 21: optional i32                                          metadataVersion
+ // snapshot TXId to be used for current statement (to apply across connections)
+ 22: optional string                                       snapshotTransactionId
 }
 
 union ColumnValue {

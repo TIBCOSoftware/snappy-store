@@ -51,6 +51,8 @@ public interface GfxdConstants {
   final String GFXD_PREFIX = PropertyUtil.isSQLFire ? Attribute.SQLF_PREFIX
       : Attribute.GFXD_PREFIX;
 
+  String SNAPPY_PREFIX = "snappydata.";
+
   /** property name for schema name */
   final String PROPERTY_SCHEMA_NAME = GFXD_PREFIX + "schema-name";
 

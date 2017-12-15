@@ -60,6 +60,11 @@ public interface SocketTimeout {
   void setSoTimeout(int timeout) throws SocketException;
 
   /**
+   * Return true if the connected client is on the same host.
+   */
+  boolean isSocketToSameHost();
+
+  /**
    * Close this socket
    */
   void close();

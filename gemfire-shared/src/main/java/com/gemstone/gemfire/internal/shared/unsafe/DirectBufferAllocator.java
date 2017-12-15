@@ -18,7 +18,7 @@
 package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.nio.ByteBuffer;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
 
@@ -73,8 +73,7 @@ public class DirectBufferAllocator extends BufferAllocator {
   }
 
   public void changeOwnerToStorage(ByteBuffer buffer, int capacity,
-      Consumer<String> changeOwner) {
-    return;
+      BiConsumer<String, Object> changeOwner) {
   }
 
   @Override

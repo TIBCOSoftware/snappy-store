@@ -35,7 +35,6 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.OSProcess;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -47,9 +46,9 @@ import com.gemstone.gemfire.internal.concurrent.AI;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.gemstone.gnu.trove.THashSet;
 
 /**
  * Provides advice on sending distribution messages. For a given operation,
@@ -1383,7 +1382,7 @@ public class DistributionAdvisor  {
       getLogWriter().fine("Intelligent Messaging Disabled");
       return getDefaultDistributionMembers();
     }
-    THashSet recipients = new THashSet(4);
+    OpenHashSet<InternalDistributedMember> recipients = new OpenHashSet<>(4);
     Profile[] locProfiles = this.profiles; // grab current profiles
 //    getLogWriter().fine("adviseFilter: " + locProfiles.length + " to consider, f=" + f);
     for (int i = 0; i < locProfiles.length; i++) {

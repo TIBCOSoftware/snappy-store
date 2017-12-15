@@ -37,7 +37,7 @@ public interface BufferedBlob extends Blob {
    * Get the entire contents of the {@link Blob} as a {@link BlobChunk}
    * having last==true. The underlying ByteBuffer is released once the
    * {@link BlobChunk} is written using thrift API, else caller should invoke
-   * {@link BlobChunk#releaseBuffer()} explicitly to eagerly release any
+   * {@link BlobChunk#free()} explicitly to eagerly release any
    * direct ByteBuffers.
    */
   BlobChunk getAsLastChunk() throws SQLException;

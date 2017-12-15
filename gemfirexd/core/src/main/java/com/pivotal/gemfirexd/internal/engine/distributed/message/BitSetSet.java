@@ -53,15 +53,11 @@ public final class BitSetSet extends AbstractCollection<Integer> implements
 
   static final int ADDRESS_SIZE = (1 << ADDRESS_BYTES);
 
-  static final int ADDRESS_MAX = (1 << ADDRESS_SIZE);
-
   static final int ADDRESS_SIZE_1 = ADDRESS_SIZE - 1;
-
-  static final BitSetSet EMPTY_SET = new BitSetSet(0);
 
   private final byte[] bitMap;
 
-  private transient int numUsedBits;
+  private int numUsedBits;
 
   static int udiv8(int i) {
     return (i >> ADDRESS_BYTES);
@@ -233,7 +229,6 @@ public final class BitSetSet extends AbstractCollection<Integer> implements
       BitSetSet set = new BitSetSet(maxVal + 1);
       set.addInt(maxVal);
       final int numBits = -inUseLen;
-      set.numUsedBits = numBits;
       for (int index = 1; index < numBits; ++index) {
         set.addInt((int)InternalDataSerializer.readUnsignedVL(in));
       }

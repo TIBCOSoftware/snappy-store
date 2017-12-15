@@ -54,6 +54,38 @@ import io.snappydata.thrift.common.BufferedBlob;
 import io.snappydata.thrift.common.ThriftExceptionUtil;
 import io.snappydata.thrift.snappydataConstants;
 
+/**
+ * Encapsulates client side Blob that can be created/received by either of
+ * client or server and can work in two ways:
+ * <ul>
+ * <li>Fetches BlobChunks from server side entity as required.</li>
+ * <li>Streams from local bytes/stream as set by one of the setter methods.</li>
+ * </ul>
+ * <p>
+ * Chunk handling: every BlobChunk holds data as a ByteBuffer which can be
+ * a heap or off-heap one depending on configuration (memory-size for off-heap).
+ * This buffer is always owned by the BlobChunk and thus by the blob holding
+ * the chunk currently. When moving to the next chunk, the blob has to release
+ * the current chunk to allow off-heap buffers be used effectively without
+ * having to be collected by GC (and likewise free should release the
+ * current chunk). This is the case both when reading from a ClientBlob
+ * representing a server entity, or client/server sending a blob to server/client
+ * respectively.
+ * <p>
+ * One special case for above is on the server side when a blob is being
+ * streamed back as a single chunk. This case allows a zero-copy transfer
+ * by having the BlobChunk hold to the {@link ByteBufferReference} that is
+ * a direct reference of the buffer stored in memory. In this case too the
+ * chunk release happens as above just that the release will cause the
+ * reference count to be reduced and will not directly free the buffer.
+ * <p>
+ * A related special handling for zero-copy is for the single chunk case
+ * (when a single chunk holds the entire data) is transferred to higher
+ * layer as is for storage. This happens for connector doing puts into
+ * a column table where the thrift-layer ByteBuffer will be put into
+ * the corresponding region. In that case the chunk buffer is replaced
+ * with an empty one and no further reads are expected on the blob.
+ */
 public final class ClientBlob extends ClientLobBase implements BufferedBlob {
 
   private BlobChunk currentChunk;
@@ -61,7 +93,6 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
   private int baseChunkSize;
   private long initOffset;
   private final boolean freeForStream;
-  private boolean hasBufferOwnership = true;
 
   ClientBlob(ClientService service) {
     super(service);
@@ -104,13 +135,16 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
     this.length = (int)length;
   }
 
-  public ClientBlob(ByteBuffer buffer, boolean transferOwnership) {
+  /**
+   * Create a Blob around a single chunk of data. Buffer ownership is
+   * transferred to the Blob that will release it once done (or in free).
+   */
+  public ClientBlob(ByteBuffer buffer) {
     super(null);
     this.currentChunk = new BlobChunk(buffer, true);
     this.streamedInput = false;
     this.length = buffer.remaining();
     this.freeForStream = false;
-    this.hasBufferOwnership = transferOwnership;
   }
 
   public ClientBlob(ByteBufferReference reference) {
@@ -168,21 +202,25 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
     }
   }
 
+  private void freeChunk() {
+    final BlobChunk chunk = this.currentChunk;
+    if (chunk != null) {
+      chunk.free();
+      this.currentChunk = null;
+    }
+  }
+
   /**
    * {@inheritDoc}
    */
   @Override
   protected void clear() {
-    final BlobChunk chunk = this.currentChunk;
-    if (chunk != null && this.hasBufferOwnership) {
-      this.currentChunk = null;
-      chunk.releaseBuffer();
-    }
+    freeChunk();
     // don't need to do anything to close MemInputStream yet
     this.dataStream = null;
   }
 
-  final int readBytes(final long offset, byte[] b, int boffset, int length)
+  private int readBytes(final long offset, byte[] b, int boffset, int length)
       throws SQLException {
     BlobChunk chunk;
     checkOffset(offset);
@@ -238,18 +276,18 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
             SQLState.LANG_STREAMING_COLUMN_I_O_EXCEPTION, ioe, "java.sql.Blob");
       }
     } else if ((chunk = this.currentChunk) != null) {
-      ByteBuffer buffer = chunk.getBufferRetain();
+      ByteBuffer buffer = chunk.chunk;
       // check if it lies outside the current chunk
       if (chunk.lobId != snappydataConstants.INVALID_ID &&
           (offset < chunk.offset ||
               (offset + length) > (chunk.offset + buffer.remaining()))) {
         // fetch new chunk
         try {
-          chunk.releaseBuffer();
+          chunk.free();
           this.currentChunk = chunk = service.getBlobChunk(
               getLobSource(true, "Blob.readBytes"), chunk.lobId, offset,
               Math.max(baseChunkSize, length), false);
-          buffer = chunk.getBufferRetain();
+          buffer = chunk.chunk;
         } catch (SnappyException se) {
           throw ThriftExceptionUtil.newSQLException(se);
         }
@@ -262,10 +300,8 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
       if (length > 0) {
         buffer.get(b, boffset, length);
         buffer.position(bpos);
-        chunk.releaseBuffer();
         return length;
       } else {
-        chunk.releaseBuffer();
         return -1; // end of data
       }
     } else {
@@ -280,14 +316,8 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
   public BlobChunk getAsLastChunk() throws SQLException {
     BlobChunk chunk = this.currentChunk;
     if (chunk != null && chunk.last && chunk.offset == 0) {
-      if (this.hasBufferOwnership) {
-        this.hasBufferOwnership = false;
-        // the first and only chunk whose ownership is handed over to caller
-        return chunk;
-      } else {
-        // don't own the buffer so return a copy
-        return new BlobChunk(chunk);
-      }
+      this.currentChunk = null;
+      return chunk;
     } else {
       return new BlobChunk(ByteBuffer.wrap(getBytes(1, (int)length())), true);
     }
@@ -372,7 +402,7 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
         sbuffer = getBytes(1, this.length);
         @SuppressWarnings("resource")
         MemInputStream mms = new MemInputStream(sbuffer);
-        this.currentChunk = null;
+        freeChunk();
         this.streamedInput = true;
         ms = mms;
       }

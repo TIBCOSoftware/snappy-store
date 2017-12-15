@@ -1890,6 +1890,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   @Override
+  public String getColumnCompressionCodec() {
+    return this.partitionedRegion.getColumnCompressionCodec();
+  }
+
+  @Override
   public boolean isHDFSRegion() {
     return this.partitionedRegion.isHDFSRegion();
   }

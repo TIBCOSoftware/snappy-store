@@ -16,7 +16,6 @@
  */
 package com.pivotal.gemfirexd.wan;
 
-import java.net.InetAddress;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -93,7 +92,7 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
     startTwoSites();
     // Set up serial sender and receiver 
     executeSql(SITE_B,
-        "create gatewayreceiver myrcvr() server groups(sgSender)");
+        "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)");
     executeSql(
         SITE_A,
         "create gatewaysender MySender (remotedsid 2 isparallel false )" +
@@ -114,8 +113,7 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
     
     
     // Form a derby connection url
-    String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + netPort
+    String derbyDbUrl = "jdbc:derby://localhost:" + netPort
         + "/newDB;create=true;";
     if (TestUtil.currentUserName != null) {
       derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -202,7 +200,7 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
 
     // Set up serial sender and receiver 
     executeSql(SITE_B,
-        "create gatewayreceiver myrcvr() server groups(sgSender)");
+        "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)");
     executeSql(
         SITE_A,
         "create gatewaysender MySender (remotedsid 2 isparallel false )" +
@@ -223,8 +221,7 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
     
     
     // Form a derby connection url
-    String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + netPort
+    String derbyDbUrl = "jdbc:derby://localhost:" + netPort
         + "/newDB;create=true;";
     if (TestUtil.currentUserName != null) {
       derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -310,7 +307,7 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
     VM siteB = this.serverVMs.get(7);
     VM siteC = this.serverVMs.get(11);
     VM siteD = this.serverVMs.get(15);
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)" ;
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)" ;
     executeSql(siteA, createGWR);
     executeSql(siteB, createGWR);
     executeSql(siteC, createGWR);
@@ -1214,7 +1211,7 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
 
     startSites(2);
 
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     
     executeSql(SITE_A,"CREATE gatewaysender mySender (remotedsid 2 isparallel false ) server groups (sg1)");
@@ -3953,29 +3950,6 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
     return receiverConf;
   }
 
-  
-  
-  public static Runnable createGatewayReceiverDefault() {
-    SerializableRunnable receiverConf = new SerializableRunnable(
-        "Receiver Configurator") {
-      @Override
-      public void run() throws CacheException {
-        try {
-          Connection conn = TestUtil.jdbcConn;
-          Statement st = conn.createStatement();
-          StringBuilder str = new StringBuilder();
-          str.append("CREATE GATEWAYRECEIVER proxy_reciever_1 server groups ( proxy )");
-          st.execute(str.toString());
-        }
-        catch (SQLException sqle) {
-          throw GemFireXDRuntimeException.newRuntimeException(null, sqle);
-        }
-      }
-
-    };
-    return receiverConf;
-  }
-  
   public static Runnable createGatewayReceiver(final int startPort,
       final int endPort) {
     SerializableRunnable receiverConf = new SerializableRunnable(
@@ -3986,20 +3960,20 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
           Connection conn = TestUtil.jdbcConn;
           Statement st = conn.createStatement();
           StringBuilder str = new StringBuilder();
-          str.append("create gatewayreceiver myrcvr");
+          str.append("create gatewayreceiver myrcvr (bindaddress 'localhost'");
           if (startPort != 0) {
-            str.append("( startport " + startPort);
+            str.append(" startport " + startPort);
           }
           else {
-            str.append("( startport " + GatewayReceiver.DEFAULT_START_PORT);
+            str.append(" startport " + GatewayReceiver.DEFAULT_START_PORT);
           }
           if (endPort != 0) {
-            str.append(" endport " + endPort + ")");
+            str.append(" endport " + endPort);
           }
           else {
-            str.append(" endport " + GatewayReceiver.DEFAULT_END_PORT + ")");
+            str.append(" endport " + GatewayReceiver.DEFAULT_END_PORT);
           }
-          str.append(" server groups (sg1)");
+          str.append(") server groups (sg1)");
           st.execute(str.toString());
         }
         catch (SQLException sqle) {
@@ -4076,7 +4050,8 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
 
           st = conn.createStatement();
           str = new StringBuilder();
-          str.append("CREATE GATEWAYRECEIVER RECEIVER2 ( STARTPORT 7785  ENDPORT 7789) SERVER GROUPS (DEMOGOUP)");
+          str.append("CREATE GATEWAYRECEIVER RECEIVER2 (bindaddress 'localhost' " +
+              "STARTPORT 7785  ENDPORT 7789) SERVER GROUPS (DEMOGOUP)");
           st.execute(str.toString());
 
           st = conn.createStatement();
