@@ -36,8 +36,6 @@
 package com.gemstone.gemfire.internal.shared;
 
 import java.io.Console;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -54,6 +52,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.Channel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.locks.LockSupport;
@@ -206,8 +207,9 @@ public abstract class ClientSharedUtils {
 
   // ------- End constants for date formatting
 
-  private static Logger DEFAULT_LOGGER = Logger.getLogger("");
-  private static Logger logger = DEFAULT_LOGGER;
+  private static volatile Logger _DEFAULT_LOGGER;
+  private static Logger logger;
+  private static final Properties baseLoggerProperties = new Properties();
 
   private static final Constructor<?> stringInternalConstructor;
   private static final int stringInternalConsVersion;
@@ -285,6 +287,14 @@ public abstract class ClientSharedUtils {
       }
     }
     bigIntMagnitude = mag;
+  }
+
+  private static synchronized Logger DEFAULT_LOGGER() {
+    final Logger logger = _DEFAULT_LOGGER;
+    if (logger != null) {
+      return logger;
+    }
+    return (_DEFAULT_LOGGER = Logger.getLogger(""));
   }
 
   private static int getShiftMultipler(char unitChar) {
@@ -742,7 +752,7 @@ public abstract class ClientSharedUtils {
               log.warning("Failed to set " + opt + " on socket: " + ex);
             } else {
               // just log as an information rather than warning
-              if (log != DEFAULT_LOGGER) { // SNAP-255
+              if (log != DEFAULT_LOGGER()) { // SNAP-255
                 log.info("Failed to set " + opt + " on socket: "
                     + ex.getMessage());
               }
@@ -1389,16 +1399,35 @@ public abstract class ClientSharedUtils {
     initLog4J(logFile, null, level);
   }
 
-  public static void initLog4J(String logFile, Properties userProps,
+  public static Properties getLog4jConfProperties(
+      String snappyHome) throws IOException {
+    Path confFile = Paths.get(snappyHome, "conf", "log4j.properties");
+    if (Files.isReadable(confFile)) {
+      try (InputStream in = Files.newInputStream(confFile)) {
+        Properties props = new Properties();
+        props.load(in);
+        return props;
+      }
+    }
+    return null;
+  }
+
+  private static Properties getLog4JProperties(String logFile,
       Level level) throws IOException {
-    // set the log file location
+    // check for user provided properties file in "conf/"
+    String snappyHome = NativeCalls.getInstance().getEnvironment("SNAPPY_HOME");
+    if (snappyHome != null) {
+      Properties props = getLog4jConfProperties(snappyHome);
+      if (props != null) {
+        return props;
+      }
+    }
+
     Properties props = new Properties();
-    InputStream in = ClientSharedUtils.class.getResourceAsStream(
-        "/store-log4j.properties");
-    try {
+    // fallback to defaults
+    try (InputStream in = ClientSharedUtils.class.getResourceAsStream(
+        "/store-log4j.properties")) {
       props.load(in);
-    } finally {
-      in.close();
     }
 
     // override file location and level
@@ -1414,30 +1443,28 @@ public abstract class ClientSharedUtils {
       props.setProperty("log4j.appender.file.file", logFile);
     }
     // override with any user provided properties file
-    in = ClientSharedUtils.class.getResourceAsStream("/log4j.properties");
-    if (in != null) {
-      Properties setProps = new Properties();
-      try {
-        setProps.load(in);
-      } finally {
-        in.close();
-      }
-      props.putAll(setProps);
-    }
-    // lastly override with user provided properties file in "conf/"
-    String snappyDir = NativeCalls.getInstance().getEnvironment("SNAPPY_HOME");
-    if (snappyDir != null) {
-      File confFile = new File(snappyDir + "/conf", "log4j.properties");
-      if (confFile.canRead()) {
+    try (InputStream in = ClientSharedUtils.class.getResourceAsStream(
+        "/log4j.properties")) {
+      if (in != null) {
         Properties setProps = new Properties();
-        in = new FileInputStream(confFile);
-        try {
-          setProps.load(in);
-        } finally {
-          in.close();
-        }
+        setProps.load(in);
         props.putAll(setProps);
       }
+    }
+    return props;
+  }
+
+  public static synchronized void initLog4J(String logFile,
+      Properties userProps, Level level) throws IOException {
+    Properties props;
+    if (baseLoggerProperties.isEmpty()) {
+      props = getLog4JProperties(logFile, level);
+      baseLoggerProperties.putAll(props);
+    } else if (userProps != null) {
+      props = (Properties)baseLoggerProperties.clone();
+    } else {
+      // in this case log4j has already been configured
+      return;
     }
     if (userProps != null) {
       props.putAll(userProps);
@@ -1449,7 +1476,8 @@ public abstract class ClientSharedUtils {
   public static synchronized void initLogger(String loggerName, String logFile,
       boolean initLog4j, boolean skipIfInitialized, Level level,
       final Handler handler) {
-    if (skipIfInitialized && logger != DEFAULT_LOGGER) {
+    Logger log = logger;
+    if (skipIfInitialized && log != null && log != DEFAULT_LOGGER()) {
       return;
     }
     clearLogger();
@@ -1460,7 +1488,7 @@ public abstract class ClientSharedUtils {
         throw newRuntimeException(ioe.getMessage(), ioe);
       }
     }
-    Logger log = Logger.getLogger(loggerName);
+    log = Logger.getLogger(loggerName);
     log.addHandler(handler);
     log.setLevel(level);
     log.setUseParentHandlers(false);
@@ -1472,8 +1500,17 @@ public abstract class ClientSharedUtils {
     logger = log;
   }
 
+  public static boolean isLoggerInitialized() {
+    final Logger log = logger;
+    return log != null && log != DEFAULT_LOGGER();
+  }
+
   public static Logger getLogger() {
-    return logger;
+    Logger log = logger;
+    if (log == null) {
+      logger = log = DEFAULT_LOGGER();
+    }
+    return log;
   }
 
   public static final long MAG_MASK = 0xFFFFFFFFL;
@@ -1531,18 +1568,18 @@ public abstract class ClientSharedUtils {
 
   private static void clearLogger() {
     final Logger log = logger;
-    if (log != DEFAULT_LOGGER) {
-      logger = DEFAULT_LOGGER;
+    if (log != null && log != DEFAULT_LOGGER()) {
       for (Handler h : log.getHandlers()) {
         log.removeHandler(h);
         // try and close the handler ignoring any exceptions
         try {
           h.close();
-        } catch (Exception ex) {
-          // ignore
+        } catch (Exception ignore) {
         }
       }
     }
+    logger = null;
+    baseLoggerProperties.clear();
   }
 
   /**

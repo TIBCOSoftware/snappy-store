@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.internal.i18n;
 
 import com.gemstone.gemfire.i18n.StringIdImpl;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.org.jgroups.util.StringId;
 
 /**
@@ -1343,12 +1344,16 @@ class ParentLocalizedStrings {
   public static final StringId CacheRecordManager_ARGUMENT_RECMAN_IS_NULL = new StringIdImpl(2320, "Argument ''recman'' is null");
   public static final StringId CacheRecordManager_RECORDMANAGER_HAS_BEEN_CLOSED = new StringIdImpl(2321, "RecordManager has been closed");
   public static final StringId CacheServerHelper_UTF8_NOT_SUPPORTED_IN_THIS_JVM = new StringIdImpl(2322, "UTF-8 not supported in this JVM");
-  public static final StringId CacheServerLauncher_A_0_IS_ALREADY_RUNNING_IN_DIRECTORY_1_2 = new StringIdImpl(2323, "A {0} is already running in directory \"{1}\"\n {2}");
+  public static final StringId CacheServerLauncher_A_0_IS_ALREADY_RUNNING_IN_DIRECTORY_1_2 =
+      new StringIdImpl(2323, LauncherBase.LAUNCHER_IS_ALREADY_RUNNING_IN_DIRECTORY);
   public static final StringId CacheServerLauncher_0_EXISTS_BUT_WAS_NOT_STOPPED = new StringIdImpl(2324, "{0} exists but was not stopped.");
   public static final StringId CacheServerLauncher_INTERNAL_ERROR_SHOULDNT_REACH_HERE = new StringIdImpl(2325, "internal error.. should not reach here.");
-  public static final StringId CacheServerLauncher_NO_AVAILABLE_STATUS = new StringIdImpl(2326, "No available status. Either status file \"{0}\" is not readable or reading the status file timed out.");
-  public static final StringId CacheServerLauncher_THE_INPUT_WORKING_DIRECTORY_DOES_NOT_EXIST_0 = new StringIdImpl(2327, "The input working directory does not exist:  {0}");
-  public static final StringId CacheServerLauncher_UNKNOWN_ARGUMENT_0 = new StringIdImpl(2328, "Unknown argument:  {0}");
+  public static final StringId CacheServerLauncher_NO_AVAILABLE_STATUS =
+      new StringIdImpl(2326, LauncherBase.LAUNCHER_NO_AVAILABLE_STATUS);
+  public static final StringId CacheServerLauncher_THE_INPUT_WORKING_DIRECTORY_DOES_NOT_EXIST_0 =
+      new StringIdImpl(2327, LauncherBase.LAUNCHER_WORKING_DIRECTORY_DOES_NOT_EXIST);
+  public static final StringId CacheServerLauncher_UNKNOWN_ARGUMENT_0 =
+      new StringIdImpl(2328, LauncherBase.LAUNCHER_UNKNOWN_ARGUMENT);
   public static final StringId CacheTransactionManagerCreation_GETTING_A_TRANSACTIONID_NOT_SUPPORTED = new StringIdImpl(2329, "Getting a TransactionId not supported");
   public static final StringId CacheTransactionManagerCreation_MORE_THAN_ONE_TRANSACTION_LISTENER_EXISTS = new StringIdImpl(2330, "more than one transaction listener exists");
   public static final StringId CacheTransactionManagerCreation_TRANSACTIONS_NOT_SUPPORTED = new StringIdImpl(2331, "Transactions not supported");

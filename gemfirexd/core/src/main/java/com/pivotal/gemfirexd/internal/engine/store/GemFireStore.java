@@ -76,6 +76,7 @@ import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TLongHashSet;
@@ -914,16 +915,16 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       evictionHeapPercent = Float.parseFloat(propValue);
     }
     propValue = PropertyUtil.findAndGetProperty(props,
-        CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
+        LauncherBase.CRITICAL_OFF_HEAP_PERCENTAGE,
         GfxdConstants.GFXD_PREFIX
-            + CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE);
+            + LauncherBase.CRITICAL_OFF_HEAP_PERCENTAGE);
     if (propValue != null) {
       criticalOffHeapPercent = Float.parseFloat(propValue);
     }
     propValue = PropertyUtil.findAndGetProperty(props,
-        CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
+        LauncherBase.EVICTION_OFF_HEAP_PERCENTAGE,
         GfxdConstants.GFXD_PREFIX
-            + CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE);
+            + LauncherBase.EVICTION_OFF_HEAP_PERCENTAGE);
     if (propValue != null) {
       evictionOffHeapPercent = Float.parseFloat(propValue);
     }

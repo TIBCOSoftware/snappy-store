@@ -48,6 +48,7 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.concurrent.AB;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gnu.trove.THashSet;
@@ -71,14 +72,14 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
       .getBoolean("gemfire.HeapLRUCapacityController.DISABLE_HEAP_EVICTIOR_THREAD_POOL");
 
   public static final String EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_PROP =
-      "gemfire.HeapLRUCapacityController.evictHighEntryCountBucketsFirst";
+      LauncherBase.EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_PROP;
 
   public static final boolean EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST = Boolean.valueOf(
       System.getProperty(EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_PROP,
           "true")).booleanValue(); 
 
   public static final String EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP =
-      "gemfire.HeapLRUCapacityController.evictHighEntryCountBucketsFirstForEvictor";
+      LauncherBase.EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP;
 
   public static final boolean EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR =
       Boolean.valueOf(System.getProperty(EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP,

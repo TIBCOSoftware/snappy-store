@@ -226,10 +226,10 @@ public class CacheServerLauncherJUnitTest extends TestCase {
         ".*The CacheServer has stopped\\.");
   }
 
-  private File createCacheServerDotSerFile(final File directory) throws Exception {
-    final File cacheServerDotSer = new File(directory, ".cacheserver.ser");
-    assertTrue("Failed to create the .cacheserver.ser file!", cacheServerDotSer.createNewFile());
-    return cacheServerDotSer;
+  private File createCacheServerDotStatFile(final File directory) throws Exception {
+    final File cacheServerDotStat = new File(directory, ".cacheserver.stat");
+    assertTrue("Failed to create the .cacheserver.stat file!", cacheServerDotStat.createNewFile());
+    return cacheServerDotStat;
   }
 
   public void testStartWithExistingCacheServerDotSerFileCheckStatusAndStop() throws Exception {
@@ -240,9 +240,9 @@ public class CacheServerLauncherJUnitTest extends TestCase {
     assertTrue("Failed to make working directory (" + cacheServerDirectory.getAbsolutePath() + ") for cacheserver!",
       cacheServerDirectory.mkdir());
 
-    final File cacheServerDotSerFile = createCacheServerDotSerFile(cacheServerDirectory);
+    final File cacheServerDotStatFile = createCacheServerDotStatFile(cacheServerDirectory);
 
-    assertTrue("The .cacheserver.ser file could not be found!", cacheServerDotSerFile.exists());
+    assertTrue("The .cacheserver.stat file could not be found!", cacheServerDotStatFile.exists());
 
     final String cacheXmlFileName = testCaseName + ".xml";
     final String logFileName = testCaseName + ".log";
@@ -270,7 +270,7 @@ public class CacheServerLauncherJUnitTest extends TestCase {
     int count = 0;
     final int increment = 500;
 
-    while (cacheServerDotSerFile.exists() && count < 5000) {
+    while (cacheServerDotStatFile.exists() && count < 5000) {
       try {
         Thread.sleep(increment);
       }
@@ -281,7 +281,7 @@ public class CacheServerLauncherJUnitTest extends TestCase {
       }
     }
 
-    assertFalse("The .cacheserver.ser file was not properly cleaned up!", cacheServerDotSerFile.exists());
+    assertFalse("The .cacheserver.stat file was not properly cleaned up!", cacheServerDotStatFile.exists());
   }
 
   public void testCacheServerTerminatingAbnormally() throws Exception {
@@ -339,10 +339,10 @@ public class CacheServerLauncherJUnitTest extends TestCase {
       assertFalse("The CacheServer process with PID (" + pid + ") was not successfully terminated!",
         OSProcess.exists(pid));
 
-      final File dotCacheServerDotSerFile = new File(cacheServerDirectory, ".cacheserver.ser");
+      final File dotCacheServerDotStatFile = new File(cacheServerDirectory, ".cacheserver.stat");
 
-      // assert that the .cacheserver.ser file remains...
-      assertTrue(dotCacheServerDotSerFile.exists());
+      // assert that the .cacheserver.stat file remains...
+      assertTrue(dotCacheServerDotStatFile.exists());
 
       int count = 2;
 
@@ -360,7 +360,7 @@ public class CacheServerLauncherJUnitTest extends TestCase {
       execAndValidate(new String[] { "status", "-dir="+cacheServerDirectory.getName() },
         "CacheServer pid: 0 status: stopped");
 
-      assertFalse(dotCacheServerDotSerFile.exists());
+      assertFalse(dotCacheServerDotStatFile.exists());
     }
   }
 

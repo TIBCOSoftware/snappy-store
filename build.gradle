@@ -51,6 +51,7 @@ allprojects {
     protobufVersion = '2.6.1'
     kryoVersion = '4.0.1'
     thriftVersion = '0.9.3'
+    jnaVersion = '4.5.0'
     jerseyVersion = '2.26'
     jsr305Version = '3.0.2'
     servletAPIVersion = '3.1.0'

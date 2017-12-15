@@ -19,6 +19,7 @@ package com.pivotal.gemfirexd;
 
 import java.sql.Statement;
 
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 
 /**
@@ -184,7 +185,7 @@ public interface Attribute {
   /**
    * The GemFireXD log file path property.
    */
-  String LOG_FILE = "log-file";
+  String LOG_FILE = LauncherBase.LOG_FILE;
 
   /**
    * The VM level property to specify the default initial capacity used for
@@ -233,7 +234,7 @@ public interface Attribute {
    * The GemFireXD property used to specify whether this VM should host data or
    * not (i.e. whether data-store or an accessor).
    */
-  String GFXD_HOST_DATA = "host-data";
+  String GFXD_HOST_DATA = LauncherBase.HOST_DATA;
 
   /** property name for enabling persistence of data dictionary */
   String GFXD_PERSIST_DD = "persist-dd";

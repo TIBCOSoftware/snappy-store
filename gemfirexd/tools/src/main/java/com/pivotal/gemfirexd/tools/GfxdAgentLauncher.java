@@ -82,8 +82,13 @@ public class GfxdAgentLauncher extends GfxdServerLauncher {
   }
 
   @Override
-  protected boolean setDefaultHeapSize() {
-    return false;
+  protected long getDefaultHeapSizeMB(boolean hostData) {
+    return 1536L;
+  }
+
+  @Override
+  protected long getDefaultSmallHeapSizeMB(boolean hostData) {
+    return 768L;
   }
 
   @Override
@@ -267,12 +272,6 @@ public class GfxdAgentLauncher extends GfxdServerLauncher {
     processServerEnv(props);
 
     return options;
-  }
-
-  @Override
-  protected void startRebalanceFactory(final Cache cache,
-      final Map<String, Object> options) {
-    // nothing by default
   }
 
   @Override

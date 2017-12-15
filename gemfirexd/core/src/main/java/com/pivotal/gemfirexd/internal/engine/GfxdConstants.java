@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -484,10 +484,10 @@ public interface GfxdConstants {
           Property.HADOOP_IS_GFXD_LONER,
           Property.GFXD_HD_HOMEDIR,
           Property.GFXD_HD_NAMENODEURL,
-          CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE,
-          CacheServerLauncher.EVICTION_HEAP_PERCENTAGE,
-          CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
-          CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
+          LauncherBase.CRITICAL_HEAP_PERCENTAGE,
+          LauncherBase.EVICTION_HEAP_PERCENTAGE,
+          LauncherBase.CRITICAL_OFF_HEAP_PERCENTAGE,
+          LauncherBase.EVICTION_OFF_HEAP_PERCENTAGE,
           Attribute.THRIFT_USE_BINARY_PROTOCOL,
           Attribute.THRIFT_USE_FRAMED_TRANSPORT,
           Attribute.THRIFT_USE_SSL,
