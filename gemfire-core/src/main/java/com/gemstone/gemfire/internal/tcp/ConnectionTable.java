@@ -408,10 +408,9 @@ public final class ConnectionTable  {
     };
     this.connectionPool = new QueryKeyedObjectPool<>(connectionFactory,
         c.getCancelCriterion());
-    final int numProcessors = Runtime.getRuntime().availableProcessors();
     final int numConnections = Math.max(DistributionManager.MAX_PR_THREADS_SET,
         // SNAP-1682
-        Math.max(32, DistributionManager.MAX_PR_THREADS));
+        Math.max(32, Math.min(64, DistributionManager.MAX_PR_THREADS)));
     this.connectionPool.setMaxTotalPerKey(numConnections);
     this.connectionPool.setMaxIdlePerKey(numConnections);
     this.connectionPool.setTestOnBorrow(true);

@@ -20,8 +20,8 @@ plugins {
 }
 
 dependencies {
-  compileOnly "org.apache.thrift:libthrift:${thriftVersion}"
   compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+  compile "org.apache.thrift:libthrift:${thriftVersion}"
 
   compile project(subprojectBase + 'snappydata-store-shared')
 }
