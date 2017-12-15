@@ -16,14 +16,12 @@
  */
 package com.pivotal.gemfirexd.internal.engine.distributed;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import org.apache.derbyTesting.junit.JDBC;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 
@@ -47,8 +45,7 @@ public class TruncateTableDUnit extends DistributedSQLTestBase
     // Use this VM as the network client
     TestUtil.loadNetDriver();
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort1);
+    String url = TestUtil.getNetProtocol("localhost", netPort1);
     Connection conn = DriverManager.getConnection(url);
     Statement st = conn.createStatement();
     st.execute("create schema test");
@@ -258,8 +255,7 @@ public class TruncateTableDUnit extends DistributedSQLTestBase
       // Use this VM as the network client
       TestUtil.loadNetDriver();
 
-      final InetAddress localHost = SocketCreator.getLocalHost();
-      String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort1);
+      String url = TestUtil.getNetProtocol("localhost", netPort1);
       Connection conn = DriverManager.getConnection(url);
       Statement st = conn.createStatement();         
       st.execute("create schema test");

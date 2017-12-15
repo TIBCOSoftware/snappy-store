@@ -42,7 +42,6 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -561,7 +560,7 @@ public class ClientServer2DUnit extends ClientServerTestBase {
     int locPort2 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
     int locPort3 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
 
-    final String address = SocketCreator.getLocalHost().getHostAddress();
+    final String address = "localhost";
     // try with both host:port and host[port] for client connection
     String locators = address + '[' + locPort1 + "]," + address + '['
         + locPort2 + "]," + address + '[' + locPort3 + ']';

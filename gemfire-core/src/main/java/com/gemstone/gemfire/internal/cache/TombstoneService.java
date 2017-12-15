@@ -40,7 +40,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -59,9 +58,12 @@ import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.cache.versions.CompactVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantLock;
+
+import static com.gemstone.gemfire.internal.shared.SystemProperties.getServerInstance;
 
 /**
  * Tombstones are region entries that have been destroyed but are held
@@ -84,8 +86,8 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
    * 
    * The default is 600,000 milliseconds (10 minutes).
    */
-  public static long REPLICATED_TOMBSTONE_TIMEOUT = Long.getLong(
-      "gemfire.tombstone-timeout", 600000L).longValue();
+  public static long REPLICATED_TOMBSTONE_TIMEOUT = getServerInstance().getLong(
+      "tombstone-timeout", 600000L);
   
   /**
    * The default tombstone expiration period in millis for non-replicated
@@ -96,37 +98,41 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
    * by others that no longer have the tombstone.<p>
    * The default is 480,000 milliseconds (8 minutes)
    */
-  public static long CLIENT_TOMBSTONE_TIMEOUT = Long.getLong(
-      "gemfire.non-replicated-tombstone-timeout", 480000);
+  public static long CLIENT_TOMBSTONE_TIMEOUT = getServerInstance().getLong(
+      "non-replicated-tombstone-timeout", 480000);
   
   /**
    * The max number of tombstones in an expired batch.  This covers
    * all replicated regions, including PR buckets.  The default is
    * 100,000 expired tombstones.
    */
-  public static long EXPIRED_TOMBSTONE_LIMIT = Long.getLong("gemfire.tombstone-gc-threshold", 100000);
+  public static long EXPIRED_TOMBSTONE_LIMIT = getServerInstance().getLong(
+      "tombstone-gc-threshold", 100000);
   
   /**
    * The interval to scan for expired tombstones in the queues
    */
-  public static long DEFUNCT_TOMBSTONE_SCAN_INTERVAL = Long.getLong("gemfire.tombstone-scan-interval", 60000);
+  public static long DEFUNCT_TOMBSTONE_SCAN_INTERVAL = getServerInstance().getLong(
+      "tombstone-scan-interval", 60000);
   
   /**
    * The threshold percentage of free max memory that will trigger tombstone GCs.
    * The default percentage is somewhat less than the LRU Heap evictor so that
    * we evict tombstones before we start evicting cache data.
    */
-  public static double GC_MEMORY_THRESHOLD = Integer.getInteger("gemfire.tombstone-gc-memory-threshold",
+  public static double GC_MEMORY_THRESHOLD = getServerInstance().getInteger("tombstone-gc-memory-threshold",
       30 /*100-HeapLRUCapacityController.DEFAULT_HEAP_PERCENTAGE*/) * 0.01;
   
   /** this is a test hook for causing the tombstone service to act as though free memory is low */
   public static boolean FORCE_GC_MEMORY_EVENTS = false;
   
   /** verbose tombstone logging for diagnosing tombstone problems */
-  public static boolean VERBOSE = Boolean.getBoolean("gemfire.TombstoneService.VERBOSE");
+  public static boolean VERBOSE = getServerInstance().getBoolean(
+      "TombstoneService.VERBOSE", false);
 
   public final static Object debugSync = new Object();
-  public final static boolean DEBUG_TOMBSTONE_COUNT = Boolean.getBoolean("gemfire.TombstoneService.DEBUG_TOMBSTONE_COUNT");
+  public final static boolean DEBUG_TOMBSTONE_COUNT = getServerInstance().getBoolean(
+      "TombstoneService.DEBUG_TOMBSTONE_COUNT", false);
 
   public static boolean IDLE_EXPIRATION = false; // dunit test hook for forced batch expiration
   
@@ -580,17 +586,19 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
     /**
      * The sweeper thread's current tombstone
      */
-    Tombstone currentTombstone;
+    volatile Tombstone currentTombstone;
     /**
      * a lock protecting the value of currentTombstone from changing
      */
     final StoppableReentrantLock currentTombstoneLock;
     /**
-     * tombstones that have expired and are awaiting batch removal.  This
-     * variable is only accessed by the sweeper thread and so is not guarded
+     * Tombstones that have expired and are awaiting batch removal.
+     * Needs to be thread-safe (GEODE-2240).
      */
-    Set<Tombstone> expiredTombstones;
-    
+    final ConcurrentTHashSet<Tombstone> expiredTombstones;
+
+    private static final Tombstone[] ZERO_ARRAY = new Tombstone[0];
+
     /**
      * count of entries to forcibly expire due to memory events
      */
@@ -630,8 +638,8 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
       this.queueSize = queueSize;
       if (batchMode) {
         this.batchMode = true;
-        this.expiredTombstones = new HashSet<Tombstone>();
       }
+      this.expiredTombstones = new ConcurrentTHashSet<>(1);
       this.currentTombstoneLock = new StoppableReentrantLock(cache.getCancelCriterion());
     }
     
@@ -712,10 +720,9 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
       boolean batchScheduled = false;
       try {
         final Set<DistributedRegion> regionsAffected = new HashSet<DistributedRegion>();
-        Set<Tombstone> expired = expiredTombstones;
+        Tombstone[] expired = expiredTombstones.drainTo(ZERO_ARRAY);
         long removalSize = 0;
-        expiredTombstones = new HashSet<Tombstone>();
-        if (expired.size() == 0) {
+        if (expired.length == 0) {
           return;
         }
 
@@ -850,33 +857,27 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
               }
             }
           }
+          Tombstone currentTombstone = this.currentTombstone;
           if (currentTombstone == null) {
+            currentTombstoneLock.lock();
             try {
-              currentTombstoneLock.lock();
-              try {
-                if (tombstones.size() > 0) {
-                  currentTombstone = tombstones.remove();
-                } else {
-                  if (VERBOSE) {
-                    cache.getLoggerI18n().info(LocalizedStrings.DEBUG,
-                        "queue is empty - will sleep");
-                  }
-                  forceExpirationCount = 0;
+              if (this.currentTombstone != null ||
+                  (this.currentTombstone = tombstones.poll()) != null) {
+                currentTombstone = this.currentTombstone;
+              } else {
+                currentTombstone = null;
+                if (VERBOSE) {
+                  cache.getLoggerI18n().info(LocalizedStrings.DEBUG,
+                      "queue is empty - will sleep");
                 }
-              } finally {
-                currentTombstoneLock.unlock();
+                forceExpirationCount = 0;
               }
-              if (VERBOSE && forceExpirationCount != 0) {
-                cache.getLoggerI18n().info(LocalizedStrings.DEBUG,
-                    "current tombstone is " + currentTombstone);
-              }
-            } catch (NoSuchElementException e) {
-              // expected
-              if (VERBOSE) {
-                cache.getLoggerI18n().info(LocalizedStrings.DEBUG,
-                    "queue is empty - will sleep");
-              }
-              forceExpirationCount = 0;
+            } finally {
+              currentTombstoneLock.unlock();
+            }
+            if (VERBOSE && forceExpirationCount != 0) {
+              cache.getLoggerI18n().info(LocalizedStrings.DEBUG,
+                  "current tombstone is " + currentTombstone);
             }
           }
           long sleepTime;
@@ -905,6 +906,7 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
               currentTombstoneLock.lock();
               try {
                 currentTombstone = null;
+                this.currentTombstone = null;
               } finally {
                 currentTombstoneLock.unlock();
               }
@@ -938,6 +940,7 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
                       currentTombstoneLock.lock();
                       try {
                         currentTombstone = null;
+                        this.currentTombstone = null;
                       } finally {
                         currentTombstoneLock.unlock();
                       }
@@ -968,6 +971,7 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
                       currentTombstoneLock.lock();
                       try {
                         currentTombstone = null;
+                        this.currentTombstone = null;
                       } finally {
                         currentTombstoneLock.unlock();
                       }

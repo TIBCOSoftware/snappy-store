@@ -16,7 +16,6 @@
  */
 package io.snappydata.app;
 
-import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Set;
@@ -61,7 +60,6 @@ public class TestThrift {
 
   public static void run(String locatorHost, int locatorPort,
       boolean framedTransport) throws Exception {
-    String hostName = InetAddress.getLocalHost().getCanonicalHostName();
     // This adds the process ID to its unique client ID but this can be
     // something else like a UUID that can be used to distinguish it uniquely
     // on this client machine. The combination of this with the hostName above
@@ -89,7 +87,7 @@ public class TestThrift {
     LocatorService.Client controlService = new LocatorService.Client(
         inProtocol, outProtocol);
 
-    ClientConnection conn = ClientConnection.open(hostName, pid,
+    ClientConnection conn = ClientConnection.open("localhost", pid,
         controlService, serverType, framedTransport);
 
     // the unique token assigned by server is required in all the calls and

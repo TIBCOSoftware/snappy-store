@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 import com.gemstone.gemfire.GemFireCheckedException;
 import com.gemstone.gemfire.cache.CacheLoaderException;
@@ -50,6 +49,7 @@ import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.TransactionMessage;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RetryTimeKeeper;
 import com.gemstone.gnu.trove.THashMap;
+import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.OffHeapReleaseUtil;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdCallbackArgument;
@@ -247,22 +247,19 @@ public class GetAllExecutorMessage extends RegionMultiKeyExecutorMessage {
     final ArrayList<Object> resultList = new ArrayList<Object>();
     final LogWriterI18n logger = region.getLogWriterI18n();
     final int numKeys = this.membersToKeys.size();
-    final List<Integer> bucketList = new ArrayList<Integer>();
+    final TIntArrayList bucketList = new TIntArrayList(this.bucketBitSet.size());
     {
-      // lets make an ordered set (on bucket-id) of unique buckets, first
-      TreeSet<Integer> uniqueBucketList = new TreeSet<Integer>();
-      for (int bucketId = this.bucketBitSet.nextSetBit(0, 0); bucketId >= 0;
-          bucketId = this.bucketBitSet.nextSetBit(bucketId + 1)) {
-        uniqueBucketList.add(bucketId);
-      }
-
-      // now duplicate bucket-id given count times
+      // duplicate bucket-id given count times
       if (SanityManager.DEBUG) {
-        SanityManager.ASSERT(this.keysCountPerBucket.size() == uniqueBucketList
-            .size());
+        if (this.keysCountPerBucket.size() != this.bucketBitSet.size()) {
+          SanityManager.ASSERT(false, "keysCountPerBucket=" +
+              keysCountPerBucket + " bucketBitSet=" + bucketBitSet +
+              " allMembersBuckets=" + allMembersAndBucketsAndKeys);
+        }
       }
       Iterator<Integer> countItr = keysCountPerBucket.iterator();
-      for (int bucketId : uniqueBucketList) {
+      for (int bucketId = this.bucketBitSet.nextSetBit(0, 0); bucketId >= 0;
+           bucketId = this.bucketBitSet.nextSetBit(bucketId + 1)) {
         int count = countItr.next();
         for (int i = 0; i < count; i++) {
           bucketList.add(bucketId);

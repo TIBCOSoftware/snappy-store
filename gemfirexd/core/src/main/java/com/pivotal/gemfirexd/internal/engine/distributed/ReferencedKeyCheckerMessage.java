@@ -1205,7 +1205,11 @@ public final class ReferencedKeyCheckerMessage extends
             sb.append("::");
           }
           byte[] keyRow = this.keyRows.get(index);
-          sb.append(ClientSharedUtils.toHexString(keyRow, 0, keyRow.length));
+          if (keyRow != null) {
+            sb.append(ClientSharedUtils.toHexString(keyRow, 0, keyRow.length));
+          } else {
+            sb.append("null");
+          }
         }
       }
       else {

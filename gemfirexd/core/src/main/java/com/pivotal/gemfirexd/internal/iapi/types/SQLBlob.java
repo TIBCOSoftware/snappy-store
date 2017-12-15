@@ -49,6 +49,7 @@ import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.MessageService;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
+import io.snappydata.thrift.common.BufferedBlob;
 
 import java.sql.Blob;
 import java.sql.ResultSet;
@@ -268,6 +269,10 @@ public class SQLBlob extends SQLBinary
 			ps.setBlob(position, (Blob)null);    
 			return;
 		}
+		if (_blobValue instanceof BufferedBlob) {
+			ps.setBlob(position, _blobValue);
+			return;
+		}
 
 		// This may cause problems for streaming blobs, by materializing the whole blob.
 		ps.setBytes(position, getBytes());
@@ -282,6 +287,10 @@ public class SQLBlob extends SQLBinary
 // GemStone changes BEGIN
       if (theValue instanceof byte[]) {
         setValue((byte[])theValue);
+        return;
+      }
+      if (theValue instanceof BufferedBlob) {
+        setValue((BufferedBlob)theValue);
         return;
       }
 // GemStone changes END

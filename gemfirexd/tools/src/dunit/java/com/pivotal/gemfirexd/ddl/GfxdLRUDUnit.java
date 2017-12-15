@@ -53,9 +53,9 @@ public class GfxdLRUDUnit extends DistributedSQLTestBase {
   }
 
   private void insertNBigElements(int n, PreparedStatement ps, int baseCnt) throws SQLException {
-    String dummyPrefix = "";
-    for(int i=0; i<100; i++) {
-      dummyPrefix += "jjjjjjjjjj";
+    StringBuilder dummyPrefix = new StringBuilder();
+    for (int i = 0; i < 100; i++) {
+      dummyPrefix.append("jjjjjjjjjj");
     }
     for (int i = baseCnt; i < n+baseCnt; i++) {
       String name = dummyPrefix + "_name"+i;

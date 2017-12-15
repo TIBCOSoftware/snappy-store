@@ -209,7 +209,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   }
 
   final void checkScrollable() throws SQLException {
-    if (this.attrs.resultSetType == snappydataConstants.RESULTSET_TYPE_FORWARD_ONLY) {
+    if (this.attrs.getResultSetType() == snappydataConstants.RESULTSET_TYPE_FORWARD_ONLY) {
       throw ThriftExceptionUtil
           .newSQLException(SQLState.CURSOR_MUST_BE_SCROLLABLE);
     }
@@ -1337,7 +1337,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     checkClosed();
 
     // noinspection MagicConstant
-    return Converters.getJdbcResultSetType(this.attrs.resultSetType);
+    return Converters.getJdbcResultSetType(this.attrs.getResultSetType());
   }
 
   /**

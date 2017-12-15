@@ -1566,10 +1566,8 @@ public class SelectsToGetTest extends JdbcTestBase {
         .getBoolean("gemfire.CacheServerLauncher.dontExitAfterLaunch");
     
     assert LAUNCH_PEER_SERVER == before;
-    
 
-    final String hostname = java.net.InetAddress.getLocalHost().getCanonicalHostName() + ".pune.gemstone.com";
-    
+    final String hostname = "localhost";
     if (LAUNCH_PEER_SERVER) {
       boolean locatorConfigured = false;
       int debugPort = 1044;

@@ -20,7 +20,6 @@ import java.util.Map;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 
@@ -32,7 +31,7 @@ public interface RowEncoder {
   /**
    * Encode the key-value to an {@link ExecRow}.
    */
-  ExecRow toRow(RegionEntry entry, Object value, GemFireContainer container);
+  ExecRow toRow(Object rawKey, Object value, GemFireContainer container);
 
   /**
    * Decode the key-value from a row as encoded by {@link #toRow}.

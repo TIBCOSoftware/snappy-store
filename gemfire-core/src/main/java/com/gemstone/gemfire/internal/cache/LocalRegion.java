@@ -449,6 +449,8 @@ public class LocalRegion extends AbstractRegion
    */
   private final StoppableCountDownLatch afterRegionCreateEventLatch;
 
+  private final StoppableReentrantReadWriteLock deltaLock;
+
   /**
    * For test purpose to, especially for AbstractRegionMap.applyAllSuspects
    */
@@ -759,6 +761,8 @@ public class LocalRegion extends AbstractRegion
         this.stopper, 1);
     this.afterRegionCreateEventLatch = new StoppableCountDownLatch(
         this.stopper, 1);
+
+    this.deltaLock = new StoppableReentrantReadWriteLock(this.stopper);
 
     String myName = getFullPath();
     if (internalRegionArgs.getPartitionedRegion() != null) {
@@ -3205,6 +3209,11 @@ public class LocalRegion extends AbstractRegion
     return getDiskRegion().isBackup();
   }
 
+  @Override
+  public void updateMemoryStats(Object oldValue, Object newValue) {
+    // only used by BucketRegion as of now
+  }
+
   /**
    * Lets the customer do an explicit evict of a value to disk and removes the value
    * from memory. This was added for customer.
@@ -3651,6 +3660,21 @@ public class LocalRegion extends AbstractRegion
     releaseLatch(this.initializationLatchAfterGetInitialImage);
   }
 
+  protected final void readLockEnqueueDelta() {
+    deltaLock.readLock().lock();
+  }
+
+  protected final void readUnlockEnqueueDelta() {
+    deltaLock.readLock().unlock();
+  }
+
+  protected final void writeLockEnqueueDelta() {
+    deltaLock.writeLock().lock();
+  }
+
+  protected final void writeUnlockEnqueueDelta() {
+    deltaLock.writeLock().unlock();
+  }
   /**
    * Called after we have delivered our REGION_CREATE event.
    *
@@ -8963,7 +8987,8 @@ public class LocalRegion extends AbstractRegion
     // complete index is going to be blown away; bucket region will need to
     // override to clear in every case
     if (!setIsDestroyed) {
-      return indexUpdater.clearIndexes(this, getDiskRegion(), lockForGII, true, null, false);
+      return indexUpdater.clearIndexes(this, getDiskRegion(), lockForGII,
+          true, null, KeyInfo.UNKNOWN_BUCKET);
     }
     return false;
   }
@@ -13484,6 +13509,32 @@ public class LocalRegion extends AbstractRegion
 
       cachePerfStats.stats.incLong(compressionPreCompressedBytesId, startSize);
       cachePerfStats.stats.incLong(compressionPostCompressedBytesId, endSize); 
+    }
+
+    @Override
+    public void endCompressionSkipped(long startTime, long startSize) {
+      if (enableClockStats) {
+        long time = getStatTime() - startTime;
+        stats.incLong(compressionSkippedTimeId, time);
+        cachePerfStats.stats.incLong(compressionSkippedTimeId, time);
+      }
+      stats.incLong(compressionSkippedId, 1);
+      stats.incLong(compressionSkippedBytesId, startSize);
+
+      cachePerfStats.stats.incLong(compressionSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionSkippedBytesId, startSize);
+    }
+
+    @Override
+    public void incDecompressedReplaceSkipped() {
+      stats.incLong(compressionDecompressedReplaceSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionDecompressedReplaceSkippedId, 1);
+    }
+
+    @Override
+    public void incCompressedReplaceSkipped() {
+      stats.incLong(compressionCompressedReplaceSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionCompressedReplaceSkippedId, 1);
     }
 
     public long startDecompression() {

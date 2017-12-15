@@ -102,12 +102,13 @@ public interface IndexUpdater {
   /**
    * Invoked to clear all index entries for a region before destroying it. This
    * can be a bucket region or a replicated region.
-   * 
+   *
    * @param region
    *          the {@link LocalRegion} being destroyed
-   * @param dr the {@link DiskRegion} to be used; normally is the DiskRegion
-   *           of the "region", but can be different in case a bucket region has
-   *           not yet been created in a failed GII when destroying the disk data
+   * @param dr
+   *          the {@link DiskRegion} to be used; normally is the DiskRegion of
+   *          the "region", but can be different in case a bucket region has not
+   *          yet been created in a failed GII when destroying the disk data
    * @param lockForGII
    *          if true then also acquire the {@link #lockForGII()}
    * @param holdIndexLock
@@ -117,18 +118,19 @@ public interface IndexUpdater {
    *          block when this is true by a call to
    *          {@link #releaseIndexLock(LocalRegion)}
    * @param bucketEntriesIter
-   *         iterator on List of RegionEntry belonging to the bucket which is being destroyed.
-   *         null is passed for non bucket regions.
-   * @param destroyOffline
-   * @return  Returns whether write lock was acqired by clearIndex or not
+   *          iterator on List of RegionEntry belonging to the bucket which is
+   *          being destroyed with null passed for non bucket regions
+   * @param bucketId
+   *          if region passed is a PR then ID of the current bucket else -1
+   *
+   * @return returns whether write lock was acquired by clearIndex or not
    */
-
   boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
-      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline);
+      boolean holdIndexLock, Iterator<?> bucketEntriesIter, int bucketId);
 
   /**
    * should be invoked if "holdIndexLock" argument was true in
-   * {@link #clearIndexes(LocalRegion, DiskRegion, boolean, boolean, Iterator, boolean)}
+   * {@link #clearIndexes(LocalRegion, DiskRegion, boolean, boolean, Iterator, int)}
    */
   public void releaseIndexLock(LocalRegion region);
 

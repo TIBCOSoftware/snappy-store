@@ -112,7 +112,7 @@ public final class NanoTimer {
           for (int clockId : clockIds) {
             int sum = 0;
             long start = _nanoTime(clockId);
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 50; i++) {
               sum += i;
             }
             long end = _nanoTime(clockId);

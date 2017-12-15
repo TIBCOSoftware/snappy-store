@@ -386,8 +386,8 @@ public final class ClientService extends ReentrantLock implements LobService {
           p.setParameter(this.socketParams, propValue);
         }
       }
-      // check if configured to use direct ByteBuffers
-      directBuffers = Boolean.parseBoolean(props.remove(
+      // check direct ByteBuffers for large LOB chunks (default is true)
+      directBuffers = !"false".equalsIgnoreCase(props.remove(
           ClientAttribute.THRIFT_LOB_DIRECT_BUFFERS));
       // set the chunk size for LOBs if set
       String chunkSize = props.remove(ClientAttribute.THRIFT_LOB_CHUNK_SIZE);

@@ -56,6 +56,8 @@ public interface InternalPartitionResolver<K, V> extends
   Object getRoutingObject(Object key, Object val, Object callbackArg,
       Region<?, ?> region);
 
+  String[] getPartitioningColumns();
+
   /**
    * Return the number of partitioning columns in the table.
    */

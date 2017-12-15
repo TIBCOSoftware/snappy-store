@@ -62,7 +62,6 @@ import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgumen
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -4075,22 +4074,22 @@ public final class GenericLanguageConnectionContext
 		}
 	}
       
-        /** @see LanguageConnectionContext#getExplainConnection() */
+        @Override
         public final boolean explainConnection() {
           return explainConnection;
         }
       
-        /** @see LanguageConnectionContext#setExplainConnectionMode(boolean) */
+        @Override
         public final void setExplainConnection(final boolean onOrOff) {
           explainConnection = onOrOff;
         }
       
-        /** @see LanguageConnectionContext#getExplainSchema() */
+        @Override
         public final boolean getExplainSchema() {
           return create_explain_schema_objects;
         }
       
-        /** @see LanguageConnectionContext#setExplainSchema(String) */
+        @Override
         public void setExplainSchema(boolean s) {
           create_explain_schema_objects = s;
         }
@@ -4491,6 +4490,7 @@ public final class GenericLanguageConnectionContext
     return connFactory.getStatement(getDefaultSchema(), sqlText, execFlags,false, null);
   }
 
+	@Override
 	public void setBucketRetentionForLocalExecution(boolean bucketRetentionForLocalExecution) {
 		this.gfxdFlags = GemFireXDUtils.set(this.gfxdFlags, BUCKET_RETENTION_FOR_LOCAL_EXECUTION,
 				bucketRetentionForLocalExecution);
@@ -4748,7 +4748,7 @@ public final class GenericLanguageConnectionContext
    * Default QueryTimeOut of the statement/preparedStatement that is being
    * created via nestedConnection.
    * 
-   * @see EmbedConnection#defaultQueryTimeOutMillis
+   * @see EmbedConnection#defaultNestedConnQueryTimeOutMillis
    */
   private long lastStatementQueryTimeOutMillis = 0L;
   
@@ -4879,7 +4879,7 @@ public final class GenericLanguageConnectionContext
   private void forceSetExecuteLocally(Set<Integer> bucketIds, Region<?, ?> region,
       boolean dbSync, Checkpoint cp) {
 
-    if (SanityManager.TraceSingleHop) {
+    if (GemFireXDUtils.TraceQuery || SanityManager.TraceSingleHop) {
       SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,
           "GenericLanguageConnectionContext::"
               + "setExecuteLocally setting bucketSet in lcc: " + this + " to: "

@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadFactory;
  */
 public class GemfireCacheHelper {
 
-  public static ThreadFactory CreateThreadFactory(final ThreadGroup tg, final String threadName) {
+  public static ThreadFactory createThreadFactory(final ThreadGroup tg, final String threadName) {
     final ThreadFactory threadFactory = new ThreadFactory() {
       public Thread newThread(Runnable command) {
         Thread thread = new Thread(tg, command, threadName);

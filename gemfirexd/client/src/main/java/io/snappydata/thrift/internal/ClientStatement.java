@@ -35,7 +35,6 @@
 
 package io.snappydata.thrift.internal;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -72,8 +71,8 @@ public class ClientStatement extends ClientFetchColumnValue implements
   private ClientStatement(ClientConnection conn, int holdability) {
     super(conn.getClientService(), (byte)snappydataConstants.INVALID_ID);
     this.conn = conn;
-    this.attrs = new StatementAttrs()
-        .setResultSetType(snappydataConstants.DEFAULT_RESULTSET_TYPE)
+    this.attrs = (conn.commonAttrs != null
+        ? new StatementAttrs(conn.commonAttrs) : new StatementAttrs())
         .setPendingTransactionAttrs(conn.getPendingTXFlags());
     if (holdability == ResultSet.HOLD_CURSORS_OVER_COMMIT) {
       this.attrs.setHoldCursorsOverCommit(true);
@@ -92,8 +91,10 @@ public class ClientStatement extends ClientFetchColumnValue implements
   ClientStatement(ClientConnection conn, int rsType, int rsConcurrency,
       int rsHoldability) {
     this(conn, conn.getHoldability());
-    this.attrs.setResultSetType((byte)Converters
-        .getThriftResultSetType(rsType));
+    byte attrsRsType = (byte)Converters.getThriftResultSetType(rsType);
+    if (attrsRsType != snappydataConstants.DEFAULT_RESULTSET_TYPE) {
+      this.attrs.setResultSetType(attrsRsType);
+    }
     if (rsConcurrency == ResultSet.CONCUR_UPDATABLE) {
       this.attrs.setUpdatable(true);
     }
@@ -122,12 +123,30 @@ public class ClientStatement extends ClientFetchColumnValue implements
     return attrs.__isset_bitfield == 0 && attrs.autoIncColumnNames == null
         && attrs.autoIncColumns == null && attrs.cursorName == null
         && attrs.pendingTransactionAttrs == null && attrs.bucketIds == null
-        ? null : attrs;
+        && attrs.snapshotTransactionId == null ? null : attrs;
   }
 
   public final void setLocalExecutionBucketIds(Set<Integer> bucketIds,
-      String tableName) {
-    this.attrs.setBucketIds(bucketIds).setBucketIdsTable(tableName);
+      String tableName, boolean retain) {
+    setLocalExecutionBucketIds(this.attrs, bucketIds, tableName, retain);
+  }
+
+  public static StatementAttrs setLocalExecutionBucketIds(StatementAttrs attrs,
+      Set<Integer> bucketIds, String tableName, boolean retain) {
+    return attrs.setBucketIds(bucketIds).setBucketIdsTable(tableName)
+        .setRetainBucketIds(retain);
+  }
+
+  public final void setMetadataVersion(int version) {
+    this.attrs.setMetadataVersion(version);
+  }
+
+  public final void setSnapshotTransactionId(String txId) {
+    if (txId != null && !txId.equals("null")) {
+      this.attrs.setSnapshotTransactionId(txId);
+    } else {
+      this.attrs.unsetSnapshotTransactionId();
+    }
   }
 
   final void clearPendingTransactionAttrs() {
@@ -541,7 +560,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
    * {@inheritDoc}
    */
   @Override
-  public Connection getConnection() throws SQLException {
+  public final ClientConnection getConnection() throws SQLException {
     checkClosed();
     return this.conn;
   }

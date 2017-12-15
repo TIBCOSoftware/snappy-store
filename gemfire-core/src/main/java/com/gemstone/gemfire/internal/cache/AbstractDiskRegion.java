@@ -269,6 +269,10 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
   
   public abstract String getName();
 
+  public String getFullPath() {
+    return getName();
+  }
+
   public final DiskStoreImpl getDiskStore() {
     return this.ds;
   }
@@ -832,6 +836,11 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
     return this.backup;
   }
 
+  @Override
+  public void updateMemoryStats(Object oldValue, Object newValue) {
+    // only used by BucketRegion as of now
+  }
+
   protected final void setBackup(boolean v) {
     this.backup = v;
   }
@@ -1042,7 +1051,13 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
   public Compressor getCompressor() {
     return this.compressor;
   }
-  
+
+  @Override
+  public String getColumnCompressionCodec() {
+    // only expected to be invoked for BucketRegion
+    return null;
+  }
+
   @Override
   public boolean getEnableOffHeapMemory() {
     return this.enableOffHeapMemory;

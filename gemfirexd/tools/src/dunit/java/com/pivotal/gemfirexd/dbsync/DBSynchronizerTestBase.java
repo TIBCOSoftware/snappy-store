@@ -98,8 +98,7 @@ public class DBSynchronizerTestBase extends DistributedSQLTestBase{
         DBSynchronizerTestBase.class.wait(1000);
       }
     }
-    String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + netPort
+    String derbyDbUrl = "jdbc:derby://localhost:" + netPort
         + "/newDB;";
     if (TestUtil.currentUserName != null) {
       derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -160,8 +159,7 @@ public class DBSynchronizerTestBase extends DistributedSQLTestBase{
   }
 
   public static String getDerbyURL(int port) throws Exception {
-    String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + port
+    String derbyDbUrl = "jdbc:derby://localhost:" + port
         + "/newDB;create=true;";
     if (TestUtil.currentUserName != null) {
       derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -177,10 +175,9 @@ public class DBSynchronizerTestBase extends DistributedSQLTestBase{
   public static NetworkServerControl startNetworkServer(final int netPort)
       throws Exception {
     getGlobalLogger().info(
-        "Starting a Derby Network Server on "
-            + InetAddress.getLocalHost().getHostName() + ":" + netPort);
+        "Starting a Derby Network Server on localhost:" + netPort);
     NetworkServerControl server = new NetworkServerControl(
-        InetAddress.getLocalHost(), netPort);
+        InetAddress.getByName("localhost"), netPort);
     // send the output to derby logs
     server.start(SanityManager.GET_DEBUG_STREAM());
     // wait for n/w server to initialize completely
@@ -204,8 +201,7 @@ public class DBSynchronizerTestBase extends DistributedSQLTestBase{
   public static void createDerbyValidationArtefacts(int netPort) throws Exception {
     // Create DB locally & create schema
     ok = false;
-    String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + netPort
+    String derbyDbUrl = "jdbc:derby://localhost:" + netPort
         + "/newDB;create=true;";
     if (TestUtil.currentUserName != null) {
       derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="

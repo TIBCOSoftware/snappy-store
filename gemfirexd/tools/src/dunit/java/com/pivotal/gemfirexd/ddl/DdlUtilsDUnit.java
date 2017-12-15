@@ -20,7 +20,6 @@ package com.pivotal.gemfirexd.ddl;
 import java.sql.Connection;
 import java.util.Properties;
 
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.jdbc.DdlUtilsTest;
@@ -49,10 +48,9 @@ public class DdlUtilsDUnit extends DistributedSQLTestBase {
     // start a client and servers with network servers
     startVMs(1, 3, 0, null, props);
     final int netPort = startNetworkServer(1, null, null);
-    final String hostName = SocketCreator.getLocalHost().getHostName();
-    final String clientUrl = hostName + ':' + netPort;
+    final String clientUrl = "localhost:" + netPort;
     final Connection conn = TestUtil.getConnection();
-    final Connection netConn = TestUtil.getNetConnection(hostName, netPort,
+    final Connection netConn = TestUtil.getNetConnection("localhost", netPort,
         null, null);
 
     DdlUtilsTest.runImportExportTest(conn, netConn, clientUrl,
@@ -70,7 +68,7 @@ public class DdlUtilsDUnit extends DistributedSQLTestBase {
     // start a client and servers with network servers
     startVMs(1, 3, 0, null, props);
     final int netPort = startNetworkServer(1, null, null);
-    final String hostName = SocketCreator.getLocalHost().getHostName();
+    final String hostName = "localhost";
     final Connection netConn = TestUtil.getNetConnection(hostName, netPort,
         null, null);
 

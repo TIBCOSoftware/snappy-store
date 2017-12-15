@@ -38,8 +38,7 @@ public final class MsgChannelDestreamer
   private long newMessageStart;
   private boolean newMessage;
 
-  MsgChannelDestreamer(Connection conn, SocketChannel channel,
-      int bufferSize) {
+  MsgChannelDestreamer(Connection conn, SocketChannel channel, int bufferSize) {
     super(channel, bufferSize);
     this.conn = conn;
   }
@@ -97,5 +96,17 @@ public final class MsgChannelDestreamer
       this.newMessage = false;
     }
     return numBytes;
+  }
+
+  @Override
+  public long getParkNanosMax() {
+    // increased timeout to enable detection of failed sockets
+    return 90000000000L;
+  }
+
+  @Override
+  protected int readIntoBufferNoWait(ByteBuffer buffer)
+      throws IOException {
+    return readIntoBuffer(buffer);
   }
 }
