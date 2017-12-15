@@ -26,7 +26,6 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalLocator;
 import com.gemstone.gemfire.distributed.internal.membership.jgroup.MembershipManagerHelper;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.org.jgroups.Event;
 import com.gemstone.org.jgroups.JChannel;
 import com.gemstone.org.jgroups.stack.Protocol;
@@ -128,7 +127,7 @@ public class GemFireXDReconnectDUnit extends DistributedSQLTestBase {
     int locPort1 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
     int locPort2 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
   
-    final String address = SocketCreator.getLocalHost().getHostAddress();
+    final String address = "localhost";
     // try with both host:port and host[port] for client connection
     String locators = address + '[' + locPort1 + "]," + address + '['
         + locPort2 + "]";
@@ -167,7 +166,7 @@ public class GemFireXDReconnectDUnit extends DistributedSQLTestBase {
     int locPort1 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
     int locPort2 = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
 
-    final String address = SocketCreator.getLocalHost().getHostAddress();
+    final String address = "localhost";
     // try with both host:port and host[port] for client connection
     String locators = address + '[' + locPort1 + "]," + address + '['
         + locPort2 + "]";

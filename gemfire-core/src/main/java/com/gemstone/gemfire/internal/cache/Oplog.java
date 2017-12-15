@@ -79,7 +79,6 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.SerializationException;
 import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.OplogCancelledException;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -1324,8 +1323,11 @@ public final class Oplog implements CompactableOplog {
     if (prevOlf != null) {
       synchronized (prevOplog.crf) {
         // release the old stream buffer
-        prevOlf.outputStream.close();
-        prevOlf.outputStream = null;
+        final OplogFile.FileChannelOutputStream outputStream = prevOlf.outputStream;
+        if (outputStream != null) {
+          outputStream.close();
+          prevOlf.outputStream = null;
+        }
       }
     }
     final int bufSize = Integer.getInteger("WRITE_BUF_SIZE", 32768);
@@ -7654,9 +7656,9 @@ public final class Oplog implements CompactableOplog {
       }
 
       @Override
-      protected int writeBufferNonBlocking(final ByteBuffer buffer,
+      protected int writeBufferNoWait(final ByteBuffer buffer,
           final WritableByteChannel channel) throws IOException {
-        int numWritten = super.writeBufferNonBlocking(buffer, channel);
+        int numWritten = super.writeBufferNoWait(buffer, channel);
         if (numWritten > 0) {
           bytesFlushed += numWritten;
         }

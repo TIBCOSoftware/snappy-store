@@ -1794,7 +1794,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		/* Original code
 		final int numberOfTableTypesInDerby = 4;
 		*/
-		final int numberOfTableTypesInDerby = 9;
+		final int numberOfTableTypesInDerby = 10;
 		//GemStone changes END
 
 		if (types == null)  {// null means all types 
@@ -1808,10 +1808,12 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			typeParams[i] = null;
 		
 		for (int i = 0; i<types.length; i++){
-			if ("TABLE".equals(types[i]))
+			if ("TABLE".equals(types[i]) || "ROW TABLE".equals(types[i]))
 				typeParams[0] = "T";
-			else if ("VIEW".equals(types[i]))
+			else if ("VIEW".equals(types[i])) {
 				typeParams[1] = "V";
+				typeParams[9] = "VIEW"; // for hive-metastore tables
+			}
 			else if ("SYNONYM".equals(types[i]))
 				typeParams[2] = "A";
 			else if ("SYSTEM TABLE".equals(types[i]) ||

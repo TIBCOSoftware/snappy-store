@@ -80,6 +80,8 @@ public final class LRUCapacityController extends LRUAlgorithm
       "Number of entries in this region.";
     final String lruEvictionsDesc = 
       "Number of total entry evictions triggered by LRU.";
+    final String lruFaultInsDesc =
+      "Number of total entry faultIns triggered by read/write operations.";
     final String lruDestroysDesc = "Number of entries destroyed in the region through both destroy cache operations and eviction. Reset to zero each time it exceeds lruDestroysLimit.";
     final String lruDestroysLimitDesc =
       "Maximum number of entry destroys triggered by LRU before scan occurs.";
@@ -94,6 +96,7 @@ public final class LRUCapacityController extends LRUAlgorithm
         f.createLongGauge("entriesAllowed", entriesAllowedDesc, "entries" ), 
         f.createLongGauge("entryCount", regionEntryCountDesc, "entries" ),
         f.createLongCounter("lruEvictions", lruEvictionsDesc, "entries" ),
+        f.createLongCounter("lruFaultIns", lruFaultInsDesc, "entries" ),
         f.createLongCounter("lruDestroys", lruDestroysDesc, "entries" ),
         f.createLongGauge("lruDestroysLimit", lruDestroysLimitDesc, "entries" ),
         f.createLongCounter("lruEvaluations", lruEvaluationsDesc, "entries" ),
@@ -296,6 +299,10 @@ public final class LRUCapacityController extends LRUAlgorithm
 
       public int getEvictionsStatId() {
         return statType.nameToId("lruEvictions");
+      }
+
+      public int getFaultInsStatId() {
+        return statType.nameToId("lruFaultIns");
       }
 
       public int getDestroysStatId() {

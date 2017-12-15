@@ -254,7 +254,7 @@ public final class MsgChannelStreamer extends ChannelBufferUnsafeDataOutputStrea
             numWritten += super.writeBuffer(buffer, channel);
           } while (buffer.hasRemaining());
         } else {
-          numWritten += super.writeBufferNonBlocking(buffer, channel);
+          numWritten += super.writeBufferNoWait(buffer, channel);
         }
         return numWritten;
       } finally {
@@ -351,13 +351,13 @@ public final class MsgChannelStreamer extends ChannelBufferUnsafeDataOutputStrea
   }
 
   @Override
-  protected long getParkNanosMax() {
+  public long getParkNanosMax() {
     // never throw timeout here
     return Long.MAX_VALUE;
   }
 
   @Override
-  protected int writeBufferNonBlocking(ByteBuffer buffer,
+  protected int writeBufferNoWait(ByteBuffer buffer,
       WritableByteChannel channel) throws IOException {
     // all writes are blocking for messages
     return writeBuffer(buffer, channel);

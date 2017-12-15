@@ -19,6 +19,7 @@ package com.gemstone.gemfire.cache30;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.LogWriter;
+import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 
 /**
@@ -45,7 +46,7 @@ public class TestHeapLRU {
                            factory.create());
 
     ThreadGroup tg =
-      LogWriterImpl.createThreadGroup("Annoying threads", (LogWriter) null);
+      LogWriterImpl.createThreadGroup("Annoying threads", (LogWriterI18n)null);
     Thread thread = new Thread(tg, "Annoying thread") {
         public void run() {
           try {

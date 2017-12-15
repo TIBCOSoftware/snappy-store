@@ -78,7 +78,7 @@ public abstract class FinalizeObject extends WeakReference<Object>
   private TLinkable next;
   private TLinkable prev;
 
-  FinalizeObject(final Object referent, final FinalizeHolder holder) {
+  private FinalizeObject(final Object referent, final FinalizeHolder holder) {
     super(referent, holder.referenceQueue);
     holder.initializeFinalizer(this);
   }

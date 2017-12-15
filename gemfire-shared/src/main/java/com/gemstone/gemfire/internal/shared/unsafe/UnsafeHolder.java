@@ -45,7 +45,8 @@ import java.nio.ByteOrder;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferFramedInputStream;
 import com.gemstone.gemfire.internal.shared.ChannelBufferFramedOutputStream;
@@ -198,7 +199,7 @@ public abstract class UnsafeHolder {
     public void run() {
       final long address = tryFree();
       if (address != 0) {
-        Wrapper.unsafe.freeMemory(address);
+        getUnsafe().freeMemory(address);
       }
     }
   }
@@ -218,22 +219,24 @@ public abstract class UnsafeHolder {
       FreeMemoryFactory factory) {
     final int allocSize = getAllocationSize(size);
     final ByteBuffer buffer = allocateDirectBuffer(
-        Wrapper.unsafe.allocateMemory(allocSize), allocSize, factory);
+        getUnsafe().allocateMemory(allocSize), allocSize, factory);
     buffer.limit(size);
     return buffer;
   }
 
-  private static ByteBuffer allocateDirectBuffer(long address, int size,
+  public static ByteBuffer allocateDirectBuffer(long address, int size,
       FreeMemoryFactory factory) {
     try {
       ByteBuffer buffer = (ByteBuffer)Wrapper.directBufferConstructor
           .newInstance(address, size);
-      sun.misc.Cleaner cleaner = sun.misc.Cleaner.create(buffer,
-          factory.newFreeMemory(address, size));
-      Wrapper.cleanerField.set(buffer, cleaner);
+      if (factory != null) {
+        sun.misc.Cleaner cleaner = sun.misc.Cleaner.create(buffer,
+            factory.newFreeMemory(address, size));
+        Wrapper.cleanerField.set(buffer, cleaner);
+      }
       return buffer;
     } catch (Exception e) {
-      Wrapper.unsafe.throwException(e);
+      getUnsafe().throwException(e);
       throw new IllegalStateException("unreachable");
     }
   }
@@ -292,14 +295,14 @@ public abstract class UnsafeHolder {
    * argument specifies that target Runnable type that factory will produce.
    * If the existing Runnable already matches "to" then its a no-op.
    * <p>
-   * The provided {@link Consumer} is used to apply any action before actually
+   * The provided {@link BiConsumer} is used to apply any action before actually
    * changing the runnable field with the boolean argument indicating whether
    * the current field matches "from" or if it is something else.
    */
   public static void changeDirectBufferCleaner(
       ByteBuffer buffer, int size, Class<? extends FreeMemory> from,
       Class<? extends FreeMemory> to, FreeMemoryFactory factory,
-      final Consumer<String> changeOwner) throws IllegalAccessException {
+      final BiConsumer<String, Object> changeOwner) throws IllegalAccessException {
     sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
     final sun.misc.Cleaner cleaner = directBuffer.cleaner();
     if (cleaner != null) {
@@ -310,9 +313,9 @@ public abstract class UnsafeHolder {
       if (!to.isInstance(runnable)) {
         if (changeOwner != null) {
           if (from.isInstance(runnable)) {
-            changeOwner.accept(((FreeMemory)runnable).objectName());
+            changeOwner.accept(((FreeMemory)runnable).objectName(), runnable);
           } else {
-            changeOwner.accept(null);
+            changeOwner.accept(null, runnable);
           }
         }
         Runnable newFree = factory.newFreeMemory(directBuffer.address(), size);
@@ -334,7 +337,7 @@ public abstract class UnsafeHolder {
     }
   }
 
-  static void releaseDirectBuffer(ByteBuffer buffer) {
+  public static void releaseDirectBuffer(ByteBuffer buffer) {
     sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer)buffer).cleaner();
     if (cleaner != null) {
       cleaner.clean();
@@ -399,6 +402,23 @@ public abstract class UnsafeHolder {
         length -= size;
       }
     }
+  }
+
+  public static boolean tryMonitorEnter(Object obj, boolean checkSelf) {
+    if (checkSelf && Thread.holdsLock(obj)) {
+      return false;
+    } else if (!getUnsafe().tryMonitorEnter(obj)) {
+      // try once more after a small wait
+      LockSupport.parkNanos(100L);
+      if (!getUnsafe().tryMonitorEnter(obj)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static void monitorExit(Object obj) {
+    getUnsafe().monitorExit(obj);
   }
 
   @SuppressWarnings("resource")

@@ -154,24 +154,24 @@ public class MemoryAnalyticsTest extends JdbcTestBase {
     */
 
     String[] expectedOutputArr = new String[] {
-        "APP.TX_PL_POSITION null null 1.936 0.0 0.0 0.0 0.0 0 0 0 0 1.936 ",
-        "APP.TF_PL_POSITION_DLY null null 1.936 0.0 0.0 0.0 0.0 0 0 0 0 1.936 ",
-        "APP.TF_GEMFIRE_PAA null null 1.936 0.0 0.0 0.0 0.0 0 0 0 0 1.936 ",
-        "APP.TF_EQRMS_PAA null null 1.936 0.0 0.0 0.0 0.0 0 0 0 0 1.936 ",
-        "APP.TF_EDEALER_PAA null null 1.936 0.0 0.0 0.0 0.0 0 0 0 0 1.936 ",
-        "APP.TX_PL_USER_POSN_MAP null null 1.936 12.0 2.4 109.456 0.0 100 100 100 0 125.792 ",
-        "APP.TL_SOURCE_SYSTEM null null 1.808 9.6 2.4 21.088 0.0 100 100 100 0 34.896 ",
-        "APP.TL_REGION null null 1.808 0.0 0.0 0.0 0.0 0 0 0 0 1.808 ",
-        "APP.TL_CURRENCY null null 1.808 0.0 0.0 0.0 0.0 0 0 0 0 1.808 ",
-        "APP.TF_PL_POSITION_YTD null null 1.936 12.0 2.4 626.912 0.0 100 100 100 0 643.248 ",
-        "APP.TF_PL_POSITION_PTD null null 1.936 12.0 2.4 299.88 0.0 100 100 100 0 316.216 ",
-        "APP.TF_PL_POSITION_FUNC null null 1.936 0.0 0.0 0.0 0.0 0 0 0 0 1.936 ",
-        "APP.TF_PL_ADJ_REPORT null null 1.936 12.0 2.4 622.6 0.0 100 100 100 0 638.936 ",
-        "APP.TD_TRADER_SCD null null 1.808 9.6 2.4 217.448 0.0 100 100 100 0 231.256 ",
-        "APP.TD_POSN_EXTENDED_KEY null null 1.808 9.6 2.4 25.472 0.0 100 100 100 0 39.28 ",
-        "APP.TD_PL_POSITION_INDICATIVE null null 1.808 0.0 0.0 0.0 0.0 0 0 0 0 1.808 ",
-        "APP.TD_INSTRUMENT_SCD null null 1.808 9.6 2.4 96.288 0.0 100 100 100 0 110.096 ",
-        "APP.TD_FIRM_ACCOUNT_SCD null null 1.808 0.0 0.0 0.0 0.0 0 0 0 0 1.808 ",
+        "APP.TX_PL_POSITION null null 1.944 0.0 0.0 0.0 0.0 0 0 0 0 1.944 ",
+        "APP.TF_PL_POSITION_DLY null null 1.944 0.0 0.0 0.0 0.0 0 0 0 0 1.944 ",
+        "APP.TF_GEMFIRE_PAA null null 1.944 0.0 0.0 0.0 0.0 0 0 0 0 1.944 ",
+        "APP.TF_EQRMS_PAA null null 1.944 0.0 0.0 0.0 0.0 0 0 0 0 1.944 ",
+        "APP.TF_EDEALER_PAA null null 1.944 0.0 0.0 0.0 0.0 0 0 0 0 1.944 ",
+        "APP.TX_PL_USER_POSN_MAP null null 1.944 12.0 2.4 109.456 0.0 100 100 100 0 125.8 ",
+        "APP.TL_SOURCE_SYSTEM null null 1.816 9.6 2.4 21.088 0.0 100 100 100 0 34.904 ",
+        "APP.TL_REGION null null 1.816 0.0 0.0 0.0 0.0 0 0 0 0 1.816 ",
+        "APP.TL_CURRENCY null null 1.816 0.0 0.0 0.0 0.0 0 0 0 0 1.816 ",
+        "APP.TF_PL_POSITION_YTD null null 1.944 12.0 2.4 626.912 0.0 100 100 100 0 643.256 ",
+        "APP.TF_PL_POSITION_PTD null null 1.944 12.0 2.4 299.88 0.0 100 100 100 0 316.224 ",
+        "APP.TF_PL_POSITION_FUNC null null 1.944 0.0 0.0 0.0 0.0 0 0 0 0 1.944 ",
+        "APP.TF_PL_ADJ_REPORT null null 1.944 12.0 2.4 622.6 0.0 100 100 100 0 638.944 ",
+        "APP.TD_TRADER_SCD null null 1.816 9.6 2.4 217.448 0.0 100 100 100 0 231.264 ",
+        "APP.TD_POSN_EXTENDED_KEY null null 1.816 9.6 2.4 25.472 0.0 100 100 100 0 39.288 ",
+        "APP.TD_PL_POSITION_INDICATIVE null null 1.816 0.0 0.0 0.0 0.0 0 0 0 0 1.816 ",
+        "APP.TD_INSTRUMENT_SCD null null 1.816 9.6 2.4 96.288 0.0 100 100 100 0 110.104 ",
+        "APP.TD_FIRM_ACCOUNT_SCD null null 1.816 0.0 0.0 0.0 0.0 0 0 0 0 1.816 ",
         /*--eclipse output
         "APP.TF_EDEALER_PAA null null 2.578125 0.0 0.0 0.0 0.0 0 0 0 0 2.578125 ",
         "APP.TF_PL_POSITION_YTD null null 2.578125 15.625 2.34375 611.0762 0.0 100 100 100 0 631.62305 ",
@@ -742,7 +742,7 @@ public class MemoryAnalyticsTest extends JdbcTestBase {
       g.resume();
       
       while(((AbstractGatewaySender)g).getQueue().size() > 0) {
-        Thread.currentThread().sleep(1000);
+        Thread.sleep(1000);
         rs = st
             .executeQuery("select * from sys.memoryanalytics where queue_type is not null");
         //  or table_name like 'APP.TF%'

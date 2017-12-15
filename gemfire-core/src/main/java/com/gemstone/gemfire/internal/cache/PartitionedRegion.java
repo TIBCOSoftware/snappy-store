@@ -204,7 +204,6 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
 import com.gemstone.gemfire.internal.cache.versions.ConcurrentCacheModificationException;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
-import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
@@ -419,6 +418,9 @@ public class PartitionedRegion extends LocalRegion implements
   /** Minimum size for ColumnBatches. */
   private int columnMinDeltaRows = 200;
 
+  /** default compression used by the column store */
+  private String columnCompressionCodec;
+
   public void setColumnBatchSizes(int size, int maxDeltaRows,
       int minDeltaRows) {
     columnBatchSize = size;
@@ -426,23 +428,28 @@ public class PartitionedRegion extends LocalRegion implements
     columnMinDeltaRows = minDeltaRows;
   }
 
-  private ExternalTableMetaData getHiveMetaData() {
+  private void initFromHiveMetaData() {
     final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
         .getInternalProductCallbacks();
     if (sysCb != null) {
-      return sysCb.fetchSnappyTablesHiveMetaData(this);
-    } else {
-      return null;
+      ExternalTableMetaData metadata = sysCb.fetchSnappyTablesHiveMetaData(this);
+      if (this.columnBatchSize == -1) {
+        this.columnBatchSize = metadata.columnBatchSize;
+      }
+      if (this.columnMaxDeltaRows == -1) {
+        this.columnMaxDeltaRows = metadata.columnMaxDeltaRows;
+      }
+      if (this.columnCompressionCodec == null) {
+        this.columnCompressionCodec = metadata.compressionCodec;
+      }
     }
   }
 
   public int getColumnBatchSize() {
     int columnBatchSize = this.columnBatchSize;
     if (columnBatchSize == -1) {
-      ExternalTableMetaData metaData = getHiveMetaData();
-      if (metaData != null) {
-        this.columnBatchSize = columnBatchSize = metaData.columnBatchSize;
-      }
+      initFromHiveMetaData();
+      return this.columnBatchSize;
     }
     return columnBatchSize;
   }
@@ -450,16 +457,23 @@ public class PartitionedRegion extends LocalRegion implements
   public int getColumnMaxDeltaRows() {
     int columnMaxDeltaRows = this.columnMaxDeltaRows;
     if (columnMaxDeltaRows == -1) {
-      ExternalTableMetaData metaData = getHiveMetaData();
-      if (metaData != null) {
-        this.columnMaxDeltaRows = columnMaxDeltaRows = metaData.columnMaxDeltaRows;
-      }
+      initFromHiveMetaData();
+      return this.columnMaxDeltaRows;
     }
     return columnMaxDeltaRows;
   }
 
   public int getColumnMinDeltaRows() {
     return columnMinDeltaRows;
+  }
+
+  public String getColumnCompressionCodec() {
+    String codec = this.columnCompressionCodec;
+    if (codec == null && !cache.isUnInitializedMember(cache.getMyId())) {
+      initFromHiveMetaData();
+      return this.columnCompressionCodec;
+    }
+    return codec;
   }
 
   private final long birthTime = System.currentTimeMillis();

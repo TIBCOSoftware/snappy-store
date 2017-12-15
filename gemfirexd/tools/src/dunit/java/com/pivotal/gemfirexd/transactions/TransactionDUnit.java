@@ -30,6 +30,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.XAConnection;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -38,7 +39,6 @@ import com.gemstone.gemfire.Statistics;
 import com.gemstone.gemfire.StatisticsType;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.ResourceManagerStats;
@@ -1044,8 +1044,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
     Xid xid = new ClientXid(0x1234, gid, bid);
 
-    String localhost = SocketCreator.getLocalHost().getHostName();
-    xaDataSource.setServerName(localhost);
+    xaDataSource.setServerName("localhost");
     xaDataSource.setPortNumber(netport);
     xaDataSource.setDatabaseName("gemfirexd");
     // get the stuff required to execute the global transaction
@@ -1076,8 +1075,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     xaRes.prepare(xid);
     xaRes.commit(xid, false);
 
-    //TXManagerImpl.waitForPendingCommitForTest();
-    
     VM servervm = getServerVM(1);
     servervm.invoke(TransactionDUnit.class, "waitForPendingCommit");
     sqlExecuteVerify(null, new int[] {1}, jdbcSQL, xmlFile, "after_xa_commit");
@@ -1148,8 +1145,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
     Xid xid = new ClientXid(0x1234, gid, bid);
 
-    String localhost = SocketCreator.getLocalHost().getHostName();
-    xaDataSource.setServerName(localhost);
+    xaDataSource.setServerName("localhost");
     xaDataSource.setPortNumber(netport);
 
     xaDataSource.setDatabaseName("gemfirexd");
@@ -1229,7 +1225,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     xaRes.end(xid, XAResource.TMSUCCESS);
     xaRes.prepare(xid);
     xaRes.rollback(xid);
-    //TXManagerImpl.waitForPendingCommitForTest();
     VM servervm = getServerVM(1);
     servervm.invoke(TransactionDUnit.class, "waitForPendingCommit");
     
@@ -1254,46 +1249,78 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   /**
    * Check index operations and reset the holder.
    */
-  public static void checkIndexAndReset(int numInsertExpected,
-      int numDeletesExpected) throws Exception {
+  public static void checkIndexAndReset(final int numInsertsExpected,
+      final int numDeletesExpected) throws Exception {
 
-    CheckIndexOperations checkIndex = GemFireXDQueryObserverHolder
-        .<CheckIndexOperations> getObserver(CheckIndexOperations.class);
-    checkIndex.checkNumInserts(numInsertExpected);
-    checkIndex.checkNumDeletes(numDeletesExpected);
+    WaitCriterion waitIndex = new WaitCriterion() {
+      @Override
+      public boolean done() {
+        CheckIndexOperations checkIndex = GemFireXDQueryObserverHolder
+            .getObserver(CheckIndexOperations.class);
+        assertNotNull(checkIndex);
+        return checkIndex.numInserts.get() == numInsertsExpected &&
+            checkIndex.numDeletes.get() == numDeletesExpected;
+      }
+
+      @Override
+      public String description() {
+        CheckIndexOperations checkIndex = GemFireXDQueryObserverHolder
+            .getObserver(CheckIndexOperations.class);
+        assertNotNull(checkIndex);
+        return "Waiting for numInserts to be " + numInsertsExpected +
+            " numDeletes to be " + numDeletesExpected +
+            "(inserts=" + checkIndex.numInserts.get() +
+            " deletes=" + checkIndex.numDeletes.get() + ')';
+      }
+    };
+    waitForCriterion(waitIndex, 30000, 100, true);
+  }
+
+  private static final class CheckIndex extends SerializableCallable<Object> {
+    @Override
+    public Object call() throws Exception {
+      CheckIndexOperations checkIndex;
+      if (GemFireCacheImpl.getInstance() != null &&
+          (checkIndex = GemFireXDQueryObserverHolder.getObserver(
+              CheckIndexOperations.class)) != null) {
+        return ((long)checkIndex.numInserts.get() << 32L) |
+            (long)checkIndex.numDeletes.get();
+      } else {
+        return 0L;
+      }
+    }
   }
 
   /**
    * Check index operations and reset the holder.
    */
-  public static void checkIndexAndResetAll(int numInsertExpected,
+  public static void checkIndexAndResetAll(int numInsertsExpected,
       int numDeletesExpected) throws Exception {
 
-    TXManagerImpl.waitForPendingCommitForTest();
-    long numInserted = 0;
-    long numDeleted = 0;
-    Map<?, ?> results = invokeInEveryVM(new SerializableCallable() {
+    WaitCriterion checkAll = new WaitCriterion() {
       @Override
-      public Object call() throws Exception {
-        CheckIndexOperations checkIndex;
-        if (GemFireCacheImpl.getInstance() != null &&
-            (checkIndex = GemFireXDQueryObserverHolder.getObserver(
-                CheckIndexOperations.class)) != null) {
-          return ((long)checkIndex.numInserts << 32L) | (long)checkIndex.numDeletes;
-        } else {
-          return 0L;
+      public boolean done() {
+        long numInserted = 0;
+        long numDeleted = 0;
+        Map<?, ?> results = invokeInEveryVM(new CheckIndex());
+        for (Object o : results.values()) {
+          if (o != null) {
+            long v = (Long)o;
+            numInserted += (v >> 32L);
+            numDeleted += (v & 0xffffffffL);
+          }
         }
+        return numInserted == numInsertsExpected &&
+            numDeleted == numDeletesExpected;
       }
-    });
-    for (Object o : results.values()) {
-      if (o != null) {
-        long v = (Long)o;
-        numInserted += (v >> 32L);
-        numDeleted += (v & 0xffffffffL);
+
+      @Override
+      public String description() {
+        return "Waiting for numInserts to be " + numInsertsExpected +
+            " numDeletes to be " + numDeletesExpected;
       }
-    }
-    assertEquals(numInsertExpected, numInserted);
-    assertEquals(numDeletesExpected, numDeleted);
+    };
+    waitForCriterion(checkAll, 30000, 100, true);
   }
 
   /**
@@ -1314,9 +1341,9 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
     private static final long serialVersionUID = -549170799818823122L;
 
-    int numInserts = 0;
+    final AtomicInteger numInserts = new AtomicInteger();
 
-    int numDeletes = 0;
+    final AtomicInteger numDeletes = new AtomicInteger();
 
     final String indexName;
 
@@ -1336,7 +1363,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
         assertNotNull(rowLocation);
         assertTrue(this.indexName.equalsIgnoreCase(container.getSchemaName()
             + "." + container.getTableName().toString()));
-        this.numInserts++;
+        this.numInserts.incrementAndGet();
       }
     }
 
@@ -1348,16 +1375,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
         assertNotNull(rowLocation);
         assertTrue(this.indexName.equalsIgnoreCase(container.getSchemaName()
             + "." + container.getTableName().toString()));
-        this.numDeletes++;
+        this.numDeletes.incrementAndGet();
       }
-    }
-
-    private void checkNumInserts(int expected) {
-      assertEquals(expected, this.numInserts);
-    }
-
-    private void checkNumDeletes(int expected) {
-      assertEquals(expected, this.numDeletes);
     }
 
     private boolean checkTX() {
@@ -1586,7 +1605,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       conn.commit();
     }
 
-    TXManagerImpl.waitForPendingCommitForTest();
     getServerVM(1).invoke(getClass(), "checkIndexAndReset",
         new Object[] { Integer.valueOf(numRows), Integer.valueOf(0) });
     getServerVM(2).invoke(getClass(), "checkIndexAndReset",
@@ -1608,7 +1626,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       conn.commit();
     }
 
-    TXManagerImpl.waitForPendingCommitForTest();
     getServerVM(1).invoke(getClass(), "checkIndexAndReset",
         new Object[] { Integer.valueOf(numRows), Integer.valueOf(numRows) });
     getServerVM(2).invoke(getClass(), "checkIndexAndReset",

@@ -279,9 +279,7 @@ public class DistributionDefinitionNode extends TableElementNode {
         break;
       }
       case DistributionDescriptor.PARTITIONBYEXPRESSION: {
-        distributionDesc = dd.getDataDescriptorGenerator()
-            .newDistributionDescriptor(this.policy, null, this.redundancy,
-                this.maxPartSize, null, this.isPersistent, this.serverGroups);
+        distributionDesc = validatePartitionByExpression(elementList, dd);
         break;
       }
       case DistributionDescriptor.PARTITIONBYLIST:
@@ -812,6 +810,16 @@ public class DistributionDefinitionNode extends TableElementNode {
       columnNames[index] = colName;
     }
     return columnNames;
+  }
+
+  private DistributionDescriptor validatePartitionByExpression(
+      TableElementIterator elementList, DataDictionary dd)
+      throws StandardException {
+    String[] columnNames = this.columns != null
+        ? validatePartitionColumns(elementList) : null;
+    return dd.getDataDescriptorGenerator()
+        .newDistributionDescriptor(this.policy, columnNames, this.redundancy,
+            this.maxPartSize, null, this.isPersistent, this.serverGroups);
   }
 
   private DistributionDescriptor validatePartitionByPrimaryKey(

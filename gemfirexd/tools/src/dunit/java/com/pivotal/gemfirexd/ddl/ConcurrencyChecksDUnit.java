@@ -31,7 +31,6 @@ import java.util.concurrent.CountDownLatch;
 
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation;
@@ -167,8 +166,7 @@ public class ConcurrencyChecksDUnit extends DistributedSQLTestBase {
     serverVM.invoke(ConcurrencyChecksDUnit.class, "nullGIIRequestsTestLatch");
 
     final int netPort2 = startNetworkServer(2, null, null);
-    String url2 = TestUtil.getNetProtocol(SocketCreator.getLocalHost()
-        .getHostName(), netPort2);
+    String url2 = TestUtil.getNetProtocol("localhost", netPort2);
     Connection conn2 = DriverManager.getConnection(url2,
         TestUtil.getNetProperties(new Properties()));
 
@@ -636,10 +634,9 @@ public class ConcurrencyChecksDUnit extends DistributedSQLTestBase {
     }
 
     public void dumpResults(int vmNum, String verifySql) throws Exception {
-      final InetAddress localHost = SocketCreator.getLocalHost();
       final int netPort = startNetworkServer(vmNum, null, null);
       Connection connClient = TestUtil.getNetConnection(
-          localHost.getHostAddress(), netPort, null, null);
+          "localhost", netPort, null, null);
       ResultSet rs = connClient.createStatement().executeQuery(verifySql);
       StringBuilder res = new StringBuilder("Result node" + vmNum + " : ");
       int count = 0;

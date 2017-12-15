@@ -500,7 +500,7 @@ public class MemHeapScanController implements MemScanController, RowCountable,
         }
       }
       if (prpLEItr) {
-        if (SanityManager.TraceSingleHop) {
+        if (GemFireXDUtils.TraceQuery || SanityManager.TraceSingleHop) {
           SanityManager.DEBUG_PRINT(SanityManager.TRACE_SINGLE_HOP,
               "MemHeapScanController::positionAtInitScan bucketSet: " + bset
                   + " and forUpdate=" + (this.forUpdate != 0) + " this table: "
@@ -868,7 +868,8 @@ public class MemHeapScanController implements MemScanController, RowCountable,
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM_READ,
                 "MemHeapScanController#next: current entry="
                     + this.currentRowLocation + " bucketId=" + this.bucketId
-                    + ", isIterOnPR=" + this.gfContainer.isPartitioned());
+                    + ", isIterOnPR=" + this.gfContainer.isPartitioned()
+                    + (owner != null ? ", owner=" + owner.getFullPath() : ""));
           }
           // a null owner in full scan will happen for remote entries
           if (owner == null && !isGlobalScan &&

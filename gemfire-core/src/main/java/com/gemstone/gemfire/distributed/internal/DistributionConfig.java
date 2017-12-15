@@ -2231,7 +2231,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
   public int getJmxManagerUpdateRate();
   public void setJmxManagerUpdateRate(int value);
   public boolean isJmxManagerUpdateRateModifiable();
-  public static final int DEFAULT_JMX_MANAGER_UPDATE_RATE = 2000;
+  public static final int DEFAULT_JMX_MANAGER_UPDATE_RATE = 4000;
   public static final int MIN_JMX_MANAGER_UPDATE_RATE = 1000;
   public static final int MAX_JMX_MANAGER_UPDATE_RATE = 60000*5;
   public static final String JMX_MANAGER_UPDATE_RATE_NAME =

@@ -460,7 +460,7 @@ if(noOfNoExecQueryNodes > -1)
     PartitionedRegion pr = (PartitionedRegion)sqiArr[0].getRegion();
     //Identify the nodes which should see the query based on partition resolver
     GfxdPartitionResolver spr = (GfxdPartitionResolver)pr.getPartitionResolver();
-    Set<InternalDistributedMember> AllNodesOfPr =  pr.getRegionAdvisor().adviseDataStore();
+    Set AllNodesOfPr =  pr.getRegionAdvisor().adviseDataStore();
     Set<InternalDistributedMember> currentDMs = null;
     Set<DistributedMember> prunedNodes = new HashSet<DistributedMember>();
     

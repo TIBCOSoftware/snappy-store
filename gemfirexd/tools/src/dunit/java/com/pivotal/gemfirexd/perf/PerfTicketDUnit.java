@@ -19,7 +19,6 @@ package com.pivotal.gemfirexd.perf;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -29,7 +28,6 @@ import java.util.Properties;
 import java.util.Random;
 
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gnu.trove.TIntIntHashMap;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
@@ -353,7 +351,6 @@ public class PerfTicketDUnit extends DistributedSQLTestBase {
   public void __testuseCase4_1server() throws Exception {
     getLogWriter().info("Testing with 1 server ............");
     // start a locator
-    final InetAddress localHost = SocketCreator.getLocalHost();
     final Properties locProps = new Properties();
     setCommonTestProperties(locProps);
     setCommonProperties(locProps, 0, null, null);
@@ -361,12 +358,10 @@ public class PerfTicketDUnit extends DistributedSQLTestBase {
     netPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     // also start a network server
-    int locPort = TestUtil.startLocator(localHost.getHostAddress(), netPort,
-        locProps);
+    int locPort = TestUtil.startLocator("localhost", netPort, locProps);
 
     final Properties serverProps = new Properties();
-    serverProps.setProperty("locators", localHost.getHostName() + '[' + locPort
-        + ']');
+    serverProps.setProperty("locators", "localhost[" + locPort + ']');
     setCommonTestProperties(serverProps);
     startServerVMs(1, 0, null, serverProps);
     startNetworkServer(1, null, null);
@@ -429,7 +424,6 @@ public class PerfTicketDUnit extends DistributedSQLTestBase {
     getLogWriter().info("Testing with 2 n/w server ............");
     
     // start a locator
-    final InetAddress localHost = SocketCreator.getLocalHost();
     final Properties locProps = new Properties();
     setCommonTestProperties(locProps);
     setCommonProperties(locProps, 0, null, null);
@@ -437,12 +431,10 @@ public class PerfTicketDUnit extends DistributedSQLTestBase {
     netPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     // also start a network server
-    int locPort = TestUtil.startLocator(localHost.getHostAddress(), netPort,
-        locProps);
+    int locPort = TestUtil.startLocator("localhost", netPort, locProps);
 
     final Properties serverProps = new Properties();
-    serverProps.setProperty("locators", localHost.getHostName() + '[' + locPort
-        + ']');
+    serverProps.setProperty("locators", "localhost[" + locPort + ']');
     setCommonTestProperties(serverProps);
     startServerVMs(2, 0, null, serverProps);
     startNetworkServer(2, null, null);
@@ -460,7 +452,6 @@ public class PerfTicketDUnit extends DistributedSQLTestBase {
     getLogWriter().info("Testing with 3 n/w server ............");
     
     // start a locator
-    final InetAddress localHost = SocketCreator.getLocalHost();
     final Properties locProps = new Properties();
     setCommonTestProperties(locProps);
     setCommonProperties(locProps, 0, null, null);
@@ -468,12 +459,10 @@ public class PerfTicketDUnit extends DistributedSQLTestBase {
     netPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     // also start a network server
-    int locPort = TestUtil.startLocator(localHost.getHostAddress(), netPort,
-        locProps);
+    int locPort = TestUtil.startLocator("localhost", netPort, locProps);
 
     final Properties serverProps = new Properties();
-    serverProps.setProperty("locators", localHost.getHostName() + '[' + locPort
-        + ']');
+    serverProps.setProperty("locators", "localhost[" + locPort + ']');
     setCommonTestProperties(serverProps);
     startServerVMs(3, 0, null, serverProps);
     startNetworkServer(3, null, null);

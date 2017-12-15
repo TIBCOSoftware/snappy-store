@@ -504,7 +504,7 @@ public class StatementPlanDUnit extends DistributedSQLTestBase {
         log.info(e != null ? e.toString() : "null");
       }
 
-      assertEquals(42, l);
+      assertTrue(l == 42 || l == 43);
 
     } finally {
       invokeInEveryVM(new SerializableRunnable("clearing plan checker") {

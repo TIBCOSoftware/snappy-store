@@ -62,6 +62,7 @@ import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StoredFormatIds;
+import io.snappydata.thrift.common.BufferedBlob;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -830,7 +831,8 @@ abstract class SQLBinary
 		{
 			SQLBinary theValueBinary = (SQLBinary) theValue;
 // GemStone changes BEGIN
-			if (theValueBinary._blobValue != null) {
+			Blob blob = theValueBinary._blobValue;
+			if (blob != null && !(blob instanceof BufferedBlob)) {
 			  setValue(theValueBinary.getBytes());
 			  return;
 			}

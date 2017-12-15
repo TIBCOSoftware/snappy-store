@@ -28,7 +28,6 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 
 import com.gemstone.gemfire.cache.execute.EmptyRegionFunctionException;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 
@@ -47,8 +46,7 @@ public class HibernateDialectDUnit extends DistributedSQLTestBase {
     
     // Use this VM as the network client
     TestUtil.loadNetDriver();
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+    String url = TestUtil.getNetProtocol("localhost", netPort);
 
     // logged due to TraceFunctionException on for unit tests at fine level
     addExpectedException(null, new int[] { 1 },

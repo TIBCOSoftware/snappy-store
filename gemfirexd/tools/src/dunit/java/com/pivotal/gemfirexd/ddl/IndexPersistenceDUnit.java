@@ -41,15 +41,16 @@ import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
-import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 
+import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
+import io.snappydata.test.util.TestException;
 
 /**
  * @author kneeraj
@@ -631,8 +632,8 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
           + indexNames[i]
           + "");
       while(rs.next()) {
-        Long l = rs.getLong(1);
-        assertTrue(i + ": Got value=" + l, l == maxValInsert);
+        long l = rs.getLong(1);
+        assertEquals(maxValInsert, l);
       }
     }
   }
@@ -649,8 +650,8 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
           + " --gemfirexd-properties index=null"
           + "");
       while(rs.next()) {
-        Long l = rs.getLong(1);
-        assertTrue(i + ": Got value=" + l, l == maxValInsert);
+        long l = rs.getLong(1);
+        assertEquals(maxValInsert, l);
       }
     }
   }
@@ -674,12 +675,10 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
   private int restartServerSNAP1933(String[] tableNames, String[] indexNames, int maxValInsert,
       int netPort, int restartServerNum, Properties serverInfo, int delta, String alias,
       String persistIndexes) throws Exception {
-    Thread.sleep(3000);
     stopVMNums(-restartServerNum);
     Connection conn1 = TestUtil.getNetConnection(netPort, null, null);
     updateRowsSNAP1933(conn1, tableNames, delta);
     restartServerVMNums(new int[] { restartServerNum }, 0, null, serverInfo);
-    Thread.sleep(3000);
     invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
         new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, persistIndexes });
 
@@ -689,11 +688,16 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
     verifyRowsTableScanSNAP1933(conn2_1, tableNames, maxValInsert);
     Connection conn2_2 = TestUtil.getNetConnection(netPort2, null, null);
     verifyRowsIndexScanSNAP1933(conn2_2, tableNames, indexNames, maxValInsert, alias);
+
+    // ensure recovery is complete before restarting again
+    serverSQLExecute(1, "call sys.rebalance_all_buckets()");
+
     return netPort2;
   }
 
   private void createTableSNAP1933(int redundancy, int buckets, boolean withEviction,
-      String tableName, String indexName, int maxValInsert) throws Exception {
+      final String tableName, final String indexName,
+      final int maxValInsert) throws Exception {
     String persistExtension = " PERSISTENT ASYNCHRONOUS";
     if (withEviction) {
       persistExtension = " EVICTION BY LRUCOUNT 1 EVICTACTION OVERFLOW PERSISTENT ASYNCHRONOUS";
@@ -719,13 +723,29 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
         + " on ODS." + tableName
         + " (cd_typ_ref_id)");
 
-    for (int i = 1; i < maxValInsert + 1; i++) {
-      int intVal = i;
-      serverSQLExecute(1, "insert into ODS." + tableName
-          + " values(" + intVal + "," + 1997 + intVal + "," + intVal + ",'nCZTBAdWBJslcVrJhumxuE',"
-          + intVal + 328647 + ",'fsHxXsyktJ','tENSZGopJOKFTNzKLnWPlAMnjNPJKXBfWhbFFK'," +
-          "'2012-01-18 15:13:43','2012-01-18 13:08:07')");
-    }
+    serverExecute(1, new SerializableRunnable() {
+      @Override
+      public void run() {
+        try {
+          Connection conn = TestUtil.getConnection();
+          PreparedStatement pstmt = conn.prepareStatement("insert into ODS."
+              + tableName + " values(?,?,?,'nCZTBAdWBJslcVrJhumxuE',?,"
+              + "'fsHxXsyktJ','tENSZGopJOKFTNzKLnWPlAMnjNPJKXBfWhbFFK',"
+              + "'2012-01-18 15:13:43','2012-01-18 13:08:07')");
+          for (int i = 1; i < maxValInsert + 1; i++) {
+            int intVal = i;
+            pstmt.setInt(1, intVal);
+            pstmt.setInt(2, 1997 + intVal);
+            pstmt.setInt(3, intVal);
+            pstmt.setInt(4, 328647 + intVal);
+            pstmt.addBatch();
+          }
+          pstmt.executeBatch();
+        } catch (java.sql.SQLException sqle) {
+          throw new TestException(sqle.toString(), sqle);
+        }
+      }
+    });
 
     sqlExecuteVerify(new int[]{}, new int[]{1, 2}, "select count(*) from ODS."
         + tableName, null, "" + maxValInsert);
@@ -812,9 +832,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
           serverInfo, 7, "counth", persistIndexes);
       netPort3 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort1, 3,
           serverInfo, 8, "counti", persistIndexes);
-
-      // let everything settle down
-      serverSQLExecute(1, "call sys.rebalance_all_buckets()");
 
       verifyAtLastSNAP1933(maxValInsert, tableNames, indexNames);
       dropIndexesSNAP1933(indexNames);

@@ -97,8 +97,7 @@ public final class LeadNodeSmartConnectorOpMsg extends MemberExecutorMessage<Obj
 
   @Override
   protected LeadNodeSmartConnectorOpMsg clone() {
-    final LeadNodeSmartConnectorOpMsg msg = new LeadNodeSmartConnectorOpMsg(this.ctx, this.userCollector);
-    return msg;
+    return new LeadNodeSmartConnectorOpMsg(this.ctx, this.userCollector);
   }
 
   @Override
@@ -119,6 +118,16 @@ public final class LeadNodeSmartConnectorOpMsg extends MemberExecutorMessage<Obj
   }
 
   public void appendFields(final StringBuilder sb) {
-
+    super.appendFields(sb);
+    sb.append(";opType=").append(ctx.getType())
+        .append(";table=").append(ctx.getTableIdentifier())
+        .append(";ifExists=").append(ctx.getIfExists())
+        .append(";isBuiltIn=").append(ctx.getIsBuiltIn());
+    if (ctx.getProvider() != null) {
+      sb.append(";provider=").append(ctx.getProvider());
+    }
+    if (ctx.getSchemaDDL() != null) {
+      sb.append(";schemaDDL=").append(ctx.getSchemaDDL());
+    }
   }
 }

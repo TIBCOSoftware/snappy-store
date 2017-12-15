@@ -43,6 +43,7 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
   public static final String propStatisticInterval = "statisticInterval";
   public static final String propServerGroup = "serverGroup";
   public static final String propPRSingleHopEnabled = "prSingleHopEnabled";
+  public static final String propMultiUserAuthentication = "multiUserAuthentication";
 
   private final Map<String, String> gfeGridMappings;
   private final Map<String, String> gfeGridPoolProps;
@@ -224,6 +225,11 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
       pf.setLoadConditioningInterval(Integer.parseInt(val.trim()));
     }
 
+    val = gfeGridPoolProps.get(gfeGridPropsPrefix + propMultiUserAuthentication);
+    if (val != null) {
+      pf.setMultiuserAuthentication(Boolean.parseBoolean(val.trim()));
+    }
+
     val = gfeGridPoolProps.get(gfeGridPropsPrefix + propSocketBufferSize);
     if (val != null) {
       pf.setSocketBufferSize(Integer.parseInt(val.trim()));
@@ -238,6 +244,7 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
     if (val != null) {
       pf.setReadTimeout(Integer.parseInt(val.trim()));
     }
+
 
     val = gfeGridPoolProps.get(gfeGridPropsPrefix + propMinConnections);
     if (val != null) {

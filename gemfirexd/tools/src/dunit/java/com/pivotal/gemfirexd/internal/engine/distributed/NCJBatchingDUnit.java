@@ -19,7 +19,6 @@
  */
 package com.pivotal.gemfirexd.internal.engine.distributed;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -28,7 +27,6 @@ import java.util.HashSet;
 import java.util.Properties;
 
 import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -266,8 +264,7 @@ public class NCJBatchingDUnit extends DistributedSQLTestBase {
       Properties props = new Properties();
       props.setProperty("ncj-batch-size", "500");
       //props.setProperty("gemfirexd.debug.true", "TraceClientHA");
-      final InetAddress localHost = SocketCreator.getLocalHost();
-      String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+      String url = TestUtil.getNetProtocol("localhost", netPort);
       Connection conn = DriverManager.getConnection(url,
           TestUtil.getNetProperties(props));
       PreparedStatement s1 = conn.prepareStatement(query);
