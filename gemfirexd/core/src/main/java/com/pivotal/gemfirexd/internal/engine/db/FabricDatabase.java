@@ -523,10 +523,20 @@ public final class FabricDatabase implements ModuleControl,
           // submit the task to check for catalog consistency
           this.memStore.setExternalCatalogInit(cache.getDistributionManager()
               .getFunctionExcecutor().submit(() -> {
+                EmbedConnection embedConnection = null;
                 try {
-                  checkSnappyCatalogConsistency(embedConn);
+                  embedConnection = GemFireXDUtils.createNewInternalConnection(
+                      false);
+                  checkSnappyCatalogConsistency(embedConnection);
                 } catch (StandardException | SQLException e) {
                   throw new GemFireXDRuntimeException(e);
+                } finally {
+                  if (embedConnection != null) {
+                    try {
+                      embedConnection.close();
+                    } catch (Exception ignore) {
+                    }
+                  }
                 }
               }));
         }
