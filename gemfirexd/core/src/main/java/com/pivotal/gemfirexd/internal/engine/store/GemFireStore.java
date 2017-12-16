@@ -2380,7 +2380,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   public static boolean handleCatalogInit(Future<?> init) {
     try {
-      init.get(15, TimeUnit.SECONDS);
+      init.get(30, TimeUnit.SECONDS);
       return true;
     } catch (java.util.concurrent.TimeoutException e) {
       return false;
