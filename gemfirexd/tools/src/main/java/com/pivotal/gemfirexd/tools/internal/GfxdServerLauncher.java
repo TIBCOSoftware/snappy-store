@@ -1081,16 +1081,22 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     }
   }
 
+  private String addStartupMessage(String msg) {
+    if (serverStartupMessage != null) {
+      return msg + "\n  " + serverStartupMessage;
+    } else {
+      return msg;
+    }
+  }
+
   @Override
   protected void setRunningStatus(final Status stat,
-      final InternalDistributedSystem system) {
+      final InternalDistributedSystem system) throws Exception {
     final Set<?> otherMembers = system.getDistributionManager()
         .getAllOtherMembers();
     stat.dsMsg = "  " + LocalizedResource.getMessage(
         "UTIL_GFXD_DistributedMembers_Message", otherMembers.size() + 1);
-    if (serverStartupMessage != null) {
-      stat.dsMsg += "\n  " + serverStartupMessage;
-    }
+    stat.dsMsg = addStartupMessage(stat.dsMsg);
     super.setRunningStatus(stat, system);
   }
 
@@ -1120,7 +1126,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
           otherMembers.toString());
     }
     super.setWaitingStatus(regionPath, membersToWaitFor, missingBuckets, myId,
-        message);
+        addStartupMessage(message));
   }
 
   /** @see CacheServerLauncher#stopAdditionalServices() */

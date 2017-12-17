@@ -656,16 +656,16 @@ public class CacheServerLauncher extends LauncherBase {
         stat.state = RUNNING;
       }
     }
-    setRunningStatus(stat, system);
-  }
-
-  protected void setRunningStatus(final Status stat,
-      final InternalDistributedSystem system) {
     try {
-      writeStatus(stat);
+      setRunningStatus(stat, system);
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  protected void setRunningStatus(final Status stat,
+      final InternalDistributedSystem system) throws Exception {
+    writeStatus(stat);
   }
 
   public void setWaitingStatus(String regionPath,
@@ -850,7 +850,7 @@ public class CacheServerLauncher extends LauncherBase {
               // recreate the status file if possible and continue.
               status = createStatus(RUNNING, originalStatus.pid);
               try {
-                writeStatus(status);
+                setRunningStatus(status, system);
               } catch (FileNotFoundException e) {
                 if (!loggedWarning) {
                   logger.warning(LocalizedStrings.CacheServerLauncher_CREATE_STATUS_EXCEPTION_0, e.toString());
