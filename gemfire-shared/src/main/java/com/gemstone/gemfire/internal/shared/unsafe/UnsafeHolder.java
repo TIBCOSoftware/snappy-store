@@ -81,15 +81,13 @@ public abstract class UnsafeHolder {
       Field cleaner;
       Field runnableField = null;
       try {
-        final ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
         // try using "theUnsafe" field
         Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
         field.setAccessible(true);
         v = (sun.misc.Unsafe)field.get(null);
 
         // get the constructor of DirectByteBuffer that accepts a Runnable
-        Class<?> cls = Class.forName("java.nio.DirectByteBuffer",
-            false, systemLoader);
+        Class<?> cls = Class.forName("java.nio.DirectByteBuffer");
         dbConstructor = cls.getDeclaredConstructor(Long.TYPE, Integer.TYPE);
         dbConstructor.setAccessible(true);
 
@@ -108,8 +106,7 @@ public abstract class UnsafeHolder {
           }
         }
 
-        Class<?> bitsClass = Class.forName("java.nio.Bits",
-            false, systemLoader);
+        Class<?> bitsClass = Class.forName("java.nio.Bits");
         Method m = bitsClass.getDeclaredMethod("unaligned");
         m.setAccessible(true);
         unaligned = Boolean.TRUE.equals(m.invoke(null));
