@@ -68,7 +68,6 @@ import jline.console.ConsoleReader;
  */
 public class GfxdServerLauncher extends CacheServerLauncher {
 
-  protected static final String HEAP_SIZE = "heap-size";
   protected static final String OFF_HEAP_SIZE = "off-heap-size";
   
   //There attributes are no longer supported. They get populated in deprecatedAttributes map.

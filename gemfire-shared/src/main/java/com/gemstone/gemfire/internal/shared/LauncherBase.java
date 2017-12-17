@@ -105,9 +105,10 @@ public abstract class LauncherBase {
   // in-built property names which are treated in a special way by launcher
   protected static final String DIR = "dir";
   protected static final String CLASSPATH = "classpath";
+  protected static final String HEAP_SIZE = "heap-size";
+  protected static final String WAIT_FOR_SYNC = "sync";
   protected static final String VMARGS = "vmArgs";
   protected static final String ENVARGS = "envArgs";
-  protected static final String WAIT_FOR_SYNC = "sync";
 
   protected static final String ENV1 = "env_1";
   protected static final String ENV2 = "env_2";
