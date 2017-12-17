@@ -229,7 +229,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       final Map<String, Object> m = l.getStartOptions(startOps);
 
       @SuppressWarnings("unchecked")
-      final List<String> vmargs = (List<String>)m.get("vmargs");
+      final List<String> vmargs = (List<String>)m.get("vmArgs");
       assertTrue("expected UseParNewGC definition ",
           vmargs.contains("-XX:+UseParNewGC"));
       assertTrue("expected UseConcMarkSweepGC definition ",

@@ -4118,7 +4118,7 @@ public class ResultColumnList extends QueryTreeNodeVector
 						GemFireStore ms = Misc.getMemStore();
 						if (ms.isSnappyStore() && sourceRSRCL.size() == size) {
 						  TableDescriptor td = cd.getTableDescriptor();
-						  if (td != null && ms.getExternalCatalog().isColumnTable(
+						  if (td != null && ms.getExistingExternalCatalog().isColumnTable(
 						    td.getSchemaName(), td.getName(), true)) {
 						      throw StandardException.newException(SQLState.LANG_DB2_INVALID_COLS_SPECIFIED);
 						  }

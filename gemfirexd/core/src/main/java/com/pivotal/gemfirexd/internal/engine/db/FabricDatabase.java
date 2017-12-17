@@ -538,6 +538,7 @@ public final class FabricDatabase implements ModuleControl,
               .getFunctionExcecutor().submit(() -> {
                 EmbedConnection embedConnection = null;
                 try {
+                  GemFireXDUtils.waitForNodeInitialization();
                   embedConnection = GemFireXDUtils.createNewInternalConnection(
                       false);
                   checkSnappyCatalogConsistency(embedConnection);

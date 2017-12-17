@@ -1387,7 +1387,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       table = tableName;
     }
 
-    ExternalCatalog hiveCatalog = Misc.getMemStore().getExternalCatalog();
+    ExternalCatalog hiveCatalog = Misc.getMemStore().getExistingExternalCatalog();
     // get the hive matadata object and return as a blob
     Object t = hiveCatalog.getTable(schema, table, true);
     if (t != null) {
@@ -2935,7 +2935,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
   public static void GET_COLUMN_TABLE_SCHEMA(String schema, String table,
       Clob[] schemaAsJson) throws SQLException {
 
-    String schemaString = Misc.getMemStoreBooting().getExternalCatalog()
+    String schemaString = Misc.getMemStore().getExistingExternalCatalog()
         .getColumnTableSchemaAsJson(schema, table, true);
     if (schemaString == null) {
       throw PublicAPI.wrapStandardException(StandardException.newException(

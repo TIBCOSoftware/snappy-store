@@ -106,11 +106,7 @@ public class GfxdAgentLauncher extends GfxdServerLauncher {
       readPassword(envArgs);
     }
     else if (WAIT_FOR_SYNC.equals(key)) {
-      if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
-        throw new IllegalArgumentException(LocalizedResource.getMessage(
-            "UTIL_GFXD_ExpectedBoolean", WAIT_FOR_SYNC, value));
-      }
-      this.waitForData = "true".equalsIgnoreCase(value);
+      processWaitForSync(value);
     }
     else {
       processUnknownStartOption(key, value, m, vmArgs, props);
@@ -125,7 +121,7 @@ public class GfxdAgentLauncher extends GfxdServerLauncher {
       return incomingVMArgs;
     }
 
-    if (this.maxHeapSize == null) {
+    if (this.maxHeapSize == null && this.initialHeapSize == null) {
       return incomingVMArgs;
     }
 

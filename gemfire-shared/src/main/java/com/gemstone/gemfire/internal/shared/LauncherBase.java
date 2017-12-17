@@ -99,12 +99,15 @@ public abstract class LauncherBase {
           "{0} seconds have elapsed since the last log message: \n {1}";
   public static final String LAUNCHER_IS_ALREADY_RUNNING_IN_DIRECTORY =
       "ERROR: A {0} is already running in directory \"{1}\"";
+  private static final String LAUNCHER_EXPECTED_BOOLEAN =
+      "Expected true or false for \"{0}=<value>\" but was \"{1}\"";
 
   // in-built property names which are treated in a special way by launcher
   protected static final String DIR = "dir";
   protected static final String CLASSPATH = "classpath";
   protected static final String VMARGS = "vmArgs";
   protected static final String ENVARGS = "envArgs";
+  protected static final String WAIT_FOR_SYNC = "sync";
 
   protected static final String ENV1 = "env_1";
   protected static final String ENV2 = "env_2";
@@ -182,6 +185,15 @@ public abstract class LauncherBase {
       vmArgs.add("-Xms" + value);
       this.initialHeapSize = value;
     }
+  }
+
+  protected void processWaitForSync(String value) {
+    boolean isTrue = "true".equalsIgnoreCase(value);
+    if (!isTrue && !"false".equalsIgnoreCase(value)) {
+      throw new IllegalArgumentException(MessageFormat.format(
+          LAUNCHER_EXPECTED_BOOLEAN, WAIT_FOR_SYNC, value));
+    }
+    this.waitForData = isTrue;
   }
 
   protected void processVMArg(String vmArg, List<String> vmArgs) {

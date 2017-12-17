@@ -54,6 +54,7 @@ import com.gemstone.gemfire.admin.jmx.Agent;
 import com.gemstone.gemfire.admin.jmx.AgentConfig;
 import com.gemstone.gemfire.admin.jmx.AgentFactory;
 import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -2380,7 +2381,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   public static boolean handleCatalogInit(Future<?> init) {
     try {
-      init.get(30, TimeUnit.SECONDS);
+      init.get(15, TimeUnit.SECONDS);
       return true;
     } catch (java.util.concurrent.TimeoutException e) {
       return false;
@@ -2388,6 +2389,34 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       throw new RuntimeException(e.getCause());
     } catch (Exception e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Get the {@link ExternalCatalog} or wait for it to be initialized, or else
+   * throw a {@link TimeoutException} if wait failed unsuccessfully but never
+   * return a null.
+   */
+  public ExternalCatalog getExistingExternalCatalog() {
+    ExternalCatalog catalog;
+    int cnt = 0;
+    // retry catalog get after some sleep
+    while ((catalog = getExternalCatalog()) == null && ++cnt < 10) {
+      Throwable t = null;
+      try {
+        Thread.sleep(2);
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+        t = ie;
+      }
+      // check for JVM going down
+      Misc.checkIfCacheClosing(t);
+    }
+    if (catalog != null) {
+      return catalog;
+    } else {
+      throw new TimeoutException(
+          "The SnappyData catalog in hive meta-store is not accessible");
     }
   }
 
@@ -2401,8 +2430,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         externalCatalog.waitForInitialization()) {
       if (fullInit) {
         final Future<?> init = this.externalCatalogInit;
-        if (init != null) {
-          handleCatalogInit(init);
+        if (init != null && !handleCatalogInit(init)) {
+          return null;
         }
       }
       return externalCatalog;

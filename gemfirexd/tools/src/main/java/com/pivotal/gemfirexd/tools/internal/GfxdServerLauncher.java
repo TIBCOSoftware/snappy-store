@@ -79,7 +79,6 @@ public class GfxdServerLauncher extends CacheServerLauncher {
   protected static final String RUN_NETSERVER = "run-netserver";
   protected static final String NETWORK_BIND_ADDRESS_ARG = "client-bind-address";
   protected static final String NETWORK_PORT_ARG = "client-port";
-  protected static final String WAIT_FOR_SYNC = "sync";
 
   // Thrift servers (can be multiple)
   protected static final String THRIFT_SERVER_ADDRESS = "thrift-server-address";
@@ -475,11 +474,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       readPassword(envArgs);
     }
     else if (WAIT_FOR_SYNC.equals(key)) {
-      if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
-        throw new IllegalArgumentException(LocalizedResource.getMessage(
-            "UTIL_GFXD_ExpectedBoolean", WAIT_FOR_SYNC, value));
-      }
-      this.waitForData = "true".equalsIgnoreCase(value);
+      processWaitForSync(value);
     }
     else {
       super.processStartOption(key, value, m, vmArgs, envArgs, props);
@@ -1089,50 +1084,13 @@ public class GfxdServerLauncher extends CacheServerLauncher {
   @Override
   protected void setRunningStatus(final Status stat,
       final InternalDistributedSystem system) {
-    if (serverStartupMessage != null) {
-      stat.dsMsg = serverStartupMessage;
-    }
-    /*
     final Set<?> otherMembers = system.getDistributionManager()
         .getAllOtherMembers();
-    final int numOtherMembers = otherMembers.size();
-    if (numOtherMembers > 0) {
-      final StringBuilder sb = new StringBuilder();
-      int i = 0;
-      InternalDistributedMember member;
-      for (Object memberObj : otherMembers) {
-        if (sb.length() > 0) {
-          sb.append(", ");
-        }
-        if (++i < 8) {
-          member = (InternalDistributedMember)memberObj;
-          // get the VMKind of this member
-          Object vmKind = null;
-          try {
-            vmKind = Class.forName("com.pivotal.gemfirexd"
-                + ".internal.engine.distributed.utils.GemFireXDUtils")
-                .getMethod("getVMKind", DistributedMember.class)
-                .invoke(null, member);
-          } catch (Exception e) {
-            // ignore exceptions here
-          }
-          if (vmKind != null) {
-            sb.append(member.toString(":" + vmKind));
-          }
-          else {
-            sb.append(member.toString());
-          }
-        }
-        else { // don't display more than 10 members
-          sb.append("...");
-          break;
-        }
-      }
-      stat.dsMsg = LocalizedResource.getMessage(
-          "UTIL_GFXD_DistributedMembers_Message", numOtherMembers + 1,
-          sb.toString());
+    stat.dsMsg = "  " + LocalizedResource.getMessage(
+        "UTIL_GFXD_DistributedMembers_Message", otherMembers.size() + 1);
+    if (serverStartupMessage != null) {
+      stat.dsMsg += "\n  " + serverStartupMessage;
     }
-    */
     super.setRunningStatus(stat, system);
   }
 
