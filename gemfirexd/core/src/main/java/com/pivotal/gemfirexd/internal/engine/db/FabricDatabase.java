@@ -555,11 +555,6 @@ public final class FabricDatabase implements ModuleControl,
               }));
         }
       }
-
-      if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
-          GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
-        CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
-      }
     } catch (Throwable t) {
       try {
         LogWriter logger = Misc.getCacheLogWriter();
@@ -592,6 +587,14 @@ public final class FabricDatabase implements ModuleControl,
       }
       throw StandardException.newException(SQLState.BOOT_DATABASE_FAILED, t,
           Attribute.GFXD_DBNAME);
+    }
+  }
+
+  public void publishColumnStats() {
+    if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
+        GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
+      GemFireXDUtils.waitForNodeInitialization();
+      CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
     }
   }
 
