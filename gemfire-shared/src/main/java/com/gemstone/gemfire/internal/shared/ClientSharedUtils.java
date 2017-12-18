@@ -1457,14 +1457,12 @@ public abstract class ClientSharedUtils {
   public static synchronized void initLog4J(String logFile,
       Properties userProps, Level level) throws IOException {
     Properties props;
-    if (baseLoggerProperties.isEmpty()) {
+    if (baseLoggerProperties.isEmpty() || logFile != null) {
       props = getLog4JProperties(logFile, level);
+      baseLoggerProperties.clear();
       baseLoggerProperties.putAll(props);
-    } else if (userProps != null) {
-      props = (Properties)baseLoggerProperties.clone();
     } else {
-      // in this case log4j has already been configured
-      return;
+      props = (Properties)baseLoggerProperties.clone();
     }
     if (userProps != null) {
       props.putAll(userProps);
@@ -1566,7 +1564,7 @@ public abstract class ClientSharedUtils {
     socketKeepAliveCntWarningLogged = false;
   }
 
-  private static void clearLogger() {
+  private static synchronized void clearLogger() {
     final Logger log = logger;
     if (log != null && log != DEFAULT_LOGGER()) {
       for (Handler h : log.getHandlers()) {
