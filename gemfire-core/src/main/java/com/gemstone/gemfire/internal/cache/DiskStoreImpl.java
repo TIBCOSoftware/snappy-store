@@ -5153,7 +5153,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         endMillis = Long.MAX_VALUE;
       }
     }
-    final long loopMillis = Math.min(1000L, waitMillis);
+    final long loopMillis = Math.min(200L, waitMillis);
     synchronized (this.indexRecoveryState) {
       while (this.indexRecoveryState[0] < expected && !isClosing()) {
         Throwable t = null;
