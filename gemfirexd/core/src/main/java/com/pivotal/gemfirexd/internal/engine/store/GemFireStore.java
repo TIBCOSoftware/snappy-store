@@ -2417,8 +2417,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       }
     }
     if (this.externalCatalog == null) {
-      throw new IllegalStateException(
-          "could not instantiate snappy catalog");
+      throw new IllegalStateException("Could not instantiate snappy catalog");
     }
   }
 
@@ -2428,7 +2427,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   public static boolean handleCatalogInit(Future<?> init) {
     try {
-      init.get(30, TimeUnit.SECONDS);
+      init.get(60, TimeUnit.SECONDS);
       return true;
     } catch (java.util.concurrent.TimeoutException e) {
       return false;
