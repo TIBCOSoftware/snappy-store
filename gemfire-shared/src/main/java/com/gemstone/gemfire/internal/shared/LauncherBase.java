@@ -274,7 +274,7 @@ public abstract class LauncherBase {
       if (!map.containsKey(CRITICAL_HEAP_PERCENTAGE)) {
         // for larger heaps, keep critical as 95% and 90% for smaller ones
         long heapSize = ClientSharedUtils.parseMemorySize(maxHeapStr, 0L, 0);
-        criticalPercent = heapSize >= (16L * 1024L * 1024L * 1024L) ? 95 : 90;
+        criticalPercent = heapSize >= (2L * 1024L * 1024L * 1024L) ? 95 : 90;
         map.put(CRITICAL_HEAP_PERCENTAGE, "-" + CRITICAL_HEAP_PERCENTAGE +
             '=' + criticalPercent);
       } else {
