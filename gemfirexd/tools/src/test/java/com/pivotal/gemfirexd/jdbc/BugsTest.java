@@ -174,6 +174,7 @@ public class BugsTest extends JdbcTestBase {
     st = conn.createStatement();
     ResultSet rs;
     for (int i = 0; i < 250; i++) {
+      logger.info("Testing index 02 query for i = " + i);
       rs = st.executeQuery("select st, cty, client_id from ODS.POSTAL_ADDRESS "
           + "where CTY='CTY" + (i + 20) + "' AND CLIENT_ID=" + (i + 20));
       if ((i >= 200 && i < 250) || (i >= 100 && i < 150)) {
@@ -190,6 +191,7 @@ public class BugsTest extends JdbcTestBase {
       rs.close();
     }
     for (int i = 0; i < 250; i++) {
+      logger.info("Testing index 03 query for i = " + i);
       rs = st.executeQuery("select st, cty, client_id from ODS.POSTAL_ADDRESS "
           + "where ST='ST" + (i + 20) + "' AND CLIENT_ID=" + (i + 20));
       if (i >= 0 && i < 150) {
