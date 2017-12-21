@@ -41,12 +41,8 @@ import org.slf4j.LoggerFactory;
 public class HiveTablesVTI extends GfxdVTITemplate
     implements GfxdVTITemplateNoAllNodesRoute {
 
-  public static final ThreadLocal<Boolean> SKIP_HIVE_TABLE_CALLS;
-
-  static {
-    SKIP_HIVE_TABLE_CALLS = new ThreadLocal<>();
-    SKIP_HIVE_TABLE_CALLS.set(Boolean.FALSE);
-  }
+  public static final ThreadLocal<Boolean> SKIP_HIVE_TABLE_CALLS =
+      new ThreadLocal<>();
 
   private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 

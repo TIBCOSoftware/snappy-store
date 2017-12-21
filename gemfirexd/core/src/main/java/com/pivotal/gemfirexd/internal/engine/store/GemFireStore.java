@@ -374,6 +374,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   private volatile Future<?> externalCatalogInit;
 
+  public static final ThreadLocal<Boolean> externalCatalogInitThread =
+      new ThreadLocal<>();
+
   /**
    *************************************************************************
    * Public Methods implementing AccessFactory Interface
@@ -2429,7 +2432,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         externalCatalog.waitForInitialization()) {
       if (fullInit) {
         final Future<?> init = this.externalCatalogInit;
-        if (init != null && !handleCatalogInit(init)) {
+        if (init != null && !Boolean.TRUE.equals(externalCatalogInitThread.get())
+            && !handleCatalogInit(init)) {
           return null;
         }
       }

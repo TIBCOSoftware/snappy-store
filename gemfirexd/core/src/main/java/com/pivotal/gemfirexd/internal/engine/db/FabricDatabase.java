@@ -536,6 +536,8 @@ public final class FabricDatabase implements ModuleControl,
           // submit the task to check for catalog consistency
           this.memStore.setExternalCatalogInit(cache.getDistributionManager()
               .getFunctionExcecutor().submit(() -> {
+                // don't wait for self in catalog initialization
+                GemFireStore.externalCatalogInitThread.set(Boolean.TRUE);
                 EmbedConnection embedConnection = null;
                 try {
                   GemFireXDUtils.waitForNodeInitialization();
