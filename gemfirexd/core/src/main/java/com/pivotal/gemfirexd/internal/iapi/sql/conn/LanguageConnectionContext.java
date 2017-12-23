@@ -1512,12 +1512,20 @@ public interface LanguageConnectionContext extends Context {
    boolean isSnappyInternalConnection();
 
 	/**
-	 * Query routing will be attempted only when this flag is true
-	 * @param routeQuery
+	 * If set then all tables created on this connection will be PERSISTENT
+	 * by default even if not specified in the DDL.
 	 */
 	void setDefaultPersistent(boolean b);
 
 	boolean isDefaultPersistent();
+
+	/**
+	 * If set then metastore tables created on this connection will be stored
+	 * in DataDictionary (default is true).
+	 */
+	void setPersistMetaStoreInDataDictionary(boolean b);
+
+	boolean isPersistMetaStoreInDataDictionary();
 // GemStone changes END
 
 }

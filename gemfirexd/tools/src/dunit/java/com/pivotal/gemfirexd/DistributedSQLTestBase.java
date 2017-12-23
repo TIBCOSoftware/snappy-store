@@ -1981,7 +1981,8 @@ public class DistributedSQLTestBase extends DistributedTestBase {
         else {
           for (DiskStoreImpl ds : cache.listDiskStores()) {
             if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds.getName())
-                && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())) {
+                && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())
+                && !GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME.equals(ds.getName())) {
               requiresCleanup[2] = true;
               break;
             }
@@ -2092,9 +2093,9 @@ public class DistributedSQLTestBase extends DistributedTestBase {
                 hdfsStore.getName() + '"');
           }
           for (DiskStoreImpl ds : cache.listDiskStores()) {
-            if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds
-                .getName()) && !GfxdConstants.GFXD_DD_DISKSTORE_NAME
-                .equals(ds.getName())) {
+            if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds.getName())
+                && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())
+                && !GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME.equals(ds.getName())) {
               executeCleanup(stmt, "drop diskstore \"" + ds.getName() + '"');
             }
           }

@@ -86,8 +86,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
     MessageWithReply {
 
   /**
-   * The arguments encapsulated in an {@link GfxdFunctionArgs} implementation
-   * for the DDL message including the DDL string and connection ID.
+   * The arguments for the DDL message including DDL string and connection ID.
    */
   DDLArgs args;
 
@@ -299,6 +298,8 @@ public final class GfxdDDLMessage extends GfxdMessage implements
         oldContext = lcc.getContextObject();
         lcc.setContextObject(ddl.getAdditionalArgs());
         lcc.setDefaultPersistent(ddl.defaultPersistent());
+        lcc.setPersistMetaStoreInDataDictionary(
+            ddl.persistMetaStoreInDataDictionary());
         lcc.setQueryRoutingFlag(false);
         // also the DDL ID
         tran.setDDLId(ddlId);
@@ -377,6 +378,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
     } finally {
       if (lcc != null) {
         lcc.setFlags(oldFlags);
+        lcc.setPersistMetaStoreInDataDictionary(true);
         lcc.setContextObject(oldContext);
       }
       if (!success) {
@@ -475,8 +477,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
   }
 
   /**
-   * Inner class to hold the arguments for the DDL statement as an
-   * {@link GfxdFunctionArgs} object.
+   * Inner class to hold the arguments for the DDL statement.
    * 
    * @author swale
    */

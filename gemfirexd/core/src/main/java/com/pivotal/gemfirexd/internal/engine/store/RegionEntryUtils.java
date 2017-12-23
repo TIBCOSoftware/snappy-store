@@ -737,8 +737,7 @@ public final class RegionEntryUtils {
 
     @Override
     public void waitForAsyncIndexRecovery(DiskStoreImpl dsi) {
-      // don't wait for DataDictionary
-      if (dsi.isUsedForInternalUse() || dsi.isOffline()) {
+      if (dsi.isOffline()) {
         return;
       }
       final GemFireStore memStore = Misc.getMemStoreBooting();
@@ -1670,19 +1669,12 @@ public final class RegionEntryUtils {
               pkrf.getNumColumns());
           final TIntArrayList varCols = new TIntArrayList(pkrf.getNumColumns());
           getFixedAndVarColumns(pkrf, fixedCols, varCols);
-          int[] fixedColumnPositions = null;
-          int[] varColumnPositions = null;
-          if (fixedCols.size() > 0) {
-            fixedColumnPositions = fixedCols.toNativeArray();
-          }
-          if (varCols.size() > 0) {
-            varColumnPositions = varCols.toNativeArray();
-          }
           int keyIndex, offset, width, offsetFromMap;
           int varOffset = 0;
-          if (fixedColumnPositions != null) {
-            for (int index = 0; index < fixedColumnPositions.length; ++index) {
-              keyIndex = fixedColumnPositions[index] - 1;
+          final int numFixedCols = fixedCols.size();
+          if (numFixedCols > 0) {
+            for (int index = 0; index < numFixedCols; ++index) {
+              keyIndex = fixedCols.getQuick(index) - 1;
               offsetFromMap = pkrf.positionMap[keyIndex];
               width = pkrf.getColumnDescriptor(keyIndex).fixedWidth;
               hash = ResolverUtils.addBytesToHash(key, offsetFromMap, width,
@@ -1690,12 +1682,12 @@ public final class RegionEntryUtils {
               varOffset += width;
             }
           }
-          if (varColumnPositions != null) {
+          final int numVarWidths = varCols.size();
+          if (numVarWidths > 0) {
             // next add the variable width columns to hash
-            final int numVarWidths = varColumnPositions.length;
             final int[] varOffsets = new int[numVarWidths];
             for (int index = 0; index < numVarWidths; ++index) {
-              keyIndex = varColumnPositions[index] - 1;
+              keyIndex = varCols.getQuick(index) - 1;
               offsetFromMap = pkrf.positionMap[keyIndex];
               assert offsetFromMap <= 0 : "unexpected offsetFromMap="
                   + offsetFromMap;

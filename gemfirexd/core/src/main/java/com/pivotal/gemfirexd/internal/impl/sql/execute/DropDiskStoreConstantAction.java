@@ -79,7 +79,8 @@ public class DropDiskStoreConstantAction extends DDLConstantAction {
     // Diskstore in region has NULL for name, but users may try to
     // drop diskstore names from catalog
     if (diskStoreName.equals(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME)
-        || diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
+        || diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)
+        || diskStoreName.equals(GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME)) {
       // 0A000 until more appropriate sqlstate
       throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
           "Cannot DROP default diskstores");

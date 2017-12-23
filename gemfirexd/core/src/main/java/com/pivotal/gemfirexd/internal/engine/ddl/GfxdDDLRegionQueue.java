@@ -847,7 +847,7 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
           if (!currentSchema.equals(newSchema)) {
             DDLConflatable schemaDDL = new DDLConflatable("SET SCHEMA "
                 + newSchema, newSchema, new CreateSchemaConstantAction(
-                newSchema, null), null, null, 0, true);
+                newSchema, null), null, null, 0, true, null);
             final QueueValue qValue = new QueueValue(0L, new RegionValue(
                 schemaDDL, 0L));
             iter.add(qValue);
