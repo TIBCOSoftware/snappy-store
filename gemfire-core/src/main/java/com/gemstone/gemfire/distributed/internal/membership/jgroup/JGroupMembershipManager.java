@@ -26,6 +26,7 @@ import java.io.NotSerializableException;
 import java.net.DatagramSocket;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
@@ -73,6 +74,7 @@ import com.gemstone.gemfire.internal.cache.DirectReplyMessage;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlGenerator;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -386,7 +388,9 @@ public final class JGroupMembershipManager implements MembershipManager {
    * 
    * @see #latestView
    */
-  protected ViewLock latestViewLock = new ViewLock();
+  //protected ViewLock latestViewLock = new ViewLock();
+  protected final ReentrantReadWriteLock latestViewLock =
+      new ReentrantReadWriteLock();
   
   /**
    * This is the listener that accepts our membership events
@@ -474,7 +478,7 @@ public final class JGroupMembershipManager implements MembershipManager {
    * 
    * Accesses to this list needs to be synchronized via {@link #latestViewLock}
    */
-  protected final HashSet shunnedAndWarnedMembers = new HashSet();
+  protected final ConcurrentHashSet shunnedAndWarnedMembers = new ConcurrentHashSet<>();
   /**
    * The identities and birth-times of others that we have allowed into
    * membership at the distributed system level, but have not yet appeared
@@ -781,7 +785,8 @@ public final class JGroupMembershipManager implements MembershipManager {
 //     }
     // We perform the update under a global lock so that other
     // incoming events will not be lost in terms of our global view.
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       // first determine the version for multicast message serialization
       short version = Version.CURRENT_ORDINAL;
       for (Iterator<Map.Entry<InternalDistributedMember, Long>> it=surpriseMembers.entrySet().iterator(); it.hasNext(); ) {
@@ -987,7 +992,9 @@ public final class JGroupMembershipManager implements MembershipManager {
       }
       catch (DistributedSystemDisconnectedException se) {
       }
-    } // synchronized
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
+    }
     if (VERBOSE_VIEWS || DistributionManager.VERBOSE) {
       logger.info(LocalizedStrings.JGroupMembershipManager_MEMBERSHIP_FINISHED_VIEW_PROCESSING_VIEWID___0, Long.valueOf(newViewId));
     }
@@ -1534,7 +1541,8 @@ public final class JGroupMembershipManager implements MembershipManager {
     
     JChannel myChannel = null;
 
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       try {
         this.isJoining = true; // added for bug #44373
 
@@ -1653,7 +1661,9 @@ public final class JGroupMembershipManager implements MembershipManager {
       finally {
         this.isJoining = false;
       }
-    } // synchronized
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
+    }
   }
 
   
@@ -1890,8 +1900,11 @@ public final class JGroupMembershipManager implements MembershipManager {
       }
       logger.info(LocalizedStrings.DEBUG, sb.toString());
     }
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       removeWithViewLock(dm, crashed, reason);
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
   
@@ -1942,8 +1955,9 @@ public final class JGroupMembershipManager implements MembershipManager {
     final InternalDistributedMember member = (InternalDistributedMember)dm;
     Stub s = null;
     boolean warn = false;
-    
-    synchronized(latestViewLock) {
+
+    latestViewLock.writeLock().lock();
+    try {
       // At this point, the join may have been discovered by
       // other means.
       if (latestView.contains(member)) {
@@ -2043,6 +2057,8 @@ public final class JGroupMembershipManager implements MembershipManager {
         newMembers.add(member);
         latestView = newMembers;
       }
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
     if (warn) { // fix for bug #41538 - deadlock while alerting
       logger.warning( 
@@ -2057,7 +2073,8 @@ public final class JGroupMembershipManager implements MembershipManager {
 
   /** starts periodic task to perform cleanup chores such as expire surprise members */
   private void startCleanupTimer() {
-    synchronized(this.latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       if (this.cleanupTimer != null) {
         return;
       }
@@ -2072,7 +2089,8 @@ public final class JGroupMembershipManager implements MembershipManager {
   
           @Override
           public void run2() {
-            synchronized(latestViewLock) {
+            latestViewLock.writeLock().lock();
+            try {
               long oldestAllowed = System.currentTimeMillis() - surpriseMemberTimeout;
               for (Iterator it=surpriseMembers.entrySet().iterator(); it.hasNext(); ) {
                 Map.Entry entry = (Map.Entry)it.next();
@@ -2087,13 +2105,18 @@ public final class JGroupMembershipManager implements MembershipManager {
                       + surpriseMemberTimeout + "ms");
                 }
               }
+            } finally {
+              latestViewLock.writeLock().unlock(); // synchronized
             }
           }
         };
         this.cleanupTimer.scheduleAtFixedRate(st, surpriseMemberTimeout, surpriseMemberTimeout/3);
       } // ds != null && ds.isConnected()
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
+
   /**
    * Dispatch the distribution message, or place it on the startup queue.
    * 
@@ -2110,7 +2133,8 @@ public final class JGroupMembershipManager implements MembershipManager {
   }
   
   public void warnShun(DistributedMember m) {
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       if (!shunnedMembers.containsKey(m)) {
         return; // not shunned
       }
@@ -2118,7 +2142,9 @@ public final class JGroupMembershipManager implements MembershipManager {
         return; // already warned
       }
       shunnedAndWarnedMembers.add(m);
-    } // synchronized
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
+    }
     // issue warning outside of sync since it may cause messaging and we don't
     // want to hold the view lock while doing that
     logger.warning(LocalizedStrings.JGroupMembershipManager_MEMBERSHIP_DISREGARDING_SHUNNED_MEMBER_0, m);
@@ -2137,7 +2163,8 @@ public final class JGroupMembershipManager implements MembershipManager {
     boolean shunned = false;
 
     // First grab the lock: check the sender against our stabilized view.
-    synchronized (latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       if (isShunnedNoSync(m)) {
         if (msg instanceof StartupMessage) {
           endShun(m);
@@ -2154,12 +2181,17 @@ public final class JGroupMembershipManager implements MembershipManager {
 
         // If it's a new sender, wait our turn, generate the event
         if (isNew) {
+          latestViewLock.readLock().unlock(); // synchronized
           shunned = !addSurpriseMember(m, getStubForMember(m));
         } // isNew
       }
 
       // Latch the view before we unlock
-    } // synchronized
+    } finally {
+      if (!isNew) { // note: if(isNew) then we release read and acquire writeLock inside addSurpriseMember.
+        latestViewLock.readLock().unlock(); // synchronized
+      }
+    }
     
     if (shunned) { // bug #41538 - shun notification must be outside synchronization to avoid hanging
       warnShun(m);
@@ -2215,7 +2247,8 @@ public final class JGroupMembershipManager implements MembershipManager {
         return;
       }
     }
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       synchronized(startupLock) {
         if (!processingEvents) {
           startupMessages.add(new StartupEvent(viewArg));
@@ -2236,6 +2269,8 @@ public final class JGroupMembershipManager implements MembershipManager {
           JGroupMembershipManager.this);
 
       listener.messageReceived(v);
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
   
@@ -2244,7 +2279,8 @@ public final class JGroupMembershipManager implements MembershipManager {
    * @param suspectInfo the suspectee and suspector
    */
   protected void handleOrDeferSuspect(SuspectMember suspectInfo) {
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       synchronized(startupLock) {
         if (!processingEvents) {
           return;
@@ -2259,6 +2295,8 @@ public final class JGroupMembershipManager implements MembershipManager {
       catch (DistributedSystemDisconnectedException se) {
         // let's not get huffy about it
       }
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
 
@@ -2277,8 +2315,11 @@ public final class JGroupMembershipManager implements MembershipManager {
       InternalDistributedMember member, 
       Stub stub) 
   {
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       addSurpriseMember(member, stub);
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
   
@@ -2405,7 +2446,7 @@ public final class JGroupMembershipManager implements MembershipManager {
   }
 
 
-  public Object getViewLock() {
+  public ReentrantReadWriteLock getViewLock() {
     return this.latestViewLock;
   }
 
@@ -2418,8 +2459,11 @@ public final class JGroupMembershipManager implements MembershipManager {
     // Grab the latest view under a mutex...
     NetView v;
 
-    synchronized (latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       v = latestView;
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
 
     // Create a copy (read-only)
@@ -2475,7 +2519,8 @@ public final class JGroupMembershipManager implements MembershipManager {
    */
   public void forEachViewMember(final TObjectProcedure proc,
       final boolean excludeShunned) {
-    synchronized (latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       final Object[] v = this.latestView.toArray();
       for (int index = 0; index < v.length; index++) {
         DistributedMember m = (DistributedMember)v[index];
@@ -2485,6 +2530,8 @@ public final class JGroupMembershipManager implements MembershipManager {
           }
         }
       }
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
   }
 
@@ -2536,9 +2583,12 @@ public final class JGroupMembershipManager implements MembershipManager {
 
   public boolean memberExists(InternalDistributedMember m) {
     Vector v;
-    
-    synchronized (latestViewLock) {
+
+    latestViewLock.readLock().lock();
+    try {
       v = latestView;
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
     return v.contains(m);
   }
@@ -2724,8 +2774,11 @@ public final class JGroupMembershipManager implements MembershipManager {
       // Make sure that channel information is consistent
       // Probably not important in this particular case, but just
       // to be consistent...
-      synchronized (latestViewLock) {
+      latestViewLock.writeLock().lock();
+      try {
         destroyMember(myMemberId, false, "orderly shutdown");
+      } finally {
+        latestViewLock.writeLock().unlock(); // synchronized
       }
     }
     if (logger.fineEnabled()) {
@@ -2947,10 +3000,13 @@ public final class JGroupMembershipManager implements MembershipManager {
     InternalDistributedMember[] keys;
     if (content.forAll()) {
       allDestinations = true;
-      synchronized (latestViewLock) {
+      latestViewLock.readLock().lock();
+      try {
         Set keySet = memberToStubMap.keySet();
         keys = new InternalDistributedMember[keySet.size()];
         keys = (InternalDistributedMember[])keySet.toArray(keys);
+      } finally {
+        latestViewLock.readLock().unlock(); // synchronized
       }
     }
     else {
@@ -3482,7 +3538,8 @@ public final class JGroupMembershipManager implements MembershipManager {
     if (result != null)
       return result;
 
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       // Do all of this work in a critical region to prevent
       // members from slipping in during shutdown
       if (shutdownInProgress())
@@ -3493,13 +3550,16 @@ public final class JGroupMembershipManager implements MembershipManager {
       // OK, create one.  Update the table to reflect the creation.
       result = directChannel.createConduitStub(m);
       addChannel(m, result);
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
    return result;
   }
 
   public InternalDistributedMember getMemberForStub(Stub s, boolean validated)
   {
-    synchronized (latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       if (shutdownInProgress) {
         throw new DistributedSystemDisconnectedException(LocalizedStrings.JGroupMembershipManager_DISTRIBUTEDSYSTEM_IS_SHUTTING_DOWN.toLocalizedString(), this.shutdownCause);
       }
@@ -3529,6 +3589,8 @@ public final class JGroupMembershipManager implements MembershipManager {
         }
       }
       return result;
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
   }
 
@@ -3537,8 +3599,11 @@ public final class JGroupMembershipManager implements MembershipManager {
     // shutdown state needs to be set atomically between this
     // class and the direct channel.  Don't allow new members
     // to slip in.
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       shutdownInProgress = true;
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
 
@@ -3640,12 +3705,15 @@ public final class JGroupMembershipManager implements MembershipManager {
         new IpAddress(member.getIpAddress(), member.getPort()));
     
     // Make sure it is removed from the view
-    synchronized (this.latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       if (latestView.contains(member)) {
         NetView newView = new NetView(latestView, latestView.getViewNumber());
         newView.remove(member);
         latestView = newView;
       }
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
     
     surpriseMembers.remove(member);
@@ -3694,8 +3762,11 @@ public final class JGroupMembershipManager implements MembershipManager {
   
   public Stub getDirectChannel()
   {
-    synchronized (latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       return (Stub)memberToStubMap.get(myMemberId);
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
   }
 
@@ -3729,9 +3800,12 @@ public final class JGroupMembershipManager implements MembershipManager {
    * @return true if the given member is a zombie
    */
   protected boolean isShunned(DistributedMember m) {
-    synchronized (latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       return isShunnedNoSync(m);
-    } // sync
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
+    }
   }
 
   protected boolean isShunnedNoSync(DistributedMember m) {
@@ -3783,14 +3857,17 @@ public final class JGroupMembershipManager implements MembershipManager {
    * @return true if the given member is a surprise member
    */
   public boolean isSurpriseMember(DistributedMember m) {
-    synchronized (latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       if (surpriseMembers.containsKey(m)) {
         long birthTime = ((Long)surpriseMembers.get(m)).longValue();
         long now = System.currentTimeMillis();
         return (birthTime >= (now - this.surpriseMemberTimeout));
       }
       return false;
-    } // sync
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
+    }
   }
   
   /**
@@ -3801,8 +3878,11 @@ public final class JGroupMembershipManager implements MembershipManager {
    */
   protected void addSurpriseMemberForTesting(DistributedMember m, long birthTime) {
     logger.info(LocalizedStrings.TESTING, "test hook is adding surprise member " + m + " birthTime=" + birthTime);
-    synchronized(latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       surpriseMembers.put((InternalDistributedMember)m, Long.valueOf(birthTime));
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
   
@@ -3880,13 +3960,16 @@ public final class JGroupMembershipManager implements MembershipManager {
     } // while
     
     // Now remove these folk from the list...
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       it = removedMembers.iterator();
       while (it.hasNext()) {
         InternalDistributedMember idm = (InternalDistributedMember)it.next();
         endShun(idm);
         ipAddrToMemberMap.remove(new IpAddress(idm.getIpAddress(), idm.getPort()));
       }
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
 
@@ -3944,7 +4027,8 @@ public final class JGroupMembershipManager implements MembershipManager {
    */
   public InternalDistributedMember getMemberFromIpAddress(IpAddress sender,
       boolean createIfAbsent) {
-    synchronized(latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
 //      logger.fine("DEBUG: getting member for ipAddr " + sender);
       InternalDistributedMember mbr = (InternalDistributedMember)ipAddrToMemberMap.get(sender);
       if (mbr == null) {
@@ -3959,6 +4043,8 @@ public final class JGroupMembershipManager implements MembershipManager {
       }
 //      logger.fine("DEBUG: returning " + mbr);
       return mbr;
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
   }
   
@@ -3985,8 +4071,11 @@ public final class JGroupMembershipManager implements MembershipManager {
     DirectChannel dc = directChannel;
     Long mcastState = (Long)channelState.remove("JGroups.MCast");
     Stub stub;
-    synchronized (latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       stub = (Stub)memberToStubMap.get(otherMember);
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
     if (dc != null && stub != null) {
       dc.waitForChannelState(stub, channelState);
@@ -4026,8 +4115,11 @@ public final class JGroupMembershipManager implements MembershipManager {
         }
       }
       if (!wait) {
-        synchronized(latestViewLock) {
+        latestViewLock.writeLock().lock();
+        try {
           wait = this.latestView.contains(idm);
+        } finally {
+          latestViewLock.writeLock().unlock(); // synchronized
         }
         if (wait && logger.fineEnabled()) {
           logger.fine("waiting for " + mbr + " to leave the membership view");
@@ -4083,19 +4175,25 @@ public final class JGroupMembershipManager implements MembershipManager {
    * @return true if the address has been removed from membership
    */
   public boolean memberExists(IpAddress mbr) {
-    synchronized(latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       InternalDistributedMember idm = getMemberFromIpAddress(mbr, true);
       if (idm == null) {
         return true; // TODO I don't think this happens
       }
       return memberExists(idm);
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
   }
   
   public void warnShun(IpAddress mbr) {
     InternalDistributedMember idm;
-    synchronized(latestViewLock) {
+    latestViewLock.readLock().lock();
+    try {
       idm = getMemberFromIpAddress(mbr, true);
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
     }
     if (idm == null) {
       return;
@@ -4108,21 +4206,40 @@ public final class JGroupMembershipManager implements MembershipManager {
     Latch currentLatch = null;
     // ARB: preconditions
     // remoteId != null
-    synchronized (latestViewLock) {
+    boolean updateLatch = false;
+    latestViewLock.readLock().lock();
+    try {
       if (latestView == null) {
         // Not sure how this would happen, but see bug 38460.
         // No view?? Not found!
-      }
-      else if (latestView.contains(remoteId)) {
+      } else if (latestView.contains(remoteId)) {
         // ARB: check if remoteId is already in membership view.
         // If not, then create a latch if needed and wait for the latch to open.
         foundRemoteId = true;
+      } else {
+        updateLatch = true;
       }
-      else if ((currentLatch = (Latch)this.memberLatch.get(remoteId)) == null) {
-        currentLatch = new Latch();
-        this.memberLatch.put(remoteId, currentLatch);
+    } finally {
+      latestViewLock.readLock().unlock(); // synchronized
+    }
+    if (updateLatch) {
+      latestViewLock.writeLock().lock();
+      try {
+        if (latestView == null) {
+          // Not sure how this would happen, but see bug 38460.
+          // No view?? Not found!
+        } else if (latestView.contains(remoteId)) {
+          // ARB: check if remoteId is already in membership view.
+          // If not, then create a latch if needed and wait for the latch to open.
+          foundRemoteId = true;
+        } else  if ((currentLatch = (Latch)this.memberLatch.get(remoteId)) == null) {
+          currentLatch = new Latch();
+          this.memberLatch.put(remoteId, currentLatch);
+        }
+      } finally {
+        latestViewLock.writeLock().unlock(); // synchronized
       }
-    } // synchronized
+    }
 
     if (!foundRemoteId) {
       // ARB: wait for hardcoded 1000 ms for latch to open.
@@ -4161,7 +4278,8 @@ public final class JGroupMembershipManager implements MembershipManager {
   
   public void registerTestHook(MembershipTestHook mth) {
     // synchronize additions to avoid races during startup
-    synchronized(this.latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       if (this.membershipTestHooks == null) {
         this.membershipTestHooks = Collections.singletonList(mth);
       }
@@ -4170,11 +4288,14 @@ public final class JGroupMembershipManager implements MembershipManager {
         l.add(mth);
         this.membershipTestHooks = l;
       }
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
   
   public void unregisterTestHook(MembershipTestHook mth) {
-    synchronized(this.latestViewLock) {
+    latestViewLock.writeLock().lock();
+    try {
       if (this.membershipTestHooks != null) {
         if (this.membershipTestHooks.size() == 1) {
           this.membershipTestHooks = null;
@@ -4184,6 +4305,8 @@ public final class JGroupMembershipManager implements MembershipManager {
           l.remove(mth);
         }
       }
+    } finally {
+      latestViewLock.writeLock().unlock(); // synchronized
     }
   }
   

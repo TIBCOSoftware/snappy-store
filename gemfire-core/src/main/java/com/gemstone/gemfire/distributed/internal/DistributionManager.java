@@ -3076,17 +3076,18 @@ public final class DistributionManager
     if (ch != null) {
       MembershipManager mgr = ch.getMembershipManager();
       if (mgr != null) {
-        synchronized (mgr.getViewLock()) {
-          this.membersLock.readLock().lock();
-          try {
-            // Don't let the members come and go while we are adding this
-            // listener.  This ensures that the listener (probably a
-            // ReplyProcessor) gets a consistent view of the members.
-            addAllMembershipListener(l);
-            return this.membersAndAdmin;
-          } finally {
-            this.membersLock.readLock().unlock();
-          }
+        ReentrantReadWriteLock viewLock = mgr.getViewLock();
+        viewLock.writeLock().lock();
+        this.membersLock.readLock().lock();
+        try {
+          // Don't let the members come and go while we are adding this
+          // listener.  This ensures that the listener (probably a
+          // ReplyProcessor) gets a consistent view of the members.
+          addAllMembershipListener(l);
+          return this.membersAndAdmin;
+        } finally {
+          this.membersLock.readLock().unlock();
+          viewLock.writeLock().unlock();
         }
       }
     }

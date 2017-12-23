@@ -21,6 +21,7 @@ import java.net.DatagramSocket;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -58,7 +59,7 @@ public interface MembershipManager {
    * While this lock is held the view can't change.
    * @since 5.7
    */
-  public Object getViewLock();
+  public ReentrantReadWriteLock getViewLock();
 
   /**
    * Return a {@link InternalDistributedMember} representing the current system
