@@ -53,10 +53,12 @@ import java.util.Set;
 // GemStone changes BEGIN
 import java.util.Properties;
 
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.internal.cache.Checkpoint;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgument;
 import com.gemstone.gnu.trove.THashMap;
@@ -487,12 +489,16 @@ public final class GenericLanguageConnectionContext
         if (cachedInitialDefaultSchemaDescr == null) {
             DataDictionary dd = getDataDictionary();
             String authorizationId = getAuthorizationId();
+			String defaultSchema = authorizationId.replace('-', '_');
             SchemaDescriptor sd =
                 dd.getSchemaDescriptor(
-                    authorizationId, getTransactionCompile(), false);
+                    defaultSchema, getTransactionCompile(), false);
+			LogWriter logger = GemFireCacheImpl.getExisting().getLogger();
+			logger.warning("Setting the default schema with authid conditioned as= " + authorizationId );
+
             if (sd == null) {
                 sd = new SchemaDescriptor(
-                    dd, authorizationId, authorizationId, (UUID)null, false);
+                    dd, defaultSchema, authorizationId, (UUID)null, false);
             }
             cachedInitialDefaultSchemaDescr = sd;
         }
