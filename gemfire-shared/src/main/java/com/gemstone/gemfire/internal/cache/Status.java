@@ -39,6 +39,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.MessageFormat;
 
 import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
@@ -66,6 +67,12 @@ public class Status {
   public static final int SHUTDOWN_PENDING = 3;
   public static final int WAITING = 4;
   public static final int STANDBY = 5;
+
+  /**
+   * Version of this class that will be used for backward compatibility in
+   * serialization/deserialization.
+   */
+  private static final int CLASS_VERSION = 1;
 
   public int state;
   public int pid;
@@ -126,6 +133,7 @@ public class Status {
       }
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       DataOutputStream out = new DataOutputStream(bos);
+      out.writeInt(CLASS_VERSION);
       out.writeInt(state);
       out.writeInt(pid);
       out.writeUTF(baseName);
@@ -149,6 +157,12 @@ public class Status {
            BufferedInputStream bin = new BufferedInputStream(stream, 128);
            DataInputStream in = new DataInputStream(bin)) {
 
+        int version = in.readInt();
+        if (version != CLASS_VERSION) {
+          throw new IOException(MessageFormat.format(LauncherBase
+                  .LAUNCHER_UNREADABLE_STATUS_FILE, statusFile.toAbsolutePath(),
+              "Unknown class version = " + version));
+        }
         int state = in.readInt();
         int pid = in.readInt();
         String name = in.readUTF();

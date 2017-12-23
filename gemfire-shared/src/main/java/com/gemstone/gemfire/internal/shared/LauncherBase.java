@@ -89,6 +89,9 @@ public abstract class LauncherBase {
       "Timeout waiting for {0} to shutdown on {1}, status is: {2}";
   public static final String LAUNCHER_NO_STATUS_FILE =
       "The specified working directory ({0}) on {1} contains no status file";
+  public static final String LAUNCHER_UNREADABLE_STATUS_FILE =
+      "The status file {0} cannot be read due to: {1}. Delete the file if " +
+          "no node is running in the directory.";
   public static final String LAUNCHER_UNKNOWN_ARGUMENT = "Unknown argument: {0}";
   public static final String LAUNCHER_WORKING_DIRECTORY_DOES_NOT_EXIST =
       "The input working directory does not exist:  {0}";
@@ -484,7 +487,8 @@ public abstract class LauncherBase {
     }
   }
 
-  protected void pollCacheServerForShutdown(Path statusFile) {
+  protected void pollCacheServerForShutdown(Path statusFile)
+      throws IOException {
     long clock = System.currentTimeMillis();
     // wait for a default total of 15s
     final long end = clock + SHUTDOWN_WAIT_TIME;
@@ -496,7 +500,6 @@ public abstract class LauncherBase {
         }
         Thread.sleep(200);
         clock = System.currentTimeMillis();
-      } catch (IOException ignore) {
       } catch (InterruptedException ie) {
         break;
       }
