@@ -914,7 +914,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       if (hasLoader) {
         while (this.currPos < this.gfKeys.length) {
           final Object gfKey = this.gfKeys[this.currPos++];
-          if (!this.getAllKeysAndRoutingObjects.contains(gfKey)) {
+          if (!this.getAllKeysAndRoutingObjects.containsKey(gfKey)) {
             final Object result = loadOneRow(gfKey,
                 this.gfContainer.getRegion());
             if (result == null) {
