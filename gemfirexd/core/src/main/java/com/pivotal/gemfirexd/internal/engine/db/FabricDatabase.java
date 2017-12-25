@@ -606,8 +606,8 @@ public final class FabricDatabase implements ModuleControl,
    */
   public static void checkSnappyCatalogConsistency(EmbedConnection embedConn)
       throws StandardException, SQLException {
-    final ExternalCatalog externalCatalog = Misc.getMemStoreBooting()
-        .getExternalCatalog(false);
+    final GemFireStore memStore = Misc.getMemStoreBooting();
+    final ExternalCatalog externalCatalog = memStore.getExternalCatalog(false);
     if (externalCatalog == null) {
       return;
     }
@@ -655,6 +655,10 @@ public final class FabricDatabase implements ModuleControl,
         gfDBTablesMap, internalColumnTablesSet, externalCatalog);
     removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap,
         externalCatalog);
+
+    // publish the column table stats at this point because that
+    // requires the hive metastore
+    memStore.getDatabase().publishColumnStats();
   }
 
   /**
