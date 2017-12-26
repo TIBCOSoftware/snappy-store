@@ -530,7 +530,11 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
   }
 
   public void testPR_RemotePutRejectionCacheClose() throws Exception {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prRemotePutRejection(true, false, false);
+    expectedEx.remove();
   }
 
   public void testPR_RemotePutRejection() throws Exception {
@@ -542,7 +546,11 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
   }
 
   public void testPR_RemotePutRejectionCacheCloseWithTx() throws Exception {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prRemotePutRejection(true, false, true);
+    expectedEx.remove();
   }
 
   public void testPR_RemotePutRejectionWithTx() throws Exception {
@@ -1454,8 +1462,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
    * Verifies that the test listener value on the given vm is what is expected
    * Note that for remote events useWaitCriterion must be true
    * @param vm the vm where verification should take place
-   * @param type the type of event to validate, use {@link MemoryEventType#UNKNOWN}
-   * to verify all events
+   * @param state
    * @param value the expected value
    * @param useWaitCriterion must be true for remote events
    */

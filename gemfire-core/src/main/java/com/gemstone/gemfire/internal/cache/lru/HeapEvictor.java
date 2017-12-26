@@ -48,6 +48,7 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.concurrent.AB;
 import com.gemstone.gemfire.internal.concurrent.CFactory;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gnu.trove.THashSet;
@@ -232,7 +233,18 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
    * assigned to the threadpool.
    */
   private void submitRegionEvictionTask(Callable<Object> task) {
-    evictorThreadPool.submit(task);
+    evictorThreadPool.execute(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          task.call();
+        } catch (Exception e) {
+          if (logger.warningEnabled()) {
+            logger.warning(LocalizedStrings.ONE_ARG, e.toString(), e);
+          }
+        }
+      }
+    });
   }
 
   public ThreadPoolExecutor getEvictorThreadPool() {
@@ -450,14 +462,14 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
                 if (HeapEvictor.this.mustEvict.get()) {
                   // Submit this runnable back into the thread pool and execute
                   // another pass at eviction.
-                  HeapEvictor.this.evictorThreadPool.submit(this);
+                  HeapEvictor.this.evictorThreadPool.execute(this);
                 }
               } catch (RegionDestroyedException e) {
                 // A region destroyed exception might be thrown for Region.size() when a bucket
                 // moves due to rebalancing. retry submitting the eviction task without
                 // logging an error message. fixes bug 48162
                 if (HeapEvictor.this.mustEvict.get()) {
-                  HeapEvictor.this.evictorThreadPool.submit(this);
+                  HeapEvictor.this.evictorThreadPool.execute(this);
                 }
               }
             }
@@ -465,7 +477,7 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
         };
         
         // Submit the first pass at eviction into the pool
-        this.evictorThreadPool.submit(evictionManagerTask);
+        this.evictorThreadPool.execute(evictionManagerTask);
           
       } else {
         this.mustEvict.set(false);

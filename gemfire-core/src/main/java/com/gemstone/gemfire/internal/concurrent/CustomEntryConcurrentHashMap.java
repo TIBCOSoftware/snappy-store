@@ -2026,7 +2026,7 @@ RETRYLOOP:
         InternalDistributedSystem ids = InternalDistributedSystem.getConnectedInstance();
         if (ids != null && !ids.isLoner()) {
           try {
-            ids.getDistributionManager().getWaitingThreadPool().submit(runnable);
+            ids.getDistributionManager().getWaitingThreadPool().execute(runnable);
             submitted = true;
           } catch (RejectedExecutionException e) {
             // fall through with submitted false

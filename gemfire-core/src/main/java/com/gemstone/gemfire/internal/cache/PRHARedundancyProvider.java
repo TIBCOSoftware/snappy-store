@@ -1935,7 +1935,7 @@ public class PRHARedundancyProvider
       Runnable task = new CreateMissingBucketsTask(this);
       final InternalResourceManager resourceManager = this.prRegion
           .getGemFireCache().getResourceManager();
-      resourceManager.getRecoveryExecutor().submit(task);
+      resourceManager.getRecoveryExecutor().execute(task);
     }
   }
   

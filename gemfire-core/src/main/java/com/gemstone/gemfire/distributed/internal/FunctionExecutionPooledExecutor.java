@@ -143,7 +143,8 @@ public class FunctionExecutionPooledExecutor extends ThreadPoolExecutor {
   }
   
  
-  public FunctionExecutionPooledExecutor(BlockingQueue<Runnable> q, int maxPoolSize, PoolStatHelper stats, ThreadFactory tf, int msTimeout, final boolean forFnExec) {
+  public FunctionExecutionPooledExecutor(BlockingQueue<Runnable> q, int maxPoolSize,
+      PoolStatHelper stats, ThreadFactory tf, int msTimeout, final boolean forFnExec) {
     this(initQ(q), maxPoolSize, stats, tf, msTimeout, initREH(q,forFnExec));
     final int retryFor = Integer.getInteger("gemfire.RETRY_INTERVAL", 5000).intValue(); 
     if (!(q instanceof SynchronousQueue)) {
@@ -157,11 +158,11 @@ public class FunctionExecutionPooledExecutor extends ThreadPoolExecutor {
               for (;;) {
                 SystemFailure.checkFailure();
                 Runnable task = takeQueue.take();
-                if(forFnExec) {
-                   if(!putQueue.offer(task,retryFor , TimeUnit.MILLISECONDS)){
-                     submit(task);  
+                if (forFnExec) {
+                   if (!putQueue.offer(task,retryFor, TimeUnit.MILLISECONDS)) {
+                     execute(task);
                    }                   
-                }else {
+                } else {
                   putQueue.put(task);
                 }               
               }
