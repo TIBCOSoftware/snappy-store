@@ -1518,7 +1518,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           }
           dsf.setDiskDirs(new File[] { dir.toFile() });
           this.gfxdDefaultDiskStore = (DiskStoreImpl)createDiskStore(
-              dsf, GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+              dsf, GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME,
+              getAdvisee().getCancelCriterion());
 
           // set the default disk store at GemFire layer
           GemFireCacheImpl.setDefaultDiskStoreName(
@@ -1531,7 +1532,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
             dsf = this.gemFireCache.createDiskStoreFactory();
             dsf.setMaxOplogSize(100); // 100M size for delta by default
             dsf.setDiskDirs(new File[] { dir.toFile() });
-            createDiskStore(dsf, GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME);
+            createDiskStore(dsf, GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME,
+                getAdvisee().getCancelCriterion());
           }
 
         } catch (GemFireException e) {
@@ -1599,15 +1601,15 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
-  private DiskStore createDiskStore(DiskStoreFactory dsf, String name)
-      throws DiskAccessException {
+  public static DiskStore createDiskStore(DiskStoreFactory dsf, String name,
+      CancelCriterion cc) throws DiskAccessException {
     // try a bit harder to go through in case of transient disk exceptions
     DiskAccessException dae = null;
     for (int tries = 1; tries <= 10; tries++) {
       try {
         return dsf.create(name);
       } catch (DiskAccessException e) {
-        final LogWriter logger = this.gemFireCache.getLogger();
+        final LogWriter logger = Misc.getGemFireCache().getLogger();
         logger.warning("unexpected exception in creating default "
             + "disk store, retrying", e);
         if (dae == null) { // bug #48719 - retries may throw unclear exceptions
@@ -1618,7 +1620,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           Thread.sleep(100);
         } catch (InterruptedException ie) {
           Thread.currentThread().interrupt();
-          getAdvisee().getCancelCriterion().checkCancelInProgress(ie);
+          cc.checkCancelInProgress(ie);
         }
       }
     }

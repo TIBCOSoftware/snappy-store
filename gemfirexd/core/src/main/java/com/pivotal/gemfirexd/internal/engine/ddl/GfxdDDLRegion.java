@@ -123,8 +123,8 @@ public final class GfxdDDLRegion extends DistributedRegion {
       }
       // writes use fsync
       dsf.setSyncWrites(true);
-      DiskStoreImpl dsImpl = (DiskStoreImpl)dsf
-          .create(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
+      DiskStoreImpl dsImpl = (DiskStoreImpl)GemFireStore.createDiskStore(dsf,
+          GfxdConstants.GFXD_DD_DISKSTORE_NAME, cache.getCancelCriterion());
       dsImpl.setUsedForInternalUse();
       afact.setDiskSynchronous(true);
       afact.setDiskStoreName(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
