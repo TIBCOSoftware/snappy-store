@@ -1611,7 +1611,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       } catch (DiskAccessException e) {
         final LogWriter logger = Misc.getGemFireCache().getLogger();
         logger.warning("unexpected exception in creating default "
-            + "disk store, retrying", e);
+            + "disk store " + name + ", retrying", e);
         if (dae == null) { // bug #48719 - retries may throw unclear exceptions
           dae = e;
         }

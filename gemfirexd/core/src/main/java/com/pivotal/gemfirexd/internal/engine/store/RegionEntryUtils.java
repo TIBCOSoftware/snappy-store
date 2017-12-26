@@ -1614,9 +1614,16 @@ public final class RegionEntryUtils {
         PartitionedRegion region) {
       GemFireContainer container = (GemFireContainer)region.getUserAttribute();
       if (container != null) {
-        return container.fetchHiveMetaData(false);
+        ExternalTableMetaData metaData = container.fetchHiveMetaData(false);
+        if (metaData == null) {
+          throw new IllegalStateException("Table for container " +
+              container.getQualifiedTableName() + " not found in hive metadata");
+        }
+        return metaData;
+      } else {
+        throw new IllegalStateException("Table for " + region.getFullPath() +
+            " not found in containers");
       }
-      return null;
     }
   };
 
