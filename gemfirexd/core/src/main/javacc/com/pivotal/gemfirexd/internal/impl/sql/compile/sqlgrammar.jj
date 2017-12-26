@@ -425,8 +425,8 @@ public class SQLParser
 	        lcc.isPersistMetaStoreInDataDictionary()) {
 	      afact.setDiskStoreName(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
 	    } else {
-		    afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
-		  }
+	      afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+	    }
 	  }
 
 	  if (repPartPersFlags[1] && repPartPersFlags[2]) {

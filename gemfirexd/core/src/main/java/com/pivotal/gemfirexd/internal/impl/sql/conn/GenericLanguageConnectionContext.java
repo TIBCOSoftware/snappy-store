@@ -4153,7 +4153,7 @@ public final class GenericLanguageConnectionContext
 
 	private static final int METASTORE_IN_DD = 0x20000;
 
-  private static final int FLAGS_DEFAULT = METASTORE_IN_DD;
+	private static final int FLAGS_DEFAULT = METASTORE_IN_DD;
 
   /** flags that cannot be changed via {@link #setFlags(int)} */
   private static final int FLAGS_IMMUTABLE = CONNECTION_REMOTE
