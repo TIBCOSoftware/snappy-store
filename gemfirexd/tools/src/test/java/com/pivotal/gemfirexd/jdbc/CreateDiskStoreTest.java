@@ -265,7 +265,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
     Set<String> names = new HashSet<String>();
     names.add(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
     names.add(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
-    names.add(GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME);
+    names.add(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE);
     numRows = 0;
     while (rs.next()) {
       ++numRows;
@@ -280,7 +280,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
           .getInt("COMPACTIONTHRESHOLD"));
       if (diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
         assertEquals(rs.getLong("MAXLOGSIZE"), 10);
-      } else if (diskStoreName.equals(GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME)) {
+      } else if (diskStoreName.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
         assertEquals(rs.getLong("MAXLOGSIZE"), 100);
       }
       else {
@@ -296,7 +296,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
       if (diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
         assertEquals(rs.getString("DIR_PATH_SIZE"), new File(".",
             "datadictionary").getCanonicalPath());
-      } else if (diskStoreName.equals(GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME)) {
+      } else if (diskStoreName.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
         assertEquals(rs.getString("DIR_PATH_SIZE"), new File(".",
             GfxdConstants.SNAPPY_DELTA_SUBDIR).getCanonicalPath());
       } else {
@@ -471,7 +471,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
       Statement stmt = conn.createStatement();
       // Try to drop the default diskstore. Should fail with 0A000.
       stmt.execute("Drop DiskStore " + "\"" +
-          GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME + "\"");
+          GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE + "\"");
       fail("Disk store drop should fail because diskstore is a default one");
     } catch (SQLException e) {
       assertEquals(e.getSQLState(), "0A000");

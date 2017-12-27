@@ -335,13 +335,27 @@ public interface GfxdConstants {
   /** Name of disk store used by global indexes */ 
   final String GFXD_GLOBALINDEX_DISKSTORE_NAME ="GFXD-GLOBALINDEX-DISKSTORE";
 
-  /** Name of disk store used by snappydata's delta regions */
-  final String SNAPPY_DELTA_DISKSTORE_NAME ="SNAPPY-INTERNAL-DELTA";
+  /**
+   * Suffix of disk store used by snappydata's delta regions
+   * (appended to main diskstore name).
+   */
+  final String SNAPPY_DELTA_DISKSTORE_SUFFIX = "-SNAPPY-DELTA";
+
+  /**
+   * Name of default disk store used by snappydata's delta regions.
+   */
+  final String SNAPPY_DEFAULT_DELTA_DISKSTORE =
+      GFXD_DEFAULT_DISKSTORE_NAME + SNAPPY_DELTA_DISKSTORE_SUFFIX;
 
   /**
    * default sub-directory to use for delta store
    */
   final String SNAPPY_DELTA_SUBDIR = "snappy-internal-delta";
+
+  /**
+   * maximum size of each oplog file used for delta disk stores
+   */
+  final int SNAPPY_DELTA_DISKSTORE_SIZEMB = 50;
 
   /** Name of meta-region used to store the max identity column value */ 
   final String IDENTITY_REGION_NAME ="__IDENTITYREGION2";

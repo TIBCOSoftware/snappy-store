@@ -681,7 +681,7 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
       assertNull(memberMap.put(member, dirs));
       if (name.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
         assertTrue(dirs.endsWith("datadictionary"));
-      } else if (name.equals(GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME)) {
+      } else if (name.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
         assertTrue(dirs.endsWith(GfxdConstants.SNAPPY_DELTA_SUBDIR));
       }
       assertTrue(memberDiskStoreIds.add(new GemFireXDUtils.Pair<>(member, id)));
@@ -690,7 +690,7 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     assertTrue(diskStores.containsKey(GfxdConstants.GFXD_DD_DISKSTORE_NAME));
     assertTrue(
         diskStores.containsKey(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME));
-    assertTrue(diskStores.containsKey(GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME));
+    assertTrue(diskStores.containsKey(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE));
     for (GemFireXDUtils.Pair<String, String> p : extraStores) {
       HashMap<String, String> memberMap = diskStores.get(p.getKey());
       assertNotNull(memberMap);

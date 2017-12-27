@@ -459,7 +459,7 @@ public final class FabricDatabase implements ModuleControl,
           GfxdConstants.GFXD_DD_DISKSTORE_NAME), factory);
       addInternalDiskStore(this.memStore.getDefaultDiskStore(), factory);
       addInternalDiskStore(cache.findDiskStore(
-          GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME), factory);
+          GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE), factory);
 
       // Initialize ConnectionWrapperHolder with this embeded connection
       GfxdManagementService.handleEvent(

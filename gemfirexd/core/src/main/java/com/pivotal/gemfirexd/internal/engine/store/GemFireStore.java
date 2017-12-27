@@ -51,6 +51,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.*;
 import com.gemstone.gemfire.admin.AdminException;
@@ -199,6 +201,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
    * new servers.
    */
   public final static String DDL_STMTS_REGION = "_DDL_STMTS_META_REGION";
+
+  private static final Pattern ILLEGAL_DISKDIR_CHARS_PATTERN =
+      Pattern.compile("[*?<>|;]");
 
   private static InternalDistributedMember selfMemId = null;
 
@@ -1383,7 +1388,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   }
 
   public static Path createPersistentDir(String baseDir, String dirPath) {
-    Path dir = Paths.get(generatePersistentDirName(baseDir, dirPath));
+    Path dir = generatePersistentDirName(baseDir, dirPath);
     try {
       return Files.createDirectories(dir).toRealPath(LinkOption.NOFOLLOW_LINKS);
     } catch (IOException ioe) {
@@ -1393,16 +1398,17 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   }
 
   public String generatePersistentDirName(String dirPath) {
-    return generatePersistentDirName(this.persistenceDir, dirPath);
+    return generatePersistentDirName(this.persistenceDir, dirPath).toString();
   }
 
-  private static String generatePersistentDirName(String baseDir,
+  private static Path generatePersistentDirName(String baseDir,
       String dirPath) {
     if (baseDir == null) {
       baseDir = ".";
     }
+    Path dir;
     if (dirPath != null) {
-      File dirProvided = new File(dirPath);
+      Path dirProvided = Paths.get(dirPath);
       // Is the directory path absolute?
       // For Windows this will check for drive letter. However, we want
       // to allow for no drive letter so prepend the drive.
@@ -1416,15 +1422,34 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           dirPath = drivePrefix + dirPath;
         }
       }
-      if (!isAbsolute) {
+      if (isAbsolute) {
+        dir = Paths.get(dirPath);
+      } else {
         // relative path so resolve it relative to parent dir
-        dirPath = new File(baseDir, dirPath).getAbsolutePath();
+        dir = Paths.get(baseDir, dirPath).toAbsolutePath();
       }
+    } else {
+      dir = Paths.get(baseDir).toAbsolutePath();
     }
-    else {
-      dirPath = new File(baseDir).getAbsolutePath();
+    if (!isFilenameValid(dir.toString())) {
+      throw new DiskAccessException("Directory name " + dirPath +
+          " is not valid.", (Throwable)null);
     }
-    return dirPath;
+    return dir;
+  }
+
+  // Is this filename valid?
+  public static boolean isFilenameValid(String file) {
+    // Illegal characters are
+    //  asterisk
+    //  question mark
+    //  greater-than/less-than
+    //  pipe character
+    //  semicolon
+    // Some are legal on Linux, but trying to create DISKSTORE "*" crashes anyway
+    // So make this more restrictive and same as Windows restrictions
+    Matcher matcher = ILLEGAL_DISKDIR_CHARS_PATTERN.matcher(file);
+    return !matcher.find();
   }
 
   /**
@@ -1530,9 +1555,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
             dir = createPersistentDir(this.persistenceDir,
                 GfxdConstants.SNAPPY_DELTA_SUBDIR);
             dsf = this.gemFireCache.createDiskStoreFactory();
-            dsf.setMaxOplogSize(100); // 100M size for delta by default
+            dsf.setMaxOplogSize(GfxdConstants.SNAPPY_DELTA_DISKSTORE_SIZEMB);
             dsf.setDiskDirs(new File[] { dir.toFile() });
-            createDiskStore(dsf, GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME,
+            createDiskStore(dsf, GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE,
                 getAdvisee().getCancelCriterion());
           }
 
@@ -2434,6 +2459,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   public String getDatabaseName() {
     return this.databaseName;
+  }
+
+  public String getBasePersistenceDir() {
+    return this.persistenceDir;
   }
 
   /**
