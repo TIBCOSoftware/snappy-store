@@ -418,9 +418,15 @@ public class SQLParser
       }
 
 	  //////////////////////////////////////////////
-	  if (getLanguageConnectionContext().isDefaultPersistent() && !repPartPersFlags[2]) {
+	  final LanguageConnectionContext lcc = getLanguageConnectionContext();
+	  if (lcc.isDefaultPersistent() && !repPartPersFlags[2]) {
 	    repPartPersFlags[2] = true;
-		  afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+	    if (Misc.isSnappyHiveMetaTable(lcc.getDefaultSchema().getSchemaName()) &&
+	        lcc.isPersistMetaStoreInDataDictionary()) {
+	      afact.setDiskStoreName(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
+	    } else {
+	      afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+	    }
 	  }
 
 	  if (repPartPersFlags[1] && repPartPersFlags[2]) {

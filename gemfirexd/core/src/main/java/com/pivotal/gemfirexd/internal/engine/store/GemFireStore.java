@@ -39,6 +39,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
@@ -1385,8 +1389,22 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
+  public static Path createPersistentDir(String baseDir, String dirPath) {
+    Path dir = Paths.get(generatePersistentDirName(baseDir, dirPath));
+    try {
+      return Files.createDirectories(dir).toRealPath(LinkOption.NOFOLLOW_LINKS);
+    } catch (IOException ioe) {
+      throw new DiskAccessException("Could not create directory for "
+          + "system disk store: " + dir.toString(), ioe);
+    }
+  }
+
   public String generatePersistentDirName(String dirPath) {
-    String baseDir = this.persistenceDir;
+    return generatePersistentDirName(this.persistenceDir, dirPath);
+  }
+
+  private static String generatePersistentDirName(String baseDir,
+      String dirPath) {
     if (baseDir == null) {
       baseDir = ".";
     }
@@ -1489,16 +1507,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.persistingDD || this.persistenceDir != null || isLeadMember) {
         try {
           DiskStoreFactory dsf = this.gemFireCache.createDiskStoreFactory();
-          File file = new File(generatePersistentDirName(null))
-              .getAbsoluteFile();
+          Path dir = createPersistentDir(this.persistenceDir, null);
 
-          if (!file.mkdirs() && !file.isDirectory()) {
-            throw new DiskAccessException("Could not create directory for "
-                + " default disk store : " + file.getAbsolutePath(),
-                (Region<?, ?>)null);
-          }
-
-          if (!this.myKind.isStore()) {
+          final boolean isStore = this.myKind.isStore();
+          if (!isStore) {
             // use small oplog files for other VM types
             if (DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE < 10) {
               dsf.setMaxOplogSize(DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE);
@@ -1511,49 +1523,35 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
               }
             }
           }
-          dsf.setDiskDirs(new File[] { file });
-          // try a bit harder to go through in case of transient
-          // disk exceptions
-          DiskAccessException dae = null;
-          for (int tries = 1; tries <= 10; tries++) {
-            try {
-              this.gfxdDefaultDiskStore = (DiskStoreImpl)dsf
-                  .create(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
-              dae = null;
-              break;
-            } catch (DiskAccessException e) {
-              final LogWriter logger = this.gemFireCache.getLogger();
-              logger.warning("unexpected exception in creating default "
-                  + "disk store, retrying", e);
-              if (dae == null) { // bug #48719 - retries may throw unclear exceptions
-                dae = e;
-              }
-              // retry after sleep
-              try {
-                Thread.sleep(100);
-              } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                getAdvisee().getCancelCriterion().checkCancelInProgress(ie);
-              }
-            }
-          }
-          if (dae != null) {
-            throw dae;
-          }
+          dsf.setDiskDirs(new File[] { dir.toFile() });
+          this.gfxdDefaultDiskStore = (DiskStoreImpl)createDiskStore(
+              dsf, GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME,
+              getAdvisee().getCancelCriterion());
 
           // set the default disk store at GemFire layer
           GemFireCacheImpl.setDefaultDiskStoreName(
               GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+
+          if (isStore) {
+            // create the SnappyData delta store
+            dir = createPersistentDir(this.persistenceDir,
+                GfxdConstants.SNAPPY_DELTA_SUBDIR);
+            dsf = this.gemFireCache.createDiskStoreFactory();
+            dsf.setMaxOplogSize(100); // 100M size for delta by default
+            dsf.setDiskDirs(new File[] { dir.toFile() });
+            createDiskStore(dsf, GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME,
+                getAdvisee().getCancelCriterion());
+          }
+
         } catch (GemFireException e) {
           final LogWriter logger = this.gemFireCache.getLogger();
-          logger.warning("Unable to create default disk store.", e);
+          logger.warning("Unable to create default disk stores.", e);
           throw e;
         }
       }
     }
     this.ddlStmtQueue = new GfxdDDLRegionQueue(DDL_STMTS_REGION,
-        this.gemFireCache, this.persistingDD,
-        getBootProperty(Attribute.SYS_PERSISTENT_DIR), null);
+        this.gemFireCache, this.persistingDD, this.persistenceDir, null);
 
     if (this.isHadoopGfxdLonerMode) {
       hadoopGfxdLonerConfig.loadDDLQueueWithDDLsFromHDFS(this.ddlStmtQueue);
@@ -1608,6 +1606,32 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
             SQLState.LANG_UNEXPECTED_USER_EXCEPTION, e, e.toString());
       }
     }
+  }
+
+  public static DiskStore createDiskStore(DiskStoreFactory dsf, String name,
+      CancelCriterion cc) throws DiskAccessException {
+    // try a bit harder to go through in case of transient disk exceptions
+    DiskAccessException dae = null;
+    for (int tries = 1; tries <= 10; tries++) {
+      try {
+        return dsf.create(name);
+      } catch (DiskAccessException e) {
+        final LogWriter logger = Misc.getGemFireCache().getLogger();
+        logger.warning("unexpected exception in creating default "
+            + "disk store " + name + ", retrying", e);
+        if (dae == null) { // bug #48719 - retries may throw unclear exceptions
+          dae = e;
+        }
+        // retry after sleep
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          cc.checkCancelInProgress(ie);
+        }
+      }
+    }
+    throw dae;
   }
 
   private void renameDiskStoresIfAny() {

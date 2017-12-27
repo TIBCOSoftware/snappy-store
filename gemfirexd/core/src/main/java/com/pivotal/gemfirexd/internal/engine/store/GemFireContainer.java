@@ -445,8 +445,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             .getDiskStoreName();
         DiskStoreImpl store;
         if (diskStoreName != null && (store = Misc.getGemFireCache()
-            .findDiskStore(diskStoreName)) != null
-            && !store.isUsedForInternalUse()) {
+            .findDiskStore(diskStoreName)) != null) {
           store.writeIndexCreate(getUUID());
         }
       }

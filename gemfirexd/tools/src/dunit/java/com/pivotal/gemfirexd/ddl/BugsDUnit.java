@@ -4975,7 +4975,8 @@ public class BugsDUnit extends DistributedSQLTestBase {
       invokeInEveryVM(new SerializableRunnable() {
         @Override
         public void run() {
-          if (ServerGroupUtils.isDataStore()) {
+          if (GemFireCacheImpl.getInstance() != null &&
+              ServerGroupUtils.isDataStore()) {
             String regionPath = "/ODS/POSTAL_ADDRESS";
             Region r = Misc.getRegionByPath(regionPath);
             PartitionedRegion pr = (PartitionedRegion)r;

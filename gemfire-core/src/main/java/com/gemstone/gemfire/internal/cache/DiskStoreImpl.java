@@ -2224,7 +2224,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       } else {
         executor = this.delayedWritePool;
       }
-      executeDiskStoreTask(task, executor);
+      executeDiskStoreTask(task, executor, true);
     }
   }
 
@@ -4942,7 +4942,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    * So some of the queued tasks may take a while.
    */
   public boolean executeDiskStoreTask(final Runnable runnable) {
-    return executeDiskStoreTask(runnable, this.diskStoreTaskPool) != null;
+    return executeDiskStoreTask(runnable, this.diskStoreTaskPool, true) != null;
   }
   
   /** 
@@ -4952,11 +4952,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    * we don't run out of disk space. Used for deletes, unpreblow, RAF close, etc.
    */
   public boolean executeDelayedExpensiveWrite(Runnable task) {
-    Future<?> f = executeDiskStoreTask(task, this.delayedWritePool);
+    Future<?> f = (Future<?>)executeDiskStoreTask(task, delayedWritePool, false);
     lastDelayedWrite = f;
     return f != null;
   }
-  
+
   /**
    * Wait for any current operations in the delayed write pool. Completion
    * of this method ensures that the writes have completed or the pool was shutdown
@@ -4974,10 +4974,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
   }
 
-  private Future<?> executeDiskStoreTask(final Runnable runnable, ThreadPoolExecutor executor) {
- // schedule another thread to do it
+  private Object executeDiskStoreTask(final Runnable runnable,
+      ThreadPoolExecutor executor, boolean async) {
+    // schedule another thread to do it
     incBackgroundTasks();
-    Future<?> result = executeDiskStoreTask(new DiskStoreTask() {
+    Object result = executeDiskStoreTask(new DiskStoreTask() {
       public void run() {
         try {
           markBackgroundTaskThread(); // for bug 42775
@@ -4991,18 +4992,24 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       public void taskCancelled() {
         decBackgroundTasks();
       }
-    }, executor);
+    }, executor, async);
 
-    if(result == null) {
+    if (result == null) {
       decBackgroundTasks();
     }
 
     return result;
   }
 
-  private Future<?> executeDiskStoreTask(DiskStoreTask r, ThreadPoolExecutor executor) {
+  private Object executeDiskStoreTask(DiskStoreTask r,
+      ThreadPoolExecutor executor, boolean async) {
     try {
-      return executor.submit(r);
+      if (async) {
+        executor.execute(r);
+        return Boolean.TRUE;
+      } else {
+        return executor.submit(r);
+      }
     } catch (RejectedExecutionException ex) {
       if (this.logger.fineEnabled()) {
         this.logger.fine("Ignored compact schedule during shutdown", ex);
@@ -5025,14 +5032,14 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       Thread.currentThread().interrupt();
     }
   }
-  
+
   private void shutdownPool(ThreadPoolExecutor pool) {
- // All the regions have already been closed
+    // All the regions have already been closed
     // so this pool shouldn't be doing anything.
     List<Runnable> l = pool.shutdownNow();
     for (Runnable runnable : l) {
-      if (l instanceof DiskStoreTask) {
-        ((DiskStoreTask) l).taskCancelled();
+      if (runnable instanceof DiskStoreTask) {
+        ((DiskStoreTask)runnable).taskCancelled();
       }
     }
   }
