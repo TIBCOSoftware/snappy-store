@@ -247,8 +247,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    * Maximum number of disk compaction and related tasks that can be scheduled.
    */
   public static final int MAX_CONCURRENT_DISK_COMPACTIONS = sysProps.getInteger(
-      "MAX_CONCURRENT_COMPACTIONS",
-      sysProps.getInteger("MAX_CONCURRENT_ROLLS", 4));
+      "MAX_CONCURRENT_COMPACTIONS", sysProps.getInteger("MAX_CONCURRENT_ROLLS", 4));
 
   /**
    * This system property indicates that maximum number of delayed disk write
@@ -554,8 +553,15 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   private String vmIdRegionPath;
 
+  /**
+   * Thread pool used by all disk stores for disk compaction and related tasks.
+   */
   private final ThreadPoolExecutor diskStoreTaskPool;
 
+  /**
+   * Thread pool used by all disk stores for delayed disk write tasks
+   * that can be expensive like unpreblow oplogs, delete oplogs, etc.
+   */
   private final ThreadPoolExecutor diskDelayedWritePool;
 
   //TODO:Suranjan This has to be replcaed with better approach. guava cache or WeakHashMap.
