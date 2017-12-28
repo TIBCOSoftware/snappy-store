@@ -96,21 +96,24 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
     if (Misc.getMemStore().isSnappyStore()) {
       int numDirs = dirPaths.size();
       List<String> deltaDirs;
+      List<Integer> deltaSizes;
       if (numDirs > 0) {
         deltaDirs = new ArrayList<>(numDirs);
         for (String dirPath : dirPaths) {
-          deltaDirs.add(dirPath + File.pathSeparator +
+          deltaDirs.add(dirPath + File.separator +
               GfxdConstants.SNAPPY_DELTA_SUBDIR);
         }
+        deltaSizes = dirSizes;
       } else {
         deltaDirs = Collections.singletonList(GfxdConstants.SNAPPY_DELTA_SUBDIR);
+        deltaSizes = Collections.singletonList(0);
       }
       // set/overwrite the max oplog size to fixed one for delta store
       LinkedHashMap<Object, Object> deltaAttrs = new LinkedHashMap<>(otherAttribs);
       deltaAttrs.put("maxlogsize", GfxdConstants.SNAPPY_DELTA_DISKSTORE_SIZEMB);
       executeConstantAction(diskStoreName +
-              GfxdConstants.SNAPPY_DELTA_DISKSTORE_SUFFIX, deltaDirs, dirSizes,
-          deltaAttrs, activation);
+              GfxdConstants.SNAPPY_DELTA_DISKSTORE_SUFFIX, deltaDirs,
+          deltaSizes, deltaAttrs, activation);
     }
   }
 
@@ -212,8 +215,13 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
       Object vn = entry.getValue();
       try {
         if (key.equalsIgnoreCase("maxlogsize")) {
-          NumericConstantNode ncn = (NumericConstantNode)vn;
-          dsf.setMaxOplogSize(ncn.getValue().getLong());
+          // value may be set directly as Integer/Long for delta store
+          if (vn instanceof NumericConstantNode) {
+            NumericConstantNode ncn = (NumericConstantNode)vn;
+            dsf.setMaxOplogSize(ncn.getValue().getLong());
+          } else {
+            dsf.setMaxOplogSize(((Number)vn).longValue());
+          }
         }
         else if (key.equalsIgnoreCase("compactionthreshold")) {
           NumericConstantNode ncn = (NumericConstantNode)vn;

@@ -336,16 +336,15 @@ public interface GfxdConstants {
   final String GFXD_GLOBALINDEX_DISKSTORE_NAME ="GFXD-GLOBALINDEX-DISKSTORE";
 
   /**
-   * Suffix of disk store used by snappydata's delta regions
-   * (appended to main diskstore name).
-   */
-  final String SNAPPY_DELTA_DISKSTORE_SUFFIX = "-SNAPPY-DELTA";
-
-  /**
    * Name of default disk store used by snappydata's delta regions.
    */
-  final String SNAPPY_DEFAULT_DELTA_DISKSTORE =
-      GFXD_DEFAULT_DISKSTORE_NAME + SNAPPY_DELTA_DISKSTORE_SUFFIX;
+  final String SNAPPY_DEFAULT_DELTA_DISKSTORE = "SNAPPY-INTERNAL-DELTA";
+
+  /**
+   * Suffix of disk store used by snappydata's delta regions
+   * (appended to main diskstore name except for default diskstore).
+   */
+  final String SNAPPY_DELTA_DISKSTORE_SUFFIX = "-SNAPPY-DELTA";
 
   /**
    * default sub-directory to use for delta store
