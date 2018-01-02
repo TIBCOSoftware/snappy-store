@@ -87,8 +87,6 @@ public:
   static const std::string QUERY_HDFS;
   static const std::string LOG_FILE;
   static const std::string LOG_LEVEL;
-  static const std::string LOG_APPEND;
-  static const std::string LOG_FILE_STAMP;
   static const std::string SECURITY_MECHANISM;
   static const std::string SSL;
   static const std::string SSL_PROPERTIES;

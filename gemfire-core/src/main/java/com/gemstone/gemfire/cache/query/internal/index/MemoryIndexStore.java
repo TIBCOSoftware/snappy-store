@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -37,8 +38,6 @@ import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 
 /**
  * The in-memory index storage
@@ -58,7 +57,7 @@ public class MemoryIndexStore implements IndexStore {
   protected volatile AtomicInteger numIndexKeys = new AtomicInteger(0);
 
   // Map for RegionEntries=>value of indexedExpression (reverse map)
-  private CM entryToValuesMap;
+  private ConcurrentHashMap<RegionEntry, Object> entryToValuesMap;
 
   private InternalIndexStatistics internalIndexStats;
 
@@ -73,7 +72,7 @@ public class MemoryIndexStore implements IndexStore {
     // Initialize the reverse-map if in-place modification is set by the
     // application.
     if (IndexManager.isObjectModificationInplace()) {
-      this.entryToValuesMap = CFactory.createCM(ra.getInitialCapacity(),
+      this.entryToValuesMap = new ConcurrentHashMap<>(ra.getInitialCapacity(),
           ra.getLoadFactor(), ra.getConcurrencyLevel());
     }
     this.internalIndexStats = internalIndexStats;

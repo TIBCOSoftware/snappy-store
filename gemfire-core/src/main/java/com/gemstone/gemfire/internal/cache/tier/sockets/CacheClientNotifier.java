@@ -38,9 +38,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
@@ -59,7 +59,6 @@ import com.gemstone.gemfire.cache.UnsupportedVersionException;
 import com.gemstone.gemfire.cache.client.internal.PoolImpl;
 import com.gemstone.gemfire.cache.client.internal.PoolImpl.PoolTask;
 import com.gemstone.gemfire.cache.query.CqException;
-import com.gemstone.gemfire.cache.query.CqQuery;
 import com.gemstone.gemfire.cache.query.Query;
 import com.gemstone.gemfire.cache.query.internal.CqQueryImpl;
 import com.gemstone.gemfire.cache.query.internal.CqService;
@@ -87,14 +86,12 @@ import com.gemstone.gemfire.internal.cache.BridgeRegionEventImpl;
 import com.gemstone.gemfire.internal.cache.BridgeServerImpl;
 import com.gemstone.gemfire.internal.cache.CacheClientStatus;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor;
-import com.gemstone.gemfire.internal.cache.CachedDeserializable;
 import com.gemstone.gemfire.internal.cache.Conflatable;
 import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.EnumListenerEvent;
 import com.gemstone.gemfire.internal.cache.EventID;
 import com.gemstone.gemfire.internal.cache.FilterProfile;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl.SerializedCacheValueImpl;
 import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.InternalCacheEvent;
@@ -106,11 +103,8 @@ import com.gemstone.gemfire.internal.cache.ha.HAContainerWrapper;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueue;
 import com.gemstone.gemfire.internal.cache.ha.ThreadIdentifier;
 import com.gemstone.gemfire.internal.cache.tier.Acceptor;
-import com.gemstone.gemfire.internal.cache.tier.InterestType;
 import com.gemstone.gemfire.internal.cache.tier.MessageType;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.UnsupportedGFXDVersionException;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -1543,7 +1537,7 @@ public class CacheClientNotifier
    */
   public CacheClientProxy getClientProxy(ClientProxyMembershipID membershipID)
   {
-    return (CacheClientProxy)this._clientProxies.get(membershipID);
+    return this._clientProxies.get(membershipID);
   }
 
   /**
@@ -2587,16 +2581,16 @@ public class CacheClientNotifier
    * To make sure you get the updated ClientProxyMembershipID use this map to
    * lookup the CacheClientProxy and then call getProxyID on it.
    */
-  private final CM/*<ClientProxyMembershipID, CacheClientProxy>*/ _clientProxies
-    = CFactory.createCM();
+  private final ConcurrentHashMap<ClientProxyMembershipID, CacheClientProxy>
+      _clientProxies = new ConcurrentHashMap<>();
 
   /**
    * The map of <code>CacheClientProxy</code> instances which are getting 
    * initialized.
    * Maps ClientProxyMembershipID to CacheClientProxy.
    */
-  private final CM/*<ClientProxyMembershipID, CacheClientProxy>*/ _initClientProxies
-    = CFactory.createCM();
+  private final ConcurrentHashMap<ClientProxyMembershipID, CacheClientProxy>
+      _initClientProxies = new ConcurrentHashMap<>();
 
   /**
    * The GemFire <code>Cache</code>.  Note that since this is a singleton class
@@ -2660,9 +2654,9 @@ public class CacheClientNotifier
    * The <code>InterestRegistrationListener</code> instances registered in 
    * this VM. This is used when modifying the set of listeners. 
    */ 
-  private final Set writableInterestRegistrationListeners = CFactory 
-      .createCOWAS(); 
- 
+  private final Set writableInterestRegistrationListeners =
+      new CopyOnWriteArraySet();
+
   /** 
    * The <code>InterestRegistrationListener</code> instances registered in 
    * this VM. This is used to provide a read-only <code>Set</code> of 
@@ -2708,7 +2702,7 @@ public class CacheClientNotifier
     return haContainer;
   }
 
-  private final Set blackListedClients = CFactory.createCOWAS();
+  private final Set blackListedClients = new CopyOnWriteArraySet();
 
   public void addToBlacklistedClient(ClientProxyMembershipID proxyID) {
     blackListedClients.add(proxyID);

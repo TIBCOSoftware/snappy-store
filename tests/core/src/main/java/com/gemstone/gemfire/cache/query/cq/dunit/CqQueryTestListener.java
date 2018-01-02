@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import security.PerUserRequestSecurityTest;
 import security.SecurityClientBB;
@@ -34,8 +35,6 @@ import com.gemstone.gemfire.cache.client.Pool;
 import com.gemstone.gemfire.cache.query.CqEvent;
 import com.gemstone.gemfire.cache.query.CqStatusListener;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CLQ;
 
 import dunit.DistributedTestCase;
 import dunit.DistributedTestCase.WaitCriterion;
@@ -84,11 +83,11 @@ public class CqQueryTestListener implements CqStatusListener {
   // This is to avoid reference to PerUserRequestSecurityTest which will fail to
   // initialize in a non Hydra environment.
   static public boolean usedForUnitTests = true;
-    
-  public CLQ events = CFactory.createCLQ();
-  
-  public CLQ cqEvents = CFactory.createCLQ();
-  
+
+  public ConcurrentLinkedQueue events = new ConcurrentLinkedQueue();
+
+  public ConcurrentLinkedQueue cqEvents = new ConcurrentLinkedQueue();
+
   public CqQueryTestListener(LogWriter logger) {
     this.logger = logger;
   }

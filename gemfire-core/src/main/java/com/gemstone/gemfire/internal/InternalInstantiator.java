@@ -44,8 +44,6 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerHelper;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientInstantiatorMessage;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Part;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.org.jgroups.util.StringId;
 
@@ -62,10 +60,12 @@ public class InternalInstantiator {
   /**
    * Maps Class names to their Instantiator instance.
    */
-  private static final CM/*<String,Instantiator>*/ dsMap = CFactory.createCM();
+  private static final ConcurrentHashMap<String, Instantiator> dsMap =
+      new ConcurrentHashMap<>();
 
   /** Maps the id of an instantiator to its Instantiator instance */
-  private static final CM/*<Integer,Instantiator|Marker>*/ idsToInstantiators = CFactory.createCM();
+  private static final ConcurrentHashMap<Integer, Object> idsToInstantiators =
+      new ConcurrentHashMap<>();
 
   /**
    * Maps the name of the instantiated-class to an instance of
@@ -511,7 +511,7 @@ public class InternalInstantiator {
    */
   public static int getClassId(Class c) {
     int result = 0;
-    final Instantiator i = (Instantiator)dsMap.get(c.getName());
+    final Instantiator i = dsMap.get(c.getName());
     if (i != null) {
       result = i.getId();
     } else {

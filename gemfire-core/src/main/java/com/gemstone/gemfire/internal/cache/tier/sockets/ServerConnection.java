@@ -84,9 +84,7 @@ public class ServerConnection implements Runnable {
   private static final int TIMEOUT_BUFFER_FOR_CONNECTION_CLEANUP_MS = 5000;
   
   //TODO:Asif: Do we need a  Concurrent Map as we know it will be only get operations?
- // private static final CM commands = CFactory.createCM();
   private Map commands;
-
 
   final protected CacheServerStats stats;
 

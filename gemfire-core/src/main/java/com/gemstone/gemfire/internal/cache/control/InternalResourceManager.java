@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.internal.cache.control;
 
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -165,7 +166,7 @@ public class InternalResourceManager implements ResourceManager {
         eventProcessorFactory);
     
     // Create the monitors
-    Map<ResourceType, ResourceMonitor> tempMonitors = new HashMap<ResourceType, ResourceMonitor>();
+    EnumMap<ResourceType, ResourceMonitor> tempMonitors = new EnumMap<>(ResourceType.class);
     tempMonitors.put(ResourceType.HEAP_MEMORY, new HeapMemoryMonitor(this, cache, this.stats));
     tempMonitors.put(ResourceType.OFFHEAP_MEMORY, new OffHeapMemoryMonitor(this, cache, this.stats));
     this.resourceMonitors = Collections.unmodifiableMap(tempMonitors);

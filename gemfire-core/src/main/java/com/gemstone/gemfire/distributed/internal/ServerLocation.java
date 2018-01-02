@@ -24,8 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.shared.HostLocationBase;
 
 /**

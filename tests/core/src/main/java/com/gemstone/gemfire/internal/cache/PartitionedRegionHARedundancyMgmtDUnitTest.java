@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.admin.AdminDistributedSystem;
@@ -48,8 +49,6 @@ import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionSystemMemberRegionListenerDUnitTest.TestAlertListener;
-import com.gemstone.gemfire.internal.concurrent.AR;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 import dunit.AsyncInvocation;
 import dunit.DistributedTestCase;
@@ -69,7 +68,7 @@ public class PartitionedRegionHARedundancyMgmtDUnitTest extends
 {
   private static final int TOTAL_NUM_BUCKETS = 11;
 
-  static AR singleToneAdmin = CFactory.createAR();
+  static AtomicReference singleToneAdmin = new AtomicReference();
   
   /** constructor */
   public PartitionedRegionHARedundancyMgmtDUnitTest(String name) {

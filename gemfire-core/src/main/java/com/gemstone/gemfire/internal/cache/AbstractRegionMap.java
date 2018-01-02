@@ -469,6 +469,10 @@ abstract class AbstractRegionMap implements RegionMap {
     return getEntry(event.getKey());
   }
 
+  protected boolean getEntryNeedKeyCopy() {
+    return false;
+  }
+
   @Override
   public RegionEntry getEntryInVM(Object key) {
     return (RegionEntry) _getMap().get(key);
@@ -3986,7 +3990,7 @@ RETRY_LOOP:
                           checkConflict(owner, event, re);
                         }
                         // need to put old entry in oldEntryMap for MVCC
-                        owner.getCache().addOldEntry(oldRe, re, owner);
+                        owner.getCache().addOldEntry(oldRe, re, owner, event);
                       }
                       if ((cacheWrite && event.getOperation().isUpdate()) // if there is a cacheWriter, type of event has already been set
                           || !re.isRemoved()
@@ -4409,7 +4413,7 @@ RETRY_LOOP:
             ? oldSize : _getOwner().calculateValueSize(oldRe._getValue());
         oldRe.setValueSize(valueSize);
         oldRe.setForDelete();
-        _getOwner().getCache().addOldEntry(oldRe, re, _getOwner());
+        _getOwner().getCache().addOldEntry(oldRe, re, _getOwner(), event);
       }
       processVersionTag(re, event);
 
@@ -5229,7 +5233,8 @@ RETRY_LOOP:
     // no need for synchronization - stale values are okay here
     // GFXD can return RegionEntry itself in getKey() call that fails when sent
     // to HDFS due to serialization attempt (#49887)
-    RegionEntry actualRe = getEntry(re.getKeyCopy());
+    RegionEntry actualRe = getEntry(
+        getEntryNeedKeyCopy() ? re.getKeyCopy() : re.getKey());
     // TODO this looks like a problem for regionEntry pooling
     if (actualRe != re) {  // null actualRe is okay here
       return true; // tombstone was evicted at some point

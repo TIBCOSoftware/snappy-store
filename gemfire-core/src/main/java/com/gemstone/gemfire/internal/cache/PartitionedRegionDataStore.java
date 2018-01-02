@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -41,7 +40,6 @@ import com.gemstone.gemfire.cache.Region.Entry;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.cache.execute.ResultSender;
-import com.gemstone.gemfire.cache.hdfs.HDFSIOException;
 import com.gemstone.gemfire.cache.hdfs.internal.AbstractBucketRegionQueue;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.cache.query.internal.QCompiler;
@@ -55,8 +53,6 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.DebugLogWriter;
 import com.gemstone.gemfire.internal.LogWriterImpl;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.ForceReattemptException;
 import com.gemstone.gemfire.internal.cache.BucketRegion.RawValue;
 import com.gemstone.gemfire.internal.cache.LocalRegion.RegionPerfStats;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.BucketLock;
@@ -81,9 +77,6 @@ import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySenderEventProcess
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
-import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderQueue;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock.StoppableReadLock;
@@ -168,7 +161,7 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * The keysOfInterest contains a set of all keys in which any client has
    * interest in this PR.
    */
-  final CM keysOfInterest;
+  final ConcurrentHashMap<Object, AtomicInteger> keysOfInterest;
 
   private final Object keysOfInterestLock = new Object();
 
@@ -222,7 +215,7 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
 
 //    this.bucketStats = new CachePerfStats(pr.getSystem(), "partition-" + pr.getName());
     this.bucketStats = new RegionPerfStats(pr.getCache(), pr.getCachePerfStats(), CachePerfStats.REGIONPERFSTATS_TEXTID_PR_SPECIFIER + pr.getName());
-    this.keysOfInterest = CFactory.createCM();
+    this.keysOfInterest = new ConcurrentHashMap<>();
   }
 
   /**
@@ -3473,7 +3466,7 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
       for (Iterator i = event.getKeysOfInterest().iterator(); i.hasNext();) {
         Object key = i.next();
         // Get the reference counter for this key
-        AtomicInteger references = (AtomicInteger)this.keysOfInterest.get(key);
+        AtomicInteger references = this.keysOfInterest.get(key);
         int newNumberOfReferences = 0;
         // If this is a registration event, add interest for this key
         if (isRegister) {

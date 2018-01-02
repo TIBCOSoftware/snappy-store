@@ -143,7 +143,8 @@ public class FunctionExecutionPooledExecutor extends ThreadPoolExecutor {
   }
   
  
-  public FunctionExecutionPooledExecutor(BlockingQueue<Runnable> q, int maxPoolSize, PoolStatHelper stats, ThreadFactory tf, int msTimeout, final boolean forFnExec) {
+  public FunctionExecutionPooledExecutor(BlockingQueue<Runnable> q, int maxPoolSize,
+      PoolStatHelper stats, ThreadFactory tf, int msTimeout, final boolean forFnExec) {
     this(initQ(q), maxPoolSize, stats, tf, msTimeout, initREH(q,forFnExec));
     final int retryFor = Integer.getInteger("gemfire.RETRY_INTERVAL", 5000).intValue(); 
     if (!(q instanceof SynchronousQueue)) {
@@ -157,11 +158,11 @@ public class FunctionExecutionPooledExecutor extends ThreadPoolExecutor {
               for (;;) {
                 SystemFailure.checkFailure();
                 Runnable task = takeQueue.take();
-                if(forFnExec) {
-                   if(!putQueue.offer(task,retryFor , TimeUnit.MILLISECONDS)){
-                     submit(task);  
+                if (forFnExec) {
+                   if (!putQueue.offer(task,retryFor, TimeUnit.MILLISECONDS)) {
+                     execute(task);
                    }                   
-                }else {
+                } else {
                   putQueue.put(task);
                 }               
               }
@@ -212,19 +213,19 @@ public class FunctionExecutionPooledExecutor extends ThreadPoolExecutor {
   public FunctionExecutionPooledExecutor(BlockingQueue<Runnable> q, int poolSize, PoolStatHelper stats, ThreadFactory tf) {
   /**
    * How long an idle thread will wait, in milliseconds, before it is removed
-   * from its thread pool. Default is (30000 * 60) ms (30 minutes).
+   * from its thread pool. Default is (2000 * 60) ms (2 minutes).
    * It is not static so it can be set at runtime and pick up different values.
    */
-    this(q, poolSize, stats, tf, Integer.getInteger("gemfire.IDLE_THREAD_TIMEOUT", 30000*60), false /* not for fn exec*/);
+    this(q, poolSize, stats, tf, Integer.getInteger("gemfire.IDLE_THREAD_TIMEOUT", 2000*60), false /* not for fn exec*/);
   }
   
   public FunctionExecutionPooledExecutor(BlockingQueue<Runnable> q, int poolSize, PoolStatHelper stats, ThreadFactory tf, boolean forFnExec) {
     /**
      * How long an idle thread will wait, in milliseconds, before it is removed
-     * from its thread pool. Default is (30000 * 60) ms (30 minutes).
+     * from its thread pool. Default is (2000 * 60) ms (2 minutes).
      * It is not static so it can be set at runtime and pick up different values.
      */
-      this(q, poolSize, stats, tf, Integer.getInteger("gemfire.IDLE_THREAD_TIMEOUT", 30000*60), forFnExec);
+      this(q, poolSize, stats, tf, Integer.getInteger("gemfire.IDLE_THREAD_TIMEOUT", 2000*60), forFnExec);
     }
   /**
    * Default timeout with no stats.

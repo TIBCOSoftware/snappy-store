@@ -63,6 +63,11 @@ public class HDFSLRURegionMap extends AbstractLRURegionMap implements HDFSRegion
   }
 
   @Override
+  protected boolean getEntryNeedKeyCopy() {
+    return true;
+  }
+
+  @Override
   protected RegionEntry getEntry(EntryEventImpl event) {
     return delegate.getEntry(event);
   }

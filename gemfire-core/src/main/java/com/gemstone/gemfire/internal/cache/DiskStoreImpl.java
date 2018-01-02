@@ -96,10 +96,11 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
+
+import static com.gemstone.gemfire.internal.cache.GemFireCacheImpl.sysProps;
 
 /**
  * Represents a (disk-based) persistent store for region data. Used for both
@@ -117,8 +118,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
 
   private static final String BACKUP_DIR_PREFIX = "dir";
 
-  private static final SystemProperties sysProps = SystemProperties
-      .getServerInstance();
   public static final boolean TRACE_RECOVERY = sysProps.getBoolean(
       "disk.TRACE_RECOVERY", false);
   public static final boolean TRACE_READS = sysProps.getBoolean(
@@ -229,16 +228,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       "MAX_OPLOGS_PER_COMPACTION",
       sysProps.getInteger("MAX_OPLOGS_PER_ROLL", 1));
 
-  public static final int MAX_CONCURRENT_COMPACTIONS = sysProps.getInteger(
-      "MAX_CONCURRENT_COMPACTIONS",
-      sysProps.getInteger("MAX_CONCURRENT_ROLLS", 1));
-
-  /**
-   * This system property indicates that maximum number of delayed write
-   * tasks that can be pending before submitting the tasks start blocking. 
-   * These tasks are things like unpreblow oplogs, delete oplogs, etc. 
-   */
-  public static final int MAX_PENDING_TASKS = sysProps.getInteger("disk.MAX_PENDING_TASKS", 6);
   /**
    * This system property indicates that IF should also be preallocated. This property 
    * will be used in conjunction with the PREALLOCATE_OPLOGS property. If PREALLOCATE_OPLOGS
@@ -397,10 +386,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    * 
    */
   private DiskStoreID diskStoreID;
-  
-  private final ThreadPoolExecutor diskStoreTaskPool;
-  
-  private final ThreadPoolExecutor delayedWritePool;
+
   private volatile Future lastDelayedWrite;
   
   // ///////////////////// Constructors /////////////////////////
@@ -553,23 +539,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     } else {
       this.oplogCompactor = null;
     }
-    
-    int MAXT = DiskStoreImpl.MAX_CONCURRENT_COMPACTIONS;
-    final ThreadGroup compactThreadGroup = LogWriterImpl.createThreadGroup("Oplog Compactor Thread Group", this.logger);
-    final ThreadFactory compactThreadFactory = GemfireCacheHelper.createThreadFactory(compactThreadGroup, "Idle OplogCompactor");
-    this.diskStoreTaskPool = new ThreadPoolExecutor(MAXT, MAXT, 10, TimeUnit.SECONDS,
-                                             new LinkedBlockingQueue(),
-                                             compactThreadFactory);
-    this.diskStoreTaskPool.allowCoreThreadTimeOut(true);
-    
-    
-    final ThreadGroup deleteThreadGroup = LogWriterImpl.createThreadGroup("Oplog Delete Thread Group", this.logger);
-
-    final ThreadFactory deleteThreadFactory = GemfireCacheHelper.createThreadFactory(deleteThreadGroup, "Oplog Delete Task");
-    this.delayedWritePool = new ThreadPoolExecutor(1, 5, 10, TimeUnit.SECONDS,
-                 new LinkedBlockingQueue(MAX_PENDING_TASKS),
-                 deleteThreadFactory, new ThreadPoolExecutor.CallerRunsPolicy());
-    this.delayedWritePool.allowCoreThreadTimeOut(true);
 
     // register with ResourceManager to adjust async queue size
     InternalResourceManager irm = this.cache.getResourceManager();
@@ -2215,16 +2184,16 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     if (markIndexRecoveryScheduled()) {
       IndexRecoveryTask task = new IndexRecoveryTask(allOplogs, recreateIndexes);
       // other disk store threads wait for this task, so use a different
-      // thread pool for execution
+      // thread pool for execution if possible (not in loner VM)
       ExecutorService waitingPool = getCache().getDistributionManager()
           .getWaitingThreadPool();
       ThreadPoolExecutor executor;
       if (waitingPool instanceof ThreadPoolExecutor) {
         executor = (ThreadPoolExecutor)waitingPool;
       } else {
-        executor = this.delayedWritePool;
+        executor = getCache().getDiskStoreTaskPool();
       }
-      executeDiskStoreTask(task, executor);
+      executeDiskStoreTask(task, executor, true);
     }
   }
 
@@ -2533,7 +2502,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       if (rte != null) {
         throw rte;
       }
-      stopDiskStoreTaskPool();
     } finally {
       this.closed = true;
     }
@@ -4935,28 +4903,30 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   private static void markBackgroundTaskThread() {
     backgroundTaskThread.set(Boolean.TRUE);
   }
-  
+
   /**
    * Execute a task which must be performed asnychronously, but has no requirement
    * for timely execution. This task pool is used for compactions, creating KRFS, etc.
    * So some of the queued tasks may take a while.
    */
   public boolean executeDiskStoreTask(final Runnable runnable) {
-    return executeDiskStoreTask(runnable, this.diskStoreTaskPool) != null;
+    return executeDiskStoreTask(runnable,
+        getCache().getDiskStoreTaskPool(), true) != null;
   }
-  
-  /** 
+
+  /**
    * Execute a task asynchronously, or in the calling thread if the bound
    * is reached. This pool is used for write operations which can be delayed,
    * but we have a limit on how many write operations we delay so that
    * we don't run out of disk space. Used for deletes, unpreblow, RAF close, etc.
    */
   public boolean executeDelayedExpensiveWrite(Runnable task) {
-    Future<?> f = executeDiskStoreTask(task, this.delayedWritePool);
+    Future<?> f = (Future<?>)executeDiskStoreTask(task,
+        getCache().getDiskDelayedWritePool(), false);
     lastDelayedWrite = f;
     return f != null;
   }
-  
+
   /**
    * Wait for any current operations in the delayed write pool. Completion
    * of this method ensures that the writes have completed or the pool was shutdown
@@ -4974,10 +4944,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
   }
 
-  private Future<?> executeDiskStoreTask(final Runnable runnable, ThreadPoolExecutor executor) {
- // schedule another thread to do it
+  private Object executeDiskStoreTask(final Runnable runnable,
+      ThreadPoolExecutor executor, boolean async) {
+    // schedule another thread to do it
     incBackgroundTasks();
-    Future<?> result = executeDiskStoreTask(new DiskStoreTask() {
+    Object result = executeDiskStoreTask(new DiskStoreTask() {
       public void run() {
         try {
           markBackgroundTaskThread(); // for bug 42775
@@ -4991,18 +4962,24 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       public void taskCancelled() {
         decBackgroundTasks();
       }
-    }, executor);
+    }, executor, async);
 
-    if(result == null) {
+    if (result == null) {
       decBackgroundTasks();
     }
 
     return result;
   }
 
-  private Future<?> executeDiskStoreTask(DiskStoreTask r, ThreadPoolExecutor executor) {
+  private Object executeDiskStoreTask(DiskStoreTask r,
+      ThreadPoolExecutor executor, boolean async) {
     try {
-      return executor.submit(r);
+      if (async) {
+        executor.execute(r);
+        return Boolean.TRUE;
+      } else {
+        return executor.submit(r);
+      }
     } catch (RejectedExecutionException ex) {
       if (this.logger.fineEnabled()) {
         this.logger.fine("Ignored compact schedule during shutdown", ex);
@@ -5011,32 +4988,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     return null;
   }
 
-  private void stopDiskStoreTaskPool() {
-    if (this.logger.infoEnabled()) {
-      this.logger.convertToLogWriter().info("Stopping DiskStoreTaskPool");
-    }
-    shutdownPool(diskStoreTaskPool);
-    
-    //Allow the delayed writes to complete
-    delayedWritePool.shutdown();
-    try {
-      delayedWritePool.awaitTermination(1, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
-  }
-  
-  private void shutdownPool(ThreadPoolExecutor pool) {
- // All the regions have already been closed
-    // so this pool shouldn't be doing anything.
-    List<Runnable> l = pool.shutdownNow();
-    for (Runnable runnable : l) {
-      if (l instanceof DiskStoreTask) {
-        ((DiskStoreTask) l).taskCancelled();
-      }
-    }
-  }
-  
   public void writeRVVGC(DiskRegion dr, LocalRegion region) {
     if (region != null && !region.getConcurrencyChecksEnabled()) {
       return;

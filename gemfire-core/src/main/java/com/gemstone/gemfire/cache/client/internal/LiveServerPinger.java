@@ -16,19 +16,15 @@
  */
 package com.gemstone.gemfire.cache.client.internal;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheFactory;
-import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.client.internal.EndpointManager.EndpointListenerAdapter;
 import com.gemstone.gemfire.cache.client.internal.PoolImpl.PoolTask;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 
 /**
  * Responsible for pinging live
@@ -39,8 +35,9 @@ import com.gemstone.gemfire.internal.concurrent.CM;
  */
 public class LiveServerPinger  extends EndpointListenerAdapter {
   private static final long NANOS_PER_MS = 1000000L;
-  
-  private final CM/*<Endpoint,Future>*/ taskFutures = CFactory.createCM();
+
+  private final ConcurrentHashMap<Endpoint, Future> taskFutures =
+      new ConcurrentHashMap<>();
   protected final InternalPool pool;
   protected final long pingIntervalNanos;
   
@@ -74,7 +71,7 @@ public class LiveServerPinger  extends EndpointListenerAdapter {
   }
   
   private void cancelFuture(Endpoint endpoint) {
-    Future future = (Future) taskFutures.remove(endpoint);
+    Future future = taskFutures.remove(endpoint);
     if(future != null) {
       future.cancel(false);
     }

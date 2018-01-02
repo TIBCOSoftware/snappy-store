@@ -165,13 +165,13 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public static Exception getExceptionToSendToServer(Exception ex) {
     // Catch all exceptions and convert so can be caught at XD side
     // Check if the exception can be serialized or not
-    boolean wrapExcepton = false;
+    boolean wrapException = false;
     HeapDataOutputStream hdos = null;
     try {
       hdos = new HeapDataOutputStream();
       DataSerializer.writeObject(ex, hdos);
     } catch (Exception e) {
-      wrapExcepton = true;
+      wrapException = true;
     } finally {
       if (hdos != null) {
         hdos.close();
@@ -180,27 +180,40 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
 
     Throwable cause = ex;
     while (cause != null) {
-      if (cause.getClass().getName().contains("AnalysisException")) {
+      if (cause instanceof StandardException || cause instanceof SQLException) {
+        return (Exception)cause;
+      }
+      String causeName = cause.getClass().getName();
+      if (causeName.contains("AnalysisException")) {
         return StandardException.newException(
             SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
-      } else if (cause.getClass().getName().contains("apache.spark.storage")) {
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("apache.spark.storage")) {
         return StandardException.newException(
             SQLState.DATA_UNEXPECTED_EXCEPTION,
-            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
-      } else if (cause.getClass().getName().contains("apache.spark.sql")) {
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("apache.spark.sql")) {
         Throwable nestedCause = cause.getCause();
         while (nestedCause != null) {
           if (nestedCause.getClass().getName().contains("ErrorLimitExceededException")) {
             return StandardException.newException(
                 SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-                (!wrapExcepton ? nestedCause : new SparkExceptionWrapper(nestedCause)), nestedCause.getMessage());
+                (!wrapException ? nestedCause : new SparkExceptionWrapper(
+                    nestedCause)), nestedCause.getMessage());
           }
           nestedCause = nestedCause.getCause();
         }
         return StandardException.newException(
             SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("SparkException")) {
+        return StandardException.newException(
+            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
       }
       cause = cause.getCause();
     }
@@ -213,11 +226,19 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     try {
       super.executeFunction(enableStreaming);
     } catch (RuntimeException re) {
-      throw handleLeadNodeException(re);
+      throw handleLeadNodeRuntimeException(re);
     }
   }
 
-  public static RuntimeException handleLeadNodeException(
+  public static Exception handleLeadNodeException(Exception e) {
+    if (e instanceof RuntimeException) {
+      return handleLeadNodeRuntimeException((RuntimeException)e);
+    } else {
+      return e;
+    }
+  }
+
+  public static RuntimeException handleLeadNodeRuntimeException(
       RuntimeException re) {
     Throwable cause = re;
     if (re instanceof GemFireXDRuntimeException ||

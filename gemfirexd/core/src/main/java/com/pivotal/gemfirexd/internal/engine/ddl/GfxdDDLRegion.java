@@ -29,42 +29,20 @@ import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.CacheListener;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.DiskStoreFactory;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.EvictionAction;
-import com.gemstone.gemfire.cache.EvictionAttributes;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.RegionExistsException;
-import com.gemstone.gemfire.cache.Scope;
-import com.gemstone.gemfire.cache.TimeoutException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
-import com.gemstone.gemfire.internal.cache.CachePerfStats;
-import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.gemstone.gemfire.internal.cache.DistributedRegion;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.InitialImageFlowControl;
-import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.Oplog;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.TLongHashSet;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.gemstone.gnu.trove.TObjectIntProcedure;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue.QueueValue;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
@@ -131,23 +109,11 @@ public final class GfxdDDLRegion extends DistributedRegion {
     afact.setConcurrencyChecksEnabled(false);
 
     if (persistDD) {
-      if (persistentDir == null || persistentDir.length() == 0) {
-        persistentDir = "." + File.separatorChar
-            + GfxdConstants.DEFAULT_PERSISTENT_DD_SUBDIR;
-      }
-      else {
-        persistentDir += File.separatorChar
-            + GfxdConstants.DEFAULT_PERSISTENT_DD_SUBDIR;
-      }
       DiskStoreFactory dsf =  cache.createDiskStoreFactory();
       // Set disk directories
       File[] diskDirs = new File[1];
-      diskDirs[0] = new File(persistentDir);
-      if (!diskDirs[0].mkdirs() && !diskDirs[0].isDirectory()) {
-        throw new DiskAccessException("Could not create directory for "
-            + "persistence of system tables: " + diskDirs[0].getAbsolutePath(),
-            (Region<?, ?>)null);
-      }
+      diskDirs[0] = GemFireStore.createPersistentDir(persistentDir,
+          GfxdConstants.DEFAULT_PERSISTENT_DD_SUBDIR).toFile();
       dsf.setDiskDirs(diskDirs);
       if(DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE < 10) {
         dsf.setMaxOplogSize(DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE);
@@ -157,8 +123,8 @@ public final class GfxdDDLRegion extends DistributedRegion {
       }
       // writes use fsync
       dsf.setSyncWrites(true);
-      DiskStoreImpl dsImpl = (DiskStoreImpl)dsf
-          .create(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
+      DiskStoreImpl dsImpl = (DiskStoreImpl)GemFireStore.createDiskStore(dsf,
+          GfxdConstants.GFXD_DD_DISKSTORE_NAME, cache.getCancelCriterion());
       dsImpl.setUsedForInternalUse();
       afact.setDiskSynchronous(true);
       afact.setDiskStoreName(GfxdConstants.GFXD_DD_DISKSTORE_NAME);

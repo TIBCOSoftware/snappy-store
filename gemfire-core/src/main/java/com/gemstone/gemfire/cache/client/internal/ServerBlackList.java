@@ -19,17 +19,17 @@ package com.gemstone.gemfire.cache.client.internal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.cache.client.internal.PoolImpl.PoolTask;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * This class is designed to prevent the client from spinning
@@ -50,8 +50,9 @@ import com.gemstone.gemfire.internal.concurrent.CFactory;
  */
 public class ServerBlackList {
   
-  private final Map/*<ServerLocation, AI>*/ failureTrackerMap = new HashMap();
-  protected final Set blacklist = CFactory.createCOWAS();
+  private final HashMap<ServerLocation, FailureTracker> failureTrackerMap =
+      new HashMap<>();
+  protected final Set blacklist = new CopyOnWriteArraySet();
   private final Set unmodifiableBlacklist = Collections.unmodifiableSet(blacklist);
   protected ScheduledExecutorService background;
   protected final LogWriterI18n logger;
@@ -73,13 +74,12 @@ public class ServerBlackList {
   FailureTracker getFailureTracker(ServerLocation location) {
     FailureTracker failureTracker;
     synchronized(failureTrackerMap) {
-      failureTracker = (FailureTracker) failureTrackerMap.get(location);
-      if(failureTracker == null) {
+      failureTracker = failureTrackerMap.get(location);
+      if (failureTracker == null) {
         failureTracker = new FailureTracker(location);
         failureTrackerMap.put(location, failureTracker);
       }
     }
-    
     return failureTracker;
   }
   
@@ -88,7 +88,7 @@ public class ServerBlackList {
   }
   
   public class FailureTracker {
-    private final AI consecutiveFailures = CFactory.createAI();
+    private final AtomicInteger consecutiveFailures = new AtomicInteger();
     private final ServerLocation location;
     
     public FailureTracker(ServerLocation location) {
@@ -173,7 +173,7 @@ public class ServerBlackList {
   
   protected static class ListenerBroadcaster implements BlackListListener {
     
-    protected Set listeners = CFactory.createCOWAS();
+    protected Set listeners = new CopyOnWriteArraySet();
 
     public void serverAdded(ServerLocation location) {
       for(Iterator itr = listeners.iterator(); itr.hasNext(); ) {

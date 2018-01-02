@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import junit.framework.AssertionFailedError;
 import junitExt.MultiThreadedTestRunner;
@@ -59,8 +60,6 @@ import com.gemstone.gemfire.internal.cache.PoolStats;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifierStats;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 import dunit.AsyncInvocation;
 import dunit.DistributedTestCase;
@@ -389,7 +388,7 @@ public class ConnectionPoolDUnitTest extends CacheTestCase {
     new MultiThreadedTestRunner(runnables).runTestRunnables();
   }
 
-  private final AB timeToStop = CFactory.createAB(false);
+  private final AtomicBoolean timeToStop = new AtomicBoolean(false);
   private Thread gettorThread;
   
   private void startRunningGets(final String name, final String objectName) throws Throwable {
@@ -3408,9 +3407,10 @@ public class ConnectionPoolDUnitTest extends CacheTestCase {
     private final String name;
     ConnectionPoolDUnitTest test;
     int repCount;
-    private AB timeToStop; // if non-null then ignroe repCount
+    private AtomicBoolean timeToStop; // if non-null then ignore repCount
 
-    protected GetKey(String objectName, ConnectionPoolDUnitTest t, String name, AB timeToStop) {
+    protected GetKey(String objectName, ConnectionPoolDUnitTest t,
+        String name, AtomicBoolean timeToStop) {
       this.key = objectName;
       this.test = t;
       this.name = name;
@@ -3560,13 +3560,6 @@ public class ConnectionPoolDUnitTest extends CacheTestCase {
   /**
    * Create a bridgeserver that has a value for every key queried and a unique
    * key/value in the specified Region that uniquely identifies each instance.
-   *
-   * @param vm
-   *          the VM on which to create the BridgeServer
-   * @param rName
-   *          the name of the Region to create on the BridgeServerf
-   * @param port
-   *          the TCP port on which the BridgeServer should listen
    */
   public static class BridgeServerCacheLoader extends TestCacheLoader implements Declarable {
 

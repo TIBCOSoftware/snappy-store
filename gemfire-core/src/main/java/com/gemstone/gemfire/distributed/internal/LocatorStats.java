@@ -16,15 +16,15 @@
  */
 package com.gemstone.gemfire.distributed.internal;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.gemstone.gemfire.StatisticDescriptor;
 import com.gemstone.gemfire.Statistics;
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.StatisticsType;
 import com.gemstone.gemfire.StatisticsTypeFactory;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * This class maintains statistics for the locator
@@ -33,8 +33,7 @@ import com.gemstone.gemfire.internal.concurrent.CFactory;
  */
 public class LocatorStats {
   private static StatisticsType type;
-  
-  
+
   private static final String KNOWN_LOCATORS = "locators"; // gauge
   private static final String REQUESTS_TO_LOCATOR = "locatorRequests"; // counter
   private static final String RESPONSES_FROM_LOCATOR = "locatorResponses"; // counter
@@ -43,17 +42,16 @@ public class LocatorStats {
   private static final String REQUEST_TIME = "requestProcessingTime"; // counter
   private static final String RESPONSE_TIME = "responseProcessingTime"; // counter
   private static final String SERVER_LOAD_UPDATES = "serverLoadUpdates"; // counter
-  
-  private AI known_locators = CFactory.createAI();
-  private AL requests_to_locator = CFactory.createAL();
-  private AL requestTime = CFactory.createAL();
-  private AL responseTime = CFactory.createAL();
-  private AL responses_from_locator = CFactory.createAL();
-  private AI endpoints_known = CFactory.createAI();
-  private AI requestsInProgress = CFactory.createAI();  
-  private AL serverLoadUpdates = CFactory.createAL();
 
-  
+  private final AtomicInteger known_locators = new AtomicInteger();
+  private final AtomicLong requests_to_locator = new AtomicLong();
+  private final AtomicLong requestTime = new AtomicLong();
+  private final AtomicLong responseTime = new AtomicLong();
+  private final AtomicLong responses_from_locator = new AtomicLong();
+  private final AtomicInteger endpoints_known = new AtomicInteger();
+  private final AtomicInteger requestsInProgress = new AtomicInteger();
+  private final AtomicLong serverLoadUpdates = new AtomicLong();
+
   private static final int _KNOWN_LOCATORS;
   private static final int _REQUESTS_TO_LOCATOR;
   private static final int _RESPONSES_FROM_LOCATOR;
@@ -62,10 +60,9 @@ public class LocatorStats {
   private final static int _REQUEST_TIME;
   private final static int _RESPONSE_TIME;
   private final static int _SERVER_LOAD_UPDATES;
-  
-  
+
   private Statistics _stats = null;
-  
+
   static {
     String statName = "LocatorStats";
     String statDescription = "Statistics on the gemfire locator.";

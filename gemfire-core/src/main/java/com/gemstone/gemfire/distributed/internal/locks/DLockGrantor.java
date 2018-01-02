@@ -24,8 +24,6 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.*;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gemfire.distributed.*;
@@ -35,6 +33,7 @@ import com.gemstone.gemfire.distributed.internal.locks.DLockRequestProcessor.DLo
 import com.gemstone.gemfire.distributed.internal.membership.*;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Provides lock grantor authority to a distributed lock service. This is
@@ -153,14 +152,14 @@ public class DLockGrantor {
    * and grantor begins replying with NOT_GRANTOR. 
    */
   private final StoppableCountDownLatch untilDestroyed;
-  
+
   /** 
    * If -1 then it has not yet been fetched from elder. Otherwise it is the 
    * versionId that the elder gave us. During explicit becomeGrantor, the
    * value is -1, and then the elder provides a real versionId. 
    */
-  private final AL versionId = CFactory.createAL(-1);
-  
+  private final AtomicLong versionId = new AtomicLong(-1);
+
   /** 
    * Used to verify that requestor member is still in view when granting. 
    */

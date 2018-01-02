@@ -19,6 +19,7 @@ package com.gemstone.gemfire.cache.client.internal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.InterestResultPolicy;
@@ -26,8 +27,6 @@ import com.gemstone.gemfire.cache.query.internal.CqQueryImpl;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.tier.InterestType;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.cache.tier.sockets.UnregisterAllInterest;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
@@ -47,8 +46,9 @@ public class RegisterInterestTracker {
   private final FailoverInterestList[] fils = new FailoverInterestList[4];
   
   /** Manages CQs */
-  private final CM cqs /* <CqQuery,Boolean> */= CFactory.createCM();
-  
+  private final ConcurrentHashMap<CqQueryImpl, Boolean> cqs =
+      new ConcurrentHashMap<>();
+
   public RegisterInterestTracker() {
     this.fils[interestListIndex] = new FailoverInterestList();
     this.fils[interestListIndexForUpdatesAsInvalidates] = new FailoverInterestList();
@@ -203,7 +203,8 @@ public class RegisterInterestTracker {
       boolean durable, boolean keepAlive, boolean receiveUpdatesAsInvalidates)
   {
     String regName = srp.getRegionName();
-    CM allInterests = getRegionToInterestsMap(interestType, durable, receiveUpdatesAsInvalidates);
+    ConcurrentHashMap allInterests = getRegionToInterestsMap(
+        interestType, durable, receiveUpdatesAsInvalidates);
     if (allInterests.remove(regName) != null) {
       if (srp.getLogger().fineEnabled()) {
         srp.getLogger().fine(
@@ -267,14 +268,14 @@ public class RegisterInterestTracker {
    *          the type to return
    * @return the map
    */
-  public CM getRegionToInterestsMap(int interestType, boolean isDurable,
+  public ConcurrentHashMap getRegionToInterestsMap(int interestType, boolean isDurable,
       boolean receiveUpdatesAsInvalidates)
   {
     FailoverInterestList fil =
       this.fils[getInterestLookupIndex(isDurable, receiveUpdatesAsInvalidates)];
-    
-    CM mapOfInterest = null;
-    
+
+    ConcurrentHashMap mapOfInterest;
+
     switch (interestType) {
     case InterestType.KEY:
       mapOfInterest = fil.keysOfInterest;
@@ -316,7 +317,7 @@ public class RegisterInterestTracker {
                                                  boolean receiveUpdatesAsInvalidates)
   {
     final String regionName = r.getFullPath();
-    CM mapOfInterest = getRegionToInterestsMap(interestType, isDurable, receiveUpdatesAsInvalidates);
+    ConcurrentHashMap mapOfInterest = getRegionToInterestsMap(interestType, isDurable, receiveUpdatesAsInvalidates);
     RegionInterestEntry result = (RegionInterestEntry)
       mapOfInterest.get(regionName);
     if (result == null && !forRemoval) {
@@ -333,7 +334,8 @@ public class RegisterInterestTracker {
                                                   boolean isDurable,
                                                   boolean receiveUpdatesAsInvalidates)
   {
-    CM mapOfInterest = getRegionToInterestsMap(interestType, isDurable, receiveUpdatesAsInvalidates);
+    ConcurrentHashMap mapOfInterest = getRegionToInterestsMap(
+        interestType, isDurable, receiveUpdatesAsInvalidates);
     return (RegionInterestEntry)mapOfInterest.get(regionName);
   }
 
@@ -356,7 +358,7 @@ public class RegisterInterestTracker {
      * The keys in this Map are the full names of the regions. The values are
      * instances of {@link RegionInterestEntry}.
      */
-    final CM keysOfInterest = CFactory.createCM();
+    final ConcurrentHashMap keysOfInterest = new ConcurrentHashMap();
 
     /**
      * Record of regular expression keys of interest.
@@ -367,7 +369,7 @@ public class RegisterInterestTracker {
      * The keys in this Map are the full names of the regions. The values are
      * instances of {@link RegionInterestEntry}.
      */
-     final CM regexOfInterest = CFactory.createCM();
+     final ConcurrentHashMap regexOfInterest = new ConcurrentHashMap();
 
     /**
      * Record of filtered keys of interest.
@@ -378,7 +380,7 @@ public class RegisterInterestTracker {
      * The keys in this Map are the full names of the regions. The values are
      * instances of {@link RegionInterestEntry}.
      */
-     final CM filtersOfInterest = CFactory.createCM();
+     final ConcurrentHashMap filtersOfInterest = new ConcurrentHashMap();
 
     /**
      * Record of QOL keys of interest.
@@ -389,13 +391,13 @@ public class RegisterInterestTracker {
      * The keys in this Map are the full names of the regions. The values are
      * instances of {@link RegionInterestEntry}.
      */
-     final CM queriesOfInterest = CFactory.createCM();  
+     final ConcurrentHashMap queriesOfInterest = new ConcurrentHashMap();
      
      /**
       * Record of registered CQs
       *
       */
-      final CM cqsOfInterest = CFactory.createCM(); 
+      final ConcurrentHashMap cqsOfInterest = new ConcurrentHashMap();
   }
 
   /**
@@ -408,18 +410,18 @@ public class RegisterInterestTracker {
   {
     private final LocalRegion region;
 
-    private final CM interests;
+    private final ConcurrentHashMap interests;
 
     RegionInterestEntry(LocalRegion r) {
       this.region = r;
-      this.interests = CFactory.createCM();
+      this.interests = new ConcurrentHashMap();
     }
 
     public LocalRegion getRegion() {
       return this.region;
     }
 
-    public CM getInterests() {
+    public ConcurrentHashMap getInterests() {
       return this.interests;
     }
   }

@@ -35,7 +35,6 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -74,12 +73,9 @@ import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.TIntHashSet;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
-import com.gemstone.gnu.trove.TIntObjectIterator;
 import com.gemstone.gnu.trove.TLongHashSet;
 import com.gemstone.gnu.trove.TLongIterator;
-import com.gemstone.gnu.trove.TLongObjectHashMap;
-import com.gemstone.gnu.trove.TLongObjectIterator;
+import io.snappydata.collection.IntObjectHashMap;
 
 /**
  * Does all the IF file work for a DiskStoreImpl.
@@ -1843,10 +1839,9 @@ public class DiskInitFile implements DiskInitFileInterpreter {
   }
   
   private void saveCanonicalIds() {
-    TIntObjectHashMap mappings = canonicalIdHolder.getAllMappings();
-    for(TIntObjectIterator i = mappings.iterator(); i.hasNext();) {
-      i.advance();
-      writeCanonicalId(i.key(), i.value());
+    IntObjectHashMap<Object> mappings = canonicalIdHolder.getAllMappings();
+    for (Map.Entry<Integer, Object> e : mappings.entrySet()) {
+      writeCanonicalId(e.getKey(), e.getValue());
     }
   }
   

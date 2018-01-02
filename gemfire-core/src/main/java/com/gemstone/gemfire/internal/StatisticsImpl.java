@@ -18,8 +18,8 @@ package com.gemstone.gemfire.internal;
 
 //import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.*;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.statistics.AtomicStatisticsImpl;
 
 // @todo darrel Add statistics instances to archive when they are created. 
 /**
@@ -68,7 +68,7 @@ public abstract class StatisticsImpl implements Statistics {
   public static Statistics createAtomicNoOS(StatisticsType type, String textId,
                                             long numericId, long uniqueId,
                                             StatisticsManager mgr) {
-    return CFactory.createAtomicStatistics(type, textId, numericId, uniqueId, mgr);
+    return new AtomicStatisticsImpl(type, textId, numericId, uniqueId, mgr);
   }
   /**
    * Creates a new statistics instance of the given type and unique id

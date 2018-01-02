@@ -24,6 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.admin.AdminException;
@@ -49,8 +51,6 @@ import com.gemstone.gemfire.internal.admin.Stat;
 import com.gemstone.gemfire.internal.admin.StatAlertDefinition;
 import com.gemstone.gemfire.internal.admin.StatListener;
 import com.gemstone.gemfire.internal.admin.StatResource;
-import com.gemstone.gemfire.internal.concurrent.BQ;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -846,7 +846,7 @@ public abstract class RemoteGemFireVM implements GemFireVM {
    * com.gemstone.gemfire.internal.admin.StatListener}.
    */
   private class StatDispatcher extends Thread {
-    private BQ queue = CFactory.createLBQ();
+    private BlockingQueue queue = new LinkedBlockingQueue();
     private volatile boolean stopped = false;
 
     protected StatDispatcher(){

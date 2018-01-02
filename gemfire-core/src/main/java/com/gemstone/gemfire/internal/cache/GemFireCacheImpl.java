@@ -139,9 +139,6 @@ import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderQue
 import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlParser;
 import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlPropertyResolver;
 import com.gemstone.gemfire.internal.cache.xmlcache.PropertyResolver;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jndi.JNDIInvoker;
 import com.gemstone.gemfire.internal.jta.TransactionManagerImpl;
@@ -151,6 +148,7 @@ import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
+import com.gemstone.gemfire.internal.shared.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
@@ -176,6 +174,7 @@ import com.gemstone.gemfire.pdx.internal.PdxInstanceFactoryImpl;
 import com.gemstone.gemfire.pdx.internal.PdxInstanceImpl;
 import com.gemstone.gemfire.pdx.internal.TypeRegistry;
 import com.gemstone.gnu.trove.THashSet;
+import io.snappydata.collection.ObjectObjectHashMap;
 
 // @todo somebody Come up with more reasonable values for {@link #DEFAULT_LOCK_TIMEOUT}, etc.
 /**
@@ -185,15 +184,20 @@ import com.gemstone.gnu.trove.THashSet;
  */
 public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePerfStats, DistributionAdvisee {
 
+  public static final SystemProperties sysProps = SystemProperties
+      .getServerInstance();
+
   // moved *SERIAL_NUMBER stuff to DistributionAdvisor
 
   /** The default number of seconds to wait for a distributed lock */
-  public static final int DEFAULT_LOCK_TIMEOUT = Integer.getInteger("gemfire.Cache.defaultLockTimeout", 60).intValue();
+  public static final int DEFAULT_LOCK_TIMEOUT = sysProps.getInteger(
+      "Cache.defaultLockTimeout", 60);
 
   /**
    * The default duration (in seconds) of a lease on a distributed lock
    */
-  public static final int DEFAULT_LOCK_LEASE = Integer.getInteger("gemfire.Cache.defaultLockLease", 120).intValue();
+  public static final int DEFAULT_LOCK_LEASE = sysProps.getInteger(
+      "Cache.defaultLockLease", 120);
 
   /** The default "copy on read" attribute value */
   public static final boolean DEFAULT_COPY_ON_READ = false;
@@ -208,7 +212,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   /**
    * The default amount of time to wait for a <code>netSearch</code> to complete
    */
-  public static final int DEFAULT_SEARCH_TIMEOUT = Integer.getInteger("gemfire.Cache.defaultSearchTimeout", 300).intValue();
+  public static final int DEFAULT_SEARCH_TIMEOUT = sysProps.getInteger(
+      "Cache.defaultSearchTimeout", 300);
 
   /**
    * The <code>CacheLifecycleListener</code> s that have been registered in this VM
@@ -218,33 +223,52 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   /**
    * Define LocalRegion.ASYNC_EVENT_LISTENERS=true to invoke event listeners in the background
    */
-  public static final boolean ASYNC_EVENT_LISTENERS = Boolean.getBoolean("gemfire.Cache.ASYNC_EVENT_LISTENERS");
+  public static final boolean ASYNC_EVENT_LISTENERS = sysProps.getBoolean(
+      "Cache.ASYNC_EVENT_LISTENERS", false);
 
   /**
    * If true then when a delta is applied the size of the entry value will be recalculated. If false (the default) then
    * the size of the entry value is unchanged by a delta application. Not a final so that tests can change this value.
    */
-  public static boolean DELTAS_RECALCULATE_SIZE = Boolean.getBoolean("gemfire.DELTAS_RECALCULATE_SIZE");
+  public static boolean DELTAS_RECALCULATE_SIZE = sysProps.getBoolean(
+      "DELTAS_RECALCULATE_SIZE", false);
 
-  public static final int EVENT_QUEUE_LIMIT = Integer.getInteger("gemfire.Cache.EVENT_QUEUE_LIMIT", 4096).intValue();
+  public static final int EVENT_QUEUE_LIMIT = sysProps.getInteger(
+      "Cache.EVENT_QUEUE_LIMIT", 4096);
 
   /**
    * System property to limit the max query-execution time. By default its turned off (-1), the time is set in MiliSecs.
    */
-  public static final int MAX_QUERY_EXECUTION_TIME = Integer.getInteger("gemfire.Cache.MAX_QUERY_EXECUTION_TIME", -1).intValue();
+  public static final int MAX_QUERY_EXECUTION_TIME = sysProps.getInteger(
+      "Cache.MAX_QUERY_EXECUTION_TIME", -1);
+
+  /**
+   * Maximum number of disk compaction and related tasks that can be scheduled.
+   */
+  public static final int MAX_CONCURRENT_DISK_COMPACTIONS = sysProps.getInteger(
+      "MAX_CONCURRENT_COMPACTIONS", sysProps.getInteger("MAX_CONCURRENT_ROLLS", 4));
+
+  /**
+   * This system property indicates that maximum number of delayed disk write
+   * tasks that can be pending before submitting the tasks start blocking.
+   * These tasks are things like unpreblow oplogs, delete oplogs, etc.
+   */
+  public static final int MAX_PENDING_DISK_TASKS = sysProps.getInteger(
+      "disk.MAX_PENDING_TASKS", 10);
 
   /**
    * System property to disable query monitor even if resource manager is in use
    */
-  public final boolean QUERY_MONITOR_DISABLED_FOR_LOW_MEM = Boolean.getBoolean("gemfire.Cache.DISABLE_QUERY_MONITOR_FOR_LOW_MEMORY");
+  public final boolean QUERY_MONITOR_DISABLED_FOR_LOW_MEM = sysProps.getBoolean(
+      "Cache.DISABLE_QUERY_MONITOR_FOR_LOW_MEMORY", false);
 
   /**
    * System property to disable default snapshot
    */
-  public boolean DEFAULT_SNAPSHOT_ENABLED = SystemProperties.getServerInstance().getBoolean(
+  public boolean DEFAULT_SNAPSHOT_ENABLED = sysProps.getBoolean(
       "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", false);
 
-  private final boolean DEFAULT_SNAPSHOT_ENABLED_TEST = SystemProperties.getServerInstance().getBoolean(
+  private final boolean DEFAULT_SNAPSHOT_ENABLED_TEST = sysProps.getBoolean(
       "cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", false);
 
   /**
@@ -255,7 +279,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   /**
    * True if the user is allowed lock when memory resources appear to be overcommitted. 
    */
-  public static final boolean ALLOW_MEMORY_LOCK_WHEN_OVERCOMMITTED = Boolean.getBoolean("gemfire.Cache.ALLOW_MEMORY_OVERCOMMIT");
+  public static final boolean ALLOW_MEMORY_LOCK_WHEN_OVERCOMMITTED = sysProps.getBoolean(
+      "Cache.ALLOW_MEMORY_OVERCOMMIT", false);
 
   
   //time in ms
@@ -286,7 +311,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    */
   private Pool defaultPool;
 
-  private final CM pathToRegion = CFactory.createCM();
+  private final ConcurrentHashMap<String, LocalRegion> pathToRegion =
+      new ConcurrentHashMap<>();
 
   protected volatile boolean isClosing = false;
   protected volatile boolean closingGatewayHubsByShutdownAll = false;
@@ -517,7 +543,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   protected static PropertyResolver resolver;
 
   protected static boolean xmlParameterizationEnabled =
-      !Boolean.getBoolean("gemfire.xml.parameterization.disabled");
+      !sysProps.getBoolean("xml.parameterization.disabled", false);
 
   /**
    * the memcachedServer instance that is started when {@link DistributionConfig#getMemcachedPort()}
@@ -526,6 +552,17 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   private GemFireMemcachedServer memcachedServer;
 
   private String vmIdRegionPath;
+
+  /**
+   * Thread pool used by all disk stores for disk compaction and related tasks.
+   */
+  private final ThreadPoolExecutor diskStoreTaskPool;
+
+  /**
+   * Thread pool used by all disk stores for delayed disk write tasks
+   * that can be expensive like unpreblow oplogs, delete oplogs, etc.
+   */
+  private final ThreadPoolExecutor diskDelayedWritePool;
 
   //TODO:Suranjan This has to be replcaed with better approach. guava cache or WeakHashMap.
   private final Map<String, Map<Object, BlockingQueue<RegionEntry>
@@ -582,15 +619,16 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   // For each entry this should be in sync
 
   public void addOldEntry(NonLocalRegionEntry oldRe, RegionEntry newEntry,
-      LocalRegion region) {
+      LocalRegion region, EntryEventImpl event) {
     if (!snapshotEnabled()) {
       return;
     }
 
     // Insert specific case
     // just add the newEntry in TXState for rollback.
-    if (region.getTXState() != null) {
-      TXState txState = region.getTXState().getLocalTXState();
+    TXStateInterface tx = event.getTXState(region);
+    if (tx != null) {
+      TXState txState = tx.getLocalTXState();
       if (txState != null) {
         txState.addCommittedRegionEntryReference(oldRe == null ? Token.TOMBSTONE : oldRe, newEntry, region);
       }
@@ -819,7 +857,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   /**
    * disables automatic eviction configuration for HDFS regions
    */
-  private final static Boolean DISABLE_AUTO_EVICTION = Boolean.getBoolean("gemfire.disableAutoEviction");
+  private final static Boolean DISABLE_AUTO_EVICTION = sysProps.getBoolean(
+      "disableAutoEviction", false);
 
   static {
     // this works around jdk bug 6427854, reported in ticket #44434
@@ -872,7 +911,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   // ////////////////////// Constructors /////////////////////////
 
   /** Map of Futures used to track Regions that are being reinitialized */
-  private final CM reinitializingRegions = CFactory.createCM();
+  private final ConcurrentHashMap<String, FutureResult> reinitializingRegions =
+      new ConcurrentHashMap<>();
 
   /** Returns the last created instance of GemFireCache */
   public static GemFireCacheImpl getInstance() {
@@ -1037,6 +1077,24 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
       // clear any old TXState
       this.txMgr.clearTXState();
+
+      // create disk related thread pools
+      final ThreadGroup compactThreadGroup = LogWriterImpl.createThreadGroup(
+          "Oplog Compactor Thread Group", getLoggerI18n());
+      final ThreadFactory compactThreadFactory = GemfireCacheHelper.createThreadFactory(
+          compactThreadGroup, "Idle OplogCompactor");
+      this.diskStoreTaskPool = new ThreadPoolExecutor(
+          1, MAX_CONCURRENT_DISK_COMPACTIONS, 60, TimeUnit.SECONDS,
+          new LinkedBlockingQueue<>(), compactThreadFactory);
+
+      final ThreadGroup deleteThreadGroup = LogWriterImpl.createThreadGroup(
+          "Oplog Delete Thread Group", getLoggerI18n());
+      final ThreadFactory deleteThreadFactory = GemfireCacheHelper.createThreadFactory(
+          deleteThreadGroup, "Oplog Delete Task");
+      this.diskDelayedWritePool = new ThreadPoolExecutor(
+          1, Math.max(MAX_PENDING_DISK_TASKS - 2, 4), 60, TimeUnit.SECONDS,
+          new LinkedBlockingQueue<>(MAX_PENDING_DISK_TASKS),
+          deleteThreadFactory, new ThreadPoolExecutor.CallerRunsPolicy());
 
       //this.oldEntryMap = new CustomEntryConcurrentHashMap<>();
       this.oldEntryMap = new ConcurrentHashMap<String, Map<Object, BlockingQueue<RegionEntry>>>();
@@ -1494,8 +1552,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     try {
       // Wait for all the regions to get initialized before taking snapshot.
       lockForSnapshotRvv.readLock().lock();
-      Map<String, Map> snapshot = new HashMap();
-      for (LocalRegion region : getApplicationRegions()) {
+      Set<LocalRegion> regions = getApplicationRegions();
+      ObjectObjectHashMap<String, Map> snapshot =
+          ObjectObjectHashMap.withExpectedSize(regions.size());
+      for (LocalRegion region : regions) {
         if (region.getPartitionAttributes() != null && ((PartitionedRegion)region).isDataStore()
             && ((PartitionedRegion)region).concurrencyChecksEnabled) {
           region.waitForData();
@@ -1854,7 +1914,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   /**
    * Number of threads used to close PRs in shutdownAll. By default is the number of PRs in the cache
    */
-  private static final int shutdownAllPoolSize = Integer.getInteger("gemfire.SHUTDOWN_ALL_POOL_SIZE", -1);
+  private static final int shutdownAllPoolSize = sysProps.getInteger(
+      "SHUTDOWN_ALL_POOL_SIZE", -1);
 
   void shutdownSubTreeGracefully(Map<String, PartitionedRegion> prSubMap) {
     for (final PartitionedRegion pr : prSubMap.values()) {
@@ -2143,7 +2204,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
-  private final boolean DISABLE_DISCONNECT_DS_ON_CACHE_CLOSE = Boolean.getBoolean("gemfire.DISABLE_DISCONNECT_DS_ON_CACHE_CLOSE");
+  private final boolean DISABLE_DISCONNECT_DS_ON_CACHE_CLOSE = sysProps.getBoolean(
+      "DISABLE_DISCONNECT_DS_ON_CACHE_CLOSE", false);
 
   /**
    * close the cache
@@ -2563,6 +2625,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     system.handleResourceEvent(ResourceEvent.DISKSTORE_REMOVE, dsi);
   }
 
+  ThreadPoolExecutor getDiskStoreTaskPool() {
+    return this.diskStoreTaskPool;
+  }
+
+  ThreadPoolExecutor getDiskDelayedWritePool() {
+    return this.diskDelayedWritePool;
+  }
+
   public void addRegionOwnedDiskStore(DiskStoreImpl dsi) {
     this.regionOwnedDiskStores.put(dsi.getName(), dsi);
   }
@@ -2580,6 +2650,35 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         getLoggerI18n().severe(LocalizedStrings.Disk_Store_Exception_During_Cache_Close, e);
       }
       it.remove();
+    }
+    // close the disk thread pools
+    stopDiskStoreTaskPools();
+  }
+
+  private void stopDiskStoreTaskPools() {
+    LogWriter logger = getLogger();
+    if (logger.infoEnabled()) {
+      logger.info("Stopping DiskStore task pools");
+    }
+    shutdownPool(this.diskStoreTaskPool);
+
+    // Allow the delayed writes to complete
+    this.diskDelayedWritePool.shutdown();
+    try {
+      this.diskDelayedWritePool.awaitTermination(1, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  private void shutdownPool(ThreadPoolExecutor pool) {
+    // All the regions have already been closed
+    // so this pool shouldn't be doing anything.
+    List<Runnable> l = pool.shutdownNow();
+    for (Runnable runnable : l) {
+      if (runnable instanceof DiskStoreTask) {
+        ((DiskStoreTask)runnable).taskCancelled();
+      }
     }
   }
 
@@ -3190,7 +3289,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
           if (!isReinitCreate) { // fix bug 33523
             String fullPath = Region.SEPARATOR + name;
-            future = (Future) this.reinitializingRegions.get(fullPath);
+            future = this.reinitializingRegions.get(fullPath);
           }
           if (future == null) {
             HDFSIntegrationUtil.createAndAddAsyncQueue(regionPath, attrs, this);
@@ -3391,7 +3490,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
 
   public final Set<LocalRegion> getApplicationRegions() {
-    Set<LocalRegion> result = new HashSet<LocalRegion>();
+    OpenHashSet<LocalRegion> result = new OpenHashSet<>();
     synchronized (this.rootRegions) {
       for (Object r : this.rootRegions.values()) {
         LocalRegion rgn = (LocalRegion) r;
@@ -3439,7 +3538,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         return result;
       }
     }
-    return (LocalRegion) this.pathToRegion.get(path);
+    return this.pathToRegion.get(path);
   }
   public final LocalRegion getRegionByPathForProcessing(String path) {
     LocalRegion result = getRegionByPath(path, false);
@@ -3727,7 +3826,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    */
   LocalRegion getReinitializingRegion(String fullPath, final boolean returnUnInitializedRegion) {
     LogWriterI18n logger = getLoggerI18n();
-    Future future = (Future) this.reinitializingRegions.get(fullPath);
+    Future future = this.reinitializingRegions.get(fullPath);
     if (future == null) {
       // if (logger.fineEnabled()) {
       // logger.fine("getReinitializingRegion: No initialization future for: "
@@ -3783,7 +3882,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    */
   void regionReinitialized(Region region) {
     String regionName = region.getFullPath();
-    FutureResult future = (FutureResult) this.reinitializingRegions.get(regionName);
+    FutureResult future = this.reinitializingRegions.get(regionName);
     if (future == null) {
       throw new IllegalStateException(LocalizedStrings.GemFireCache_COULD_NOT_FIND_A_REINITIALIZING_REGION_NAMED_0
           .toLocalizedString(regionName));
@@ -4489,11 +4588,11 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
 
   private TreeMap<String, PartitionedRegion> getPartitionedRegionMap() {
-    TreeMap<String, PartitionedRegion> prMap = new TreeMap();
-    for (Map.Entry<String, Region> entry : ((Map<String,Region>)pathToRegion).entrySet()) {
-      String regionName = (String) entry.getKey();
-      Region region = entry.getValue();
-      
+    TreeMap<String, PartitionedRegion> prMap = new TreeMap<>();
+    for (Map.Entry<String, LocalRegion> entry : pathToRegion.entrySet()) {
+      String regionName = entry.getKey();
+      LocalRegion region = entry.getValue();
+
       //Don't wait for non partitioned regions
       if(!(region instanceof PartitionedRegion)) {
         continue;
@@ -4802,7 +4901,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   // //////////////////// Inner Classes //////////////////////
 
   // TODO make this a simple int guarded by riWaiters and get rid of the double-check
-  private final AI registerInterestsInProgress = CFactory.createAI();
+  private final AtomicInteger registerInterestsInProgress = new AtomicInteger();
 
   private final ArrayList<SimpleWaiter> riWaiters = new ArrayList<SimpleWaiter>();
 

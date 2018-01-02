@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.ForcedDisconnectException;
@@ -45,8 +46,6 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.internal.cache.ForceReattemptException;
 import com.gemstone.gemfire.internal.cache.FunctionStreamingReplyMessage;
 import com.gemstone.gemfire.internal.cache.PrimaryBucketException;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -64,9 +63,9 @@ public class FunctionStreamingResultCollector extends ReplyProcessor21 implement
   volatile RuntimeException colEx;
   
   protected boolean resultCollected = false;
-  
-  protected final AI msgsBeingProcessed = CFactory.createAI();
-  
+
+  private final AtomicInteger msgsBeingProcessed = new AtomicInteger();
+
   private final Map<InternalDistributedMember,Status> statusMap = new HashMap<InternalDistributedMember,Status>();
   
   private Set<InternalDistributedMember> removedNodes = new HashSet<InternalDistributedMember>();
