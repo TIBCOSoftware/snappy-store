@@ -579,14 +579,6 @@ public final class FabricDatabase implements ModuleControl,
     }
   }
 
-  public void publishColumnStats() {
-    if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
-        GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
-      GemFireXDUtils.waitForNodeInitialization();
-      CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
-    }
-  }
-
   private void addInternalDiskStore(DiskStoreImpl ds, UUIDFactory factory)
       throws StandardException {
     if (ds != null) {
@@ -598,7 +590,7 @@ public final class FabricDatabase implements ModuleControl,
     }
   }
 
-  public void publishColumnStats() {
+  private void publishColumnStats() {
     if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
         GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
       GemFireXDUtils.waitForNodeInitialization();
