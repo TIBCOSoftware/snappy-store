@@ -653,15 +653,13 @@ final class NativeCallsInst {
   protected static final NativeCalls instance;
 
   static {
-    final ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
     NativeCalls inst;
     try {
       // try to load JNA implementation first
       // we do it via reflection since some clients like ADO.NET/ODBC
       // may not have it
       final Class<?> c = Class.forName(
-          "com.gemstone.gemfire.internal.shared.jna.NativeCallsJNAImpl",
-          true, systemLoader);
+          "com.gemstone.gemfire.internal.shared.jna.NativeCallsJNAImpl");
       inst = (NativeCalls)c.getMethod("getInstance").invoke(null);
       // never catch Throwable or Error blindly because JVM only
       // guarantees OutOfMemoryError will be seen at least once
@@ -679,8 +677,7 @@ final class NativeCallsInst {
         // since this is also used by GemFireXD client; at some point all the
         // functionality of OSProcess should be folded into the JNA impl
         final Class<?> c = Class.forName(
-            "com.gemstone.gemfire.internal.OSProcess$NativeOSCalls",
-            true, systemLoader);
+            "com.gemstone.gemfire.internal.OSProcess$NativeOSCalls");
         inst = (NativeCalls)c.newInstance();
         // never catch Throwable or Error blindly because JVM only
         // guarantees OutOfMemoryError will be seen at least once
