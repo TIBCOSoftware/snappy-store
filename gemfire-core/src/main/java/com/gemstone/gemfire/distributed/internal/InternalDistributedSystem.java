@@ -152,7 +152,7 @@ public final class InternalDistributedSystem
 
   /** Set of listeners that are invoked whenever a connection is created to
    * the distributed system */
-  private static Set connectListeners = new LinkedHashSet(); // needs to be ordered
+  private static final Set connectListeners = new LinkedHashSet(); // needs to be ordered
 
   /** auto-reconnect listeners */
   private static final List<ReconnectListener> reconnectListeners =

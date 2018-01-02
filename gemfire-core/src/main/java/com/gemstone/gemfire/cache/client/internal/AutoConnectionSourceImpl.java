@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.cache.client.NoAvailableLocatorsException;
@@ -50,8 +51,6 @@ import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.distributed.internal.tcpserver.TcpClient;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -314,7 +313,7 @@ public class AutoConnectionSourceImpl implements ConnectionSource {
    */
   private static class LocatorList {
     protected final List<InetSocketAddress> locators;
-    protected AI currentLocatorIndex = CFactory.createAI();
+    protected final AtomicInteger currentLocatorIndex = new AtomicInteger();
     
     public LocatorList(List<InetSocketAddress> locators) {
       Collections.sort(locators, SOCKET_ADDRESS_COMPARATOR);

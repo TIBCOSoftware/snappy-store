@@ -23,7 +23,7 @@ import java.util.List;
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.Statistics;
 import com.gemstone.gemfire.StatisticsType;
-import com.gemstone.gemfire.internal.stats50.VMStats50;
+import com.gemstone.gemfire.internal.statistics.VMStats;
 
 import io.snappydata.test.dunit.DistributedTestBase;
 import io.snappydata.test.dunit.DistributedTestBase.WaitCriterion;
@@ -87,10 +87,9 @@ public class SimpleStatSamplerJUnitTest extends StatSamplerTestCase {
     assertEquals(SocketCreator.getHostName(SocketCreator.getLocalHost()), 
                  statSampler.getSystemDirectoryPath());
 
-    VMStatsContract vmStats = statSampler.getVMStats();
+    VMStats vmStats = statSampler.getVMStats();
     assertNotNull(vmStats);
-    assertTrue(vmStats instanceof VMStats50);
-    /* NOTE: VMStats50 is not an instance of Statistics but instead its
+    /* NOTE: VMStats is not an instance of Statistics but instead its
      * instance contains 3 instances of Statistics:
      * 1) vmStats
      * 2) heapMemStats

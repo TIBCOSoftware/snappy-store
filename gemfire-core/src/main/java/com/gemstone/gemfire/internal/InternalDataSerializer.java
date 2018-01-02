@@ -157,8 +157,6 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerHelper;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientDataSerializerMessage;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Part;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -688,7 +686,8 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
   
   /** Maps the id of a serializer to its <code>DataSerializer</code>.
    */
-  private static final CM/*<Integer, DataSerializer|Marker>*/ idsToSerializers = CFactory.createCM();
+  private static final ConcurrentHashMap<Integer, Object> idsToSerializers =
+      new ConcurrentHashMap<>();
 
   /**
    * Contains the classnames of the data serializers (and not the supported
@@ -1455,7 +1454,7 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
         // consistency check to make sure that the same DSFID is not used
         // for two different classes
         String newClassName = o.getClass().getName();
-        String existingClassName = (String)dsfidToClassMap.putIfAbsent(Integer.valueOf(dsfid), newClassName);
+        String existingClassName = dsfidToClassMap.putIfAbsent(Integer.valueOf(dsfid), newClassName);
         if (existingClassName != null && !existingClassName.equals(newClassName)) {
           logger.error( StringIdImpl.LITERAL,
                        "dsfid=" + dsfid
@@ -1527,7 +1526,7 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
         // consistency check to make sure that the same DSFID is not used
         // for two different classes
         String newClassName = o.getClass().getName();
-        String existingClassName = (String)dsfidToClassMap.putIfAbsent(
+        String existingClassName = dsfidToClassMap.putIfAbsent(
             dsfid, newClassName);
         if (existingClassName != null && !existingClassName.equals(newClassName)) {
           logger.fine("dsfid=" + dsfid + " is used for class "
@@ -2423,8 +2422,9 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
 
   private static final boolean DEBUG_DSFID = Boolean.getBoolean("InternalDataSerializer.DEBUG_DSFID");
   //private static final HashSet seenClassNames = DEBUG_DSFID ? new HashSet(): null;
-  private static final CM dsfidToClassMap = DEBUG_DSFID ? CFactory.createCM(): null;
-  
+  private static final ConcurrentHashMap<Integer, String> dsfidToClassMap =
+      DEBUG_DSFID ? new ConcurrentHashMap<>() : null;
+
   public static final void writeUserDataSerializableHeader(int classId,
                                                            DataOutput out)
     throws IOException

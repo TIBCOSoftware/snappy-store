@@ -20,12 +20,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+
+import com.gemstone.gemfire.internal.shared.OpenHashSet;
 
 /**
  * A Hash set where every modification makes an internal copy 
@@ -42,16 +42,19 @@ import java.util.Set;
 public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
   
   private static final long serialVersionUID = 8591978652141659932L;
-  
-  private volatile transient Set<T> snapshot = Collections.emptySet();
+
+  private static final OpenHashSet EMPTY_SET = new OpenHashSet(1);
+
+  @SuppressWarnings("unchecked")
+  private volatile transient OpenHashSet<T> snapshot = EMPTY_SET;
 
   public CopyOnWriteHashSet() {
   }
 
   public CopyOnWriteHashSet(Set<T> copy) {
-    this.snapshot = new HashSet<T>(copy);
+    this.snapshot = new OpenHashSet<>(copy);
   }
-  
+
   /**
    * Because I'm lazy, this iterator does not support modification
    * of this set. If you need it, it shouldn't be too hard to implement.
@@ -66,7 +69,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean add(T e) {
     synchronized(this) {
-      Set<T> set = new HashSet<T>(snapshot);
+      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
       boolean result = set.add(e);
       snapshot = set;
       return result;
@@ -75,7 +78,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean addAll(Collection<? extends T> c) {
     synchronized(this) {
-      Set<T> set = new HashSet<T>(snapshot);
+      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
       boolean result = set.addAll(c);
       snapshot = set;
       return result;
@@ -84,7 +87,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public void clear() {
     synchronized(this) {
-      snapshot = Collections.emptySet();
+      snapshot = EMPTY_SET;
     }
   }
 
@@ -102,7 +105,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean remove(Object o) {
     synchronized(this) {
-      Set<T> set = new HashSet<T>(snapshot);
+      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
       boolean result = set.remove(o);
       snapshot = set;
       return result;
@@ -111,7 +114,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean retainAll(Collection<?> c) {
     synchronized(this) {
-      Set<T> set = new HashSet<T>(snapshot);
+      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
       boolean result = set.retainAll(c);
       snapshot = set;
       return result;
@@ -138,7 +141,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean removeAll(Collection<?> c) {
     synchronized(this) {
-      Set<T> set = new HashSet<T>(snapshot);
+      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
       boolean result = set.removeAll(c);
       snapshot = set;
       return result;
@@ -149,7 +152,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
   public String toString() {
     return snapshot.toString();
   }
-  
+
   /**
    * Return a snapshot of the set at this point in time.
    * The snapshot is guaranteed not to change. It is therefore
@@ -166,12 +169,11 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
     s.defaultWriteObject();
     s.writeObject(snapshot);
   }
-  
+
   @SuppressWarnings("unchecked")
   private void readObject(ObjectInputStream s)
-  throws java.io.IOException, ClassNotFoundException {
+      throws java.io.IOException, ClassNotFoundException {
     s.defaultReadObject();
-    this.snapshot = (Set<T>) s.readObject();
+    this.snapshot = (OpenHashSet<T>)s.readObject();
   }
-  
 }

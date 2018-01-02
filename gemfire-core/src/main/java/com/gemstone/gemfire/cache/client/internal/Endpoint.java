@@ -16,12 +16,12 @@
  */
 package com.gemstone.gemfire.cache.client.internal;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * Represents a server. Keeps track of information about the specific server
@@ -31,8 +31,8 @@ import com.gemstone.gemfire.internal.concurrent.CFactory;
  */
 public class Endpoint {
   
-  private AL lastExecute = CFactory.createAL();
-  private AI references = CFactory.createAI();
+  private AtomicLong lastExecute = new AtomicLong();
+  private AtomicInteger references = new AtomicInteger();
   private final ServerLocation location;
   private final ConnectionStats stats;
   private final EndpointManagerImpl manager;
@@ -50,7 +50,7 @@ public class Endpoint {
   }
 
   public void updateLastExecute() {
-    this.lastExecute.set(CFactory.nanoTime());
+    this.lastExecute.set(System.nanoTime());
   }
 
   private long getLastExecute() {
@@ -58,7 +58,7 @@ public class Endpoint {
   }
 
   public boolean timeToPing(long pingIntervalNanos) {
-    long now = CFactory.nanoTime();
+    long now = System.nanoTime();
     return getLastExecute() <= (now - pingIntervalNanos);
   }
   

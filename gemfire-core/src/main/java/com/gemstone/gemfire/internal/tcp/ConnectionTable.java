@@ -16,34 +16,36 @@
  */
 package com.gemstone.gemfire.internal.tcp;
 
-import com.gemstone.gemfire.i18n.LogWriterI18n;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import java.io.*;
+import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.LogWriterImpl;
-import com.gemstone.gemfire.internal.SocketCreator;
-import com.gemstone.gemfire.internal.SystemTimer;
-import com.gemstone.gemfire.internal.concurrent.*;
 import com.gemstone.gemfire.distributed.DistributedSystemDisconnectedException;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.membership.*;
-import com.gemstone.gemfire.distributed.internal.membership.jgroup.JGroupMembershipManager;
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
+import com.gemstone.gemfire.distributed.internal.membership.MembershipManager;
+import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.LogWriterImpl;
+import com.gemstone.gemfire.internal.SocketCreator;
+import com.gemstone.gemfire.internal.SystemTimer;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
+import com.gemstone.gemfire.internal.concurrent.QueryKeyedObjectPool;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import org.apache.commons.pool2.KeyedPooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -79,8 +81,9 @@ public final class ConnectionTable  {
    * Only connections used for sending messages,
    * and receiving acks, will be put in this map.
    */
-  protected final Map orderedConnectionMap = CFactory.createCM();
-  
+  private final ConcurrentHashMap<Stub, Object> orderedConnectionMap =
+      new ConcurrentHashMap<>();
+
   /**
    * ordered connections local to this thread.  Note that accesses to
    * the resulting map must be synchronized because of static cleanup.
@@ -108,7 +111,7 @@ public final class ConnectionTable  {
    * The value is an ArrayList since we can have any number of connections
    * with the same key.
    */
-  private CM threadConnectionMap;
+  private ConcurrentHashMap<Stub, ArrayList> threadConnectionMap;
 
   private static final class ConnKey {
     final Stub stub;
@@ -152,7 +155,9 @@ public final class ConnectionTable  {
    * Only connections used for sending messages,
    * and receiving acks, will be put in this map.
    */
-  protected final Map unorderedConnectionMap = CFactory.createCM();
+  private final ConcurrentHashMap<Stub, Object> unorderedConnectionMap =
+      new ConcurrentHashMap<>();
+
   /**
    * Used for all accepted connections. These connections are read only;
    * we never send messages, except for acks; only receive.
@@ -180,7 +185,8 @@ public final class ConnectionTable  {
    * 
    * TODO this assumes no more than one instance is created at a time?
    */
-  private static final AR lastInstance = CFactory.createAR();
+  private static final AtomicReference<ConnectionTable> lastInstance =
+      new AtomicReference<>();
   
   /**
    * A set of sockets that are in the process of being connected
@@ -360,7 +366,7 @@ public final class ConnectionTable  {
     }*/
 
     if (!c.useNIOStream()) {
-      this.threadConnectionMap = CFactory.createCM();
+      this.threadConnectionMap = new ConcurrentHashMap<>();
       this.connectionPool = null;
       return;
     }
@@ -656,8 +662,8 @@ public final class ConnectionTable  {
     {
     Connection result = null;
     
-    final Map m = preserveOrder ? this.orderedConnectionMap 
-        : this.unorderedConnectionMap;
+    final ConcurrentHashMap<Stub, Object> m = preserveOrder
+        ? this.orderedConnectionMap : this.unorderedConnectionMap;
 
     PendingConnection pc = null; // new connection, if needed
     Object mEntry = null; // existing connection (if we don't create a new one)
@@ -1103,9 +1109,9 @@ public final class ConnectionTable  {
       }
     }
     if (!needsRemoval) {
-      CM cm = this.threadConnectionMap;
+      final ConcurrentHashMap<Stub, ArrayList> cm = this.threadConnectionMap;
       if (cm != null) {
-        ArrayList al = (ArrayList)cm.get(stub);
+        ArrayList al = cm.get(stub);
         needsRemoval = al != null && al.size() > 0;
       }
     }
@@ -1124,9 +1130,9 @@ public final class ConnectionTable  {
       }
 
       {
-        CM cm = this.threadConnectionMap;
+        final ConcurrentHashMap<Stub, ArrayList> cm = this.threadConnectionMap;
         if (cm != null) {
-          ArrayList al = (ArrayList)cm.remove(stub);
+          ArrayList al = cm.remove(stub);
           if (al != null) {
             synchronized (al) {
               for (Iterator it=al.iterator(); it.hasNext();)
@@ -1207,9 +1213,10 @@ public final class ConnectionTable  {
     return false;
   }
   
-  private static void removeFromThreadConMap(CM cm, Stub stub, Connection c) {
+  private static void removeFromThreadConMap(
+      ConcurrentHashMap<Stub, ArrayList> cm, Stub stub, Connection c) {
     if (cm != null) {
-      ArrayList al = (ArrayList)cm.get(stub);
+      ArrayList al = cm.get(stub);
       if (al != null) {
         synchronized (al) {
           al.remove(c);
@@ -1269,7 +1276,7 @@ public final class ConnectionTable  {
    * @see SystemFailure#emergencyClose()
    */
   public static void emergencyClose() {
-    ConnectionTable ct = (ConnectionTable) lastInstance.get();
+    ConnectionTable ct = lastInstance.get();
     if (ct == null) {
       return;
     }
@@ -1305,7 +1312,7 @@ public final class ConnectionTable  {
     if (context != null) {
       context.threadClose();
     }
-    ConnectionTable ct = (ConnectionTable) lastInstance.get();
+    ConnectionTable ct = lastInstance.get();
     if (ct == null) {
       return;
     }
@@ -1333,9 +1340,9 @@ public final class ConnectionTable  {
       });
       return;
     }
-    CM cm = this.threadConnectionMap;
+    final ConcurrentHashMap<Stub, ArrayList> cm = this.threadConnectionMap;
     if (cm != null) {
-      ArrayList al = (ArrayList)cm.get(member);
+      ArrayList al = cm.get(member);
       if (al != null) {
         synchronized(al) {
           al = new ArrayList(al);
@@ -1541,8 +1548,7 @@ public final class ConnectionTable  {
       boolean suspected = false;
       InternalDistributedMember targetMember = null;
       if (ackSATimeout > 0) {
-        targetMember =
-          ((JGroupMembershipManager)mgr).getMemberForStub(this.id, false);
+        targetMember = mgr.getMemberForStub(this.id, false);
       }
 
       for (;;) {
@@ -1580,7 +1586,7 @@ public final class ConnectionTable  {
             getLogger().warning(LocalizedStrings.
                 ConnectionTable_UNABLE_TO_FORM_A_TCPIP_CONNECTION_TO_0_IN_OVER_1_SECONDS,
                 new Object[] { this.id, (ackTimeout)/1000 });
-            ((JGroupMembershipManager)mgr).suspectMember(targetMember,
+            mgr.suspectMember(targetMember,
                 "Unable to form a TCP/IP connection in a reasonable amount of time");
             suspected = true;
           }

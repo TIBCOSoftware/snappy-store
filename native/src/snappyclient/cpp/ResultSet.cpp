@@ -266,7 +266,8 @@ std::unique_ptr<ResultSet> ResultSet::getNextResults(
       return resultSet;
     }
   } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_CURSOR_STATE_MSG2);
+    // single forward-only result set that has been consumed
+    return std::unique_ptr<ResultSet>(nullptr);
   }
 }
 

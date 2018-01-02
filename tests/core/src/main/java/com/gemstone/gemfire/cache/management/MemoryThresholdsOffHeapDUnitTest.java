@@ -66,8 +66,6 @@ import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.cache.control.TestMemoryThresholdListener;
 import com.gemstone.gemfire.internal.cache.partitioned.RegionAdvisor;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import dunit.AsyncInvocation;
@@ -561,7 +559,7 @@ public class MemoryThresholdsOffHeapDUnitTest extends BridgeTestCase {
         final DistributedRegion r = (DistributedRegion) getCache().getRegion(rName);
         AttributesMutator<Integer, String> am = r.getAttributesMutator();
         am.setCacheLoader(new CacheLoader<Integer, String>() {
-          final AI numLoaderInvocations = CFactory.createAI();
+          final AtomicInteger numLoaderInvocations = new AtomicInteger();
           public String load(LoaderHelper<Integer, String> helper) throws CacheLoaderException {
             Integer expectedInvocations = (Integer)helper.getArgument();
             final int actualInvocations = this.numLoaderInvocations.getAndIncrement();
@@ -1114,7 +1112,7 @@ public class MemoryThresholdsOffHeapDUnitTest extends BridgeTestCase {
       AttributesFactory<Integer, String> af = new AttributesFactory<Integer, String>();
       if (!accessor) {
         af.setCacheLoader(new CacheLoader<Integer, String>() {
-          final AI numLoaderInvocations = CFactory.createAI();
+          final AtomicInteger numLoaderInvocations = new AtomicInteger();
           public String load(LoaderHelper<Integer, String> helper) throws CacheLoaderException {
             Integer expectedInvocations = (Integer)helper.getArgument();
             final int actualInvocations = this.numLoaderInvocations.getAndIncrement();
@@ -1161,7 +1159,7 @@ public class MemoryThresholdsOffHeapDUnitTest extends BridgeTestCase {
         AttributesFactory<Integer, String> af = new AttributesFactory<Integer, String>();
         af.setScope(Scope.LOCAL);
         af.setEnableOffHeapMemory(true);
-        final AI numLoaderInvocations = CFactory.createAI();
+        final AtomicInteger numLoaderInvocations = new AtomicInteger();
         af.setCacheLoader(new CacheLoader<Integer, String>() {
           public String load(LoaderHelper<Integer, String> helper)
           throws CacheLoaderException {
@@ -1501,9 +1499,7 @@ public class MemoryThresholdsOffHeapDUnitTest extends BridgeTestCase {
    * 
    * @param vm
    *          the vm where verification should take place
-   * @param type
-   *          the type of event to validate, use {@link MemoryEventType#UNKNOWN}
-   *          to verify all events
+   * @param state
    * @param value
    *          the expected value
    * @param useWaitCriterion

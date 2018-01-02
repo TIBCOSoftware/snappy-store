@@ -19,15 +19,13 @@ package com.gemstone.gemfire.cache.client.internal;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.CancelException;
-import com.gemstone.gemfire.Instantiator;
 import com.gemstone.gemfire.cache.client.internal.PoolImpl.PoolTask;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.InternalInstantiator;
-import com.gemstone.gemfire.internal.InternalInstantiator.InstantiatorAttributesHolder;
 import com.gemstone.gemfire.internal.cache.EventID;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -46,7 +44,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
  * 
  */
 public class InstantiatorRecoveryListener extends EndpointManager.EndpointListenerAdapter {
-  private final AI endpointCount = CFactory.createAI();
+  private final AtomicInteger endpointCount = new AtomicInteger();
   protected final InternalPool pool;
   protected final ScheduledExecutorService background;
   protected final long pingInterval;

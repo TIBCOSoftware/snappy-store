@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Set;
 
-import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
@@ -82,7 +81,7 @@ public class LeadNodeGetStatsMessage extends MemberExecutorMessage<Object> {
     try {
       super.executeFunction(enableStreaming);
     } catch (RuntimeException re) {
-      throw LeadNodeExecutorMsg.handleLeadNodeException(re);
+      throw LeadNodeExecutorMsg.handleLeadNodeRuntimeException(re);
     }
   }
 

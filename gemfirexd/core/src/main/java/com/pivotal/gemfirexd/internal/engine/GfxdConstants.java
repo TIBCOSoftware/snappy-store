@@ -334,7 +334,28 @@ public interface GfxdConstants {
 
   /** Name of disk store used by global indexes */ 
   final String GFXD_GLOBALINDEX_DISKSTORE_NAME ="GFXD-GLOBALINDEX-DISKSTORE";
-  
+
+  /**
+   * Name of default disk store used by snappydata's delta regions.
+   */
+  final String SNAPPY_DEFAULT_DELTA_DISKSTORE = "SNAPPY-INTERNAL-DELTA";
+
+  /**
+   * Suffix of disk store used by snappydata's delta regions
+   * (appended to main diskstore name except for default diskstore).
+   */
+  final String SNAPPY_DELTA_DISKSTORE_SUFFIX = "-SNAPPY-DELTA";
+
+  /**
+   * default sub-directory to use for delta store
+   */
+  final String SNAPPY_DELTA_SUBDIR = "snappy-internal-delta";
+
+  /**
+   * maximum size of each oplog file used for delta disk stores
+   */
+  final int SNAPPY_DELTA_DISKSTORE_SIZEMB = 50;
+
   /** Name of meta-region used to store the max identity column value */ 
   final String IDENTITY_REGION_NAME ="__IDENTITYREGION2";
 
@@ -457,7 +478,7 @@ public interface GfxdConstants {
           Attribute.SYS_HDFS_ROOT_DIR,
           Attribute.TABLE_DEFAULT_PARTITIONED,
           com.pivotal.gemfirexd.internal.iapi.reference.Attribute.COLLATE,
-          com.pivotal.gemfirexd.internal.iapi.reference.Attribute.INTERNAL_CONNECTION,
+          Attribute.INTERNAL_CONNECTION,
           Attribute.COLLATION,
           Attribute.CREATE_ATTR,
           Attribute.DISABLE_STREAMING,

@@ -455,24 +455,11 @@ public final class FabricDatabase implements ModuleControl,
 
       // Entry of default disk stores in sysdiskstore table
       UUIDFactory factory = dd.getUUIDFactory();
-      DiskStoreImpl ds = cache
-          .findDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
-      if (ds != null) {
-        UUID id = factory.recreateUUID(ds.getName());
-        GfxdDiskStoreDescriptor dsd = new GfxdDiskStoreDescriptor(dd, id, ds,
-            ds.getDiskDirs()[0].getAbsolutePath());
-        dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
-            false, dd.getTransactionExecute());
-      }
-
-      ds = this.memStore.getDefaultDiskStore();
-      if (ds != null) {
-        UUID id = factory.recreateUUID(ds.getName());
-        GfxdDiskStoreDescriptor dsd = new GfxdDiskStoreDescriptor(dd, id, ds,
-            ds.getDiskDirs()[0].getAbsolutePath());
-        dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
-            false, dd.getTransactionExecute());
-      }
+      addInternalDiskStore(cache.findDiskStore(
+          GfxdConstants.GFXD_DD_DISKSTORE_NAME), factory);
+      addInternalDiskStore(this.memStore.getDefaultDiskStore(), factory);
+      addInternalDiskStore(cache.findDiskStore(
+          GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE), factory);
 
       // Initialize ConnectionWrapperHolder with this embeded connection
       GfxdManagementService.handleEvent(
@@ -591,6 +578,17 @@ public final class FabricDatabase implements ModuleControl,
       }
       throw StandardException.newException(SQLState.BOOT_DATABASE_FAILED, t,
           Attribute.GFXD_DBNAME);
+    }
+  }
+
+  private void addInternalDiskStore(DiskStoreImpl ds, UUIDFactory factory)
+      throws StandardException {
+    if (ds != null) {
+      UUID id = factory.recreateUUID(ds.getName());
+      GfxdDiskStoreDescriptor dsd = new GfxdDiskStoreDescriptor(dd, id, ds,
+          ds.getDiskDirs()[0].getAbsolutePath());
+      dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
+          false, dd.getTransactionExecute());
     }
   }
 
@@ -1199,9 +1197,7 @@ public final class FabricDatabase implements ModuleControl,
       if (observer != null && observer.needIndexRecoveryAccounting()) {
         accountingMap = new THashMap();
         for (DiskStoreImpl dsi : cache.listDiskStores()) {
-          if (!dsi.isUsedForInternalUse()) {
-            dsi.TEST_INDEX_ACCOUNTING_MAP = accountingMap;
-          }
+          dsi.TEST_INDEX_ACCOUNTING_MAP = accountingMap;
         }
         observer.setIndexRecoveryAccountingMap(accountingMap);
       }
@@ -1209,20 +1205,18 @@ public final class FabricDatabase implements ModuleControl,
       this.memStore.markIndexLoadBegin();
 
       for (DiskStoreImpl dsi : cache.listDiskStores()) {
-        if (!dsi.isUsedForInternalUse()) {
-          long start = 0;
-          if (logger.infoEnabled()) {
-            start = System.currentTimeMillis();
-            logger.info("FabricDatabase: waiting for index loading from "
-                + dsi.getName());
-          }
-          dsi.waitForIndexRecoveryEnd(-1);
-          if (logger.infoEnabled()) {
-            long end = System.currentTimeMillis();
-            logger.info(MessageFormat.format(
-                "FabricDatabase: Index loading completed for {0} in {1} ms",
-                dsi.getName(), (end - start)));
-          }
+        long start = 0;
+        if (logger.infoEnabled()) {
+          start = System.currentTimeMillis();
+          logger.info("FabricDatabase: waiting for index loading from "
+              + dsi.getName());
+        }
+        dsi.waitForIndexRecoveryEnd(-1);
+        if (logger.infoEnabled()) {
+          long end = System.currentTimeMillis();
+          logger.info(MessageFormat.format(
+              "FabricDatabase: Index loading completed for {0} in {1} ms",
+              dsi.getName(), (end - start)));
         }
       }
 
@@ -1372,7 +1366,7 @@ public final class FabricDatabase implements ModuleControl,
                       "index entries in the index: " + c.getName() + " = " + c.getIndexSize());
                   dumpIndexAndRegion(region, dp, c, logger);
                   throw new IllegalStateException("Table data and indexes are not reconciling." +
-                      "Probably need to revoke the disk store");
+                      " Probably need to revoke the disk store");
                 }
               }
             } else {
@@ -1453,17 +1447,15 @@ public final class FabricDatabase implements ModuleControl,
   private void recreateAllLocalIndexes(final LogWriter logger) {
     Collection<DiskStoreImpl> diskStores = Misc.getGemFireCache().listDiskStores();
     for (DiskStoreImpl ds : diskStores) {
-      if (!ds.getName().equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
-        PersistentOplogSet oplogSet = ds.getPersistentOplogSet(null);
-        ds.resetIndexRecoveryState();
-        // delete all idx file of all oplogs, so second arg as true below
-        ds.scheduleIndexRecovery(oplogSet.getSortedOplogs(), true);
-        logger.info("FabricDatabase: recreateAllLocalIndexes " +
-            "waiting for index re-creation for disk store: " + ds.getName());
-        ds.waitForIndexRecoveryEnd(-1);
-        logger.info("FabricDatabase: recreateAllLocalIndexes " +
-            "index re-creation for disk store: " + ds.getName() + " ended");
-      }
+      PersistentOplogSet oplogSet = ds.getPersistentOplogSet(null);
+      ds.resetIndexRecoveryState();
+      // delete all idx file of all oplogs, so second arg as true below
+      ds.scheduleIndexRecovery(oplogSet.getSortedOplogs(), true);
+      logger.info("FabricDatabase: recreateAllLocalIndexes " +
+          "waiting for index re-creation for disk store: " + ds.getName());
+      ds.waitForIndexRecoveryEnd(-1);
+      logger.info("FabricDatabase: recreateAllLocalIndexes " +
+          "index re-creation for disk store: " + ds.getName() + " ended");
     }
   }
 
@@ -1591,6 +1583,8 @@ public final class FabricDatabase implements ModuleControl,
         lcc.setSkipRegionInitialization(skipRegionInitialization);
         lcc.setDroppedFKConstraints(conflatable.getDroppedFKConstraints());
         lcc.setDefaultPersistent(conflatable.defaultPersistent());
+        lcc.setPersistMetaStoreInDataDictionary(
+            conflatable.persistMetaStoreInDataDictionary());
         tc.setDDLId(conflatable.getId());
         stmt.execute(sqlText);
         GfxdMessage.logWarnings(stmt, sqlText,
@@ -1603,6 +1597,7 @@ public final class FabricDatabase implements ModuleControl,
         lcc.setContextObject(null);
         lcc.setDroppedFKConstraints(null);
         lcc.setDefaultPersistent(false);
+        lcc.setPersistMetaStoreInDataDictionary(true);
         tc.setDDLId(0);
       }
     } catch (Exception ex) {

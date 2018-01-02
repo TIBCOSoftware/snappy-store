@@ -202,7 +202,7 @@ public final class SnappyPrepareResultSet
       // expect at least one result (for metadata)
       this.firstResultHolder = (SnappyResultHolder)srhIterator.next();
     } catch (RuntimeException ex) {
-      ex = LeadNodeExecutorMsg.handleLeadNodeException(ex);
+      ex = LeadNodeExecutorMsg.handleLeadNodeRuntimeException(ex);
       throw Misc.processFunctionException("SnappyPrepareResultSet:setup",
           ex, null, null);
     }

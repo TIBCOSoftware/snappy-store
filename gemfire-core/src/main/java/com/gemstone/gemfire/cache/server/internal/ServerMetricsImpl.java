@@ -16,9 +16,9 @@
  */
 package com.gemstone.gemfire.cache.server.internal;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.cache.server.ServerMetrics;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * Metrics describing the load on a  bridge server.
@@ -27,9 +27,9 @@ import com.gemstone.gemfire.internal.concurrent.CFactory;
  *
  */
 public class ServerMetricsImpl implements ServerMetrics {
-  private final AI clientCount = CFactory.createAI();
-  private final AI connectionCount = CFactory.createAI();
-  private final AI queueCount = CFactory.createAI();
+  private final AtomicInteger clientCount = new AtomicInteger();
+  private final AtomicInteger connectionCount = new AtomicInteger();
+  private final AtomicInteger queueCount = new AtomicInteger();
   private final int maxConnections;
   
   public ServerMetricsImpl(int maxConnections) {

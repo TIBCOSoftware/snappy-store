@@ -1881,7 +1881,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   public final boolean equals(final Object other) {
     final StaticSystemCallbacks sysCb =
         GemFireCacheImpl.FactoryStatics.systemCallbacks;
-    if (sysCb == null) {
+    if (sysCb == null || (other instanceof AbstractRegionEntry)) {
       return this == other;
     }
     int tries = 1;

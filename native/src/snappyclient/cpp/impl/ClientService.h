@@ -172,6 +172,13 @@ namespace impl {
     static std::string s_hostName;
     static std::string s_hostId;
     static boost::mutex s_globalLock;
+    static bool s_initialized;
+
+    /**
+     * Global initialization that is done only once.
+     * The s_globalLock must be held in the invocation.
+     */
+    static bool globalInitialize();
 
   public:
     ClientService(const std::string& host, const int port,
@@ -179,7 +186,7 @@ namespace impl {
 
     virtual ~ClientService();
 
-    static bool staticInitialize();
+    static void staticInitialize();
 
     static void staticInitialize(
         std::map<std::string, std::string>& props);

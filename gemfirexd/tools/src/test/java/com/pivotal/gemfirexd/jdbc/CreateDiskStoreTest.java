@@ -265,6 +265,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
     Set<String> names = new HashSet<String>();
     names.add(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
     names.add(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+    names.add(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE);
     numRows = 0;
     while (rs.next()) {
       ++numRows;
@@ -279,6 +280,8 @@ public class CreateDiskStoreTest extends JdbcTestBase
           .getInt("COMPACTIONTHRESHOLD"));
       if (diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
         assertEquals(rs.getLong("MAXLOGSIZE"), 10);
+      } else if (diskStoreName.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
+        assertEquals(rs.getLong("MAXLOGSIZE"), 100);
       }
       else {
         assertEquals(rs.getLong("MAXLOGSIZE"),
@@ -292,19 +295,19 @@ public class CreateDiskStoreTest extends JdbcTestBase
 
       if (diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
         assertEquals(rs.getString("DIR_PATH_SIZE"), new File(".",
-            "datadictionary").getAbsolutePath());
-      }
-      else {
+            "datadictionary").getCanonicalPath());
+      } else if (diskStoreName.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
+        assertEquals(rs.getString("DIR_PATH_SIZE"), new File(".",
+            GfxdConstants.SNAPPY_DELTA_SUBDIR).getCanonicalPath());
+      } else {
         assertEquals(rs.getString("DIR_PATH_SIZE"), new File(".")
-            .getAbsolutePath());
+            .getCanonicalPath());
       }
     }
-    assertEquals(2, numRows);
+    assertEquals(3, numRows);
     assertTrue(names.isEmpty());
-
   }
-  
-  
+
   public void testDataPersistenceOfPRWithRangePartitioning() throws Exception
   {
 
@@ -432,41 +435,48 @@ public class CreateDiskStoreTest extends JdbcTestBase
         // Any news is bad news.
         throw GemFireXDRuntimeException.newRuntimeException(null, e);
       }
-    } 
+    }
 
   public void testBug45897() throws Exception {
-  // Test DROP DISKSTORE on default diskstore names (should throw sqlstate 0A000)
-  // Default diskstore names have embedded hyphens and therefore need delimiting w/quotes
+    // Test DROP DISKSTORE on default diskstore names (should throw sqlstate 0A000)
+    // Default diskstore names have embedded hyphens and therefore need delimiting w/quotes
 
-     try {
-        Connection conn;
-        conn = TestUtil.getConnection();
-        Statement stmt = conn.createStatement();
-        // Try to drop the default diskstore. Should fail with 0A000.
+    try {
+      Connection conn;
+      conn = TestUtil.getConnection();
+      Statement stmt = conn.createStatement();
+      // Try to drop the default diskstore. Should fail with 0A000.
+      stmt.execute("Drop DiskStore " + "\"" +
+          GfxdConstants.GFXD_DD_DISKSTORE_NAME + "\"");
+      fail("Disk store drop should fail because diskstore is a default one");
+    } catch (SQLException e) {
+      assertEquals(e.getSQLState(), "0A000");
+    }
 
-        stmt.execute("Drop DiskStore " + "\"" +
-               GfxdConstants.GFXD_DD_DISKSTORE_NAME + "\"");
-        fail("Disk store drop should fail because diskstore is a default one");
-      }
-      catch (SQLException e) {
-        assertEquals(e.getSQLState(),"0A000");        
-      }
-
-     // Try the other named default diskstore
-     try {
-        Connection conn;
-        conn = TestUtil.getConnection();
-        Statement stmt = conn.createStatement();
-        // Try to drop the default diskstore. Should fail with 0A000.
-
-        stmt.execute("Drop DiskStore " + "\"" +
-               GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME + "\"");
-        fail("Disk store drop should fail because diskstore is a default one");
-      }
-      catch (SQLException e) {
-        assertEquals(e.getSQLState(),"0A000");        
-      }
-    } 
+    // Try the other named default diskstore
+    try {
+      Connection conn;
+      conn = TestUtil.getConnection();
+      Statement stmt = conn.createStatement();
+      // Try to drop the default diskstore. Should fail with 0A000.
+      stmt.execute("Drop DiskStore " + "\"" +
+          GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME + "\"");
+      fail("Disk store drop should fail because diskstore is a default one");
+    } catch (SQLException e) {
+      assertEquals(e.getSQLState(), "0A000");
+    }
+    try {
+      Connection conn;
+      conn = TestUtil.getConnection();
+      Statement stmt = conn.createStatement();
+      // Try to drop the default diskstore. Should fail with 0A000.
+      stmt.execute("Drop DiskStore " + "\"" +
+          GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE + "\"");
+      fail("Disk store drop should fail because diskstore is a default one");
+    } catch (SQLException e) {
+      assertEquals(e.getSQLState(), "0A000");
+    }
+  }
 
   public void testCreateDiskStoreDDLUT() throws Exception
   {

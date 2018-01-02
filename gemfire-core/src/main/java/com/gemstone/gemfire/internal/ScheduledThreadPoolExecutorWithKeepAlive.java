@@ -31,7 +31,6 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * A ScheduledThreadPoolExecutor which allows threads to time out after the keep
@@ -150,11 +149,11 @@ public class ScheduledThreadPoolExecutorWithKeepAlive extends ThreadPoolExecutor
   @Override
   public boolean awaitTermination(long timeout, TimeUnit unit)
       throws InterruptedException {
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     if(!timer.awaitTermination(timeout, unit)) {
       return false;
     }
-    long elapsed = CFactory.nanoTime() - start;
+    long elapsed = System.nanoTime() - start;
     long remaining = unit.toNanos(timeout) - elapsed;
     if(remaining < 0) {
       return false;

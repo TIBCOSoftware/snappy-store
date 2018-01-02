@@ -114,7 +114,7 @@ public class SnappyActivation extends BaseActivation {
 
   public final int[] prepare() throws StandardException {
     try {
-      SnappyPrepareResultSet rs = createPreapreResultSet();
+      SnappyPrepareResultSet rs = createPrepareResultSet();
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
             "SnappyActivation.prepare: Created SnappySelectResultSet: " + rs);
@@ -182,7 +182,7 @@ public class SnappyActivation extends BaseActivation {
     }
   }
 
-  private SnappyPrepareResultSet createPreapreResultSet()
+  private SnappyPrepareResultSet createPrepareResultSet()
       throws StandardException {
     return new SnappyPrepareResultSet(this);
   }
@@ -197,9 +197,8 @@ public class SnappyActivation extends BaseActivation {
 
   private void prepareWithResultSet(SnappyPrepareResultSet rs)
       throws StandardException {
-    boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = getPrepareResultCollector(rs);
-    prepareOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
+    prepareOnLeadNode(rs, rc, this.sql, this.getConnectionID(), this.lcc
         .getCurrentSchemaName(), this.pvs, this.isUpdateOrDelete, this.lcc);
   }
 
@@ -329,14 +328,15 @@ public class SnappyActivation extends BaseActivation {
     }
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
-    } catch (SQLException se) {
+    } catch (RuntimeException | SQLException ex) {
+      Exception e = LeadNodeExecutorMsg.handleLeadNodeException(ex);
       throw Misc.processFunctionException(
-          "SnappyActivation::execute", se, null, null);
+          "SnappyActivation::executeOnLeadNode", e, null, null);
     }
   }
 
   private static void prepareOnLeadNode(SnappyPrepareResultSet rs, GfxdResultCollector<Object> rc,
-      String sql, boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
+      String sql, long connId, String schema, ParameterValueSet pvs,
       boolean isUpdateOrDelete, LanguageConnectionContext lcc) throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
@@ -347,17 +347,18 @@ public class SnappyActivation extends BaseActivation {
       lcc.getTransactionExecute().releaseAllLocks(true, true);
     }
     try {
-      msg.executeFunction(enableStreaming, false, rs, true);
-    } catch (SQLException se) {
+      msg.executeFunction(false, false, rs, true);
+    } catch (RuntimeException | SQLException ex) {
+      Exception e = LeadNodeExecutorMsg.handleLeadNodeException(ex);
       throw Misc.processFunctionException(
-          "SnappyActivation::prepareOnLeadNode", se, null, null);
+          "SnappyActivation::prepareOnLeadNode", e, null, null);
     }
   }
 
   public static boolean isColumnTable(DMLQueryInfo dmlQueryInfo) {
     if (dmlQueryInfo != null) {
       List<GemFireContainer> allContainers = dmlQueryInfo.getContainerList();
-      boolean isColumnTable = false;
+      boolean isColumnTable;
       if (allContainers != null) {
         for (GemFireContainer container : allContainers) {
           if (null != container) {

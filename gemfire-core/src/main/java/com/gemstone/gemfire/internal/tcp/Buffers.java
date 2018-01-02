@@ -20,11 +20,10 @@ import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.gemstone.gemfire.distributed.internal.DMStats;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CLQ;
 
 /**
  * @author dsmith
@@ -34,8 +33,9 @@ public class Buffers {
   /**
    * A list of soft references to byte buffers.
    */
-  private static final CLQ bufferQueue = CFactory.createCLQ();
-  
+  private static final ConcurrentLinkedQueue<BBSoftReference> bufferQueue =
+      new ConcurrentLinkedQueue<>();
+
   /**
    * Should only be called by threads that have currently acquired send permission.
    * @return a byte buffer to be used for sending on this connection.
@@ -52,7 +52,7 @@ public class Buffers {
     ByteBuffer result;
     if (TCPConduit.useDirectBuffers) {
       IdentityHashMap<BBSoftReference, BBSoftReference> alreadySeen = null; // keys are used like a set
-      BBSoftReference ref = (BBSoftReference)bufferQueue.poll();
+      BBSoftReference ref = bufferQueue.poll();
       while (ref != null) {
         ByteBuffer bb = ref.getBB();
         if (bb == null) {
@@ -82,7 +82,7 @@ public class Buffers {
             break;
           }
         }
-        ref = (BBSoftReference)bufferQueue.poll();
+        ref = bufferQueue.poll();
       }
       result = ByteBuffer.allocateDirect(size);
     } else {
@@ -124,7 +124,7 @@ public class Buffers {
   public static void initBufferStats(DMStats stats) { // fixes 46773
     if (TCPConduit.useDirectBuffers) {
       @SuppressWarnings("unchecked")
-      Iterator<BBSoftReference> it = (Iterator<BBSoftReference>)bufferQueue.iterator();
+      Iterator<BBSoftReference> it = bufferQueue.iterator();
       while (it.hasNext()) {
         BBSoftReference ref = it.next();
         if (ref.getBB() != null) {

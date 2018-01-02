@@ -80,8 +80,6 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholds.MemoryState;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.cache.control.TestMemoryThresholdListener;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import dunit.AsyncInvocation;
@@ -530,7 +528,11 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
   }
 
   public void testPR_RemotePutRejectionCacheClose() throws Exception {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prRemotePutRejection(true, false, false);
+    expectedEx.remove();
   }
 
   public void testPR_RemotePutRejection() throws Exception {
@@ -542,7 +544,11 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
   }
 
   public void testPR_RemotePutRejectionCacheCloseWithTx() throws Exception {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prRemotePutRejection(true, false, true);
+    expectedEx.remove();
   }
 
   public void testPR_RemotePutRejectionWithTx() throws Exception {
@@ -1454,8 +1460,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
    * Verifies that the test listener value on the given vm is what is expected
    * Note that for remote events useWaitCriterion must be true
    * @param vm the vm where verification should take place
-   * @param type the type of event to validate, use {@link MemoryEventType#UNKNOWN}
-   * to verify all events
+   * @param state
    * @param value the expected value
    * @param useWaitCriterion must be true for remote events
    */
@@ -1763,7 +1768,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
         irm.setCriticalHeapPercentage((criticalHeapThresh * 100.0f));
         AttributesFactory<Integer, String> af = new AttributesFactory<Integer, String>();
         af.setScope(Scope.LOCAL);
-        final AI numLoaderInvocations = CFactory.createAI();
+        final AtomicInteger numLoaderInvocations = new AtomicInteger();
         af.setCacheLoader(new CacheLoader<Integer, String>() {
           public String load(LoaderHelper<Integer, String> helper)
           throws CacheLoaderException {
@@ -1913,7 +1918,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
         Region<Integer, String> r = getCache().getRegion(rName);
         AttributesMutator<Integer, String> am = r.getAttributesMutator();
         am.setCacheLoader(new CacheLoader<Integer, String>() {
-          final AI numLoaderInvocations = CFactory.createAI();
+          final AtomicInteger numLoaderInvocations = new AtomicInteger();
           public String load(LoaderHelper<Integer, String> helper) throws CacheLoaderException {
             Integer expectedInvocations = (Integer)helper.getArgument();
             final int actualInvocations = this.numLoaderInvocations.getAndIncrement();
@@ -2221,7 +2226,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
       AttributesFactory<Integer, String> af = new AttributesFactory<Integer, String>();
       if (!accessor) {
         af.setCacheLoader(new CacheLoader<Integer, String>() {
-          final AI numLoaderInvocations = CFactory.createAI();
+          final AtomicInteger numLoaderInvocations = new AtomicInteger();
           public String load(LoaderHelper<Integer, String> helper) throws CacheLoaderException {
             Integer expectedInvocations = (Integer)helper.getArgument();
             final int actualInvocations = this.numLoaderInvocations.getAndIncrement();

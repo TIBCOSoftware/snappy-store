@@ -37,8 +37,6 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.internal.OSProcess;
 import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
-import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.ResourceType;
-import com.gemstone.gemfire.internal.cache.lru.HeapEvictor;
 import com.gemstone.gemfire.internal.cache.lru.HeapLRUCapacityController;
 
 import dunit.Host;
@@ -74,6 +72,9 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
   }
 
   public void testEntryLruLimitNDestroyLimit() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prepareScenario(EvictionAlgorithm.LRU_ENTRY);
     putData("PR1", 100);
     putData("PR2", 60);
@@ -109,9 +110,13 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
             .stats().getDestroysLimit());
        }
     });
+    expectedEx.remove();
   }
 
   public void testMemLruLimitNDestroyLimit() {
+    // Ignore this excetion as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prepareScenario(EvictionAlgorithm.LRU_MEMORY);
     putData("PR1", 100);
     putData("PR2", 60);
@@ -152,10 +157,13 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
             .stats().getDestroysLimit());
       }
     });
-
+    expectedEx.remove();
   }
 
   public void testEntryLruCounter() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prepareScenario(EvictionAlgorithm.LRU_ENTRY);
     putData("PR1", 10);
     putData("PR2", 16);
@@ -167,9 +175,13 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
 
     assertEquals(sizeOfPr1, totalBucketSizeForPR1);
     assertEquals(sizeOfPr2, totalBucketSizeForPR2);
+    expectedEx.remove();
   }
 
   public void testMemLruCounter() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prepareScenario(EvictionAlgorithm.LRU_MEMORY);
     putData("PR1", 10);
     putData("PR2", 16);
@@ -181,9 +193,13 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
 
     assertEquals(sizeOfPr1, totalBucketSizeForPR1);
     assertEquals(sizeOfPr2, totalBucketSizeForPR2);
+    expectedEx.remove();
   }
 
   public void testHeapLruCounter() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     prepareScenario(EvictionAlgorithm.LRU_HEAP);
     System.setProperty(
         HeapLRUCapacityController.TOP_UP_HEAP_EVICTION_PERCENTAGE_PROPERTY,
@@ -195,9 +211,13 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
 
     long totalBucketSizeForPR1 = getCounterForBucketsOfPR("PR1");
     long totalBucketSizeForPR2 = getCounterForBucketsOfPR("PR2");
+    expectedEx.remove();
   }
 
   public void testEntryLruAllCounterMethods() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     final long ONE_MEG = 1024L * 1024L;
     createCache();
     createPartitionedRegion(true, EvictionAlgorithm.LRU_ENTRY, "PR1", 2, 1,
@@ -264,11 +284,13 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
         ._getLruList().stats().getCounter();
     ;
     assertEquals(sizeOfPRegion, 10);
+    expectedEx.remove();
   }
 
-  
-
   public void testEntryLRUEvictionNDestroyNNumOverflowOnDiskCount() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     final int extraEnteries = 24;
     prepareScenario(EvictionAlgorithm.LRU_ENTRY);
     putData("PR1", maxEnteries + extraEnteries);
@@ -314,9 +336,13 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
             (extraEnteries-maxEnteries) / 2);
       }
     });
+    expectedEx.remove();
   }
 
   public void testMemLRUEvictionNDestroyNNumOverflowOnDiskCount() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     int localMaxMem=50;
     final int extraEntries = 6;
     prepareScenario(EvictionAlgorithm.LRU_MEMORY);
@@ -369,10 +395,10 @@ public class EvictionStatsDUnitTest extends CacheTestCase {
             extraEntries / 2);
       }
     });
+    expectedEx.remove();
   }
- 
 
- public void prepareScenario(EvictionAlgorithm evictionAlgorithm) {
+  public void prepareScenario(EvictionAlgorithm evictionAlgorithm) {
     createCacheInAllVms();
     createPartitionedRegionInAllVMS(true, evictionAlgorithm, "PR1",
         totalNoOfBuckets, 1, 10000);

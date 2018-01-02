@@ -27,14 +27,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.gemstone.gemfire.cache.EntryDestroyedException;
 import com.gemstone.gemfire.cache.query.NameNotFoundException;
 import com.gemstone.gemfire.cache.query.QueryInvocationTargetException;
 import com.gemstone.gemfire.cache.query.QueryService;
 import com.gemstone.gemfire.cache.query.types.ObjectType;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.pdx.PdxInstance;
 import com.gemstone.gemfire.pdx.PdxSerializationException;
@@ -52,10 +51,8 @@ import com.gemstone.gemfire.pdx.internal.PdxInstanceImpl;
 public class AttributeDescriptor {
   private final String _name;
   /** cache for remembering the correct Member for a class and attribute */
-  private static final CM _cache = CFactory.createCM();
-  
-  
-  
+  private static final ConcurrentHashMap _cache = new ConcurrentHashMap();
+
   public AttributeDescriptor(String name) {
     _name = name;
   }

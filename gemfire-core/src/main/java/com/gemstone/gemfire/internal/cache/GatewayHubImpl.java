@@ -24,6 +24,7 @@ import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
@@ -52,7 +53,6 @@ import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.tier.Acceptor;
 import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgument;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
@@ -177,8 +177,8 @@ public class GatewayHubImpl implements GatewayHub, MembershipListener
    * A list of the ids of this <code>GatewayHub</code>'s known
    * <code>Gateway</code>s.
    */
-  private final List _gatewayIds = CFactory.createCOWAL();
-  
+  private final List _gatewayIds = new CopyOnWriteArrayList();
+
   /**
    * An unmodifiable list of the ids of this <code>GatewayHub</code>'s known
    * <code>Gateway</code>s.

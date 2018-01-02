@@ -24,12 +24,10 @@ import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.locks.DLockStats;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.OSProcess;
-import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreStats;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionStats;
 import com.gemstone.gemfire.internal.cache.execute.FunctionServiceStats;
-import com.gemstone.gemfire.internal.stats50.VMStats50;
 import com.gemstone.gemfire.management.internal.beans.MemberMBeanBridge;
 
 /**
@@ -72,14 +70,10 @@ public class MemberLevelStatsJUnitTest extends MBeanStatsTestCase {
     bridge.addFunctionStats(funcServiceStats);
     bridge.addDistributionStats(distributionStats);
     bridge.addLockServiceStats(dlockStats);
-    
-    
-    VMStatsContract vmstats = system.getStatSampler().getVMStats();
-    assertTrue(vmstats instanceof VMStats50);
-    
+
     bridge.addSystemStats();
     bridge.addVMStats();
-    
+
     for(int i = 0; i<4 ; i++){
       DiskStoreStats stats = new DiskStoreStats(system, getName()+i);
       diskStatsList.add(stats);

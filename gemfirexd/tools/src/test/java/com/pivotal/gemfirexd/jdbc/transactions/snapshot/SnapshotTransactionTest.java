@@ -1,28 +1,29 @@
 package com.pivotal.gemfirexd.jdbc.transactions.snapshot;
 
-import java.io.IOException;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.AttributesFactory;
+import com.gemstone.gemfire.cache.Cache;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.IsolationLevel;
+import com.gemstone.gemfire.cache.PartitionAttributes;
+import com.gemstone.gemfire.cache.PartitionAttributesFactory;
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.cache.versions.DiskRegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
-import com.gemstone.org.jgroups.oswego.concurrent.CyclicBarrier;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
-import io.snappydata.test.dunit.SerializableRunnable;
 
 
 public class SnapshotTransactionTest  extends JdbcTestBase {

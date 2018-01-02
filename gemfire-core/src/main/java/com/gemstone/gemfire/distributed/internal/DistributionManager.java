@@ -91,8 +91,6 @@ import com.gemstone.gemfire.internal.admin.remote.RemoteGfManagerAgent;
 import com.gemstone.gemfire.internal.admin.remote.RemoteTransportConfig;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.sequencelog.MembershipLogger;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -491,9 +489,6 @@ public final class DistributionManager
   /** If using a throttling queue for the serialThread, we cache the queue here
       so we can see if delivery would block */
   private ThrottlingMemLinkedQueueWithDMStats serialQueue;
-
-  /** a map keyed on InternalDistributedMember, to direct channels to other systems */
-  //protected final Map channelMap = CFactory.createCM();
 
   protected volatile boolean readyForMessages = false;
 
@@ -4451,7 +4446,8 @@ public final class DistributionManager
   }
 
   /* -----------------------------Health Monitor------------------------------ */
-  private final CM hmMap = CFactory.createCM();
+  private final ConcurrentHashMap<InternalDistributedMember, HealthMonitor> hmMap =
+      new ConcurrentHashMap<>();
 
   /**
    * Returns the health monitor for this distribution manager and owner.
@@ -4461,7 +4457,7 @@ public final class DistributionManager
    * @since 3.5
    */
   public HealthMonitor getHealthMonitor(InternalDistributedMember owner) {
-    return (HealthMonitor)this.hmMap.get(owner);
+    return this.hmMap.get(owner);
   }
   /**
    * Returns the health monitor for this distribution manager.
@@ -4593,7 +4589,8 @@ public final class DistributionManager
    */
   static private class SerialQueuedExecutorPool  {
     /** To store the serial threads */
-    CM serialQueuedExecutorMap = CFactory.createCM(MAX_SERIAL_QUEUE_THREAD);
+    ConcurrentHashMap<Integer, SerialQueuedExecutorWithDMStats> serialQueuedExecutorMap =
+        new ConcurrentHashMap<>(MAX_SERIAL_QUEUE_THREAD);
     
     /** To store the queue associated with thread */
     Map serialQueuedMap = new HashMap(MAX_SERIAL_QUEUE_THREAD);
@@ -4723,7 +4720,7 @@ public final class DistributionManager
     public SerialQueuedExecutorWithDMStats getSerialExecutor(InternalDistributedMember sender) {
       SerialQueuedExecutorWithDMStats executor = null;      
       Integer queueId = getQueueId(sender, true);
-      if ((executor = (SerialQueuedExecutorWithDMStats)serialQueuedExecutorMap.get(queueId)) != null){
+      if ((executor = serialQueuedExecutorMap.get(queueId)) != null){
         return executor;
       }
       // If executor doesn't exists for this sender, create one.

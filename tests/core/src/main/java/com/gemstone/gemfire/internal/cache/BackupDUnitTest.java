@@ -50,7 +50,6 @@ import com.gemstone.gemfire.distributed.internal.DistributionMessageObserver;
 import com.gemstone.gemfire.distributed.internal.ReplyMessage;
 import com.gemstone.gemfire.internal.FileUtil;
 import com.gemstone.gemfire.internal.cache.partitioned.PersistentPartitionedRegionTestBase;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 import dunit.AsyncInvocation;
 import dunit.Host;
@@ -558,7 +557,7 @@ public class BackupDUnitTest extends PersistentPartitionedRegionTestBase {
     }
     ps.println(pid);
     ps.close();
-    CFactory.setExecutable(mytext, true, true);
+    mytext.setExecutable(true, true);
     long lastModified = mytext.lastModified();
     backuplist.add(test2);
 
@@ -578,9 +577,10 @@ public class BackupDUnitTest extends PersistentPartitionedRegionTestBase {
     File mytext = new File(vmdir, "test1/test2/my.txt");
     assertTrue(mytext.exists());
     if (System.getProperty("java.specification.version").equals("1.6")) {
-      assertTrue(CFactory.canExecute(mytext));
+      assertTrue(mytext.canExecute());
     } else {
-      System.out.println("java.specification.version is "+System.getProperty("java.specification.version")+", canExecute is"+CFactory.canExecute(mytext));
+      System.out.println("java.specification.version is " + System.getProperty(
+          "java.specification.version") + ", canExecute is " + mytext.canExecute());
     }
     assertEquals(lm, mytext.lastModified());
 
