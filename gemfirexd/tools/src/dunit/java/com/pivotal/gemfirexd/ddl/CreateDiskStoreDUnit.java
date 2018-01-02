@@ -36,6 +36,7 @@
 package com.pivotal.gemfirexd.ddl;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -60,7 +61,6 @@ import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
-
 import io.snappydata.test.dunit.RMIException;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
@@ -614,7 +614,8 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     }
   }
   
-  private void verify(Region rgn, File [] expectedDirs, DataPolicy expectedDP) {
+  private void verify(Region rgn, File [] expectedDirs,
+      DataPolicy expectedDP) throws IOException {
     RegionAttributes ra = rgn.getAttributes();
     assertEquals(expectedDP,ra.getDataPolicy());
     if(expectedDirs == null) {
@@ -625,10 +626,10 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     assertEquals(actualDirs.length, expectedDirs.length);
     Set<String> expected = new HashSet(expectedDirs.length);
     for(File file :expectedDirs) {
-      expected.add(file.getAbsolutePath());
+      expected.add(file.getCanonicalPath());
     }   
     for(File file: actualDirs) {
-      assertTrue(expected.remove(file.getAbsolutePath()));
+      assertTrue(expected.remove(file.getCanonicalPath()));
     }    
     assertTrue(expected.isEmpty());
     }

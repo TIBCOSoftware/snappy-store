@@ -61,7 +61,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
     super(name);
   }
 
-  public void testDiskStoreWithDefaultConfig() throws SQLException
+  public void testDiskStoreWithDefaultConfig() throws Exception
   {
     Connection conn = getConnection();
     Statement s = conn.createStatement();
@@ -79,8 +79,8 @@ public class CreateDiskStoreTest extends JdbcTestBase
     assertEquals(ds.getWriteBufferSize(),
         DiskStoreFactory.DEFAULT_WRITE_BUFFER_SIZE);
     assertEquals(ds.getDiskDirs().length, 1);
-    assertEquals(ds.getDiskDirs()[0].getAbsolutePath(), new File(".")
-        .getAbsolutePath());
+    assertEquals(ds.getDiskDirs()[0].getCanonicalPath(), new File(".")
+        .getCanonicalPath());
     assertNotNull(ds);
     s = conn.createStatement();
     s.execute("drop DiskStore testDiskStore1");
@@ -112,14 +112,14 @@ public class CreateDiskStoreTest extends JdbcTestBase
     assertEquals(ds.getWriteBufferSize(), 192923);
     assertEquals(ds.getDiskDirs().length, 3);
     Set<String> files = new HashSet<String>();
-    files.add(new File(".", "dir1").getAbsolutePath());
-    files.add(new File(".", "dir2").getAbsolutePath());
-    files.add(new File(".", "dir3").getAbsolutePath());
+    files.add(new File(".", "dir1").getCanonicalPath());
+    files.add(new File(".", "dir2").getCanonicalPath());
+    files.add(new File(".", "dir3").getCanonicalPath());
 
     assertEquals(ds.getDiskDirs().length, 3);
 
     for (File file : ds.getDiskDirs()) {
-      assertTrue(files.remove(file.getAbsolutePath()));
+      assertTrue(files.remove(file.getCanonicalPath()));
     }
     assertTrue(files.isEmpty());
     List<Long> sizes = new ArrayList<Long>();
@@ -135,7 +135,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
 
   }
 
-  public void testDiskStoreConfig2() throws SQLException
+  public void testDiskStoreConfig2() throws Exception
   {
     Connection conn = getConnection();
     Statement s = conn.createStatement();
@@ -158,12 +158,12 @@ public class CreateDiskStoreTest extends JdbcTestBase
     assertEquals(ds.getWriteBufferSize(), 7878);
     assertEquals(ds.getDiskDirs().length, 2);
     Set<String> files = new HashSet<String>();
-    files.add(new File(".", "dir1").getAbsolutePath());
-    files.add(new File(".", "dir2").getAbsolutePath());
+    files.add(new File(".", "dir1").getCanonicalPath());
+    files.add(new File(".", "dir2").getCanonicalPath());
     assertEquals(ds.getDiskDirs().length, 2);
 
     for (File file : ds.getDiskDirs()) {
-      assertTrue(files.remove(file.getAbsolutePath()));
+      assertTrue(files.remove(file.getCanonicalPath()));
     }
     assertTrue(files.isEmpty());
     assertNotNull(ds);
@@ -244,8 +244,8 @@ public class CreateDiskStoreTest extends JdbcTestBase
       assertEquals(192923, rs.getInt(7));
       assertEquals(1734, rs.getInt("QUEUESIZE"));
       assertEquals(1734, rs.getInt(8));
-      String str = f1.getAbsolutePath() + "(456)," + f2.getAbsolutePath() + ","
-          + f3.getAbsolutePath() + "(55556)";
+      String str = f1.getCanonicalPath() + "(456)," + f2.getCanonicalPath() + ","
+          + f3.getCanonicalPath() + "(55556)";
       assertEquals(str, rs.getString("DIR_PATH_SIZE"));
       assertEquals(str, rs.getString(9));
     }
@@ -281,7 +281,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
       if (diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
         assertEquals(rs.getLong("MAXLOGSIZE"), 10);
       } else if (diskStoreName.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
-        assertEquals(rs.getLong("MAXLOGSIZE"), 100);
+        assertEquals(50, rs.getLong("MAXLOGSIZE"));
       }
       else {
         assertEquals(rs.getLong("MAXLOGSIZE"),
@@ -329,7 +329,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
       File file = new File(path);
       if (!file.mkdirs() && !file.isDirectory()) {
         throw new DiskAccessException("Could not create directory for "
-            + " default disk store : " + file.getAbsolutePath(), (Region)null);
+            + " default disk store : " + file.getCanonicalPath(), (Region)null);
       }
       try {
         Connection conn1;
@@ -389,7 +389,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
     File file = new File(path);
       if (!file.mkdirs() && !file.isDirectory()) {
         throw new DiskAccessException("Could not create directory for "
-            + " default disk store : " + file.getAbsolutePath(), (Region)null);
+            + " default disk store : " + file.getCanonicalPath(), (Region)null);
       }
      try {
         Connection conn1;
