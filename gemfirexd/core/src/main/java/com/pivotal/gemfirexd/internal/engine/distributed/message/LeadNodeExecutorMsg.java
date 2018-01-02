@@ -179,6 +179,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     }
 
     Throwable cause = ex;
+    Throwable sparkEx = null;
     while (cause != null) {
       if (cause instanceof StandardException || cause instanceof SQLException) {
         return (Exception)cause;
@@ -210,12 +211,15 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
             (!wrapException ? cause : new SparkExceptionWrapper(cause)),
             cause.getMessage());
       } else if (causeName.contains("SparkException")) {
-        return StandardException.newException(
-            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
-            cause.getMessage());
+        sparkEx = cause;
       }
       cause = cause.getCause();
+    }
+    if (sparkEx != null) {
+      return StandardException.newException(
+          SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+          (!wrapException ? sparkEx : new SparkExceptionWrapper(sparkEx)),
+          sparkEx.getMessage());
     }
     return ex;
   }
