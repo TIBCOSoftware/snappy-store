@@ -47,6 +47,7 @@ extern "C" {
 }
 #endif
 
+#include <boost/config.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/spirit/include/karma.hpp>
 #include <cmath>

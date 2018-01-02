@@ -27,6 +27,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireIOException;
@@ -42,9 +44,6 @@ import com.gemstone.gemfire.internal.cache.StateFlushOperation;
 import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -95,8 +94,8 @@ public class DistributionAdvisor  {
   /**
    * Incrementing serial number used to identify order of resource creation
    */
-  private static final AI serialNumberSequencer = 
-      CFactory.createAI(START_SERIAL_NUMBER);
+  private static final AtomicInteger serialNumberSequencer =
+      new AtomicInteger(START_SERIAL_NUMBER);
 
   /**
    * This serial number indicates a "missing" serial number.
@@ -130,8 +129,8 @@ public class DistributionAdvisor  {
    * Incrementing serial number used to identify order of region creation
    * @see Profile#getVersion()
    */
-  private final AI profileVersionSequencer =
-    CFactory.createAI(START_VERSION_NUMBER);
+  private final AtomicInteger profileVersionSequencer =
+    new AtomicInteger(START_VERSION_NUMBER);
   
   /** This system property is not supported and disabling intelligent messaging
    *  is currently problematic
@@ -199,13 +198,15 @@ public class DistributionAdvisor  {
    * a profile is added to or removed from this DistributionAdvisor.
    * The keys are membership listeners and the values are Boolean.TRUE.
    */
-  protected CM membershipListeners = CFactory.createCM(4, 0.75f, 2);
+  private final ConcurrentHashMap membershipListeners =
+      new ConcurrentHashMap(4, 0.75f, 2);
 
   /**
    * A collection of listeners for changes to profiles. These listeners
    * are notified if a profile is added, removed, or updated.
    */
-  protected CM profileListeners = CFactory.createCM(4, 0.75f, 2);
+  private final ConcurrentHashMap profileListeners =
+      new ConcurrentHashMap(4, 0.75f, 2);
 
   /** The resource getting advise from this.
    */

@@ -27,6 +27,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.Cache;
@@ -46,8 +47,6 @@ import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.Resou
 import com.gemstone.gemfire.internal.cache.control.MemoryEvent;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
@@ -110,17 +109,17 @@ public class HeapEvictor implements ResourceListener<MemoryEvent> {
 
   private final LogWriterI18n logger;
 
-  private final AB mustEvict = CFactory.createAB(false);
+  private final AtomicBoolean mustEvict = new AtomicBoolean(false);
 
-  protected final Cache cache;  
+  protected final Cache cache;
 
-  private final ArrayList testTaskSetSizes = new  ArrayList();
+  private final ArrayList testTaskSetSizes = new ArrayList();
   public volatile int testAbortAfterLoopCount = Integer.MAX_VALUE;
-  
+
   private BlockingQueue<Runnable> poolQueue;
-  
-  private final AB isRunning = CFactory.createAB(true);
-  
+
+  private final AtomicBoolean isRunning = new AtomicBoolean(true);
+
   public HeapEvictor(Cache gemFireCache) {
     this.cache = gemFireCache;
     this.logger = cache.getLoggerI18n();

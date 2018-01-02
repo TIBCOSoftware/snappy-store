@@ -80,8 +80,6 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholds.MemoryState;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.gemstone.gemfire.internal.cache.control.ResourceListener;
 import com.gemstone.gemfire.internal.cache.control.TestMemoryThresholdListener;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import dunit.AsyncInvocation;
@@ -1770,7 +1768,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
         irm.setCriticalHeapPercentage((criticalHeapThresh * 100.0f));
         AttributesFactory<Integer, String> af = new AttributesFactory<Integer, String>();
         af.setScope(Scope.LOCAL);
-        final AI numLoaderInvocations = CFactory.createAI();
+        final AtomicInteger numLoaderInvocations = new AtomicInteger();
         af.setCacheLoader(new CacheLoader<Integer, String>() {
           public String load(LoaderHelper<Integer, String> helper)
           throws CacheLoaderException {
@@ -1920,7 +1918,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
         Region<Integer, String> r = getCache().getRegion(rName);
         AttributesMutator<Integer, String> am = r.getAttributesMutator();
         am.setCacheLoader(new CacheLoader<Integer, String>() {
-          final AI numLoaderInvocations = CFactory.createAI();
+          final AtomicInteger numLoaderInvocations = new AtomicInteger();
           public String load(LoaderHelper<Integer, String> helper) throws CacheLoaderException {
             Integer expectedInvocations = (Integer)helper.getArgument();
             final int actualInvocations = this.numLoaderInvocations.getAndIncrement();
@@ -2228,7 +2226,7 @@ public class MemoryThresholdsDUnitTest extends BridgeTestCase {
       AttributesFactory<Integer, String> af = new AttributesFactory<Integer, String>();
       if (!accessor) {
         af.setCacheLoader(new CacheLoader<Integer, String>() {
-          final AI numLoaderInvocations = CFactory.createAI();
+          final AtomicInteger numLoaderInvocations = new AtomicInteger();
           public String load(LoaderHelper<Integer, String> helper) throws CacheLoaderException {
             Integer expectedInvocations = (Integer)helper.getArgument();
             final int actualInvocations = this.numLoaderInvocations.getAndIncrement();

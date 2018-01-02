@@ -58,6 +58,8 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
@@ -82,8 +84,6 @@ import com.gemstone.gemfire.internal.cache.partitioned.AllBucketProfilesUpdateMe
 import com.gemstone.gemfire.internal.cache.tier.Acceptor;
 import com.gemstone.gemfire.internal.cache.tier.CachedRegionHelper;
 import com.gemstone.gemfire.internal.cache.wan.GatewayReceiverStats;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 
@@ -206,7 +206,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
   /**
    * Current number of ServerConnection instances that are CLIENT_TO_SERVER cons.
    */
-  public final AI clientServerCnxCount = CFactory.createAI();
+  public final AtomicInteger clientServerCnxCount = new AtomicInteger();
 
   /** Has this acceptor been shut down */
   private volatile boolean shutdown = false;

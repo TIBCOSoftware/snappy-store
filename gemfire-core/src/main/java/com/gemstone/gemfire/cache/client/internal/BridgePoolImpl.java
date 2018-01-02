@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.cache.client.internal;
 
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.cache.CacheLoaderException;
@@ -37,8 +38,6 @@ import com.gemstone.gemfire.internal.cache.PoolFactoryImpl;
 import com.gemstone.gemfire.internal.cache.PoolManagerImpl;
 import com.gemstone.gemfire.internal.cache.tier.ConnectionProxy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * A pool for use by the old BridgeLoader/BridgeWriter.
@@ -49,7 +48,7 @@ import com.gemstone.gemfire.internal.concurrent.CFactory;
  */
 @SuppressWarnings("deprecation")
 public class BridgePoolImpl extends PoolImpl implements ConnectionProxy {
-  private static final AI ID_COUNTER = CFactory.createAI();
+  private static final AtomicInteger ID_COUNTER = new AtomicInteger();
   public static final int DEFAULT_CONNECTIONSPERSERVER = 1;
   public static final int DEFAULT_HANDSHAKE_TIMEOUT = AcceptorImpl.DEFAULT_HANDSHAKE_TIMEOUT_MS;
   public static final String DEFAULT_LBPOLICY = LBPolicy.STICKY_PROPERTY_NAME;

@@ -30,11 +30,10 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.GemFireStatSampler.LocalStatListenerImpl;
 import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
-import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.statistics.SampleCollector;
 import com.gemstone.gemfire.internal.statistics.StatArchiveHandler;
 import com.gemstone.gemfire.internal.statistics.StatArchiveHandlerConfig;
-import com.gemstone.gemfire.internal.stats50.VMStats50;
+import com.gemstone.gemfire.internal.statistics.VMStats;
 
 import io.snappydata.test.dunit.DistributedTestBase;
 import io.snappydata.test.dunit.DistributedTestBase.WaitCriterion;
@@ -96,10 +95,9 @@ public class GemFireStatSamplerJUnitTest extends StatSamplerTestCase {
 
     AllStatistics allStats = new AllStatistics(statSampler);
 
-    VMStatsContract vmStats = statSampler.getVMStats();
+    VMStats vmStats = statSampler.getVMStats();
     assertNotNull(vmStats);
-    assertTrue(vmStats instanceof VMStats50);
-    /* NOTE: VMStats50 is not an instance of Statistics but instead its
+    /* NOTE: VMStats is not an instance of Statistics but instead its
      * instance contains 3 instances of Statistics:
      * 1) vmStats
      * 2) heapMemStats

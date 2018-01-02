@@ -24,6 +24,8 @@ import junit.framework.TestCase;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.admin.DistributedSystemConfig;
 import com.gemstone.gemfire.cache.client.internal.ServerBlackList.BlackListListenerAdapter;
@@ -31,8 +33,6 @@ import com.gemstone.gemfire.cache.client.internal.ServerBlackList.FailureTracker
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.internal.LocalLogWriter;
 import com.gemstone.gemfire.internal.LogWriterImpl;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 import io.snappydata.test.dunit.DistributedTestBase;
 import io.snappydata.test.dunit.DistributedTestBase.WaitCriterion;
@@ -83,8 +83,8 @@ public class ServerBlackListJUnitTest extends TestCase {
   
   public void testListener()  throws Exception {
     
-    final AI adds = CFactory.createAI();
-    final AI removes = CFactory.createAI();
+    final AtomicInteger adds = new AtomicInteger();
+    final AtomicInteger removes = new AtomicInteger();
     blackList.addListener(new BlackListListenerAdapter() {
 
       public void serverAdded(ServerLocation location) {

@@ -73,7 +73,7 @@ void BufferedClientTransport::writeFrameSize() {
     assert(wBufSize_ > sizeof(sz));
 
     // Slip the frame size into the start of the buffer.
-    sz = ::htonl(static_cast<uint32_t>(wBase_ - (wBuf_.get() + sizeof(sz))));
+    sz = htonl(static_cast<uint32_t>(wBase_ - (wBuf_.get() + sizeof(sz))));
     ::memcpy(wBuf_.get(), &sz, sizeof(sz));
   }
 }

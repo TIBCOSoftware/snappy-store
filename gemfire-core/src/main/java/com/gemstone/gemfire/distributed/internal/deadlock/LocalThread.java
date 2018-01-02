@@ -17,10 +17,10 @@
 package com.gemstone.gemfire.distributed.internal.deadlock;
 
 import java.io.Serializable;
+import java.lang.management.LockInfo;
+import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.LI;
 /**
 * This class is serializable version of the java 1.6 ThreadInfo
 * class. It also holds a locality field to identify the VM
@@ -43,37 +43,38 @@ public class LocalThread implements Serializable, ThreadReference {
     this.threadStack = generateThreadStack(info);
     this.threadId = info.getThreadId();
   }
-  
+
   private String generateThreadStack(ThreadInfo info) {
-    //This is annoying, but the to string method on info sucks.
+    // This is annoying, but the to string method on info sucks.
     StringBuilder result = new StringBuilder();
     result.append(info.getThreadName()).append(" ID=")
         .append(info.getThreadId()).append(" state=")
         .append(info.getThreadState());
-    
-    
-    if(CFactory.getLockInfo(info) != null) {
-      result.append("\n\twaiting to lock <" + CFactory.getLockInfo(info) + ">");
+
+    if (info.getLockInfo() != null) {
+      result.append("\n\twaiting to lock <").append(info.getLockInfo())
+          .append(">");
     }
-    for(StackTraceElement element : info.getStackTrace()) {
-      result.append("\n\tat " + element);
-      for(LI monitor: CFactory.getLockedMonitors(info)) {
-        if(element.equals(monitor.getLockedStackFrame())) {
-          result.append("\n\tlocked <" + monitor + ">");
+    for (StackTraceElement element : info.getStackTrace()) {
+      result.append("\n\tat ").append(element);
+      for (MonitorInfo monitor : info.getLockedMonitors()) {
+        if (element.equals(monitor.getLockedStackFrame())) {
+          result.append("\n\tlocked <").append(monitor).append('>');
         }
       }
     }
-    
-    if(CFactory.getLockedSynchronizers(info).length > 0) {
+
+    if (info.getLockedSynchronizers().length > 0) {
       result.append("\nLocked synchronizers:");
-      for(LI sync : CFactory.getLockedSynchronizers(info)) {
-        result.append("\n" + sync.getClassName() + "@" + sync.getIdentityHashCode());
-        
+      for (LockInfo sync : info.getLockedSynchronizers()) {
+        result.append('\n').append(sync.getClassName()).append('@')
+            .append(sync.getIdentityHashCode());
+
       }
     }
-    
     return result.toString();
   }
+
   public Serializable getLocatility() {
     return locality;
   }

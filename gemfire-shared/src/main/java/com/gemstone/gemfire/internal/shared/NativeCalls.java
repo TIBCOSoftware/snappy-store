@@ -106,8 +106,9 @@ public abstract class NativeCalls {
   @SuppressWarnings("unchecked")
   protected static final Map<String, String> getModifiableJavaEnvWIN() {
     try {
-      final Field envField = Class.forName("java.lang.ProcessEnvironment")
-          .getDeclaredField("theCaseInsensitiveEnvironment");
+      final Field envField = Class.forName("java.lang.ProcessEnvironment",
+          false, ClassLoader.getSystemClassLoader()).getDeclaredField(
+          "theCaseInsensitiveEnvironment");
       envField.setAccessible(true);
       return (Map<String, String>)envField.get(null);
     } catch (Exception ex) {

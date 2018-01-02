@@ -20,7 +20,6 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import java.lang.ref.WeakReference;
@@ -279,16 +278,13 @@ public final class SystemTimer {
     } // synchronized
   }
 
-  /**
-   * #see {@link CFactory#timerPurge(Timer)}
-   */
   public int timerPurge() {
     if (DEBUG) {
       log.info(LocalizedStrings.DEBUG, "SystemTimer#timerPurge of " + this);
     }
-    return CFactory.timerPurge(this.timer);
+    return this.timer.purge();
   }
-  
+
   // This creates a non-daemon timer thread.  We don't EVER do this...
 //  /**
 //   * @see Timer#Timer()
@@ -327,7 +323,7 @@ public final class SystemTimer {
     Assert.assertTrue(isDaemon); // we don't currently allow non-daemon timers
     Assert.assertTrue(swarm instanceof InternalDistributedSystem, 
         "Attempt to create swarm on " + swarm); // TODO allow template class?
-    this.timer = CFactory.createTimer(name, isDaemon);
+    this.timer = new Timer(name, isDaemon);
     this.swarm = swarm;
     this.log = log;
     addToSwarm(swarm, this);

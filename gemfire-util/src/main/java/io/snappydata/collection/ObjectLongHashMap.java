@@ -29,6 +29,14 @@ public abstract class ObjectLongHashMap<K> {
     return new KolobokeObjectLongHashMap<>(expectedSize);
   }
 
+  public static <K> ObjectLongHashMap<K> from(Map<K, Long> map) {
+    KolobokeObjectLongHashMap<K> m = new KolobokeObjectLongHashMap<>(map.size());
+    for (Map.Entry<K, Long> entry : map.entrySet()) {
+      m.justPut(entry.getKey(), entry.getValue());
+    }
+    return m;
+  }
+
   public abstract long put(K key, long value);
 
   public abstract long getLong(K key);

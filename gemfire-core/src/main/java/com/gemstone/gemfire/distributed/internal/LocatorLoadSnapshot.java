@@ -30,13 +30,10 @@ import java.util.TreeSet;
 import java.util.Map.Entry;
 
 import com.gemstone.gemfire.cache.server.ServerLoad;
-import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.wan.GatewayReceiverImpl;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
-import com.gemstone.gnu.trove.THashMap;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -59,8 +56,8 @@ public class LocatorLoadSnapshot {
   private final Map/* <String(server group), Map<ServerLocation, LoadHolder> */
   queueLoadMap = new HashMap();
 
-  private final CM/* <EstimateMapKey, LoadEstimateTask> */
-  estimateMap = CFactory.createCM();
+  private final ConcurrentHashMap<EstimateMapKey, LoadEstimateTask> estimateMap =
+      new ConcurrentHashMap<>();
 
   private final ScheduledThreadPoolExecutor estimateTimeoutProcessor = new ScheduledThreadPoolExecutor(
       1, new ThreadFactory() {
@@ -577,8 +574,7 @@ public class LocatorLoadSnapshot {
    * found
    */
   private void addEstimate(EstimateMapKey key, LoadEstimateTask task) {
-    LoadEstimateTask oldTask = null;
-    oldTask = (LoadEstimateTask)this.estimateMap.put(key, task);
+    LoadEstimateTask oldTask = this.estimateMap.put(key, task);
     if (oldTask != null) {
       oldTask.cancel();
     }
@@ -600,8 +596,7 @@ public class LocatorLoadSnapshot {
    * Remove and cancel any task estimate mapped to the given key.
    */
   private void removeAndCancelEstimate(EstimateMapKey key) {
-    LoadEstimateTask oldTask = null;
-    oldTask = (LoadEstimateTask)this.estimateMap.remove(key);
+    LoadEstimateTask oldTask = this.estimateMap.remove(key);
     if (oldTask != null) {
       oldTask.cancel();
     }

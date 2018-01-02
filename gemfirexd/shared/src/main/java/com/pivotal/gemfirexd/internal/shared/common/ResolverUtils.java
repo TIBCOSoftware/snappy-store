@@ -47,6 +47,7 @@ import java.util.logging.Logger;
 
 import com.gemstone.gemfire.internal.shared.ClientResolverUtils;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 
 /**
  * Keeping here the core logic for resolvers and hashcode and computehashcode
@@ -79,7 +80,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
   };
 
   private static final Constructor<?> bigIntCons;
-  private static final Field stringChars;
+  private static final long stringCharsOffset;
 
   static {
     Constructor<?> cons;
@@ -101,7 +102,8 @@ public abstract class ResolverUtils extends ClientResolverUtils {
       strChars = null;
     }
     bigIntCons = cons;
-    stringChars = strChars;
+    stringCharsOffset = strChars != null
+        ? UnsafeHolder.getUnsafe().objectFieldOffset(strChars) : -1L;
   }
 
   private static final Integer MINUS_ONE = -1;
@@ -912,9 +914,10 @@ public abstract class ResolverUtils extends ClientResolverUtils {
    * array, so use with extreme care.
    */
   public static char[] getInternalChars(final String s, final int slen) {
-    if (stringChars != null) {
+    if (stringCharsOffset != -1L) {
       try {
-        final char[] chars = (char[])stringChars.get(s);
+        final char[] chars = (char[])UnsafeHolder.getUnsafe().getObject(
+            s, stringCharsOffset);
         if (chars != null && chars.length == slen) {
           return chars;
         }
@@ -931,9 +934,10 @@ public abstract class ResolverUtils extends ClientResolverUtils {
    * does not start at zero offset.
    */
   public static char[] getInternalCharsOnly(final String s, final int slen) {
-    if (stringChars != null) {
+    if (stringCharsOffset != -1L) {
       try {
-        final char[] chars = (char[])stringChars.get(s);
+        final char[] chars = (char[])UnsafeHolder.getUnsafe().getObject(
+            s, stringCharsOffset);
         if (chars != null && chars.length == slen) {
           return chars;
         }

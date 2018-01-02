@@ -18,6 +18,7 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.gemstone.gemfire.StatisticDescriptor;
 import com.gemstone.gemfire.Statistics;
@@ -26,7 +27,6 @@ import com.gemstone.gemfire.StatisticsType;
 import com.gemstone.gemfire.StatisticsTypeFactory;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * Represents a statistics type that can be archived to vsd. Loading of this
@@ -669,7 +669,7 @@ public class PartitionedRegionStats {
    * implications of a HashMap lookup is small and preferrable to so many
    * longs. Key: BucketAdvisor, Value: Long
    */
-  private final Map startTimeMap;
+  private final ConcurrentHashMap<Object, Long> startTimeMap;
 
   public static long startTime() {
     return CachePerfStats.getStatTime();
@@ -680,11 +680,10 @@ public class PartitionedRegionStats {
 
   public PartitionedRegionStats(StatisticsFactory factory, String name) {
     this.stats = factory.createAtomicStatistics(
-type, name /* fixes bug 42343 */);
-    
-    this.startTimeMap = CFactory.createCM();
+        type, name /* fixes bug 42343 */);
+    this.startTimeMap = new ConcurrentHashMap<>();
   }
-  
+
   public void close() {
     this.stats.close();
   }
@@ -1002,7 +1001,7 @@ type, name /* fixes bug 42343 */);
   }
   /** Remove stat start time from holding map to complete a clock stat */
   public long removeStartTime(Object key) {
-    Long startTime = (Long)this.startTimeMap.remove(key);
+    Long startTime = this.startTimeMap.remove(key);
     return startTime == null ? 0 : startTime.longValue();
   }
 

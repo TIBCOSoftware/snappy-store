@@ -458,7 +458,7 @@ public final class FabricDatabase implements ModuleControl,
           GfxdConstants.GFXD_DD_DISKSTORE_NAME), factory);
       addInternalDiskStore(this.memStore.getDefaultDiskStore(), factory);
       addInternalDiskStore(cache.findDiskStore(
-          GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME), factory);
+          GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE), factory);
 
       // Initialize ConnectionWrapperHolder with this embeded connection
       GfxdManagementService.handleEvent(
@@ -595,6 +595,14 @@ public final class FabricDatabase implements ModuleControl,
           ds.getDiskDirs()[0].getAbsolutePath());
       dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
           false, dd.getTransactionExecute());
+    }
+  }
+
+  public void publishColumnStats() {
+    if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
+        GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
+      GemFireXDUtils.waitForNodeInitialization();
+      CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
     }
   }
 

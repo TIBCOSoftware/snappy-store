@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.AttributesMutator;
@@ -93,8 +94,6 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.cache.lru.LRUAlgorithm;
 import com.gemstone.gemfire.internal.cache.snapshot.RegionSnapshotServiceImpl;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.PeerTypeRegistration;
@@ -251,17 +250,17 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
   /** should this region ignore in-progress JTA transactions? */
   protected boolean ignoreJTA;
 
-  private final AL lastAccessedTime;
+  private final AtomicLong lastAccessedTime;
 
-  private final AL lastModifiedTime;
+  private final AtomicLong lastModifiedTime;
 
   private static final boolean trackHits = !Boolean.getBoolean("gemfire.ignoreHits");
   private static final boolean trackMisses = !Boolean.getBoolean("gemfire.ignoreMisses");
 
-  private final AL hitCount = CFactory.createAL();
+  private final AtomicLong hitCount = new AtomicLong();
 
-  private final AL missCount = CFactory.createAL();
-  
+  private final AtomicLong missCount = new AtomicLong();
+
   protected String poolName;
   
   protected String hdfsStoreName;
@@ -278,8 +277,9 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     this.cache = cache;
     this.serialNumber = DistributionAdvisor.createSerialNumber();
     this.isPdxTypesRegion = PeerTypeRegistration.REGION_NAME.equals(regionName);
-    this.lastAccessedTime = CFactory.createAL(cacheTimeMillis());
-    this.lastModifiedTime = CFactory.createAL(lastAccessedTime.get());
+    long time = cacheTimeMillis();
+    this.lastAccessedTime = new AtomicLong(time);
+    this.lastModifiedTime = new AtomicLong(time);
     setAttributes(attrs, regionName, internalRegionArgs);
   }
 

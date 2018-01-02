@@ -19,17 +19,15 @@ package com.gemstone.gemfire.distributed.internal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.cache.server.ServerLoad;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 import io.snappydata.test.dunit.DistributedTestBase;
 
@@ -275,10 +273,10 @@ public class LocatorLoadSnapshotJUnitTest extends TestCase {
     sn.addServer(l2, new String[0], new ServerLoad(initialLoad2, 1, 0, 1));
     sn.addServer(l3, new String[0], new ServerLoad(initialLoad3, 1, 0, 1));
     
-    final Map loadCounts = new HashMap();
-    loadCounts.put(l1, CFactory.createAI(initialLoad1));
-    loadCounts.put(l2, CFactory.createAI(initialLoad2));
-    loadCounts.put(l3, CFactory.createAI(initialLoad3));
+    final Map<ServerLocation, AtomicInteger> loadCounts = new HashMap<>();
+    loadCounts.put(l1, new AtomicInteger(initialLoad1));
+    loadCounts.put(l2, new AtomicInteger(initialLoad2));
+    loadCounts.put(l3, new AtomicInteger(initialLoad3));
     
     Thread[] threads = new Thread[NUM_THREADS];
 //    final Object lock = new Object();
@@ -290,7 +288,7 @@ public class LocatorLoadSnapshotJUnitTest extends TestCase {
 //            synchronized(lock) {
               location = sn.getServerForConnection(null, Collections.EMPTY_SET);
 //            }
-            AI count = (AI) loadCounts.get(location);
+            AtomicInteger count = loadCounts.get(location);
             count.incrementAndGet();
           }
         }
@@ -310,14 +308,13 @@ public class LocatorLoadSnapshotJUnitTest extends TestCase {
 //    for(Iterator itr = loadCounts.entrySet().iterator(); itr.hasNext(); ) {
 //      Map.Entry entry = (Entry) itr.next();
 //      ServerLocation location = (ServerLocation) entry.getKey();
-//      AI count= (AI) entry.getValue();
+//      AtomicInteger count= (AtomicInteger) entry.getValue();
 //    }
-    
-    for(Iterator itr = loadCounts.entrySet().iterator(); itr.hasNext(); ) {
-      Map.Entry entry = (Entry) itr.next();
-      ServerLocation location = (ServerLocation) entry.getKey();
-      AI count= (AI) entry.getValue();
-      int difference = (int) Math.abs(count.get() - expectedPerServer);
+
+    for (Map.Entry<ServerLocation, AtomicInteger> entry : loadCounts.entrySet()) {
+      ServerLocation location = entry.getKey();
+      AtomicInteger count = entry.getValue();
+      int difference = (int)Math.abs(count.get() - expectedPerServer);
       Assert.assertTrue("Count " + count + " for server " + location + " is not within " + ALLOWED_THRESHOLD + " of " + expectedPerServer, difference < ALLOWED_THRESHOLD);
     }
   }

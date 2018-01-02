@@ -19,7 +19,6 @@ package com.pivotal.gemfirexd;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -1976,7 +1975,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
           for (DiskStoreImpl ds : cache.listDiskStores()) {
             if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds.getName())
                 && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())
-                && !GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME.equals(ds.getName())) {
+                && !GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE.equals(ds.getName())) {
               requiresCleanup[2] = true;
               break;
             }
@@ -2089,7 +2088,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
           for (DiskStoreImpl ds : cache.listDiskStores()) {
             if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds.getName())
                 && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())
-                && !GfxdConstants.SNAPPY_DELTA_DISKSTORE_NAME.equals(ds.getName())) {
+                && !GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE.equals(ds.getName())) {
               executeCleanup(stmt, "drop diskstore \"" + ds.getName() + '"');
             }
           }

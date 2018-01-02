@@ -16,8 +16,6 @@
  */
 package com.gemstone.gemfire.internal;
 
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -83,7 +81,7 @@ public class FileUtil {
         } finally {
           fos.close();
         }
-        CFactory.setExecutable(dest, CFactory.canExecute(source), true);
+        dest.setExecutable(source.canExecute(), true);
         dest.setLastModified(lm);
       }
     }

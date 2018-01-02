@@ -19,6 +19,7 @@ package com.gemstone.gemfire.internal.cache;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import junit.framework.Assert;
 
@@ -38,8 +39,6 @@ import com.gemstone.gemfire.cache.Scope;
 import com.gemstone.gemfire.cache.util.CacheWriterAdapter;
 
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.AB;
 import io.snappydata.test.dunit.DistributedTestBase;
 import io.snappydata.test.dunit.DistributedTestBase.WaitCriterion;
 
@@ -1145,7 +1144,7 @@ public class OplogJUnitTest extends DiskRegionTestingBase
 //     for (int i = 1; i < 101; ++i) {
 //       map.put(new Integer(i), new Integer(i));
 //     }
-//     final AI uniqueCtr = CFactory.createAI();
+//     final AtomicInteger uniqueCtr = new AtomicInteger();
 //     Thread[] threads = new Thread[THREAD_COUNT];
 //     for (int i = 0; i < THREAD_COUNT; ++i) {
 //       threads[i] = new Thread(new Runnable() {
@@ -3295,7 +3294,7 @@ public class OplogJUnitTest extends DiskRegionTestingBase
    */
   public void testPersist1DirStats()
   {
-    final AB freezeRoller = CFactory.createAB();
+    final AtomicBoolean freezeRoller = new AtomicBoolean();
     CacheObserver old = CacheObserverHolder
           .setInstance(new CacheObserverAdapter() {
               private volatile boolean didBeforeCall = false;

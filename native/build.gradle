@@ -16,7 +16,7 @@
  */
 
 plugins {
-  id 'de.undercouch.download' version '3.2.0'
+  id 'de.undercouch.download' version '3.3.0'
 }
 
 apply plugin: 'wrapper'
@@ -43,7 +43,16 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   String opensslVersion = '1.0.2h'
   String unixodbcVersion = '2.3.4'
   String googletestVersion = '1.7.0'
-  String releasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${thriftVersion}"
+  String oldReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${thriftVersion}"
+
+  String releasesDir = oldReleasesDir
+
+  String newThriftVersion = '1.0.0-2'
+  String newBoostVersion = '1.65.1'
+  String newUnixodbcVersion = '2.3.4'
+  String newGoogletestVersion = '1.8.0'
+  String newReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${newThriftVersion}"
+
   List<String> dependencies = []
 
   def getLinuxFlavour = { ByteArrayOutputStream out ->
@@ -62,16 +71,30 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     } else {
       def out = new ByteArrayOutputStream()
       getLinuxFlavour(out)
-      flavour = out.toString().replaceAll('[\r\n\f]', '').toLowerCase()
+      flavour = out.toString().replaceAll('[ \r\n\f]', '').toLowerCase()
     }
-    if (flavour.startsWith('ubuntu14') || flavour.startsWith('ubuntu16') ||
-        flavour.startsWith('linuxmint17') || flavour.startsWith('linuxmint18')) {
+    if (flavour.startsWith('ubuntu14') || flavour.startsWith('linuxmint17')) {
       dependencies += [ "thrift-${thriftVersion}-ubuntu14.04.tar.bz2",
                         "boost-${boostVersion}-ubuntu14.04.tar.bz2",
                         "unixODBC-${unixodbcVersion}-ubuntu14.04.tar.bz2",
                         "googletest-${googletestVersion}-ubuntu14.04.tar.bz2" ]
+    } else if (flavour.startsWith('ubuntu16') || flavour.startsWith('linuxmint18')) {
+      thriftVersion = newThriftVersion
+      boostVersion = newBoostVersion
+      unixodbcVersion = newUnixodbcVersion
+      googletestVersion = newGoogletestVersion
+      releasesDir = newReleasesDir
+      dependencies += [ "thrift-${thriftVersion}-ubuntu16.04.tar.bz2",
+                        "boost-${boostVersion}-ubuntu16.04.tar.bz2",
+                        "unixODBC-${unixodbcVersion}-ubuntu16.04.tar.bz2",
+                        "googletest-${googletestVersion}-ubuntu16.04.tar.bz2" ]
     } else if (flavour.startsWith('redhat6') || flavour.startsWith('redhat7') ||
         flavour.startsWith('centos6') || flavour.startsWith('centos7')) {
+      thriftVersion = newThriftVersion
+      boostVersion = newBoostVersion
+      unixodbcVersion = newUnixodbcVersion
+      googletestVersion = newGoogletestVersion
+      releasesDir = newReleasesDir
       dependencies += [ "thrift-${thriftVersion}-rhel6.tar.bz2",
                         "boost-${boostVersion}-rhel6.tar.bz2",
                         "unixODBC-${unixodbcVersion}-rhel6.tar.bz2",
@@ -92,10 +115,11 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   task downloadDependencies(type: de.undercouch.gradle.tasks.download.Download) {
     outputs.files   dependencies.collect { "${distDir}/${it}" }
 
-    src      dependencies.collect { "${releasesDir}/${it}" }
-    dest     distDir
-    compress false
-    acceptAnyCertificate true
+    src                   dependencies.collect { "${releasesDir}/${it}" }
+    dest                  distDir
+    compress              false
+    acceptAnyCertificate  true
+    onlyIfNewer           true
 
     doFirst {
       mkdir(distDir)
@@ -105,10 +129,11 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   task extractDependencies {
     dependsOn downloadDependencies
 
-    outputs.files dependencies.collect { [ "${distDir}/${it}",
-                                           "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}/${osName}64" ] }.flatten()
+    inputs.files dependencies.collect { [ "${distDir}/${it}" ] }.flatten()
+    outputs.files dependencies.collect { [ "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}" ] }.flatten()
 
     doLast {
+      outputs.files.each { d -> delete d }
       dependencies.each { tarball ->
         if (osName == 'win') {
           copy {
@@ -240,7 +265,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
               cppCompiler.args '-g', '-O2'
             }
 
-            linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread',
+            linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread', '-lrt',
                         '-rdynamic', '-ldl', '-z', 'defs'
           } else if (toolChain in VisualCpp) {
             // explicitly include UCRT since its still not passed through by gradle

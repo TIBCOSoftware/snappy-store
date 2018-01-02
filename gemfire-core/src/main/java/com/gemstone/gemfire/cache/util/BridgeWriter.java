@@ -20,6 +20,7 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.AttributesFactory;
@@ -33,8 +34,6 @@ import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionEvent;
 import com.gemstone.gemfire.cache.client.internal.BridgePoolImpl;
 import com.gemstone.gemfire.internal.cache.tier.ConnectionProxy;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * A <code>CacheWriter</code> that writes data to one or more remote
@@ -365,7 +364,7 @@ public class BridgeWriter implements CacheWriter, Declarable
 
   private volatile boolean isClosed = false;
 
-  private final AI refCount = CFactory.createAI();
+  private final AtomicInteger refCount = new AtomicInteger();
 
   // all writers logic was moved to ConnectionProxyImpl
   

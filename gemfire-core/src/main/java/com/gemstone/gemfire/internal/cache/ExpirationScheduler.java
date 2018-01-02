@@ -17,6 +17,8 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
@@ -34,46 +36,41 @@ public class ExpirationScheduler
   {
   private static final boolean DEBUG = Boolean.getBoolean("gemfire.DEBUG_EXPIRATION");
   private final SystemTimer timer;
-  private final AI pendingCancels =
-    CFactory.nativeConcurrencyAvailable() ? CFactory.createAI() : null;
+  private final AtomicInteger pendingCancels = new AtomicInteger();
   private static final int MAX_PENDING_CANCELS = Integer.getInteger("gemfire.MAX_PENDING_CANCELS", 10000).intValue();
 
   public ExpirationScheduler(InternalDistributedSystem ds) {
     this.timer = new SystemTimer(ds, true, ds.getLogWriterI18n());
   }
-  
+
   public void forcePurge() {
-    if (CFactory.nativeConcurrencyAvailable()) {
-      pendingCancels.getAndSet(0);
-      this.timer.timerPurge();
-    }
+    pendingCancels.getAndSet(0);
+    this.timer.timerPurge();
   }
+
   /**
    * Called when we have cancelled a scheduled timer task.
    * Do work, if possible to fix bug 37574.
    */
   public void incCancels() {
-    if (CFactory.nativeConcurrencyAvailable()) {
-      int pc = pendingCancels.incrementAndGet();
+    int pc = pendingCancels.incrementAndGet();
+    if (pc > MAX_PENDING_CANCELS) {
+      pc = pendingCancels.getAndSet(0);
       if (pc > MAX_PENDING_CANCELS) {
-        pc = pendingCancels.getAndSet(0);
-        if (pc > MAX_PENDING_CANCELS) {
-          this.timer.timerPurge();
-//          int purgedCancels = CFactory.timerPurge(this.timer);
-          // we could try to do some fancy stuff here but the value
-          // of the atomic is just a hint so don't bother adjusting it
+        this.timer.timerPurge();
+        // we could try to do some fancy stuff here but the value
+        // of the atomic is just a hint so don't bother adjusting it
 //           // take the diff between the number of actual cancels we purged
 //           // "purgedCancels" and the number we said we would purge "pc".
 //           int diff = purgedCancels - pc;
-        } else {
-          // some other thread beat us to it so add back in the cancels
-          // we just removed by setting it to 0
-          pendingCancels.addAndGet(pc);
-        }
+      } else {
+        // some other thread beat us to it so add back in the cancels
+        // we just removed by setting it to 0
+        pendingCancels.addAndGet(pc);
       }
     }
   }
-  
+
   /** schedules the given expiration task */
   public ExpiryTask addExpiryTask(ExpiryTask task) {
     LogWriterI18n log = task.getLocalRegion().getCache().getLoggerI18n();

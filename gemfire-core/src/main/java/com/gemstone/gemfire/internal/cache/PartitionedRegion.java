@@ -46,6 +46,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 
@@ -212,9 +213,6 @@ import com.gemstone.gemfire.internal.cache.wan.GatewaySenderException;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderQueue;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -398,7 +396,7 @@ public class PartitionedRegion extends LocalRegion implements
    * one thats in create phase. This is done in order to avoid
    * synchronization on the indexes.
    */
-  private final CM indexes = CFactory.createCM();
+  private final ConcurrentHashMap indexes = new ConcurrentHashMap();
 
   private volatile boolean recoveredFromDisk;
 
@@ -3642,7 +3640,7 @@ public class PartitionedRegion extends LocalRegion implements
       throws TimeoutException, CacheLoaderException {
     Object result = null;
     FutureResult thisFuture = new FutureResult(getCancelCriterion());
-    Future otherFuture = (Future)this.getFutures.putIfAbsent(keyInfo.getKey(), thisFuture);
+    Future otherFuture = this.getFutures.putIfAbsent(keyInfo.getKey(), thisFuture);
     // only one thread can get their future into the map for this key at a time
     if (otherFuture != null) {
       try {
@@ -11037,10 +11035,8 @@ public class PartitionedRegion extends LocalRegion implements
     return this.colocatedWithRegion;
   }
 
-  private final AB bucketSorterStarted = CFactory.createAB(false);
-  private final AB bucketSortedOnce = CFactory.createAB(false);
-
-  private final Object monitor = new Object();
+  private final AtomicBoolean bucketSorterStarted = new AtomicBoolean(false);
+  private final AtomicBoolean bucketSortedOnce = new AtomicBoolean(false);
 
   public List<BucketRegion> getSortedBuckets() {
     if (!bucketSorterStarted.get()) {

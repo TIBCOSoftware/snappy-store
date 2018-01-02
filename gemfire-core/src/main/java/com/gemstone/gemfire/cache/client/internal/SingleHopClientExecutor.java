@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.cache.CacheClosedException;
@@ -44,15 +45,13 @@ import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.execute.InternalFunctionInvocationTargetException;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 public class SingleHopClientExecutor {
 
   static final ExecutorService execService = Executors
       .newCachedThreadPool(new ThreadFactory() {
-        AI threadNum = CFactory.createAI();
+        AtomicInteger threadNum = new AtomicInteger();
 
         public Thread newThread(final Runnable r) {
           LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();

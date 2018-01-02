@@ -17,7 +17,6 @@
 
 package hydra.blackboard;
 
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import hydra.HydraInternalException;
 import hydra.HydraRuntimeException;
 import hydra.Log;
@@ -117,7 +116,7 @@ public class AnySharedLockImpl implements SharedLock {
           String threadName = Thread.currentThread().getName();
           int vmid = RemoteTestModule.getMyVmid();
           RemoteTestModule mod = RemoteTestModule.getCurrentThread();
-          long tid = (mod == null) ? CFactory.getThreadId()
+          long tid = (mod == null) ? Thread.currentThread().getId()
                                    : (long)mod.getThreadId();
           this.rmilock.lock(threadName, vmid, tid);
         }
@@ -142,7 +141,7 @@ public class AnySharedLockImpl implements SharedLock {
           String threadName = Thread.currentThread().getName();
           int vmid = RemoteTestModule.getMyVmid();
           RemoteTestModule mod = RemoteTestModule.getCurrentThread();
-          long tid = (mod == null) ? CFactory.getThreadId()
+          long tid = (mod == null) ? Thread.currentThread().getId()
                                    : (long)mod.getThreadId();
           this.rmilock.unlock(threadName, vmid, tid);
         }
@@ -190,7 +189,7 @@ public class AnySharedLockImpl implements SharedLock {
         String threadName = Thread.currentThread().getName();
         int vmid = RemoteTestModule.getMyVmid();
         RemoteTestModule mod = RemoteTestModule.getCurrentThread();
-        long tid = (mod == null) ? CFactory.getThreadId()
+        long tid = (mod == null) ? Thread.currentThread().getId()
                                  : (long)mod.getThreadId();
         rmiSharedCondition.await(threadName, vmid, tid);
       }
@@ -205,7 +204,7 @@ public class AnySharedLockImpl implements SharedLock {
         String threadName = Thread.currentThread().getName();
         int vmid = RemoteTestModule.getMyVmid();
         RemoteTestModule mod = RemoteTestModule.getCurrentThread();
-        long tid = (mod == null) ? CFactory.getThreadId()
+        long tid = (mod == null) ? Thread.currentThread().getId()
                                  : (long)mod.getThreadId();
         rmiSharedCondition.signal(threadName, vmid, tid);
       }
@@ -220,7 +219,7 @@ public class AnySharedLockImpl implements SharedLock {
         String threadName = Thread.currentThread().getName();
         int vmid = RemoteTestModule.getMyVmid();
         RemoteTestModule mod = RemoteTestModule.getCurrentThread();
-        long tid = (mod == null) ? CFactory.getThreadId()
+        long tid = (mod == null) ? Thread.currentThread().getId()
                                  : (long)mod.getThreadId();
         rmiSharedCondition.signalAll(threadName, vmid, tid);
       }

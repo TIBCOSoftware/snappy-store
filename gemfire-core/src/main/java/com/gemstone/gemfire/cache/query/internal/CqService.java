@@ -23,13 +23,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.gemstone.gemfire.InvalidDeltaException;
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheEvent;
-import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.CacheLoaderException;
 import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.cache.Operation;
@@ -50,7 +50,6 @@ import com.gemstone.gemfire.cache.query.CqServiceStatistics;
 import com.gemstone.gemfire.cache.query.CqStatusListener;
 import com.gemstone.gemfire.cache.query.QueryException;
 import com.gemstone.gemfire.cache.query.QueryInvalidException;
-import com.gemstone.gemfire.cache.query.QueryService;
 import com.gemstone.gemfire.cache.query.RegionNotFoundException;
 import com.gemstone.gemfire.cache.query.SelectResults;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
@@ -67,7 +66,6 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientProxy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Part;
-import com.gemstone.gemfire.internal.concurrent.CLQ;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.org.jgroups.util.StringId;
 
@@ -1148,7 +1146,7 @@ public final class CqService  {
       if (cQuery.getQueuedEvents() != null) {
         synchronized(cQuery.queuedEventsSynchObject) {
           // Get latest value.
-          CLQ queuedEvents = cQuery.getQueuedEvents();
+          ConcurrentLinkedQueue queuedEvents = cQuery.getQueuedEvents();
           // Check to see, if its not set to null while waiting to get 
           // Synchronization lock.
           if (queuedEvents != null) {

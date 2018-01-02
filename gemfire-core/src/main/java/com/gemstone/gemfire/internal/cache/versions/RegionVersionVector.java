@@ -21,8 +21,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -51,8 +49,10 @@ import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.CopyOnWriteHashMap;
+import io.snappydata.collection.ObjectObjectHashMap;
 
 /**
  * RegionVersionVector tracks the highest region-level version number of
@@ -83,8 +83,8 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   
   /** map of member to version h older.  This is the actual version "vector" */
   //private ConcurrentHashMap<T, RegionVersionHolder<T>> memberToVersion;
-  private Map<T, RegionVersionHolder<T>> memberToVersion;
-  private Map<T, RegionVersionHolder<T>> memberToVersionSnapshot;
+  private final Map<T, RegionVersionHolder<T>> memberToVersion;
+  private final Map<T, RegionVersionHolder<T>> memberToVersionSnapshot;
 
   /** current version in the local region for generating next version */
   private AtomicLong localVersion = new AtomicLong(0);
@@ -121,14 +121,11 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   /** a flag to prevent accidental serialization of a live member */
   private transient boolean isLiveVector;
   
-  private ConcurrentHashMap<T, Long> memberToGCVersion;
+  private final ConcurrentHashMap<T, Long> memberToGCVersion;
   
   /** map of canonical IDs for this RVV that are not in the memberToVersion map */
-  @SuppressWarnings("unchecked")
-  private transient Map<T,T> canonicalIds = Collections.EMPTY_MAP;
-  
-  private final Object canonicalIdLock = new Object();
-  
+  private transient ConcurrentHashMap<T, T> canonicalIds = new ConcurrentHashMap<>();
+
   /** a log writer used in debugging */
   private transient LogWriterI18n log;
   
@@ -196,7 +193,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
     Map<T,RegionVersionHolder<T>> liveHolders;
     // we need to take a lock? so that memberToVersion is not modifed as we copy them
     // Find out
-    liveHolders = new HashMap<T,RegionVersionHolder<T>>(this.memberToVersion);
+    liveHolders = ObjectObjectHashMap.from(this.memberToVersion);
     ConcurrentHashMap<T, RegionVersionHolder<T>> clonedHolders = new ConcurrentHashMap<T,
         RegionVersionHolder<T>>(liveHolders.size(), LOAD_FACTOR, CONCURRENCY_LEVEL);
 
@@ -241,7 +238,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
    */
   public RegionVersionVector<T> getCloneForTransmission(T mbr) {
     Map<T,RegionVersionHolder<T>> liveHolders;
-    liveHolders = new HashMap<T, RegionVersionHolder<T>>(this.memberToVersion);
+    liveHolders = ObjectObjectHashMap.from(this.memberToVersion);
     RegionVersionHolder<T> holder = liveHolders.get(mbr);
     if (holder == null) {
       holder = new RegionVersionHolder<T>(-1);
@@ -264,7 +261,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   public Map<T, Long> getTombstoneGCVector() {
     Map<T, Long> result;
     synchronized(memberToGCVersion) {
-      result = new HashMap<T, Long>(this.memberToGCVersion);
+      result = ObjectObjectHashMap.from(this.memberToGCVersion);
     }
     result.put(this.myId, this.localGCVersion.get());
     return result;
@@ -907,6 +904,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
           if(gcVersion != null) {
             recovered.removeExceptionsOlderThan(gcVersion);
           }
+          recovered.id = member;
           memberToVersion.put(member, recovered);
         }
       }
@@ -935,7 +933,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
    */
   public Set<T> getDepartedMembersSet() {
     synchronized(this.memberToVersion) {
-      Set<T> result = new HashSet<T>();
+      OpenHashSet<T> result = new OpenHashSet<>(4);
       for (RegionVersionHolder<T> h: this.memberToVersion.values()) {
         if (h.isDepartedMember) {
           result.add((T)h.id);
@@ -987,9 +985,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
           if (!idsToKeep.contains(entry.getKey())) {
             it.remove();
             this.memberToGCVersion.remove(entry.getKey());
-            synchronized(this.canonicalIdLock) {
-              this.canonicalIds.remove(entry.getKey());
-            }
+            this.canonicalIds.remove(entry.getKey());
           }
         }
       }
@@ -1003,8 +999,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   public boolean containsMember(T id) {
     if (this.memberToVersion.containsKey(id)) return true;
     if (this.memberToGCVersion.containsKey(id)) return true;
-    if (this.canonicalIds.containsKey(id)) return true;
-    return false;
+    return this.canonicalIds.containsKey(id);
   }
 
   /**
@@ -1334,12 +1329,12 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
           can = (T)system.getDistributionManager().getCanonicalId((InternalDistributedMember)id);
         }
       }
-      synchronized(this.canonicalIdLock) {
-        HashMap<T,T> tmp = new HashMap<T,T>(this.canonicalIds);
-        tmp.put(can, can);
-        this.canonicalIds = tmp;
+      id = this.canonicalIds.putIfAbsent(can, can);
+      if (id == null) {
+        return can;
+      } else {
+        return id;
       }
-      return can;
     }
   }
   
@@ -1499,7 +1494,8 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
     RegionVersionHolder<T> myExceptions;
     myExceptions = this.localExceptions.clone();
 
-    HashMap<T, RegionVersionHolder<T>> results = new HashMap<T, RegionVersionHolder<T>>(memberToVersion);
+    ObjectObjectHashMap<T, RegionVersionHolder<T>> results =
+        ObjectObjectHashMap.from(memberToVersion);
 
     results.put(getOwnerId(), myExceptions);
     return results;
@@ -1510,7 +1506,8 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
    * the local member. 
    */
   public Map<T, Long> getMemberToGCVersion() {
-    HashMap<T, Long> results = new HashMap<T, Long>(memberToGCVersion);
+    ObjectObjectHashMap<T, Long> results =
+        ObjectObjectHashMap.from(memberToGCVersion);
     if(localGCVersion.get() > 0) {
       results.put(getOwnerId(), localGCVersion.get());
     }
@@ -1522,11 +1519,9 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
    * for each member in the RVV.
    */
   public void pruneOldExceptions() {
-    Set<T> members;
-    members = new HashSet<T>(memberToGCVersion.keySet());
-    
-    for(T member: members) {
-      Long gcVersion = memberToGCVersion.get(member);
+    for(Map.Entry<T, Long> entry : memberToGCVersion.entrySet()) {
+      T member = entry.getKey();
+      Long gcVersion = entry.getValue();
       
       RegionVersionHolder<T> holder;
       holder =memberToVersion.get(member);

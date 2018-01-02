@@ -37,6 +37,8 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 
@@ -45,8 +47,6 @@ import batterytest.greplogs.SuspectGrepOutputStream;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.distributed.Locator;
 import com.gemstone.gemfire.internal.AvailablePortHelper;
-import com.gemstone.gemfire.internal.concurrent.CDL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 import dunit.DUnitEnv;
 import dunit.Host;
@@ -237,7 +237,7 @@ public class DUnitLauncher {
   public static class Master extends UnicastRemoteObject implements MasterRemote {
     private static final long serialVersionUID = 1178600200232603119L;
     
-    private CDL latch = CFactory.createCDL(NUM_VMS + 1);
+    private CountDownLatch latch = new CountDownLatch(NUM_VMS + 1);
 
 
     public Master() throws RemoteException {
@@ -253,9 +253,9 @@ public class DUnitLauncher {
     }
     
     public boolean waitForVMs(long timeout) throws InterruptedException {
-      return latch.await(timeout);
+      return latch.await(timeout, TimeUnit.MILLISECONDS);
     }
-    
+
     public void ping() {
       //do nothing
     }

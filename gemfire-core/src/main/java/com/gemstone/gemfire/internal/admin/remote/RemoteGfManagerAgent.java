@@ -35,11 +35,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.BQ;
 import com.gemstone.gemfire.security.AuthenticationFailedException;
 
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem.DisconnectListener;
 import com.gemstone.gemfire.distributed.internal.membership.*;
@@ -115,7 +114,8 @@ public
 
   /** A queue of <code>SnapshotResultMessage</code>s the are processed
    * by a SnapshotResultDispatcher */
-  protected BQ snapshotResults = CFactory.createLBQ();
+  private LinkedBlockingQueue<SnapshotResultMessage> snapshotResults =
+      new LinkedBlockingQueue<>();
 
   /** A thread that asynchronously handles incoming cache snapshots. */
   private SnapshotResultDispatcher snapshotDispatcher;
@@ -1030,7 +1030,7 @@ public
       while (!shutDown) {
         SystemFailure.checkFailure();
         try {
-          SnapshotResultMessage msg = (SnapshotResultMessage)snapshotResults.take();
+          SnapshotResultMessage msg = snapshotResults.take();
           callCacheCollector(msg.getSnapshot(), msg.getSender(),
                              msg.getSnapshotId());
           yield(); // TODO: this is a hot thread
