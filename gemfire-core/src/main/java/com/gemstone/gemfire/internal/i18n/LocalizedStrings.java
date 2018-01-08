@@ -19,6 +19,7 @@ package com.gemstone.gemfire.internal.i18n;
 
 import com.gemstone.gemfire.cache.util.Gateway;
 import com.gemstone.gemfire.i18n.StringIdImpl;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.org.jgroups.util.StringId;
 
 /**
@@ -584,10 +585,14 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId CacheServerLauncher_ERROR_0 = new StringIdImpl(3965, "Error: {0}");
   public static final StringId CacheServerLauncher_STARTING_0_WITH_PID_1 = new StringIdImpl(3966, "Starting {0} with pid: {1,number,#}");
   public static final StringId ExecuteFunction_RESULTS_ALREADY_COLLECTED = new StringIdImpl(3967, "Function results already collected");
-  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE = new StringIdImpl(3968, "The specified working directory ({0}) on {1} contains no status file");
-  public static final StringId CacheServerLauncher_0_STOPPED = new StringIdImpl(3969, "The {0} on {1} has stopped.");
-  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 = new StringIdImpl(3970, "Timeout waiting for {0} to shutdown on {1}, status is: {2}");
-  public static final StringId CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS = new StringIdImpl(3971, "See log file for details.");
+  public static final StringId CacheServerLauncher_THE_SPECIFIED_WORKING_DIRECTORY_0_CONTAINS_NO_STATUS_FILE =
+      new StringIdImpl(3968, LauncherBase.LAUNCHER_NO_STATUS_FILE);
+  public static final StringId CacheServerLauncher_0_STOPPED =
+      new StringIdImpl(3969, LauncherBase.LAUNCHER_STOPPED);
+  public static final StringId CacheServerLauncher_TIMEOUT_WAITING_FOR_0_TO_SHUTDOWN_STATUS_IS_1 =
+      new StringIdImpl(3970, LauncherBase.LAUNCHER_TIMEOUT_WAITING_FOR_SHUTDOWN);
+  public static final StringId CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS =
+      new StringIdImpl(3971, LauncherBase.LAUNCHER_SEE_LOG_FILE);
   public static final StringId DistributionManager__0_MESSAGE_DISTRIBUTION_HAS_TERMINATED = new StringIdImpl(3972, "{0}: Message distribution has terminated");
   public static final StringId SystemFailure_DISTRIBUTION_HALTED_DUE_TO_JVM_CORRUPTION = new StringIdImpl(3973, "Distribution halted due to JVM corruption");
   public static final StringId DistributionManager_0_DISTRIBUTION_HAS_TERMINATED = new StringIdImpl(3974, "{0}: Distribution has terminated");
@@ -1651,7 +1656,7 @@ public class LocalizedStrings extends ParentLocalizedStrings {
           + "critical-heap-percentage set in the <resource-manager> element "
           + "of the \"cache-xml-file\"");
   public static final StringId CacheServerLauncher_LOGS_GENERATED_IN = new StringIdImpl(
-      5075, "Logs generated in {0}");
+      5075, LauncherBase.LAUNCHER_LOGS_GENERATED_IN);
   public static final StringId GemFireUtilLauncher_CacheServer_Usage = new StringIdImpl(
       5076, "Starts/stops a GemFire CacheServer VM, or provides status of a running one");
   public static final StringId PartitionAttributesImpl_IF_COLOCATED_WITH_IS_SPECFIED_THEN_FIXED_PARTITION_ATTRIBUTES_CAN_NOT_BE_SPECIFIED = new StringIdImpl(5077, "FixedPartitionAttributes \"{0}\" can not be specified in PartitionAttributesFactory if colocated-with is specified. ");;
@@ -1776,7 +1781,8 @@ public class LocalizedStrings extends ParentLocalizedStrings {
   public static final StringId REGION_VERSION_ROLLOVER_DETECTED = new StringIdImpl(5206, "Region version rollover has been detected.  Persistent stores cannot handle rollover and must be reset");
   public static final StringId PartitionedRegion_FOR_REGION_0_ColocatedWith_1_SHOULD_NOT_BE_CHANGED_Previous_Configured_2 = new StringIdImpl(5151, "For partition region \"{0}\", Cannot change colocated-with to {1} because there is persistent data with different colocation. Previous configured value is {2}.");
   public static final StringId Oplog_FAILED_RECORDING_RVV_BECAUSE_OF_0 = new StringIdImpl(5152, "Failed in persisting the garbage collection of entries because of: {0}");
-  public static final StringId CacheServerLauncher_LAUNCH_IN_PROGRESS_0 = new StringIdImpl(5153, "The server is still starting. {0} seconds have elapsed since the last log message: \n {1}");
+  public static final StringId CacheServerLauncher_LAUNCH_IN_PROGRESS_0 =
+      new StringIdImpl(5153, LauncherBase.LAUNCH_IN_PROGRESS);
 
   public static final StringId CacheServerLauncher_CREATE_STATUS_EXCEPTION_0 = new StringIdImpl(5207, "The cacheserver status file could not be recreated due to the following exception: {0}");
 

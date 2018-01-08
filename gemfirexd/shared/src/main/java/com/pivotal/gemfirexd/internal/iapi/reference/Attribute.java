@@ -342,7 +342,6 @@ public interface Attribute {
   String COLLATE = "collate";
 
 // GemStone changes BEGIN
-  String INTERNAL_CONNECTION = "internal-connection";
   // all public client connection only properties are in
   // com.pivotal.gemfirexd.jdbc.ClientAttribute
   /*

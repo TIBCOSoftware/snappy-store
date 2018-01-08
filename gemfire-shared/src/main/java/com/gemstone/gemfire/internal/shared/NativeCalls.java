@@ -106,8 +106,9 @@ public abstract class NativeCalls {
   @SuppressWarnings("unchecked")
   protected static final Map<String, String> getModifiableJavaEnvWIN() {
     try {
-      final Field envField = Class.forName("java.lang.ProcessEnvironment")
-          .getDeclaredField("theCaseInsensitiveEnvironment");
+      final Field envField = Class.forName("java.lang.ProcessEnvironment",
+          false, ClassLoader.getSystemClassLoader()).getDeclaredField(
+          "theCaseInsensitiveEnvironment");
       envField.setAccessible(true);
       return (Map<String, String>)envField.get(null);
     } catch (Exception ex) {
@@ -290,10 +291,18 @@ public abstract class NativeCalls {
    * Check whether a process with given ID is still running.
    * 
    * @throws UnsupportedOperationException
-   *           if no native API to determine the process status could be invoked
+   *           if no known API to determine the process status could be invoked
    */
-  public abstract boolean isProcessActive(int processId)
-      throws UnsupportedOperationException;
+  public boolean isProcessActive(int processId)
+      throws UnsupportedOperationException {
+    java.io.File procDir = new java.io.File("/proc");
+    if (procDir.exists() && procDir.isDirectory()) {
+      return new java.io.File(procDir, processId + "/status").exists();
+    } else {
+      throw new UnsupportedOperationException(
+          "/proc not available for base isProcessActive() implementation");
+    }
+  }
 
   /**
    * Kill the process with given process ID immediately (i.e. without giving it
@@ -609,16 +618,6 @@ public abstract class NativeCalls {
     }
 
     /**
-     * @see NativeCalls#isProcessActive(int)
-     */
-    @Override
-    public boolean isProcessActive(int processId)
-        throws UnsupportedOperationException {
-      throw new UnsupportedOperationException(
-          "isProcessActive() not available in generic implementation");
-    }
-
-    /**
      * @see NativeCalls#killProcess(int)
      */
     @Override
@@ -677,8 +676,8 @@ final class NativeCallsInst {
         // using reflection to get the implementation based on OSProcess
         // since this is also used by GemFireXD client; at some point all the
         // functionality of OSProcess should be folded into the JNA impl
-        final Class<?> c = Class
-            .forName("com.gemstone.gemfire.internal.OSProcess$NativeOSCalls");
+        final Class<?> c = Class.forName(
+            "com.gemstone.gemfire.internal.OSProcess$NativeOSCalls");
         inst = (NativeCalls)c.newInstance();
         // never catch Throwable or Error blindly because JVM only
         // guarantees OutOfMemoryError will be seen at least once

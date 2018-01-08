@@ -16,13 +16,14 @@
  */
 package com.gemstone.gemfire.internal.util.concurrent;
 
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CDL;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.internal.Assert;
 
 /**
- * This class is a "stoppable" cover for {@link com.gemstone.gemfire.internal.concurrent.CDL}.
+ * This class is a "stoppable" cover for {@link CountDownLatch}.
  * @author jpenney
  */
 public class StoppableCountDownLatch {
@@ -36,7 +37,7 @@ public class StoppableCountDownLatch {
   /**
    * The underlying latch
    */
-  private final CDL latch;
+  private final CountDownLatch latch;
 
   /**
    * The cancellation criterion
@@ -44,50 +45,49 @@ public class StoppableCountDownLatch {
   private final CancelCriterion stopper;
   
   /**
-   * @see CFactory#createCDL(int)
    * @param count the number of times {@link #countDown} must be invoked
    *        before threads can pass through {@link #await()}
    * @throws IllegalArgumentException if {@code count} is negative
    */
   public StoppableCountDownLatch(CancelCriterion stopper, int count) {
       Assert.assertTrue(stopper != null);
-      this.latch = CFactory.createCDL(count);
+      this.latch = new CountDownLatch(count);
       this.stopper = stopper;
   }
 
   /**
-   * @see CDL#await()
+   * @see CountDownLatch#await()
    * @throws InterruptedException
    */
   public void await() throws InterruptedException {
       for (;;) {
         stopper.checkCancelInProgress(null);
-        if (latch.await(RETRY_TIME)) {
+        if (latch.await(RETRY_TIME, TimeUnit.MILLISECONDS)) {
           break;
         }
       }
   }
 
   /**
-   * @see CDL#await(long)
+   * @see CountDownLatch#await(long, TimeUnit)
    * @param msTimeout how long to wait in milliseconds
    * @return true if it was unlatched
    * @throws InterruptedException
    */
   public boolean await(long msTimeout) throws InterruptedException {
     stopper.checkCancelInProgress(null);
-    return latch.await(msTimeout);
+    return latch.await(msTimeout, TimeUnit.MILLISECONDS);
   }
 
   /**
-   * @see CDL#countDown()
+   * @see CountDownLatch#countDown()
    */
   public synchronized void countDown() {
     latch.countDown();
   }
 
   /**
-   * @see CDL#getCount()
+   * @see CountDownLatch#getCount()
    * @return the current count
    */
   public long getCount() {

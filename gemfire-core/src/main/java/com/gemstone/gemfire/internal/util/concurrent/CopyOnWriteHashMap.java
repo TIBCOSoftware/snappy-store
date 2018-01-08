@@ -19,9 +19,10 @@ package com.gemstone.gemfire.internal.util.concurrent;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import io.snappydata.collection.ObjectObjectHashMap;
 
 /**
  * A copy on write hash map.
@@ -53,7 +54,7 @@ public class CopyOnWriteHashMap<K,V> extends AbstractMap<K, V> {
 
   @Override
   public synchronized V put(K key, V value) {
-    HashMap<K, V> tmp = new HashMap<K, V>(map);
+    ObjectObjectHashMap<K, V> tmp = ObjectObjectHashMap.from(map);
     V result = tmp.put(key, value);
     map = Collections.unmodifiableMap(tmp);
     return result;
@@ -63,16 +64,14 @@ public class CopyOnWriteHashMap<K,V> extends AbstractMap<K, V> {
 
   @Override
   public synchronized void putAll(Map<? extends K, ? extends V> m) {
-    HashMap<K, V> tmp = new HashMap<K, V>(map);
+    ObjectObjectHashMap<K, V> tmp = ObjectObjectHashMap.from(map);
     tmp.putAll(m);
     map = Collections.unmodifiableMap(tmp);
   }
 
-
-
   @Override
   public synchronized V remove(Object key) {
-    HashMap<K, V> tmp = new HashMap<K, V>(map);
+    ObjectObjectHashMap<K, V> tmp = ObjectObjectHashMap.from(map);
     V result = tmp.remove(key);
     map = Collections.unmodifiableMap(tmp);
     return result;

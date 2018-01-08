@@ -155,14 +155,6 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
     this.freeForStream = false;
   }
 
-  public ClientBlob(BlobChunk chunk) {
-    super(null);
-    this.currentChunk = chunk;
-    this.streamedInput = false;
-    this.length = chunk.size();
-    this.freeForStream = false;
-  }
-
   @Override
   protected int streamLength(boolean forceMaterialize) throws SQLException {
     try {

@@ -17,7 +17,9 @@
 package com.gemstone.gemfire.distributed.internal.deadlock;
 
 import java.io.Serializable;
+import java.lang.management.LockInfo;
 import java.lang.management.ManagementFactory;
+import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.Collection;
@@ -27,9 +29,6 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
-
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.LI;
 
 /**
  * A class used for detecting deadlocks. The static method
@@ -105,7 +104,7 @@ public class DeadlockDetector {
    */
   public static Set<Dependency> collectAllDependencies(Serializable locality) {
     ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-    ThreadInfo[] infos = CFactory.dumpAllThreads(bean, true, true);
+    ThreadInfo[] infos = bean.dumpAllThreads(true, true);
 
     Set<Dependency> results = new HashSet<Dependency>();
 
@@ -116,19 +115,19 @@ public class DeadlockDetector {
         continue;
       }
 
-      for (LI monitor : CFactory.getLockedMonitors(info)) {
+      for (MonitorInfo monitor : info.getLockedMonitors()) {
         Dependency dependency = new Dependency(new LocalLockInfo(locality,
             monitor), new LocalThread(locality, info));
         results.add(dependency);
       }
 
-      for (LI sync : CFactory.getLockedSynchronizers(info)) {
+      for (LockInfo sync : info.getLockedSynchronizers()) {
         Dependency dependency = new Dependency(
             new LocalLockInfo(locality, sync), new LocalThread(locality, info));
         results.add(dependency);
       }
 
-      LI waitingFor = CFactory.getLockInfo(info);
+      LockInfo waitingFor = info.getLockInfo();
       if (waitingFor != null) {
         Dependency dependency = new Dependency(new LocalThread(locality, info),
             new LocalLockInfo(locality, waitingFor));

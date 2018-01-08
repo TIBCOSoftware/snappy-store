@@ -17,13 +17,12 @@
 
 package com.gemstone.gemfire.internal.cache.lru;
 
-import com.gemstone.gemfire.*;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.internal.*;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.gemstone.gemfire.Statistics;
+import com.gemstone.gemfire.StatisticsFactory;
+import com.gemstone.gemfire.StatisticsType;
+import com.gemstone.gemfire.internal.Assert;
 
 /**
  * Statistics for both the LocalLRUClockHand.  Note that all its instance fields are
@@ -43,6 +42,7 @@ public class LRUStatistics  {
   protected int counterId;
   /** entries that have been evicted from the LRU list */
   protected  int evictionsId;
+  protected int faultInsId;
   /** entries that have been destroyed, but not yet evicted from the LRU list */
   protected int destroysId;
   protected  int evaluationsId;
@@ -52,11 +52,11 @@ public class LRUStatistics  {
   // does not depend on the value of a statistic for its operations.
   // In particular they optimize the "get" methods for these items.
   // Striped stats optimize inc but cause set and get to be more expensive.
-  private final AL counter = CFactory.createAL();
-  private final AL limit = CFactory.createAL();
-  private final AL destroysLimit = CFactory.createAL();
-  private final AL destroys = CFactory.createAL();
-  private final AL evictions = CFactory.createAL();
+  private final AtomicLong counter = new AtomicLong();
+  private final AtomicLong limit = new AtomicLong();
+  private final AtomicLong destroysLimit = new AtomicLong();
+  private final AtomicLong destroys = new AtomicLong();
+  private final AtomicLong evictions = new AtomicLong();
   private final String regionName;
 
   private static final long NEG_ONE_MB = -1024 * 1024 * 1024;
@@ -81,6 +81,7 @@ public class LRUStatistics  {
     destroysLimitId = helper.getDestroysLimitStatId();
     counterId = helper.getCountStatId();
     evictionsId = helper.getEvictionsStatId();
+    faultInsId = helper.getFaultInsStatId();
     destroysId = helper.getDestroysStatId();
     this.evaluationsId = helper.getEvaluationsStatId();
     this.greedyReturnsId = helper.getGreedyReturnsStatId();
@@ -94,6 +95,7 @@ public class LRUStatistics  {
     destroysLimitId = 0;
     counterId = 0;
     evictionsId = 0;
+    faultInsId = 0;
     destroysId = 0;
     this.evaluationsId = 0;
     this.greedyReturnsId = 0;
@@ -201,7 +203,11 @@ public class LRUStatistics  {
     this.evictions.getAndAdd(delta);
     stats.incLong( evictionsId, delta );
   }
-  
+
+  public void incFaultins() {
+    stats.incLong(faultInsId, 1);
+  }
+
   public long getEvictions( ) {
     return this.evictions.get();
   }

@@ -1274,14 +1274,13 @@ public class ProcedureTestDUnit extends DistributedSQLTestBase {
   }
 
   public static Boolean verifyAccessorDapStats() {
-    final InternalDistributedSystem iDS = InternalDistributedSystem
-        .getAnyInstance().getDistributionManager().getSystem();
+    final InternalDistributedSystem iDS = Misc.getDistributedSystem();
     WaitCriterion waitForStat = new WaitCriterion() {
       @Override
       public boolean done() {
         FunctionStats stats = FunctionStats.getFunctionStats(
             DistributedProcedureCallFunction.FUNCTIONID, iDS);
-        return (stats.getFunctionExecutionsCompletedDN() == 0);
+        return stats.getFunctionExecutionsCompletedDN() == 0;
       }
 
       @Override
@@ -1293,21 +1292,17 @@ public class ProcedureTestDUnit extends DistributedSQLTestBase {
     FunctionStats stats = FunctionStats.getFunctionStats(
         DistributedProcedureCallFunction.FUNCTIONID, iDS);
 
-    if (stats.getFunctionExecutionsCompletedDN() != 0) {
-      return false;
-    }
-    return true;
+    return stats.getFunctionExecutionsCompletedDN() == 0;
   }
 
   public static Boolean verifyDataNodeDapStats() {
-    final InternalDistributedSystem iDS = InternalDistributedSystem
-        .getAnyInstance().getDistributionManager().getSystem();
+    final InternalDistributedSystem iDS = Misc.getDistributedSystem();
     WaitCriterion waitForStat = new WaitCriterion() {
       @Override
       public boolean done() {
         FunctionStats stats = FunctionStats.getFunctionStats(
             DistributedProcedureCallFunction.FUNCTIONID, iDS);
-        return (stats.getFunctionExecutionsCompletedDN() == 0);
+        return stats.getFunctionExecutionsCompletedDN() != 0;
       }
 
       @Override
@@ -1319,10 +1314,7 @@ public class ProcedureTestDUnit extends DistributedSQLTestBase {
     FunctionStats stats = FunctionStats.getFunctionStats(
         DistributedProcedureCallFunction.FUNCTIONID, iDS);
 
-    if (stats.getFunctionExecutionsCompletedDN() == 0) {
-      return false;
-    }
-    return true;
+    return stats.getFunctionExecutionsCompletedDN() != 0;
   }
 
   public static final void checkStackOverflow(int arg, ResultSet[] rs)

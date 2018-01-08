@@ -30,6 +30,9 @@ import junit.framework.TestCase;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.admin.DistributedSystemConfig;
 import com.gemstone.gemfire.cache.client.AllConnectionsInUseException;
@@ -53,9 +56,6 @@ import com.gemstone.gemfire.internal.LocalLogWriter;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.PoolStats;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerQueueStatus;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.AR;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 import io.snappydata.test.dunit.DistributedTestBase;
 import io.snappydata.test.dunit.DistributedTestBase.WaitCriterion;
@@ -379,7 +379,7 @@ public class ConnectionManagerJUnitTest extends TestCase {
 
     // need to start a thread that keeps the connections busy
     // so that their last access time keeps changing
-    AR exception = CFactory.createAR();
+    AtomicReference<Exception> exception = new AtomicReference<>();
     int updaterCount = 2;
     UpdaterThread[] updaters = new UpdaterThread[updaterCount];
     
@@ -462,8 +462,8 @@ public class ConnectionManagerJUnitTest extends TestCase {
   public void testExclusiveConnectionAccess() throws Throwable {
     manager = new ConnectionManagerImpl("pool", factory, endpointManager, 1, 0, -1, -1, logger, logger, 60 * 1000, cancelCriterion, poolStats);
     manager.start(background);
-    AR exception = CFactory.createAR();
-    AB haveConnection = CFactory.createAB();
+    AtomicReference<Exception> exception = new AtomicReference<>();
+    AtomicBoolean haveConnection = new AtomicBoolean();
     int updaterCount = 10;
     UpdaterThread[] updaters = new UpdaterThread[updaterCount];
     
@@ -650,9 +650,9 @@ public class ConnectionManagerJUnitTest extends TestCase {
   
   private class UpdaterThread  extends Thread {
     
-    private AR exception;
+    private AtomicReference<Exception> exception;
     
-    private final AB haveConnection;
+    private final AtomicBoolean haveConnection;
 
     private int id;
     private final int iterations;
@@ -661,13 +661,15 @@ public class ConnectionManagerJUnitTest extends TestCase {
      */
     private final boolean threadLocal;
     
-    public UpdaterThread(AB haveConnection, AR exception, int id) {
+    public UpdaterThread(AtomicBoolean haveConnection,
+        AtomicReference<Exception> exception, int id) {
       this(haveConnection, exception, id, 10, false);
     }
 
-    public UpdaterThread(AB haveConnection, AR exception, int id, int iterations, boolean threadLocal) {
+    public UpdaterThread(AtomicBoolean haveConnection,
+        AtomicReference<Exception> exception, int id, int iterations, boolean threadLocal) {
       this.haveConnection = haveConnection;
-      this.exception =exception;
+      this.exception = exception;
       this.id = id;
       this.iterations = iterations;
       this.threadLocal = threadLocal;

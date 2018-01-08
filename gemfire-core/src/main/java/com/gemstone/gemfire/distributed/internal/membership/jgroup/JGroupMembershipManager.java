@@ -25,6 +25,9 @@ import java.io.InputStreamReader;
 import java.io.NotSerializableException;
 import java.net.DatagramSocket;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import com.gemstone.gemfire.CancelException;
@@ -72,7 +75,6 @@ import com.gemstone.gemfire.internal.admin.remote.RemoteTransportConfig;
 import com.gemstone.gemfire.internal.cache.DirectReplyMessage;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.xmlcache.CacheXmlGenerator;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -94,7 +96,6 @@ import com.gemstone.org.jgroups.ShunnedAddressException;
 import com.gemstone.org.jgroups.SuspectMember;
 import com.gemstone.org.jgroups.View;
 import com.gemstone.org.jgroups.debug.JChannelTestHook;
-import com.gemstone.org.jgroups.oswego.concurrent.Latch;
 import com.gemstone.org.jgroups.protocols.FD;
 import com.gemstone.org.jgroups.protocols.FD_SOCK;
 import com.gemstone.org.jgroups.protocols.TCP;
@@ -386,7 +387,7 @@ public final class JGroupMembershipManager implements MembershipManager {
    * 
    * @see #latestView
    */
-  protected ViewLock latestViewLock = new ViewLock();
+  private final ViewLock latestViewLock = new ViewLock();
   
   /**
    * This is the listener that accepts our membership events
@@ -428,7 +429,8 @@ public final class JGroupMembershipManager implements MembershipManager {
    * 
    * Accesses must be synchronized via {@link #latestViewLock}.
    */
-  protected final Map memberToStubMap = CFactory.createCM();
+  private final ConcurrentHashMap<InternalDistributedMember, Stub> memberToStubMap =
+      new ConcurrentHashMap<>();
 
   /**
    * a map of direct channels (Stub) to InternalDistributedMember. key instanceof Stub
@@ -436,14 +438,16 @@ public final class JGroupMembershipManager implements MembershipManager {
    * 
    * Accesses must be synchronized via {@link #latestViewLock}.
    */
-  protected final Map stubToMemberMap = CFactory.createCM();
-  
+  private final ConcurrentHashMap<Stub, InternalDistributedMember> stubToMemberMap =
+      new ConcurrentHashMap<>();
+
   /**
    * a map of jgroups addresses (IpAddress) to InternalDistributedMember that
    * is used to avoid creating new IDMs for every jgroups message when the
    * direct-channel is disabled
    */
-  private final Map ipAddrToMemberMap = CFactory.createCM();
+  private final ConcurrentHashMap<IpAddress, InternalDistributedMember> ipAddrToMemberMap =
+      new ConcurrentHashMap<>();
 
   /**
    * Members of the distributed system that we believe have shut down.
@@ -458,7 +462,8 @@ public final class JGroupMembershipManager implements MembershipManager {
    * @see System#currentTimeMillis()
    */
 //  protected final Set shunnedMembers = Collections.synchronizedSet(new HashSet());
-  protected final Map shunnedMembers = CFactory.createCM();
+  private final ConcurrentHashMap<DistributedMember, Long> shunnedMembers =
+      new ConcurrentHashMap<>();
 
   /**
    * Members that have sent a shutdown message.  This is used to suppress
@@ -492,21 +497,23 @@ public final class JGroupMembershipManager implements MembershipManager {
    * 
    * @see System#currentTimeMillis()
    */
-  protected final Map<InternalDistributedMember, Long> surpriseMembers = CFactory.createCM();
+  private final ConcurrentHashMap<InternalDistributedMember, Long> surpriseMembers =
+      new ConcurrentHashMap<>();
 
   /**
    * the timeout interval for surprise members.  This is calculated from 
    * the member-timeout setting
    */
   protected int surpriseMemberTimeout;
-  
+
   /**
    * javagroups can skip views and omit telling us about a crashed member.
    * This map holds a history of suspected members that we use to detect
    * crashes.
    */
-  private final Map<InternalDistributedMember, Long> suspectedMembers = CFactory.createCM();
-  
+  private final ConcurrentHashMap<InternalDistributedMember, Long> suspectedMembers =
+      new ConcurrentHashMap<>();
+
   /**
    * the timeout interval for suspected members
    */
@@ -613,7 +620,8 @@ public final class JGroupMembershipManager implements MembershipManager {
    * ARB: the map of latches is used to block peer handshakes till
    * authentication is confirmed.
    */
-  final private HashMap memberLatch = new HashMap();
+  final private HashMap<InternalDistributedMember, CountDownLatch> memberLatch =
+      new HashMap<>();
   
   /**
    * Insert our own MessageReceiver between us and the direct channel, in order
@@ -821,7 +829,7 @@ public final class JGroupMembershipManager implements MembershipManager {
       // look for additions
       Set warnShuns = new HashSet();
       for (int i = 0; i < newView.size(); i++) { // additions
-        InternalDistributedMember m = (InternalDistributedMember)newView.elementAt(i);
+        InternalDistributedMember m = newView.elementAt(i);
         
         // Once a member has been seen via JGroups, remove them from the
         // newborn set
@@ -850,9 +858,9 @@ public final class JGroupMembershipManager implements MembershipManager {
         boolean isSecure = authInit != null && authInit.length() != 0;
 
         if (isSecure) {
-          Latch currentLatch;
-          if ((currentLatch = (Latch)memberLatch.get(m)) != null) {
-            currentLatch.release();
+          CountDownLatch currentLatch;
+          if ((currentLatch = memberLatch.get(m)) != null) {
+            currentLatch.countDown();
           }
         }
 
@@ -1421,7 +1429,7 @@ public final class JGroupMembershipManager implements MembershipManager {
     burstLimit = Long.getLong("p2p.retransmit-burst-limit", burstLimit);
     properties = replaceStrings(properties, "RETRANSMIT_BURST_LIMIT", String.valueOf(burstLimit));
 
-    long discoveryTimeout = Long.getLong("p2p.discoveryTimeout", 5000).longValue();
+    long discoveryTimeout = Long.getLong("p2p.discoveryTimeout", 3000).longValue();
     properties = replaceStrings(properties, "DISCOVERY_TIMEOUT", ""+discoveryTimeout);
 
     int defaultJoinTimeout = 17000;
@@ -1431,7 +1439,10 @@ public final class JGroupMembershipManager implements MembershipManager {
     }
     int joinTimeout = Integer.getInteger("p2p.joinTimeout", defaultJoinTimeout).intValue();
     int numPings = Integer.getInteger("p2p.discoveryProbes", defaultNumPings);
+    int minJoinTries = Integer.getInteger("p2p.minJoinTries", 2);
     properties = replaceStrings(properties, "JOIN_TIMEOUT", ""+joinTimeout);
+    properties = replaceStrings(properties, "MIN_JOIN_TRIES",
+        Integer.toString(minJoinTries));
     properties = replaceStrings(properties, "NUM_PING_REQUESTS", ""+numPings);
     properties = replaceStrings(properties, "LEAVE_TIMEOUT", System.getProperty("p2p.leaveTimeout", "5000"));
     properties = replaceStrings(properties, "SOCKET_TIMEOUT", System.getProperty("p2p.socket_timeout", "60000"));
@@ -2689,7 +2700,7 @@ public final class JGroupMembershipManager implements MembershipManager {
    * that member is still in the membership view or is a surprise member.
    */
   public boolean isShuttingDown(IpAddress addr) {
-    InternalDistributedMember mbr = (InternalDistributedMember)ipAddrToMemberMap.get(addr);
+    InternalDistributedMember mbr = ipAddrToMemberMap.get(addr);
     if (mbr == null) {
       JGroupMember m = new JGroupMember(addr);
       mbr = new InternalDistributedMember(m);
@@ -3475,7 +3486,7 @@ public final class JGroupMembershipManager implements MembershipManager {
     
     // Return existing one if it is already in place
     Stub result;
-    result = (Stub)memberToStubMap.get(m);
+    result = memberToStubMap.get(m);
     if (result != null)
       return result;
 
@@ -3500,8 +3511,7 @@ public final class JGroupMembershipManager implements MembershipManager {
       if (shutdownInProgress) {
         throw new DistributedSystemDisconnectedException(LocalizedStrings.JGroupMembershipManager_DISTRIBUTEDSYSTEM_IS_SHUTTING_DOWN.toLocalizedString(), this.shutdownCause);
       }
-      InternalDistributedMember result = (InternalDistributedMember)
-          stubToMemberMap.get(s);
+      InternalDistributedMember result = stubToMemberMap.get(s);
       if (result != null) {
         if (validated && !this.latestView.contains(result)) {
           // Do not return this member unless it is in the current view.
@@ -3628,7 +3638,7 @@ public final class JGroupMembershipManager implements MembershipManager {
       logger.info(LocalizedStrings.JGroupMembershipManager_MEMBERSHIP_DESTROYING__0_, member);
     
     // Clean up the maps
-    Stub theChannel = (Stub)memberToStubMap.remove(member);
+    Stub theChannel = memberToStubMap.remove(member);
     if (theChannel != null) {
       this.stubToMemberMap.remove(theChannel);
     }
@@ -3668,8 +3678,9 @@ public final class JGroupMembershipManager implements MembershipManager {
           @Override
           public void run() {
             try {
-              Thread.sleep(
-                  Integer.getInteger("p2p.disconnectDelay", 3000).intValue());
+              if (member != myMemberId) {
+                Thread.sleep(Integer.getInteger("p2p.disconnectDelay", 3000));
+              }
             }
             catch (InterruptedException ie) {
               Thread.currentThread().interrupt();
@@ -3691,7 +3702,7 @@ public final class JGroupMembershipManager implements MembershipManager {
   public Stub getDirectChannel()
   {
     synchronized (latestViewLock) {
-      return (Stub)memberToStubMap.get(myMemberId);
+      return memberToStubMap.get(myMemberId);
     }
   }
 
@@ -3731,11 +3742,11 @@ public final class JGroupMembershipManager implements MembershipManager {
   }
 
   protected boolean isShunnedNoSync(DistributedMember m) {
-      if (!shunnedMembers.containsKey(m))
+      Long shunTime = shunnedMembers.get(m);
+      if (shunTime == null)
         return false;
-      
+
       // Make sure that the entry isn't stale...
-      long shunTime = ((Long)shunnedMembers.get(m)).longValue();
       long now = System.currentTimeMillis();
       if (shunTime + SHUNNED_SUNSET * 1000 > now)
         return true;
@@ -3759,7 +3770,7 @@ public final class JGroupMembershipManager implements MembershipManager {
 //  }
 
   public boolean isShunnedMemberNoSync(IpAddress addr) {
-    InternalDistributedMember mbr = (InternalDistributedMember)ipAddrToMemberMap.get(addr);
+    InternalDistributedMember mbr = ipAddrToMemberMap.get(addr);
     if (mbr == null) {
       return false;
     }
@@ -3942,7 +3953,7 @@ public final class JGroupMembershipManager implements MembershipManager {
       boolean createIfAbsent) {
     synchronized(latestViewLock) {
 //      logger.fine("DEBUG: getting member for ipAddr " + sender);
-      InternalDistributedMember mbr = (InternalDistributedMember)ipAddrToMemberMap.get(sender);
+      InternalDistributedMember mbr = ipAddrToMemberMap.get(sender);
       if (mbr == null) {
         JGroupMember jgm = new JGroupMember(sender);
         mbr = new InternalDistributedMember(jgm);
@@ -3963,7 +3974,7 @@ public final class JGroupMembershipManager implements MembershipManager {
    */
   public HashMap getChannelStates(DistributedMember member, boolean includeMulticast) {
     HashMap result = new HashMap();
-    Stub stub = (Stub)memberToStubMap.get(member);
+    Stub stub = memberToStubMap.get(member);
     DirectChannel dc = directChannel;
     if (stub != null && dc != null) {
       dc.getChannelStates(stub, result);
@@ -3982,7 +3993,7 @@ public final class JGroupMembershipManager implements MembershipManager {
     Long mcastState = (Long)channelState.remove("JGroups.MCast");
     Stub stub;
     synchronized (latestViewLock) {
-      stub = (Stub)memberToStubMap.get(otherMember);
+      stub = memberToStubMap.get(otherMember);
     }
     if (dc != null && stub != null) {
       dc.waitForChannelState(stub, channelState);
@@ -4101,7 +4112,7 @@ public final class JGroupMembershipManager implements MembershipManager {
   
   public boolean waitForMembershipCheck(InternalDistributedMember remoteId) {
     boolean foundRemoteId = false;
-    Latch currentLatch = null;
+    CountDownLatch currentLatch = null;
     // ARB: preconditions
     // remoteId != null
     synchronized (latestViewLock) {
@@ -4114,17 +4125,17 @@ public final class JGroupMembershipManager implements MembershipManager {
         // If not, then create a latch if needed and wait for the latch to open.
         foundRemoteId = true;
       }
-      else if ((currentLatch = (Latch)this.memberLatch.get(remoteId)) == null) {
-        currentLatch = new Latch();
+      else if ((currentLatch = this.memberLatch.get(remoteId)) == null) {
+        currentLatch = new CountDownLatch(1);
         this.memberLatch.put(remoteId, currentLatch);
       }
     } // synchronized
 
-    if (!foundRemoteId) {
+    if (currentLatch != null) {
       // ARB: wait for hardcoded 1000 ms for latch to open.
       // if-stmt precondition: currentLatch is non-null
       try {
-        if (currentLatch.attempt(membershipCheckTimeout)) {
+        if (currentLatch.await(membershipCheckTimeout, TimeUnit.MILLISECONDS)) {
           foundRemoteId = true;
           // @todo 
           // ARB: remove latch from memberLatch map if this is the last thread waiting on latch.
@@ -4296,8 +4307,7 @@ public final class JGroupMembershipManager implements MembershipManager {
    */
   public void setCacheTimeOffset(Address src, long timeOffset, boolean isJoin) {
     // check if offset calculator is still in view
-    InternalDistributedMember coord = (InternalDistributedMember) ipAddrToMemberMap
-        .get(src);
+    InternalDistributedMember coord = ipAddrToMemberMap.get(src);
     if (coord == null && src != null) {
       JGroupMember jgm = new JGroupMember((IpAddress)src);
       coord = new InternalDistributedMember(jgm);

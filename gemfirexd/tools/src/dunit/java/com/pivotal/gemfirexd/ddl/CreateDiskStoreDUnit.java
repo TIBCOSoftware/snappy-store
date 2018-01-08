@@ -14,13 +14,36 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.pivotal.gemfirexd.ddl;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -35,8 +58,9 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
+import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
-
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import io.snappydata.test.dunit.RMIException;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
@@ -55,9 +79,14 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     super(name);
   }
 
+  @SuppressWarnings("unchecked")
   public void testDistributionOfDiskStoreCreate() throws Exception {
     // Start one client a two servers
     startVMs(1, 2);
+    // check DiskStoreIDs VTI for default diskstores
+    Statement stmt = TestUtil.getStatement();
+    checkDiskStores(stmt, 2, new GemFireXDUtils.Pair[0]);
+
     clientSQLExecute(1, "create diskstore TEST");
     // Test the DiskStore presence on servers
     sqlExecuteVerify(null, new int[] { 1, 2 },
@@ -72,6 +101,10 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     for (int i = 1; i < 3; ++i) {
       serverExecute(i, verifier);
     }
+    // check DiskStoreIDs VTI for default and added diskstore
+    GemFireXDUtils.Pair<String, String> testDS = new GemFireXDUtils.Pair<>(
+        "TEST", null);
+    checkDiskStores(stmt, 2, new GemFireXDUtils.Pair[] { testDS });
 
     startVMs(0, 1);
     sqlExecuteVerify(null, new int[] { 3 },
@@ -79,6 +112,8 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
         TestUtil.getResourcesDir() + "/lib/checkDiskStore.xml",
         "ddl-dist1");
     serverExecute(3, verifier);
+    // check DiskStoreIDs VTI on the new server
+    checkDiskStores(stmt, 3, new GemFireXDUtils.Pair[] { testDS });
 
     sqlExecuteVerify(null, new int[] { 1, 2, 3 },
         "select NAME from SYS.SYSDISKSTORES  ",
@@ -108,6 +143,7 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
         throw sqle;
       }
     }
+    checkDiskStores(stmt, 3, new GemFireXDUtils.Pair[] { testDS });
 
     // now valid sizes
     clientSQLExecute(1,
@@ -142,6 +178,10 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     for (int i = 1; i <= 3; ++i) {
       serverExecute(i, verifier);
     }
+    // check DiskStoreIDs VTI for the new diskstore and directory
+    GemFireXDUtils.Pair<String, String> testStore1DS = new GemFireXDUtils.Pair<>(
+        "TESTSTORE1", "testdir1");
+    checkDiskStores(stmt, 3, new GemFireXDUtils.Pair[] { testDS, testStore1DS });
 
     startVMs(0, 1);
     sqlExecuteVerify(null, new int[] { 4 },
@@ -161,6 +201,8 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     sqlExecuteVerify(new int[] { 1 }, null,
         "select NAME from SYS.SYSDISKSTORES WHERE NAME = 'TESTSTORE1'",
         TestUtil.getResourcesDir() + "/lib/checkDiskStore.xml", "empty");
+    // check DiskStoreIDs VTI for the new server
+    checkDiskStores(stmt, 4, new GemFireXDUtils.Pair[] { testDS, testStore1DS });
 
     // some inserts into the table and verify
     for (int i = 1; i <= 4; i++) {
@@ -177,11 +219,16 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
         "select * from gfxdtest.cfg_config2",
         TestUtil.getResourcesDir() + "/lib/checkDiskStore.xml",
         "ddl-dist5");
+    checkDiskStores(stmt, 4, new GemFireXDUtils.Pair[] { testDS, testStore1DS });
 
     clientSQLExecute(1, "drop diskstore test");
+    checkDiskStores(stmt, 4, new GemFireXDUtils.Pair[] { testStore1DS });
     clientSQLExecute(1, "drop table gfxdtest.cfg_config");
     clientSQLExecute(1, "drop table gfxdtest.cfg_config2");
+    checkDiskStores(stmt, 4, new GemFireXDUtils.Pair[] { testStore1DS });
     clientSQLExecute(1, "drop diskstore teststore1");
+    checkDiskStores(stmt, 4, new GemFireXDUtils.Pair[0]);
+    stmt.close();
 
     for (int serverNum : new int[] { 1, 2, 3, 4 }) {
       serverExecute(serverNum, new SerializableRunnable() {
@@ -194,9 +241,14 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     }
   }
 
+  @SuppressWarnings("unchecked")
   public void testDistributionOfDiskStoreDrop() throws Exception {
-    // Start one client a four servers
+    // Start one client and two servers
     startVMs(1, 2);
+    // check DiskStoreIDs VTI for default diskstores
+    Statement stmt = TestUtil.getStatement();
+    checkDiskStores(stmt, 2, new GemFireXDUtils.Pair[0]);
+
     clientSQLExecute(1, "create diskstore TEST");
     // Test the DiskStore presence on servers
     sqlExecuteVerify(null, new int[] { 1, 2 },
@@ -209,9 +261,14 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     clientExecute(1, verifyNoDiskStoreExistence("TEST"));
     serverExecute(1, verifyDiskStoreExistence("TEST"));
     serverExecute(2, verifyDiskStoreExistence("TEST"));
+    // check DiskStoreIDs VTI for default and added diskstore
+    GemFireXDUtils.Pair<String, String> testDS = new GemFireXDUtils.Pair<>(
+        "TEST", null);
+    checkDiskStores(stmt, 2, new GemFireXDUtils.Pair[] { testDS });
     clientSQLExecute(1, "drop diskstore TEST");
     serverExecute(1, verifyNoDiskStoreExistence("TEST"));
     serverExecute(2, verifyNoDiskStoreExistence("TEST"));
+    checkDiskStores(stmt, 2, new GemFireXDUtils.Pair[0]);
     startVMs(0, 1);
     sqlExecuteVerify(null, new int[] { 3 },
         "select NAME from SYS.SYSDISKSTORES WHERE NAME = 'TEST' ",
@@ -226,6 +283,9 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     sqlExecuteVerify(new int[] { 1 }, null,
         "select NAME from SYS.SYSDISKSTORES WHERE NAME = 'TEST' ",
         TestUtil.getResourcesDir() + "/lib/checkDiskStore.xml", "empty");
+
+    // check DiskStoreIDs VTI for the new server
+    checkDiskStores(stmt, 3, new GemFireXDUtils.Pair[0]);
   }
   
   public void testPersistDDonRecoveredClient() throws Exception {
@@ -554,7 +614,8 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     }
   }
   
-  private void verify(Region rgn, File [] expectedDirs, DataPolicy expectedDP) {
+  private void verify(Region rgn, File [] expectedDirs,
+      DataPolicy expectedDP) throws IOException {
     RegionAttributes ra = rgn.getAttributes();
     assertEquals(expectedDP,ra.getDataPolicy());
     if(expectedDirs == null) {
@@ -565,10 +626,10 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
     assertEquals(actualDirs.length, expectedDirs.length);
     Set<String> expected = new HashSet(expectedDirs.length);
     for(File file :expectedDirs) {
-      expected.add(file.getAbsolutePath());
+      expected.add(file.getCanonicalPath());
     }   
     for(File file: actualDirs) {
-      assertTrue(expected.remove(file.getAbsolutePath()));
+      assertTrue(expected.remove(file.getCanonicalPath()));
     }    
     assertTrue(expected.isEmpty());
     }
@@ -596,6 +657,57 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
       else {
         vm.invoke(noGFE);
       }
+    }
+  }
+
+  private void checkDiskStores(Statement stmt, final int numServers,
+      GemFireXDUtils.Pair<String, String>[] extraStores) throws SQLException {
+    ResultSet rs = stmt.executeQuery("select * from sys.diskstoreIds");
+    // expect 2 from each server for datadictionary and default diskstores
+    // apart from the extraStores
+    HashMap<String, HashMap<String, String>> diskStores = new HashMap<>();
+    HashSet<GemFireXDUtils.Pair<String, String>> memberDiskStoreIds =
+        new HashSet<>();
+    while (rs.next()) {
+      String member = rs.getString(1);
+      String name = rs.getString(2);
+      String id = rs.getString(3);
+      String dirs = rs.getString(4);
+
+      HashMap<String, String> memberMap = diskStores.get(name);
+      if (memberMap == null) {
+        memberMap = new HashMap<>(4);
+        diskStores.put(name, memberMap);
+      }
+      assertNull(memberMap.put(member, dirs));
+      if (name.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
+        assertTrue(dirs.endsWith("datadictionary"));
+      } else if (name.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
+        assertTrue(dirs.endsWith(GfxdConstants.SNAPPY_DELTA_SUBDIR));
+      }
+      assertTrue(memberDiskStoreIds.add(new GemFireXDUtils.Pair<>(member, id)));
+    }
+    assertEquals(3 + extraStores.length, diskStores.size());
+    assertTrue(diskStores.containsKey(GfxdConstants.GFXD_DD_DISKSTORE_NAME));
+    assertTrue(
+        diskStores.containsKey(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME));
+    assertTrue(diskStores.containsKey(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE));
+    for (GemFireXDUtils.Pair<String, String> p : extraStores) {
+      HashMap<String, String> memberMap = diskStores.get(p.getKey());
+      assertNotNull(memberMap);
+      String dir = p.getValue();
+      if (dir != null && dir.length() > 0) {
+        for (String d : memberMap.values()) {
+          assertTrue(d.endsWith(dir));
+        }
+      }
+    }
+    // also check that all servers are present for every diskstore
+    for (Map.Entry<String, HashMap<String, String>> e : diskStores.entrySet()) {
+      String name = e.getKey();
+      assertEquals(name.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)
+          ? numServers + 1 : (name.equals(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME)
+              ? numServers + 2 : numServers), e.getValue().size());
     }
   }
 

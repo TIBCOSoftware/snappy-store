@@ -19,6 +19,9 @@
 		<row>
 			<field name="NAME">GFXD-DD-DISKSTORE</field>
 		</row>
+		<row>
+			<field name="NAME">SNAPPY-INTERNAL-DELTA</field>
+		</row>
 	</resultSet>
 	<resultSet id="ddl-dist3">
 		<row>
@@ -37,6 +40,9 @@
 		</row>
 		<row>
 			<field name="NAME">GFXD-DD-DISKSTORE</field>
+		</row>
+		<row>
+			<field name="NAME">SNAPPY-INTERNAL-DELTA</field>
 		</row>
 	</resultSet>
 	<resultSet id="ddl-dist5">

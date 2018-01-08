@@ -16,7 +16,6 @@
  */
 package com.gemstone.gemfire.internal;
 
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import java.io.*;
@@ -54,7 +53,7 @@ public class GemFireFormatter extends Formatter {
       pw.print(threadName);
     }
     pw.print(" tid=0x");
-    pw.print(Long.toHexString(CFactory.getThreadId()));
+    pw.print(Long.toHexString(Thread.currentThread().getId()));
     pw.print("] ");
     pw.print("(msgTID=");
     pw.print(record.getThreadID());

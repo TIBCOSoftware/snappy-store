@@ -25,6 +25,7 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.internal.Config;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.ManagerLogWriter;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.tcp.Connection;
 import com.gemstone.gemfire.memcached.GemFireMemcachedServer;
@@ -423,7 +424,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
    */
   public boolean isLogFileModifiable();
   /** The name of the "logFile" property */
-  public static final String LOG_FILE_NAME = "log-file";
+  public static final String LOG_FILE_NAME = LauncherBase.LOG_FILE;
 
   /**
    * The default log file.

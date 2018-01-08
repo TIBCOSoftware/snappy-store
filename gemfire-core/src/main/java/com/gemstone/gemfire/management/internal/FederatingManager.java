@@ -28,7 +28,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import javax.management.InstanceNotFoundException;
 import javax.management.Notification;
 import javax.management.ObjectName;
 
@@ -61,8 +60,6 @@ import com.gemstone.gemfire.management.ManagementException;
  * @since 7.0
  */
 public class FederatingManager extends Manager {
-
-
 
   /**
    *
@@ -168,9 +165,13 @@ public class FederatingManager extends Manager {
    */
   public void addMember(DistributedMember member) {
     GIITask giiTask = new GIITask(member);
-    pooledMembershipExecutor.submit(giiTask);    
+    executeTask(new Runnable() {
+      @Override
+      public void run() {
+        giiTask.call();
+      }
+    });
   }
-
 
   /**
    * This method will be invoked from MembershipListener which is registered
@@ -183,10 +184,18 @@ public class FederatingManager extends Manager {
    */
   public void removeMember(DistributedMember member, boolean crashed) {
     RemoveMemberTask removeTask = new RemoveMemberTask(member, crashed);
-    pooledMembershipExecutor.submit(removeTask); 
+    executeTask(removeTask);
   }
-  
-  private class RemoveMemberTask implements Callable<DistributedMember> {
+
+  private void executeTask(Runnable task) {
+    try {
+      pooledMembershipExecutor.execute(task);
+    } catch (java.util.concurrent.RejectedExecutionException ex) {
+      // Ignore, we are getting shutdown
+    }
+  }
+
+  private class RemoveMemberTask implements Runnable {
 
     private DistributedMember member;
 
@@ -197,8 +206,9 @@ public class FederatingManager extends Manager {
       this.crashed = crashed;
     }
 
-    public DistributedMember call() {
-      return removeMemberArtifacts(member, crashed);
+    @Override
+    public void run() {
+      removeMemberArtifacts(member, crashed);
     }
   }
 
@@ -261,7 +271,7 @@ public class FederatingManager extends Manager {
     pooledMembershipExecutor = Executors
         .newFixedThreadPool(rt.availableProcessors());
 
-    List<GIITask> giiTaskList = new ArrayList<GIITask>();
+    final ArrayList<GIITask> giiTaskList = new ArrayList<>();
 
     List<Future<DistributedMember>> futureTaskList;
 
@@ -576,13 +586,9 @@ public class FederatingManager extends Manager {
    * @param objectName
    *          {@link javax.management.ObjectName} of the MBean
    * @return last updated time of the proxy
-   *
-   * @throws InstanceNotFoundException
    */
   public long getLastUpdateTime(ObjectName objectName) {
-
     return proxyFactory.getLastUpdateTime(objectName);
-
   }
 
   /**

@@ -17,7 +17,6 @@
 package com.pivotal.gemfirexd.jdbc;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
@@ -25,7 +24,6 @@ import java.util.Properties;
 import com.gemstone.gemfire.internal.AvailablePort;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
-import com.pivotal.gemfirexd.jdbc.ProcedureTest.ExampleObj;
 import com.pivotal.gemfirexd.procedure.ProcedureExecutionContext;
 
 import junit.framework.TestSuite;
@@ -480,7 +478,8 @@ public class DropIfExistsTest extends JdbcTestBase {
     Properties props = new Properties();
     props.setProperty("server-groups", "SG1");
     setupConnection(props);
-    sqlExecute("CREATE GATEWAYRECEIVER TESTRECEIVER (startport 1530 endport 1541) SERVER GROUPS (SG1)", false);
+    sqlExecute("CREATE GATEWAYRECEIVER TESTRECEIVER (bindaddress 'localhost' " +
+        "startport 1530 endport 1541) SERVER GROUPS (SG1)", false);
     sqlExecute("DROP GATEWAYRECEIVER IF EXISTS TESTRECEIVER", false);
 
     try{

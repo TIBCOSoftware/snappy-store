@@ -31,6 +31,13 @@ import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
 public interface ExternalCatalog {
 
   /**
+   * Wait for initialization of the catalog. Should always be invoked
+   * before calling any other method. Fails after waiting for some period
+   * of time.
+   */
+  boolean waitForInitialization();
+
+  /**
    * Will be used by the execution engine to route to JobServer
    * when it finds out that this table is a column table.
    *
@@ -81,5 +88,5 @@ public interface ExternalCatalog {
   public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
       boolean skipLocks);
 
-  void stop();
+  void close();
 }

@@ -75,6 +75,9 @@ public interface StoreCallbacks {
 
   void dropStorageMemory(String objectName, long ignoreBytes);
 
+  /** wait for runtime manager to initialize and get set in callbacks */
+  void waitForRuntimeManager(long maxWaitMillis);
+
   boolean isSnappyStore();
 
   void resetMemoryManager();

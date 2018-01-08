@@ -39,7 +39,6 @@ import com.gemstone.gemfire.Statistics;
 import com.gemstone.gemfire.StatisticsType;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.ResourceManagerStats;
@@ -1045,8 +1044,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
     Xid xid = new ClientXid(0x1234, gid, bid);
 
-    String localhost = SocketCreator.getLocalHost().getHostName();
-    xaDataSource.setServerName(localhost);
+    xaDataSource.setServerName("localhost");
     xaDataSource.setPortNumber(netport);
     xaDataSource.setDatabaseName("gemfirexd");
     // get the stuff required to execute the global transaction
@@ -1147,8 +1145,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
     Xid xid = new ClientXid(0x1234, gid, bid);
 
-    String localhost = SocketCreator.getLocalHost().getHostName();
-    xaDataSource.setServerName(localhost);
+    xaDataSource.setServerName("localhost");
     xaDataSource.setPortNumber(netport);
 
     xaDataSource.setDatabaseName("gemfirexd");

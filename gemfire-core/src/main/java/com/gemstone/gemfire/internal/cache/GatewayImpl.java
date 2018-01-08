@@ -35,6 +35,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -47,7 +48,6 @@ import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.cache.GatewayConfigurationException;
 import com.gemstone.gemfire.cache.GatewayException;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.SerializedCacheValue;
 import com.gemstone.gemfire.cache.client.PoolManager;
 import com.gemstone.gemfire.cache.client.internal.EndpointManagerImpl;
 import com.gemstone.gemfire.cache.client.internal.PoolImpl;
@@ -62,12 +62,8 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.SocketCreator;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl.SerializedCacheValueImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerHelper;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.security.GemFireSecurityException;
 import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.ENTRY_EVENT_NEW_VALUE;
@@ -226,11 +222,10 @@ public class GatewayImpl extends AbstractGateway
   protected static final int QUEUE_SIZE_THRESHOLD = Integer.getInteger(
       "Gateway.QUEUE_SIZE_THRESHOLD", 5000).intValue();
 
-
   /**
    * Unique ID for pool names
    */
-  private static final AI ID_COUNTER = CFactory.createAI();
+  private static final AtomicInteger ID_COUNTER = new AtomicInteger();
 
   ////////////////////// Constructors //////////////////////
 

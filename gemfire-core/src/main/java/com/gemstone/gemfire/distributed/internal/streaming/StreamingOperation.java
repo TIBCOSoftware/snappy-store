@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
@@ -32,7 +33,6 @@ import com.gemstone.gemfire.GemFireRethrowable;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.cache.query.QueryException;
 import com.gemstone.gemfire.cache.query.internal.DefaultQuery;
 import com.gemstone.gemfire.cache.query.internal.QueryMonitor;
 import com.gemstone.gemfire.distributed.internal.DM;
@@ -48,10 +48,7 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionQueryEvaluator;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionQueryEvaluator.StreamingQueryPartitionResponse;
 import com.gemstone.gemfire.internal.cache.Token;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 /**
@@ -131,8 +128,8 @@ public abstract class StreamingOperation {
   public class StreamingProcessor extends ReplyProcessor21 {
     protected volatile boolean abort = false;
     private final Map statusMap = new HashMap();
-    
-    protected final AI msgsBeingProcessed = CFactory.createAI(0);
+
+    protected final AtomicInteger msgsBeingProcessed = new AtomicInteger(0);
 
     class Status {
       int msgsProcessed = 0;

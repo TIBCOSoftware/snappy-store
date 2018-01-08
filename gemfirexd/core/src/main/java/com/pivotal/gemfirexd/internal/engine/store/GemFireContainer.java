@@ -339,6 +339,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   private AtomicReference<ExternalTableMetaData> externalTableMetaData =
       new AtomicReference<ExternalTableMetaData>(null);
 
+  private final IndexStats stats;
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -423,6 +424,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       this.region = null;
       this.singleSchema = this.baseContainer.getCurrentRowFormatter();
       this.oldTableInfos = null;
+
+      if (this.baseContainer.isApplicationTable() &&
+          !Misc.isSnappyHiveMetaTable(getSchemaName())) {
+        this.stats = new IndexStats(gfCache.getDistributedSystem(), qualifiedName);
+      }
+      else {
+        this.stats = null;
+      }
       // Write the index creation records to disk store if table is persistent.
       // It doesn't really matter if the index creation ultimately fails due
       // to some reason (e.g. uniqueness violation on some other node) and this
@@ -436,8 +445,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             .getDiskStoreName();
         DiskStoreImpl store;
         if (diskStoreName != null && (store = Misc.getGemFireCache()
-            .findDiskStore(diskStoreName)) != null
-            && !store.isUsedForInternalUse()) {
+            .findDiskStore(diskStoreName)) != null) {
           store.writeIndexCreate(getUUID());
         }
       }
@@ -445,6 +453,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       this.encoder = null;
       return;
     }
+
+    this.stats = null;
 
     Region<?, ?> rootRegion = gfCache.getRegion(schemaName);
     // if schema not found, create it now
@@ -475,16 +485,16 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     initTableFlags();
   }
 
-  private ExternalCatalog waitForHiveCatalogInit() {
-    ExternalCatalog ret;
-    int cnt = -1;
-    // Retrying after sleep of some millisecs to reduce the worst case
-    // of delaying that put for a large period of time
-    while ((ret = Misc.getMemStore().getExternalCatalog()) == null
-        && cnt < GfxdConstants.HA_NUM_RETRIES) {
-      GemFireXDUtils.sleepForRetry(cnt++);
+  public void incPointStats() {
+    if (this.stats != null) {
+      this.stats.incPointLookupStats();
     }
-    return ret;
+  }
+
+  public void incRangeScanStats() {
+    if (this.stats != null) {
+      this.stats.incScanStats();
+    }
   }
 
   public void invalidateHiveMetaData() {
@@ -503,13 +513,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         schemaName = fullName.substring(0, schemaIndex);
         tableName = fullName.substring(schemaIndex + 1);
       }
-      ExternalCatalog extcat = Misc.getMemStore().getExternalCatalog();
-      if (extcat == null) {
-        extcat = waitForHiveCatalogInit();
-        if (extcat == null) {
-          throw new TimeoutException("The snappy catalog in hive metastore is not accessible");
-        }
-      }
+      ExternalCatalog extcat = Misc.getMemStore().getExistingExternalCatalog();
       // containers are created during initialization, ignore them
       externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
               schemaName, tableName, true));
@@ -1999,6 +2003,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
                 + this.qualifiedName + " in " + dsImpl);
           }
           dsImpl.writeIndexDelete(this.uuid);
+        }
+        if (this.stats != null) {
+          this.stats.close();
         }
       }
     }

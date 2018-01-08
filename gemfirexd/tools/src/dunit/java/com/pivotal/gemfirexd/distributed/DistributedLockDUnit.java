@@ -30,13 +30,13 @@ import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
+import com.gemstone.gemfire.internal.DSFIDFactory;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
 import com.gemstone.gnu.trove.TIntObjectHashMap;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
-import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.RegionExecutorMessage;
@@ -199,6 +199,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
   public static final class TestFunctionMessage extends
       RegionExecutorMessage<Object> {
 
+    static final byte ID = LAST_MSG_ID + 1;
+
     /** for deserialization */
     public TestFunctionMessage() {
       super(true);
@@ -249,9 +251,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
 
     @Override
     public byte getGfxdID() {
-      return LAST_MSG_ID + 1;
+      return ID;
     }
-
   }
 
   static final class TestFunction implements Function {
@@ -508,7 +509,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         FunctionService.registerFunction(new TestFunction());
-        GfxdDataSerializable.registerSqlSerializable(TestFunctionMessage.class);
+        DSFIDFactory.registerGemFireXDClass(TestFunctionMessage.ID,
+            () -> new TestFunctionMessage());
       }
     };
     invokeInEveryVM(register);

@@ -68,48 +68,35 @@ namespace client {
        */
       all = INT_MIN,
       /**
-       * If the writer's level is <code>FINEST</code> then
-       * finest, finer, fine, config, info, warning, error, and
-       * severe messages will be logged.
+       * If the writer's level is <code>TRACE</code> then
+       * trace, debug, info, warn, error, and fatal messages will be logged.
        */
-      finest = 300,
+      trace = 100,
       /**
-       * If the writer's level is <code>FINER</code> then
-       * finer, fine, config, info, warning, error, and severe messages
-       * will be logged.
+       * If the writer's level is <code>DEBUG</code> then
+       * debug, info, warn, error, and fatal messages will be logged.
        */
-      finer = 400,
-      /**
-       * If the writer's level is <code>FINE</code> then
-       * fine, config, info, warning, error, and severe messages
-       * will be logged.
-       */
-      fine = 500,
-      /**
-       * If the writer's level is <code>CONFIG</code> then
-       * config, info, warning, error, and severe messages will be logged.
-       */
-      config = 700,
+      debug = 200,
       /**
        * If the writer's level is <code>INFO</code> then
-       * info, warning, error, and severe messages will be logged.
+       * info, warn, error, and fatal messages will be logged.
        */
-      info = 800,
+      info = 300,
       /**
-       * If the writer's level is <code>WARNING</code> then
-       * warning, error, and severe messages will be logged.
+       * If the writer's level is <code>WARN</code> then
+       * warn, error, and fatal messages will be logged.
        */
-      warning = 900,
-      /**
-       * If the writer's level is <code>SEVERE</code> then
-       * only severe messages will be logged.
-       */
-      severe = 1000,
+      warn = 400,
       /**
        * If the writer's level is <code>ERROR</code> then
-       * error and severe messages will be logged.
+       * error and fatal messages will be logged.
        */
-      error = ((int)warning + (int)severe) / 2,
+      error = 500,
+      /**
+       * If the writer's level is <code>FATAL</code> then
+       * only fatal level messages will be logged.
+       */
+      fatal = 600,
       /**
        * If the writer's level is <code>NONE</code> then
        * no messages will be logged.
@@ -244,6 +231,10 @@ namespace client {
 
     static const char* NEWLINE;
 
+    inline static void setGlobalLoggingFlag(const char* flag) {
+      LOGGING_FLAG = flag;
+    }
+
     inline static LogWriter& global() noexcept {
       return g_logger;
     }
@@ -279,42 +270,34 @@ namespace client {
 
     std::ostream& log(const LogLevel::type logLevel);
 
-    inline static bool severeEnabled() noexcept {
-      return ((int)LogLevel::severe >= (int)g_logger.m_logLevel);
+    inline static bool fatalEnabled() noexcept {
+      return ((int)LogLevel::fatal >= (int)g_logger.m_logLevel);
     }
     inline static bool errorEnabled() noexcept {
       return ((int)LogLevel::error >= (int)g_logger.m_logLevel);
     }
-    inline static bool warningEnabled() noexcept {
-      return ((int)LogLevel::warning >= (int)g_logger.m_logLevel);
-    }
-    inline static bool configEnabled() noexcept {
-      return ((int)LogLevel::config >= (int)g_logger.m_logLevel);
+    inline static bool warnEnabled() noexcept {
+      return ((int)LogLevel::warn >= (int)g_logger.m_logLevel);
     }
     inline static bool infoEnabled() noexcept {
       return ((int)LogLevel::info >= (int)g_logger.m_logLevel);
     }
-    inline static bool fineEnabled() noexcept {
-      return ((int)LogLevel::fine >= (int)g_logger.m_logLevel);
+    inline static bool debugEnabled() noexcept {
+      return ((int)LogLevel::debug >= (int)g_logger.m_logLevel);
     }
-    inline static bool finerEnabled() noexcept {
-      return ((int)LogLevel::finer >= (int)g_logger.m_logLevel);
-    }
-    inline static bool finestEnabled() noexcept {
-      return ((int)LogLevel::finest >= (int)g_logger.m_logLevel);
+    inline static bool traceEnabled() noexcept {
+      return ((int)LogLevel::trace >= (int)g_logger.m_logLevel);
     }
     inline static bool traceEnabled(const TraceFlag& flag) noexcept {
       return flag.global();
     }
 
-    static std::ostream& severe();
+    static std::ostream& fatal();
     static std::ostream& error();
-    static std::ostream& warning();
-    static std::ostream& config();
+    static std::ostream& warn();
     static std::ostream& info();
-    static std::ostream& fine();
-    static std::ostream& finer();
-    static std::ostream& finest();
+    static std::ostream& debug();
+    static std::ostream& trace();
 
     static std::ostream& trace(const TraceFlag& flag);
     static std::ostream& traceCompact(const TraceFlag& flag);

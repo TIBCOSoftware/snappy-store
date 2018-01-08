@@ -29,6 +29,9 @@ public abstract class BufferAllocator implements Closeable {
   public static final String STORE_DATA_FRAME_OUTPUT =
       "STORE_DATA_FRAME_OUTPUT";
 
+  /** special owner indicating execution pool memory */
+  public static final String EXECUTION = "EXECUTION";
+
   /**
    * Allocate a new ByteBuffer of given size.
    */
@@ -94,6 +97,7 @@ public abstract class BufferAllocator implements Closeable {
     final int position = buffer.position();
     final ByteBuffer newBuffer = allocate(buffer.limit(), owner);
     buffer.rewind();
+    newBuffer.order(buffer.order());
     newBuffer.put(buffer);
     buffer.position(position);
     newBuffer.position(position);
@@ -110,6 +114,23 @@ public abstract class BufferAllocator implements Closeable {
    * Indicates if this allocator will produce direct ByteBuffers.
    */
   public abstract boolean isDirect();
+
+  /**
+   * Return true if this is a managed direct buffer allocator.
+   */
+  public boolean isManagedDirect() {
+    return false;
+  }
+
+  /**
+   * Allocate a buffer passing a custom FreeMemoryFactory. Requires that
+   * appropriate calls against Spark memory manager have already been done.
+   * Only for managed buffer allocator.
+   */
+  public ByteBuffer allocateCustom(int size,
+      UnsafeHolder.FreeMemoryFactory factory) {
+    throw new UnsupportedOperationException("Not supported for " + toString());
+  }
 
   /**
    * Any cleanup required at system close.

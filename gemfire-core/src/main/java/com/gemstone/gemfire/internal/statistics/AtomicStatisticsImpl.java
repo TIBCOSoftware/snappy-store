@@ -15,7 +15,7 @@
  * LICENSE file.
  */
 
-package com.gemstone.gemfire.internal.stats50;
+package com.gemstone.gemfire.internal.statistics;
 
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLongArray;
@@ -31,12 +31,12 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 /**
  * An implementation of {@link Statistics} that stores its statistics in local
  * java memory.
- * 
+ *
  * @see <A href="package-summary.html#statistics">Package introduction</A>
- * 
+ *
  * @since 8.1
  */
-public final class Atomic60StatisticsImpl extends StatisticsImpl {
+public final class AtomicStatisticsImpl extends StatisticsImpl {
 
   /** In JOM Statistics, the values of the int statistics */
   private final AtomicIntegerArray intStorage;
@@ -54,7 +54,7 @@ public final class Atomic60StatisticsImpl extends StatisticsImpl {
 
   /**
    * Creates a new statistics instance of the given type
-   * 
+   *
    * @param type
    *          A description of the statistics
    * @param textId
@@ -68,7 +68,7 @@ public final class Atomic60StatisticsImpl extends StatisticsImpl {
    *          statistics are stored (and collected) in GemFire shared memory or
    *          in the local VM
    */
-  public Atomic60StatisticsImpl(StatisticsType type, String textId,
+  public AtomicStatisticsImpl(StatisticsType type, String textId,
       long numericId, long uniqueId, StatisticsManager system) {
     super(type, calcTextId(system, textId), calcNumericId(system, numericId),
         uniqueId, 0);

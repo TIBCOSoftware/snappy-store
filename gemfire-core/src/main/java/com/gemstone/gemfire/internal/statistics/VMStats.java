@@ -14,7 +14,7 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package com.gemstone.gemfire.internal.stats50;
+package com.gemstone.gemfire.internal.statistics;
 
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.GarbageCollectorMXBean;
@@ -41,13 +41,12 @@ import com.gemstone.gemfire.StatisticsTypeFactory;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.StatisticsTypeFactoryImpl;
-import com.gemstone.gemfire.internal.VMStatsContract;
 
 /**
  * Statistics related to a Java VM.
  * This version is hardcoded to use 1.5 MXBean stats from java.lang.management.
  */
-public class VMStats50 implements VMStatsContract {
+public class VMStats {
   private final static StatisticsType vmType;
 
   private final static ClassLoadingMXBean clBean;
@@ -60,7 +59,7 @@ public class VMStats50 implements VMStatsContract {
   private final static Object unixBean;
   private final static Method getMaxFileDescriptorCount;
   private final static Method getOpenFileDescriptorCount;
-  private final static Method getProcessCpuTime;  
+  private final static Method getProcessCpuTime;
   private final static ThreadMXBean threadBean;
 
   private final static int pendingFinalizationCountId;
@@ -71,7 +70,7 @@ public class VMStats50 implements VMStatsContract {
   private final static int peakThreadsId;
   private final static int threadsId;
   private final static int threadStartsId;
-  
+
   private final static int cpusId;
   private final static int freeMemoryId;
   private final static int totalMemoryId;
@@ -400,7 +399,7 @@ public class VMStats50 implements VMStatsContract {
       thread_userTimeId = -1;
     }
   }
-  
+
   private final Statistics vmStats;
   private final Statistics heapMemStats;
   private final Statistics nonHeapMemStats;
@@ -408,7 +407,7 @@ public class VMStats50 implements VMStatsContract {
   private final StatisticsFactory f;
   private final long id;
 
-  public VMStats50(StatisticsFactory f, long id) {
+  public VMStats(StatisticsFactory f, long id) {
     this.f = f;
     this.id = id;
     this.vmStats = f.createStatistics(vmType, "vmStats", id);
@@ -576,7 +575,11 @@ public class VMStats50 implements VMStatsContract {
       }
     }
   }
-  
+
+  /**
+   * Called by sampler when it wants the VMStats statistics values to be
+   * refetched from the system.
+   */
   public void refresh() {
     Runtime rt = Runtime.getRuntime();
     this.vmStats.setInt(pendingFinalizationCountId, memBean.getObjectPendingFinalizationCount());
@@ -652,7 +655,10 @@ public class VMStats50 implements VMStatsContract {
     stats.setLong(mu_committedMemoryId, mu.getCommitted());
     stats.setLong(mu_maxMemoryId, mu.getMax());
   }
-  
+
+  /**
+   * Called by sampler when it wants the VMStats to go away.
+   */
   public void close() {
     this.heapMemStats.close();
     this.nonHeapMemStats.close();
@@ -660,7 +666,7 @@ public class VMStats50 implements VMStatsContract {
     closeStatsMap(this.mpMap);
     closeStatsMap(this.gcMap);
   }
-  
+
   private void closeStatsMap(Map<?, Statistics> map) {
     for (Statistics s : map.values()) {
       s.close();
@@ -702,7 +708,7 @@ public class VMStats50 implements VMStatsContract {
   public static StatisticsType getThreadType() {
     return threadType;
   }
-  
+
   public static StatisticsType getMemoryUsageType() {
     return memoryUsageType;
   }

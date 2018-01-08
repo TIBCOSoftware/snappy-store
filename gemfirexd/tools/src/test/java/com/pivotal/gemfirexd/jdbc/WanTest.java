@@ -1585,7 +1585,7 @@ public class WanTest extends JdbcTestBase {
     info.setProperty("custom-NIC1", "NIC1");
     Connection con = getConnection(info);
     con.createStatement().execute(
-        "CREATE GATEWAYRECEIVER ok (hostnameforsenders '127.0.0.1')");
+        "CREATE GATEWAYRECEIVER ok (bindaddress 'localhost' hostnameforsenders '127.0.0.1')");
     ResultSet hubRs = con.createStatement().executeQuery(
         "select * from SYS.GATEWAYRECEIVERS");
     ResultSetMetaData rsmd = hubRs.getMetaData();
@@ -1603,7 +1603,7 @@ public class WanTest extends JdbcTestBase {
     info.setProperty("custom-NIC1", "NIC1");
     Connection con = getConnection(info);
     con.createStatement().execute(
-        "CREATE GATEWAYRECEIVER ok (hostnameforsenders 'localhost')");
+        "CREATE GATEWAYRECEIVER ok (bindaddress 'localhost' hostnameforsenders 'localhost')");
     ResultSet hubRs = con.createStatement().executeQuery(
         "select * from SYS.GATEWAYRECEIVERS");
     ResultSetMetaData rsmd = hubRs.getMetaData();
@@ -2405,7 +2405,7 @@ public class WanTest extends JdbcTestBase {
     conn.createStatement().execute("DROP ASYNCEVENTLISTENER dup1");
 
     // Now try gatewayreceiver
-    conn.createStatement().execute("CREATE GATEWAYRECEIVER dup3 ");
+    conn.createStatement().execute("CREATE GATEWAYRECEIVER dup3 (bindaddress 'localhost')");
 
     // Try to create another one with the same name
     try {

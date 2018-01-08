@@ -17,20 +17,13 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.io.PrintStream;
-import java.io.RandomAccessFile;
-import java.io.Serializable;
-import java.net.InetAddress;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,15 +47,14 @@ import com.gemstone.gemfire.internal.OSProcess;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.process.FileAlreadyExistsException;
 import com.gemstone.gemfire.internal.process.StartupStatus;
 import com.gemstone.gemfire.internal.process.StartupStatusListener;
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.SystemProperties;
-import com.gemstone.gemfire.internal.util.IOUtils;
+import com.gemstone.gemfire.internal.shared.OpenHashSet;
 import com.gemstone.gemfire.internal.util.JavaCommandBuilder;
 
+import static com.gemstone.gemfire.internal.cache.Status.*;
 
 /**
  * Launcher program to start a cache server.
@@ -74,7 +66,7 @@ import com.gemstone.gemfire.internal.util.JavaCommandBuilder;
  *
  * @since 2.0.2
  */
-public class CacheServerLauncher  {
+public class CacheServerLauncher extends LauncherBase {
 
   /** Is this VM a dedicated Cache Server?  This value is used mainly by the admin API. */
   public static boolean isDedicatedCacheServer = Boolean.getBoolean("gemfire.isDedicatedServer");
@@ -88,84 +80,25 @@ public class CacheServerLauncher  {
   public static final boolean PRINT_LAUNCH_COMMAND = Boolean.getBoolean(
     CacheServerLauncher.class.getSimpleName() + ".PRINT_LAUNCH_COMMAND");
 
-  protected static long STATUS_WAIT_TIME 
-    = Long.getLong("gemfire.CacheServerLauncher.STATUS_WAIT_TIME_MS", 15000);
-  
-  /** How long to wait for a cache server to stop */
-  protected static long SHUTDOWN_WAIT_TIME 
-    = Long.getLong("gemfire.CacheServerLauncher.SHUTDOWN_WAIT_TIME_MS", 20000);
-
-  protected final String baseName;
-  protected final String defaultLogFileName;
-  protected final String startLogFileName;
-  protected final String pidFileName;
-  protected final String statusName;
-  protected final String hostName;
-  protected Status status = null;
   protected File workingDir = null;
   protected PrintStream oldOut = System.out;
   protected PrintStream oldErr = System.err;
   protected LogWriterI18n logger = null;
-  protected String maxHeapSize;
-  protected String initialHeapSize;
   protected String offHeapSize;
-  protected boolean useThriftServerDefault =
-      ClientSharedUtils.isThriftDefault();
+  protected String serverStartupMessage;
+  protected final OpenHashSet<String> knownOptions;
 
   protected static CacheServerLauncher instance;
 
-  public static final int SHUTDOWN = 0;
-  public static final int STARTING = 1;
-  public static final int RUNNING = 2;
-  public static final int SHUTDOWN_PENDING = 3;
-  public static final int WAITING = 4;
-  public static final int STANDBY = 5;
-
-  private static final int FORCE_STATUS_FILE_READ_ITERATION_COUNT = 10;
-
   public CacheServerLauncher(final String baseName) {
+    super(baseName, null);
     assert baseName != null : "The base name used for the cache server launcher files cannot be null!";
-    this.baseName = baseName;
-    final String baseNameLowerCase = getBaseName(baseName);
-    this.startLogFileName = "start_" + baseNameLowerCase + ".log";
-    this.defaultLogFileName = baseNameLowerCase + ".log";
-    this.pidFileName = baseNameLowerCase + ".pid";
-    this.statusName = "." + baseNameLowerCase + ".ser";
-
-    InetAddress host;
-    try {
-      host = SocketCreator.getLocalHost();
-    } catch (Exception ex) {
-      try {
-        host = InetAddress.getLocalHost();
-      } catch (Exception e) {
-        host = null;
-      }
-    }
-    if (host != null) {
-      this.hostName = host.getCanonicalHostName();
-    } else {
-      this.hostName = "localhost";
-    }
+    knownOptions = new OpenHashSet<>();
+    initKnownOptions();
   }
 
-  protected String getBaseName(final String name) {
-    return name.toLowerCase().replace(" ", "");
-  }
-
-  protected static Status createStatus(final String baseName, final int state,
-      final int pid) {
-    return createStatus(baseName, state, pid, null, null);
-  }
-
-  protected static Status createStatus(final String baseName, final int state,
-      final int pid, final String msg, final Throwable t) {
-    final Status status = new Status(baseName);
-    status.state = state;
-    status.pid = pid;
-    status.msg = msg;
-    status.exception = t;
-    return status;
+  protected Path getWorkingDirPath() {
+    return this.workingDir.toPath().toAbsolutePath(); // see bug 32548
   }
 
   /**
@@ -218,6 +151,11 @@ public class CacheServerLauncher  {
     System.exit(0);
   }
 
+  protected String getHostNameAndDir() {
+    return workingDir != null ? this.hostName + '(' + workingDir.getName() + ')'
+        : this.hostName;
+  }
+
   /**
    * Wait for the member's status to become "running".
    */
@@ -233,35 +171,17 @@ public class CacheServerLauncher  {
     }
     if (status.state != SHUTDOWN) {
       if (status.state == SHUTDOWN_PENDING) {
-        pollCacheServerForShutdown();
+        pollCacheServerForShutdown(getStatusPath());
       }
       else {
-        waitForRunning((Properties)null);
+        System.exit(waitForRunning((String)null));
       }
     }
     else {
       System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED
-          .toLocalizedString(this.baseName, this.hostName));
+          .toLocalizedString(this.baseName, getHostNameAndDir()));
     }
     System.exit(0);
-  }
-
-  /**
-   * Returns the <code>Status</code> of the cache server in the
-   * <code>workingDir</code>.
-   */
-  protected Status getStatus() throws Exception {
-    Status status;
-
-    if (new File(workingDir, statusName).exists()) {
-      status = spinReadStatus(false); // See bug 32456
-    }
-    else {
-      // no pid since the cache server is not running
-      status = createStatus(this.baseName, SHUTDOWN, 0);
-    }
-
-    return status;
   }
 
   public static CacheServerLauncher getCurrentInstance() {
@@ -345,24 +265,24 @@ public class CacheServerLauncher  {
     System.setOut( oldOut );
   }
 
-  protected static final String DIR     = "dir";
-  protected static final String VMARGS  = "vmargs";
-  protected static final String ENVARGS = "envargs";
   protected static final String PROPERTIES = "properties";
-  protected static final String CLASSPATH = "classpath";
   public static final String REBALANCE = "rebalance";
   public static final String SERVER_PORT = "server-port";
   public static final String SERVER_BIND_ADDRESS = "server-bind-address";
   public static final String DISABLE_DEFAULT_SERVER = "disable-default-server";
-  public static final String CRITICAL_HEAP_PERCENTAGE =
-    "critical-heap-percentage";
-  public static final String EVICTION_HEAP_PERCENTAGE =
-      "eviction-heap-percentage";
-  public static final String CRITICAL_OFF_HEAP_PERCENTAGE =
-        "critical-off-heap-percentage";
-  public static final String EVICTION_OFF_HEAP_PERCENTAGE =
-      "eviction-off-heap-percentage";
   protected static final String LOCK_MEMORY = "lock-memory";
+
+  protected void initKnownOptions() {
+    knownOptions.add(REBALANCE);
+    knownOptions.add(SERVER_PORT);
+    knownOptions.add(SERVER_BIND_ADDRESS);
+    knownOptions.add(DISABLE_DEFAULT_SERVER);
+    knownOptions.add(CRITICAL_HEAP_PERCENTAGE);
+    knownOptions.add(EVICTION_HEAP_PERCENTAGE);
+    knownOptions.add(CRITICAL_OFF_HEAP_PERCENTAGE);
+    knownOptions.add(EVICTION_OFF_HEAP_PERCENTAGE);
+    knownOptions.add(LOCK_MEMORY);
+  }
 
   protected final File processDirOption(final Map<String, Object> options, final String dirValue) throws FileNotFoundException {
     final File inputWorkingDirectory = new File(dirValue);
@@ -437,22 +357,7 @@ public class CacheServerLauncher  {
         options.put(SERVER_BIND_ADDRESS, arg);
       }
       else if (arg.startsWith("-J")) {
-        String vmArg = arg.substring(2);
-        String thriftArg;
-        if (vmArg.startsWith("-Xmx")) {
-          this.maxHeapSize = vmArg.substring(4);
-        } else if (vmArg.startsWith("-Xms")) {
-          this.initialHeapSize = vmArg.substring(4);
-        } else if (vmArg.startsWith(thriftArg = ("-D"
-            + SystemProperties.getServerInstance().getSystemPropertyNamePrefix()
-            + ClientSharedUtils.USE_THRIFT_AS_DEFAULT_PROP))) {
-          int len = thriftArg.length();
-          if (vmArg.length() > (len + 1) && vmArg.charAt(len) == '=') {
-            this.useThriftServerDefault = Boolean.parseBoolean(vmArg.substring(
-                len + 1).trim());
-          }
-        }
-        vmArgs.add(vmArg);
+        processVMArg(arg.substring(2), vmArgs);
       }
       else if (arg.length() > 0) {
         // moved this default block down so that "-J" like options can have '=' in them.
@@ -568,31 +473,13 @@ public class CacheServerLauncher  {
       else if (arg.startsWith("-lock-memory")) {
         props.put(DistributionConfig.LOCK_MEMORY_NAME, "true");
       }
-      else if (arg.startsWith("-server-port")) {
-        options.put(SERVER_PORT, arg.substring(arg.indexOf("=") + 1));
-      }
-      else if (arg.startsWith("-server-bind-address")) {
-        options.put(SERVER_BIND_ADDRESS, arg.substring(arg.indexOf("=") + 1));
-      }
-      else if (arg.startsWith("-" + CRITICAL_HEAP_PERCENTAGE)) {
-        options.put(CRITICAL_HEAP_PERCENTAGE, arg.substring(arg.indexOf("=") + 1));
-      }
-      else if (arg.startsWith("-" + EVICTION_HEAP_PERCENTAGE)) {
-        options.put(EVICTION_HEAP_PERCENTAGE, arg.substring(arg.indexOf("=") + 1));
-      }
-      else if (arg.startsWith("-" + CRITICAL_OFF_HEAP_PERCENTAGE)) {
-        options.put(CRITICAL_OFF_HEAP_PERCENTAGE, arg.substring(arg.indexOf("=") + 1));
-      }
-      else if (arg.startsWith("-" + EVICTION_OFF_HEAP_PERCENTAGE)) {
-        options.put(EVICTION_OFF_HEAP_PERCENTAGE, arg.substring(arg.indexOf("=") + 1));
-      }
       else if (arg.indexOf("=") > 1) {
         final int assignmentIndex = arg.indexOf("=");
         final String key = arg.substring(0, assignmentIndex);
         final String value = arg.substring(assignmentIndex + 1);
 
-        if (key.startsWith("-")) {
-          options.put(key.substring(1), value);
+        if (key.charAt(0) == '-') {
+          processServerOption(key.substring(1), value, options, props);
         }
         else {
           props.setProperty(key, value);
@@ -606,6 +493,11 @@ public class CacheServerLauncher  {
     processServerEnv(props);
 
     return options;
+  }
+
+  protected void processServerOption(String key, String value,
+      Map<String, Object> options, Properties props) {
+    options.put(key, value);
   }
 
   protected void processServerEnv(Properties props) throws Exception {
@@ -656,31 +548,24 @@ public class CacheServerLauncher  {
 
     // Complain if a cache server is already running in the specified working directory.
     // See bug 32574.
-    verifyAndClearStatus();
+    String msg = verifyAndClearStatus();
+    if (msg != null) {
+      System.err.println(msg);
+      System.exit(1);
+    }
 
     final Properties props = (Properties)options.get(PROPERTIES);
     // start the GemFire Cache Server proces...
     runCommandLine(options, props, buildCommandLine(options));
 
     // wait for status.state == RUNNING
-    waitForRunning(props);
+    int exitCode = waitForRunning(getLogFilePath(props));
 
     if (DONT_EXIT_AFTER_LAUNCH) {
       return;
     }
 
-    System.exit(0);
-  }
-
-  private void verifyAndClearStatus() throws Exception {
-    final Status status = getStatus();
-
-    if (status != null && status.state != SHUTDOWN) {
-      throw new IllegalStateException(LocalizedStrings.CacheServerLauncher_A_0_IS_ALREADY_RUNNING_IN_DIRECTORY_1_2
-        .toLocalizedString(this.baseName, workingDir, status));
-    }
-
-    deleteStatus();
+    System.exit(exitCode);
   }
 
   private String[] buildCommandLine(final Map<String, Object> options) {
@@ -745,32 +630,34 @@ public class CacheServerLauncher  {
   }
 
   /**
-   * Sets the status of the cache server to be {@link #RUNNING}.
+   * Sets the status of the cache server to be {@link Status#RUNNING}.
    */
   public void running(final InternalDistributedSystem system,
       int stateIfWaiting) {
     Status stat = this.status;
     if (stat == null) {
-      stat = this.status = createStatus(this.baseName, RUNNING, getProcessId());
+      stat = this.status = createStatus(RUNNING, getProcessId());
     }
     else {
       if (stat.state == WAITING) {
         stat.dsMsg = null;
         stat.state = stateIfWaiting;
+      } else if (stat.state == RUNNING) {
+        return;
       } else {
         stat.state = RUNNING;
       }
     }
-    setRunningStatus(stat, system);
-  }
-
-  protected void setRunningStatus(final Status stat,
-      final InternalDistributedSystem system) {
     try {
-      writeStatus(stat);
+      setRunningStatus(stat, system);
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  protected void setRunningStatus(final Status stat,
+      final InternalDistributedSystem system) throws Exception {
+    writeStatus(stat);
   }
 
   public void setWaitingStatus(String regionPath,
@@ -779,8 +666,7 @@ public class CacheServerLauncher  {
     try {
       Status stat = this.status;
       if (stat == null) {
-        stat = this.status = createStatus(this.baseName, WAITING,
-            getProcessId(), null, null);
+        stat = this.status = createStatus(WAITING, getProcessId());
       }
       else {
         stat.state = WAITING;
@@ -790,6 +676,10 @@ public class CacheServerLauncher  {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  public void setServerStartupMessage(String message) {
+    this.serverStartupMessage = message;
   }
 
   public static ThreadLocal<Integer> serverPort = new ThreadLocal<Integer>();
@@ -821,10 +711,10 @@ public class CacheServerLauncher  {
    * <P>
    *
    * After creating the cache and setting the server's status to {@link
-   * #RUNNING}, it periodically monitors the status, waiting for it to
-   * change to {@link #SHUTDOWN_PENDING} (see {@link #stop}).  When
+   * Status#RUNNING}, it periodically monitors the status, waiting for it to
+   * change to {@link Status#SHUTDOWN_PENDING} (see {@link #stop}).  When
    * the status does change, it closes the <code>Cache</code> and sets
-   * the status to be {@link #SHUTDOWN}.
+   * the status to be {@link Status#SHUTDOWN}.
    *
    * @param args Configuration options passed in from the command line
    */
@@ -850,8 +740,7 @@ public class CacheServerLauncher  {
     workingDir = new File(System.getProperty("user.dir"));
 
     // Say that we're starting...
-    Status originalStatus = createStatus(this.baseName, STARTING,
-        getProcessId());
+    Status originalStatus = createStatus(STARTING, getProcessId());
     status = originalStatus;
     status.msg = errMsg;
     writeStatus(status);
@@ -911,6 +800,7 @@ public class CacheServerLauncher  {
 
     startAdditionalServices(cache, options, props);
 
+    system = (InternalDistributedSystem)cache.getDistributedSystem();
     this.running(system, RUNNING);
 
     clearLogListener();
@@ -923,18 +813,17 @@ public class CacheServerLauncher  {
     // start rebalancing if specified
     startRebalanceFactory(cache, options);
 
-    File statusFile = new File( workingDir, statusName );
-    long lastModified=0, oldModified = statusFile.lastModified();
+    long lastModified, oldModified = getLastModifiedStatusNanos();
     // Every FORCE_STATUS_FILE_READ_ITERATION_COUNT iterations, read the status file despite the modification time
     // to catch situations where the file is modified quicker than the file timestamp's resolution.
     short count = 0;
     boolean externalShutDown = true;
     boolean loggedWarning = false;
     while(true) {
-      lastModified = statusFile.lastModified();
-      if (lastModified > oldModified || count++ == FORCE_STATUS_FILE_READ_ITERATION_COUNT) {
+      lastModified = getLastModifiedStatusNanos();
+      if (lastModified != oldModified || count++ == FORCE_STATUS_FILE_READ_ITERATION_COUNT) {
         count = 0;
-        Thread.sleep( 500 ); // allow for it to be finished writing.
+        Thread.sleep(100); // allow for it to finish writing
         //Sometimes the status file is partially written causing readObject to
         //fail, sleep and retry.
         try {
@@ -951,9 +840,9 @@ public class CacheServerLauncher  {
               // See bug 44627.
               // The cache server used to just shutdown at this point. Instead,
               // recreate the status file if possible and continue.
-              status = createStatus(this.baseName, RUNNING, originalStatus.pid);
+              status = createStatus(RUNNING, originalStatus.pid);
               try {
-                writeStatus(status);
+                setRunningStatus(status, system);
               } catch (FileNotFoundException e) {
                 if (!loggedWarning) {
                   logger.warning(LocalizedStrings.CacheServerLauncher_CREATE_STATUS_EXCEPTION_0, e.toString());
@@ -965,6 +854,8 @@ public class CacheServerLauncher  {
         }
         oldModified = lastModified;
         if (status.state == SHUTDOWN_PENDING) {
+            logger.info(LocalizedStrings.DEBUG,
+                "CacheServerLauncher shutdown started.");
             stopAdditionalServices();
             this.disconnect(cache);
             status.state = SHUTDOWN;
@@ -975,7 +866,7 @@ public class CacheServerLauncher  {
         }
 
       } else {
-        Thread.sleep(1000);
+        Thread.sleep(250);
       }
       if (!system.isConnected()) {
 //        System.out.println("System is disconnected.  isReconnecting = " + system.isReconnecting());
@@ -1180,18 +1071,19 @@ public class CacheServerLauncher  {
   }
 
   /**
-   * Stops a cache server (which is running in a different VM) by setting its status to {@link #SHUTDOWN_PENDING}.
+   * Stops a cache server (which is running in a different VM) by setting its
+   * status to {@link Status#SHUTDOWN_PENDING}.
    * Waits for the cache server to actually shut down.
    */
   public void stop(final String[] args) throws Exception {
     this.workingDir = (File) getStopOptions(args).get(DIR);
 
     // determine the current state of the Cache Server process...
-    final File statusFile = new File(this.workingDir, this.statusName);
+    final Path statusPath = getStatusPath();
     int exitStatus = 1;
 
-    if (statusFile.exists()) {
-      this.status = spinReadStatus(false);
+    if (Files.exists(statusPath)) {
+      this.status = spinReadStatus(statusPath);
 
       if (status == null) {
         throw new Exception(
@@ -1202,18 +1094,18 @@ public class CacheServerLauncher  {
       // upon reading the status file, request the Cache Server to shutdown if it has not already...
       if (this.status.state != SHUTDOWN) {
         // copy server PID and not use own PID; see bug #39707
-        this.status = createStatus(this.baseName, SHUTDOWN_PENDING, this.status.pid);
+        this.status = createStatus(SHUTDOWN_PENDING, this.status.pid);
         writeStatus(this.status);
       }
 
       // poll the Cache Server for a response to our shutdown request (passes through if the Cache Server
       // has already shutdown)...
-      pollCacheServerForShutdown();
+      pollCacheServerForShutdown(statusPath);
 
       // after polling, determine the status of the Cache Server one last time and determine how to exit...
       if (this.status.state == SHUTDOWN) {
         System.out.println(LocalizedStrings.CacheServerLauncher_0_STOPPED
-            .toLocalizedString(this.baseName, this.hostName));
+            .toLocalizedString(this.baseName, getHostNameAndDir()));
         deleteStatus();
         exitStatus = 0;
       }
@@ -1234,115 +1126,13 @@ public class CacheServerLauncher  {
     System.exit(exitStatus);
   }
 
-  protected void pollCacheServerForShutdown() throws InterruptedException {
-    final int increment = 250; // unit is in milliseconds
-    int clock = 0;
-
-    // wait for a default total of 20000 milliseconds (or 20 seconds)
-    while (clock < SHUTDOWN_WAIT_TIME && status.state != SHUTDOWN) {
-      try {
-        status = readStatus(false);
-      }
-      catch (IOException ignore) {
-      }
-
-      try {
-        Thread.sleep(increment);
-      }
-      catch (InterruptedException ie) {
-        break;
-      }
-
-      clock += increment;
-    }
-  }
-
-  /**
-   * A class that represents the status of a cache server.  Instances
-   * of this class are serialized to a {@linkplain #statusName file}
-   * on disk.
-   *
-   * @see #SHUTDOWN
-   * @see #STARTING
-   * @see #RUNNING
-   * @see #SHUTDOWN_PENDING
-   * @see #WAITING
-   */
-  public static class Status implements Serializable {
-
-
-    private static final long serialVersionUID = 190943081363646485L;
-    public int state = 0;
-    public int pid = 0;
-
-    private final String baseName;
-    public Throwable exception;
-    public String msg;
-    public String dsMsg;
-
-    public Status(String baseName) {
-      this.baseName = baseName;
-    }
-
-    @Override
-    public String toString() {
-      final StringBuilder buffer = new StringBuilder();
-      buffer.append(shortStatus());
-      if (this.dsMsg != null) {
-        buffer.append('\n').append(this.dsMsg);
-      }
-      return buffer.toString();
-    }
-
-    public String shortStatus() {
-      final StringBuilder buffer = new StringBuilder();
-      buffer.append(this.baseName).append(" pid: ").append(pid).append(" status: ");
-      switch (state) {
-        case SHUTDOWN:
-          buffer.append("stopped");
-          break;
-        case STARTING:
-          buffer.append("starting");
-          break;
-        case RUNNING:
-          buffer.append("running");
-          break;
-        case SHUTDOWN_PENDING:
-          buffer.append("stopping");
-          break;
-        case WAITING:
-          buffer.append("waiting");
-          break;
-        case STANDBY:
-          buffer.append("standby");
-          break;
-        default:
-          buffer.append("unknown");
-          break;
-      }
-      if (exception != null || msg != null) {
-        if (msg != null) {
-          buffer.append("\n").append(msg);
-        }
-        else {
-          buffer.append("\nException in ").append(this.baseName);
-        }
-        if ((state != WAITING && state != RUNNING) || msg == null) {
-          buffer.append(" - ").append(LocalizedStrings
-              .CacheServerLauncher_SEE_LOG_FILE_FOR_DETAILS.toLocalizedString());
-        }
-      }
-      return buffer.toString();
-    }
-  }
-
   /**
    * Notes that an error has occurred in the cache server and that it
    * has shut down because of it.
    */
   protected void setServerError(final String msg, final Throwable t) {
     try {
-      writeStatus(createStatus(this.baseName, SHUTDOWN, getProcessId(), msg, t));
+      writeStatus(createStatus(SHUTDOWN, getProcessId(), msg, t));
     }
     catch (Exception e) {
       if (logger != null) {
@@ -1364,221 +1154,23 @@ public class CacheServerLauncher  {
    * instance to a file in the server's working directory.
    */
   public void writeStatus(final Status s) throws IOException {
-    final File statusFile = new File(workingDir, statusName);
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutput out = null;
-    RandomAccessFile raFile = null;
-    try {
-      if (!statusFile.exists()) {
-        NativeCalls.getInstance().preBlow(statusFile.getAbsolutePath(), 2048,
-            true);
-      }
-      raFile = new RandomAccessFile(statusFile.getAbsolutePath(), "rw");
-      out = new ObjectOutputStream(bos);
-      out.writeObject(s);
-      raFile.write(bos.toByteArray());
-    } finally {
-      if (out != null) {
-        try {
-          out.close();
-        } catch (IOException ignore) {
-        }
-      }
-      bos.close();
-      IOUtils.close(raFile);
-    }
-  }  
-
-  /**
-   * Reads a cache server's status.  If the status file cannot be read because of I/O problems, it will try again.
-   */
-  protected Status spinReadStatus(boolean starting) {
-    final long timeout = (System.currentTimeMillis() + 60000);
-    Status status = null;
-
-    while (status == null && System.currentTimeMillis() < timeout) {
-      try {
-        status = readStatus(starting);
-      }
-      catch (Exception e) {
-        // try again - the status might have been read in the middle of it being written by the server resulting in
-        // an EOFException here
-        try {
-          Thread.sleep(500);
-        }
-        catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          status = null;
-          break;
-        }
-      }
-    }
-
-    return status;
+    s.write();
   }
 
   /**
    * Reads a cache server's status from a file in its working directory.
    */
-  protected Status readStatus(boolean starting) throws InterruptedException,
-                                                FileNotFoundException,
-                                                IOException {
-    final File statusFile = new File(workingDir, statusName);
-
-    FileInputStream fileInput = null;
-    ObjectInputStream objectInput = null;
-
-  int maxTries = 1000;
-  while (true) {
-    try {
-      fileInput = new FileInputStream(statusFile);
-      objectInput = new ObjectInputStream(fileInput);
-
-      Status status = (Status) objectInput.readObject();
-
-      // See bug 32760
-      // Note, only execute the conditional createStatus statement if we are in
-      // native mode; if we are in pure Java mode
-      // the the process ID identified in the Status object is assumed to exist!
-      if (status.state != SHUTDOWN && status.pid > 0
-          && !isExistingProcess(status.pid)) {
-        status = createStatus(this.baseName, SHUTDOWN, status.pid);
-      }
-
-      return status;
-    }
-    catch (ClassNotFoundException e) {
-      throw new RuntimeException(e);
-    }
-    catch (FileNotFoundException e) {
-      Thread.sleep(500);
-      if (statusFile.exists()) {
-        if (maxTries-- > 0) {
-          continue;
-        } else {
-          throw e;
-        }
-      }
-      else {
-        throw e;
-      }
-    }
-    finally {
-      IOUtils.close(objectInput);
-      IOUtils.close(fileInput);
-    }
-  }
+  protected Status readStatus(boolean starting)
+      throws InterruptedException, IOException {
+    return Status.read(this.baseName, getStatusPath());
   }
 
-  /**
-   * Removes a cache server's status file
-   */
-  private void deleteStatus() throws IOException {
-    final File statusFile = new File(workingDir, statusName);
-
-    if (statusFile.exists() && !statusFile.delete()) {
-      throw new IOException("Could not delete status file (" + statusFile.getAbsolutePath() + ")!");
-    }
-  }
-
-  public static final boolean isExistingProcess(final int pid) {
-    try {
-      return NativeCalls.getInstance().isProcessActive(pid);
-    } catch (UnsupportedOperationException uoe) {
-      // no native API to determine if process exists, so assume it to be true
-      return true;
-    }
-  }
-
-  protected void waitForRunning(final Properties props) throws Exception {
-    Status status = spinReadStatus(true);
-    String lastReadMessage = null;
-    String lastReportedMessage = null;
-    long lastReadTime = System.nanoTime();
-    if ( status == null ) {
-      throw new Exception(
-          LocalizedStrings.CacheServerLauncher_NO_AVAILABLE_STATUS
-              .toLocalizedString(this.statusName));
-    } else {
-
-      // Properties as null means no log-file message needs to be displayed
-      if (props != null) {
-        String logFilePath = getLogFilePath(props);
-        // if log does not exist then point
-        System.out.println(LocalizedStrings.CacheServerLauncher_LOGS_GENERATED_IN
-            .toLocalizedString(logFilePath));
-      }
-
-      if (checkStatusForWait(status)) {
-          // re-read status for a while...
-          while (checkStatusForWait(status)) {
-            Thread.sleep( 500 ); // fix for bug 36998
-            status = spinReadStatus(true);
-
-            if (status == null) {
-              throw new Exception(
-                  LocalizedStrings.CacheServerLauncher_NO_AVAILABLE_STATUS
-                      .toLocalizedString(this.statusName));
-            }
-
-            //check to see if the status message has changed
-            if(status.dsMsg != null && !status.dsMsg.equals(lastReadMessage)) {
-              lastReadMessage = status.dsMsg;
-              lastReadTime = System.nanoTime();
-            }
-
-            //if the status message has not changed for 15 seconds, print
-            //out the message.
-            long elapsed = System.nanoTime() - lastReadTime;
-            if(TimeUnit.NANOSECONDS.toMillis(elapsed) > STATUS_WAIT_TIME
-                && lastReadMessage != null &&
-                !lastReadMessage.equals(lastReportedMessage)) {
-              long elapsedSec = TimeUnit.NANOSECONDS.toSeconds(elapsed);
-              System.out.println(LocalizedStrings.CacheServerLauncher_LAUNCH_IN_PROGRESS_0
-                  .toLocalizedString(elapsedSec, status.dsMsg));
-              lastReportedMessage = lastReadMessage;
-            }
-          }
-          if (status.state == SHUTDOWN) {
-            System.out.println(status);
-            System.exit(1);
-          }
-      }
-      writePidToFile(status);
-      System.out.println(status);
-    }
-  }
-
-  /**
-  * Creates a new pid file and writes this process's pid into it.
-  */
-  private void writePidToFile(Status status) throws FileAlreadyExistsException, IOException {
-    final File pidFile = new File(workingDir, pidFileName).getAbsoluteFile(); // see bug 32548
-    final FileWriter writer = new FileWriter(pidFile);
-    try {
-      writer.write(String.valueOf(status.pid));
-      writer.flush();
-    } finally {
-      writer.close();
-    }
-  }
-
-  protected String getLogFilePath(Properties props) {
-    String logFilePath = props.getProperty(DistributionConfig.LOG_FILE_NAME);
+  protected String getLogFilePath(final Properties props) {
+    String logFilePath = props.getProperty(LOG_FILE);
     if (logFilePath == null || logFilePath.length() == 0) {
-      final File logFile = new File(this.workingDir, this.defaultLogFileName);
-      logFilePath = logFile.getAbsolutePath();
+      logFilePath = this.defaultLogFileName;
     }
-    // check for absolute file path
-    else if (logFilePath.charAt(0) != '/' && logFilePath.charAt(1) != ':') {
-      final File logFile = new File(this.workingDir, logFilePath);
-      logFilePath = logFile.getAbsolutePath();
-    }
-    return logFilePath;
-  }
-
-  protected boolean checkStatusForWait(Status status) {
-    return (status.state == STARTING || status.state == WAITING);
+    return getWorkingDirPath().resolve(logFilePath).toString();
   }
 
   /**

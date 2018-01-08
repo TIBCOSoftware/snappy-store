@@ -48,7 +48,6 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.ManagerLogWriter;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.DirectReplyMessage;
-import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.tcp.*;
 import com.gemstone.gemfire.internal.util.Breadcrumbs;
@@ -226,15 +225,15 @@ public final class DirectChannel {
    * The maximum number of concurrent senders sending a message to a group of recipients.
    */
   static private final int MAX_GROUP_SENDERS = Integer.getInteger("p2p.maxGroupSenders", DEFAULT_CONCURRENCY_LEVEL).intValue();
-  private S groupUnorderedSenderSem; // TODO this should be final?
-  private S groupOrderedSenderSem; // TODO this should be final?
+  private ReentrantSemaphore groupUnorderedSenderSem; // TODO this should be final?
+  private ReentrantSemaphore groupOrderedSenderSem; // TODO this should be final?
 
 //  /**
 //   * cause of abnormal shutdown, if any
 //   */
 //  private volatile Exception shutdownCause;
 
-  private S getGroupSem(boolean ordered) {
+  private ReentrantSemaphore getGroupSem(boolean ordered) {
     if (ordered) {
       return this.groupOrderedSenderSem;
     } else {
@@ -246,7 +245,7 @@ public final class DirectChannel {
       throw new com.gemstone.gemfire.distributed.DistributedSystemDisconnectedException(LocalizedStrings.DirectChannel_DIRECT_CHANNEL_HAS_BEEN_STOPPED.toLocalizedString());
     }
     // @todo darrel: add some stats
-    final S s = getGroupSem(ordered);
+    final ReentrantSemaphore s = getGroupSem(ordered);
     for (;;) {
       this.conduit.getCancelCriterion().checkCancelInProgress(null);
       boolean interrupted = Thread.interrupted();
@@ -269,7 +268,7 @@ public final class DirectChannel {
     }
   }
   private void releaseGroupSendPermission(boolean ordered) {
-    final S s = getGroupSem(ordered);
+    final ReentrantSemaphore s = getGroupSem(ordered);
     s.release();
   }
 

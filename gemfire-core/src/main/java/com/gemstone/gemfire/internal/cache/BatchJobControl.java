@@ -99,7 +99,7 @@ public abstract class BatchJobControl {
         while (this.numBatches.get() > maxRemaining) {
           Throwable t = null;
           try {
-            this.wait(500L);
+            this.wait(200L);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             t = ie;
@@ -200,9 +200,9 @@ public abstract class BatchJobControl {
         fail = getFailureException(Thread.currentThread().getName() + ": "
             + error, t);
       } finally {
-        synchronized (this) {
+        synchronized (BatchJobControl.this) {
           numBatches.decrementAndGet();
-          this.notifyAll();
+          BatchJobControl.this.notifyAll();
         }
         if (fail != null) {
           if (fail instanceof RuntimeException) {

@@ -108,6 +108,8 @@ public final class SnappyTSocket extends TNonblockingTransport implements
 
   private final boolean framedWrites;
 
+  private final boolean socketToSameHost;
+
   /**
    * Constructor that takes an already created socket.
    *
@@ -135,6 +137,7 @@ public final class SnappyTSocket extends TNonblockingTransport implements
       this.outputStream = UnsafeHolder.newChannelBufferOutputStream(
           this.dataChannel, this.outputBufferSize);
       this.framedWrites = false;
+      this.socketToSameHost = ClientSharedUtils.isSocketToSameHost(dataChannel);
     } catch (IOException ioe) {
       LOGGER.warn("Failed to create or configure socket for client.", ioe);
       close();
@@ -175,6 +178,7 @@ public final class SnappyTSocket extends TNonblockingTransport implements
 
       setProperties(socketChannel.socket(), timeout, params);
       this.dataChannel = openChannel(clientId, useSSL, params);
+      this.socketToSameHost = ClientSharedUtils.isSocketToSameHost(dataChannel);
     } catch (IOException ioe) {
       LOGGER.warn("Failed to create or configure socket.", ioe);
       close();
@@ -229,6 +233,11 @@ public final class SnappyTSocket extends TNonblockingTransport implements
   public void setSoTimeout(int timeout) throws SocketException {
     getSocket().setSoTimeout(timeout);
     this.timeout = timeout;
+  }
+
+  @Override
+  public final boolean isSocketToSameHost() {
+    return this.socketToSameHost;
   }
 
   protected static void setTimeout(Socket socket, int timeout,

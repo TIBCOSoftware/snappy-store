@@ -25,6 +25,8 @@ import java.util.Set;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.Region;
@@ -37,15 +39,13 @@ import com.gemstone.gemfire.internal.cache.EventID;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.ha.ThreadIdentifier;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 public class QueueStateImpl implements QueueState {
 
   protected QueueManager qManager = null;
   private boolean processedMarker = false;
   protected LogWriterI18n logger = null;
-  private final AI invalidateCount = CFactory.createAI();
+  private final AtomicInteger invalidateCount = new AtomicInteger();
 
   /**
    * This will store the ThreadId to latest received sequence Id

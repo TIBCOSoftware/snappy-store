@@ -24,6 +24,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelException;
@@ -58,9 +59,6 @@ import com.gemstone.gemfire.internal.cache.partitioned.rebalance.RebalanceDirect
 import com.gemstone.gemfire.internal.cache.persistence.MembershipFlushRequest;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentStateListener;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.OpenHashSet;
 import com.gemstone.org.jgroups.util.StringId;
@@ -100,9 +98,10 @@ public class PRHARedundancyProvider
     Long.getLong(DATASTORE_DISCOVERY_TIMEOUT_PROPERTY_NAME);
 
   public final PartitionedRegion prRegion;
-  private static AL insufficientLogTimeStamp = CFactory.createAL(0);
-  private final AB firstInsufficentStoresLogged = CFactory.createAB(false);
-  
+  private static AtomicLong insufficientLogTimeStamp = new AtomicLong(0);
+  private final AtomicBoolean firstInsufficentStoresLogged =
+      new AtomicBoolean(false);
+
   /**
    * An executor to submit tasks for redundancy recovery too. It makes sure
    * that there will only be one redundancy recovery task in the queue at a time.
@@ -1935,7 +1934,7 @@ public class PRHARedundancyProvider
       Runnable task = new CreateMissingBucketsTask(this);
       final InternalResourceManager resourceManager = this.prRegion
           .getGemFireCache().getResourceManager();
-      resourceManager.getRecoveryExecutor().submit(task);
+      resourceManager.getRecoveryExecutor().execute(task);
     }
   }
   

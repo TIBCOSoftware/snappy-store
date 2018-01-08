@@ -139,7 +139,7 @@ public class HDFSBucketRegionQueue extends AbstractBucketRegionQueue {
             }
               
           }
-          getEventSeqNum().setIfGreater(sortedKeys.last());
+          setIfGreater(getEventSeqNum(), sortedKeys.last());
         }
       
       }

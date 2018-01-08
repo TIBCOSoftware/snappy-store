@@ -18,7 +18,6 @@
 package com.gemstone.gemfire.internal;
 
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.admin.internal.*;
 import com.gemstone.gemfire.admin.jmx.internal.StatAlertNotification;
 import com.gemstone.gemfire.cache.InterestResultPolicy;
@@ -136,8 +135,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.NotSerializableException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import java.util.function.Supplier;
 
 /**
  * Factory for instances of DataSerializableFixedID instances.
@@ -147,6 +145,7 @@ import java.lang.reflect.InvocationTargetException;
  * @author Darrel Schneider
  * @since 5.7
  */
+@SuppressWarnings("Convert2MethodRef")
 public final class DSFIDFactory implements DataSerializableFixedID {
    
   private DSFIDFactory() {
@@ -169,7 +168,7 @@ public final class DSFIDFactory implements DataSerializableFixedID {
   }
 
   private static volatile boolean typesRegistered;
-  private static final Constructor<?>[] dsfidMap = new Constructor<?>[256];
+  private static final Supplier[] dsfidMap = new Supplier[256];
   private static final TIntObjectHashMap dsfidMap2 = new TIntObjectHashMap(800);
 
   static {
@@ -178,23 +177,11 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     }
   }
 
-  static void registerDSFID(int dsfid,
-      Class dsfidClass) {
-    try {
-      Constructor<?> cons = dsfidClass.getConstructor((Class[])null);
-      cons.setAccessible(true);
-      if (!cons.isAccessible()) {
-        throw new InternalGemFireError("default constructor not accessible "
-            + "for DSFID=" + dsfid + ": " + dsfidClass);
-      }
-      if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
-        dsfidMap[dsfid + Byte.MAX_VALUE + 1] = cons;
-      }
-      else {
-        dsfidMap2.put(dsfid, cons);
-      }
-    } catch (NoSuchMethodException nsme) {
-      throw new InternalGemFireError(nsme);
+  static void registerDSFID(int dsfid, Supplier<?> creator) {
+    if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
+      dsfidMap[dsfid + Byte.MAX_VALUE + 1] = creator;
+    } else {
+      dsfidMap2.put(dsfid, creator);
     }
   }
 
@@ -202,550 +189,623 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     if (typesRegistered) {
       return;
     }
-    registerDSFID(CLIENT_TOMBSTONE_MESSAGE, ClientTombstoneMessage.class);
-    registerDSFID(R_REGION_OP, RemoteRegionOperation.class);
-    registerDSFID(R_REGION_OP_REPLY, RemoteRegionOperationReplyMessage.class);
-    registerDSFID(WAIT_FOR_VIEW_INSTALLATION, WaitForViewInstallation.class);
+    registerDSFID(CLIENT_TOMBSTONE_MESSAGE, () -> new ClientTombstoneMessage());
+    registerDSFID(R_REGION_OP, () -> new RemoteRegionOperation());
+    registerDSFID(R_REGION_OP_REPLY,
+        () -> new RemoteRegionOperationReplyMessage());
+    registerDSFID(WAIT_FOR_VIEW_INSTALLATION,
+        () -> new WaitForViewInstallation());
     registerDSFID(DISPATCHED_AND_CURRENT_EVENTS,
-        DispatchedAndCurrentEvents.class);
-    registerDSFID(IP_ADDRESS, IpAddress.class);
-    registerDSFID(DISTRIBUTED_MEMBER, InternalDistributedMember.class);
-    registerDSFID(UPDATE_MESSAGE, UpdateOperation.UpdateMessage.class);
-    registerDSFID(REPLY_MESSAGE, ReplyMessage.class);
-    registerDSFID(PR_DESTROY, DestroyMessage.class);
+        () -> new DispatchedAndCurrentEvents());
+    registerDSFID(IP_ADDRESS, () -> new IpAddress());
+    registerDSFID(DISTRIBUTED_MEMBER, () -> new InternalDistributedMember());
+    registerDSFID(UPDATE_MESSAGE, () -> new UpdateOperation.UpdateMessage());
+    registerDSFID(REPLY_MESSAGE, () -> new ReplyMessage());
+    registerDSFID(PR_DESTROY, () -> new DestroyMessage());
     registerDSFID(CREATE_REGION_MESSAGE,
-        CreateRegionProcessor.CreateRegionMessage.class);
+        () -> new CreateRegionProcessor.CreateRegionMessage());
     registerDSFID(CREATE_REGION_REPLY_MESSAGE,
-        CreateRegionProcessor.CreateRegionReplyMessage.class);
+        () -> new CreateRegionProcessor.CreateRegionReplyMessage());
     registerDSFID(REGION_STATE_MESSAGE,
-        InitialImageOperation.RegionStateMessage.class);
-    registerDSFID(QUERY_MESSAGE, SearchLoadAndWriteProcessor.QueryMessage.class);
+        () -> new InitialImageOperation.RegionStateMessage());
+    registerDSFID(QUERY_MESSAGE,
+        () -> new SearchLoadAndWriteProcessor.QueryMessage());
     registerDSFID(RESPONSE_MESSAGE,
-        SearchLoadAndWriteProcessor.ResponseMessage.class);
+        () -> new SearchLoadAndWriteProcessor.ResponseMessage());
     registerDSFID(NET_SEARCH_REQUEST_MESSAGE,
-        SearchLoadAndWriteProcessor.NetSearchRequestMessage.class);
+        () -> new SearchLoadAndWriteProcessor.NetSearchRequestMessage());
     registerDSFID(NET_SEARCH_REPLY_MESSAGE,
-        SearchLoadAndWriteProcessor.NetSearchReplyMessage.class);
+        () -> new SearchLoadAndWriteProcessor.NetSearchReplyMessage());
     registerDSFID(NET_LOAD_REQUEST_MESSAGE,
-        SearchLoadAndWriteProcessor.NetLoadRequestMessage.class);
+        () -> new SearchLoadAndWriteProcessor.NetLoadRequestMessage());
     registerDSFID(NET_LOAD_REPLY_MESSAGE,
-        SearchLoadAndWriteProcessor.NetLoadReplyMessage.class);
+        () -> new SearchLoadAndWriteProcessor.NetLoadReplyMessage());
     registerDSFID(NET_WRITE_REQUEST_MESSAGE,
-        SearchLoadAndWriteProcessor.NetWriteRequestMessage.class);
+        () -> new SearchLoadAndWriteProcessor.NetWriteRequestMessage());
     registerDSFID(NET_WRITE_REPLY_MESSAGE,
-        SearchLoadAndWriteProcessor.NetWriteReplyMessage.class);
+        () -> new SearchLoadAndWriteProcessor.NetWriteReplyMessage());
     registerDSFID(DLOCK_REQUEST_MESSAGE,
-        DLockRequestProcessor.DLockRequestMessage.class);
+        () -> new DLockRequestProcessor.DLockRequestMessage());
     registerDSFID(DLOCK_RESPONSE_MESSAGE,
-        DLockRequestProcessor.DLockResponseMessage.class);
+        () -> new DLockRequestProcessor.DLockResponseMessage());
     registerDSFID(DLOCK_RELEASE_MESSAGE,
-        DLockReleaseProcessor.DLockReleaseMessage.class);
+        () -> new DLockReleaseProcessor.DLockReleaseMessage());
     registerDSFID(ADMIN_CACHE_EVENT_MESSAGE,
-        SystemMemberCacheEventProcessor.SystemMemberCacheMessage.class);
-    registerDSFID(CQ_ENTRY_EVENT, CqEntry.class);
+        () -> new SystemMemberCacheEventProcessor.SystemMemberCacheMessage());
+    registerDSFID(CQ_ENTRY_EVENT, () -> new CqEntry());
     registerDSFID(REQUEST_IMAGE_MESSAGE,
-        InitialImageOperation.RequestImageMessage.class);
+        () -> new InitialImageOperation.RequestImageMessage());
     registerDSFID(IMAGE_REPLY_MESSAGE,
-        InitialImageOperation.ImageReplyMessage.class);
-    registerDSFID(IMAGE_ENTRY, InitialImageOperation.Entry.class);
-    registerDSFID(CLOSE_CACHE_MESSAGE, CloseCacheMessage.class);
+        () -> new InitialImageOperation.ImageReplyMessage());
+    registerDSFID(IMAGE_ENTRY, () -> new InitialImageOperation.Entry());
+    registerDSFID(CLOSE_CACHE_MESSAGE, () -> new CloseCacheMessage());
     registerDSFID(NON_GRANTOR_DESTROYED_MESSAGE,
-        NonGrantorDestroyedProcessor.NonGrantorDestroyedMessage.class);
+        () -> new NonGrantorDestroyedProcessor.NonGrantorDestroyedMessage());
     registerDSFID(DLOCK_RELEASE_REPLY,
-        DLockReleaseProcessor.DLockReleaseReplyMessage.class);
+        () -> new DLockReleaseProcessor.DLockReleaseReplyMessage());
     registerDSFID(GRANTOR_REQUEST_MESSAGE,
-        GrantorRequestProcessor.GrantorRequestMessage.class);
+        () -> new GrantorRequestProcessor.GrantorRequestMessage());
     registerDSFID(GRANTOR_INFO_REPLY_MESSAGE,
-        GrantorRequestProcessor.GrantorInfoReplyMessage.class);
-    registerDSFID(ELDER_INIT_MESSAGE, ElderInitProcessor.ElderInitMessage.class);
+        () -> new GrantorRequestProcessor.GrantorInfoReplyMessage());
+    registerDSFID(ELDER_INIT_MESSAGE,
+        () -> new ElderInitProcessor.ElderInitMessage());
     registerDSFID(ELDER_INIT_REPLY_MESSAGE,
-        ElderInitProcessor.ElderInitReplyMessage.class);
+        () -> new ElderInitProcessor.ElderInitReplyMessage());
     registerDSFID(DEPOSE_GRANTOR_MESSAGE,
-        DeposeGrantorProcessor.DeposeGrantorMessage.class);
-    registerDSFID(STARTUP_MESSAGE, StartupMessage.class);
-    registerDSFID(STARTUP_RESPONSE_MESSAGE, StartupResponseMessage.class);
+        () -> new DeposeGrantorProcessor.DeposeGrantorMessage());
+    registerDSFID(STARTUP_MESSAGE, () -> new StartupMessage());
+    registerDSFID(STARTUP_RESPONSE_MESSAGE, () -> new StartupResponseMessage());
     registerDSFID(STARTUP_RESPONSE_WITHVERSION_MESSAGE,
-        StartupResponseWithVersionMessage.class);
-    registerDSFID(SHUTDOWN_MESSAGE, ShutdownMessage.class);
+        () -> new StartupResponseWithVersionMessage());
+    registerDSFID(SHUTDOWN_MESSAGE, () -> new ShutdownMessage());
     registerDSFID(DESTROY_REGION_MESSAGE,
-        DestroyRegionOperation.DestroyRegionMessage.class);
-    registerDSFID(PR_PUTALL_MESSAGE, PutAllPRMessage.class);
-    registerDSFID(PR_PUT_MESSAGE, PutMessage.class);
+        () -> new DestroyRegionOperation.DestroyRegionMessage());
+    registerDSFID(PR_PUTALL_MESSAGE, () -> new PutAllPRMessage());
+    registerDSFID(PR_PUT_MESSAGE, () -> new PutMessage());
     registerDSFID(INVALIDATE_MESSAGE,
-        InvalidateOperation.InvalidateMessage.class);
-    registerDSFID(DESTROY_MESSAGE, DestroyOperation.DestroyMessage.class);
-    registerDSFID(DA_PROFILE, DistributionAdvisor.Profile.class);
-    registerDSFID(CACHE_PROFILE, CacheDistributionAdvisor.CacheProfile.class);
-    registerDSFID(HA_PROFILE, HARegion.HARegionAdvisor.HAProfile.class);
-    registerDSFID(ENTRY_EVENT, EntryEventImpl.class);
+        () -> new InvalidateOperation.InvalidateMessage());
+    registerDSFID(DESTROY_MESSAGE, () -> new DestroyOperation.DestroyMessage());
+    registerDSFID(DA_PROFILE, () -> new DistributionAdvisor.Profile());
+    registerDSFID(CACHE_PROFILE,
+        () -> new CacheDistributionAdvisor.CacheProfile());
+    registerDSFID(HA_PROFILE, () -> new HARegion.HARegionAdvisor.HAProfile());
+    registerDSFID(ENTRY_EVENT, () -> new EntryEventImpl());
     registerDSFID(UPDATE_ATTRIBUTES_MESSAGE,
-        UpdateAttributesProcessor.UpdateAttributesMessage.class);
+        () -> new UpdateAttributesProcessor.UpdateAttributesMessage());
     registerDSFID(PROFILE_REPLY_MESSAGE,
-        UpdateAttributesProcessor.ProfileReplyMessage.class);
+        () -> new UpdateAttributesProcessor.ProfileReplyMessage());
     registerDSFID(PROFILES_REPLY_MESSAGE,
-        UpdateAttributesProcessor.ProfilesReplyMessage.class);
-    registerDSFID(REGION_EVENT, RegionEventImpl.class);
-    registerDSFID(FILTER_PROFILE, FilterProfile.class);
+        () -> new UpdateAttributesProcessor.ProfilesReplyMessage());
+    registerDSFID(REGION_EVENT, () -> new RegionEventImpl());
+    registerDSFID(FILTER_PROFILE, () -> new FilterProfile());
     registerDSFID(REMOTE_PUTALL_REPLY_MESSAGE,
-        RemotePutAllMessage.PutAllReplyMessage.class);
-    registerDSFID(REMOTE_PUTALL_MESSAGE, RemotePutAllMessage.class);
-    registerDSFID(VERSION_TAG, VMVersionTag.class);
+        () -> new RemotePutAllMessage.PutAllReplyMessage());
+    registerDSFID(REMOTE_PUTALL_MESSAGE, () -> new RemotePutAllMessage());
+    registerDSFID(VERSION_TAG, () -> new VMVersionTag());
     registerDSFID(ADD_CACHESERVER_PROFILE_UPDATE,
-        AddCacheServerProfileMessage.class);
+        () -> new AddCacheServerProfileMessage());
     registerDSFID(SERVER_INTEREST_REGISTRATION_MESSAGE,
-        ServerInterestRegistrationMessage.class);
-    registerDSFID(FILTER_PROFILE_UPDATE, FilterProfile.OperationMessage.class);
-    registerDSFID(PR_GET_MESSAGE, GetMessage.class);
-    registerDSFID(R_FETCH_ENTRY_MESSAGE, RemoteFetchEntryMessage.class);
+        () -> new ServerInterestRegistrationMessage());
+    registerDSFID(FILTER_PROFILE_UPDATE,
+        () -> new FilterProfile.OperationMessage());
+    registerDSFID(PR_GET_MESSAGE, () -> new GetMessage());
+    registerDSFID(R_FETCH_ENTRY_MESSAGE, () -> new RemoteFetchEntryMessage());
     registerDSFID(R_FETCH_ENTRY_REPLY_MESSAGE,
-        RemoteFetchEntryMessage.FetchEntryReplyMessage.class);
-    registerDSFID(R_CONTAINS_MESSAGE, RemoteContainsKeyValueMessage.class);
+        () -> new RemoteFetchEntryMessage.FetchEntryReplyMessage());
+    registerDSFID(R_CONTAINS_MESSAGE,
+        () -> new RemoteContainsKeyValueMessage());
     registerDSFID(R_CONTAINS_REPLY_MESSAGE,
-        RemoteContainsKeyValueMessage.RemoteContainsKeyValueReplyMessage.class);
-    registerDSFID(R_DESTROY_MESSAGE, RemoteDestroyMessage.class);
+        () -> new RemoteContainsKeyValueMessage.RemoteContainsKeyValueReplyMessage());
+    registerDSFID(R_DESTROY_MESSAGE, () -> new RemoteDestroyMessage());
     registerDSFID(R_DESTROY_REPLY_MESSAGE,
-        RemoteDestroyMessage.DestroyReplyMessage.class);
-    registerDSFID(R_INVALIDATE_MESSAGE, RemoteInvalidateMessage.class);
+        () -> new RemoteDestroyMessage.DestroyReplyMessage());
+    registerDSFID(R_INVALIDATE_MESSAGE, () -> new RemoteInvalidateMessage());
     registerDSFID(R_INVALIDATE_REPLY_MESSAGE,
-        RemoteInvalidateMessage.InvalidateReplyMessage.class);
-    registerDSFID(R_GET_MESSAGE, RemoteGetMessage.class);
-    registerDSFID(R_GET_REPLY_MESSAGE, RemoteGetMessage.GetReplyMessage.class);
-    registerDSFID(R_PUT_MESSAGE, RemotePutMessage.class);
-    registerDSFID(R_PUT_REPLY_MESSAGE, RemotePutMessage.PutReplyMessage.class);
+        () -> new RemoteInvalidateMessage.InvalidateReplyMessage());
+    registerDSFID(R_GET_MESSAGE, () -> new RemoteGetMessage());
+    registerDSFID(R_GET_REPLY_MESSAGE,
+        () -> new RemoteGetMessage.GetReplyMessage());
+    registerDSFID(R_PUT_MESSAGE, () -> new RemotePutMessage());
+    registerDSFID(R_PUT_REPLY_MESSAGE,
+        () -> new RemotePutMessage.PutReplyMessage());
     registerDSFID(PR_DESTROY_REPLY_MESSAGE,
-        DestroyMessage.DestroyReplyMessage.class);
-    registerDSFID(CLI_FUNCTION_RESULT, CliFunctionResult.class);
-    registerDSFID(R_FETCH_KEYS_MESSAGE, RemoteFetchKeysMessage.class);
+        () -> new DestroyMessage.DestroyReplyMessage());
+    registerDSFID(CLI_FUNCTION_RESULT, () -> new CliFunctionResult());
+    registerDSFID(R_FETCH_KEYS_MESSAGE, () -> new RemoteFetchKeysMessage());
     registerDSFID(R_FETCH_KEYS_REPLY,
-        RemoteFetchKeysMessage.RemoteFetchKeysReplyMessage.class);
-    registerDSFID(PR_GET_REPLY_MESSAGE, GetReplyMessage.class);
-    registerDSFID(PR_NODE, Node.class);
+        () -> new RemoteFetchKeysMessage.RemoteFetchKeysReplyMessage());
+    registerDSFID(PR_GET_REPLY_MESSAGE, () -> new GetReplyMessage());
+    registerDSFID(PR_NODE, () -> new Node());
     registerDSFID(UPDATE_WITH_CONTEXT_MESSAGE,
-        UpdateOperation.UpdateWithContextMessage.class);
+        () -> new UpdateOperation.UpdateWithContextMessage());
     registerDSFID(DESTROY_WITH_CONTEXT_MESSAGE,
-        DestroyOperation.DestroyWithContextMessage.class);
+        () -> new DestroyOperation.DestroyWithContextMessage());
     registerDSFID(INVALIDATE_WITH_CONTEXT_MESSAGE,
-        InvalidateOperation.InvalidateWithContextMessage.class);
-    registerDSFID(REGION_VERSION_VECTOR, VMRegionVersionVector.class);
-    registerDSFID(CLIENT_PROXY_MEMBERSHIPID, ClientProxyMembershipID.class);
-    registerDSFID(EVENT_ID, EventID.class);
-    registerDSFID(CLIENT_UPDATE_MESSAGE, ClientUpdateMessageImpl.class);
+        () -> new InvalidateOperation.InvalidateWithContextMessage());
+    registerDSFID(REGION_VERSION_VECTOR, () -> new VMRegionVersionVector());
+    registerDSFID(CLIENT_PROXY_MEMBERSHIPID,
+        () -> new ClientProxyMembershipID());
+    registerDSFID(EVENT_ID, () -> new EventID());
+    registerDSFID(CLIENT_UPDATE_MESSAGE, () -> new ClientUpdateMessageImpl());
     registerDSFID(CLEAR_REGION_MESSAGE_WITH_CONTEXT,
-        ClearRegionWithContextMessage.class);
-    registerDSFID(CLIENT_INSTANTIATOR_MESSAGE, ClientInstantiatorMessage.class);
+        () -> new ClearRegionWithContextMessage());
+    registerDSFID(CLIENT_INSTANTIATOR_MESSAGE,
+        () -> new ClientInstantiatorMessage());
     registerDSFID(CLIENT_DATASERIALIZER_MESSAGE,
-        ClientDataSerializerMessage.class);
+        () -> new ClientDataSerializerMessage());
     registerDSFID(REGISTRATION_MESSAGE,
-        InternalInstantiator.RegistrationMessage.class);
+        () -> new InternalInstantiator.RegistrationMessage());
     registerDSFID(REGISTRATION_CONTEXT_MESSAGE,
-        InternalInstantiator.RegistrationContextMessage.class);
-    registerDSFID(RESULTS_COLLECTION_WRAPPER, ResultsCollectionWrapper.class);
-    registerDSFID(RESULTS_SET, ResultsSet.class);
-    registerDSFID(SORTED_RESULT_SET, SortedResultSet.class);
-    registerDSFID(SORTED_STRUCT_SET, SortedStructSet.class);
-    registerDSFID(UNDEFINED, Undefined.class);
-    registerDSFID(STRUCT_IMPL, StructImpl.class);
-    registerDSFID(STRUCT_SET, StructSet.class);
-    registerDSFID(END_OF_BUCKET, PRQueryProcessor.EndOfBucket.class);
-    registerDSFID(STRUCT_BAG, StructBag.class);
-    registerDSFID(LINKED_RESULTSET, LinkedResultSet.class);
-    registerDSFID(LINKED_STRUCTSET, LinkedStructSet.class);
-    registerDSFID(PR_BUCKET_BACKUP_MESSAGE, BucketBackupMessage.class);
+        () -> new InternalInstantiator.RegistrationContextMessage());
+    registerDSFID(RESULTS_COLLECTION_WRAPPER,
+        () -> new ResultsCollectionWrapper());
+    registerDSFID(RESULTS_SET, () -> new ResultsSet());
+    registerDSFID(SORTED_RESULT_SET, () -> new SortedResultSet());
+    registerDSFID(SORTED_STRUCT_SET, () -> new SortedStructSet());
+    registerDSFID(UNDEFINED, () -> new Undefined());
+    registerDSFID(STRUCT_IMPL, () -> new StructImpl());
+    registerDSFID(STRUCT_SET, () -> new StructSet());
+    registerDSFID(END_OF_BUCKET, () -> new PRQueryProcessor.EndOfBucket());
+    registerDSFID(STRUCT_BAG, () -> new StructBag());
+    registerDSFID(LINKED_RESULTSET, () -> new LinkedResultSet());
+    registerDSFID(LINKED_STRUCTSET, () -> new LinkedStructSet());
+    registerDSFID(PR_BUCKET_BACKUP_MESSAGE, () -> new BucketBackupMessage());
     registerDSFID(PR_BUCKET_PROFILE_UPDATE_MESSAGE,
-        BucketProfileUpdateMessage.class);
+        () -> new BucketProfileUpdateMessage());
     registerDSFID(PR_ALL_BUCKET_PROFILES_UPDATE_MESSAGE,
-        AllBucketProfilesUpdateMessage.class);
-    registerDSFID(PR_BUCKET_SIZE_MESSAGE, BucketSizeMessage.class);
-    registerDSFID(PR_CONTAINS_KEY_VALUE_MESSAGE, ContainsKeyValueMessage.class);
-    registerDSFID(PR_DUMP_ALL_PR_CONFIG_MESSAGE, DumpAllPRConfigMessage.class);
-    registerDSFID(PR_DUMP_BUCKETS_MESSAGE, DumpBucketsMessage.class);
-    registerDSFID(PR_FETCH_ENTRIES_MESSAGE, FetchEntriesMessage.class);
-    registerDSFID(PR_FETCH_ENTRY_MESSAGE, FetchEntryMessage.class);
-    registerDSFID(PR_FETCH_KEYS_MESSAGE, FetchKeysMessage.class);
-    registerDSFID(PR_FLUSH_MESSAGE, FlushMessage.class);
-    registerDSFID(PR_IDENTITY_REQUEST_MESSAGE, IdentityRequestMessage.class);
-    registerDSFID(PR_IDENTITY_UPDATE_MESSAGE, IdentityUpdateMessage.class);
-    registerDSFID(PR_INDEX_CREATION_MSG, IndexCreationMsg.class);
-    registerDSFID(PR_MANAGE_BUCKET_MESSAGE, ManageBucketMessage.class);
-    registerDSFID(PR_PRIMARY_REQUEST_MESSAGE, PrimaryRequestMessage.class);
+        () -> new AllBucketProfilesUpdateMessage());
+    registerDSFID(PR_BUCKET_SIZE_MESSAGE, () -> new BucketSizeMessage());
+    registerDSFID(PR_CONTAINS_KEY_VALUE_MESSAGE,
+        () -> new ContainsKeyValueMessage());
+    registerDSFID(PR_DUMP_ALL_PR_CONFIG_MESSAGE,
+        () -> new DumpAllPRConfigMessage());
+    registerDSFID(PR_DUMP_BUCKETS_MESSAGE, () -> new DumpBucketsMessage());
+    registerDSFID(PR_FETCH_ENTRIES_MESSAGE, () -> new FetchEntriesMessage());
+    registerDSFID(PR_FETCH_ENTRY_MESSAGE, () -> new FetchEntryMessage());
+    registerDSFID(PR_FETCH_KEYS_MESSAGE, () -> new FetchKeysMessage());
+    registerDSFID(PR_FLUSH_MESSAGE, () -> new FlushMessage());
+    registerDSFID(PR_IDENTITY_REQUEST_MESSAGE,
+        () -> new IdentityRequestMessage());
+    registerDSFID(PR_IDENTITY_UPDATE_MESSAGE,
+        () -> new IdentityUpdateMessage());
+    registerDSFID(PR_INDEX_CREATION_MSG, () -> new IndexCreationMsg());
+    registerDSFID(PR_MANAGE_BUCKET_MESSAGE, () -> new ManageBucketMessage());
+    registerDSFID(PR_PRIMARY_REQUEST_MESSAGE,
+        () -> new PrimaryRequestMessage());
     registerDSFID(PR_PRIMARY_REQUEST_REPLY_MESSAGE,
-        PrimaryRequestReplyMessage.class);
-    registerDSFID(PR_SANITY_CHECK_MESSAGE, PRSanityCheckMessage.class);
-    registerDSFID(PR_PUTALL_REPLY_MESSAGE, PutAllReplyMessage.class);
-    registerDSFID(PR_PUT_REPLY_MESSAGE, PutReplyMessage.class);
-    registerDSFID(PR_QUERY_MESSAGE, QueryMessage.class);
-    registerDSFID(PR_REMOVE_INDEXES_MESSAGE, RemoveIndexesMessage.class);
+        () -> new PrimaryRequestReplyMessage());
+    registerDSFID(PR_SANITY_CHECK_MESSAGE, () -> new PRSanityCheckMessage());
+    registerDSFID(PR_PUTALL_REPLY_MESSAGE, () -> new PutAllReplyMessage());
+    registerDSFID(PR_PUT_REPLY_MESSAGE, () -> new PutReplyMessage());
+    registerDSFID(PR_QUERY_MESSAGE, () -> new QueryMessage());
+    registerDSFID(PR_REMOVE_INDEXES_MESSAGE, () -> new RemoveIndexesMessage());
     registerDSFID(PR_REMOVE_INDEXES_REPLY_MESSAGE,
-        RemoveIndexesReplyMessage.class);
-    registerDSFID(PR_SIZE_MESSAGE, SizeMessage.class);
-    registerDSFID(PR_SIZE_REPLY_MESSAGE, SizeReplyMessage.class);
-    registerDSFID(PR_BUCKET_SIZE_REPLY_MESSAGE, BucketSizeReplyMessage.class);
+        () -> new RemoveIndexesReplyMessage());
+    registerDSFID(PR_SIZE_MESSAGE, () -> new SizeMessage());
+    registerDSFID(PR_SIZE_REPLY_MESSAGE, () -> new SizeReplyMessage());
+    registerDSFID(PR_BUCKET_SIZE_REPLY_MESSAGE,
+        () -> new BucketSizeReplyMessage());
     registerDSFID(PR_CONTAINS_KEY_VALUE_REPLY_MESSAGE,
-        ContainsKeyValueReplyMessage.class);
+        () -> new ContainsKeyValueReplyMessage());
     registerDSFID(PR_FETCH_ENTRIES_REPLY_MESSAGE,
-        FetchEntriesReplyMessage.class);
-    registerDSFID(PR_FETCH_ENTRY_REPLY_MESSAGE, FetchEntryReplyMessage.class);
-    registerDSFID(PR_IDENTITY_REPLY_MESSAGE, IdentityReplyMessage.class);
-    registerDSFID(PR_INDEX_CREATION_REPLY_MSG, IndexCreationReplyMsg.class);
+        () -> new FetchEntriesReplyMessage());
+    registerDSFID(PR_FETCH_ENTRY_REPLY_MESSAGE,
+        () -> new FetchEntryReplyMessage());
+    registerDSFID(PR_IDENTITY_REPLY_MESSAGE, () -> new IdentityReplyMessage());
+    registerDSFID(PR_INDEX_CREATION_REPLY_MSG,
+        () -> new IndexCreationReplyMsg());
     registerDSFID(PR_MANAGE_BUCKET_REPLY_MESSAGE,
-        ManageBucketReplyMessage.class);
-    registerDSFID(PR_FETCH_KEYS_REPLY_MESSAGE, FetchKeysReplyMessage.class);
-    registerDSFID(PR_DUMP_B2N_REGION_MSG, DumpB2NRegion.class);
-    registerDSFID(PR_DUMP_B2N_REPLY_MESSAGE, DumpB2NReplyMessage.class);
+        () -> new ManageBucketReplyMessage());
+    registerDSFID(PR_FETCH_KEYS_REPLY_MESSAGE,
+        () -> new FetchKeysReplyMessage());
+    registerDSFID(PR_DUMP_B2N_REGION_MSG, () -> new DumpB2NRegion());
+    registerDSFID(PR_DUMP_B2N_REPLY_MESSAGE, () -> new DumpB2NReplyMessage());
     registerDSFID(DESTROY_PARTITIONED_REGION_MESSAGE,
-        DestroyPartitionedRegionMessage.class);
+        () -> new DestroyPartitionedRegionMessage());
     registerDSFID(INVALIDATE_PARTITIONED_REGION_MESSAGE,
-        InvalidatePartitionedRegionMessage.class);
+        () -> new InvalidatePartitionedRegionMessage());
     registerDSFID(DESTROY_REGION_WITH_CONTEXT_MESSAGE,
-        DestroyRegionOperation.DestroyRegionWithContextMessage.class);
-    registerDSFID(PUT_ALL_MESSAGE, PutAllMessage.class);
-    registerDSFID(CLEAR_REGION_MESSAGE, ClearRegionMessage.class);
-    registerDSFID(TOMBSTONE_MESSAGE, TombstoneMessage.class);
-    registerDSFID(INVALIDATE_REGION_MESSAGE, InvalidateRegionMessage.class);
-    registerDSFID(SEND_QUEUE_MESSAGE, SendQueueMessage.class);
-    registerDSFID(STATE_MARKER_MESSAGE, StateMarkerMessage.class);
-    registerDSFID(STATE_STABILIZATION_MESSAGE, StateStabilizationMessage.class);
-    registerDSFID(STATE_STABILIZED_MESSAGE, StateStabilizedMessage.class);
-    registerDSFID(CLIENT_MARKER_MESSAGE_IMPL, ClientMarkerMessageImpl.class);
+        () -> new DestroyRegionOperation.DestroyRegionWithContextMessage());
+    registerDSFID(PUT_ALL_MESSAGE, () -> new PutAllMessage());
+    registerDSFID(CLEAR_REGION_MESSAGE, () -> new ClearRegionMessage());
+    registerDSFID(TOMBSTONE_MESSAGE, () -> new TombstoneMessage());
+    registerDSFID(INVALIDATE_REGION_MESSAGE,
+        () -> new InvalidateRegionMessage());
+    registerDSFID(SEND_QUEUE_MESSAGE, () -> new SendQueueMessage());
+    registerDSFID(STATE_MARKER_MESSAGE, () -> new StateMarkerMessage());
+    registerDSFID(STATE_STABILIZATION_MESSAGE,
+        () -> new StateStabilizationMessage());
+    registerDSFID(STATE_STABILIZED_MESSAGE, () -> new StateStabilizedMessage());
+    registerDSFID(CLIENT_MARKER_MESSAGE_IMPL,
+        () -> new ClientMarkerMessageImpl());
     //registerDSFID(TX_LOCK_UPDATE_PARTICIPANTS_MESSAGE,
-    //  TXLockUpdateParticipantsMessage.class);
+    //  () -> new TXLockUpdateParticipantsMessage());
     //registerDSFID(TX_ORIGINATOR_RECOVERY_MESSAGE,
-    //  TXOriginatorRecoveryMessage.class);
+    //  () -> new TXOriginatorRecoveryMessage());
     //registerDSFID(TX_ORIGINATOR_RECOVERY_REPLY_MESSAGE,
-    //  TXOriginatorRecoveryReplyMessage.class);
-    registerDSFID(TX_REMOTE_COMMIT_MESSAGE, TXRemoteCommitMessage.class);
-    registerDSFID(TX_REMOTE_ROLLBACK_MESSAGE, TXRemoteRollbackMessage.class);
+    //  () -> new TXOriginatorRecoveryReplyMessage());
+    registerDSFID(TX_REMOTE_COMMIT_MESSAGE, () -> new TXRemoteCommitMessage());
+    registerDSFID(TX_REMOTE_ROLLBACK_MESSAGE,
+        () -> new TXRemoteRollbackMessage());
     registerDSFID(TX_REMOTE_COMMIT_PHASE1_MESSAGE,
-        TXRemoteCommitPhase1Message.class);
+        () -> new TXRemoteCommitPhase1Message());
     //registerDSFID(JTA_BEFORE_COMPLETION_MESSAGE,
-    //  JtaBeforeCompletionMessage.class);
+    //  () -> new JtaBeforeCompletionMessage());
     //registerDSFID(JTA_AFTER_COMPLETION_MESSAGE,
-    //  JtaAfterCompletionMessage.class);
-    registerDSFID(TX_NEW_GII_NODE, TXNewGIINode.class);
-    registerDSFID(TX_BATCH_MESSAGE, TXBatchMessage.class);
-    registerDSFID(TX_BATCH_REPLY_MESSAGE, TXBatchMessage.TXBatchReply.class);
-    registerDSFID(TX_CLEANUP_ENTRY_MESSAGE, TXCleanupEntryMessage.class);
-    registerDSFID(QUEUE_REMOVAL_MESSAGE, QueueRemovalMessage.class);
+    //  () -> new JtaAfterCompletionMessage());
+    registerDSFID(TX_NEW_GII_NODE, () -> new TXNewGIINode());
+    registerDSFID(TX_BATCH_MESSAGE, () -> new TXBatchMessage());
+    registerDSFID(TX_BATCH_REPLY_MESSAGE,
+        () -> new TXBatchMessage.TXBatchReply());
+    registerDSFID(TX_CLEANUP_ENTRY_MESSAGE, () -> new TXCleanupEntryMessage());
+    registerDSFID(QUEUE_REMOVAL_MESSAGE, () -> new QueueRemovalMessage());
     registerDSFID(DLOCK_RECOVER_GRANTOR_MESSAGE,
-        DLockRecoverGrantorMessage.class);
+        () -> new DLockRecoverGrantorMessage());
     registerDSFID(DLOCK_RECOVER_GRANTOR_REPLY_MESSAGE,
-        DLockRecoverGrantorReplyMessage.class);
+        () -> new DLockRecoverGrantorReplyMessage());
     registerDSFID(NON_GRANTOR_DESTROYED_REPLY_MESSAGE,
-        NonGrantorDestroyedReplyMessage.class);
+        () -> new NonGrantorDestroyedReplyMessage());
     registerDSFID(IDS_REGISTRATION_MESSAGE,
-        InternalDataSerializer.RegistrationMessage.class);
+        () -> new InternalDataSerializer.RegistrationMessage());
     registerDSFID(PR_FETCH_PARTITION_DETAILS_MESSAGE,
-        FetchPartitionDetailsMessage.class);
+        () -> new FetchPartitionDetailsMessage());
     registerDSFID(PR_FETCH_PARTITION_DETAILS_REPLY,
-        FetchPartitionDetailsReplyMessage.class);
+        () -> new FetchPartitionDetailsReplyMessage());
     registerDSFID(PR_DEPOSE_PRIMARY_BUCKET_MESSAGE,
-        DeposePrimaryBucketMessage.class);
+        () -> new DeposePrimaryBucketMessage());
     registerDSFID(PR_DEPOSE_PRIMARY_BUCKET_REPLY,
-        DeposePrimaryBucketReplyMessage.class);
+        () -> new DeposePrimaryBucketReplyMessage());
     registerDSFID(PR_BECOME_PRIMARY_BUCKET_MESSAGE,
-        BecomePrimaryBucketMessage.class);
+        () -> new BecomePrimaryBucketMessage());
     registerDSFID(PR_BECOME_PRIMARY_BUCKET_REPLY,
-        BecomePrimaryBucketReplyMessage.class);
-    registerDSFID(PR_REMOVE_BUCKET_MESSAGE, RemoveBucketMessage.class);
+        () -> new BecomePrimaryBucketReplyMessage());
+    registerDSFID(PR_REMOVE_BUCKET_MESSAGE, () -> new RemoveBucketMessage());
     /* TODO: merge: can be useful when new TX adds HA support
     registerDSFID(TX_MANAGER_REMOVE_TRANSACTIONS,
-        TXManagerImpl.TXRemovalMessage.class);
+        () -> new TXManagerImpl.TXRemovalMessage());
     */
-    registerDSFID(PR_REMOVE_BUCKET_REPLY, RemoveBucketReplyMessage.class);
-    registerDSFID(PR_MOVE_BUCKET_MESSAGE, MoveBucketMessage.class);
-    registerDSFID(PR_MOVE_BUCKET_REPLY, MoveBucketReplyMessage.class);
-    registerDSFID(ADD_HEALTH_LISTENER_REQUEST, AddHealthListenerRequest.class);
-    registerDSFID(ADD_HEALTH_LISTENER_RESPONSE, AddHealthListenerResponse.class);
-    registerDSFID(ADD_STAT_LISTENER_REQUEST, AddStatListenerRequest.class);
-    registerDSFID(ADD_STAT_LISTENER_RESPONSE, AddStatListenerResponse.class);
+    registerDSFID(PR_REMOVE_BUCKET_REPLY, () -> new RemoveBucketReplyMessage());
+    registerDSFID(PR_MOVE_BUCKET_MESSAGE, () -> new MoveBucketMessage());
+    registerDSFID(PR_MOVE_BUCKET_REPLY, () -> new MoveBucketReplyMessage());
+    registerDSFID(ADD_HEALTH_LISTENER_REQUEST,
+        () -> new AddHealthListenerRequest());
+    registerDSFID(ADD_HEALTH_LISTENER_RESPONSE,
+        () -> new AddHealthListenerResponse());
+    registerDSFID(ADD_STAT_LISTENER_REQUEST,
+        () -> new AddStatListenerRequest());
+    registerDSFID(ADD_STAT_LISTENER_RESPONSE,
+        () -> new AddStatListenerResponse());
     registerDSFID(ADMIN_CONSOLE_DISCONNECT_MESSAGE,
-        AdminConsoleDisconnectMessage.class);
-    registerDSFID(ADMIN_CONSOLE_MESSAGE, AdminConsoleMessage.class);
-    registerDSFID(MANAGER_STARTUP_MESSAGE, ManagerStartupMessage.class);
-    registerDSFID(JMX_MANAGER_LOCATOR_REQUEST, JmxManagerLocatorRequest.class);
-    registerDSFID(JMX_MANAGER_LOCATOR_RESPONSE, JmxManagerLocatorResponse.class);
-    registerDSFID(ADMIN_FAILURE_RESPONSE, AdminFailureResponse.class);
-    registerDSFID(ALERT_LEVEL_CHANGE_MESSAGE, AlertLevelChangeMessage.class);
-    registerDSFID(ALERT_LISTENER_MESSAGE, AlertListenerMessage.class);
-    registerDSFID(APP_CACHE_SNAPSHOT_MESSAGE, AppCacheSnapshotMessage.class);
-    registerDSFID(BRIDGE_SERVER_REQUEST, BridgeServerRequest.class);
-    registerDSFID(BRIDGE_SERVER_RESPONSE, BridgeServerResponse.class);
-    registerDSFID(CACHE_CONFIG_REQUEST, CacheConfigRequest.class);
-    registerDSFID(CACHE_CONFIG_RESPONSE, CacheConfigResponse.class);
-    registerDSFID(CACHE_INFO_REQUEST, CacheInfoRequest.class);
-    registerDSFID(CACHE_INFO_RESPONSE, CacheInfoResponse.class);
-    registerDSFID(CANCELLATION_MESSAGE, CancellationMessage.class);
-    registerDSFID(CANCEL_STAT_LISTENER_REQUEST, CancelStatListenerRequest.class);
+        () -> new AdminConsoleDisconnectMessage());
+    registerDSFID(ADMIN_CONSOLE_MESSAGE, () -> new AdminConsoleMessage());
+    registerDSFID(MANAGER_STARTUP_MESSAGE, () -> new ManagerStartupMessage());
+    registerDSFID(JMX_MANAGER_LOCATOR_REQUEST,
+        () -> new JmxManagerLocatorRequest());
+    registerDSFID(JMX_MANAGER_LOCATOR_RESPONSE,
+        () -> new JmxManagerLocatorResponse());
+    registerDSFID(ADMIN_FAILURE_RESPONSE, () -> new AdminFailureResponse());
+    registerDSFID(ALERT_LEVEL_CHANGE_MESSAGE,
+        () -> new AlertLevelChangeMessage());
+    registerDSFID(ALERT_LISTENER_MESSAGE, () -> new AlertListenerMessage());
+    registerDSFID(APP_CACHE_SNAPSHOT_MESSAGE,
+        () -> new AppCacheSnapshotMessage());
+    registerDSFID(BRIDGE_SERVER_REQUEST, () -> new BridgeServerRequest());
+    registerDSFID(BRIDGE_SERVER_RESPONSE, () -> new BridgeServerResponse());
+    registerDSFID(CACHE_CONFIG_REQUEST, () -> new CacheConfigRequest());
+    registerDSFID(CACHE_CONFIG_RESPONSE, () -> new CacheConfigResponse());
+    registerDSFID(CACHE_INFO_REQUEST, () -> new CacheInfoRequest());
+    registerDSFID(CACHE_INFO_RESPONSE, () -> new CacheInfoResponse());
+    registerDSFID(CANCELLATION_MESSAGE, () -> new CancellationMessage());
+    registerDSFID(CANCEL_STAT_LISTENER_REQUEST,
+        () -> new CancelStatListenerRequest());
     registerDSFID(CANCEL_STAT_LISTENER_RESPONSE,
-        CancelStatListenerResponse.class);
-    registerDSFID(DESTROY_ENTRY_MESSAGE, DestroyEntryMessage.class);
-    registerDSFID(ADMIN_DESTROY_REGION_MESSAGE, DestroyRegionMessage.class);
-    registerDSFID(FETCH_DIST_LOCK_INFO_REQUEST, FetchDistLockInfoRequest.class);
+        () -> new CancelStatListenerResponse());
+    registerDSFID(DESTROY_ENTRY_MESSAGE, () -> new DestroyEntryMessage());
+    registerDSFID(ADMIN_DESTROY_REGION_MESSAGE,
+        () -> new DestroyRegionMessage());
+    registerDSFID(FETCH_DIST_LOCK_INFO_REQUEST,
+        () -> new FetchDistLockInfoRequest());
     registerDSFID(FETCH_DIST_LOCK_INFO_RESPONSE,
-        FetchDistLockInfoResponse.class);
+        () -> new FetchDistLockInfoResponse());
     registerDSFID(FETCH_HEALTH_DIAGNOSIS_REQUEST,
-        FetchHealthDiagnosisRequest.class);
+        () -> new FetchHealthDiagnosisRequest());
     registerDSFID(FETCH_HEALTH_DIAGNOSIS_RESPONSE,
-        FetchHealthDiagnosisResponse.class);
-    registerDSFID(FETCH_HOST_REQUEST, FetchHostRequest.class);
-    registerDSFID(FETCH_HOST_RESPONSE, FetchHostResponse.class);
+        () -> new FetchHealthDiagnosisResponse());
+    registerDSFID(FETCH_HOST_REQUEST, () -> new FetchHostRequest());
+    registerDSFID(FETCH_HOST_RESPONSE, () -> new FetchHostResponse());
     registerDSFID(FETCH_RESOURCE_ATTRIBUTES_REQUEST,
-        FetchResourceAttributesRequest.class);
+        () -> new FetchResourceAttributesRequest());
     registerDSFID(FETCH_RESOURCE_ATTRIBUTES_RESPONSE,
-        FetchResourceAttributesResponse.class);
-    registerDSFID(FETCH_STATS_REQUEST, FetchStatsRequest.class);
-    registerDSFID(FETCH_STATS_RESPONSE, FetchStatsResponse.class);
-    registerDSFID(FETCH_SYS_CFG_REQUEST, FetchSysCfgRequest.class);
-    registerDSFID(FETCH_SYS_CFG_RESPONSE, FetchSysCfgResponse.class);
+        () -> new FetchResourceAttributesResponse());
+    registerDSFID(FETCH_STATS_REQUEST, () -> new FetchStatsRequest());
+    registerDSFID(FETCH_STATS_RESPONSE, () -> new FetchStatsResponse());
+    registerDSFID(FETCH_SYS_CFG_REQUEST, () -> new FetchSysCfgRequest());
+    registerDSFID(FETCH_SYS_CFG_RESPONSE, () -> new FetchSysCfgResponse());
     registerDSFID(FLUSH_APP_CACHE_SNAPSHOT_MESSAGE,
-        FlushAppCacheSnapshotMessage.class);
-    registerDSFID(HEALTH_LISTENER_MESSAGE, HealthListenerMessage.class);
-    registerDSFID(OBJECT_DETAILS_REQUEST, ObjectDetailsRequest.class);
-    registerDSFID(OBJECT_DETAILS_RESPONSE, ObjectDetailsResponse.class);
-    registerDSFID(OBJECT_NAMES_REQUEST, ObjectNamesRequest.class);
-    registerDSFID(OBJECT_NAMES_RESPONSE, ObjectNamesResponse.class);
-    registerDSFID(REGION_ATTRIBUTES_REQUEST, RegionAttributesRequest.class);
-    registerDSFID(REGION_ATTRIBUTES_RESPONSE, RegionAttributesResponse.class);
-    registerDSFID(REGION_REQUEST, RegionRequest.class);
-    registerDSFID(REGION_RESPONSE, RegionResponse.class);
-    registerDSFID(REGION_SIZE_REQUEST, RegionSizeRequest.class);
-    registerDSFID(REGION_SIZE_RESPONSE, RegionSizeResponse.class);
-    registerDSFID(REGION_STATISTICS_REQUEST, RegionStatisticsRequest.class);
-    registerDSFID(REGION_STATISTICS_RESPONSE, RegionStatisticsResponse.class);
+        () -> new FlushAppCacheSnapshotMessage());
+    registerDSFID(HEALTH_LISTENER_MESSAGE, () -> new HealthListenerMessage());
+    registerDSFID(OBJECT_DETAILS_REQUEST, () -> new ObjectDetailsRequest());
+    registerDSFID(OBJECT_DETAILS_RESPONSE, () -> new ObjectDetailsResponse());
+    registerDSFID(OBJECT_NAMES_REQUEST, () -> new ObjectNamesRequest());
+    registerDSFID(OBJECT_NAMES_RESPONSE, () -> new ObjectNamesResponse());
+    registerDSFID(REGION_ATTRIBUTES_REQUEST,
+        () -> new RegionAttributesRequest());
+    registerDSFID(REGION_ATTRIBUTES_RESPONSE,
+        () -> new RegionAttributesResponse());
+    registerDSFID(REGION_REQUEST, () -> new RegionRequest());
+    registerDSFID(REGION_RESPONSE, () -> new RegionResponse());
+    registerDSFID(REGION_SIZE_REQUEST, () -> new RegionSizeRequest());
+    registerDSFID(REGION_SIZE_RESPONSE, () -> new RegionSizeResponse());
+    registerDSFID(REGION_STATISTICS_REQUEST,
+        () -> new RegionStatisticsRequest());
+    registerDSFID(REGION_STATISTICS_RESPONSE,
+        () -> new RegionStatisticsResponse());
     registerDSFID(REMOVE_HEALTH_LISTENER_REQUEST,
-        RemoveHealthListenerRequest.class);
+        () -> new RemoveHealthListenerRequest());
     registerDSFID(REMOVE_HEALTH_LISTENER_RESPONSE,
-        RemoveHealthListenerResponse.class);
-    registerDSFID(RESET_HEALTH_STATUS_REQUEST, ResetHealthStatusRequest.class);
-    registerDSFID(RESET_HEALTH_STATUS_RESPONSE, ResetHealthStatusResponse.class);
-    registerDSFID(ROOT_REGION_REQUEST, RootRegionRequest.class);
-    registerDSFID(ROOT_REGION_RESPONSE, RootRegionResponse.class);
-    registerDSFID(SNAPSHOT_RESULT_MESSAGE, SnapshotResultMessage.class);
-    registerDSFID(STAT_LISTENER_MESSAGE, StatListenerMessage.class);
-    registerDSFID(STORE_SYS_CFG_REQUEST, StoreSysCfgRequest.class);
-    registerDSFID(STORE_SYS_CFG_RESPONSE, StoreSysCfgResponse.class);
-    registerDSFID(SUB_REGION_REQUEST, SubRegionRequest.class);
-    registerDSFID(SUB_REGION_RESPONSE, SubRegionResponse.class);
-    registerDSFID(TAIL_LOG_REQUEST, TailLogRequest.class);
-    registerDSFID(TAIL_LOG_RESPONSE, TailLogResponse.class);
-    registerDSFID(VERSION_INFO_REQUEST, VersionInfoRequest.class);
-    registerDSFID(VERSION_INFO_RESPONSE, VersionInfoResponse.class);
-    registerDSFID(HIGH_PRIORITY_ACKED_MESSAGE, HighPriorityAckedMessage.class);
-    registerDSFID(SERIAL_ACKED_MESSAGE, SerialAckedMessage.class);
-    registerDSFID(BUCKET_PROFILE, BucketAdvisor.BucketProfile.class);
+        () -> new RemoveHealthListenerResponse());
+    registerDSFID(RESET_HEALTH_STATUS_REQUEST,
+        () -> new ResetHealthStatusRequest());
+    registerDSFID(RESET_HEALTH_STATUS_RESPONSE,
+        () -> new ResetHealthStatusResponse());
+    registerDSFID(ROOT_REGION_REQUEST, () -> new RootRegionRequest());
+    registerDSFID(ROOT_REGION_RESPONSE, () -> new RootRegionResponse());
+    registerDSFID(SNAPSHOT_RESULT_MESSAGE, () -> new SnapshotResultMessage());
+    registerDSFID(STAT_LISTENER_MESSAGE, () -> new StatListenerMessage());
+    registerDSFID(STORE_SYS_CFG_REQUEST, () -> new StoreSysCfgRequest());
+    registerDSFID(STORE_SYS_CFG_RESPONSE, () -> new StoreSysCfgResponse());
+    registerDSFID(SUB_REGION_REQUEST, () -> new SubRegionRequest());
+    registerDSFID(SUB_REGION_RESPONSE, () -> new SubRegionResponse());
+    registerDSFID(TAIL_LOG_REQUEST, () -> new TailLogRequest());
+    registerDSFID(TAIL_LOG_RESPONSE, () -> new TailLogResponse());
+    registerDSFID(VERSION_INFO_REQUEST, () -> new VersionInfoRequest());
+    registerDSFID(VERSION_INFO_RESPONSE, () -> new VersionInfoResponse());
+    registerDSFID(HIGH_PRIORITY_ACKED_MESSAGE,
+        () -> new HighPriorityAckedMessage());
+    registerDSFID(SERIAL_ACKED_MESSAGE, () -> new SerialAckedMessage());
+    registerDSFID(BUCKET_PROFILE, () -> new BucketAdvisor.BucketProfile());
     registerDSFID(SERVER_BUCKET_PROFILE,
-        BucketAdvisor.ServerBucketProfile.class);
-    registerDSFID(PARTITION_PROFILE, RegionAdvisor.PartitionProfile.class);
+        () -> new BucketAdvisor.ServerBucketProfile());
+    registerDSFID(PARTITION_PROFILE,
+        () -> new RegionAdvisor.PartitionProfile());
     registerDSFID(GATEWAY_SENDER_PROFILE,
-        GatewaySenderAdvisor.GatewaySenderProfile.class);
-    registerDSFID(ROLE_EVENT, RoleEventImpl.class);
-    registerDSFID(BRIDGE_REGION_EVENT, BridgeRegionEventImpl.class);
-    registerDSFID(PR_INVALIDATE_MESSAGE, InvalidateMessage.class);
+        () -> new GatewaySenderAdvisor.GatewaySenderProfile());
+    registerDSFID(ROLE_EVENT, () -> new RoleEventImpl());
+    registerDSFID(BRIDGE_REGION_EVENT, () -> new BridgeRegionEventImpl());
+    registerDSFID(PR_INVALIDATE_MESSAGE, () -> new InvalidateMessage());
     registerDSFID(PR_INVALIDATE_REPLY_MESSAGE,
-        InvalidateMessage.InvalidateReplyMessage.class);
-    registerDSFID(STREAMING_REPLY_MESSAGE, StreamingReplyMessage.class);
-    registerDSFID(PARTITION_REGION_CONFIG, PartitionRegionConfig.class);
+        () -> new InvalidateMessage.InvalidateReplyMessage());
+    registerDSFID(STREAMING_REPLY_MESSAGE, () -> new StreamingReplyMessage());
+    registerDSFID(PARTITION_REGION_CONFIG, () -> new PartitionRegionConfig());
     registerDSFID(PREFER_BYTES_CACHED_DESERIALIZABLE,
-        PreferBytesCachedDeserializable.class);
-    registerDSFID(VM_CACHED_DESERIALIZABLE, VMCachedDeserializable.class);
-    registerDSFID(GATEWAY_EVENT_IMPL, GatewayEventImpl.class);
-    registerDSFID(GATEWAY_SENDER_EVENT_IMPL, GatewaySenderEventImpl.class);
-    registerDSFID(SUSPEND_LOCKING_TOKEN, DLockService.SuspendLockingToken.class);
-    registerDSFID(OBJECT_TYPE_IMPL, ObjectTypeImpl.class);
-    registerDSFID(STRUCT_TYPE_IMPL, StructTypeImpl.class);
-    registerDSFID(COLLECTION_TYPE_IMPL, CollectionTypeImpl.class);
+        () -> new PreferBytesCachedDeserializable());
+    registerDSFID(VM_CACHED_DESERIALIZABLE, () -> new VMCachedDeserializable());
+    registerDSFID(GATEWAY_EVENT_IMPL, () -> new GatewayEventImpl());
+    registerDSFID(GATEWAY_SENDER_EVENT_IMPL,
+        () -> new GatewaySenderEventImpl());
+    registerDSFID(SUSPEND_LOCKING_TOKEN,
+        () -> new DLockService.SuspendLockingToken());
+    registerDSFID(OBJECT_TYPE_IMPL, () -> new ObjectTypeImpl());
+    registerDSFID(STRUCT_TYPE_IMPL, () -> new StructTypeImpl());
+    registerDSFID(COLLECTION_TYPE_IMPL, () -> new CollectionTypeImpl());
     registerDSFID(GATEWAY_EVENT_CALLBACK_ARGUMENT,
-        GatewayEventCallbackArgument.class);
+        () -> new GatewayEventCallbackArgument());
     registerDSFID(GATEWAY_SENDER_EVENT_CALLBACK_ARGUMENT,
-        GatewaySenderEventCallbackArgumentImpl.class);
+        () -> new GatewaySenderEventCallbackArgumentImpl());
     registerDSFID(GATEWAY_EVENT_CALLBACK_ARGUMENT,
-        GatewayEventCallbackArgument.class);
+        () -> new GatewayEventCallbackArgument());
     registerDSFID(GATEWAY_SENDER_EVENT_CALLBACK_ARGUMENT,
-        GatewaySenderEventCallbackArgumentImpl.class);
-    registerDSFID(MAP_TYPE_IMPL, MapTypeImpl.class);
+        () -> new GatewaySenderEventCallbackArgumentImpl());
+    registerDSFID(MAP_TYPE_IMPL, () -> new MapTypeImpl());
     registerDSFID(STORE_ALL_CACHED_DESERIALIZABLE,
-        StoreAllCachedDeserializable.class);
-    registerDSFID(INTEREST_EVENT_MESSAGE, InterestEventMessage.class);
-    registerDSFID(INTEREST_EVENT_REPLY_MESSAGE, InterestEventReplyMessage.class);
-    registerDSFID(HA_EVENT_WRAPPER, HAEventWrapper.class);
+        () -> new StoreAllCachedDeserializable());
+    registerDSFID(INTEREST_EVENT_MESSAGE, () -> new InterestEventMessage());
+    registerDSFID(INTEREST_EVENT_REPLY_MESSAGE,
+        () -> new InterestEventReplyMessage());
+    registerDSFID(HA_EVENT_WRAPPER, () -> new HAEventWrapper());
     registerDSFID(STAT_ALERTS_MGR_ASSIGN_MESSAGE,
-        StatAlertsManagerAssignMessage.class);
+        () -> new StatAlertsManagerAssignMessage());
     registerDSFID(UPDATE_ALERTS_DEFN_MESSAGE,
-        UpdateAlertDefinitionMessage.class);
+        () -> new UpdateAlertDefinitionMessage());
     registerDSFID(REFRESH_MEMBER_SNAP_REQUEST,
-        RefreshMemberSnapshotRequest.class);
+        () -> new RefreshMemberSnapshotRequest());
     registerDSFID(REFRESH_MEMBER_SNAP_RESPONSE,
-        RefreshMemberSnapshotResponse.class);
-    registerDSFID(REGION_SUB_SIZE_REQUEST, RegionSubRegionSizeRequest.class);
-    registerDSFID(REGION_SUB_SIZE_RESPONSE, RegionSubRegionsSizeResponse.class);
+        () -> new RefreshMemberSnapshotResponse());
+    registerDSFID(REGION_SUB_SIZE_REQUEST,
+        () -> new RegionSubRegionSizeRequest());
+    registerDSFID(REGION_SUB_SIZE_RESPONSE,
+        () -> new RegionSubRegionsSizeResponse());
     registerDSFID(CHANGE_REFRESH_INT_MESSAGE,
-        ChangeRefreshIntervalMessage.class);
-    registerDSFID(ALERTS_NOTIF_MESSAGE, AlertsNotificationMessage.class);
-    registerDSFID(FIND_DURABLE_QUEUE, FindDurableQueueMessage.class);
-    registerDSFID(FIND_DURABLE_QUEUE_REPLY, FindDurableQueueReply.class);
-    registerDSFID(BRIDGE_SERVER_LOAD_MESSAGE, BridgeServerLoadMessage.class);
-    registerDSFID(BRIDGE_SERVER_PROFILE, BridgeServerProfile.class);
-    registerDSFID(CONTROLLER_PROFILE, ControllerProfile.class);
+        () -> new ChangeRefreshIntervalMessage());
+    registerDSFID(ALERTS_NOTIF_MESSAGE, () -> new AlertsNotificationMessage());
+    registerDSFID(FIND_DURABLE_QUEUE, () -> new FindDurableQueueMessage());
+    registerDSFID(FIND_DURABLE_QUEUE_REPLY, () -> new FindDurableQueueReply());
+    registerDSFID(BRIDGE_SERVER_LOAD_MESSAGE,
+        () -> new BridgeServerLoadMessage());
+    registerDSFID(BRIDGE_SERVER_PROFILE, () -> new BridgeServerProfile());
+    registerDSFID(CONTROLLER_PROFILE, () -> new ControllerProfile());
     registerDSFID(DLOCK_QUERY_MESSAGE,
-        DLockQueryProcessor.DLockQueryMessage.class);
+        () -> new DLockQueryProcessor.DLockQueryMessage());
     registerDSFID(DLOCK_QUERY_REPLY,
-        DLockQueryProcessor.DLockQueryReplyMessage.class);
-    registerDSFID(VMID_PROFILE_MESSAGE, VMIdProfile.class);
-    registerDSFID(PERSISTENT_UUID_PROFILE_MESSAGE, PersistentUUIDProfile.class);
-    registerDSFID(LOCATOR_LIST_REQUEST, LocatorListRequest.class);
-    registerDSFID(LOCATOR_LIST_RESPONSE, LocatorListResponse.class);
-    registerDSFID(REMOTE_LOCATOR_JOIN_REQUEST, RemoteLocatorJoinRequest.class);
-    registerDSFID(REMOTE_LOCATOR_JOIN_RESPONSE, RemoteLocatorJoinResponse.class);
-    registerDSFID(REMOTE_LOCATOR_REQUEST, RemoteLocatorRequest.class);
-    registerDSFID(REMOTE_LOCATOR_RESPONSE, RemoteLocatorResponse.class);
-    registerDSFID(LOCATOR_JOIN_MESSAGE, LocatorJoinMessage.class);
-    registerDSFID(REMOTE_LOCATOR_PING_REQUEST, RemoteLocatorPingRequest.class);
-    registerDSFID(REMOTE_LOCATOR_PING_RESPONSE, RemoteLocatorPingResponse.class);
-    registerDSFID(CLIENT_CONNECTION_REQUEST, ClientConnectionRequest.class);
-    registerDSFID(CLIENT_CONNECTION_RESPONSE, ClientConnectionResponse.class);
-    registerDSFID(QUEUE_CONNECTION_REQUEST, QueueConnectionRequest.class);
-    registerDSFID(QUEUE_CONNECTION_RESPONSE, QueueConnectionResponse.class);
-    registerDSFID(CLIENT_REPLACEMENT_REQUEST, ClientReplacementRequest.class);
-    registerDSFID(OBJECT_PART_LIST, ObjectPartList.class);
-    registerDSFID(VERSIONED_OBJECT_LIST, VersionedObjectList.class);
-    registerDSFID(OBJECT_PART_LIST66, ObjectPartList651.class);
-    registerDSFID(JGROUPS_VIEW, View.class);
-    registerDSFID(JGROUPS_JOIN_RESP, JoinRsp.class);
-    registerDSFID(PUTALL_VERSIONS_LIST, EntryVersionsList.class);
+        () -> new DLockQueryProcessor.DLockQueryReplyMessage());
+    registerDSFID(VMID_PROFILE_MESSAGE, () -> new VMIdProfile());
+    registerDSFID(PERSISTENT_UUID_PROFILE_MESSAGE,
+        () -> new PersistentUUIDProfile());
+    registerDSFID(LOCATOR_LIST_REQUEST, () -> new LocatorListRequest());
+    registerDSFID(LOCATOR_LIST_RESPONSE, () -> new LocatorListResponse());
+    registerDSFID(REMOTE_LOCATOR_JOIN_REQUEST,
+        () -> new RemoteLocatorJoinRequest());
+    registerDSFID(REMOTE_LOCATOR_JOIN_RESPONSE,
+        () -> new RemoteLocatorJoinResponse());
+    registerDSFID(REMOTE_LOCATOR_REQUEST, () -> new RemoteLocatorRequest());
+    registerDSFID(REMOTE_LOCATOR_RESPONSE, () -> new RemoteLocatorResponse());
+    registerDSFID(LOCATOR_JOIN_MESSAGE, () -> new LocatorJoinMessage());
+    registerDSFID(REMOTE_LOCATOR_PING_REQUEST,
+        () -> new RemoteLocatorPingRequest());
+    registerDSFID(REMOTE_LOCATOR_PING_RESPONSE,
+        () -> new RemoteLocatorPingResponse());
+    registerDSFID(CLIENT_CONNECTION_REQUEST,
+        () -> new ClientConnectionRequest());
+    registerDSFID(CLIENT_CONNECTION_RESPONSE,
+        () -> new ClientConnectionResponse());
+    registerDSFID(QUEUE_CONNECTION_REQUEST,
+        () -> new QueueConnectionRequest());
+    registerDSFID(QUEUE_CONNECTION_RESPONSE,
+        () -> new QueueConnectionResponse());
+    registerDSFID(CLIENT_REPLACEMENT_REQUEST,
+        () -> new ClientReplacementRequest());
+    registerDSFID(OBJECT_PART_LIST, () -> new ObjectPartList());
+    registerDSFID(VERSIONED_OBJECT_LIST, () -> new VersionedObjectList());
+    registerDSFID(OBJECT_PART_LIST66, () -> new ObjectPartList651());
+    registerDSFID(JGROUPS_VIEW, () -> new View());
+    registerDSFID(JGROUPS_JOIN_RESP, () -> new JoinRsp());
+    registerDSFID(PUTALL_VERSIONS_LIST, () -> new EntryVersionsList());
     registerDSFID(INITIAL_IMAGE_VERSIONED_OBJECT_LIST,
-        InitialImageVersionedEntryList.class);
-    registerDSFID(FIND_VERSION_TAG, FindVersionTagMessage.class);
-    registerDSFID(VERSION_TAG_REPLY, VersionTagReply.class);
-    registerDSFID(DURABLE_CLIENT_INFO_REQUEST, DurableClientInfoRequest.class);
-    registerDSFID(DURABLE_CLIENT_INFO_RESPONSE, DurableClientInfoResponse.class);
-    registerDSFID(CLIENT_INTEREST_MESSAGE, ClientInterestMessageImpl.class);
+        () -> new InitialImageVersionedEntryList());
+    registerDSFID(FIND_VERSION_TAG, () -> new FindVersionTagMessage());
+    registerDSFID(VERSION_TAG_REPLY, () -> new VersionTagReply());
+    registerDSFID(DURABLE_CLIENT_INFO_REQUEST,
+        () -> new DurableClientInfoRequest());
+    registerDSFID(DURABLE_CLIENT_INFO_RESPONSE,
+        () -> new DurableClientInfoResponse());
+    registerDSFID(CLIENT_INTEREST_MESSAGE,
+        () -> new ClientInterestMessageImpl());
     registerDSFID(STAT_ALERT_DEFN_NUM_THRESHOLD,
-        NumberThresholdDecoratorImpl.class);
+        () -> new NumberThresholdDecoratorImpl());
     registerDSFID(STAT_ALERT_DEFN_GAUGE_THRESHOLD,
-        GaugeThresholdDecoratorImpl.class);
-    registerDSFID(CLIENT_HEALTH_STATS, ClientHealthStats.class);
-    registerDSFID(STAT_ALERT_NOTIFICATION, StatAlertNotification.class);
+        () -> new GaugeThresholdDecoratorImpl());
+    registerDSFID(CLIENT_HEALTH_STATS, () -> new ClientHealthStats());
+    registerDSFID(STAT_ALERT_NOTIFICATION, () -> new StatAlertNotification());
     registerDSFID(FILTER_INFO_MESSAGE,
-        InitialImageOperation.FilterInfoMessage.class);
-    registerDSFID(SIZED_BASED_LOAD_PROBE, SizedBasedLoadProbe.class);
+        () -> new InitialImageOperation.FilterInfoMessage());
+    registerDSFID(SIZED_BASED_LOAD_PROBE, () -> new SizedBasedLoadProbe());
     registerDSFID(PR_MANAGE_BACKUP_BUCKET_MESSAGE,
-        ManageBackupBucketMessage.class);
+        () -> new ManageBackupBucketMessage());
     registerDSFID(PR_MANAGE_BACKUP_BUCKET_REPLY_MESSAGE,
-        ManageBackupBucketReplyMessage.class);
-    registerDSFID(PR_CREATE_BUCKET_MESSAGE, CreateBucketMessage.class);
+        () -> new ManageBackupBucketReplyMessage());
+    registerDSFID(PR_CREATE_BUCKET_MESSAGE, () -> new CreateBucketMessage());
     registerDSFID(PR_CREATE_BUCKET_REPLY_MESSAGE,
-        CreateBucketReplyMessage.class);
-    registerDSFID(RESOURCE_MANAGER_PROFILE, ResourceManagerProfile.class);
-    registerDSFID(RESOURCE_PROFILE_MESSAGE, ResourceProfileMessage.class);
-    registerDSFID(JMX_MANAGER_PROFILE, JmxManagerProfile.class);
-    registerDSFID(JMX_MANAGER_PROFILE_MESSAGE, JmxManagerProfileMessage.class);
-    registerDSFID(CLIENT_BLACKLIST_MESSAGE, ClientBlacklistMessage.class);
+        () -> new CreateBucketReplyMessage());
+    registerDSFID(RESOURCE_MANAGER_PROFILE, () -> new ResourceManagerProfile());
+    registerDSFID(RESOURCE_PROFILE_MESSAGE, () -> new ResourceProfileMessage());
+    registerDSFID(JMX_MANAGER_PROFILE, () -> new JmxManagerProfile());
+    registerDSFID(JMX_MANAGER_PROFILE_MESSAGE,
+        () -> new JmxManagerProfileMessage());
+    registerDSFID(CLIENT_BLACKLIST_MESSAGE, () -> new ClientBlacklistMessage());
     registerDSFID(REMOVE_CLIENT_FROM_BLACKLIST_MESSAGE,
-        RemoveClientFromBlacklistMessage.class);
+        () -> new RemoveClientFromBlacklistMessage());
     registerDSFID(PR_FUNCTION_STREAMING_MESSAGE,
-        PartitionedRegionFunctionStreamingMessage.class);
+        () -> new PartitionedRegionFunctionStreamingMessage());
     registerDSFID(MEMBER_FUNCTION_STREAMING_MESSAGE,
-        MemberFunctionStreamingMessage.class);
+        () -> new MemberFunctionStreamingMessage());
     registerDSFID(DR_FUNCTION_STREAMING_MESSAGE,
-        DistributedRegionFunctionStreamingMessage.class);
+        () -> new DistributedRegionFunctionStreamingMessage());
     registerDSFID(FUNCTION_STREAMING_REPLY_MESSAGE,
-        FunctionStreamingReplyMessage.class);
-    registerDSFID(GET_ALL_SERVERS_REQUEST, GetAllServersRequest.class);
-    registerDSFID(GET_ALL_SERVRES_RESPONSE, GetAllServersResponse.class);
+        () -> new FunctionStreamingReplyMessage());
+    registerDSFID(GET_ALL_SERVERS_REQUEST, () -> new GetAllServersRequest());
+    registerDSFID(GET_ALL_SERVRES_RESPONSE, () -> new GetAllServersResponse());
     registerDSFID(PERSISTENT_MEMBERSHIP_VIEW_REQUEST,
-        MembershipViewRequest.class);
+        () -> new MembershipViewRequest());
     registerDSFID(PERSISTENT_MEMBERSHIP_VIEW_REPLY,
-        MembershipViewReplyMessage.class);
+        () -> new MembershipViewReplyMessage());
     registerDSFID(PERSISTENT_STATE_QUERY_REQUEST,
-        PersistentStateQueryMessage.class);
+        () -> new PersistentStateQueryMessage());
     registerDSFID(PERSISTENT_STATE_QUERY_REPLY,
-        PersistentStateQueryReplyMessage.class);
+        () -> new PersistentStateQueryReplyMessage());
     registerDSFID(PREPARE_NEW_PERSISTENT_MEMBER_REQUEST,
-        PrepareNewPersistentMemberMessage.class);
+        () -> new PrepareNewPersistentMemberMessage());
     registerDSFID(MISSING_PERSISTENT_IDS_REQUEST,
-        MissingPersistentIDsRequest.class);
+        () -> new MissingPersistentIDsRequest());
     registerDSFID(MISSING_PERSISTENT_IDS_RESPONSE,
-        MissingPersistentIDsResponse.class);
-    registerDSFID(REVOKE_PERSISTENT_ID_REQUEST, RevokePersistentIDRequest.class);
+        () -> new MissingPersistentIDsResponse());
+    registerDSFID(REVOKE_PERSISTENT_ID_REQUEST,
+        () -> new RevokePersistentIDRequest());
     registerDSFID(REVOKE_PERSISTENT_ID_RESPONSE,
-        RevokePersistentIDResponse.class);
+        () -> new RevokePersistentIDResponse());
     registerDSFID(REMOVE_PERSISTENT_MEMBER_REQUEST,
-        RemovePersistentMemberMessage.class);
+        () -> new RemovePersistentMemberMessage());
     registerDSFID(FUNCTION_STREAMING_ORDERED_REPLY_MESSAGE,
-        FunctionStreamingOrderedReplyMessage.class);
+        () -> new FunctionStreamingOrderedReplyMessage());
     registerDSFID(REQUEST_SYNC_MESSAGE,
-        InitialImageOperation.RequestSyncMessage.class);
+        () -> new InitialImageOperation.RequestSyncMessage());
     registerDSFID(PERSISTENT_MEMBERSHIP_FLUSH_REQUEST,
-        MembershipFlushRequest.class);
-    registerDSFID(SHUTDOWN_ALL_REQUEST, ShutdownAllRequest.class);
-    registerDSFID(SHUTDOWN_ALL_RESPONSE, ShutdownAllResponse.class);
+        () -> new MembershipFlushRequest());
+    registerDSFID(SHUTDOWN_ALL_REQUEST, () -> new ShutdownAllRequest());
+    registerDSFID(SHUTDOWN_ALL_RESPONSE, () -> new ShutdownAllResponse());
     registerDSFID(SHUTDOWN_ALL_GATEWAYHUBS_REQUEST,
-        ShutdownAllGatewayHubsRequest.class);
+        () -> new ShutdownAllGatewayHubsRequest());
     registerDSFID(SHUTDOWN_ALL_GATEWAYHUBS_RESPONSE,
-        ShutdownAllGatewayHubsResponse.class);
-    registerDSFID(CLIENT_MEMBERSHIP_MESSAGE, ClientMembershipMessage.class);
-    registerDSFID(END_BUCKET_CREATION_MESSAGE, EndBucketCreationMessage.class);
-    registerDSFID(PREPARE_BACKUP_REQUEST, PrepareBackupRequest.class);
-    registerDSFID(PREPARE_BACKUP_RESPONSE, PrepareBackupResponse.class);
-    registerDSFID(FINISH_BACKUP_REQUEST, FinishBackupRequest.class);
-    registerDSFID(FINISH_BACKUP_RESPONSE, FinishBackupResponse.class);
-    registerDSFID(COMPACT_REQUEST, CompactRequest.class);
-    registerDSFID(COMPACT_RESPONSE, CompactResponse.class);
-    registerDSFID(FLOW_CONTROL_PERMIT_MESSAGE, FlowControlPermitMessage.class);
+        () -> new ShutdownAllGatewayHubsResponse());
+    registerDSFID(CLIENT_MEMBERSHIP_MESSAGE,
+        () -> new ClientMembershipMessage());
+    registerDSFID(END_BUCKET_CREATION_MESSAGE,
+        () -> new EndBucketCreationMessage());
+    registerDSFID(PREPARE_BACKUP_REQUEST, () -> new PrepareBackupRequest());
+    registerDSFID(PREPARE_BACKUP_RESPONSE, () -> new PrepareBackupResponse());
+    registerDSFID(FINISH_BACKUP_REQUEST, () -> new FinishBackupRequest());
+    registerDSFID(FINISH_BACKUP_RESPONSE, () -> new FinishBackupResponse());
+    registerDSFID(COMPACT_REQUEST, () -> new CompactRequest());
+    registerDSFID(COMPACT_RESPONSE, () -> new CompactResponse());
+    registerDSFID(FLOW_CONTROL_PERMIT_MESSAGE,
+        () -> new FlowControlPermitMessage());
     registerDSFID(REQUEST_FILTERINFO_MESSAGE,
-        InitialImageOperation.RequestFilterInfoMessage.class);
+        () -> new InitialImageOperation.RequestFilterInfoMessage());
     registerDSFID(PARALLEL_QUEUE_REMOVAL_MESSAGE,
-        ParallelQueueRemovalMessage.class);
+        () -> new ParallelQueueRemovalMessage());
     registerDSFID(BATCH_DESTROY_MESSAGE,
-        BatchDestroyOperation.DestroyMessage.class);
-    registerDSFID(SERIALIZED_OBJECT_PART_LIST, SerializedObjectPartList.class);
-    registerDSFID(FLUSH_TO_DISK_REQUEST, FlushToDiskRequest.class);
-    registerDSFID(FLUSH_TO_DISK_RESPONSE, FlushToDiskResponse.class);
-    registerDSFID(ENUM_ID, EnumId.class);
-    registerDSFID(ENUM_INFO, EnumInfo.class);
-    registerDSFID(CHECK_TYPE_REGISTRY_STATE, CheckTypeRegistryState.class);
+        () -> new BatchDestroyOperation.DestroyMessage());
+    registerDSFID(SERIALIZED_OBJECT_PART_LIST,
+        () -> new SerializedObjectPartList());
+    registerDSFID(FLUSH_TO_DISK_REQUEST, () -> new FlushToDiskRequest());
+    registerDSFID(FLUSH_TO_DISK_RESPONSE, () -> new FlushToDiskResponse());
+    registerDSFID(ENUM_ID, () -> new EnumId());
+    registerDSFID(ENUM_INFO, () -> new EnumInfo());
+    registerDSFID(CHECK_TYPE_REGISTRY_STATE,
+        () -> new CheckTypeRegistryState());
     registerDSFID(PREPARE_REVOKE_PERSISTENT_ID_REQUEST,
-        PrepareRevokePersistentIDRequest.class);
-    registerDSFID(PERSISTENT_RVV, DiskRegionVersionVector.class);
-    registerDSFID(PERSISTENT_VERSION_TAG, DiskVersionTag.class);
-    registerDSFID(DISK_STORE_ID, DiskStoreID.class);
-    registerDSFID(CLIENT_PING_MESSAGE_IMPL, ClientPingMessageImpl.class);
-    registerDSFID(SNAPSHOT_PACKET, SnapshotPacket.class);
-    registerDSFID(SNAPSHOT_RECORD, SnapshotRecord.class);
-    registerDSFID(FLOW_CONTROL_ACK, FlowControlAckMessage.class);
-    registerDSFID(FLOW_CONTROL_ABORT, FlowControlAbortMessage.class);
+        () -> new PrepareRevokePersistentIDRequest());
+    registerDSFID(PERSISTENT_RVV, () -> new DiskRegionVersionVector());
+    registerDSFID(PERSISTENT_VERSION_TAG, () -> new DiskVersionTag());
+    registerDSFID(DISK_STORE_ID, () -> new DiskStoreID());
+    registerDSFID(CLIENT_PING_MESSAGE_IMPL, () -> new ClientPingMessageImpl());
+    registerDSFID(SNAPSHOT_PACKET, () -> new SnapshotPacket());
+    registerDSFID(SNAPSHOT_RECORD, () -> new SnapshotRecord());
+    registerDSFID(FLOW_CONTROL_ACK, () -> new FlowControlAckMessage());
+    registerDSFID(FLOW_CONTROL_ABORT, () -> new FlowControlAbortMessage());
     registerDSFID(MGMT_COMPACT_REQUEST,
-        com.gemstone.gemfire.management.internal.messages.CompactRequest.class);
+        () -> new com.gemstone.gemfire.management.internal.messages.CompactRequest());
     registerDSFID(MGMT_COMPACT_RESPONSE,
-        com.gemstone.gemfire.management.internal.messages.CompactResponse.class);
+        () -> new com.gemstone.gemfire.management.internal.messages.CompactResponse());
     registerDSFID(MGMT_FEDERATION_COMPONENT,
-        com.gemstone.gemfire.management.internal.FederationComponent.class);
-    registerDSFID(LOCATOR_STATUS_REQUEST, LocatorStatusRequest.class);
-    registerDSFID(LOCATOR_STATUS_RESPONSE, LocatorStatusResponse.class);
-    registerDSFID(R_FETCH_VERSION_MESSAGE, RemoteFetchVersionMessage.class);
+        () -> new com.gemstone.gemfire.management.internal.FederationComponent());
+    registerDSFID(LOCATOR_STATUS_REQUEST, () -> new LocatorStatusRequest());
+    registerDSFID(LOCATOR_STATUS_RESPONSE, () -> new LocatorStatusResponse());
+    registerDSFID(R_FETCH_VERSION_MESSAGE,
+        () -> new RemoteFetchVersionMessage());
     registerDSFID(R_FETCH_VERSION_REPLY,
-        RemoteFetchVersionMessage.FetchVersionReplyMessage.class);
-    registerDSFID(RELEASE_CLEAR_LOCK_MESSAGE, ReleaseClearLockMessage.class);
-    registerDSFID(PR_TOMBSTONE_MESSAGE, PRTombstoneMessage.class);
-    registerDSFID(HDFS_GATEWAY_EVENT_IMPL, HDFSGatewayEventImpl.class);
+        () -> new RemoteFetchVersionMessage.FetchVersionReplyMessage());
+    registerDSFID(RELEASE_CLEAR_LOCK_MESSAGE,
+        () -> new ReleaseClearLockMessage());
+    registerDSFID(PR_TOMBSTONE_MESSAGE, () -> new PRTombstoneMessage());
+    registerDSFID(HDFS_GATEWAY_EVENT_IMPL, () -> new HDFSGatewayEventImpl());
     registerDSFID(REQUEST_RVV_MESSAGE,
-        InitialImageOperation.RequestRVVMessage.class);
+        () -> new InitialImageOperation.RequestRVVMessage());
     registerDSFID(RVV_REPLY_MESSAGE,
-        InitialImageOperation.RVVReplyMessage.class);
+        () -> new InitialImageOperation.RVVReplyMessage());
     registerDSFID(SNAPPY_COMPRESSED_CACHED_DESERIALIZABLE,
-        SnappyCompressedCachedDeserializable.class);
+        () -> new SnappyCompressedCachedDeserializable());
     registerDSFID(UPDATE_ENTRY_VERSION_MESSAGE,
-        UpdateEntryVersionMessage.class);
+        () -> new UpdateEntryVersionMessage());
     registerDSFID(PR_UPDATE_ENTRY_VERSION_MESSAGE,
-        PRUpdateEntryVersionMessage.class);
+        () -> new PRUpdateEntryVersionMessage());
     registerDSFID(PR_DESTROY_ON_DATA_STORE_MESSAGE,
-        DestroyRegionOnDataStoreMessage.class);
+        () -> new DestroyRegionOnDataStoreMessage());
     registerDSFID(COMMIT_PHASE1_REPLY_MESSAGE,
-        CommitPhase1ReplyMessage.class);
-    registerDSFID(TOBJECTLONGHASHMAP, TObjectLongHashMapDSFID.class);
-    registerDSFID(SERVER_PING_MESSAGE, ServerPingMessage.class);
+        () -> new CommitPhase1ReplyMessage());
+    registerDSFID(TOBJECTLONGHASHMAP, () -> new TObjectLongHashMapDSFID());
+    registerDSFID(SERVER_PING_MESSAGE, () -> new ServerPingMessage());
     registerDSFID(SNAPSHOT_GII_UNLOCK_MESSAGE,
-        InitialImageOperation.SnapshotBucketLockReleaseMessage.class);
+        () -> new InitialImageOperation.SnapshotBucketLockReleaseMessage());
     typesRegistered = true;
   }
 
@@ -799,46 +859,34 @@ public final class DSFIDFactory implements DataSerializableFixedID {
       case PR_DESTROY_ON_DATA_STORE_MESSAGE:
         return readDestroyOnDataStore(in);
       default:
-        Constructor<?> cons;
+        Supplier<?> creator;
         if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
-          cons = dsfidMap[dsfid + Byte.MAX_VALUE + 1];
+          creator = dsfidMap[dsfid + Byte.MAX_VALUE + 1];
         } else {
-          cons = (Constructor<?>) dsfidMap2.get(dsfid);
+          creator = (Supplier<?>)dsfidMap2.get(dsfid);
         }
-        if (cons == null && !typesRegistered) {
+        if (creator == null && !typesRegistered) {
           registerTypes();
           if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
-            cons = dsfidMap[dsfid + Byte.MAX_VALUE + 1];
+            creator = dsfidMap[dsfid + Byte.MAX_VALUE + 1];
           } else {
-            cons = (Constructor<?>) dsfidMap2.get(dsfid);
+            creator = (Supplier<?>)dsfidMap2.get(dsfid);
           }
         }
-        if (cons != null) {
-          try {
-            Object ds = cons.newInstance((Object[])null);
-            if (ds instanceof DataSerializableFixedID) {
-              InternalDataSerializer.invokeFromData(
-                  (DataSerializableFixedID)ds, in);
-            } else {
-              InternalDataSerializer.invokeFromData((StreamableFixedID)ds, in);
-            }
-            return ds;
-          } catch (InstantiationException ie) {
-            throw new IOException(ie.getMessage(), ie);
-          } catch (IllegalAccessException iae) {
-            throw new IOException(iae.getMessage(), iae);
-          } catch (InvocationTargetException ite) {
-            Throwable targetEx = ite.getTargetException();
-            if (targetEx instanceof IOException) {
-              throw (IOException)targetEx;
-            }
-            else if (targetEx instanceof ClassNotFoundException) {
-              throw (ClassNotFoundException)targetEx;
-            }
-            else {
-              throw new IOException(ite.getMessage(), targetEx);
-            }
+        if (creator != null) {
+          Object ds = creator.get();
+          if (ds instanceof DataSerializableFixedID) {
+            DataSerializableFixedID v = (DataSerializableFixedID)ds;
+            assert v.getDSFID() == dsfid :
+                "MISMATCH: registered DSFID=" + dsfid + ", actual=" + v.getDSFID();
+            InternalDataSerializer.invokeFromData(v, in);
+          } else {
+            StreamableFixedID v = (StreamableFixedID)ds;
+            assert v.getDSFID() == dsfid :
+                "MISMATCH: registered SFID=" + dsfid + ", actual=" + v.getDSFID();
+            InternalDataSerializer.invokeFromData(v, in);
           }
+          return ds;
         }
         // before throwing exception, try to set the processorId
         try {
@@ -930,17 +978,8 @@ public final class DSFIDFactory implements DataSerializableFixedID {
    * classes to have a zero argument constructor.
    */
   @SuppressWarnings("unchecked")
-  private static Constructor<? extends DataSerializableFixedID>[] gfxdDSFIDClassMap =
-    new Constructor[Byte.MAX_VALUE + 1 - Byte.MIN_VALUE];
-
-  /**
-   * Map for GemFireXD specific classIds to the {@link DataSerializableFixedID} 
-   * singleton instance. We maintain this separate map for GemFireXD to allow
-   * separation of GemFire and GemFireXD trees. This approach is needed to 
-   * allow transparent serialization of singleton objects
-   */
-  private static DataSerializableFixedID[] gfxdDSFIDFixedInstanceMap =
-    new DataSerializableFixedID[Byte.MAX_VALUE + 1 - Byte.MIN_VALUE];
+  private static Supplier<GfxdDSFID>[] gfxdDSFIDClassMap =
+    new Supplier[Byte.MAX_VALUE + 1 - Byte.MIN_VALUE];
 
   /**
    * Extends {@link DataSerializableFixedID} with a GemFireXD specific byte ID to
@@ -972,46 +1011,28 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     }
   }
 
-  private static DataSerializableFixedID readGfxdMessage(DataInput in)
+  private static GfxdDSFID readGfxdMessage(DataInput in)
       throws IOException, ClassNotFoundException {
     // Use the first byte as the typeId of GemFireXD messages
     final byte gfxdId = in.readByte();
     final int gfxdIdIndex = gfxdId & 0xFF;
-    final Constructor<? extends DataSerializableFixedID> gfxdCons =
-      gfxdDSFIDClassMap[gfxdIdIndex];
+    final Supplier<GfxdDSFID> creator = gfxdDSFIDClassMap[gfxdIdIndex];
     GfxdSerializationException se = null;
-    if (gfxdCons != null) {
+    if (creator != null) {
       try {
-        final DataSerializableFixedID gfxdObj = gfxdCons
-            .newInstance((Object[])null);
+        final GfxdDSFID gfxdObj = creator.get();
+        assert gfxdObj.getGfxdID() == gfxdId :
+            "MISMATCH: registered GFXDID=" + gfxdId +
+                ", actual=" + gfxdObj.getGfxdID();
         InternalDataSerializer.invokeFromData(gfxdObj, in);
         return gfxdObj;
-      } catch (InstantiationException ex) {
-        se = new GfxdSerializationException(LocalizedStrings.
-            DSFIDFactory_COULD_NOT_INSTANTIATE_GEMFIREXD_MESSAGE_CLASSID_0_1
-              .toLocalizedString(new Object[] { gfxdId, ex }));
-      } catch (InvocationTargetException ex) {
-        se = new GfxdSerializationException(LocalizedStrings.
-            DSFIDFactory_COULD_NOT_INSTANTIATE_GEMFIREXD_MESSAGE_CLASSID_0_1
-              .toLocalizedString(new Object[] { gfxdId, ex }));
-      } catch (IllegalAccessException ex) {
-        se = new GfxdSerializationException(LocalizedStrings.
-            DSFIDFactory_ILLEGAL_ACCESS_FOR_GEMFIREXD_MESSAGE_CLASSID_0_1
-              .toLocalizedString(new Object[] { gfxdId, ex }));
       } catch (IllegalArgumentException ex) {
         se = new GfxdSerializationException(LocalizedStrings.
             DSFIDFactory_ILLEGAL_ACCESS_FOR_GEMFIREXD_MESSAGE_CLASSID_0_1
-              .toLocalizedString(new Object[] { gfxdId, ex }));
+              .toLocalizedString(gfxdId, ex));
       }
     }
     else {
-      // check for fixed instance
-      DataSerializableFixedID fixedInstance =
-          gfxdDSFIDFixedInstanceMap[gfxdIdIndex];
-      if (fixedInstance != null) {
-        fixedInstance.fromData(in);
-        return fixedInstance;
-      }
       // if possible set the processor ID before throwing exception so
       // that failure exception is received by the sender
       if (gfxdIdIndex < 75) {
@@ -1047,49 +1068,20 @@ public final class DSFIDFactory implements DataSerializableFixedID {
   }
 
   public static synchronized void registerGemFireXDClass(byte classId,
-      Class<? extends DataSerializableFixedID> c) {
+      Supplier<GfxdDSFID> creator) {
     final int gfxdIdIndex = classId & 0xFF;
-    Constructor<?> oldCons = gfxdDSFIDClassMap[gfxdIdIndex];
-    if (oldCons != null) {
+    Supplier<?> oldCreator = gfxdDSFIDClassMap[gfxdIdIndex];
+    if (oldCreator != null) {
       throw new AssertionError("DSFIDFactory#registerGemFireXDClass: cannot "
-          + "re-register classId " + classId + " for class " + c
-          + "; existing constructor: " + oldCons);
+          + "re-register classId " + classId + " using " + creator
+          + "; existing constructor: " + oldCreator);
     }
-    try {
-      Constructor<? extends DataSerializableFixedID> cons = c
-          .getConstructor((Class[])null);
-      cons.setAccessible(true);
-      if (!cons.isAccessible()) {
-        throw new InternalGemFireError("default constructor not accessible "
-            + "for GFXDID=" + classId + ": " + c);
-      }
-      gfxdDSFIDClassMap[gfxdIdIndex] = cons;
-    } catch (Exception e) {
-      throw new InternalGemFireError(LocalizedStrings.
-          DSFIDFactory_COULD_NOT_INSTANTIATE_GEMFIREXD_MESSAGE_CLASSID_0_1
-            .toLocalizedString(new Object[] { classId, e }));
-    }
-  }
-
-  public static synchronized void registerGemFireXDFixedInstance(byte classId,
-      DataSerializableFixedID fixedInstance)
-  {
-    final int gfxdIdIndex = classId & 0xFF;
-    DataSerializableFixedID oldInstance = gfxdDSFIDFixedInstanceMap[gfxdIdIndex];
-    if (oldInstance != null) {
-      throw new AssertionError("DSFIDFactory#registerGemFireXDClass: cannot "
-          + "re-register classId " + classId + " for instance " + fixedInstance
-          + "; existing instance: " + oldInstance);
-    }
-    gfxdDSFIDFixedInstanceMap[gfxdIdIndex] = fixedInstance;
+    gfxdDSFIDClassMap[gfxdIdIndex] = creator;
   }
 
   public static synchronized void clearGemFireXDClasses() {
     for (int index = 0; index < gfxdDSFIDClassMap.length; ++index) {
       gfxdDSFIDClassMap[index] = null;
-    }
-    for (int index = 0; index < gfxdDSFIDFixedInstanceMap.length; ++index) {
-      gfxdDSFIDFixedInstanceMap[index] = null;
     }
   }
 
@@ -1134,11 +1126,11 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     dvdDeserializer = d;
   }
 
-  public static Constructor<?>[] getDsfidmap() {
+  static Supplier<?>[] getDsfidmap() {
     return dsfidMap;
   }
 
-  public static TIntObjectHashMap getDsfidmap2() {
+  static TIntObjectHashMap getDsfidmap2() {
     return dsfidMap2;
   }
 }

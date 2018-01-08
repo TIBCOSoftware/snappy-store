@@ -3614,6 +3614,13 @@ public class EmbedDatabaseMetaData extends ConnectionChild
                                                                 boolean net)
         throws SQLException 
 	{
+		// [snappydata] treat system procedures like other normal ones
+		String queryText = getQueryDescriptions(net).getProperty(nameKey);
+		if (queryText == null) {
+			throw Util.notImplemented(nameKey);
+		}
+		return getEmbedConnection().prepareMetaDataStatement(queryText);
+		/* (original code)
 		synchronized (getConnectionSynchronization())
 		{
 			setupContextStack(true);
@@ -3642,6 +3649,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			}
 			return ps;
 		}
+		*/
 	}
 
 	/**

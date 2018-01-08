@@ -27,11 +27,11 @@ import com.gemstone.gemfire.distributed.internal.locks.DLockRequestProcessor.DLo
 import dunit.*;
 import hydra.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
 import com.gemstone.gemfire.distributed.internal.membership.*;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.util.StopWatch;
 
 /**
@@ -2846,7 +2846,7 @@ public class DistributedLockServiceTest extends DistributedTestCase {
     });
   }
 
-  static final AB testLockQuery_whileVM1Locks = CFactory.createAB();
+  static final AtomicBoolean testLockQuery_whileVM1Locks = new AtomicBoolean();
   public void testLockQuery() throws Exception {
     final String dlsName = getUniqueName();
   

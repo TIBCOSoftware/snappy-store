@@ -23,9 +23,9 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.function.Supplier;
 
 import junit.framework.TestCase;
 
@@ -63,14 +63,14 @@ public class BackwardCompatibilitySerializationJUnitTest extends TestCase {
     baos = new ByteArrayOutputStream();
     // register TestMessage using an existing dsfid
     DSFIDFactory.registerDSFID(DataSerializableFixedID.PUTALL_VERSIONS_LIST,
-        TestMessage.class);
+        () -> new TestMessage());
   }
 
   public void tearDown() {
     resetFlags();
     // reset the class mapped to the dsfid
     DSFIDFactory.registerDSFID(DataSerializableFixedID.PUTALL_VERSIONS_LIST,
-        EntryVersionsList.class);
+        () -> new EntryVersionsList());
     this.baos = null;
     this.bais = null;
   }
@@ -182,9 +182,9 @@ public class BackwardCompatibilitySerializationJUnitTest extends TestCase {
         .intValue());
 
     for (int i = 0; i < 256; i++) {
-      Constructor<?> cons = DSFIDFactory.getDsfidmap()[i];
+      Supplier<?> cons = DSFIDFactory.getDsfidmap()[i];
       if (!constdsfids.contains(i - Byte.MAX_VALUE - 1) && cons != null) {
-        Object ds = cons.newInstance((Object[]) null);
+        Object ds = cons.get();
         checkSupportForRollingUpgrade(ds);
       }
     }
@@ -192,10 +192,9 @@ public class BackwardCompatibilitySerializationJUnitTest extends TestCase {
     // some msgs require distributed system
     Cache c = new CacheFactory().create();
     for (Object o : DSFIDFactory.getDsfidmap2().getValues()) {
-      Constructor<?> cons = (Constructor<?>) o;
+      Supplier<?> cons = (Supplier<?>)o;
       if (cons != null) {
-        DataSerializableFixedID ds = (DataSerializableFixedID) cons
-            .newInstance((Object[]) null);
+        DataSerializableFixedID ds = (DataSerializableFixedID)cons.get();
         checkSupportForRollingUpgrade(ds);
       }
     }

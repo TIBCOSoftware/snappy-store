@@ -149,7 +149,7 @@ public class StatementTablePermission extends StatementPermission
 	} // end of check
 
 	protected boolean isSelectOnHiveMetastore(TableDescriptor td) throws StandardException {
-		return td.getSchemaName().equalsIgnoreCase(Misc.SNAPPY_HIVE_METASTORE) &&
+		return Misc.isSnappyHiveMetaTable(td.getSchemaName()) &&
 				this.privType == Authorizer.SELECT_PRIV;
 	}
 

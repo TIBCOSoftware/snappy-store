@@ -22,6 +22,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.CancelException;
@@ -43,9 +45,6 @@ import com.gemstone.gemfire.distributed.PoolCancelledException;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.cache.PoolStats;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.L.C;
-import com.gemstone.gemfire.internal.concurrent.RL;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.security.GemFireSecurityException;
 import com.gemstone.org.jgroups.util.StringId;
@@ -81,8 +80,8 @@ public class ConnectionManagerImpl implements ConnectionManager {
   protected ScheduledExecutorService backgroundProcessor;
   protected ScheduledThreadPoolExecutor loadConditioningProcessor;
   
-  protected RL lock = CFactory.createRL();
-  protected C freeConnection = lock.getNewCondition();
+  protected ReentrantLock lock = new ReentrantLock();
+  protected Condition freeConnection = lock.newCondition();
   private final ConnectionFactory connectionFactory;
   protected boolean haveIdleExpireConnectionsTask;
   protected boolean havePrefillTask;
@@ -165,7 +164,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
         final long start = getPoolStats().beginConnectionWait();
         boolean interrupted = false;
         try {
-          freeConnection.await(remainingTime);
+          freeConnection.await(remainingTime, TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException e) {
           interrupted = true;
@@ -904,8 +903,6 @@ public class ConnectionManagerImpl implements ConnectionManager {
     }
   }
 
-//   private final AR/*<ReplacementConnection>*/ replacement = CFactory.createAR();
-
 //   private void closeReplacementConnection() {
 //     ReplacementConnection rc = (ReplacementConnection)this.replacement.getAndSet(null);
 //     if (rc != null) {
@@ -1035,7 +1032,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
 
     @Override
     public synchronized String toString() {
-      final long now = CFactory.nanoTime();
+      final long now = System.nanoTime();
       StringBuffer sb = new StringBuffer();
       sb.append("<");
       for (Iterator it = this.allConnections.iterator(); it.hasNext();) {
@@ -1187,7 +1184,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
      * @return null if a target could not be found
      */
     public synchronized PooledConnection findReplacementTarget(ServerLocation currentServer) {
-      final long now = CFactory.nanoTime();
+      final long now = System.nanoTime();
       for (Iterator it = this.allConnections.iterator(); it.hasNext();) {
         PooledConnection pc = (PooledConnection)it.next();
         if (currentServer.equals(pc.getServer())) {
@@ -1209,7 +1206,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
     public synchronized boolean hasExpiredCnxToServer(ServerLocation currentServer) {
       if (!this.allConnections.isEmpty()) {
         //boolean idlePossible = isIdleExpirePossible();
-        final long now = CFactory.nanoTime();
+        final long now = System.nanoTime();
         for (Iterator it = this.allConnections.iterator(); it.hasNext();) {
           PooledConnection pc = (PooledConnection)it.next();
           if (pc.shouldDestroy()) {
@@ -1237,7 +1234,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
      */
     public synchronized boolean checkForReschedule(boolean rescheduleOk) {
       if (!this.allConnections.isEmpty()) {
-        final long now = CFactory.nanoTime();
+        final long now = System.nanoTime();
         for (Iterator it = this.allConnections.iterator(); it.hasNext();) {
           PooledConnection pc = (PooledConnection)it.next();
           if (pc.hasIdleExpired(now, idleTimeoutNanos)) {
@@ -1286,7 +1283,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
       // of the guys who has lifetime expired to the most loaded server
       boolean result = true;
       if (!this.allConnections.isEmpty()) {
-        final long now = CFactory.nanoTime();
+        final long now = System.nanoTime();
         for (Iterator it = this.allConnections.iterator(); it.hasNext();) {
           PooledConnection pc = (PooledConnection)it.next();
           if (pc.remainingLife(now, lifetimeTimeoutNanos) > 0) {
@@ -1327,7 +1324,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
      */
     public synchronized void extendLifeOfCnxToServer(ServerLocation sl) {
       if (!this.allConnections.isEmpty()) {
-        final long now = CFactory.nanoTime();
+        final long now = System.nanoTime();
         for (Iterator it = this.allConnections.iterator(); it.hasNext() ;) {
           PooledConnection pc = (PooledConnection)it.next();
           if (pc.remainingLife(now, lifetimeTimeoutNanos) > 0) {
@@ -1387,7 +1384,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
         if (conCount <= minConnections) {
           return;
         }
-        final long now = CFactory.nanoTime();
+        final long now = System.nanoTime();
         long minRemainingIdle = Long.MAX_VALUE;
         toClose = new ArrayList<PooledConnection>(conCount-minConnections);
         for (Iterator it = this.allConnections.iterator();
@@ -1491,7 +1488,7 @@ public class ConnectionManagerImpl implements ConnectionManager {
           }
           // find a connection whose lifetime has expired
           // and who is not already being replaced
-          long now = CFactory.nanoTime();
+          long now = System.nanoTime();
           long life = 0;
           idlePossible = isIdleExpirePossible();
           for (Iterator it = this.allConnections.iterator();

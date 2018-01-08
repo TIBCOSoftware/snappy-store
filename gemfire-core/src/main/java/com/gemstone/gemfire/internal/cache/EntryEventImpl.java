@@ -1805,7 +1805,7 @@ public class EntryEventImpl extends KeyInfo implements
    */
   final void putNewEntry(final LocalRegion owner, final RegionEntry reentry)
       throws RegionClearedException {
-    if (!this.op.guaranteesOldValue()) {  // preserves oldValue for CM ops in clients
+    if (!this.op.guaranteesOldValue()) {  // preserves oldValue for map ops in clients
       basicSetOldValue(null);
     }
     makeCreate();

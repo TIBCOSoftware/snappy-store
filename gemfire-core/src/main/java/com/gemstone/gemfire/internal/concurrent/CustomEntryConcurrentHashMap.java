@@ -22,7 +22,7 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
+/*
  * ConcurrentHashMap implementation adapted from JSR 166 backport
  * (http://backport-jsr166.sourceforge.net) JDK5 version release 3.1
  * with modifications to use generics where appropriate:
@@ -65,6 +65,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
@@ -206,6 +207,11 @@ public class CustomEntryConcurrentHashMap<K, V> extends AbstractMap<K, V>
    * The segments, each of which is a specialized hash table
    */
   final Segment<K, V>[] segments;
+
+  /**
+   * The current size of the map.
+   */
+  final AtomicLong longSize;
 
   /**
    * {@link HashEntryCreator} for the map to create {@link HashEntry}s.
@@ -744,7 +750,7 @@ RETRYLOOP:
     }
 
     final V put(final K key, final int hash, final V value,
-        final boolean onlyIfAbsent) {
+        final boolean onlyIfAbsent, final AtomicLong longSize) {
       attemptWriteLock(-1);
       int oldCapacity = -1;
       try {
@@ -773,6 +779,7 @@ RETRYLOOP:
           ++this.modCount;
           tab[index] = this.entryCreator.newEntry(key, hash, first, value);
           this.count = c; // write-volatile
+          longSize.incrementAndGet();
         }
         return oldValue;
       } finally {
@@ -788,7 +795,8 @@ RETRYLOOP:
 
     final <C, P> V create(final K key, final int hash,
         final MapCallback<K, V, C, P> valueCreator, final C context,
-        final P createParams, final boolean lockForRead) {
+        final P createParams, final boolean lockForRead,
+        final AtomicLong longSize) {
       int oldCapacity = -1;
       // TODO: This can be optimized by having a special lock implementation
       // that will allow upgrade from read to write lock atomically. This can
@@ -848,6 +856,7 @@ RETRYLOOP:
               tab[index] = this.entryCreator.newEntry(key, hash, first,
                   currentValue);
               this.count = c; // write-volatile
+              longSize.incrementAndGet();
             }
             return currentValue;
           }
@@ -864,7 +873,7 @@ RETRYLOOP:
             if (newValue == null) {
               // indicates removal from map
               removeNoLock(key, hash, MapCallback.NO_OBJECT_TOKEN, null, null,
-                  null);
+                  null, longSize);
             }
             else if (newValue != currentValue) {
               e.setMapValue(newValue);
@@ -920,9 +929,9 @@ RETRYLOOP:
       // update the acquired memory storage; this will always increase
       // monotonically. Not throwing any exception if memory could not be allocated from
       // memory manager as this is the last step of a region operation.
-      if (LocalRegion.regionPath.get() != null) {
-        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
-            LocalRegion.regionPath.get(),
+      String regionPath = LocalRegion.regionPath.get();
+      if (regionPath != null) {
+        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(regionPath,
             oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE,
             null, true, false);
         LocalRegion.regionPath.remove();
@@ -1046,11 +1055,12 @@ RETRYLOOP:
     // added "condition" and "removeParams" parameters
     final <C, P> V remove(final Object key, final int hash, final Object value,
         final MapCallback<K, V, C, P> condition, final C context,
-        final P removeParams) {
+        final P removeParams, final AtomicLong longSize) {
 // End GemStone change
       attemptWriteLock(-1);
       try {
-        return removeNoLock(key, hash, value, condition, context, removeParams);
+        return removeNoLock(key, hash, value, condition, context,
+            removeParams, longSize);
       } finally {
         releaseWriteLock();
       }
@@ -1064,7 +1074,7 @@ RETRYLOOP:
     @SuppressWarnings("unchecked")
     final <C, P> V removeNoLock(final Object key, final int hash,
         final Object value, final MapCallback<K, V, C, P> condition,
-        final C context, final P removeParams) {
+        final C context, final P removeParams, final AtomicLong longSize) {
 // End GemStone change
       final int c = this.count - 1;
       final HashEntry<K, V>[] tab = this.table;
@@ -1124,6 +1134,7 @@ RETRYLOOP:
           tab[index] = newFirst;
           */
           this.count = c; // write-volatile
+          longSize.decrementAndGet();
         }
         else if (newValue != MapCallback.ABORT_REMOVE_TOKEN
             && newValue != null) {
@@ -1141,10 +1152,12 @@ RETRYLOOP:
     /**
      * GemStone added the clearedEntries param and the result
      */
-    final ArrayList<HashEntry<?,?>> clear(ArrayList<HashEntry<?,?>> clearedEntries) {
-      if (this.count != 0) {
-        attemptWriteLock(-1);
-        try {
+    final ArrayList<HashEntry<?,?>> clear(
+        ArrayList<HashEntry<?,?>> clearedEntries, final AtomicLong longSize) {
+      attemptWriteLock(-1);
+      try {
+        final int c = this.count;
+        if (c != 0) {
           final HashEntry<K, V>[] tab = this.table;
           // GemStone changes BEGIN
           boolean collectEntries = clearedEntries != null;
@@ -1200,9 +1213,10 @@ RETRYLOOP:
           }
           ++this.modCount;
           this.count = 0; // write-volatile
-        } finally {
-          releaseWriteLock();
+          longSize.addAndGet(-c);
         }
+      } finally {
+        releaseWriteLock();
       }
       return clearedEntries; // GemStone change
     }
@@ -1401,6 +1415,7 @@ RETRYLOOP:
             entryCreator);
       }
     }
+    this.longSize = new AtomicLong();
   }
 
   static final class DefaultHashEntryCreator<K, V> implements
@@ -1489,94 +1504,20 @@ RETRYLOOP:
    */
   @Override
   public final boolean isEmpty() {
-    final Segment<K, V>[] segments = this.segments;
-    /*
-     * We keep track of per-segment modCounts to avoid ABA
-     * problems in which an element in one segment was added and
-     * in another removed during traversal, in which case the
-     * table was never actually empty at any point. Note the
-     * similar use of modCounts in the size() and containsValue()
-     * methods, which are the only other methods also susceptible
-     * to ABA problems.
-     */
-    final int[] mc = new int[segments.length];
-    int mcsum = 0;
-    for (int i = 0; i < segments.length; ++i) {
-      if (segments[i].count != 0) {
-        return false;
-      }
-      else {
-        mcsum += mc[i] = segments[i].modCount;
-      }
-    }
-    // If mcsum happens to be zero, then we know we got a snapshot
-    // before any modifications at all were made. This is
-    // probably common enough to bother tracking.
-    if (mcsum != 0) {
-      for (int i = 0; i < segments.length; ++i) {
-        if (segments[i].count != 0 || mc[i] != segments[i].modCount) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return this.longSize.get() == 0L;
   }
 
   /**
    * Returns the number of key-value mappings in this map. If the map contains
    * more than <tt>Integer.MAX_VALUE</tt> elements, returns
    * <tt>Integer.MAX_VALUE</tt>.
-   * 
+   *
    * @return the number of key-value mappings in this map
    */
   @Override
-  @SuppressFBWarnings(value="UL_UNRELEASED_LOCK", justification="The lock() calls are followed by unlock() calls without finally-block. Leaving this as is because it's lifted from JDK code and we want to minimize changes.") 
   public final int size() {
-    final Segment<K, V>[] segments = this.segments;
-    long sum = 0;
-    long check = 0;
-    final int[] mc = new int[segments.length];
-    // Try a few times to get accurate count. On failure due to
-    // continuous async changes in table, resort to locking.
-    for (int k = 0; k < RETRIES_BEFORE_LOCK; ++k) {
-      check = 0;
-      sum = 0;
-      int mcsum = 0;
-      for (int i = 0; i < segments.length; ++i) {
-        sum += segments[i].count;
-        mcsum += mc[i] = segments[i].modCount;
-      }
-      if (mcsum != 0) {
-        for (int i = 0; i < segments.length; ++i) {
-          check += segments[i].count;
-          if (mc[i] != segments[i].modCount) {
-            check = -1; // force retry
-            break;
-          }
-        }
-      }
-      if (check == sum) {
-        break;
-      }
-    }
-    if (check != sum) { // Resort to locking all segments
-      sum = 0;
-      for (int i = 0; i < segments.length; ++i) {
-        segments[i].attemptReadLock(-1);
-      }
-      for (int i = 0; i < segments.length; ++i) {
-        sum += segments[i].count;
-      }
-      for (int i = 0; i < segments.length; ++i) {
-        segments[i].releaseReadLock();
-      }
-    }
-    if (sum > Integer.MAX_VALUE) {
-      return Integer.MAX_VALUE;
-    }
-    else {
-      return (int)sum;
-    }
+    final long size = this.longSize.get();
+    return size < Integer.MAX_VALUE ? (int)size : Integer.MAX_VALUE;
   }
 
   /**
@@ -1726,7 +1667,7 @@ RETRYLOOP:
     }
     // throws NullPointerException if key null
     final int hash = this.entryCreator.keyHashCode(key, this.compareValues);
-    return segmentFor(hash).put(key, hash, value, false);
+    return segmentFor(hash).put(key, hash, value, false, this.longSize);
   }
 
   /**
@@ -1743,7 +1684,7 @@ RETRYLOOP:
     }
     // throws NullPointerException if key null
     final int hash = this.entryCreator.keyHashCode(key, this.compareValues);
-    return segmentFor(hash).put(key, hash, value, true);
+    return segmentFor(hash).put(key, hash, value, true, this.longSize);
   }
 
 // GemStone addition
@@ -1769,7 +1710,7 @@ RETRYLOOP:
     if (seg.containsKey(key, hash)) {
       return false;
     }
-    return seg.put(key, hash, value, true) == null;
+    return seg.put(key, hash, value, true, this.longSize) == null;
   }
 
   /**
@@ -1812,7 +1753,7 @@ RETRYLOOP:
     // throws NullPointerException if key null
     final int hash = this.entryCreator.keyHashCode(key, this.compareValues);
     return segmentFor(hash).create(key, hash, valueCreator, context,
-        createParams, lockForRead);
+        createParams, lockForRead, this.longSize);
   }
 
   /**
@@ -1892,7 +1833,7 @@ RETRYLOOP:
     // throws NullPointerException if key null
     final int hash = this.entryCreator.keyHashCode(key, this.compareValues);
     return segmentFor(hash).remove(key, hash, MapCallback.NO_OBJECT_TOKEN,
-        condition, context, removeParams);
+        condition, context, removeParams, this.longSize);
   }
 
 // End GemStone addition
@@ -1928,7 +1869,7 @@ RETRYLOOP:
     // throws NullPointerException if key null
     final int hash = this.entryCreator.keyHashCode(key, this.compareValues);
     return segmentFor(hash).remove(key, hash, MapCallback.NO_OBJECT_TOKEN,
-        null, null, null);
+        null, null, null, this.longSize);
   }
 
   /**
@@ -1943,7 +1884,8 @@ RETRYLOOP:
     }
     // throws NullPointerException if key null
     final int hash = this.entryCreator.keyHashCode(key, this.compareValues);
-    return segmentFor(hash).remove(key, hash, value, null, null, null) != null;
+    return segmentFor(hash).remove(key, hash, value, null, null,
+        null, this.longSize) != null;
   }
 
   /**
@@ -1993,7 +1935,7 @@ RETRYLOOP:
 
     try {
       for (int i = 0; i < this.segments.length; ++i) {
-        entries = this.segments[i].clear(entries);
+        entries = this.segments[i].clear(entries, this.longSize);
       }
     } finally {
       if (entries != null) {
@@ -2026,7 +1968,7 @@ RETRYLOOP:
         InternalDistributedSystem ids = InternalDistributedSystem.getConnectedInstance();
         if (ids != null && !ids.isLoner()) {
           try {
-            ids.getDistributionManager().getWaitingThreadPool().submit(runnable);
+            ids.getDistributionManager().getWaitingThreadPool().execute(runnable);
             submitted = true;
           } catch (RejectedExecutionException e) {
             // fall through with submitted false

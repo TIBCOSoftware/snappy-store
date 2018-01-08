@@ -31,12 +31,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.LongBinaryOperator;
 import java.util.regex.Pattern;
 
@@ -172,7 +173,6 @@ import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
 import com.gemstone.gemfire.internal.cache.locks.QueuedSynchronizer;
-import com.gemstone.gemfire.internal.cache.locks.ReentrantReadWriteWriteShareLock;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.partitioned.RedundancyAlreadyMetException;
 import com.gemstone.gemfire.internal.cache.persistence.DiskExceptionHandler;
@@ -199,11 +199,7 @@ import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgument;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventCallbackArgumentImpl;
 import com.gemstone.gemfire.internal.cache.wan.serial.SerialGatewaySenderImpl;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
-import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.jta.TransactionManagerImpl;
 import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
@@ -214,6 +210,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
+import com.gemstone.gemfire.internal.shared.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
@@ -306,7 +303,7 @@ public class LocalRegion extends AbstractRegion
   private volatile boolean reinitialized_new = false;
 
   /** Lock used to prevent multiple concurrent destroy region operations */
-  private S destroyLock;
+  private Semaphore destroyLock;
 
   private volatile RegionTTLExpiryTask regionTTLExpiryTask = null;
 
@@ -426,7 +423,7 @@ public class LocalRegion extends AbstractRegion
    * contains Regions themselves // marked volatile to make sure it is fully
    * initialized before being // accessed; (actually should be final)
    */
-  protected volatile CM subregions;
+  protected volatile ConcurrentHashMap<String, LocalRegion> subregions;
 
   private final Object subregionsLock = new Object();
 
@@ -443,7 +440,6 @@ public class LocalRegion extends AbstractRegion
 
   protected final StoppableCountDownLatch initializationLatchAfterGetInitialImage;
 
-  private final ReentrantReadWriteLock deltaLock = new ReentrantReadWriteLock();
   /**
    * Used to hold off cache listener events until the afterRegionCreate is
    * called
@@ -451,6 +447,8 @@ public class LocalRegion extends AbstractRegion
    * @since 5.0
    */
   private final StoppableCountDownLatch afterRegionCreateEventLatch;
+
+  private final StoppableReentrantReadWriteLock deltaLock;
 
   /**
    * For test purpose to, especially for AbstractRegionMap.applyAllSuspects
@@ -482,8 +480,9 @@ public class LocalRegion extends AbstractRegion
    * Used for serializing netSearch and netLoad on a per key basis.
    * CM <Object, Future>
    */
-  protected final CM getFutures = CFactory.createCM();
-  
+  protected final ConcurrentHashMap<Object, Future> getFutures =
+      new ConcurrentHashMap<>();
+
   /*
    * Asif: This boolean needs to be made true if the test needs to receive a
    * synchronous callback just after clear on map is done. Its visibility is
@@ -556,7 +555,7 @@ public class LocalRegion extends AbstractRegion
    * This boolean is true when a member who has this region is running low on memory.
    * It is used to reject region operations.
    */
-  public final AB memoryThresholdReached = CFactory.createAB(false);
+  public final AtomicBoolean memoryThresholdReached = new AtomicBoolean(false);
 
   // Lock for updating PR MetaData on client side 
   public final Lock clientMetaDataLock = new ReentrantLock();
@@ -763,6 +762,8 @@ public class LocalRegion extends AbstractRegion
     this.afterRegionCreateEventLatch = new StoppableCountDownLatch(
         this.stopper, 1);
 
+    this.deltaLock = new StoppableReentrantReadWriteLock(this.stopper);
+
     String myName = getFullPath();
     if (internalRegionArgs.getPartitionedRegion() != null) {
       myName = internalRegionArgs.getPartitionedRegion().getFullPath();
@@ -809,7 +810,7 @@ public class LocalRegion extends AbstractRegion
     this.diskRegion = createDiskRegion(internalRegionArgs);
     this.entries = createRegionMap(internalRegionArgs);
     this.entriesInitialized = true;
-    this.subregions = CFactory.createCM();
+    this.subregions = new ConcurrentHashMap<>();
     // we only need a destroy lock if this is a root
     if (parentRegion == null) {
       initRoot();
@@ -1259,9 +1260,8 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  private void initRoot()
-  {
-    this.destroyLock = CFactory.createS(1);
+  private void initRoot() {
+    this.destroyLock = new Semaphore(1);
   }
 
   public void handleMarker() {
@@ -1390,7 +1390,7 @@ public class LocalRegion extends AbstractRegion
         // deadlock)
         synchronized (this.subregionsLock) {
           
-          existing = (LocalRegion)this.subregions.get(subregionName);
+          existing = this.subregions.get(subregionName);
 
           if (existing == null) {
             // create the async queue for HDFS if required. 
@@ -2094,7 +2094,7 @@ public class LocalRegion extends AbstractRegion
     Object[] valueAndVersion = null;
     @Retained Object result = null;
     FutureResult thisFuture = new FutureResult(this.stopper);
-    Future otherFuture = (Future)this.getFutures.putIfAbsent(key, thisFuture);
+    Future otherFuture = this.getFutures.putIfAbsent(key, thisFuture);
     // only one thread can get their future into the map for this key at a time
     if (otherFuture != null) {
       try {
@@ -3206,6 +3206,11 @@ public class LocalRegion extends AbstractRegion
   
   public boolean isBackup() {
     return getDiskRegion().isBackup();
+  }
+
+  @Override
+  public void updateMemoryStats(Object oldValue, Object newValue) {
+    // only used by BucketRegion as of now
   }
 
   /**
@@ -11948,7 +11953,7 @@ public class LocalRegion extends AbstractRegion
       successfulPuts.clear();
       putallOp.fillVersionedObjectList(successfulPuts);
     }
-    Set successfulKeys = new HashSet(successfulPuts.size());
+    OpenHashSet<Object> successfulKeys = new OpenHashSet<>(successfulPuts.size());
     for (Object key: successfulPuts.getKeys()) {
       successfulKeys.add(key);
     }
@@ -13503,6 +13508,32 @@ public class LocalRegion extends AbstractRegion
 
       cachePerfStats.stats.incLong(compressionPreCompressedBytesId, startSize);
       cachePerfStats.stats.incLong(compressionPostCompressedBytesId, endSize); 
+    }
+
+    @Override
+    public void endCompressionSkipped(long startTime, long startSize) {
+      if (enableClockStats) {
+        long time = getStatTime() - startTime;
+        stats.incLong(compressionSkippedTimeId, time);
+        cachePerfStats.stats.incLong(compressionSkippedTimeId, time);
+      }
+      stats.incLong(compressionSkippedId, 1);
+      stats.incLong(compressionSkippedBytesId, startSize);
+
+      cachePerfStats.stats.incLong(compressionSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionSkippedBytesId, startSize);
+    }
+
+    @Override
+    public void incDecompressedReplaceSkipped() {
+      stats.incLong(compressionDecompressedReplaceSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionDecompressedReplaceSkippedId, 1);
+    }
+
+    @Override
+    public void incCompressedReplaceSkipped() {
+      stats.incLong(compressionCompressedReplaceSkippedId, 1);
+      cachePerfStats.stats.incLong(compressionCompressedReplaceSkippedId, 1);
     }
 
     public long startDecompression() {

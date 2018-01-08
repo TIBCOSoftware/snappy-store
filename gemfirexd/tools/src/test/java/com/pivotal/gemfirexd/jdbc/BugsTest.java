@@ -37,7 +37,6 @@ import com.gemstone.gemfire.cache.util.CacheWriterAdapter;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.GemFireTerminateError;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.LocalDataSet;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
@@ -175,6 +174,7 @@ public class BugsTest extends JdbcTestBase {
     st = conn.createStatement();
     ResultSet rs;
     for (int i = 0; i < 250; i++) {
+      logger.info("Testing index 02 query for i = " + i);
       rs = st.executeQuery("select st, cty, client_id from ODS.POSTAL_ADDRESS "
           + "where CTY='CTY" + (i + 20) + "' AND CLIENT_ID=" + (i + 20));
       if ((i >= 200 && i < 250) || (i >= 100 && i < 150)) {
@@ -191,6 +191,7 @@ public class BugsTest extends JdbcTestBase {
       rs.close();
     }
     for (int i = 0; i < 250; i++) {
+      logger.info("Testing index 03 query for i = " + i);
       rs = st.executeQuery("select st, cty, client_id from ODS.POSTAL_ADDRESS "
           + "where ST='ST" + (i + 20) + "' AND CLIENT_ID=" + (i + 20));
       if (i >= 0 && i < 150) {
@@ -7679,7 +7680,7 @@ public class BugsTest extends JdbcTestBase {
 
     Class<?>[] expectedexceptionlist = new Class[] { SQLNonTransientConnectionException.class };
     // INSTALL/REPLACE/REMOVE_JAR
-    final String localHostName = SocketCreator.getLocalHost().getHostName();
+    final String localHostName = "localhost";
     try {
       TestUtil.addExpectedException(expectedexceptionlist);
       JarTools.main(new String[] { "install-jar", "-file=" + myjar,

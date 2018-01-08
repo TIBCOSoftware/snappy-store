@@ -54,7 +54,7 @@ public class TransactionManagerImpl implements TransactionManager, Serializable 
    * LocalRegion.discoverJTA). Furthermore, ThreadLocal lookup will normally be
    * more efficient than a ConcurrentMap lookup.
    */
-  //private final Map transactionMap = CFactory.createCM();
+  //private final Map transactionMap = new ConcurrentHashMap();
 
   /**
    * A mapping of Transaction - Global Transaction

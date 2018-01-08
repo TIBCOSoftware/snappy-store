@@ -25,7 +25,6 @@ import java.nio.charset.StandardCharsets;
 import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import org.apache.spark.unsafe.Platform;
 
 /**
  * A buffered DataOutput abstraction over channel using direct byte buffers, and
@@ -238,25 +237,26 @@ public class ChannelBufferUnsafeDataOutputStream extends
   public static long writeUTFSegmentNoOverflow(String str, int offset,
       int length, final int utfLen, final Object target, long addrPos) {
     final int end = (offset + length);
+    final sun.misc.Unsafe unsafe = UnsafeHolder.getUnsafe();
     // fast path for ASCII strings
     if (length == utfLen) {
       while (offset < end) {
         final char c = str.charAt(offset++);
-        Platform.putByte(target, addrPos++, (byte)c);
+        unsafe.putByte(target, addrPos++, (byte)c);
       }
       return addrPos;
     }
     while (offset < end) {
       final char c = str.charAt(offset++);
       if ((c >= 0x0001) && (c <= 0x007F)) {
-        Platform.putByte(target, addrPos++, (byte)c);
+        unsafe.putByte(target, addrPos++, (byte)c);
       } else if (c > 0x07FF) {
-        Platform.putByte(target, addrPos++, (byte)(0xE0 | ((c >> 12) & 0x0F)));
-        Platform.putByte(target, addrPos++, (byte)(0x80 | ((c >> 6) & 0x3F)));
-        Platform.putByte(target, addrPos++, (byte)(0x80 | (c & 0x3F)));
+        unsafe.putByte(target, addrPos++, (byte)(0xE0 | ((c >> 12) & 0x0F)));
+        unsafe.putByte(target, addrPos++, (byte)(0x80 | ((c >> 6) & 0x3F)));
+        unsafe.putByte(target, addrPos++, (byte)(0x80 | (c & 0x3F)));
       } else {
-        Platform.putByte(target, addrPos++, (byte)(0xC0 | ((c >> 6) & 0x1F)));
-        Platform.putByte(target, addrPos++, (byte)(0x80 | (c & 0x3F)));
+        unsafe.putByte(target, addrPos++, (byte)(0xC0 | ((c >> 6) & 0x1F)));
+        unsafe.putByte(target, addrPos++, (byte)(0x80 | (c & 0x3F)));
       }
     }
     return addrPos;
@@ -264,20 +264,20 @@ public class ChannelBufferUnsafeDataOutputStream extends
 
   /** Write a short in big-endian format on given off-heap address. */
   protected static long putShort(long addrPos, final int v) {
-    if (ClientSharedUtils.isLittleEndian) {
-      Platform.putShort(null, addrPos, Short.reverseBytes((short)v));
+    if (UnsafeHolder.littleEndian) {
+      UnsafeHolder.getUnsafe().putShort(null, addrPos, Short.reverseBytes((short)v));
     } else {
-      Platform.putShort(null, addrPos, (short)v);
+      UnsafeHolder.getUnsafe().putShort(null, addrPos, (short)v);
     }
     return addrPos + 2;
   }
 
   /** Write a long in big-endian format on given off-heap address. */
   protected static long putLong(long addrPos, final long v) {
-    if (ClientSharedUtils.isLittleEndian) {
-      Platform.putLong(null, addrPos, Long.reverseBytes(v));
+    if (UnsafeHolder.littleEndian) {
+      UnsafeHolder.getUnsafe().putLong(null, addrPos, Long.reverseBytes(v));
     } else {
-      Platform.putLong(null, addrPos, v);
+      UnsafeHolder.getUnsafe().putLong(null, addrPos, v);
     }
     return addrPos + 8;
   }

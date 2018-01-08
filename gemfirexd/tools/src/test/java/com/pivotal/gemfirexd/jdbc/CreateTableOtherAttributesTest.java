@@ -17,15 +17,12 @@
 package com.pivotal.gemfirexd.jdbc;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashSet;
-import java.util.Properties;
 import java.util.Set;
-
-import org.apache.derbyTesting.junit.JDBC;
 
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.Region;
@@ -33,9 +30,9 @@ import com.gemstone.gemfire.cache.RegionAttributes;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
-
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
+import org.apache.derbyTesting.junit.JDBC;
 
 public class CreateTableOtherAttributesTest extends JdbcTestBase {
   char fileSeparator = System.getProperty("file.separator").charAt(0);
@@ -575,7 +572,8 @@ public class CreateTableOtherAttributesTest extends JdbcTestBase {
 	// TODO : verify columns in catalog
   	}
 
-  private void verify(Region rgn, File [] expectedDirs, DataPolicy expectedDP) {
+  private void verify(Region rgn, File [] expectedDirs,
+      DataPolicy expectedDP) throws IOException {
     RegionAttributes ra = rgn.getAttributes();
     assertEquals(expectedDP,ra.getDataPolicy());
     if(expectedDirs == null) {
@@ -586,10 +584,10 @@ public class CreateTableOtherAttributesTest extends JdbcTestBase {
     assertEquals(actualDirs.length, expectedDirs.length);
     Set<String> expected = new HashSet(expectedDirs.length);
     for(File file :expectedDirs) {
-      expected.add(file.getAbsolutePath());
+      expected.add(file.getCanonicalPath());
     }   
     for(File file: actualDirs) {
-      assertTrue(expected.remove(file.getAbsolutePath()));
+      assertTrue(expected.remove(file.getCanonicalPath()));
     }    
     assertTrue(expected.isEmpty());
     }

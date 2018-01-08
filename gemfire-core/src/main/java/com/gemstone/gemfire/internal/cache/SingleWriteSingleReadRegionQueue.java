@@ -31,16 +31,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.cache.AttributesFactory;
 import com.gemstone.gemfire.cache.AttributesMutator;
 import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.CacheListener;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.DiskWriteAttributes;
 import com.gemstone.gemfire.cache.DiskWriteAttributesFactory;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
@@ -52,9 +51,6 @@ import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.Scope;
 import com.gemstone.gemfire.cache.util.GatewayQueueAttributes;
 import com.gemstone.gemfire.distributed.GatewayCancelledException;
-import com.gemstone.gemfire.internal.cache.LocalRegion.Stopper;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * Class <code>SingleWriteSingleReadRegionQueue</code> is a
@@ -82,7 +78,7 @@ public class SingleWriteSingleReadRegionQueue implements RegionQueue
    * the <code>Region</code> in the case where this queue takes over where a
    * previous one left off.
    */
-  protected final AL _tailKey = CFactory.createAL();
+  protected final AtomicLong _tailKey = new AtomicLong();
 
   protected final LinkedList<Long> _peekedIds = new LinkedList<Long>();
   /**

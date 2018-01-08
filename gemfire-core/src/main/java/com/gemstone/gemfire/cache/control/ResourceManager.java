@@ -25,6 +25,7 @@ import com.gemstone.gemfire.cache.LowMemoryException;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.query.QueryService;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 
 /**
  * Provides support for managing resources used by the local
@@ -70,7 +71,7 @@ public interface ResourceManager {
    * is breached.
    */
   public static final String THRESHOLD_THICKNESS_PROP =
-      "gemfire.thresholdThickness";
+      LauncherBase.THRESHOLD_THICKNESS_PROP;
 
   /**
    * System property to set the percent to evict after eviction heap percentage
@@ -78,14 +79,14 @@ public interface ResourceManager {
    * {@link #THRESHOLD_THICKNESS_PROP}.
    */
   public static final String THRESHOLD_THICKNESS_EVICT_PROP =
-      "gemfire.eviction-thresholdThickness";
+      LauncherBase.THRESHOLD_THICKNESS_EVICT_PROP;
 
   /**
    * System property to set the percentage of heap evicted by an evictor thread
    * in one burst when the eviction heap percentage is breached.
    */
   public static final String EVICTION_BURST_PERCENT_PROP =
-      "gemfire.HeapLRUCapacityController.evictionBurstPercentage";
+      LauncherBase.EVICTION_BURST_PERCENT_PROP;
 
   /**
    * Creates a factory for defining and starting {@link RebalanceOperation

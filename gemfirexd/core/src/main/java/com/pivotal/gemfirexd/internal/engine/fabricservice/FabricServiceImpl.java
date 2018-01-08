@@ -50,6 +50,7 @@ import com.gemstone.gemfire.internal.cache.BridgeServerAdvisor;
 import com.gemstone.gemfire.internal.cache.BridgeServerAdvisor.BridgeServerProfile;
 import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.Status;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.Attribute;
@@ -620,10 +621,10 @@ public abstract class FabricServiceImpl implements FabricService {
     this.previousServerStatus = State.UNINITIALIZED;
     switch (previousStatus) {
       case STARTING:
-        notifyRunningInLauncher(CacheServerLauncher.STARTING);
+        notifyRunningInLauncher(Status.STARTING);
         break;
       case STANDBY:
-        notifyRunningInLauncher(CacheServerLauncher.STANDBY);
+        notifyRunningInLauncher(Status.STANDBY);
         break;
       case RUNNING:
         break;
@@ -732,18 +733,23 @@ public abstract class FabricServiceImpl implements FabricService {
         netImpl.internalStart(networkProperties);
         retry = false;
       } catch (GemFireXDRuntimeException e) {
-        if (retry && numTries <= 10) {
+        if (retry && numTries <= 50) {
           // retry with an incremented port.
           netImpl.setPort(++port);
         } else throw e;
       }
-    } while (retry && numTries <= 10);
+    } while (retry && numTries <= 50);
 
     if (netImpl.getServerType().isThrift()) {
       serverType += (" (" + netImpl.getServerType().getProtocolString() + ')');
     }
     String startupMessage = "Started " + serverType + " on: " +
         listenAddress + '[' + port + ']';
+    // set on launcher if run through it
+    CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+    if (launcher != null) {
+      launcher.setServerStartupMessage(startupMessage);
+    }
     logger.info(startupMessage);
 
     return netImpl;

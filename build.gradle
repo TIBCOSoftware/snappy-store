@@ -51,6 +51,7 @@ allprojects {
     protobufVersion = '2.6.1'
     kryoVersion = '4.0.1'
     thriftVersion = '0.9.3'
+    jnaVersion = '4.5.0'
     jerseyVersion = '2.26'
     jsr305Version = '3.0.2'
     servletAPIVersion = '3.1.0'
@@ -153,7 +154,6 @@ allprojects {
   apply plugin: 'java'
   apply plugin: 'maven'
   apply plugin: 'idea'
-  apply plugin: 'eclipse'
 }
 
 def writeProperties(def parent, def name, def comment, def propsMap) {
@@ -307,26 +307,6 @@ subprojects {
   sourceSets {
     test.compileClasspath += configurations.compileOnly
     test.runtimeClasspath += configurations.compileOnly
-  }
-
-  cleanEclipse.doLast {
-    delete '.settings/org.eclipse.core.resources.prefs'
-  }
-
-  eclipse {
-    classpath {
-      defaultOutputDir = file('build-artifacts/eclipse')
-      downloadSources = true
-    }
-    // Several files have UTF-8 encoding and Eclipse running on Windows
-    // will have trouble unless we tell it to use UTF-8 encoding.
-    // This setting needs to go into the core.resources.prefs file,
-    // which the JDT script isn't set up to configure
-    eclipseJdt.doLast {
-      File f = file('.settings/org.eclipse.core.resources.prefs')
-      f.write('eclipse.preferences.version=1\n')
-      f.append('encoding/<project>=utf-8')
-    }
   }
 
   dependencies {

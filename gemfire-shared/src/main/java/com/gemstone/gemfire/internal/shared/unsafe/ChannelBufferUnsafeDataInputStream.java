@@ -40,12 +40,7 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
-
 import javax.annotation.Nonnull;
-
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
-import org.apache.spark.unsafe.Platform;
-
 
 /**
  * A buffered DataInput abstraction over channel using direct byte buffers, and
@@ -132,7 +127,7 @@ public class ChannelBufferUnsafeDataInputStream extends
     if (this.addrPosition >= this.addrLimit) {
       refillBuffer(this.buffer, 1, "readByte: premature end of stream");
     }
-    return Platform.getByte(null, this.addrPosition++);
+    return UnsafeHolder.getUnsafe().getByte(null, this.addrPosition++);
   }
 
   /**
@@ -154,10 +149,10 @@ public class ChannelBufferUnsafeDataInputStream extends
       addrPos = this.addrPosition;
     }
     this.addrPosition += 2;
-    if (ClientSharedUtils.isLittleEndian) {
-      return Short.reverseBytes(Platform.getShort(null, addrPos));
+    if (UnsafeHolder.littleEndian) {
+      return Short.reverseBytes(UnsafeHolder.getUnsafe().getShort(null, addrPos));
     } else {
-      return Platform.getShort(null, addrPos);
+      return UnsafeHolder.getUnsafe().getShort(null, addrPos);
     }
   }
 
@@ -188,10 +183,10 @@ public class ChannelBufferUnsafeDataInputStream extends
       addrPos = this.addrPosition;
     }
     this.addrPosition += 8;
-    if (ClientSharedUtils.isLittleEndian) {
-      return Long.reverseBytes(Platform.getLong(null, addrPos));
+    if (UnsafeHolder.littleEndian) {
+      return Long.reverseBytes(UnsafeHolder.getUnsafe().getLong(null, addrPos));
     } else {
-      return Platform.getLong(null, addrPos);
+      return UnsafeHolder.getUnsafe().getLong(null, addrPos);
     }
   }
 

@@ -103,14 +103,14 @@ bool thrift::HostAddress::operator <(const HostAddress& other) const {
 std::string ClientService::s_hostName;
 std::string ClientService::s_hostId;
 boost::mutex ClientService::s_globalLock;
+bool ClientService::s_initialized = false;
 
 void DEFAULT_OUTPUT_FN(const char *str) {
   LogWriter::info() << str << _SNAPPY_NEWLINE;
 }
 
-bool ClientService::staticInitialize() {
-  boost::lock_guard<boost::mutex> sync(s_globalLock);
-
+bool ClientService::globalInitialize() {
+  // s_globalLock should be held
   if (s_hostName.empty()) {
     // first initialize any utilities used by other parts of product
     InternalUtils::staticInitialize();
@@ -140,12 +140,17 @@ bool ClientService::staticInitialize() {
   }
 }
 
+void ClientService::staticInitialize() {
+  boost::lock_guard<boost::mutex> sync(s_globalLock);
+  globalInitialize();
+}
+
 void ClientService::staticInitialize(
     std::map<std::string, std::string>& props) {
+  boost::lock_guard<boost::mutex> sync(s_globalLock);
 
-  if (staticInitialize()) {
-    boost::lock_guard<boost::mutex> sync(s_globalLock);
-
+  if (!s_initialized) {
+    globalInitialize();
     LogWriter& globalLogger = LogWriter::global();
     std::string logFile, logLevelStr;
     LogLevel::type logLevel = globalLogger.getLogLevel();
@@ -173,10 +178,11 @@ void ClientService::staticInitialize(
     globalLogger.initialize(logFile, logLevel);
     apache::thrift::GlobalOutput.setOutputFunction(DEFAULT_OUTPUT_FN);
 
-    if (LogWriter::errorEnabled()) {
-      LogWriter::config() << "Starting client on '" << s_hostName
+    if (LogWriter::infoEnabled()) {
+      LogWriter::info() << "Starting client on '" << s_hostName
           << "' with ID='" << s_hostId << '\'' << _SNAPPY_NEWLINE;
     }
+    s_initialized = true;
   }
 }
 

@@ -24,6 +24,7 @@ import java.net.NoRouteToHostException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.CancelException;
@@ -43,9 +44,6 @@ import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.tier.sockets.HandShake;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerConnection;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerQueueStatus;
-import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -72,7 +70,7 @@ public class ConnectionImpl implements Connection {
   private ServerQueueStatus status;
   private final LogWriterI18n logger;
   private volatile boolean connectFinished;
-  private final AB destroyed = CFactory.createAB();
+  private final AtomicBoolean destroyed = new AtomicBoolean();
   private Endpoint endpoint;
   private short wanSiteVersion = -1;//In Gateway communication version of connected wan site
                                    //will be stored after successful handshake

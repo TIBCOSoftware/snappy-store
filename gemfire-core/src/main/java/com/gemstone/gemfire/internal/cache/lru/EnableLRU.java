@@ -83,6 +83,12 @@ public interface EnableLRU {
   public int getEvictionsStatId();
 
   /**
+   * Returns the id of the "evictions" statistic for this LRU
+   * algorithm's statistics.
+   */
+  public int getFaultInsStatId();
+
+  /**
    * Returns the id of the "destroys" statistic for this LRU
    * algorithm's statistics.
    */

@@ -15,8 +15,6 @@ import com.gemstone.org.jgroups.ShunnedAddressException;
 import com.gemstone.org.jgroups.View;
 import com.gemstone.org.jgroups.ViewId;
 import com.gemstone.org.jgroups.protocols.PingRsp;
-import com.gemstone.org.jgroups.protocols.UNICAST;
-import com.gemstone.org.jgroups.protocols.UNICAST.UnicastHeader;
 import com.gemstone.org.jgroups.stack.IpAddress;
 import com.gemstone.org.jgroups.util.ExternalStrings;
 import com.gemstone.org.jgroups.util.Promise;
@@ -95,7 +93,7 @@ public class ClientGmsImpl extends GmsImpl  {
         View tmp_view = null;
         leaving=false;
         long starttime = System.currentTimeMillis(); // GemStoneAddition
-        final int maxRetries = 6; // GemStoneAddition - need this figure later
+        final int maxRetries = Math.max(6, gms.min_join_tries); // GemStoneAddition
         int joinRetries = maxRetries;
 
         join_promise.reset();
@@ -152,9 +150,9 @@ public class ClientGmsImpl extends GmsImpl  {
                     "(disable_initial_coord=true), will retry fetching the initial membership");
                     //                    continue;
                   }
-                  // if we're getting no responses at all after two or more attempts, there's no-one
+                  // if we're getting no responses at all after one or more attempts, there's no-one
                   // out there.
-                  else if (joinRetries <= (maxRetries - 2)) {
+                  else if (joinRetries <= (maxRetries - gms.min_join_tries)) {
                     if(log.isDebugEnabled())
                       log.debug("no initial members discovered: creating group as first member");
                     becomeSingletonMember(myAddr);

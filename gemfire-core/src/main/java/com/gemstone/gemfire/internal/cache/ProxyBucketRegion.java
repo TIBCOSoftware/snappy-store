@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.InternalGemFireError;
@@ -49,8 +50,6 @@ import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberManager;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMembershipView;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashSet;
 
@@ -69,7 +68,7 @@ public final class ProxyBucketRegion implements Bucket {
   private final BucketAdvisor advisor;
   private final BucketPersistenceAdvisor persistenceAdvisor;
   private volatile BucketRegion realBucket = null;
-  private final AB bucketSick = CFactory.createAB(false);
+  private final AtomicBoolean bucketSick = new AtomicBoolean(false);
   private final Set<DistributedMember> sickHosts = new HashSet<DistributedMember>();
   private final DiskRegion diskRegion;
   private final BucketLock bucketLock;

@@ -18,6 +18,8 @@
 package io.snappydata.collection;
 
 import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 
 import com.koloboke.compile.KolobokeMap;
 
@@ -33,6 +35,8 @@ public abstract class IntObjectHashMap<V> {
   public abstract V get(int key);
 
   public abstract Collection<V> values();
+
+  public abstract Set<Map.Entry<Integer, V>> entrySet();
 
   public abstract int size();
 

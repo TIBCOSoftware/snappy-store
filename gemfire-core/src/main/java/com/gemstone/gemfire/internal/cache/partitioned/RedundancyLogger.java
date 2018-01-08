@@ -31,7 +31,6 @@ import java.util.concurrent.CountDownLatch;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.GemFireUtilLauncher;
-import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.BucketPersistenceAdvisor;
 import com.gemstone.gemfire.internal.cache.ColocationHelper;
@@ -166,7 +165,7 @@ public class RedundancyLogger extends RecoveryRunnable implements PersistentStat
         // reduce the first log time from 15secs so that higher layers can
         // report sooner to user
         if (!warningLogged) {
-          sleepMillis = SLEEP_PERIOD / 2;
+          sleepMillis = SLEEP_PERIOD / 5;
         }
         Thread.sleep(sleepMillis);          
 

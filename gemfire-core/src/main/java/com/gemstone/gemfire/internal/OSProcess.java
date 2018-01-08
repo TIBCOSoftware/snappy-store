@@ -91,12 +91,9 @@ public class OSProcess {
       public boolean isProcessActive(int processId)
           throws UnsupportedOperationException {
         if (processId != 0) {
-          if (pureMode) {
-            throw new UnsupportedOperationException(
-                LocalizedStrings.OSProcess_EXISTS_NOT_ALLOWED_IN_PURE_JAVA_MODE
-                    .toLocalizedString());
-          }
-          else {
+          try {
+            return super.isProcessActive(processId);
+          } catch (UnsupportedOperationException e) {
             return exists2(processId);
           }
         }

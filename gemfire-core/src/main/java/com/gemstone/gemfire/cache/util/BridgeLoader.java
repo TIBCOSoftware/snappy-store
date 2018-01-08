@@ -19,6 +19,7 @@ package com.gemstone.gemfire.cache.util;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.AttributesFactory;
@@ -34,8 +35,6 @@ import com.gemstone.gemfire.cache.client.internal.BridgePoolImpl;
 import com.gemstone.gemfire.cache.client.internal.ServerProxy;
 import com.gemstone.gemfire.cache.query.SelectResults;
 import com.gemstone.gemfire.internal.cache.tier.ConnectionProxy;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * A <code>CacheLoader</code> that loads data from one or more remote
@@ -307,7 +306,7 @@ public class BridgeLoader implements CacheLoader, Declarable
   private LogWriterI18n logger = null;
   private volatile boolean isClosed = false;
 
-  private final AI refCount = CFactory.createAI();
+  private final AtomicInteger refCount = new AtomicInteger();
 
   /**
    * Initializes the loader with supplied config parameters. If instantiating

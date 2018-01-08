@@ -20,15 +20,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.gemstone.gemfire.cache.client.internal.ServerBlackList.FailureTracker;
 import com.gemstone.gemfire.cache.client.internal.pooling.ConnectionDestroyedException;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerQueueStatus;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.AR;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-
 
 /**
  * A wrapper that holds a client to server connection and
@@ -41,14 +39,14 @@ import com.gemstone.gemfire.internal.concurrent.CFactory;
  */
 public class QueueConnectionImpl implements Connection {
 
-  private final AR/*<Connection>*/ clientToServerConn = CFactory.createAR();
+  private final AtomicReference<Connection> clientToServerConn =
+      new AtomicReference<>();
   private final Endpoint endpoint;
   private volatile ClientUpdater updater;
-  private boolean shouldDestroy;
   private QueueManagerImpl manager;
-  private final AB sentClientReady = CFactory.createAB();
+  private final AtomicBoolean sentClientReady = new AtomicBoolean();
   private FailureTracker failureTracker;
-  
+
   public QueueConnectionImpl(QueueManagerImpl manager, Connection clientToServer,
       ClientUpdater updater, FailureTracker failureTracker) {
     this.manager = manager;
@@ -63,7 +61,7 @@ public class QueueConnectionImpl implements Connection {
   }
   
   public void emergencyClose() {
-    Connection conn = (Connection) clientToServerConn.getAndSet(null);
+    Connection conn = clientToServerConn.getAndSet(null);
     if(conn != null) {
       conn.emergencyClose();
     }
@@ -78,14 +76,14 @@ public class QueueConnectionImpl implements Connection {
   }
 
   public void destroy() {
-    Connection conn = (Connection)this.clientToServerConn.get();
+    Connection conn = this.clientToServerConn.get();
     if (conn != null) {
       manager.connectionCrashed(conn);
     } // else someone else destroyed it
   }
   
   public void internalDestroy() {
-    Connection currentConn = (Connection)this.clientToServerConn.get();
+    Connection currentConn = this.clientToServerConn.get();
     if(currentConn != null) {
       if (!this.clientToServerConn.compareAndSet(currentConn, null)) {
         // someone else did (or is doing) the internalDestroy so return
@@ -118,10 +116,6 @@ public class QueueConnectionImpl implements Connection {
   
   public boolean isDestroyed() {
     return clientToServerConn.get() == null;
-  }
-  
-  public boolean getShouldDestroy() {
-    return shouldDestroy;
   }
 
   public ByteBuffer getCommBuffer() {
@@ -161,7 +155,7 @@ public class QueueConnectionImpl implements Connection {
   }
   
   public Connection getConnection() {
-    Connection result = (Connection)this.clientToServerConn.get();
+    Connection result = this.clientToServerConn.get();
     if (result == null) {
       throw new ConnectionDestroyedException();
     }
@@ -184,7 +178,7 @@ public class QueueConnectionImpl implements Connection {
   
   @Override
   public String toString() { 
-    Connection result = (Connection)this.clientToServerConn.get();
+    Connection result = this.clientToServerConn.get();
     if(result != null) {
       return result.toString();
     } else {
@@ -209,10 +203,10 @@ public class QueueConnectionImpl implements Connection {
   }
 
   public void setConnectionID(long id) {
-    ((Connection)this.clientToServerConn.get()).setConnectionID(id);
+    this.clientToServerConn.get().setConnectionID(id);
   }
 
   public long getConnectionID() {
-    return ((Connection)this.clientToServerConn.get()).getConnectionID();
+    return this.clientToServerConn.get().getConnectionID();
   }
 }

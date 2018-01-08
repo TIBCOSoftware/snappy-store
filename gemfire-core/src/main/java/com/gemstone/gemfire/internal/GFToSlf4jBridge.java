@@ -60,23 +60,26 @@ public class GFToSlf4jBridge extends LogWriterImpl {
   public void put(int level, String msg, Throwable exception) {
     Logger log = getLogger();
     switch (level) {
-      case SEVERE_LEVEL:
-      case ERROR_LEVEL:
-        log.error(msg, exception);
-        break;
-      case WARNING_LEVEL:
-        log.warn(msg, exception);
-        break;
       case INFO_LEVEL:
       case CONFIG_LEVEL:
         log.info(msg, exception);
         break;
+      case WARNING_LEVEL:
+        log.warn(msg, exception);
+        break;
       case FINE_LEVEL:
         log.debug(msg, exception);
         break;
+      case SEVERE_LEVEL:
+      case ERROR_LEVEL:
+        log.error(msg, exception);
+        break;
       case FINER_LEVEL:
       case FINEST_LEVEL:
+      case ALL_LEVEL:
         log.trace(msg, exception);
+        break;
+      case NONE_LEVEL:
         break;
       default:
         log.debug(msg, exception);
