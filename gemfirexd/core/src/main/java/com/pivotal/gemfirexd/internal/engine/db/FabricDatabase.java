@@ -49,6 +49,13 @@ import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.LogWriter;
@@ -56,6 +63,7 @@ import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -86,6 +94,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProc
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServerImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
@@ -1252,20 +1261,66 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
 
+      ExecutorService execService = Executors
+          .newCachedThreadPool(new ThreadFactory() {
+            AtomicInteger threadNum = new AtomicInteger(0);
+
+            public Thread newThread(final Runnable r) {
+              LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
+              Thread result = new Thread(LogWriterImpl.createThreadGroup(
+                  "RegionInitializerExecutionThreadGroup", logger), r,
+                  "RegionInitializer Thread-" + threadNum.incrementAndGet());
+              result.setDaemon(true);
+              return result;
+            }
+          });
+
+      List<Callable> tasks = new ArrayList<Callable>();
+      List<Future<Object>> results = new LinkedList<>();
       for (GemFireContainer container : uninitializedContainers) {
         if (logger.infoEnabled() &&
             !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
           logger.info("FabricDatabase: start initializing container: "
               + container);
         }
-        container.initializeRegion();
+        // do 5 at a time
+        // check if atleast one is done
+        // if atleast one is done then submit next
+        final FabricService service = FabricServiceManager
+            .currentFabricServiceInstance();
+        Future f = execService.submit(new Callable<Boolean>() {
+          @Override
+          public Boolean call() throws Exception {
+            container.initializeRegion();
+            if (service instanceof FabricServerImpl) {
+              ((FabricServerImpl)service).notifyTableInitialized();
+            }
+            return true;
+          }
+        });
+        results.add(f);
+
+        if (service instanceof FabricServerImpl) {
+          ((FabricServerImpl)service).waitTableInitialized();
+        }
+
+        // wait for notification
         if (logger.infoEnabled() &&
             !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
           logger.info("FabricDatabase: end initializing container: "
               + container);
         }
       }
-      
+
+      for (Future f : results) {
+        //if (f.isDone()) {
+          f.get();
+        //}
+      }
+
+
+      //container.initializeRegion();
+
       ddlStmtQueue.clearQueue();
       String currentSchema = lcc.getCurrentSchemaName();
       if (currentSchema == null) {

@@ -391,7 +391,10 @@ public interface AdminDistributedSystem {
    * @since 7.0
    */
   public void revokePersistentMember(UUID diskStoreID) throws AdminException;
-  
+
+
+  public void unblockPersistentMember(UUID diskStoreID) throws AdminException;
+
   /**
    * Retrieve the set of persistent files that the existing members are waiting
    * for. See {@link AdminDistributedSystem#revokePersistentMember(InetAddress, String)}

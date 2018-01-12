@@ -529,7 +529,7 @@ public class SystemAdmin {
       System.out.println(" mcast=" + dsc.getMcastAddress()
           + ":" + dsc.getMcastPort());
     }
-    LocalLogWriter logger = new LocalLogWriter(LogWriterImpl.WARNING_LEVEL, System.out);
+    LocalLogWriter logger = new LocalLogWriter(LogWriterImpl.FINE_LEVEL, System.out);
     InternalDistributedSystem ds = (InternalDistributedSystem) InternalDistributedSystem.connectForAdmin(props, logger);
     Set<?> existingMembers = ds.getDistributionManager()
         .getDistributionManagerIds();
@@ -697,7 +697,7 @@ public class SystemAdmin {
     }
   }
 
-  protected void checkRevokeMissingDiskStoresArgs(String cmd,
+  protected void checkUnblockOrRevokeMissingDiskStoresArgs(String cmd,
       List<String> cmdLine) {
     if (cmdLine.size() != 1) {
       System.err.println("Expected a disk store id");
@@ -742,6 +742,50 @@ public class SystemAdmin {
     }
   }
 
+  public void unblockDiskStores(String cmd, ArrayList<String> cmdLine)
+      throws UnknownHostException, AdminException {
+    String uuidString = cmdLine.remove(0);
+    UUID uuid = UUID.fromString(uuidString);
+    InternalDistributedSystem ads = getAdminCnx(cmd, cmdLine);
+    Set<PersistentID> s1 = AdminDistributedSystemImpl
+        .getMissingPersistentMembers(ads.getDistributionManager());
+
+    ads.getLogWriter().info(LocalizedStrings.DEBUG, "The missing persistent members are before unblock " + s1);
+
+    AdminDistributedSystemImpl.unblockPersistentMember(ads.getDistributionManager(), uuid);
+
+
+    // check that no region using this disk-store should be blocked
+    Set<PersistentID> s = AdminDistributedSystemImpl
+        .getMissingPersistentMembers(ads.getDistributionManager());
+
+    ads.getLogWriter().info(LocalizedStrings.DEBUG, "The missing persistent members are after unblock " + s);
+
+    //Fix for 42607 - wait to see if the revoked member goes way if it is still in the set of
+    //missing members. It may take a moment to clear the missing member set after the revoke.
+    long start = System.currentTimeMillis();
+    while(containsRevokedMember(s, uuid)) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException ignore) {
+      }
+      s = AdminDistributedSystemImpl.getMissingPersistentMembers(ads
+          .getDistributionManager());
+      if (start + 30000 < System.currentTimeMillis()) {
+        break;
+      }
+    }
+    if (s.isEmpty()) {
+      System.out.println("revocation was successful and no disk stores are now missing");
+    } else {
+      System.out.println("The following disk stores are still missing:");
+      for (Object o: s) {
+        System.out.println(o);
+      }
+    }
+
+  }
+
   public void revokeMissingDiskStores(String cmd, ArrayList<String> cmdLine)
       throws UnknownHostException, AdminException {
     String uuidString = cmdLine.remove(0);
@@ -750,6 +794,7 @@ public class SystemAdmin {
     AdminDistributedSystemImpl.revokePersistentMember(ads.getDistributionManager(), uuid);
     Set<PersistentID> s = AdminDistributedSystemImpl
         .getMissingPersistentMembers(ads.getDistributionManager());
+
 
     //Fix for 42607 - wait to see if the revoked member goes way if it is still in the set of
     //missing members. It may take a moment to clear the missing member set after the revoke.
@@ -777,6 +822,7 @@ public class SystemAdmin {
   
   private static boolean containsRevokedMember(Set<PersistentID> missing, UUID revokedUUID) {
     for(PersistentID id : missing) {
+      System.out.println("Missing persistent id are " + id);
       if(id.getUUID().equals(revokedUUID)) {
         return true;
       }
@@ -1485,7 +1531,7 @@ public class SystemAdmin {
     "compact-disk-store",
     "compact-all-disk-stores",
     "revoke-missing-disk-store",
-    "list-missing-disk-stores",
+    "unblock-disk-store",
     "modify-disk-store",
     "show-disk-store-metadata",
     "export-disk-store",
@@ -1682,6 +1728,12 @@ public class SystemAdmin {
                 "You must pass the in the unique id for the disk store to revoke. The unique id is listed in the output " +
                 "of the list-missing-disk-stores command, for example a63d7d99-f8f8-4907-9eb7-cca965083dbb.\n" +
                 "This command will use the \"" + propsFile + "\" file, if available, to determine what distributed system to connect to.");
+    helpMap.put("unblock-disk-store",
+        "Connects to a running system and tells its members to continue instead of waiting for the latest " +
+            " disk store to be available. \n" +
+            "You must pass the in the unique id for the disk store to unblock. The unique id is listed in the output " +
+            "of the list-missing-disk-stores command, for example a63d7d99-f8f8-4907-9eb7-cca965083dbb.\n" +
+            "This command will use the \"" + propsFile + "\" file, if available, to determine what distributed system to connect to.");
     helpMap.put("show-disk-store-metadata", 
                 "Analyzes existing files in one or more disk store directory(ies) and lists its meta information.");
     helpMap.put("list-missing-disk-stores",
@@ -1821,6 +1873,7 @@ public class SystemAdmin {
     usageMap.put("shut-down-all", "shut-down-all [timeout_in_ms]");
     usageMap.put("backup", "backup [-baseline=<baseline directory>] <target directory>");
     usageMap.put("revoke-missing-disk-store", "revoke-missing-disk-store <disk-store-id>");
+    usageMap.put("unblock-disk-store", "unblock-disk-store <disk-store-id>");
     usageMap.put("print-stacks", "print-stacks [-all-threads] [<filename>]");
   }
   // option statics
@@ -1887,6 +1940,7 @@ public class SystemAdmin {
     cmdOptionsMap.put("list-missing-disk-stores", new String[] {});
     cmdOptionsMap.put("compact-all-disk-stores", new String[] {});
     cmdOptionsMap.put("revoke-missing-disk-store", new String[] {});
+    cmdOptionsMap.put("unblock-disk-store", new String[] {});
     cmdOptionsMap.put("show-disk-store-metadata", new String[] {"-buckets"});
     cmdOptionsMap.put("export-disk-store", new String[] {"-outputDir="});
     cmdOptionsMap.put("shut-down-all", new String[] {});
@@ -2310,8 +2364,11 @@ public class SystemAdmin {
         checkNoArgs(cmd, cmdLine);
         listMissingDiskStores(cmd, cmdLine);
       } else if (cmd.equalsIgnoreCase("revoke-missing-disk-store")) {
-        checkRevokeMissingDiskStoresArgs(cmd, cmdLine);
+        checkUnblockOrRevokeMissingDiskStoresArgs(cmd, cmdLine);
         revokeMissingDiskStores(cmd, cmdLine);
+      } else if (cmd.equalsIgnoreCase("unblock-disk-store")) {
+        checkUnblockOrRevokeMissingDiskStoresArgs(cmd, cmdLine);
+        unblockDiskStores(cmd, cmdLine);
       } else if (cmd.equalsIgnoreCase("show-disk-store-metadata")) {
         if (cmdLine.size() == 0) {
           System.err.println("Expected disk store name and at least one directory");

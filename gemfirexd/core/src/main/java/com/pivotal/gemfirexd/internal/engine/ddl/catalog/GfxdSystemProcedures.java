@@ -2400,6 +2400,19 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
+  public static void FIX_PREVIOUS_OPS_COUNT(String tableName) throws SQLException {
+    Region region = Misc.getRegionForTable(tableName, true);
+    if (region != null) {
+      if (region instanceof PartitionedRegion) {
+        PartitionedRegion pr = (PartitionedRegion)region;
+        for (BucketRegion br : pr.getDataStore().getAllLocalBucketRegions()) {
+          br.getBucketAdvisor().resetPrevOpCount();
+        }
+      } else if (region instanceof DistributedRegion) {
+        ((DistributedRegion)region).getDistributionAdvisor().resetPrevOpCount();
+      }
+    }
+  }
   /**
    * This procedure dumps the thread stacks, locks, transaction stats of current
    * node to log file. It is identical to sending SIGURG on UNIX systems. The

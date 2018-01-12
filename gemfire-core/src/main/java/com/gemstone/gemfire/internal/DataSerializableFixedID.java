@@ -801,6 +801,11 @@ public interface DataSerializableFixedID extends SerializationVersions {
   public static final short SERVER_PING_MESSAGE = 2162;
 
   public static final short SNAPSHOT_GII_UNLOCK_MESSAGE = 2163;
+  public static final short UNBLOCK_PERSISTENT_ID_REQUEST = 2164;
+  public static final short UNBLOCK_PERSISTENT_ID_RESPONSE = 2165;
+  public static final short WAITING_PERSISTENT_IDS_REQUEST = 2166;
+  public static final short WAITING_PERSISTENT_IDS_RESPONSE = 2167;
+
   // NOTE, codes > 65535 will take 4 bytes to serialize
   
   /**

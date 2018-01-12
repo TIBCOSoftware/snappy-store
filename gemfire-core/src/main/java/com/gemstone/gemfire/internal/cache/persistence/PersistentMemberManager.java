@@ -62,7 +62,17 @@ public class PersistentMemberManager {
       }
     }
   }
-  
+
+  public void unblockMemberForPattern(PersistentMemberPattern pattern) {
+    synchronized (this) {
+      for (MemberRevocationListener listener : revocationListeners) {
+        if (listener.matches(pattern)) {
+          listener.unblock();
+        }
+      }
+    }
+  }
+
   /**
    * Add a new revokation listener
    * 
@@ -130,7 +140,20 @@ public class PersistentMemberManager {
       return missingMemberIds;
     }
   }
-  
+
+  public Set<PersistentMemberID> getWaitingIds() {
+    synchronized(this) {
+      Set<PersistentMemberID> waitingIds = new HashSet<PersistentMemberID>();
+      for(MemberRevocationListener listener : revocationListeners) {
+        Set<PersistentMemberID> ids = listener.getMissingMemberIds();
+        if(ids != null && ids.size() > 0) {
+          listener.addPersistentIDs(waitingIds);
+        }
+      }
+      return waitingIds;
+    }
+  }
+
   /**
    * Returns a set of the persistent ids that are running on this member.
    */
@@ -223,6 +246,8 @@ public class PersistentMemberManager {
     public Set<PersistentMemberID> getMissingMemberIds();
     
     public String getRegionPath();
+
+    public void unblock();
   }
   
   public class PendingRevokeListener implements MembershipListener {

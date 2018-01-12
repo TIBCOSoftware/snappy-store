@@ -80,15 +80,7 @@ import com.gemstone.gemfire.internal.admin.GfManagerAgent;
 import com.gemstone.gemfire.internal.admin.GfManagerAgentConfig;
 import com.gemstone.gemfire.internal.admin.GfManagerAgentFactory;
 import com.gemstone.gemfire.internal.admin.SSLConfig;
-import com.gemstone.gemfire.internal.admin.remote.CompactRequest;
-import com.gemstone.gemfire.internal.admin.remote.DistributionLocatorId;
-import com.gemstone.gemfire.internal.admin.remote.MissingPersistentIDsRequest;
-import com.gemstone.gemfire.internal.admin.remote.PrepareRevokePersistentIDRequest;
-import com.gemstone.gemfire.internal.admin.remote.RemoteApplicationVM;
-import com.gemstone.gemfire.internal.admin.remote.RemoteGfManagerAgent;
-import com.gemstone.gemfire.internal.admin.remote.RemoteTransportConfig;
-import com.gemstone.gemfire.internal.admin.remote.RevokePersistentIDRequest;
-import com.gemstone.gemfire.internal.admin.remote.ShutdownAllRequest;
+import com.gemstone.gemfire.internal.admin.remote.*;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberPattern;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
@@ -2324,6 +2316,10 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
     return MissingPersistentIDsRequest.send(dm);
   }
 
+  public static Set<PersistentID> getWaitingPersistentMembers(DM dm) {
+    return WaitingPersistentIDRequest.send(dm);
+  }
+
   public void revokePersistentMember(InetAddress host,
       String directory) throws AdminException {
     connectAdminDS();
@@ -2377,6 +2373,39 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
         PrepareRevokePersistentIDRequest.cancel(dm, pattern);
       }
     }
+  }
+
+  public void unblockPersistentMember(UUID diskStoreID) throws AdminException {
+    connectAdminDS();
+    DM dm = getDistributionManager();
+    if(dm == null) {
+      throw new IllegalStateException(LocalizedStrings.AdminDistributedSystemImpl_CONNECT_HAS_NOT_BEEN_INVOKED_ON_THIS_ADMINDISTRIBUTEDSYSTEM.toLocalizedString());
+    }
+    unblockPersistentMember(dm, diskStoreID);
+  }
+
+  public static void unblockPersistentMember(DM dm, UUID diskStoreID) {
+    PersistentMemberPattern pattern = new PersistentMemberPattern(diskStoreID);
+    boolean found = false;
+
+    Set<PersistentID> details = getWaitingPersistentMembers(dm);
+
+    System.out.println("The details of waiting persistent member is " + details);
+    if (details != null) {
+      for (PersistentID id : details) {
+        if (id.getUUID().equals(diskStoreID)) {
+          System.out.println("The details of found persistent member is " + id);
+          found = true;
+          break;
+        }
+      }
+    }
+
+
+    if (!found) {
+      return;
+    }
+    UnblockPersistentIDRequest.send(dm, pattern);
   }
 
   /**

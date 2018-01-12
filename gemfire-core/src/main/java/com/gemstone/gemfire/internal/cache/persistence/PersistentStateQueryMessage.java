@@ -41,11 +41,13 @@ import com.gemstone.gemfire.distributed.internal.ReplyMessage;
 import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.BucketPersistenceAdvisor;
 import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
  * @author dsmith
@@ -110,13 +112,31 @@ public class PersistentStateQueryMessage extends
           persistenceAdvisor = proxy.getPersistenceAdvisor();
         }
       }
+
+      if (persistenceAdvisor!= null && persistenceAdvisor.getMembershipView() != null) {
+        if(persistenceAdvisor instanceof BucketPersistenceAdvisor) {
+          ((BucketPersistenceAdvisor)persistenceAdvisor).dump(log, "SK ");
+        }
+        log.info(LocalizedStrings.DEBUG, "OFFLINE Members are : " + persistenceAdvisor.getMembershipView().getOfflineMembers());
+        log.info(LocalizedStrings.DEBUG, "ONLINE Members are : " + persistenceAdvisor.getMembershipView().getOnlineMembers());
+        log.info(LocalizedStrings.DEBUG, "REVOKED Members are : " + persistenceAdvisor.getMembershipView().getRevokedMembers());
+        log.info(LocalizedStrings.DEBUG, "EQUAL MEMBERS are : " + persistenceAdvisor.getPersistedOnlineOrEqualMembers());
+      }
+
       if(persistenceAdvisor != null) {
         if(id != null) {
           state = persistenceAdvisor.getPersistedStateOfMember(id);
+
         }
         if(initializingId != null && state == null) {
           state = persistenceAdvisor.getPersistedStateOfMember(initializingId);
         }
+
+        // if state is null check if same diskstore is stored here
+        if (state == null) {
+
+        }
+        log.info(LocalizedStrings.DEBUG, "");
         myId = persistenceAdvisor.getPersistentID();
         myInitializingId = persistenceAdvisor.getInitializingID();
         onlineMembers = persistenceAdvisor.getPersistedOnlineOrEqualMembers();

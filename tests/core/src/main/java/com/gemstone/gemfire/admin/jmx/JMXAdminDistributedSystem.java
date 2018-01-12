@@ -1110,6 +1110,11 @@ public class JMXAdminDistributedSystem extends JMXAdminImpl
   public void revokePersistentMember(UUID diskStoreID) throws AdminException {
   }
 
+  @Override
+  public void unblockPersistentMember(UUID diskStoreID) throws AdminException {
+
+  }
+
   public Set shutDownAllMembers() throws AdminException {
     return null;
   }

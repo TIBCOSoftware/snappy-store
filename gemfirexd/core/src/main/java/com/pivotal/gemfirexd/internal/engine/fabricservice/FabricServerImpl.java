@@ -19,11 +19,14 @@ package com.pivotal.gemfirexd.internal.engine.fabricservice;
 
 import java.sql.SQLException;
 import java.util.Properties;
+import java.util.Set;
 
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.CacheFactory;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.pivotal.gemfirexd.FabricServer;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 
 /**
  * Implementation of {@link FabricServer} API. Future product versions may
@@ -32,6 +35,9 @@ import com.pivotal.gemfirexd.FabricServer;
  * @author soubhikc
  */
 public class FabricServerImpl extends FabricServiceImpl implements FabricServer {
+
+  Object initializationNotification = new Object();
+  boolean notified = false;
 
   @Override
   public boolean isServer() {
@@ -77,6 +83,49 @@ public class FabricServerImpl extends FabricServiceImpl implements FabricServer 
           handleThrowable(t);
         }
       }
+    }
+  }
+
+  /**
+   * This method invoked from GemFire to notify waiting for another JVM to
+   * initialize for disk GII.
+   *
+   * NOTE: It is deliberately not synchronized since it can be invoked by a
+   * thread other than the booting thread itself which may be stuck waiting for
+   * disk region initialization.
+   */
+  public void notifyWaiting(String regionPath,
+      Set<PersistentMemberID> membersToWaitFor, Set<Integer> missingBuckets,
+      PersistentMemberID myId, String message) {
+    if (GemFireXDUtils.TraceFabricServiceBoot) {
+      logger.info("Accepting WAITING notification" +
+          (message != null ? ": " + message : ""));
+    }
+    logger.info("Notify Waiting for " + regionPath);
+    if (this.serverstatus != State.WAITING) {
+      this.previousServerStatus = this.serverstatus;
+    }
+    this.serverstatus = State.WAITING;
+    notifyTableWait();
+    notifyWaitingInLauncher(regionPath, membersToWaitFor, missingBuckets, myId,
+        message);
+  }
+
+  public void notifyTableInitialized() {
+    synchronized (initializationNotification) {
+      initializationNotification.notify();
+    }
+  }
+
+  public void notifyTableWait() {
+    synchronized (initializationNotification) {
+      initializationNotification.notify();
+    }
+  }
+
+  public void waitTableInitialized() throws InterruptedException {
+    synchronized (initializationNotification) {
+      initializationNotification.wait();
     }
   }
 }

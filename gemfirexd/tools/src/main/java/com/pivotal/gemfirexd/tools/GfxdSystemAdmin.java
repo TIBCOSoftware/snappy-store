@@ -82,7 +82,7 @@ public class GfxdSystemAdmin extends SystemAdmin {
 
   final static String[] commandsWithDSProps = new String[] { "backup",
       "compact-all-disk-stores", "encrypt-password",
-      "list-missing-disk-stores", "print-stacks", "revoke-missing-disk-store",
+      "list-missing-disk-stores", "print-stacks", "revoke-missing-disk-store", "unblock-disk-store",
       "shut-down-all" };
 
   private static final String INCLUDE_ADMINS = "-include-admins";
@@ -360,7 +360,7 @@ public class GfxdSystemAdmin extends SystemAdmin {
   }
 
   @Override
-  protected void checkRevokeMissingDiskStoresArgs(String cmd,
+  protected void checkUnblockOrRevokeMissingDiskStoresArgs(String cmd,
       @SuppressWarnings("rawtypes") List cmdLine) {
     if (cmdLine.size() < 1) {
       // remaining checks will be done in getAdminCnx

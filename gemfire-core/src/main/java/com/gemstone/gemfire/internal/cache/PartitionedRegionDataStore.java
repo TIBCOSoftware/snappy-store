@@ -2973,8 +2973,8 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * store.
    *
    */
-  public final List getLocalBucketsListTestOnly() {
-    final List bucketList = new ArrayList();
+  public final List<Integer> getLocalBucketsListTestOnly() {
+    final List<Integer> bucketList = new ArrayList<Integer>();
     visitBuckets(new BucketVisitor() {
       @Override
       public void visit(Integer bucketId, Region r) {
@@ -2989,8 +2989,8 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * data store.
    *
    */
-  public final List getLocalPrimaryBucketsListTestOnly() {
-    final List primaryBucketList = new ArrayList();
+  public final List<Integer> getLocalPrimaryBucketsListTestOnly() {
+    final List<Integer> primaryBucketList = new ArrayList<Integer>();
     visitBuckets(new BucketVisitor() {
       @Override
       public void visit(Integer bucketId, Region r) {

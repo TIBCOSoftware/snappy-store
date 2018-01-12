@@ -5021,6 +5021,15 @@ public class InitialImageOperation  {
       this.processorId = processorId;
     }
 
+    @Override
+    public int getProcessorId() {
+      return processorId;
+    }
+
+    @Override
+    public InternalDistributedMember getSender() {
+      return super.getSender();
+    }
 
     public static void send(
         InternalDistributedMember members, DM dm, String regionPath) throws ReplyException {
@@ -5068,18 +5077,18 @@ public class InitialImageOperation  {
         replyException = new ReplyException(e);
         throw e;
       } finally {
+        ReplyMessage replyMsg = new ReplyMessage();
+        replyMsg.setProcessorId(this.processorId);
+        replyMsg.setRecipient(getSender());
         if (failed) {
           // above code failed so now ensure reply is sent
           if (logger.fineEnabled()) {
             logger.fine(
                 "SnapshotBucketLockReleaseMessage.process failed for <" + this + ">");
           }
-          ReplyMessage replyMsg = new ReplyMessage();
-          replyMsg.setProcessorId(this.processorId);
-          replyMsg.setRecipient(getSender());
           replyMsg.setException(replyException);
-          dm.putOutgoing(replyMsg);
         }
+        dm.putOutgoing(replyMsg);
       }
     }
 
