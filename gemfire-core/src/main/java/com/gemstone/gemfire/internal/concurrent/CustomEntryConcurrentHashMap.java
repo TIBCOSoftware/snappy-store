@@ -2110,7 +2110,7 @@ RETRYLOOP:
 
   /* ---------------- Iterator Support -------------- */
 
-  abstract class HashIterator {
+  public abstract class HashIterator {
 
     int currentSegmentIndex;
 
@@ -2135,6 +2135,10 @@ RETRYLOOP:
       this.currentList = new ArrayList<>(4);
       this.currentListIndex = 0;
       advance();
+    }
+
+    public final int getNextTableIndex() {
+      return this.nextTableIndex;
     }
 
     public final boolean hasMoreElements() {

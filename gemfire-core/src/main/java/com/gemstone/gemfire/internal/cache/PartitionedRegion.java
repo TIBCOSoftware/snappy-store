@@ -127,7 +127,6 @@ import com.gemstone.gemfire.internal.SetUtils;
 import com.gemstone.gemfire.internal.cache.BucketAdvisor.ServerBucketProfile;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.DestroyPartitionedRegionMessage.DestroyPartitionedRegionResponse;
-import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskEntryPage;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskSavyIterator;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException.PutAllPartialResult;
@@ -7242,7 +7241,7 @@ public class PartitionedRegion extends LocalRegion implements
     }
     
     private boolean needsDiskIteration(boolean includeValues) {
-      return includeValues && DiskEntryPage.DISK_PAGE_SIZE > 0
+      return includeValues && DiskBlockSortManager.DISK_PAGE_SIZE > 0
           && getDiskStore() != null && !isUsedForMetaRegion()
           && !isUsedForPartitionedRegionAdmin();
     }

@@ -19,12 +19,14 @@ package com.gemstone.gemfire.internal.util;
 
 /**
  * Simplified iterator interface that just has a "nextElement" method.
- * 
+ *
  * @author swale
  * @since gfxd 1.1
  */
-public interface Enumerator {
+public interface Enumerator<E> {
 
-  /** Return the next element, or null if there are no elements left. */
-  public Object nextElement();
+  /**
+   * Return the next element, or null if there are no elements left.
+   */
+  E nextElement();
 }

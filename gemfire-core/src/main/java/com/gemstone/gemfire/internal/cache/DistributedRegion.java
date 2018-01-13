@@ -88,7 +88,6 @@ import com.gemstone.gemfire.internal.cache.execute.FunctionStats;
 import com.gemstone.gemfire.internal.cache.execute.LocalResultCollector;
 import com.gemstone.gemfire.internal.cache.execute.RegionFunctionContextImpl;
 import com.gemstone.gemfire.internal.cache.execute.ServerToClientFunctionResultSender;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.persistence.CreatePersistentRegionProcessor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistenceAdvisor;
@@ -104,7 +103,6 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySenderEventProcessor;
-import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
@@ -116,10 +114,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
-import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
-import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArraySortedCollection;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gnu.trove.TObjectIntProcedure;
@@ -3770,7 +3764,7 @@ public class DistributedRegion extends LocalRegion implements
       }
     }
 
-    public final int compareTo(DiskPosition o) {
+    public int compareTo(DiskPosition o) {
       final int result = Long.signum(this.oplogId - o.oplogId);
       if (result == 0) {
         return Long.signum(this.offset - o.offset);
@@ -3787,30 +3781,25 @@ public class DistributedRegion extends LocalRegion implements
     }
   }
 
-  public static final class DiskEntryPage extends DiskPosition {
+  public static class DiskEntryPage extends DiskPosition {
     public final RegionEntry entry;
-    public int drvId; 
-
-    public static final long DISK_PAGE_SIZE = SystemProperties
-        .getServerInstance().getLong("DISK_PAGE_SIZE", 8 * 1024L);
+    final int readerId;
+    final boolean faultIn;
 
     public DiskEntryPage(DiskPosition dp, RegionEntry re) {
-      this.setPosition(dp.oplogId, dp.offset / DISK_PAGE_SIZE);
-      this.entry = re;
+      this(dp, re, 0, false);
     }
-    
-    public DiskEntryPage (DiskPosition dp, RegionEntry re, int drvId) {
-      this.setPosition(dp.oplogId, dp.offset / DISK_PAGE_SIZE);
+
+    public DiskEntryPage(DiskPosition dp, RegionEntry re,
+        int readerId, boolean faultIn) {
+      this.setPosition(dp.oplogId, dp.offset / DiskBlockSortManager.DISK_PAGE_SIZE);
       this.entry = re;
-      this.drvId = drvId;
+      this.readerId = readerId;
+      this.faultIn = faultIn;
     }
-    
-    public RegionEntry getRegionEntry() {
+
+    public final RegionEntry getRegionEntry() {
       return this.entry;
-    }
-    
-    public int getDrvId() {
-      return this.drvId;
     }
 
     public static final class DEPComparator implements Comparator<Object> {

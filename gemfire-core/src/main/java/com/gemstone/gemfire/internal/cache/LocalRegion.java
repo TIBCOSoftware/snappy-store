@@ -150,7 +150,6 @@ import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.DiskInitFile.DiskRegionFlag;
-import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskEntryPage;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskSavyIterator;
 import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
@@ -2727,7 +2726,7 @@ public class LocalRegion extends AbstractRegion
    */
   public Iterator<RegionEntry> getBestLocalIterator(boolean includeValues,
       double reduceCacheFactor, boolean keepDiskMap) {
-    if (includeValues && DiskEntryPage.DISK_PAGE_SIZE > 0) {
+    if (includeValues && DiskBlockSortManager.DISK_PAGE_SIZE > 0) {
       final long cacheSize = getDiskIteratorCacheSize(reduceCacheFactor);
       if (cacheSize >= 0) {
         // if total region size is smaller then reduce the cache size
@@ -2747,7 +2746,7 @@ public class LocalRegion extends AbstractRegion
    */
   public Iterator<RegionEntry> getBestLocalIterator(boolean includeValues,
       final long cacheSize, boolean keepDiskMap) {
-    if (includeValues && DiskEntryPage.DISK_PAGE_SIZE > 0
+    if (includeValues && DiskBlockSortManager.DISK_PAGE_SIZE > 0
         && getDiskIteratorCacheSize(1.0) >= 0) {
       // if total region size is smaller then reduce the cache size
       return new DiskSavyIterator(this, cacheSize, keepDiskMap);
