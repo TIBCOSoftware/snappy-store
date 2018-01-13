@@ -47,7 +47,6 @@ import com.gemstone.gemfire.internal.cache.DiskRegionStats;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
-import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberManager.MemberRevocationListener;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.process.StartupStatus;
@@ -1125,8 +1124,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       long waitThreshold = advisor.getDistributionManager().getConfig().getAckWaitThreshold();
       // reduce the first log time from 15secs so that higher layers can report
       // sooner to user
-      if (waitThreshold > 1) {
-        waitThreshold = waitThreshold / 2;
+      if (waitThreshold >= 5) {
+        waitThreshold = waitThreshold / 5;
       }
       long warningTime = System.nanoTime() + TimeUnit.SECONDS.toNanos(waitThreshold);
       boolean warned = false;

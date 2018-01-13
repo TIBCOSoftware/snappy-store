@@ -91,7 +91,7 @@ public final class LeadNodeSmartConnectorOpMsg extends MemberExecutorMessage<Obj
     try {
       super.executeFunction(enableStreaming);
     } catch (RuntimeException re) {
-      throw LeadNodeExecutorMsg.handleLeadNodeException(re);
+      throw LeadNodeExecutorMsg.handleLeadNodeRuntimeException(re);
     }
   }
 

@@ -44,7 +44,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GlobalRowLocation;
@@ -914,7 +914,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       if (hasLoader) {
         while (this.currPos < this.gfKeys.length) {
           final Object gfKey = this.gfKeys[this.currPos++];
-          if (!this.getAllKeysAndRoutingObjects.contains(gfKey)) {
+          if (!this.getAllKeysAndRoutingObjects.containsKey(gfKey)) {
             final Object result = loadOneRow(gfKey,
                 this.gfContainer.getRegion());
             if (result == null) {

@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.CancelException;
@@ -61,8 +62,6 @@ import com.gemstone.gemfire.internal.cache.PoolManagerImpl;
 import com.gemstone.gemfire.internal.cache.PoolStats;
 import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -286,7 +285,7 @@ public class PoolImpl implements InternalPool {
     backgroundProcessor = new ScheduledThreadPoolExecutorWithKeepAlive(
         BACKGROUND_TASK_POOL_SIZE, BACKGROUND_TASK_POOL_KEEP_ALIVE,
         TimeUnit.MILLISECONDS, new ThreadFactory() {
-      AI threadNum = CFactory.createAI();
+      AtomicInteger threadNum = new AtomicInteger();
       public Thread newThread(final Runnable r) {
         Thread result = new Thread(r, timerName + threadNum.incrementAndGet());
         result.setDaemon(true);
@@ -993,7 +992,7 @@ public class PoolImpl implements InternalPool {
    * Atomic counter used to keep track of services using this pool.
    * @since 5.7
    */
-  private final AI attachCount = CFactory.createAI();
+  private final AtomicInteger attachCount = new AtomicInteger();
   public static volatile boolean IS_INSTANTIATOR_CALLBACK = false ;
 
   /**

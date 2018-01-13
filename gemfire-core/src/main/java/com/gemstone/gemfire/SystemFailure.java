@@ -401,24 +401,28 @@ public final class SystemFailure {
       watchDog.start();
     }
   }
-  
+
   private static void stopWatchDog() {
+    Thread watchDogThread;
     synchronized (failureSync) {
       stopping = true;
-      if (watchDog != null && watchDog.isAlive()) {
-        failureSync.notifyAll();
+      watchDogThread = watchDog;
+      failureSync.notifyAll();
+    }
+    if (watchDogThread != null && watchDogThread.isAlive()) {
+      try {
+        watchDogThread.join(250);
+      } catch (InterruptedException ignore) {
+      }
+      if (watchDogThread.isAlive()) {
+        watchDogThread.interrupt();
         try {
-          watchDog.join(100);
+          watchDogThread.join(250);
         } catch (InterruptedException ignore) {
         }
-        if (watchDog.isAlive()) {
-          watchDog.interrupt();
-          try {
-            watchDog.join(1000);
-          } catch (InterruptedException ignore) {
-          }
-        }
       }
+    }
+    synchronized (failureSync) {
       watchDog = null;
     }
   }
@@ -650,15 +654,20 @@ public final class SystemFailure {
   }
   
   private static void stopProctor() {
+    Thread proctorThread;
     synchronized (failureSync) {
       stopping = true;
-      if (proctor != null && proctor.isAlive()) {
-        proctor.interrupt();
-        try {
-          proctor.join(1000);
-        } catch (InterruptedException ignore) {
-        }
+      proctorThread = proctor;
+      failureSync.notifyAll();
+    }
+    if (proctorThread != null && proctorThread.isAlive()) {
+      proctorThread.interrupt();
+      try {
+        proctorThread.join(250);
+      } catch (InterruptedException ignore) {
       }
+    }
+    synchronized (failureSync) {
       proctor = null;
     }
   }

@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializable;
@@ -64,8 +65,6 @@ import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientProxy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CLQ;
 import com.gemstone.gemfire.security.GemFireSecurityException;
 import com.gemstone.org.jgroups.util.StringId;
 
@@ -151,7 +150,7 @@ public class CqQueryImpl implements CqQuery, DataSerializable {
   /** To queue the CQ Events arriving during CQ execution with 
    * initial Results.
    */
-  private volatile CLQ queuedEvents = null;
+  private volatile ConcurrentLinkedQueue queuedEvents = null;
   
   public final Object queuedEventsSynchObject = new Object();
   
@@ -1019,7 +1018,7 @@ public class CqQueryImpl implements CqQuery, DataSerializable {
         }
       }
       //At this point we know queuedEvents is null and no one is adding to queuedEvents yet.
-      this.queuedEvents = CFactory.createCLQ();
+      this.queuedEvents = new ConcurrentLinkedQueue();
     }
     
     if (CqQueryImpl.testHook != null) {
@@ -1410,7 +1409,7 @@ public class CqQueryImpl implements CqQuery, DataSerializable {
     this.queryExecutionContext = queryExecutionContext;
   }
 
-  public CLQ getQueuedEvents() {
+  public ConcurrentLinkedQueue getQueuedEvents() {
     return this.queuedEvents;
   }
   

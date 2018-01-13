@@ -244,6 +244,11 @@ class POSIXNativeCalls extends NativeCalls {
   @Override
   public boolean isProcessActive(final int processId) {
     try {
+      return super.isProcessActive(processId);
+    } catch (UnsupportedOperationException ignored) {
+      // ignore and try "kill -0"
+    }
+    try {
       return kill(processId, 0) == 0;
     } catch (LastErrorException le) {
       if (le.getErrorCode() == EPERM) {

@@ -2383,10 +2383,10 @@ public class EmbedStatement extends ConnectionChild
             if ((csca = ddlAction.getImplicitSchemaCreated()) != null) {
               long schemaDDLId = ddlQ.newUUID();
               schemaDDL = new DDLConflatable(csca.toString(), defaultSchema,
-                  csca, null, null, schemaDDLId, queueInitialized);
+                  csca, null, null, schemaDDLId, queueInitialized, lcc);
             }
             ddl = new DDLConflatable(this.SQLText, defaultSchema, ddlAction,
-                additionalArgs, schemaDDL, ddlId.longValue(), queueInitialized);
+                additionalArgs, schemaDDL, ddlId.longValue(), queueInitialized, lcc);
             if (distribute) {
               if (schemaDDL != null) {
                 SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,

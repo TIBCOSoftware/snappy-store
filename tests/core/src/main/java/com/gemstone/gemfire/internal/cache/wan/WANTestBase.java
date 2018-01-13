@@ -132,8 +132,6 @@ import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderEve
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.serial.SerialGatewaySenderImpl;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.pdx.SimpleClass;
 import com.gemstone.gemfire.security.SecurityTestUtil;
 
@@ -3353,7 +3351,7 @@ public class WANTestBase extends DistributedTestCase{
     final AtomicInteger ai = new AtomicInteger(-1);
     final ExecutorService execService = Executors.newFixedThreadPool(5,
         new ThreadFactory() {
-          AI threadNum = CFactory.createAI();
+          AtomicInteger threadNum = new AtomicInteger();
 
           public Thread newThread(final Runnable r) {
             Thread result = new Thread(r, "Client Put Thread-"

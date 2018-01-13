@@ -111,7 +111,7 @@ public class PartitionedRegionRebalanceOp {
    * @param isRebalance true if this op is a full rebalance instead of a more
    * limited redundancy recovery
    * @param cancelled the AtomicBoolean reference used for cancellation; if
-   * any code sets the AB value to true then the rebalance will be cancelled
+   * any code sets the AtomicBoolean value to true then the rebalance will be cancelled
    * @param stats the ResourceManagerStats to use for rebalancing stats
    */
   public PartitionedRegionRebalanceOp(PartitionedRegion region,

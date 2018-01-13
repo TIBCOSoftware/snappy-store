@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireRethrowable;
@@ -48,8 +49,6 @@ import com.gemstone.gemfire.internal.cache.ForceReattemptException;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PrimaryBucketException;
 import com.gemstone.gemfire.internal.cache.Token;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 
@@ -101,7 +100,7 @@ public abstract class StreamingPartitionOperation extends StreamingOperation {
     protected volatile boolean abort = false;
     protected final Map statusMap = new HashMap();
     
-    protected final AI msgsBeingProcessed = CFactory.createAI();
+    protected final AtomicInteger msgsBeingProcessed = new AtomicInteger();
     private volatile String memberDepartedMessage = null;
     private final Set<InternalDistributedMember> failedMembers = new CopyOnWriteHashSet<InternalDistributedMember>();
     

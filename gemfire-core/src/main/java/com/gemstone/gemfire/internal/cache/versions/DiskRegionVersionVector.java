@@ -16,7 +16,6 @@
  */
 package com.gemstone.gemfire.internal.cache.versions;
 
-import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 
@@ -34,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DiskRegionVersionVector extends RegionVersionVector<DiskStoreID> {
 
   /** for deserialization */
-  public DiskRegionVersionVector() throws IOException, ClassNotFoundException {
+  public DiskRegionVersionVector() {
     super();
   }
 

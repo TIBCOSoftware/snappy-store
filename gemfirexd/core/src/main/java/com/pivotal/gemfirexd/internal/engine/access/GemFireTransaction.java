@@ -51,8 +51,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gnu.trove.TIntArrayList;
-import com.gemstone.gnu.trove.TLongObjectHashMap;
-import com.gemstone.gnu.trove.TLongObjectIterator;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -125,6 +123,7 @@ import com.pivotal.gemfirexd.internal.impl.store.raw.xact.TransactionTable;
 import com.pivotal.gemfirexd.internal.impl.store.raw.xact.XactId;
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import io.snappydata.collection.LongObjectHashMap;
 
 import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.GEMFIRE_TRANSACTION_BYTE_SOURCE;
 
@@ -198,7 +197,7 @@ public final class GemFireTransaction extends RawTransaction implements
   private TIntArrayList freeSortIds;
 
   /** Where to look for temporary conglomerates. */
-  private TLongObjectHashMap tempCongloms;
+  private LongObjectHashMap<Object> tempCongloms;
 
   /** Next id to use for a temporary conglomerate. */
   private static AtomicLong nextTempConglomId = new AtomicLong(-1);
@@ -976,7 +975,7 @@ public final class GemFireTransaction extends RawTransaction implements
     if ((temporaryFlag & TransactionController.IS_TEMPORARY)
         == TransactionController.IS_TEMPORARY) {
       if (this.tempCongloms == null) {
-        this.tempCongloms = new TLongObjectHashMap();
+        this.tempCongloms = LongObjectHashMap.withExpectedSize(8);
       }
       this.tempCongloms.put(conglomId, conglom);
     }
@@ -1090,14 +1089,10 @@ public final class GemFireTransaction extends RawTransaction implements
         }
       }
       if (this.tempCongloms != null) {
-        TLongObjectIterator iter = this.tempCongloms.iterator();
-        while (iter.hasNext()) {
-          iter.advance();
-          long key = iter.key();
-          Object val = iter.value(); // A MemConglomerate object
-          sb.append("temp conglomerate id = ").append(key).append(": ").append(
-              val);
-        }
+        this.tempCongloms.forEachWhile((key, val) -> {
+          sb.append("temp conglomerate id = ").append(key).append(": ").append(val);
+          return true;
+        });
       }
     }
     return sb.toString();
@@ -3816,7 +3811,7 @@ public final class GemFireTransaction extends RawTransaction implements
     final long conglomId = getNextTempConglomId();
 
     if (this.tempCongloms == null) {
-      this.tempCongloms = new TLongObjectHashMap();
+      this.tempCongloms = LongObjectHashMap.withExpectedSize(8);
     }
     this.tempCongloms.put(conglomId, new FileStreamInputOutput(conglomId, this,
         rowSource, rwBuffer));

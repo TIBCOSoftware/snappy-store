@@ -110,6 +110,10 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public void waitForRuntimeManager(long maxWaitMillis) {
+    }
+
+    @Override
     public boolean isSnappyStore() {
       return false;
     }

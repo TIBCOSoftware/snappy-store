@@ -84,8 +84,9 @@ public class GMS extends Protocol  {
     View                      view=null;
     ViewId                    view_id=null;
     private long              ltime=0;
-    long                      join_timeout=5000;
-    long                      join_retry_timeout=2000;
+    long                      join_timeout=3000;
+    long                      join_retry_timeout=1000;
+    int min_join_tries = 2; // SnappyData addition
     long                      leave_timeout=5000;
     private long              digest_timeout=0;              // time to wait for a digest (from PBCAST). should be fast
     long                      merge_timeout=10000;           // time to wait for all MERGE_RSPS
@@ -1945,6 +1946,13 @@ public class GMS extends Protocol  {
         if(str != null) {
             join_retry_timeout=Long.parseLong(str);
             props.remove("join_retry_timeout");
+        }
+
+        // SnappyData addition
+        str = props.getProperty("min_join_tries");       // minimum tries for JOINs
+        if (str != null) {
+            min_join_tries = Integer.parseInt(str);
+            props.remove("min_join_tries");
         }
 
         str=props.getProperty("leave_timeout");           // time to wait until coord responds to LEAVE req.

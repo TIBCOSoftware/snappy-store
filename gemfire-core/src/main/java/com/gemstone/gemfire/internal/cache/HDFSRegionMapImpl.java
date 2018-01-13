@@ -47,6 +47,11 @@ public class HDFSRegionMapImpl extends AbstractRegionMap implements HDFSRegionMa
   }
 
   @Override
+  protected boolean getEntryNeedKeyCopy() {
+    return true;
+  }
+
+  @Override
   protected RegionEntry getEntry(EntryEventImpl event) {
     return delegate.getEntry(event);
   }

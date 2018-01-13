@@ -37,6 +37,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.management.MBeanException;
 import javax.management.MalformedObjectNameException;
@@ -86,13 +87,9 @@ import com.gemstone.gemfire.internal.admin.ApplicationVM;
 import com.gemstone.gemfire.internal.admin.ClientMembershipMessage;
 import com.gemstone.gemfire.internal.admin.GemFireVM;
 import com.gemstone.gemfire.internal.admin.GfManagerAgent;
-import com.gemstone.gemfire.internal.admin.GfManagerAgentConfig;
 import com.gemstone.gemfire.internal.admin.StatAlert;
 import com.gemstone.gemfire.internal.admin.StatAlertDefinition;
-import com.gemstone.gemfire.internal.admin.remote.RemoteTransportConfig;
 import com.gemstone.gemfire.internal.admin.remote.UpdateAlertDefinitionMessage;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -118,7 +115,7 @@ public class AdminDistributedSystemJmxImpl
    * Simple counter incrementing on each notification.  This this currently 
    * resets at every restart of Agent
    */
-  private final AI notificationSequenceNumber = CFactory.createAI();
+  private final AtomicInteger notificationSequenceNumber = new AtomicInteger();
 
   /**
    * Variable to indicate if there are no Rmi clients connected.

@@ -39,14 +39,20 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.*;
 import com.gemstone.gemfire.admin.AdminException;
@@ -54,6 +60,7 @@ import com.gemstone.gemfire.admin.jmx.Agent;
 import com.gemstone.gemfire.admin.jmx.AgentConfig;
 import com.gemstone.gemfire.admin.jmx.AgentFactory;
 import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.util.ObjectSizer;
 import com.gemstone.gemfire.distributed.DistributedMember;
@@ -68,7 +75,6 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ClassPathLoader;
-import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.GemFireLevel;
 import com.gemstone.gemfire.internal.HostStatSampler.StatsSamplerCallback;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -77,6 +83,7 @@ import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.StringPrintWriter;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TLongHashSet;
@@ -195,6 +202,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
    * new servers.
    */
   public final static String DDL_STMTS_REGION = "_DDL_STMTS_META_REGION";
+
+  private static final Pattern ILLEGAL_DISKDIR_CHARS_PATTERN =
+      Pattern.compile("[*?<>|;]");
 
   private static InternalDistributedMember selfMemId = null;
 
@@ -369,7 +379,13 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
    * should be set as soon as the first embedded connection is created
    * and will not change ever.
    */
-  private ExternalCatalog externalCatalog;
+  private volatile ExternalCatalog externalCatalog;
+
+  private volatile Future<?> externalCatalogInit;
+
+  public static final ThreadLocal<Boolean> externalCatalogInitThread =
+      new ThreadLocal<>();
+
   /**
    *************************************************************************
    * Public Methods implementing AccessFactory Interface
@@ -900,28 +916,28 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       this.hdfsRootDir = propValue;
     }
     propValue = PropertyUtil.findAndGetProperty(props,
-        CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
-            + CacheServerLauncher.CRITICAL_HEAP_PERCENTAGE);
+        LauncherBase.CRITICAL_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
+            + LauncherBase.CRITICAL_HEAP_PERCENTAGE);
     if (propValue != null) {
       criticalHeapPercent = Float.parseFloat(propValue);
     }
     propValue = PropertyUtil.findAndGetProperty(props,
-        CacheServerLauncher.EVICTION_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
-            + CacheServerLauncher.EVICTION_HEAP_PERCENTAGE);
+        LauncherBase.EVICTION_HEAP_PERCENTAGE, GfxdConstants.GFXD_PREFIX
+            + LauncherBase.EVICTION_HEAP_PERCENTAGE);
     if (propValue != null) {
       evictionHeapPercent = Float.parseFloat(propValue);
     }
     propValue = PropertyUtil.findAndGetProperty(props,
-        CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE,
+        LauncherBase.CRITICAL_OFF_HEAP_PERCENTAGE,
         GfxdConstants.GFXD_PREFIX
-            + CacheServerLauncher.CRITICAL_OFF_HEAP_PERCENTAGE);
+            + LauncherBase.CRITICAL_OFF_HEAP_PERCENTAGE);
     if (propValue != null) {
       criticalOffHeapPercent = Float.parseFloat(propValue);
     }
     propValue = PropertyUtil.findAndGetProperty(props,
-        CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE,
+        LauncherBase.EVICTION_OFF_HEAP_PERCENTAGE,
         GfxdConstants.GFXD_PREFIX
-            + CacheServerLauncher.EVICTION_OFF_HEAP_PERCENTAGE);
+            + LauncherBase.EVICTION_OFF_HEAP_PERCENTAGE);
     if (propValue != null) {
       evictionOffHeapPercent = Float.parseFloat(propValue);
     }
@@ -1378,13 +1394,28 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
+  public static Path createPersistentDir(String baseDir, String dirPath) {
+    Path dir = generatePersistentDirName(baseDir, dirPath);
+    try {
+      return Files.createDirectories(dir).toRealPath(LinkOption.NOFOLLOW_LINKS);
+    } catch (IOException ioe) {
+      throw new DiskAccessException("Could not create directory for "
+          + "system disk store: " + dir.toString(), ioe);
+    }
+  }
+
   public String generatePersistentDirName(String dirPath) {
-    String baseDir = this.persistenceDir;
+    return generatePersistentDirName(this.persistenceDir, dirPath).toString();
+  }
+
+  private static Path generatePersistentDirName(String baseDir,
+      String dirPath) {
     if (baseDir == null) {
       baseDir = ".";
     }
+    Path dir;
     if (dirPath != null) {
-      File dirProvided = new File(dirPath);
+      Path dirProvided = Paths.get(dirPath);
       // Is the directory path absolute?
       // For Windows this will check for drive letter. However, we want
       // to allow for no drive letter so prepend the drive.
@@ -1398,15 +1429,34 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           dirPath = drivePrefix + dirPath;
         }
       }
-      if (!isAbsolute) {
+      if (isAbsolute) {
+        dir = Paths.get(dirPath);
+      } else {
         // relative path so resolve it relative to parent dir
-        dirPath = new File(baseDir, dirPath).getAbsolutePath();
+        dir = Paths.get(baseDir, dirPath).toAbsolutePath();
       }
+    } else {
+      dir = Paths.get(baseDir).toAbsolutePath();
     }
-    else {
-      dirPath = new File(baseDir).getAbsolutePath();
+    if (!isFilenameValid(dir.toString())) {
+      throw new DiskAccessException("Directory name " + dirPath +
+          " is not valid.", (Throwable)null);
     }
-    return dirPath;
+    return dir;
+  }
+
+  // Is this filename valid?
+  public static boolean isFilenameValid(String file) {
+    // Illegal characters are
+    //  asterisk
+    //  question mark
+    //  greater-than/less-than
+    //  pipe character
+    //  semicolon
+    // Some are legal on Linux, but trying to create DISKSTORE "*" crashes anyway
+    // So make this more restrictive and same as Windows restrictions
+    Matcher matcher = ILLEGAL_DISKDIR_CHARS_PATTERN.matcher(file);
+    return !matcher.find();
   }
 
   /**
@@ -1482,16 +1532,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       if (this.persistingDD || this.persistenceDir != null || isLeadMember) {
         try {
           DiskStoreFactory dsf = this.gemFireCache.createDiskStoreFactory();
-          File file = new File(generatePersistentDirName(null))
-              .getAbsoluteFile();
+          Path dir = createPersistentDir(this.persistenceDir, null);
 
-          if (!file.mkdirs() && !file.isDirectory()) {
-            throw new DiskAccessException("Could not create directory for "
-                + " default disk store : " + file.getAbsolutePath(),
-                (Region<?, ?>)null);
-          }
-
-          if (!this.myKind.isStore()) {
+          final boolean isStore = this.myKind.isStore();
+          if (!isStore) {
             // use small oplog files for other VM types
             if (DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE < 10) {
               dsf.setMaxOplogSize(DiskStoreFactory.DEFAULT_MAX_OPLOG_SIZE);
@@ -1504,49 +1548,35 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
               }
             }
           }
-          dsf.setDiskDirs(new File[] { file });
-          // try a bit harder to go through in case of transient
-          // disk exceptions
-          DiskAccessException dae = null;
-          for (int tries = 1; tries <= 10; tries++) {
-            try {
-              this.gfxdDefaultDiskStore = (DiskStoreImpl)dsf
-                  .create(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
-              dae = null;
-              break;
-            } catch (DiskAccessException e) {
-              final LogWriter logger = this.gemFireCache.getLogger();
-              logger.warning("unexpected exception in creating default "
-                  + "disk store, retrying", e);
-              if (dae == null) { // bug #48719 - retries may throw unclear exceptions
-                dae = e;
-              }
-              // retry after sleep
-              try {
-                Thread.sleep(100);
-              } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                getAdvisee().getCancelCriterion().checkCancelInProgress(ie);
-              }
-            }
-          }
-          if (dae != null) {
-            throw dae;
-          }
+          dsf.setDiskDirs(new File[] { dir.toFile() });
+          this.gfxdDefaultDiskStore = (DiskStoreImpl)createDiskStore(
+              dsf, GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME,
+              getAdvisee().getCancelCriterion());
 
           // set the default disk store at GemFire layer
           GemFireCacheImpl.setDefaultDiskStoreName(
               GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+
+          if (isStore) {
+            // create the SnappyData delta store
+            dir = createPersistentDir(this.persistenceDir,
+                GfxdConstants.SNAPPY_DELTA_SUBDIR);
+            dsf = this.gemFireCache.createDiskStoreFactory();
+            dsf.setMaxOplogSize(GfxdConstants.SNAPPY_DELTA_DISKSTORE_SIZEMB);
+            dsf.setDiskDirs(new File[] { dir.toFile() });
+            createDiskStore(dsf, GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE,
+                getAdvisee().getCancelCriterion());
+          }
+
         } catch (GemFireException e) {
           final LogWriter logger = this.gemFireCache.getLogger();
-          logger.warning("Unable to create default disk store.", e);
+          logger.warning("Unable to create default disk stores.", e);
           throw e;
         }
       }
     }
     this.ddlStmtQueue = new GfxdDDLRegionQueue(DDL_STMTS_REGION,
-        this.gemFireCache, this.persistingDD,
-        getBootProperty(Attribute.SYS_PERSISTENT_DIR), null);
+        this.gemFireCache, this.persistingDD, this.persistenceDir, null);
 
     if (this.isHadoopGfxdLonerMode) {
       hadoopGfxdLonerConfig.loadDDLQueueWithDDLsFromHDFS(this.ddlStmtQueue);
@@ -1601,6 +1631,32 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
             SQLState.LANG_UNEXPECTED_USER_EXCEPTION, e, e.toString());
       }
     }
+  }
+
+  public static DiskStore createDiskStore(DiskStoreFactory dsf, String name,
+      CancelCriterion cc) throws DiskAccessException {
+    // try a bit harder to go through in case of transient disk exceptions
+    DiskAccessException dae = null;
+    for (int tries = 1; tries <= 10; tries++) {
+      try {
+        return dsf.create(name);
+      } catch (DiskAccessException e) {
+        final LogWriter logger = Misc.getGemFireCache().getLogger();
+        logger.warning("unexpected exception in creating default "
+            + "disk store " + name + ", retrying", e);
+        if (dae == null) { // bug #48719 - retries may throw unclear exceptions
+          dae = e;
+        }
+        // retry after sleep
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          cc.checkCancelInProgress(ie);
+        }
+      }
+    }
+    throw dae;
   }
 
   private void renameDiskStoresIfAny() {
@@ -2020,8 +2076,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       return;
     }
 
-    if (this.externalCatalog != null) {
-      this.externalCatalog.stop();
+    final ExternalCatalog externalCatalog = this.externalCatalog;
+    if (externalCatalog != null) {
+      externalCatalog.close();
     }
     // stop spark executor if it is running
     CallbackFactoryProvider.getClusterCallbacks().stopExecutor();
@@ -2052,7 +2109,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       }
     });
     try {
-      stopper.join(5000L);
+      stopper.join(3000L);
       if (stopper.isAlive()) {
         // interrupt the stopper
         stopper.interrupt();
@@ -2348,43 +2405,91 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   // The first access of this will instantiate the snappy catalog
 	public void initExternalCatalog() {
-    GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)Misc.getI18NLogWriter());
-    int previousLevel = bridgeLogger.getLevel();
-    try {
-      // just log the warning messages, during hive client initialization
-      // as it generates hundreds of line of logs which are of no use.
-      // Once the initialization is done, restore the logging level.
-      bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
-
-      if (this.externalCatalog == null) {
-        synchronized (this) {
-          if (this.externalCatalog == null) {
-            // Instantiate using reflection
-            try {
-              this.externalCatalog = (ExternalCatalog)ClassPathLoader
-                  .getLatest().forName("io.snappydata.impl.SnappyHiveCatalog")
-                  .newInstance();
-            } catch (InstantiationException | IllegalAccessException
-                | ClassNotFoundException e) {
-              throw new IllegalStateException(
-                  "could not instantiate the snappy catalog", e);
-            }
+    if (this.externalCatalog == null) {
+      synchronized (this) {
+        if (this.externalCatalog == null) {
+          // Instantiate using reflection
+          try {
+            this.externalCatalog = (ExternalCatalog)ClassPathLoader
+                .getLatest().forName("io.snappydata.impl.SnappyHiveCatalog")
+                .newInstance();
+          } catch (InstantiationException | IllegalAccessException
+              | ClassNotFoundException e) {
+            throw new IllegalStateException(
+                "could not instantiate the snappy catalog", e);
           }
         }
       }
-      if (this.externalCatalog == null) {
-        throw new IllegalStateException(
-            "could not instantiate snappy catalog");
-      }
-    } catch(Throwable ex) {
-      throw new RuntimeException(ex);
-    } finally {
-      bridgeLogger.setLevel(previousLevel);
     }
-	}
+    if (this.externalCatalog == null) {
+      throw new IllegalStateException("Could not instantiate snappy catalog");
+    }
+  }
+
+  public void setExternalCatalogInit(Future<?> init) {
+    this.externalCatalogInit = init;
+  }
+
+  public static boolean handleCatalogInit(Future<?> init) {
+    try {
+      init.get(60, TimeUnit.SECONDS);
+      return true;
+    } catch (java.util.concurrent.TimeoutException e) {
+      return false;
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e.getCause());
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Get the {@link ExternalCatalog} or wait for it to be initialized, or else
+   * throw a {@link TimeoutException} if wait failed unsuccessfully but never
+   * return a null.
+   */
+  public ExternalCatalog getExistingExternalCatalog() {
+    ExternalCatalog catalog;
+    int cnt = 0;
+    // retry catalog get after some sleep
+    while ((catalog = getExternalCatalog()) == null && ++cnt < 10) {
+      Throwable t = null;
+      try {
+        Thread.sleep(2);
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+        t = ie;
+      }
+      // check for JVM going down
+      Misc.checkIfCacheClosing(t);
+    }
+    if (catalog != null) {
+      return catalog;
+    } else {
+      throw new TimeoutException(
+          "The SnappyData catalog in hive meta-store is not accessible");
+    }
+  }
 
   public ExternalCatalog getExternalCatalog() {
-    return this.externalCatalog;
+    return getExternalCatalog(true);
+  }
+
+  public ExternalCatalog getExternalCatalog(boolean fullInit) {
+    final ExternalCatalog externalCatalog;
+    if ((externalCatalog = this.externalCatalog) != null &&
+        externalCatalog.waitForInitialization()) {
+      if (fullInit) {
+        final Future<?> init = this.externalCatalogInit;
+        if (init != null && !Boolean.TRUE.equals(externalCatalogInitThread.get())
+            && !handleCatalogInit(init)) {
+          return null;
+        }
+      }
+      return externalCatalog;
+    } else {
+      return null;
+    }
   }
 
   public void setDBName(String dbname) {
@@ -2410,6 +2515,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   public String getDatabaseName() {
     return this.databaseName;
+  }
+
+  public String getBasePersistenceDir() {
+    return this.persistenceDir;
   }
 
   /**

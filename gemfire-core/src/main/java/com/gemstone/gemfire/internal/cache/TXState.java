@@ -4054,8 +4054,9 @@ public final class TXState implements TXStateInterface {
         return true;
     }
 
-    if (this.snapshot.get(region.getFullPath()) != null) {
-      RegionVersionHolder holder = this.snapshot.get(region.getFullPath()).get(id);
+    Map<VersionSource, RegionVersionHolder> regionSnapshot;
+    if ((regionSnapshot = this.snapshot.get(region.getFullPath())) != null) {
+      RegionVersionHolder holder = regionSnapshot.get(id);
       if (holder == null) {
         if (TXStateProxy.LOG_FINE) {
           logger.info(LocalizedStrings.DEBUG, " The holder against the region is null, returning false. ");

@@ -21,8 +21,9 @@ import java.util.List;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
 import com.gemstone.gemfire.cache.wan.GatewaySender;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
-import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -39,9 +40,9 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 
 public class DropDiskStoreConstantAction extends DDLConstantAction {
 
-  final String diskStoreName;
+  private final String diskStoreName;
 
-  final boolean onlyIfExists;
+  private final boolean onlyIfExists;
 
   DropDiskStoreConstantAction(String diskStoreName, boolean onlyIfExists) {
     this.diskStoreName = diskStoreName;
@@ -70,7 +71,18 @@ public class DropDiskStoreConstantAction extends DDLConstantAction {
   @Override
   public void executeConstantAction(Activation activation)
       throws StandardException {
-    int rowsDeleted = 0;
+    // drop the delta store first
+    if (Misc.getMemStore().isSnappyStore()) {
+      executeConstantAction(diskStoreName +
+          GfxdConstants.SNAPPY_DELTA_DISKSTORE_SUFFIX, onlyIfExists, activation);
+    }
+    // then drop the main disk store
+    executeConstantAction(diskStoreName, onlyIfExists, activation);
+  }
+
+  private static void executeConstantAction(String diskStoreName,
+      boolean onlyIfExists, Activation activation) throws StandardException {
+    int rowsDeleted;
     // If this node is not hosting data, nothing to do
     if (!ServerGroupUtils.isDataStore()) {
       return;
@@ -79,11 +91,13 @@ public class DropDiskStoreConstantAction extends DDLConstantAction {
     // Diskstore in region has NULL for name, but users may try to
     // drop diskstore names from catalog
     if (diskStoreName.equals(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME)
-        || diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
+        || diskStoreName.equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)
+        || diskStoreName.equals(GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE)) {
       // 0A000 until more appropriate sqlstate
       throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
           "Cannot DROP default diskstores");
     }
+    GemFireCacheImpl cache = Misc.getGemFireCache();
     List<GemFireContainer> containers = Misc.getMemStore().getAllContainers();
     for (GemFireContainer container : containers) {
       if (container.getRegion() != null && container.isApplicationTable()) {
@@ -99,15 +113,15 @@ public class DropDiskStoreConstantAction extends DDLConstantAction {
       }
     }
     // Also check GW and ASYNC objects to see if any are using this diskstore
-    for (GatewaySender sender : Misc.getGemFireCache().getGatewaySenders()) {
-      if (sender.getDiskStoreName().equalsIgnoreCase(diskStoreName)){
+    for (GatewaySender sender : cache.getGatewaySenders()) {
+      if (sender.getDiskStoreName().equalsIgnoreCase(diskStoreName)) {
         throw StandardException.newException(
             SQLState.LANG_PROVIDER_HAS_DEPENDENT_OBJECT, "DROP", "DiskStore "
                 + diskStoreName, "gatewaysender", sender.getId());
       }
     }
-    for (AsyncEventQueue asyncQueue : Misc.getGemFireCache().getAsyncEventQueues()) {
-      if (asyncQueue.getDiskStoreName().equalsIgnoreCase(diskStoreName)){
+    for (AsyncEventQueue asyncQueue : cache.getAsyncEventQueues()) {
+      if (asyncQueue.getDiskStoreName().equalsIgnoreCase(diskStoreName)) {
         throw StandardException.newException(
             SQLState.LANG_PROVIDER_HAS_DEPENDENT_OBJECT, "DROP", "DiskStore "
                 + diskStoreName, "asynceventqueue", asyncQueue.getId());
@@ -130,8 +144,7 @@ public class DropDiskStoreConstantAction extends DDLConstantAction {
     if (rowsDeleted == 0) {
       if (onlyIfExists) {
         return;
-      }
-      else {
+      } else {
         // The diskstore wasn't in the catalog in the first place
         // Throw object-not-found exception
         throw StandardException.newException(
@@ -139,13 +152,12 @@ public class DropDiskStoreConstantAction extends DDLConstantAction {
       }
     }
     SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM,
-        "DropDiskStore:: removed DiskStore " + diskStoreName+ " from SYS table");
+        "DropDiskStore:: removed DiskStore " + diskStoreName + " from SYS table");
 
-    DiskStoreImpl store = (DiskStoreImpl)Misc.getGemFireCache().findDiskStore(
-        diskStoreName);
+    DiskStoreImpl store = cache.findDiskStore(diskStoreName);
     SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM,
         "DropDiskStore :: found DiskStore " + store);
-    Misc.getGemFireCache().removeDiskStore(store);
+    cache.removeDiskStore(store);
     store.destroy();
   }
 
@@ -159,5 +171,5 @@ public class DropDiskStoreConstantAction extends DDLConstantAction {
   @Override
   public boolean isCancellable() {
     return false;
-  };
+  }
 }

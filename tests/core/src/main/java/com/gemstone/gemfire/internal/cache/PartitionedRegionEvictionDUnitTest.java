@@ -59,6 +59,9 @@ public class PartitionedRegionEvictionDUnitTest extends CacheTestCase {
   }
 
   public void testHeapLRUWithOverflowToDisk() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     final Host host = Host.getHost(0);
     final VM vm2 = host.getVM(2);
     final VM vm3 = host.getVM(3);
@@ -184,6 +187,7 @@ public class PartitionedRegionEvictionDUnitTest extends CacheTestCase {
     final int totalEvicted = v2i.intValue() + v3i.intValue();
     // assume all three entries in each bucket were evicted to disk
     assertEquals((3 * bucketsToCreate * (redundantCopies + 1)), totalEvicted);
+    expectedEx.remove();
   }
 
   protected void raiseFakeNotification() {
@@ -205,6 +209,9 @@ public class PartitionedRegionEvictionDUnitTest extends CacheTestCase {
   }
   
   public void testHeapLRUWithLocalDestroy() {
+    // Ignore this exception as this can happen if pool is shutting down
+    ExpectedException expectedEx = addExpectedException(
+        java.util.concurrent.RejectedExecutionException.class.getName());
     final Host host = Host.getHost(0);
     final VM vm2 = host.getVM(2);
     final VM vm3 = host.getVM(3);
@@ -321,6 +328,7 @@ public class PartitionedRegionEvictionDUnitTest extends CacheTestCase {
     final int totalEvicted = v2i.intValue() + v3i.intValue();
     // assume all three entries in each bucket were evicted to disk
     assertEquals((3 * bucketsToCreate * (redundantCopies + 1)), totalEvicted);
+    expectedEx.remove();
   }
 
   public void testMemoryLRUWithOverflowToDisk() {

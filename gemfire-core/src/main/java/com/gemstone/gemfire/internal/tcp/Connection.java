@@ -52,6 +52,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
@@ -81,9 +82,6 @@ import com.gemstone.gemfire.distributed.internal.membership.MembershipManager;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.*;
 import com.gemstone.gemfire.internal.SystemTimer.SystemTimerTask;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -127,7 +125,7 @@ public final class Connection implements Runnable {
   public final static int SMALL_BUFFER_SIZE = 1024;
 
   /** counter to give connections a unique id */
-  private static AL idCounter = CFactory.createAL(1);
+  private static AtomicLong idCounter = new AtomicLong(1);
 
   /** the table holding this connection */
   final ConnectionTable owner;
@@ -304,7 +302,7 @@ public final class Connection implements Runnable {
    * this connection concurrently. A thread must acquire this semaphore before it
    * is allowed to start serializing its message.
    */
-  private final S senderSem = new ReentrantSemaphore(MAX_SENDERS);
+  private final Semaphore senderSem = new ReentrantSemaphore(MAX_SENDERS);
 
   /** Set to true once the handshake has been read */
   volatile boolean handshakeRead = false;

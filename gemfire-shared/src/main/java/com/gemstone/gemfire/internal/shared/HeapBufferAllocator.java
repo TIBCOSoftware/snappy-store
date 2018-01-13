@@ -19,7 +19,7 @@ package com.gemstone.gemfire.internal.shared;
 import java.nio.ByteBuffer;
 
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
-import org.apache.spark.unsafe.Platform;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 
 /**
  * Heap ByteBuffer implementation of {@link BufferAllocator}.
@@ -58,7 +58,7 @@ public final class HeapBufferAllocator extends BufferAllocator {
 
   @Override
   public long baseOffset(ByteBuffer buffer) {
-    return Platform.BYTE_ARRAY_OFFSET + buffer.arrayOffset();
+    return UnsafeHolder.getByteArrayOffset() + buffer.arrayOffset();
   }
 
   @Override

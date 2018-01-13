@@ -56,7 +56,6 @@ import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.locks.DLockService;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
@@ -69,6 +68,7 @@ import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.FabricService;
 import com.pivotal.gemfirexd.FabricServiceManager;
+import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.catalog.SystemProcedures;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -88,7 +88,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
-import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdResourceEvent;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.DistributionObserver;
@@ -455,24 +454,11 @@ public final class FabricDatabase implements ModuleControl,
 
       // Entry of default disk stores in sysdiskstore table
       UUIDFactory factory = dd.getUUIDFactory();
-      DiskStoreImpl ds = cache
-          .findDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
-      if (ds != null) {
-        UUID id = factory.recreateUUID(ds.getName());
-        GfxdDiskStoreDescriptor dsd = new GfxdDiskStoreDescriptor(dd, id, ds,
-            ds.getDiskDirs()[0].getAbsolutePath());
-        dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
-            false, dd.getTransactionExecute());
-      }
-
-      ds = this.memStore.getDefaultDiskStore();
-      if (ds != null) {
-        UUID id = factory.recreateUUID(ds.getName());
-        GfxdDiskStoreDescriptor dsd = new GfxdDiskStoreDescriptor(dd, id, ds,
-            ds.getDiskDirs()[0].getAbsolutePath());
-        dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
-            false, dd.getTransactionExecute());
-      }
+      addInternalDiskStore(cache.findDiskStore(
+          GfxdConstants.GFXD_DD_DISKSTORE_NAME), factory);
+      addInternalDiskStore(this.memStore.getDefaultDiskStore(), factory);
+      addInternalDiskStore(cache.findDiskStore(
+          GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE), factory);
 
       // Initialize ConnectionWrapperHolder with this embeded connection
       GfxdManagementService.handleEvent(
@@ -532,32 +518,31 @@ public final class FabricDatabase implements ModuleControl,
       Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
       if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
           GemFireStore.VMKind.DATASTORE || (isLead && servers.size() > 0))) {
-        // Take write lock on data dictionary. Because of this all the servers will will initiate their
-        // hive client one by one. This is important as we have downgraded the ISOLATION LEVEL from
-        // SERIALIZABLE to REPEATABLE READ
-        final String hiveClientObject = "HiveMetaStoreClient";
-        final DLockService lockService = memStore.getDDLLockService();
-        final boolean writeLockTaken = lockService.lock(hiveClientObject,
-            GfxdLockSet.MAX_LOCKWAIT_VAL, -1);
-        try {
-          //writeLockTaken = this.dd.lockForWriting(tc, false);
-          // Changed from ddlLockObject
-          this.memStore.initExternalCatalog();
-        } finally {
-          if (writeLockTaken) {
-            //this.dd.unlockAfterWriting(tc, false);
-            lockService.unlock(hiveClientObject);
-          }
+        this.memStore.initExternalCatalog();
+        if (isLead && servers.size() > 0) {
+          // submit the task to check for catalog consistency
+          this.memStore.setExternalCatalogInit(cache.getDistributionManager()
+              .getFunctionExcecutor().submit(() -> {
+                // don't wait for self in catalog initialization
+                GemFireStore.externalCatalogInitThread.set(Boolean.TRUE);
+                EmbedConnection embedConnection = null;
+                try {
+                  GemFireXDUtils.waitForNodeInitialization();
+                  embedConnection = GemFireXDUtils.createNewInternalConnection(
+                      false);
+                  checkSnappyCatalogConsistency(embedConnection);
+                } catch (StandardException | SQLException e) {
+                  throw new GemFireXDRuntimeException(e);
+                } finally {
+                  if (embedConnection != null) {
+                    try {
+                      embedConnection.close();
+                    } catch (Exception ignore) {
+                    }
+                  }
+                }
+              }));
         }
-      }
-
-      if (isLead && servers.size() > 0) {
-        checkSnappyCatalogConsistency(embedConn);
-      }
-
-      if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
-          GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
-        CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
       }
     } catch (Throwable t) {
       try {
@@ -594,6 +579,25 @@ public final class FabricDatabase implements ModuleControl,
     }
   }
 
+  private void addInternalDiskStore(DiskStoreImpl ds, UUIDFactory factory)
+      throws StandardException {
+    if (ds != null) {
+      UUID id = factory.recreateUUID(ds.getName());
+      GfxdDiskStoreDescriptor dsd = new GfxdDiskStoreDescriptor(dd, id, ds,
+          ds.getDiskDirs()[0].getAbsolutePath());
+      dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
+          false, dd.getTransactionExecute());
+    }
+  }
+
+  private void publishColumnStats() {
+    if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
+        GemFireStore.VMKind.DATASTORE || Misc.getDistributedSystem().isLoner())) {
+      GemFireXDUtils.waitForNodeInitialization();
+      CallbackFactoryProvider.getClusterCallbacks().publishColumnTableStats();
+    }
+  }
+
   /**
    * Detect catalog inconsistencies (between store DD and Hive MetaStore)
    * and remove those
@@ -601,9 +605,14 @@ public final class FabricDatabase implements ModuleControl,
    * @throws StandardException
    * @throws SQLException
    */
-  public static void checkSnappyCatalogConsistency(
-      EmbedConnection embedConn)
+  public static void checkSnappyCatalogConsistency(EmbedConnection embedConn)
       throws StandardException, SQLException {
+    final GemFireStore memStore = Misc.getMemStoreBooting();
+    final ExternalCatalog externalCatalog = memStore.getExternalCatalog(false);
+    if (externalCatalog == null) {
+      return;
+    }
+
     final LanguageConnectionContext lcc = embedConn.getLanguageConnection();
     final GemFireTransaction tc = (GemFireTransaction)lcc
         .getTransactionExecute();
@@ -612,8 +621,7 @@ public final class FabricDatabase implements ModuleControl,
 
     try {
       lcc.getDataDictionary().lockForReading(tc);
-      hiveDBTablesMap =
-          Misc.getMemStoreBooting().getExternalCatalog().getAllStoreTablesInCatalog(true);
+      hiveDBTablesMap = externalCatalog.getAllStoreTablesInCatalog(true);
       gfDBTablesMap = getAllGFXDTables();
     } finally {
       lcc.getDataDictionary().unlockAfterReading(tc);
@@ -621,8 +629,7 @@ public final class FabricDatabase implements ModuleControl,
 //    SanityManager.DEBUG_PRINT("info", "hiveDBTablesMap = " + hiveDBTablesMap);
 
     // remove Hive store's own tables
-    gfDBTablesMap.remove(
-        Misc.getMemStoreBooting().getExternalCatalog().catalogSchemaName());
+    gfDBTablesMap.remove(externalCatalog.catalogSchemaName());
     // CachedBatch tables (earlier stored in SNAPPYSYS_INTERNAL)
     List<String> internalColumnTablesList = new LinkedList<>();
     List<String> internalColumnTablesListPerSchema = new LinkedList<>();
@@ -646,8 +653,13 @@ public final class FabricDatabase implements ModuleControl,
 //     SanityManager.DEBUG_PRINT("info", "tables in hive store = " + hiveDBTablesMap);
 //     SanityManager.DEBUG_PRINT("info", "tables in DD  = " + gfDBTablesMap);
     removeInconsistentDDEntries(embedConn, hiveDBTablesMap,
-        gfDBTablesMap, internalColumnTablesSet);
-    removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap);
+        gfDBTablesMap, internalColumnTablesSet, externalCatalog);
+    removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap,
+        externalCatalog);
+
+    // publish the column table stats at this point because that
+    // requires the hive metastore
+    memStore.getDatabase().publishColumnStats();
   }
 
   /**
@@ -663,7 +675,8 @@ public final class FabricDatabase implements ModuleControl,
   private static void removeInconsistentDDEntries(EmbedConnection embedConn,
       HashMap<String, List<String>> hiveDBTablesMap,
       HashMap<String, List<String>> gfDBTablesMap,
-      Set<String> internalColumnTablesSet) throws SQLException {
+      Set<String> internalColumnTablesSet,
+      ExternalCatalog externalCatalog) throws SQLException {
     for (Map.Entry<String, List<String>> storeEntry : gfDBTablesMap.entrySet()) {
       List<String> hiveTableList = hiveDBTablesMap.get(storeEntry.getKey());
       List<String> storeTablesList = new LinkedList<>(storeEntry.getValue());
@@ -672,7 +685,7 @@ public final class FabricDatabase implements ModuleControl,
       if (!(hiveTableList == null || hiveTableList.isEmpty())) {
         storeTablesList.removeAll(hiveTableList);
       }
-      if (!(storeTablesList == null || storeTablesList.isEmpty())) {
+      if (!storeTablesList.isEmpty()) {
         SanityManager.DEBUG_PRINT("info",
             "Catalog inconsistency detected: following tables " +
                 "in datadictionary are not in Hive metastore: " +
@@ -683,8 +696,7 @@ public final class FabricDatabase implements ModuleControl,
       // DD contains row buffer but not the column buffer of the table
       List<String> tablesMissingColumnBuffer = new LinkedList<>();
       for (String storeTable : storeEntry.getValue()) {
-        if (Misc.getMemStoreBooting().getExternalCatalog().
-            isColumnTable(storeEntry.getKey(), storeTable, false)) {
+        if (externalCatalog.isColumnTable(storeEntry.getKey(), storeTable, false)) {
           String columnBatchTable = com.gemstone.gemfire.
               internal.snappy.CallbackFactoryProvider.getStoreCallbacks().
               columnBatchTableName(storeEntry.getKey() + "." + storeTable);
@@ -701,7 +713,8 @@ public final class FabricDatabase implements ModuleControl,
                 "do not have column buffer: " +
                 "schema = " + storeEntry.getKey() + " tables = " + tablesMissingColumnBuffer);
         dropTables(embedConn, storeEntry.getKey(), tablesMissingColumnBuffer);
-        removeTableFromHivestore(storeEntry.getKey(), tablesMissingColumnBuffer);
+        removeTableFromHivestore(storeEntry.getKey(),
+            tablesMissingColumnBuffer, externalCatalog);
       }
     }
   }
@@ -713,7 +726,8 @@ public final class FabricDatabase implements ModuleControl,
    */
   private static void removeInconsistentHiveEntries(
       HashMap<String, List<String>> hiveDBTablesMap,
-      HashMap<String, List<String>> gfDBTablesMap) {
+      HashMap<String, List<String>> gfDBTablesMap,
+      ExternalCatalog externalCatalog) {
     // remove tables that are in Hive store but not in datadictionary
     for (Map.Entry<String, List<String>> hiveEntry : hiveDBTablesMap.entrySet()) {
       List<String> storeTableList = gfDBTablesMap.get(hiveEntry.getKey());
@@ -722,21 +736,23 @@ public final class FabricDatabase implements ModuleControl,
         hiveTableList.removeAll(storeTableList);
       }
 
-      if (!(hiveTableList == null || hiveTableList.isEmpty())) {
+      if (!hiveTableList.isEmpty()) {
         SanityManager.DEBUG_PRINT("info",
             "Catalog inconsistency detected: following tables " +
                 "in Hive metastore are not in datadictionary: " +
                 "schema = " + hiveEntry.getKey() + " tables = " + hiveTableList);
-        removeTableFromHivestore(hiveEntry.getKey(), hiveTableList);
+        removeTableFromHivestore(hiveEntry.getKey(), hiveTableList,
+            externalCatalog);
       }
     }
   }
 
-  private static final void removeTableFromHivestore(String schema, List<String> tables) {
+  private static final void removeTableFromHivestore(String schema,
+      List<String> tables, ExternalCatalog externalCatalog) {
     for (String table : tables) {
       SanityManager.DEBUG_PRINT("info", "Removing table " +
           schema + "." + table + " from Hive metastore");
-      Misc.getMemStoreBooting().getExternalCatalog().removeTable(schema, table, false);
+      externalCatalog.removeTable(schema, table, false);
     }
   }
 
@@ -840,8 +856,8 @@ public final class FabricDatabase implements ModuleControl,
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
           "Skipping precompilation of inbuilt procedures");
     }
-    dd.createSystemSps(tc, vmKind.isAccessorOrStore() && !skipSPSPrecompile
-        && !this.memStore.isHadoopGfxdLonerMode());
+    // dd.createSystemSps(tc, vmKind.isAccessorOrStore() && !skipSPSPrecompile
+    //    && !this.memStore.isHadoopGfxdLonerMode());
 
     // Execute any provided initial SQL scripts first.
     // remote the initial SQL commands
@@ -1199,9 +1215,7 @@ public final class FabricDatabase implements ModuleControl,
       if (observer != null && observer.needIndexRecoveryAccounting()) {
         accountingMap = new THashMap();
         for (DiskStoreImpl dsi : cache.listDiskStores()) {
-          if (!dsi.isUsedForInternalUse()) {
-            dsi.TEST_INDEX_ACCOUNTING_MAP = accountingMap;
-          }
+          dsi.TEST_INDEX_ACCOUNTING_MAP = accountingMap;
         }
         observer.setIndexRecoveryAccountingMap(accountingMap);
       }
@@ -1209,20 +1223,18 @@ public final class FabricDatabase implements ModuleControl,
       this.memStore.markIndexLoadBegin();
 
       for (DiskStoreImpl dsi : cache.listDiskStores()) {
-        if (!dsi.isUsedForInternalUse()) {
-          long start = 0;
-          if (logger.infoEnabled()) {
-            start = System.currentTimeMillis();
-            logger.info("FabricDatabase: waiting for index loading from "
-                + dsi.getName());
-          }
-          dsi.waitForIndexRecoveryEnd(-1);
-          if (logger.infoEnabled()) {
-            long end = System.currentTimeMillis();
-            logger.info(MessageFormat.format(
-                "FabricDatabase: Index loading completed for {0} in {1} ms",
-                dsi.getName(), (end - start)));
-          }
+        long start = 0;
+        if (logger.infoEnabled()) {
+          start = System.currentTimeMillis();
+          logger.info("FabricDatabase: waiting for index loading from "
+              + dsi.getName());
+        }
+        dsi.waitForIndexRecoveryEnd(-1);
+        if (logger.infoEnabled()) {
+          long end = System.currentTimeMillis();
+          logger.info(MessageFormat.format(
+              "FabricDatabase: Index loading completed for {0} in {1} ms",
+              dsi.getName(), (end - start)));
         }
       }
 
@@ -1372,7 +1384,7 @@ public final class FabricDatabase implements ModuleControl,
                       "index entries in the index: " + c.getName() + " = " + c.getIndexSize());
                   dumpIndexAndRegion(region, dp, c, logger);
                   throw new IllegalStateException("Table data and indexes are not reconciling." +
-                      "Probably need to revoke the disk store");
+                      " Probably need to revoke the disk store");
                 }
               }
             } else {
@@ -1453,17 +1465,15 @@ public final class FabricDatabase implements ModuleControl,
   private void recreateAllLocalIndexes(final LogWriter logger) {
     Collection<DiskStoreImpl> diskStores = Misc.getGemFireCache().listDiskStores();
     for (DiskStoreImpl ds : diskStores) {
-      if (!ds.getName().equals(GfxdConstants.GFXD_DD_DISKSTORE_NAME)) {
-        PersistentOplogSet oplogSet = ds.getPersistentOplogSet(null);
-        ds.resetIndexRecoveryState();
-        // delete all idx file of all oplogs, so second arg as true below
-        ds.scheduleIndexRecovery(oplogSet.getSortedOplogs(), true);
-        logger.info("FabricDatabase: recreateAllLocalIndexes " +
-            "waiting for index re-creation for disk store: " + ds.getName());
-        ds.waitForIndexRecoveryEnd(-1);
-        logger.info("FabricDatabase: recreateAllLocalIndexes " +
-            "index re-creation for disk store: " + ds.getName() + " ended");
-      }
+      PersistentOplogSet oplogSet = ds.getPersistentOplogSet(null);
+      ds.resetIndexRecoveryState();
+      // delete all idx file of all oplogs, so second arg as true below
+      ds.scheduleIndexRecovery(oplogSet.getSortedOplogs(), true);
+      logger.info("FabricDatabase: recreateAllLocalIndexes " +
+          "waiting for index re-creation for disk store: " + ds.getName());
+      ds.waitForIndexRecoveryEnd(-1);
+      logger.info("FabricDatabase: recreateAllLocalIndexes " +
+          "index re-creation for disk store: " + ds.getName() + " ended");
     }
   }
 
@@ -1557,17 +1567,18 @@ public final class FabricDatabase implements ModuleControl,
       // line of logs which are of no use. Once the hive meta tables are
       // done, restore the logging level.
       if (previousLevel == Integer.MAX_VALUE &&
-          Misc.isSnappyHiveMetaTable(currentSchema))
-      {
+          Misc.isSnappyHiveMetaTable(currentSchema)) {
         GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
-        bridgeLogger.info("Starting hive meta-store initialization");
-        previousLevel = bridgeLogger.getLevel();
-        bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
+        int currentLevel = bridgeLogger.getLevel();
+        if (currentLevel == LogWriterImpl.CONFIG_LEVEL ||
+            currentLevel == LogWriterImpl.INFO_LEVEL) {
+          previousLevel = currentLevel;
+          bridgeLogger.setLevel(LogWriterImpl.WARNING_LEVEL);
+        }
       } else if (previousLevel != Integer.MAX_VALUE &&
             Misc.isSnappyHiveMetaTable(lastCurrentSchema)) {
           GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
           bridgeLogger.setLevel(previousLevel);
-          bridgeLogger.info("Done hive meta-store initialization");
           previousLevel = Integer.MAX_VALUE;
       }
       // set the default schema masquerading as the user
@@ -1591,6 +1602,8 @@ public final class FabricDatabase implements ModuleControl,
         lcc.setSkipRegionInitialization(skipRegionInitialization);
         lcc.setDroppedFKConstraints(conflatable.getDroppedFKConstraints());
         lcc.setDefaultPersistent(conflatable.defaultPersistent());
+        lcc.setPersistMetaStoreInDataDictionary(
+            conflatable.persistMetaStoreInDataDictionary());
         tc.setDDLId(conflatable.getId());
         stmt.execute(sqlText);
         GfxdMessage.logWarnings(stmt, sqlText,
@@ -1603,6 +1616,7 @@ public final class FabricDatabase implements ModuleControl,
         lcc.setContextObject(null);
         lcc.setDroppedFKConstraints(null);
         lcc.setDefaultPersistent(false);
+        lcc.setPersistMetaStoreInDataDictionary(true);
         tc.setDDLId(0);
       }
     } catch (Exception ex) {

@@ -22,18 +22,16 @@ package com.gemstone.gemfire.internal.cache;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.cache.CacheWriterException;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
@@ -45,8 +43,6 @@ import com.gemstone.gemfire.internal.cache.persistence.query.mock.ByteComparator
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySenderEventProcessor;
 import com.gemstone.gemfire.internal.cache.wan.parallel.BucketRegionQueueUnavailableException;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
-import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
-import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderQueue;
 
 /**
  * @author Suranjan Kumar
@@ -147,8 +143,9 @@ public class BucketRegionQueue extends AbstractBucketRegionQueue {
               eventSeqNumQueue.add(key);
             }
             lastKeyRecovered = sortedKeys.last();
-            if (this.getEventSeqNum() != null) {
-              getEventSeqNum().setIfGreater(lastKeyRecovered);
+            final AtomicLong eventSeqNum = getEventSeqNum();
+            if (eventSeqNum != null) {
+              setIfGreater(eventSeqNum, lastKeyRecovered);
             }
           }
         }

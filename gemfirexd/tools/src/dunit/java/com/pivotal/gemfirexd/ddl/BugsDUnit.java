@@ -2904,6 +2904,7 @@ public class BugsDUnit extends DistributedSQLTestBase {
 
       for (int i = 1; i < 20; ++i) {
         psSec.setInt(1, i);
+        psSec.setString(2, getSymbol(1, 6) + "_" + i);
         psSec.setString(2, getSymbol(1, 8));
         psSec.setString(3, exchanges[i % 7]);
         psSec.setInt(4, 50);
@@ -4975,7 +4976,8 @@ public class BugsDUnit extends DistributedSQLTestBase {
       invokeInEveryVM(new SerializableRunnable() {
         @Override
         public void run() {
-          if (ServerGroupUtils.isDataStore()) {
+          if (GemFireCacheImpl.getInstance() != null &&
+              ServerGroupUtils.isDataStore()) {
             String regionPath = "/ODS/POSTAL_ADDRESS";
             Region r = Misc.getRegionByPath(regionPath);
             PartitionedRegion pr = (PartitionedRegion)r;

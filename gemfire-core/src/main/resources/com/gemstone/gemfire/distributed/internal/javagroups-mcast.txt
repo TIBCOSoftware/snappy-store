@@ -77,7 +77,8 @@ com.gemstone.org.jgroups.protocols.pbcast.GMS(
   disable_initial_coord=DISABLE_COORD;
   print_local_addr=false;
   join_timeout=JOIN_TIMEOUT;
-  join_retry_timeout=2000;
+  join_retry_timeout=1000;
+  min_join_tries=MIN_JOIN_TRIES;
   leave_timeout=LEAVE_TIMEOUT;
   view_ack_collection_timeout=ACK_COLLECTION_TIMEOUT;
   up_thread=false;

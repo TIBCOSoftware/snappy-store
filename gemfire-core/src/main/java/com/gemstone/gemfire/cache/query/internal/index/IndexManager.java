@@ -27,9 +27,13 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SystemFailure;
@@ -61,13 +65,9 @@ import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.concurrent.BQ;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 
@@ -96,9 +96,11 @@ public class IndexManager  {
    * represents an index thats completely created or one thats in create phase.
    * This is done in order to avoid synchronization on the indexes.
    */
-  private final CM indexes = CFactory.createCM();
+  private final ConcurrentHashMap<IndexTask, Object> indexes =
+      new ConcurrentHashMap<>();
   //TODO Asif : Fix the appropriate size of the Map & the concurrency level
-  private final CM canonicalizedIteratorNameMap = CFactory.createCM();
+  private final ConcurrentHashMap<String, String> canonicalizedIteratorNameMap =
+      new ConcurrentHashMap<>();
   private IndexUpdaterThread updater;
 
   private final LogWriterI18n logger;
@@ -1169,11 +1171,11 @@ public class IndexManager  {
   public String putCanonicalizedIteratorNameIfAbsent(String definition) {
     String str = null;
     synchronized(canonicalizedIteratorNameMap) {
-      if ((str = (String) this.canonicalizedIteratorNameMap.get(definition)) == null) {
+      if ((str = this.canonicalizedIteratorNameMap.get(definition)) == null) {
         str = new StringBuffer("index_iter").append(this.getIncrementedCounter())
             .toString();
         String temp;
-        if ((temp = (String) this.canonicalizedIteratorNameMap.putIfAbsent(
+        if ((temp = this.canonicalizedIteratorNameMap.putIfAbsent(
             definition, str)) != null) {
           str = temp;
         }
@@ -1200,7 +1202,7 @@ public class IndexManager  {
    * @return String
    */
   public String getCanonicalizedIteratorName(String definition) {
-    return ((String) (this.canonicalizedIteratorNameMap.get(definition)));
+    return this.canonicalizedIteratorNameMap.get(definition);
   }
 
   ////////////////////// Inner Classes //////////////////////
@@ -1211,7 +1213,7 @@ public class IndexManager  {
 
     private volatile boolean shutdownRequested = false;
 
-    private volatile BQ pendingTasks;
+    private volatile BlockingQueue<Object[]> pendingTasks;
 
     /**
      * Creates instance of IndexUpdaterThread
@@ -1221,12 +1223,12 @@ public class IndexManager  {
     IndexUpdaterThread(ThreadGroup group, int updateThreshold, String threadName) {
       super(group, threadName);
       // Check if threshold is set.
-      if (updateThreshold > 0){
+      if (updateThreshold > 0) {
         // Create a bounded queue.
-        pendingTasks =  CFactory.createABQ(updateThreshold);
+        pendingTasks = new ArrayBlockingQueue<>(updateThreshold);
       } else {
         // Create non-bounded queue.
-        pendingTasks =  CFactory.createLBQ();
+        pendingTasks = new LinkedBlockingQueue<>();
       }
       this.setDaemon(true);
     }
@@ -1269,7 +1271,7 @@ public class IndexManager  {
             break;
           }
           try {
-            Object[] task = (Object[])pendingTasks.take();
+            Object[] task = pendingTasks.take();
             if (this.shutdownRequested) {
               break;
             }

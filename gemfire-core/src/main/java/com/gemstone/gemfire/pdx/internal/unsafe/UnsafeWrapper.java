@@ -185,10 +185,6 @@ public final class UnsafeWrapper {
     unsafe.putByte(addr, value);
   }
 
-  public void copyMemory(Object o1, long addr1, Object o2, long addr2, long size) {
-    unsafe.copyMemory(o1, addr1, o2, addr2, size);
-  }
-
   public void copyMemory(long src, long dst, long size) {
     unsafe.copyMemory(src, dst, size);
   }

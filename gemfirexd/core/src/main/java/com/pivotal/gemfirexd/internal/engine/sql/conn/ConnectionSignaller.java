@@ -65,7 +65,7 @@ public final class ConnectionSignaller extends Thread {
    * Maximum time (in millis) to wait for clean stop before forceful interrupt
    * of this thread.
    */
-  private static final int MAX_JOIN_WAIT = 2000;
+  private static final int MAX_JOIN_WAIT = 1000;
 
   /** the set of connection states to be processed */
   private final SortedSet<ConnectionStateKey> connectionList;
@@ -362,7 +362,7 @@ public final class ConnectionSignaller extends Thread {
         // try to stop the thread cleanly
         synchronized (instanceLock) {
           signaller.shouldContinue = false;
-          instanceLock.notify();
+          instanceLock.notifyAll();
         }
         // wait for sometime for the thread to stop
         signaller.join(MAX_JOIN_WAIT / 2);

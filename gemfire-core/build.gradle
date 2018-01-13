@@ -30,6 +30,7 @@ configurations {
 dependencies {
   compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
   compileOnly 'antlr:antlr:2.7.7'
+  compile "net.java.dev.jna:jna:${jnaVersion}"
   compile 'commons-io:commons-io:2.5'
   compile 'commons-logging:commons-logging:1.2'
   compile 'commons-lang:commons-lang:2.6'
@@ -125,6 +126,8 @@ dependencies {
   compile project(subprojectBase + 'gemfire-jgroups')
   compile project(subprojectBase + 'gemfire-util')
   compile project(subprojectBase + 'gemfire-shared')
+  compile project(subprojectBase + 'gemfire-trove')
+  compile project(subprojectBase + 'snappydata-util')
 
   jcaCompile sourceSets.main.output
 }

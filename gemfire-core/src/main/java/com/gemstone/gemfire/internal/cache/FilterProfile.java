@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.CancelException;
@@ -63,8 +65,6 @@ import com.gemstone.gemfire.internal.cache.tier.InterestType;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.UnregisterAllInterest;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 
@@ -178,7 +178,7 @@ public class FilterProfile implements DataSerializableFixedID {
   private transient boolean isLocalProfile;
     
   /** Currently installed CQ count on the region */
-  AI cqCount;
+  AtomicInteger cqCount;
 
   /** CQs that are registered on the remote node **/
   private volatile Map cqs = Collections.EMPTY_MAP;
@@ -206,7 +206,7 @@ public class FilterProfile implements DataSerializableFixedID {
   private volatile Map<InternalDistributedMember, LinkedList<OperationMessage>> filterProfileMsgQueue = new HashMap();
   
   public FilterProfile() {
-    cqCount = CFactory.createAI();
+    cqCount = new AtomicInteger();
     this.logger = InternalDistributedSystem.getLoggerI18n();
   }
   
@@ -221,7 +221,7 @@ public class FilterProfile implements DataSerializableFixedID {
     this.region = r;
     this.isLocalProfile = true;
     this.memberID = region.getMyId();
-    this.cqCount = CFactory.createAI();
+    this.cqCount = new AtomicInteger();
     this.logger = r.getCache().getLoggerI18n();
     this.clientMap = new IDMap();
     this.cqMap = new IDMap();
@@ -2254,8 +2254,8 @@ public class FilterProfile implements DataSerializableFixedID {
 
   class IDMap {
     long nextID = 1;
-    Map<Object, Long> realIDs = CFactory.createCM();
-    Map<Long, Object> wireIDs = CFactory.createCM();
+    ConcurrentHashMap<Object, Long> realIDs = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Long, Object> wireIDs = new ConcurrentHashMap<>();
     boolean hasLongID;
     
     synchronized boolean hasWireID(Object realId) {

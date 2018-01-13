@@ -25,9 +25,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author dsmith
@@ -50,7 +49,7 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
   public void testFuture() throws InterruptedException, ExecutionException {
     ex = new ScheduledThreadPoolExecutorWithKeepAlive(
         5, 60, TimeUnit.SECONDS, Executors.defaultThreadFactory());
-    final AB done = CFactory.createAB();
+    final AtomicBoolean done = new AtomicBoolean();
     Future f = ex.submit(new Runnable() {
       public void run() {
         try {
@@ -98,12 +97,12 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
     for(int i = 0; i < 50; i++) {
       futures[i] = ex.submit(waitForABit);
     }
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     
     for(int i = 0; i < 50; i++) {
       futures[i].get();
     }
-    long end = CFactory.nanoTime();
+    long end = System.nanoTime();
     
     assertTrue("Tasks executed in parallel", TimeUnit.NANOSECONDS.toSeconds(end - start) < 50);
     
@@ -117,8 +116,7 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
   public void testConcurrentRepeatedTasks() throws InterruptedException, ExecutionException {
     ex = new ScheduledThreadPoolExecutorWithKeepAlive(
         50, 1, TimeUnit.SECONDS, Executors.defaultThreadFactory());
-    
-    final AI counter = CFactory.createAI(); 
+    final AtomicInteger counter = new AtomicInteger();
     Runnable waitForABit = new Runnable() {
       public void run() {
         try {
@@ -159,10 +157,10 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
   public void testDelayedExcecution() throws InterruptedException, ExecutionException {
     ex = new ScheduledThreadPoolExecutorWithKeepAlive(
         50, 1, TimeUnit.SECONDS, Executors.defaultThreadFactory());
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     Future f = ex.schedule(new Runnable() { public void run() {}}, 10, TimeUnit.SECONDS);
     f.get();
-    long end = CFactory.nanoTime();
+    long end = System.nanoTime();
     assertTrue("Execution was not delayed 10 seconds, only " + (end - start), 
         TimeUnit.SECONDS.toNanos(10) <= end - start + SLOP); 
   }
@@ -170,8 +168,7 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
   public void testRepeatedExecution() throws InterruptedException {
     ex = new ScheduledThreadPoolExecutorWithKeepAlive(
         50, 1, TimeUnit.SECONDS, Executors.defaultThreadFactory());
-    
-    final AI counter = CFactory.createAI();
+    final AtomicInteger counter = new AtomicInteger();
     Runnable run = new Runnable() {
       public void run() {
         counter.incrementAndGet();
@@ -199,9 +196,9 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
       }
     }, 2, TimeUnit.SECONDS);
     ex.shutdown();
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     assertTrue(ex.awaitTermination(10, TimeUnit.SECONDS));
-    long elapsed = CFactory.nanoTime() - start;
+    long elapsed = System.nanoTime() - start;
     assertTrue("Shutdown did not wait to task to complete. Only waited "
         + TimeUnit.NANOSECONDS.toMillis(elapsed), 
         TimeUnit.SECONDS.toNanos(4) < elapsed + SLOP);
@@ -222,9 +219,9 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
     //give it a chance to get in the worker pool
     Thread.sleep(500);
     ex.shutdown();
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     assertTrue(ex.awaitTermination(10, TimeUnit.SECONDS));
-    long elapsed = CFactory.nanoTime() - start;
+    long elapsed = System.nanoTime() - start;
     assertTrue("Shutdown did not wait to task to complete. Only waited "
         + TimeUnit.NANOSECONDS.toMillis(elapsed), TimeUnit.SECONDS.toNanos(2) < elapsed);
   }
@@ -242,9 +239,9 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
       }
     }, 2, TimeUnit.SECONDS);
     ex.shutdownNow();
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     assertTrue(ex.awaitTermination(1, TimeUnit.SECONDS));
-    long elapsed = CFactory.nanoTime() - start;
+    long elapsed = System.nanoTime() - start;
     assertTrue("ShutdownNow should not have waited. Waited "
         + TimeUnit.NANOSECONDS.toMillis(elapsed), TimeUnit.SECONDS.toNanos(2) > elapsed);
   }
@@ -264,9 +261,9 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
     //give it a chance to get in the worker pool.
     Thread.sleep(500);
     ex.shutdownNow();
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     assertTrue(ex.awaitTermination(1, TimeUnit.SECONDS));
-    long elapsed = CFactory.nanoTime() - start;
+    long elapsed = System.nanoTime() - start;
     assertTrue("ShutdownNow should not have waited. Waited "
         + TimeUnit.NANOSECONDS.toMillis(elapsed), TimeUnit.SECONDS.toNanos(2) > elapsed);
   }
@@ -285,9 +282,9 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
       }
     }, 5000, TimeUnit.MILLISECONDS);
     ex.shutdown();
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     assertTrue(ex.awaitTermination(30, TimeUnit.SECONDS));
-    long elapsed = CFactory.nanoTime() - start;
+    long elapsed = System.nanoTime() - start;
     assertTrue("Shutdown should not have waited. Waited "
         + TimeUnit.NANOSECONDS.toMillis(elapsed), TimeUnit.SECONDS.toNanos(2) > elapsed);
   }
@@ -295,9 +292,9 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
   public void testAllWorkersActive() throws InterruptedException {
     ex = new ScheduledThreadPoolExecutorWithKeepAlive(
         6, 1, TimeUnit.SECONDS, Executors.defaultThreadFactory());
-    final AI counter = CFactory.createAI();
+    final AtomicInteger counter = new AtomicInteger();
 
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     for(int i = 0; i < 100; i++) {
       ex.submit(new Runnable() {
         public void run() {
@@ -311,7 +308,7 @@ public class ScheduledThreadPoolExecutorWithKeepAliveJUnitTest extends TestCase 
       });
     }
 
-    long elapsed = CFactory.nanoTime() - start;
+    long elapsed = System.nanoTime() - start;
     assertTrue("calling ex.submit blocked the caller", TimeUnit.SECONDS.toNanos(1) > elapsed);
 
     Thread.sleep(20 * 500 + 1000);

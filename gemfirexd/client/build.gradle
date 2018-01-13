@@ -20,8 +20,9 @@ plugins {
 }
 
 dependencies {
-  compileOnly "org.apache.thrift:libthrift:${thriftVersion}"
-  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+  compile "org.apache.thrift:libthrift:${thriftVersion}"
+  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
+  compile "net.java.dev.jna:jna:${jnaVersion}"
 
   compile project(subprojectBase + 'snappydata-store-shared')
 }
@@ -77,8 +78,6 @@ shadowJar {
   classifier = ''
   // avoid conflict with the older incompatible thrift versions
   relocate 'org.apache.thrift', 'io.snappydata.org.apache.thrift'
-
-  configurations = [ project.configurations.runtime, project.configurations.compileOnly ]
 
   mergeServiceFiles()
 }

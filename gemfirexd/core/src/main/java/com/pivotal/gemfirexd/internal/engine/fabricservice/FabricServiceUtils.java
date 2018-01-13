@@ -388,6 +388,7 @@ public final class FabricServiceUtils {
           && !propName.startsWith("metastore-")
           && !propName.startsWith("spark.")
           && !propName.startsWith("jobserver.")
+          && !propName.startsWith("zeppelin.")
           && !GfxdConstants.validExtraGFXDProperties.contains(propName)
           && !"BootPassword".equalsIgnoreCase(propName)
           && !"encryptionAlgorithm".equalsIgnoreCase(propName)

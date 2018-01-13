@@ -17,8 +17,7 @@
 package com.gemstone.gemfire.distributed.internal.deadlock;
 
 import java.io.Serializable;
-
-import com.gemstone.gemfire.internal.concurrent.LI;
+import java.lang.management.LockInfo;
 
 /**
  * This class is serializable version of the java 1.6 lock info
@@ -32,9 +31,9 @@ class LocalLockInfo implements Serializable {
   private static final long serialVersionUID = 1L;
   
   private final Serializable locatility;
-  private final LI info;
+  private final LockInfo info;
   
-  public LocalLockInfo(Serializable locatility, LI sync) {
+  public LocalLockInfo(Serializable locatility, LockInfo sync) {
     super();
     this.locatility = locatility;
     this.info = sync;
@@ -44,7 +43,7 @@ class LocalLockInfo implements Serializable {
     return locatility;
   }
 
-  public LI getInfo() {
+  public LockInfo getInfo() {
     return info;
   }
 

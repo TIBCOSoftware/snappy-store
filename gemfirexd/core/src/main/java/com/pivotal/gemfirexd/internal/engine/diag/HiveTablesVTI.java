@@ -41,6 +41,9 @@ import org.slf4j.LoggerFactory;
 public class HiveTablesVTI extends GfxdVTITemplate
     implements GfxdVTITemplateNoAllNodesRoute {
 
+  public static final ThreadLocal<Boolean> SKIP_HIVE_TABLE_CALLS =
+      new ThreadLocal<>();
+
   private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
   private Iterator<ExternalTableMetaData> tableMetas;
@@ -56,8 +59,9 @@ public class HiveTablesVTI extends GfxdVTITemplate
   @Override
   public boolean next() {
     if (this.tableMetas == null) {
-      ExternalCatalog hiveCatalog = Misc.getMemStore().getExternalCatalog();
-      if (hiveCatalog != null) {
+      final ExternalCatalog hiveCatalog;
+      if (!Boolean.TRUE.equals(HiveTablesVTI.SKIP_HIVE_TABLE_CALLS.get()) &&
+          (hiveCatalog = Misc.getMemStore().getExternalCatalog()) != null) {
         try {
           this.tableMetas = hiveCatalog.getHiveTables(true).iterator();
         } catch (Exception e) {

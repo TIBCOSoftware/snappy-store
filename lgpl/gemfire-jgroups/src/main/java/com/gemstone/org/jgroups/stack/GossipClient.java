@@ -568,8 +568,25 @@ public class GossipClient  {
   
         // Need to send previous (older) GOSSIPVERSION so that TcpServer (Older or
         // newer which we don't know yet) doesn't reject it.
+
+        // [sumedh] Changed to new version since old is no longer supported.
+        int gossipVersion = GossipServer.GOSSIPVERSION;
+        short serverOrdinal = JGroupsVersion.CURRENT_ORDINAL;
+        if (entry.getVersionOrdinal() <= JGroupsVersion.CURRENT_ORDINAL) {
+          // Get GOSSIPVERSION for receiving GossipServer
+          serverOrdinal = entry.getVersionOrdinal();
+          gossipVersion = JChannel.getGfFunctions().getGossipVersionForOrdinal(serverOrdinal);
+          // Change outputStream so any DataSerializable can handle GemFire versions.
+          out = JChannel.getGfFunctions().getVersionedDataOutputStream(out, serverOrdinal);
+        }
+        out.writeInt(gossipVersion); // GemStoneAddition
+        // We should send the GossipServer's version ordinal as GossipData
+        // is serialized based on GossipServer's version.
+        out.writeShort(serverOrdinal); // GemStoneAddition
+        /* (original GemFire code)
         int prevGossipVersion = GossipServer.OLDGOSSIPVERSION;
         out.writeInt(prevGossipVersion); // GemStoneAddition
+        */
         JChannel.getGfFunctions().writeObject(version_req, out);
         out.flush();
   

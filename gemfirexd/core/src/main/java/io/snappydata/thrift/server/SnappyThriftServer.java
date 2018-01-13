@@ -77,7 +77,7 @@ import org.apache.thrift.transport.TTransportException;
 public final class SnappyThriftServer {
 
   private LocatorServiceImpl service;
-  private TServer thriftServer;
+  private volatile TServer thriftServer;
   private ThreadPoolExecutor thriftExecutor;
   private ThreadPoolExecutor thriftThreadPerConnExecutor;
   private Thread thriftMainThread;
@@ -218,7 +218,7 @@ public final class SnappyThriftServer {
       }
       this.thriftExecutor.shutdown();
       try {
-        this.thriftMainThread.join(5000L);
+        this.thriftMainThread.join(1000L);
         // force stop the executor if required
         if (this.thriftMainThread.isAlive()) {
           if (connExecutor != null) {

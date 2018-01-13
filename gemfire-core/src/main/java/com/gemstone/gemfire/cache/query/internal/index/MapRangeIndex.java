@@ -18,7 +18,6 @@ package com.gemstone.gemfire.cache.query.internal.index;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,6 @@ import com.gemstone.gemfire.cache.query.internal.RuntimeIterator;
 import com.gemstone.gemfire.cache.query.types.ObjectType;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 public class MapRangeIndex extends AbstractIndex
 {
@@ -128,13 +126,13 @@ public class MapRangeIndex extends AbstractIndex
     Object[] mapKeyAndVal = (Object[])key;
     RangeIndex ri = this.mapKeyToValueIndex.get(mapKeyAndVal[1]);
     if (ri != null) {
-      long start = CFactory.nanoTime();
+      long start = System.nanoTime();
       ri.internalIndexStats.incUsesInProgress(1);
       ri.lockedQuery(mapKeyAndVal[0], operator, results, iterOps, runtimeItr,
           context, projAttrib, intermediateResults, isIntersection);
       ri.internalIndexStats.incNumUses();
       ri.internalIndexStats.incUsesInProgress(-1);
-      ri.internalIndexStats.incUseTime(CFactory.nanoTime() - start);
+      ri.internalIndexStats.incUseTime(System.nanoTime() - start);
     }
   }
 
@@ -157,12 +155,12 @@ public class MapRangeIndex extends AbstractIndex
     Object[] mapKeyAndVal = (Object[])key;
     RangeIndex ri = this.mapKeyToValueIndex.get(mapKeyAndVal[1]);
     if (ri != null) {
-      long start = CFactory.nanoTime();
+      long start = System.nanoTime();
       ri.internalIndexStats.incUsesInProgress(1);
       ri.lockedQuery(mapKeyAndVal[0], operator, results, keysToRemove, context);
       ri.internalIndexStats.incNumUses();
       ri.internalIndexStats.incUsesInProgress(-1);
-      ri.internalIndexStats.incUseTime(CFactory.nanoTime() - start);
+      ri.internalIndexStats.incUseTime(System.nanoTime() - start);
     }
   }
 
@@ -200,20 +198,20 @@ public class MapRangeIndex extends AbstractIndex
       while (valuesIter.hasNext()) {
         Object key = valuesIter.next();
         RangeIndex ri = (RangeIndex)this.mapKeyToValueIndex.get(key);
-        long start = CFactory.nanoTime();
+        long start = System.nanoTime();
         ri.internalIndexStats.incUpdatesInProgress(1);
         ri.removeMapping(entry, opCode);
         ri.internalIndexStats.incUpdatesInProgress(-1);
-        ri.internalIndexStats.incUpdateTime(CFactory.nanoTime() - start);
+        ri.internalIndexStats.incUpdateTime(System.nanoTime() - start);
       }
     }
     else {
       RangeIndex ri = (RangeIndex)this.mapKeyToValueIndex.get(values);
-      long start = CFactory.nanoTime();
+      long start = System.nanoTime();
       ri.internalIndexStats.incUpdatesInProgress(1);
       ri.removeMapping(entry, opCode);
       ri.internalIndexStats.incUpdatesInProgress(-1);
-      ri.internalIndexStats.incUpdateTime(CFactory.nanoTime() - start);
+      ri.internalIndexStats.incUpdateTime(System.nanoTime() - start);
     }
   }
 
@@ -327,12 +325,12 @@ public class MapRangeIndex extends AbstractIndex
       this.mapKeyToValueIndex.put(mapKey, rg);
     }
     rg.internalIndexStats.incUpdatesInProgress(1);
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     rg.addMapping(indexKey, value, entry);
     //This call is skipped when addMapping is called from MapRangeIndex
     //rg.internalIndexStats.incNumUpdates();
     rg.internalIndexStats.incUpdatesInProgress(-1);
-    rg.internalIndexStats.incUpdateTime(CFactory.nanoTime() - start);
+    rg.internalIndexStats.incUpdateTime(System.nanoTime() - start);
     this.entryToMapKeysMap.add(entry, mapKey);
   }
 
@@ -355,12 +353,12 @@ public class MapRangeIndex extends AbstractIndex
       this.mapKeyToValueIndex.put(mapKey, rg);
     }
     rg.internalIndexStats.incUpdatesInProgress(1);
-    long start = CFactory.nanoTime();
+    long start = System.nanoTime();
     rg.saveMapping(indexKey, value, entry);
     //This call is skipped when addMapping is called from MapRangeIndex
     //rg.internalIndexStats.incNumUpdates();
     rg.internalIndexStats.incUpdatesInProgress(-1);
-    rg.internalIndexStats.incUpdateTime(CFactory.nanoTime() - start);
+    rg.internalIndexStats.incUpdateTime(System.nanoTime() - start);
     this.entryToMapKeysMap.add(entry, mapKey);
   }
 

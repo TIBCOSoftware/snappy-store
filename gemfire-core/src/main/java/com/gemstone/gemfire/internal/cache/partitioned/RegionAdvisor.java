@@ -20,17 +20,11 @@ package com.gemstone.gemfire.internal.cache.partitioned;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
@@ -64,10 +58,6 @@ import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistenceAdvisor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentStateListener;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.Q;
-import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashSet;
 import io.snappydata.collection.ObjectLongHashMap;
@@ -86,20 +76,21 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
    * queue is a waiting pool thread.  Any thread using this queue must 
    * synchronize on this queue.
    */
-  private final Q volunteeringQueue = CFactory.createCLQ();
-  
+  private final Queue<Runnable> volunteeringQueue =
+      new ConcurrentLinkedQueue<>();
+
   /**
    * Semaphore with {@link #VOLUNTEERING_THREAD_COUNT} number of permits to
    * control number of threads volunteering for bucket primaries.
    */
-  private final S volunteeringSemaphore = 
-    CFactory.createS(VOLUNTEERING_THREAD_COUNT);
-  
+  private final Semaphore volunteeringSemaphore =
+      new Semaphore(VOLUNTEERING_THREAD_COUNT);
+
   private volatile int lastActiveProfiles = 0;
   private volatile int numDataStores = 0;
   protected volatile ProxyBucketRegion[] buckets;
 
-  private Q preInitQueue;
+  private Queue<Object> preInitQueue;
   private final Object preInitQueueMonitor = new Object();
 
   /**
@@ -127,7 +118,7 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
   private RegionAdvisor(PartitionedRegion region) {
     super(region);
     synchronized (this.preInitQueueMonitor) {
-      this.preInitQueue = CFactory.createCLQ();
+      this.preInitQueue = new ConcurrentLinkedQueue<>();
     }
     this.clientBucketProfilesMap = new ConcurrentHashMap<Integer, Set<ServerBucketProfile>>();
   }
@@ -251,7 +242,7 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
    * 
    * @return the volunteering queue for use by this PR's BucketAdvisors
    */
-  public Q getVolunteeringQueue() {
+  public Queue<Runnable> getVolunteeringQueue() {
     return this.volunteeringQueue;
   }
   
@@ -262,7 +253,7 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
    * 
    * @return the semaphore for controlling number of volunteering threads
    */
-  public S getVolunteeringSemaphore() {
+  public Semaphore getVolunteeringSemaphore() {
     return this.volunteeringSemaphore;
   }
   
@@ -1813,7 +1804,7 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
   }
 
   public long adviseTotalMemoryAllocation() {
-    final AL total = CFactory.createAL(); 
+    final AtomicInteger total = new AtomicInteger(); 
     adviseFilter(new Filter() {
       public boolean include(Profile profile) {
         // probably not needed as all profiles for a partitioned region are Partition profiles
@@ -1827,23 +1818,6 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
     return total.get();
   }
 
-  public long adviseTotalMemoryAllocationForFPR() {
-    final AL total = CFactory.createAL(); 
-    adviseFilter(new Filter() {
-      public boolean include(Profile profile) {
-        // probably not needed as all profiles for a partitioned region are Partition profiles
-        if (profile instanceof PartitionProfile) {  
-          PartitionProfile p = (PartitionProfile)profile;
-          if (p.fixedPAttrs != null) {
-            total.addAndGet(p.localMaxMemory);
-          }
-        }
-        return false;
-      }
-    });    
-    return total.get();
-  }
-  
   /**
    * Returns true if there are any buckets created anywhere in the distributed
    * system for this partitioned region.

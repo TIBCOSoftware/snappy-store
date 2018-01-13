@@ -21,13 +21,12 @@ import com.gemstone.gemfire.internal.LinuxSystemStats;
 import com.gemstone.gemfire.internal.PureJavaMode;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.SolarisSystemStats;
-import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
-import com.gemstone.gemfire.internal.stats50.VMStats50;
+import com.gemstone.gemfire.internal.statistics.VMStats;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
@@ -148,16 +147,14 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
       }
     }
 
-    VMStatsContract vmStatsContract = system.getStatSampler().getVMStats();
-
-    if (vmStatsContract != null && vmStatsContract instanceof VMStats50){
-      VMStats50 vmStats50 = (VMStats50) vmStatsContract;
-      Statistics vmStats = vmStats50.getVMStats();
-      if (vmStats != null) {
-        this.vmStats = vmStats;
+    VMStats vmStats = system.getStatSampler().getVMStats();
+    if (vmStats != null) {
+      Statistics stats = vmStats.getVMStats();
+      if (stats != null) {
+        this.vmStats = stats;
       }
 
-      Statistics vmHeapStats = vmStats50.getVMHeapStats();
+      Statistics vmHeapStats = vmStats.getVMHeapStats();
       if (vmHeapStats != null) {
         this.vmHeapStats = vmHeapStats;
       }
@@ -165,8 +162,8 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
       // update disk store details
       Collection<DiskStoreImpl> diskStores = this.gemFireCache.listDiskStores();
 
-      for(DiskStoreImpl dsi : diskStores){
-        if(dsi.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())){
+      for (DiskStoreImpl dsi : diskStores) {
+        if (dsi.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
           this.diskStoreUUID = dsi.getDiskStoreUUID();
           this.diskStoreName = dsi.getName();
         }

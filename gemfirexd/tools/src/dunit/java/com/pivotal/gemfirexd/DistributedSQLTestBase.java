@@ -19,7 +19,6 @@ package com.pivotal.gemfirexd;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -527,18 +526,13 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     }
 
     //setGFXDProperty(props, "enable-network-partition-detection", "true");
-    // reduce timeout properties for faster WAN dunit runs
-    if (vmCount >= 8) {
-      System.setProperty("p2p.discoveryTimeout", "1000");
-      System.setProperty("p2p.joinTimeout", "2000");
-      setGFXDProperty(props, "member-timeout", "2000");
-      System.setProperty("p2p.leaveTimeout", "1000");
-      System.setProperty("p2p.socket_timeout", "4000");
-      System.setProperty("p2p.disconnectDelay", "500");
-      System.setProperty("p2p.handshakeTimeoutMs", "2000");
-      System.setProperty("p2p.lingerTime", "500");
-      System.setProperty("p2p.listenerCloseTimeout", "4000");
-    }
+    // reduce timeout properties for faster dunit runs
+    System.setProperty("p2p.discoveryTimeout", "2000");
+    System.setProperty("p2p.joinTimeout", "2000");
+    System.setProperty("p2p.minJoinTries", "1");
+    System.setProperty("p2p.disconnectDelay", "1000");
+    System.setProperty("p2p.listenerCloseTimeout", "5000");
+
     if (extraProps != null) {
       Enumeration<?> e = extraProps.propertyNames();
       while (e.hasMoreElements()) {
@@ -1980,7 +1974,8 @@ public class DistributedSQLTestBase extends DistributedTestBase {
         else {
           for (DiskStoreImpl ds : cache.listDiskStores()) {
             if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds.getName())
-                && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())) {
+                && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())
+                && !GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE.equals(ds.getName())) {
               requiresCleanup[2] = true;
               break;
             }
@@ -2091,9 +2086,9 @@ public class DistributedSQLTestBase extends DistributedTestBase {
                 hdfsStore.getName() + '"');
           }
           for (DiskStoreImpl ds : cache.listDiskStores()) {
-            if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds
-                .getName()) && !GfxdConstants.GFXD_DD_DISKSTORE_NAME
-                .equals(ds.getName())) {
+            if (!GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME.equals(ds.getName())
+                && !GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(ds.getName())
+                && !GfxdConstants.SNAPPY_DEFAULT_DELTA_DISKSTORE.equals(ds.getName())) {
               executeCleanup(stmt, "drop diskstore \"" + ds.getName() + '"');
             }
           }

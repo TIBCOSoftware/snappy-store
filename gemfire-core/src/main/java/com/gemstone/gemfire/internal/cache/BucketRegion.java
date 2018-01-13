@@ -80,9 +80,6 @@ import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.AtomicLong5;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -109,15 +106,14 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    * has been destroyed.
    */
   private static final long BUCKET_DESTROYED = Long.MIN_VALUE;
-  private final AL counter = CFactory.createAL();
-  private AL limit;
-  private final AL numOverflowOnDisk = CFactory.createAL();
-  private final AL numOverflowBytesOnDisk = CFactory.createAL();
-  private final AL numEntriesInVM = CFactory.createAL();
-  private final AL evictions = CFactory.createAL();
+  private final AtomicLong counter = new AtomicLong();
+  private AtomicLong limit;
+  private final AtomicLong numOverflowOnDisk = new AtomicLong();
+  private final AtomicLong numOverflowBytesOnDisk = new AtomicLong();
+  private final AtomicLong numEntriesInVM = new AtomicLong();
+  private final AtomicLong evictions = new AtomicLong();
   private static final ThreadLocal<BucketRegionIndexCleaner> bucketRegionIndexCleaner = 
       new ThreadLocal<BucketRegionIndexCleaner>() ;
-
 
   /**
    * Contains size in bytes of the values stored
@@ -268,7 +264,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     Boolean.getBoolean("gemfire.BucketRegion.alwaysFireLocalListeners");
   // gemfire.BucktRegion.alwaysFireLocalListeners=true
 
-  private volatile AtomicLong5 eventSeqNum = null;
+  private volatile AtomicLong eventSeqNum = null;
 
   public static final long INVALID_UUID = VMIdAdvisor.INVALID_ID;
 
@@ -288,7 +284,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   private final boolean lockGIIForSnapshot =
       Boolean.getBoolean("snappydata.snapshot.isolation.gii.lock");
 
-  public final AtomicLong5 getEventSeqNum() {
+  public final AtomicLong getEventSeqNum() {
     return eventSeqNum;
   }
 
@@ -335,11 +331,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
             getId());
         // needs to be set only once.
         if (parentBucket.eventSeqNum == null) {
-          parentBucket.eventSeqNum = new AtomicLong5(getId());
+          parentBucket.eventSeqNum = new AtomicLong(getId());
         }
       }
       if (this.partitionedRegion.getColocatedWith() == null) {
-        this.eventSeqNum = new AtomicLong5(getId());
+        this.eventSeqNum = new AtomicLong(getId());
       } else {
         PartitionedRegion parentPR = ColocationHelper
             .getLeaderRegion(this.partitionedRegion);
@@ -407,6 +403,22 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public final boolean isHosting() {
     return getBucketAdvisor().isHosting();
+  }
+
+  /**
+   * Use it only when threads are doing incremental updates. If updates are random
+   * then this method may not be optimal.
+   */
+  protected static boolean setIfGreater(AtomicLong l, long update) {
+    while (true) {
+      long cur = l.get();
+
+      if (update > cur) {
+        if (l.compareAndSet(cur, update))
+          return true;
+      } else
+        return false;
+    }
   }
 
   @Override
@@ -913,7 +925,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         // in that case its possible that a tail key is missed.
         // we can handle that by only incrementing the tailKey and never
         // setting it less than the current value.
-        this.eventSeqNum.setIfGreater(event.getTailKey());
+        setIfGreater(this.eventSeqNum, event.getTailKey());
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().fine(
               "WAN: On secondary bucket " + getId() + " , setting the seq number as "
@@ -925,7 +937,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public final long reserveWANSeqNumber(boolean checkWanPrimary) {
     long reservedSeqNumber = -1;
-    final AtomicLong5 eventSeqNum = this.eventSeqNum;
+    final AtomicLong eventSeqNum = this.eventSeqNum;
     if (eventSeqNum != null) {
       final PartitionedRegion pr = this.partitionedRegion;
       if (!checkWanPrimary
@@ -967,7 +979,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    */
 
   public void updateEventSeqNum(long l) {
-    this.eventSeqNum.setIfGreater(l);
+    setIfGreater(this.eventSeqNum, l);
     if (getCache().getLoggerI18n().fineEnabled()) {
       getCache().getLoggerI18n().fine(
           "WAN: On bucket " + getId() + " , setting the seq number as "
@@ -2655,7 +2667,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   public void setLimit(long limit) {
 	// This method can be called before object of this class is created
 	if (this.limit == null) {
-	  this.limit = CFactory.createAL();
+	  this.limit = new AtomicLong();
 	}
 	this.limit.set(limit);
   }
@@ -2742,15 +2754,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       this.numOverflowBytesOnDisk.set(0);
     }
   }
-
-  
-//   private final AL createCount = CFactory.createAL();
-//   private final AL putCount = CFactory.createAL();
-//   private final AL invalidateCount = CFactory.createAL();
-//   private final AL removeCount = CFactory.createAL();
-//   private final AL evictCount = CFactory.createAL();
-//   private final AL faultInCount = CFactory.createAL();
-//   private final ConcurrentHashMap<Object, Integer> debugMap = new ConcurrentHashMap<Object, Integer>();
 
   @Override
   public int calculateValueSize(Object val) {

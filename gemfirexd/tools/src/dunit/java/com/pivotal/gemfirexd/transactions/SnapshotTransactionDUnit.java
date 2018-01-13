@@ -8,7 +8,6 @@ import java.sql.Statement;
 import java.util.Collection;
 import java.util.Properties;
 
-import com.gemstone.gemfire.cache.ConflictException;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateProxy;
@@ -1097,7 +1096,6 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
     }
 
     startServerVMs(1, 0, null);
-    VM server3 = this.serverVMs.get(2);
 
     try {
       Statement stmt2 = conn.createStatement();
@@ -1117,7 +1115,12 @@ public class SnapshotTransactionDUnit extends DistributedSQLTestBase {
     }
 
     stopVMNum(-1);
+    Statement stmt = conn.createStatement();
+    stmt.execute("call sys.rebalance_all_buckets()");
     stopVMNum(-2);
+    stmt.execute("call sys.rebalance_all_buckets()");
+    stmt.close();
+
     try {
       Statement stmt2 = conn.createStatement();
       ResultSet rs = stmt2.executeQuery("select * from " + tableName);

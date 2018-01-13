@@ -49,7 +49,6 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.OSProcess;
 import com.gemstone.gemfire.internal.LogWriterImpl.GemFireThreadGroup;
 import com.gemstone.gemfire.internal.SocketCreator;
-import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.util.IOUtils;
@@ -770,7 +769,7 @@ public class AgentLauncher {
 
     // @see Bug #32760 - the bug is still possible in pure Java mode
     if (status != null && status.state != SHUTDOWN && status.pid > 0
-        && !CacheServerLauncher.isExistingProcess(status.pid)) {
+        && !com.gemstone.gemfire.internal.cache.Status.isExistingProcess(status.pid)) {
       status = createStatus(status, SHUTDOWN);
     }
 

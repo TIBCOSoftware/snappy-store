@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -43,8 +44,6 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -87,7 +86,7 @@ public class PartitionedIndex extends AbstractIndex
    * The map to contain IndexStatistics for MapRangeIndex containing indexes, So
    * that we will not have to create multiple copies for buckets.
    */
-  private final CM mapIndexStats = CFactory.createCM();
+  private final ConcurrentHashMap mapIndexStats = new ConcurrentHashMap();
 
   private final ReadWriteLock removeIndexLock = new ReentrantReadWriteLock();
 
@@ -607,7 +606,7 @@ public class PartitionedIndex extends AbstractIndex
     return stats;
   }
 
-  public CM getMapIndexStats() {
+  public ConcurrentHashMap getMapIndexStats() {
     return mapIndexStats;
   }
 

@@ -31,6 +31,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.statistics.SampleCollector;
 import com.gemstone.gemfire.internal.statistics.StatArchiveHandlerConfig;
 import com.gemstone.gemfire.internal.statistics.StatisticsSampler;
+import com.gemstone.gemfire.internal.statistics.VMStats;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 
 /**
@@ -71,7 +72,7 @@ public abstract class HostStatSampler
   private final LogWriterI18n log;
   private final StatSamplerStats samplerStats;
   
-  private VMStatsContract vmStats;
+  private VMStats vmStats;
   private SampleCollector sampleCollector;
 
   /**
@@ -376,11 +377,11 @@ public abstract class HostStatSampler
   }
   
   /**
-   * Returns the <code>VMStatsContract</code> for this VM.
+   * Returns the <code>VMStats</code> for this VM.
    *
    * @since 3.5
    */
-  public final VMStatsContract getVMStats() {
+  public final VMStats getVMStats() {
     return this.vmStats;
   }
 
@@ -457,7 +458,7 @@ public abstract class HostStatSampler
   private synchronized void initSpecialStats() {
     // add a vm resource
     long id = getSpecialStatsId();
-    this.vmStats = VMStatsContractFactory.create(getStatisticsManager(), id);
+    this.vmStats = new VMStats(getStatisticsManager(), id);
     initProcessStats(id);
   }
 

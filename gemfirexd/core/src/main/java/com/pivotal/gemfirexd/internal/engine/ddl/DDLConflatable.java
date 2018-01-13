@@ -144,6 +144,8 @@ public final class DDLConflatable extends GfxdDataSerializable implements
   private static final int F_IS_DROP_FK_CONSTRAINT = 0x04;
   private static final int F_IS_ADD_FK_CONSTRAINT = 0x08;
   private static final int F_DEFAULT_PERSISTENT = 0x10;
+  /** true if metastore should be stored in datadictionary */
+  private static final int F_METASTORE_IN_DD = 0x20;
 
   private String constraintName; 
   private Set<String> droppedFKConstraints = null;
@@ -157,7 +159,10 @@ public final class DDLConflatable extends GfxdDataSerializable implements
 
   public DDLConflatable(String sqlText, String defaultSchema,
       DDLConstantAction constantAction, Object additionalArgs,
-      DDLConflatable implicitSchema, long ddlId, boolean queueInitialized) {
+      DDLConflatable implicitSchema, long ddlId, boolean queueInitialized,
+      LanguageConnectionContext lcc) {
+    // by default newer versions always store metastore in datadictionary
+    this.additionalFlags = F_METASTORE_IN_DD;
     if (constantAction instanceof CreateTableConstantAction) {
       this.flags = GemFireXDUtils.set(this.flags, IS_CREATE_TABLE);
       this.colocatedWithTable = ((CreateTableConstantAction)constantAction)
@@ -172,7 +177,6 @@ public final class DDLConflatable extends GfxdDataSerializable implements
       this.additionalFlags = GemFireXDUtils.set(this.additionalFlags,
           F_HAS_IMPLICIT_SCHEMA);
     }
-    LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
     if (lcc != null && lcc.isDefaultPersistent()) {
       this.additionalFlags = GemFireXDUtils.set(this.additionalFlags,
           F_DEFAULT_PERSISTENT);
@@ -350,6 +354,10 @@ public final class DDLConflatable extends GfxdDataSerializable implements
   public final boolean defaultPersistent() {
     return GemFireXDUtils.isSet(this.additionalFlags,
         F_DEFAULT_PERSISTENT);
+  }
+
+  public final boolean persistMetaStoreInDataDictionary() {
+    return GemFireXDUtils.isSet(this.additionalFlags, F_METASTORE_IN_DD);
   }
 
   public final boolean isCreateIndex() {

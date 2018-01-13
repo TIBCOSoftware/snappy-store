@@ -77,7 +77,14 @@ namespace client {
      * list of all possible values for the property,
      * if the property can only take on a set of fixed values
      */
-    std::vector<std::string> m_possibleValues;
+    const char** m_possibleValues;
+    /* size of m_possibleValues array */
+    int m_numPossibleValues;
+    /**
+     * default value to be displayed, if m_possibleValues is NULL else
+     * the first one from m_possibleValues is displayed
+     */
+    const char* m_defaultValue;
     /** any {@link Flags} for the property */
     const int m_flags;
 
@@ -109,19 +116,18 @@ namespace client {
       F_IS_USER = 0x20,
       /** if this property is the "Password" attribute */
       F_IS_PASSWD = 0x40,
-      /** if this property is a password field that should be hidden */
-      F_IS_PASSWD_FIELD = 0x80,
       /** if the property can take on only boolean true/false values */
-      F_IS_BOOLEAN = 0x100,
+      F_IS_BOOLEAN = 0x80,
       /** if the property is a file or directory name */
-      F_IS_FILENAME = 0x200
+      F_IS_FILENAME = 0x100
     };
 
     ConnectionProperty(const std::string& propName, const char* helpMessage,
-        const char** possibleValues, const int flags);
+        const char** possibleValues, const char* defaultValue, const int flags);
 
     static void addProperty_(const std::string& propName,
-        const char* helpMessage, const char** possibleValues, const int flags);
+        const char* helpMessage, const char** possibleValues,
+        const char* defaultValue, const int flags);
 
     static const std::unordered_set<std::string>& getValidPropertyNames();
 
@@ -136,8 +142,16 @@ namespace client {
       return m_helpMessage;
     }
 
-    const std::vector<std::string>& getPossibleValues() const noexcept {
+    const char** getPossibleValues() const noexcept {
       return m_possibleValues;
+    }
+
+    const int getNumPossibleValues() const noexcept {
+      return m_numPossibleValues;
+    }
+
+    const char* getDefaultValue() const noexcept {
+      return m_defaultValue;
     }
 
     const int getFlags() const noexcept {

@@ -46,7 +46,7 @@ public class DirectBufferAllocator extends BufferAllocator {
   private static final DirectBufferAllocator globalInstance =
       new DirectBufferAllocator();
 
-  private static DirectBufferAllocator instance = globalInstance;
+  private static volatile DirectBufferAllocator instance = globalInstance;
 
   public static DirectBufferAllocator instance() {
     return instance;
