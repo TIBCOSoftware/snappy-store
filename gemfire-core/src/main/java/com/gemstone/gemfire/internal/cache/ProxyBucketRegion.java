@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.InternalGemFireError;
+import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionAttributes;
@@ -502,7 +503,11 @@ public final class ProxyBucketRegion implements Bucket {
       }
       
       persistenceAdvisor.initializeMembershipView();
-    } catch(RuntimeException e) {
+    } catch (DiskAccessException dae) {
+      this.partitionedRegion.handleDiskAccessException(dae, true);
+      throw dae;
+    }
+    catch(RuntimeException e) {
       exception=e;
       throw e;
     } finally {

@@ -42,6 +42,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.ResourceManagerStats;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.TIntHashSet;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
@@ -143,6 +144,140 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       txMgr.setObserver(null);
       GemFireXDQueryObserverHolder.clearInstance();
     }
+  }
+
+  public void testStateFlushWithTXHA() throws Exception {
+
+    java.sql.Connection conn = TestUtil.jdbcConn;
+    conn.setTransactionIsolation(getIsolationLevel());
+    Statement st = conn.createStatement();
+    conn.setAutoCommit(false);
+    st.execute("Create table trade.t1 (c1 int not null , c2 int not null, "
+        + "primary key(c1)) partition by primary key redundancy 1 buckets 3 persistent asynchronous " + getSuffix());
+    for(int i=0;i<226;i++) {
+      st.execute("insert into trade.t1 values (" + i + "," + i+")");
+    }
+    conn.commit();
+
+    VM server1 = serverVMs.get(0);
+    VM server3 = serverVMs.get(2);
+
+    server1.invoke(new SerializableRunnable() {
+      @Override
+      public void run() {
+
+        Object waitLock = new Object();
+        final boolean[] executed = new boolean[2];
+        Thread otherTx = new Thread(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              Connection otherConn = TestUtil.getConnection();
+              otherConn.setTransactionIsolation(getIsolationLevel());
+              otherConn.setAutoCommit(false);
+              Statement otherSt = otherConn.createStatement();
+              try {
+                for(int i=226;i<339;i++) {
+                  otherSt.execute("insert into trade.t1 values (" + i + "," + i+")");
+                }
+                while (!executed[0]) {
+                  synchronized (waitLock) {
+                    executed[1] = true;
+                    waitLock.wait();
+                  }
+                }
+                Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "Going to inesrt for one bucket");
+
+                PartitionedRegion r = (PartitionedRegion)Misc.getRegionForTable("TRADE.T1", true);
+
+                for(int i:r.getLocalBucketsListTestOnly()) {
+                  Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "Going to inesrt for bucket id " + i);
+                  otherSt.execute("insert into trade.t1 values (" + (i + 113 * 4) + ", 20)");
+                }
+
+                otherConn.commit();
+              } catch (Exception e) {
+                otherConn.rollback();
+                e.printStackTrace();
+              }
+            } catch (Exception e) {
+              e.printStackTrace();
+            } finally {
+            }
+          }
+        });
+
+        otherTx.start();
+        while (!executed[1]) {
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+        final TransactionObserver observer = new TransactionObserverAdapter() {
+
+          @Override
+          public void beforePerformOp(TXStateProxy tx) {
+            Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "before Op : Waiting for 10 sec");
+            try {
+              Thread.sleep(60000);
+              Thread.sleep(60000);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "before Op : Waiting for 10 sec over.");
+          }
+        };
+        final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+        if (cache != null) {
+          for (TXStateProxy tx : cache.getTxManager().getHostedTransactionsInProgress()) {
+            Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG,"attaching observer to " + tx);
+
+            tx.setObserver(observer);
+          }
+        }
+
+        /*invokeInEveryVM(new SerializableRunnable() {
+          @Override
+          public void run() {
+            failed = false;
+
+          }
+        });*/
+
+
+        synchronized (waitLock) {
+          executed[0] = true;
+          waitLock.notify();
+        }
+       /* try {
+          otherTx.join();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }*/
+      }
+    });
+    Thread.sleep(10000);
+    stopVMNum(-2);
+    stopVMNum(-3);
+
+    for(int i=700;i<1000;i++) {
+      try {
+        st.execute("insert into trade.t1 values (639, 20)");
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+
+    Thread.sleep(300000);
+
+    restartVMNums(-3);
+    restartVMNums(-2);
+    //restartVMNums(-1);
+
+    st.execute("select * from trade.t1");
   }
 
   // Uncomment after fixing
