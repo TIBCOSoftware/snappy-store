@@ -84,7 +84,6 @@ import com.gemstone.gemfire.internal.tcp.MemberShunnedException;
 import com.gemstone.gemfire.internal.tcp.Stub;
 import com.gemstone.gemfire.internal.tcp.TCPConduit;
 import com.gemstone.gemfire.internal.util.Breadcrumbs;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
 import com.gemstone.org.jgroups.Address;
 import com.gemstone.org.jgroups.Channel;
 import com.gemstone.org.jgroups.ChannelClosedException;
@@ -111,6 +110,7 @@ import com.gemstone.org.jgroups.stack.IpAddress;
 import com.gemstone.org.jgroups.stack.ProtocolStack;
 import com.gemstone.org.jgroups.util.GemFireTracer;
 import com.gemstone.gnu.trove.TObjectProcedure;
+import io.snappydata.collection.LongObjectHashMap;
 
 public final class JGroupMembershipManager implements MembershipManager {
 
@@ -3293,13 +3293,13 @@ public final class JGroupMembershipManager implements MembershipManager {
             calculatedMembers.add((JGroupMember)destinations[i].getNetMember());
           }
         } // send to explicit list
-        TIntObjectHashMap messages = new TIntObjectHashMap();
+        LongObjectHashMap<Message> messages = LongObjectHashMap.withExpectedSize(2);
         long startSer = theStats.startMsgSerialization();
         boolean firstMessage = true;
         for (Iterator it=calculatedMembers.iterator(); it.hasNext(); ) {
           JGroupMember mbr = (JGroupMember)it.next();
           short version = mbr.getAddress().getVersionOrdinal();
-          if ( !messages.containsKey(version) ) {
+          if (!messages.contains(version)) {
             Message jmsg = createJGMessage(msg, local, version);
             messages.put(version, jmsg);
             if (firstMessage) {
@@ -3316,7 +3316,7 @@ public final class JGroupMembershipManager implements MembershipManager {
           JGroupMember mbr = it.next();
           IpAddress to = mbr.getAddress();
           short version = to.getVersionOrdinal();
-          Message jmsg = (Message)messages.get(version);
+          Message jmsg = messages.get(version);
           if (DistributionManager.VERBOSE || logger.fineEnabled())
             logger.info(
                 LocalizedStrings.DEBUG,

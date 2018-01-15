@@ -17,6 +17,8 @@
 
 package com.gemstone.org.jgroups.oswego.concurrent;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * A utility class to set the default capacity of
  * BoundedChannel
@@ -31,8 +33,8 @@ public class DefaultChannelCapacity {
   public static final int INITIAL_DEFAULT_CAPACITY = 1024;
 
   /**  the current default capacity **/
-  private static final SynchronizedInt defaultCapacity_ = 
-    new SynchronizedInt(INITIAL_DEFAULT_CAPACITY);
+  private static final AtomicInteger defaultCapacity_ =
+    new AtomicInteger(INITIAL_DEFAULT_CAPACITY);
 
   /**
    * Set the default capacity used in 

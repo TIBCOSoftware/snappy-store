@@ -35,13 +35,13 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.RegionExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockService;
+import io.snappydata.collection.LongObjectHashMap;
 import io.snappydata.test.dunit.AsyncInvocation;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
@@ -488,7 +488,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     int[][] arrays5 = (int[][])async4.getResult();
 
     System.gc();
-    TIntObjectHashMap allKeys = new TIntObjectHashMap(numKeysPerVM * 5);
+    LongObjectHashMap<Object> allKeys = LongObjectHashMap.withExpectedSize(
+        numKeysPerVM * 5);
     checkUniqueKeys(allKeys, arrays1, "currentVM");
     checkUniqueKeys(allKeys, arrays2, getServerVM(1));
     checkUniqueKeys(allKeys, arrays3, getServerVM(2));
@@ -601,7 +602,7 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     // --------------- End function message execution -----------------
   }
 
-  private static void checkUniqueKeys(final TIntObjectHashMap allKeys,
+  private static void checkUniqueKeys(final LongObjectHashMap<Object> allKeys,
       final int[][] arrays, final Object vm) {
     Object oldVM;
     // check uniqueness of keys and also that each list is in ascending order

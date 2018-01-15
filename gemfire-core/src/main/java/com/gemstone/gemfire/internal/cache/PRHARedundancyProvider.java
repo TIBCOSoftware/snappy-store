@@ -60,7 +60,7 @@ import com.gemstone.gemfire.internal.cache.persistence.MembershipFlushRequest;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentStateListener;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.org.jgroups.util.StringId;
 
 /**

@@ -118,7 +118,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.UnsupportedGFXDVersionException;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataInputStream;

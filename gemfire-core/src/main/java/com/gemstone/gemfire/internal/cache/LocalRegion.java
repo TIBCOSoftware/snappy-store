@@ -210,7 +210,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;

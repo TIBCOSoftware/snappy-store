@@ -49,7 +49,7 @@ import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.CopyOnWriteHashMap;
 import io.snappydata.collection.ObjectObjectHashMap;

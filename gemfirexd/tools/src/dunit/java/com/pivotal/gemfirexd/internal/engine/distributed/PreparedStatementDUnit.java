@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
 package com.pivotal.gemfirexd.internal.engine.distributed;
 
 import java.io.DataInput;
@@ -41,7 +38,6 @@ import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.control.RebalanceFactory;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
-import com.gemstone.gnu.trove.TLongObjectHashMap;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
@@ -64,6 +60,7 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericParameter;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericParameterValueSet;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
+import io.snappydata.collection.LongObjectHashMap;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
@@ -2804,16 +2801,22 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
         return 0;
       }
 
-      TLongObjectHashMap stmntMap = wrapper.getStatementMapForTEST();
+      LongObjectHashMap<GfxdConnectionWrapper.StmntWeakReference> stmntMap =
+          wrapper.getStatementMapForTEST();
       // invoke a getStatement to force drain refQueue
-      final long[] allKeys = stmntMap.keys();
-      if (allKeys.length > 0) {
-        EmbedConnection conn = wrapper.getConnectionForSynchronization();
-        synchronized (conn.getConnectionSynchronization()) {
-          wrapper.getStatement(null, allKeys[0], true, false, false, false,
-              null, false, 0, 0);
+      final GfxdConnectionWrapper connWrapper = wrapper;
+      stmntMap.forEachWhile((key, stmtRef) -> {
+        try {
+          EmbedConnection conn = connWrapper.getConnectionForSynchronization();
+          synchronized (conn.getConnectionSynchronization()) {
+            connWrapper.getStatement(null, key, true, false, false, false,
+                null, false, 0, 0);
+          }
+          return false;
+        } catch (SQLException sqle) {
+          throw new RuntimeException(sqle);
         }
-      }
+      });
       mapSize = stmntMap.size();
       if (mapSize <= expectedSize) {
         return mapSize;

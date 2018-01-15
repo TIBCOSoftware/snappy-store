@@ -53,7 +53,6 @@ import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gnu.trove.TIntHashSet;
 import com.gemstone.gnu.trove.TIntIntHashMap;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -90,6 +89,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
+import io.snappydata.collection.LongObjectHashMap;
 
 
 /**
@@ -159,7 +159,7 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
 	 * of the modification list.In effect it is the intersection set of the modified columns
 	 * and the refColsImpacted.
 	 */
-	private final TIntObjectHashMap refColUpdtd2DependentCols; 
+	private final LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols;
 	protected final GemFireXDQueryObserver observer =
       GemFireXDQueryObserverHolder.getInstance();
 
@@ -314,9 +314,11 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
     this.container = ((MemConglomerate)this.constants.heapSCOCI.getConglom())
         .getGemFireContainer();
     if (!this.container.isTemporaryContainer()) {
-     TIntObjectHashMap tempRefColUpdtd2DependentCols =  new TIntObjectHashMap();
+      LongObjectHashMap<TIntHashSet> tempRefColUpdtd2DependentCols =
+          LongObjectHashMap.withExpectedSize(4);
       
-      Map<Integer, Boolean> refColsImpactedMap = this.getReferencedUpdateCols(tempRefColUpdtd2DependentCols);
+      Map<Integer, Boolean> refColsImpactedMap =
+          this.getReferencedUpdateCols(tempRefColUpdtd2DependentCols);
       if (refColsImpactedMap != null) {
         this.refColUpdtd2DependentCols = tempRefColUpdtd2DependentCols;
         
@@ -366,8 +368,9 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
     // GemStone changes END
    
   }
-    
-  private Map<Integer, Boolean> getReferencedUpdateCols(TIntObjectHashMap tempRefColUpdtd2DependentCols) {
+
+  private Map<Integer, Boolean> getReferencedUpdateCols(
+      LongObjectHashMap<TIntHashSet> tempRefColUpdtd2DependentCols) {
     int[] refKeyCols = this.container.getExtraTableInfo()
         .getReferencedKeyColumns();
     // check if any of the modified cols is a ref key column of a

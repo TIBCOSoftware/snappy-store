@@ -27,4 +27,9 @@ dependencies {
   compile "com.koloboke:koloboke-impl-common-jdk8:${kolobokeVersion}"
   // for classes using koloboke annotations
   compileOnly "com.koloboke:koloboke-compile:${kolobokeCompileVersion}"
+
+  compile project(subprojectBase + 'gemfire-shared')
+  compile project(subprojectBase + 'gemfire-trove')
 }
+
+archivesBaseName = 'snappydata-util'

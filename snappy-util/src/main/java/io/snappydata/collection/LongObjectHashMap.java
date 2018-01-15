@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -17,26 +17,29 @@
 
 package io.snappydata.collection;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-
 import com.koloboke.compile.KolobokeMap;
+import com.koloboke.function.LongObjPredicate;
 
 @KolobokeMap
-public abstract class IntObjectHashMap<V> {
+public abstract class LongObjectHashMap<V> {
 
-  public static <V> IntObjectHashMap<V> withExpectedSize(int expectedSize) {
-    return new KolobokeIntObjectHashMap<>(expectedSize);
+  public static <V> LongObjectHashMap<V> withExpectedSize(int expectedSize) {
+    return new KolobokeLongObjectHashMap<>(expectedSize);
   }
 
-  public abstract V put(int key, V value);
+  public abstract V put(long key, V value);
 
-  public abstract V get(int key);
+  public final void update(long key, V value) {
+    put(key, value);
+  }
 
-  public abstract Collection<V> values();
+  public abstract V get(long key);
 
-  public abstract Set<Map.Entry<Integer, V>> entrySet();
+  public abstract boolean contains(long key);
+
+  public abstract V remove(long key);
+
+  public abstract boolean forEachWhile(LongObjPredicate<? super V> predicate);
 
   public abstract int size();
 

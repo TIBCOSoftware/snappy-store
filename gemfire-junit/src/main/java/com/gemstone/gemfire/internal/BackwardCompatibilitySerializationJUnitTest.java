@@ -191,13 +191,13 @@ public class BackwardCompatibilitySerializationJUnitTest extends TestCase {
     
     // some msgs require distributed system
     Cache c = new CacheFactory().create();
-    for (Object o : DSFIDFactory.getDsfidmap2().getValues()) {
-      Supplier<?> cons = (Supplier<?>)o;
+    DSFIDFactory.getDsfidmap2().forEachWhile((id, cons) -> {
       if (cons != null) {
         DataSerializableFixedID ds = (DataSerializableFixedID)cons.get();
         checkSupportForRollingUpgrade(ds);
       }
-    }
+      return true;
+    });
     c.close();
   }
 

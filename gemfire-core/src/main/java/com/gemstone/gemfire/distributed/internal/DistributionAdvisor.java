@@ -45,7 +45,7 @@ import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 

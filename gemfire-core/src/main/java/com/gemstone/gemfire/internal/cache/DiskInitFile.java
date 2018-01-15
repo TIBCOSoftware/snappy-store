@@ -75,7 +75,7 @@ import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.TIntHashSet;
 import com.gemstone.gnu.trove.TLongHashSet;
 import com.gemstone.gnu.trove.TLongIterator;
-import io.snappydata.collection.IntObjectHashMap;
+import io.snappydata.collection.LongObjectHashMap;
 
 /**
  * Does all the IF file work for a DiskStoreImpl.
@@ -1837,14 +1837,15 @@ public class DiskInitFile implements DiskInitFileInterpreter {
       this.ifTotalRecordCount++;
     }
   }
-  
+
   private void saveCanonicalIds() {
-    IntObjectHashMap<Object> mappings = canonicalIdHolder.getAllMappings();
-    for (Map.Entry<Integer, Object> e : mappings.entrySet()) {
-      writeCanonicalId(e.getKey(), e.getValue());
-    }
+    LongObjectHashMap<Object> mappings = canonicalIdHolder.getAllMappings();
+    mappings.forEachWhile((id, v) -> {
+      writeCanonicalId((int)id, v);
+      return true;
+    });
   }
-  
+
   private void saveRevokedMembers() {
     for(PersistentMemberPattern revoked : revokedMembers) {
       writeRevokedMember(revoked);

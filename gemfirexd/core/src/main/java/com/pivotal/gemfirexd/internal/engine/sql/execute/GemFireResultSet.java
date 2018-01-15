@@ -44,7 +44,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GlobalRowLocation;

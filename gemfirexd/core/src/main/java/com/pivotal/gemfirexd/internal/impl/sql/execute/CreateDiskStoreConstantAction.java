@@ -28,7 +28,7 @@ import java.util.Map;
 
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.DiskStoreFactory;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;

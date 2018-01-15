@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 
 /**
  * A Hash set where every modification makes an internal copy 

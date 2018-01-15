@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.GemFireException;
+import com.gemstone.gemfire.GemFireIOException;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.execute.EmptyRegionFunctionException;
 import com.gemstone.gemfire.cache.execute.FunctionException;
@@ -60,8 +61,6 @@ import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntHashSet;
 import com.gemstone.gnu.trove.TIntIntHashMap;
 import com.gemstone.gnu.trove.TIntIterator;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
-import com.gemstone.gnu.trove.TIntObjectIterator;
 import com.gemstone.gnu.trove.TObjectObjectProcedure;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -93,6 +92,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import io.snappydata.collection.LongObjectHashMap;
 
 /**
  * This function is used to check the referenced key constraint after we
@@ -131,9 +131,9 @@ public final class ReferencedKeyCheckerMessage extends
   private int[] refImpactedCols;
   private transient FormatableBitSet refColsUpdtdBits;
   private transient int [] refCol2DVDPosMapping;
-  private final transient TIntObjectHashMap refColUpdtd2DependentCols;
+  private final transient LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols;
   private final transient TIntIntHashMap refCol2IndexMap;
-  private transient TIntObjectHashMap refColSameAfterModBitsMapping;
+  private transient LongObjectHashMap<byte[]> refColSameAfterModBitsMapping;
 
   private transient GfxdConnectionWrapper wrapperForMarkUnused;
 
@@ -221,9 +221,9 @@ public final class ReferencedKeyCheckerMessage extends
       final ArrayList<DataValueDescriptor[]> keyColumnValues,
       final ArrayList<RowLocation> keyColumnLocations,
       final GemFireContainer[] refContainers, boolean forUpdate, int [] refImpactedCols,
-      FormatableBitSet refColsUpdtdBits, TIntObjectHashMap refColUpdtd2DependentCols,
-      TIntIntHashMap refCol2IndexMap,
-      int[] colToDVDPosMapping ) {
+      FormatableBitSet refColsUpdtdBits,
+      LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols,
+      TIntIntHashMap refCol2IndexMap, int[] colToDVDPosMapping ) {
     super(rc, tx, getTimeStatsSettings(lcc), true);
     this.container = container;
     this.schemaName = container.getSchemaName();
@@ -587,8 +587,8 @@ public final class ReferencedKeyCheckerMessage extends
       final ArrayList<DataValueDescriptor[]> keyColumnValues,
       final ArrayList<RowLocation> keyColumnLocations, boolean flushTXPendingOps,
       boolean forUpdate, int[] referencedImpactedCols,FormatableBitSet refColsUpdtdBits, 
-      TIntObjectHashMap  refColUpdtd2DependentCols, TIntIntHashMap refCol2IndexMap,
-      int[] colNumToDVDMapping)
+      LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols,
+      TIntIntHashMap refCol2IndexMap, int[] colNumToDVDMapping)
       throws StandardException {
     final GemFireContainer[] refContainers = container.getExtraTableInfo()
         .getReferencedContainers();
@@ -885,7 +885,7 @@ public final class ReferencedKeyCheckerMessage extends
         boolean refColSameAfterModFlag = in.readBoolean();
         if (refColSameAfterModFlag) {
           int numElements = in.readInt();
-          this.refColSameAfterModBitsMapping = new TIntObjectHashMap(
+          this.refColSameAfterModBitsMapping = LongObjectHashMap.withExpectedSize(
               numElements);
           int byteArraySize = FormatableBitSet
               .numBytesFromBits(this.refColsUpdtdBits.getNumBitsSet());
@@ -989,17 +989,17 @@ public final class ReferencedKeyCheckerMessage extends
         if (this.refColSameAfterModBitsMapping != null) {
           out.writeBoolean(true);
           out.writeInt(this.refColSameAfterModBitsMapping.size());
-          TIntObjectIterator iter = this.refColSameAfterModBitsMapping
-              .iterator();
-          while (iter.hasNext()) {
-            iter.advance();
-            int rowNum = iter.key();
-            byte[] refColSameAfterUpdt = (byte[])iter.value();
-            out.writeInt(rowNum);
-            for (byte b : refColSameAfterUpdt) {
-              out.writeByte(b);
+          this.refColSameAfterModBitsMapping.forEachWhile((rowNum, refColSameAfterUpdt) -> {
+            try {
+              out.writeInt((int)rowNum);
+              for (byte b : refColSameAfterUpdt) {
+                out.writeByte(b);
+              }
+              return true;
+            } catch (IOException ioe) {
+              throw new GemFireIOException(ioe.getMessage(), ioe);
             }
-          }
+          });
         }
         else {
           out.writeBoolean(false);
@@ -1121,7 +1121,8 @@ public final class ReferencedKeyCheckerMessage extends
       if (old.equals(modified)) {
         // set bit on to indicate no change
         if (this.refColSameAfterModBitsMapping == null) {
-          this.refColSameAfterModBitsMapping = new TIntObjectHashMap();
+          this.refColSameAfterModBitsMapping =
+              LongObjectHashMap.withExpectedSize(8);
         }
         if (refColSameAfterUpdt == null) {
           int numCols = this.refColUpdtd2DependentCols.size();
@@ -1139,8 +1140,7 @@ public final class ReferencedKeyCheckerMessage extends
       else {
         // find all the dependent cols & set their bit on so that
         // data can be written for those cols
-        TIntHashSet dependentCols = (TIntHashSet)this.refColUpdtd2DependentCols
-            .get(colNum);
+        TIntHashSet dependentCols = this.refColUpdtd2DependentCols.get(colNum);
         TIntIterator ti = dependentCols.iterator();
         while (ti.hasNext()) {
 

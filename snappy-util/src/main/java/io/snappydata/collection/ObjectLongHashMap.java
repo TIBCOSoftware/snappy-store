@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -18,7 +18,7 @@
 package io.snappydata.collection;
 
 import java.util.Map;
-import java.util.Set;
+import java.util.function.ObjLongConsumer;
 
 import com.koloboke.compile.KolobokeMap;
 
@@ -32,7 +32,7 @@ public abstract class ObjectLongHashMap<K> {
   public static <K> ObjectLongHashMap<K> from(Map<K, Long> map) {
     KolobokeObjectLongHashMap<K> m = new KolobokeObjectLongHashMap<>(map.size());
     for (Map.Entry<K, Long> entry : map.entrySet()) {
-      m.justPut(entry.getKey(), entry.getValue());
+      m.put(entry.getKey(), entry.getValue());
     }
     return m;
   }
@@ -45,9 +45,7 @@ public abstract class ObjectLongHashMap<K> {
 
   public abstract long removeAsLong(K key);
 
-  public abstract Set<K> keySet();
-
-  public abstract Set<Map.Entry<K, Long>> entrySet();
+  public abstract void forEach(ObjLongConsumer<? super K> action);
 
   public abstract int size();
 

@@ -127,6 +127,7 @@ dependencies {
   compile project(subprojectBase + 'gemfire-util')
   compile project(subprojectBase + 'gemfire-shared')
   compile project(subprojectBase + 'gemfire-trove')
+  compile project(subprojectBase + 'snappydata-util')
 
   jcaCompile sourceSets.main.output
 }

@@ -125,11 +125,11 @@ import com.gemstone.gemfire.management.internal.cli.functions.CliFunctionResult;
 import com.gemstone.gemfire.pdx.internal.CheckTypeRegistryState;
 import com.gemstone.gemfire.pdx.internal.EnumId;
 import com.gemstone.gemfire.pdx.internal.EnumInfo;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
 import com.gemstone.org.jgroups.View;
 import com.gemstone.org.jgroups.protocols.pbcast.JoinRsp;
 import com.gemstone.org.jgroups.stack.IpAddress;
 import com.gemstone.org.jgroups.util.StreamableFixedID;
+import io.snappydata.collection.LongObjectHashMap;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -169,7 +169,8 @@ public final class DSFIDFactory implements DataSerializableFixedID {
 
   private static volatile boolean typesRegistered;
   private static final Supplier[] dsfidMap = new Supplier[256];
-  private static final TIntObjectHashMap dsfidMap2 = new TIntObjectHashMap(800);
+  private static final LongObjectHashMap<Supplier<?>> dsfidMap2 =
+      LongObjectHashMap.withExpectedSize(512);
 
   static {
     if (!InternalDistributedSystem.isHadoopGfxdLonerMode()) {
@@ -863,14 +864,14 @@ public final class DSFIDFactory implements DataSerializableFixedID {
         if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
           creator = dsfidMap[dsfid + Byte.MAX_VALUE + 1];
         } else {
-          creator = (Supplier<?>)dsfidMap2.get(dsfid);
+          creator = dsfidMap2.get(dsfid);
         }
         if (creator == null && !typesRegistered) {
           registerTypes();
           if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
             creator = dsfidMap[dsfid + Byte.MAX_VALUE + 1];
           } else {
-            creator = (Supplier<?>)dsfidMap2.get(dsfid);
+            creator = dsfidMap2.get(dsfid);
           }
         }
         if (creator != null) {
@@ -1130,7 +1131,7 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     return dsfidMap;
   }
 
-  static TIntObjectHashMap getDsfidmap2() {
+  static LongObjectHashMap<Supplier<?>> getDsfidmap2() {
     return dsfidMap2;
   }
 }

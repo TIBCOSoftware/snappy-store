@@ -148,7 +148,7 @@ import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
@@ -1552,30 +1552,34 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     try {
       // Wait for all the regions to get initialized before taking snapshot.
       lockForSnapshotRvv.readLock().lock();
-      Set<LocalRegion> regions = getApplicationRegions();
-      ObjectObjectHashMap<String, Map> snapshot =
-          ObjectObjectHashMap.withExpectedSize(regions.size());
-      for (LocalRegion region : regions) {
-        if (region.getPartitionAttributes() != null && ((PartitionedRegion)region).isDataStore()
-            && ((PartitionedRegion)region).concurrencyChecksEnabled) {
-          region.waitForData();
-          for (BucketRegion br : ((PartitionedRegion)region).getDataStore().getAllLocalBucketRegions()) {
-            // if null then create the rvv for that bucket.!
+      final ObjectObjectHashMap<String, Map> snapshot =
+          ObjectObjectHashMap.withExpectedSize(this.pathToRegion.size());
+      this.pathToRegion.values().forEach(region -> {
+        RegionVersionVector rvv;
+        if (region instanceof BucketRegion) {
+          BucketRegion br = (BucketRegion)region;
+          PartitionedRegion pr = br.getPartitionedRegion();
+          if (pr.concurrencyChecksEnabled) {
+            pr.waitForData();
+            // if null then create the rvv for that bucket!
             // For Initialization case, so that we have all the data before snapshot.
             br.waitForData();
-            snapshot.put(br.getFullPath(), br.getVersionVector().getSnapShotOfMemberVersion());
+            snapshot.put(br.getFullPath(),
+                br.getVersionVector().getSnapShotOfMemberVersion());
           }
-        } else if (region.getVersionVector() != null) {
-          // if null then create the rvv for that region.!
+        } else if ((rvv = region.getVersionVector()) != null &&
+            !region.isSecret() && !region.isUsedForMetaRegion() &&
+            !region.isInternalRegion() && !(region instanceof HARegion) &&
+            !region.isUsedForPartitionedRegionAdmin()) {
+          // if null then create the rvv for that region!
           // For Initialization case, so that we have all the data before snapshot.
           region.waitForData();
-          snapshot.put(region.getFullPath(), region.getVersionVector().getSnapShotOfMemberVersion());
+          snapshot.put(region.getFullPath(), rvv.getSnapShotOfMemberVersion());
         }
-      }
+      });
       return snapshot;
     } finally {
       lockForSnapshotRvv.readLock().unlock();
-
     }
   }
 

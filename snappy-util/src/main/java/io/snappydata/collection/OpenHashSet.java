@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -14,19 +14,18 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package com.gemstone.gemfire.internal.shared;
+package io.snappydata.collection;
 
 import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.Consumer;
 
 import com.gemstone.gemfire.internal.concurrent.MapCallback;
 import com.gemstone.gemfire.internal.concurrent.MapResult;
-import com.gemstone.gemfire.internal.concurrent.THashParameters;
-import com.gemstone.gnu.trove.TObjectHashingStrategy;
+import com.gemstone.gemfire.internal.shared.ClientResolverUtils;
 
 /**
  * An optimized HashSet using open addressing with quadratic probing.
@@ -47,7 +46,6 @@ public class OpenHashSet<E> extends AbstractSet<E>
   protected static final int MAX_CAPACITY = 1 << 30;
 
   protected final float loadFactor;
-  protected final TObjectHashingStrategy hashingStrategy;
 
   protected int size;
   protected int occupied;
@@ -56,7 +54,7 @@ public class OpenHashSet<E> extends AbstractSet<E>
   protected int mask;
   protected Object[] data;
 
-  protected Function<OpenHashSet<E>, Void> postRehashHook;
+  protected Consumer<OpenHashSet<E>> postRehashHook;
 
   @SuppressWarnings("unused")
   public OpenHashSet() {
@@ -64,22 +62,15 @@ public class OpenHashSet<E> extends AbstractSet<E>
   }
 
   public OpenHashSet(int initialCapacity) {
-    this(initialCapacity, 0.7f, THashParameters.DEFAULT_HASHING);
+    this(initialCapacity, 0.7f);
   }
 
   public OpenHashSet(int initialCapacity, float loadFactor) {
-    this(initialCapacity, loadFactor, THashParameters.DEFAULT_HASHING);
-  }
-
-  public OpenHashSet(int initialCapacity, float loadFactor,
-      TObjectHashingStrategy hashingStrategy) {
     final int capacity = nextPowerOf2(initialCapacity);
     this.loadFactor = loadFactor;
     this.growThreshold = (int)(loadFactor * capacity);
     this.mask = capacity - 1;
     this.data = new Object[capacity];
-    this.hashingStrategy = hashingStrategy != null
-        ? hashingStrategy : THashParameters.DEFAULT_HASHING;
   }
 
   public OpenHashSet(Collection<? extends E> c) {
@@ -87,12 +78,16 @@ public class OpenHashSet<E> extends AbstractSet<E>
     addAll(c);
   }
 
-  public static int keyHash(Object k, TObjectHashingStrategy hashingStrategy) {
-    return ClientResolverUtils.fastHashInt(hashingStrategy.computeHashCode(k));
+  protected int keyHash(Object key) {
+    return ClientResolverUtils.fastHashInt(key != null ? key.hashCode() : 0);
+  }
+
+  protected boolean keyEquals(Object mapKey, Object key) {
+    return mapKey.equals(key);
   }
 
   protected final int insertionIndex(final Object[] data, final Object key,
-      final int hash, final TObjectHashingStrategy hashingStrategy) {
+      final int hash) {
     final int mask = this.mask;
     int pos = hash & mask;
     // try to fill the REMOVED slot but only if it is a new insertion
@@ -104,11 +99,11 @@ public class OpenHashSet<E> extends AbstractSet<E>
       if (mapKey != null) {
         if (mapKey == REMOVED) {
           removedPos = pos;
-        } else if (hashingStrategy.equals(mapKey, key)) {
+        } else if (keyEquals(mapKey, key)) {
           // return already present key position as negative
           return -pos - 1;
         }
-        // quadratic probing with position increase by 1, 2, 3, ...
+        // quadratic probing (increase delta)
         pos = (pos + delta) & mask;
         delta++;
       } else {
@@ -137,14 +132,14 @@ public class OpenHashSet<E> extends AbstractSet<E>
   }
 
   protected final int index(final Object[] data, final Object key,
-      final int hash, final TObjectHashingStrategy hashingStrategy) {
+      final int hash) {
     final int mask = this.mask;
     int pos = hash & mask;
     int delta = 1;
     while (true) {
       final Object mapKey = data[pos];
       if (mapKey != null) {
-        if (mapKey != REMOVED && hashingStrategy.equals(mapKey, key)) {
+        if (mapKey != REMOVED && keyEquals(mapKey, key)) {
           return pos;
         } else {
           // quadratic probing with position increase by 1, 2, 3, ...
@@ -159,8 +154,7 @@ public class OpenHashSet<E> extends AbstractSet<E>
 
   protected final <K, C, P> Object create(final K key,
       final MapCallback<K, E, C, P> creator, final C context, final P params,
-      final MapResult result, final int hash,
-      final TObjectHashingStrategy hashingStrategy) {
+      final MapResult result, final int hash) {
     final Object[] data = this.data;
     final int mask = this.mask;
     int pos = hash & mask;
@@ -173,7 +167,7 @@ public class OpenHashSet<E> extends AbstractSet<E>
       if (mapKey != null) {
         if (mapKey == REMOVED) {
           removedPos = pos;
-        } else if (hashingStrategy.equals(mapKey, key)) {
+        } else if (keyEquals(mapKey, key)) {
           // return old key
           return mapKey;
         }
@@ -200,14 +194,14 @@ public class OpenHashSet<E> extends AbstractSet<E>
     }
   }
 
-  public void setPostRehashHook(Function<OpenHashSet<E>, Void> hook) {
+  public final void setPostRehashHook(Consumer<OpenHashSet<E>> hook) {
     this.postRehashHook = hook;
   }
 
   public final Object addKey(final Object key, final boolean replace,
-      final int hash, final TObjectHashingStrategy hashingStrategy) {
+      final int hash) {
     final Object[] data = this.data;
-    final int pos = insertionIndex(data, key, hash, hashingStrategy);
+    final int pos = insertionIndex(data, key, hash);
     if (pos >= 0) {
       doInsert(data, key, pos);
       return null;
@@ -222,23 +216,19 @@ public class OpenHashSet<E> extends AbstractSet<E>
   }
 
   public final Object getKey(final Object key) {
-    final TObjectHashingStrategy hashingStrategy = this.hashingStrategy;
     final Object[] data = this.data;
-    final int pos = index(data, key, keyHash(key, hashingStrategy),
-        hashingStrategy);
+    final int pos = index(data, key, keyHash(key));
     if (pos >= 0) return data[pos];
     else return null;
   }
 
   public final Object removeKey(final Object key) {
-    final TObjectHashingStrategy hashingStrategy = this.hashingStrategy;
-    return removeKey(key, keyHash(key, hashingStrategy), hashingStrategy);
+    return removeKey(key, keyHash(key));
   }
 
-  private Object removeKey(final Object key, final int hash,
-      final TObjectHashingStrategy hashingStrategy) {
+  private Object removeKey(final Object key, final int hash) {
     final Object[] data = this.data;
-    final int pos = index(data, key, hash, hashingStrategy);
+    final int pos = index(data, key, hash);
     if (pos >= 0) {
       final Object mapKey = data[pos];
       doRemove(data, pos);
@@ -250,16 +240,13 @@ public class OpenHashSet<E> extends AbstractSet<E>
   }
 
   public boolean contains(Object key) {
-    final TObjectHashingStrategy hashingStrategy = this.hashingStrategy;
-    return index(data, key, keyHash(key, hashingStrategy), hashingStrategy) >= 0;
+    return index(data, key, keyHash(key)) >= 0;
   }
 
   @Override
   public boolean add(E key) {
-    final TObjectHashingStrategy hashingStrategy = this.hashingStrategy;
     final Object[] data = this.data;
-    final int pos = insertionIndex(data, key, keyHash(key, hashingStrategy),
-        hashingStrategy);
+    final int pos = insertionIndex(data, key, keyHash(key));
     if (pos >= 0) {
       doInsert(data, key, pos);
       return true;
@@ -270,9 +257,7 @@ public class OpenHashSet<E> extends AbstractSet<E>
 
   @Override
   public boolean remove(Object key) {
-    final TObjectHashingStrategy hashingStrategy = this.hashingStrategy;
-    return removeKey(key, keyHash(key, hashingStrategy),
-        hashingStrategy) != null;
+    return removeKey(key, keyHash(key)) != null;
   }
 
   @SuppressWarnings("NullableProblems")
@@ -288,10 +273,6 @@ public class OpenHashSet<E> extends AbstractSet<E>
 
   public final int capacity() {
     return this.data.length;
-  }
-
-  public final TObjectHashingStrategy getHashingStrategy() {
-    return this.hashingStrategy;
   }
 
   @Override
@@ -339,13 +320,12 @@ public class OpenHashSet<E> extends AbstractSet<E>
 
     final Object[] newData = new Object[newCapacity];
     final int newMask = newCapacity - 1;
-    final TObjectHashingStrategy hashingStrategy = this.hashingStrategy;
 
     int oldPos = 0;
     while (oldPos < capacity) {
       final Object d = data[oldPos];
       if (d != null && d != REMOVED) {
-        final int newHash = keyHash(d, hashingStrategy);
+        final int newHash = keyHash(d);
         int newPos = newHash & newMask;
         int delta = 1;
         // No need to check for equality here when we insert.
@@ -370,11 +350,11 @@ public class OpenHashSet<E> extends AbstractSet<E>
     this.growThreshold = (int)(loadFactor * newCapacity);
 
     if (this.postRehashHook != null) {
-      this.postRehashHook.apply(this);
+      this.postRehashHook.accept(this);
     }
   }
 
-  protected static int checkCapacity(int capacity) {
+  public static int checkCapacity(int capacity) {
     if (capacity > 0 && capacity <= MAX_CAPACITY) {
       return capacity;
     } else if (capacity == 0) {

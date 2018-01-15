@@ -688,8 +688,8 @@ if (!rootProject.hasProperty('store')) {
 
 task generateSources {
   dependsOn subprojectBase + 'gemfire-jgroups:jgMagic'
-  dependsOn subprojectBase + 'gemfire-util:compileJava'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'
+  dependsOn subprojectBase + 'snappydata-util:compileJava'
   dependsOn subprojectBase + 'snappydata-store-core:compileJavacc'
   dependsOn subprojectBase + 'snappydata-store-core:generatePropertiesFiles'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'

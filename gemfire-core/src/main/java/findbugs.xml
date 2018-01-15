@@ -90,10 +90,6 @@
        <Bug pattern="SF_SWITCH_FALLTHROUGH" /> <!-- SF -->
      </Match>
      <Match>
-       <Class name="com.gemstone.gemfire.org.jgroups.blocks.ConnectionTableNIO" />
-       <Bug pattern="SF_SWITCH_FALLTHROUGH" /> <!-- SF -->
-     </Match>
-     <Match>
        <Class name="com.gemstone.gemfire.org.jgroups.protocols.VERIFY_SUSPECT" />
        <Bug pattern="SF_SWITCH_FALLTHROUGH" /> <!-- SF -->
      </Match>

@@ -16,7 +16,7 @@
  */
 package com.gemstone.gemfire.internal.cache.persistence;
 
-import io.snappydata.collection.IntObjectHashMap;
+import io.snappydata.collection.LongObjectHashMap;
 import io.snappydata.collection.ObjectLongHashMap;
 
 /**
@@ -33,8 +33,8 @@ public class CanonicalIdHolder {
   /**
    * Map of integer representation to canonicalized member ids.
    */
-  private final IntObjectHashMap<Object> idToObject =
-      IntObjectHashMap.withExpectedSize(10);
+  private final LongObjectHashMap<Object> idToObject =
+      LongObjectHashMap.withExpectedSize(10);
   
   /**
    * Map of canonicalized member ids to integer representation.
@@ -87,7 +87,7 @@ public class CanonicalIdHolder {
    * @return a map of id to object for all objects
    * held by this canonical id holder.
    */
-  public IntObjectHashMap<Object> getAllMappings() {
+  public LongObjectHashMap<Object> getAllMappings() {
     return idToObject;
   }
 }

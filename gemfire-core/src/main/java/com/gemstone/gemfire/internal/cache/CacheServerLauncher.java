@@ -51,7 +51,7 @@ import com.gemstone.gemfire.internal.process.StartupStatus;
 import com.gemstone.gemfire.internal.process.StartupStatusListener;
 import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.OpenHashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.util.JavaCommandBuilder;
 
 import static com.gemstone.gemfire.internal.cache.Status.*;
