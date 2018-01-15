@@ -457,6 +457,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       this.eventsToBePublished = eventsToBePublished;
       if (numRegions > 0) {
         this.viewVersions = new long[numRegions];
+        for (int i = 0; i < numRegions; i++) {
+          this.viewVersions[i] = -1;
+        }
         this.viewAdvisors = new DistributionAdvisor[numRegions];
       }
       else {
@@ -1368,7 +1371,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       new TObjectLongProcedure() {
     @Override
     public boolean execute(Object o, long viewVersion) {
-      if (viewVersion > 0) {
+      if (viewVersion != -1) {
         DistributionAdvisor advisor = (DistributionAdvisor)o;
         advisor.endOperation(viewVersion);
         if (LOG_VERSIONS) {
@@ -1499,7 +1502,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (insertionIndex >= 0) {
               long viewVersion = -1;
               viewVersion = advisor.startOperation();
-              if (viewVersion > 0) {
+              if (viewVersion != -1) {
                 versions.putAtIndex(advisor, viewVersion, insertionIndex);
                 if (LOG_VERSIONS) {
                   getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
@@ -2490,7 +2493,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (viewVersions != null) {
               viewVersions[index] = advisor.startOperation();
               viewAdvisors[index] = advisor;
-              if (LOG_VERSIONS && viewVersions[index] > 0) {
+              if (LOG_VERSIONS && viewVersions[index] != -1) {
                 getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
                     "TXCommit: " + getTransactionId().shortToString()
                         + " dispatching operation for " + pbr.getFullPath()
@@ -2515,7 +2518,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (viewVersions != null) {
               viewVersions[index] = advisor.startOperation();
               viewAdvisors[index] = advisor;
-              if (LOG_VERSIONS && viewVersions[index] > 0) {
+              if (LOG_VERSIONS && viewVersions[index] != -1) {
                 getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
                     "TXCommit: " + getTransactionId().shortToString()
                         + " dispatching operation for " + dreg.getFullPath()

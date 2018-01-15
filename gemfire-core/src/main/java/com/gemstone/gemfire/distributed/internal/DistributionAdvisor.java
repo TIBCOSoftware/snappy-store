@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireIOException;
@@ -169,7 +170,7 @@ public class DistributionAdvisor  {
    * of the profile set.  This is volatile since it is used in a tight loop
    * while waiting for operations to complete
    */
-  private AtomicLong previousVersionOpCount = new AtomicLong(0);
+  private final AtomicLong previousVersionOpCount = new AtomicLong(0);
   /**
    * the number of operations in-progress for the current version of
    * the profile set
