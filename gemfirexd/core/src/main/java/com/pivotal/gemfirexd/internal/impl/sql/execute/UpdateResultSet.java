@@ -89,7 +89,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
-import io.snappydata.collection.LongObjectHashMap;
+import io.snappydata.collection.IntObjectHashMap;
 
 
 /**
@@ -159,7 +159,7 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
 	 * of the modification list.In effect it is the intersection set of the modified columns
 	 * and the refColsImpacted.
 	 */
-	private final LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols;
+	private final IntObjectHashMap<TIntHashSet> refColUpdtd2DependentCols;
 	protected final GemFireXDQueryObserver observer =
       GemFireXDQueryObserverHolder.getInstance();
 
@@ -314,8 +314,8 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
     this.container = ((MemConglomerate)this.constants.heapSCOCI.getConglom())
         .getGemFireContainer();
     if (!this.container.isTemporaryContainer()) {
-      LongObjectHashMap<TIntHashSet> tempRefColUpdtd2DependentCols =
-          LongObjectHashMap.withExpectedSize(4);
+      IntObjectHashMap<TIntHashSet> tempRefColUpdtd2DependentCols =
+          IntObjectHashMap.withExpectedSize(4);
       
       Map<Integer, Boolean> refColsImpactedMap =
           this.getReferencedUpdateCols(tempRefColUpdtd2DependentCols);
@@ -370,7 +370,7 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
   }
 
   private Map<Integer, Boolean> getReferencedUpdateCols(
-      LongObjectHashMap<TIntHashSet> tempRefColUpdtd2DependentCols) {
+      IntObjectHashMap<TIntHashSet> tempRefColUpdtd2DependentCols) {
     int[] refKeyCols = this.container.getExtraTableInfo()
         .getReferencedKeyColumns();
     // check if any of the modified cols is a ref key column of a

@@ -92,7 +92,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import io.snappydata.collection.LongObjectHashMap;
+import io.snappydata.collection.IntObjectHashMap;
 
 /**
  * This function is used to check the referenced key constraint after we
@@ -131,9 +131,9 @@ public final class ReferencedKeyCheckerMessage extends
   private int[] refImpactedCols;
   private transient FormatableBitSet refColsUpdtdBits;
   private transient int [] refCol2DVDPosMapping;
-  private final transient LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols;
+  private final transient IntObjectHashMap<TIntHashSet> refColUpdtd2DependentCols;
   private final transient TIntIntHashMap refCol2IndexMap;
-  private transient LongObjectHashMap<byte[]> refColSameAfterModBitsMapping;
+  private transient IntObjectHashMap<byte[]> refColSameAfterModBitsMapping;
 
   private transient GfxdConnectionWrapper wrapperForMarkUnused;
 
@@ -222,7 +222,7 @@ public final class ReferencedKeyCheckerMessage extends
       final ArrayList<RowLocation> keyColumnLocations,
       final GemFireContainer[] refContainers, boolean forUpdate, int [] refImpactedCols,
       FormatableBitSet refColsUpdtdBits,
-      LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols,
+      IntObjectHashMap<TIntHashSet> refColUpdtd2DependentCols,
       TIntIntHashMap refCol2IndexMap, int[] colToDVDPosMapping ) {
     super(rc, tx, getTimeStatsSettings(lcc), true);
     this.container = container;
@@ -587,7 +587,7 @@ public final class ReferencedKeyCheckerMessage extends
       final ArrayList<DataValueDescriptor[]> keyColumnValues,
       final ArrayList<RowLocation> keyColumnLocations, boolean flushTXPendingOps,
       boolean forUpdate, int[] referencedImpactedCols,FormatableBitSet refColsUpdtdBits, 
-      LongObjectHashMap<TIntHashSet> refColUpdtd2DependentCols,
+      IntObjectHashMap<TIntHashSet> refColUpdtd2DependentCols,
       TIntIntHashMap refCol2IndexMap, int[] colNumToDVDMapping)
       throws StandardException {
     final GemFireContainer[] refContainers = container.getExtraTableInfo()
@@ -885,7 +885,7 @@ public final class ReferencedKeyCheckerMessage extends
         boolean refColSameAfterModFlag = in.readBoolean();
         if (refColSameAfterModFlag) {
           int numElements = in.readInt();
-          this.refColSameAfterModBitsMapping = LongObjectHashMap.withExpectedSize(
+          this.refColSameAfterModBitsMapping = IntObjectHashMap.withExpectedSize(
               numElements);
           int byteArraySize = FormatableBitSet
               .numBytesFromBits(this.refColsUpdtdBits.getNumBitsSet());
@@ -991,7 +991,7 @@ public final class ReferencedKeyCheckerMessage extends
           out.writeInt(this.refColSameAfterModBitsMapping.size());
           this.refColSameAfterModBitsMapping.forEachWhile((rowNum, refColSameAfterUpdt) -> {
             try {
-              out.writeInt((int)rowNum);
+              out.writeInt(rowNum);
               for (byte b : refColSameAfterUpdt) {
                 out.writeByte(b);
               }
@@ -1122,7 +1122,7 @@ public final class ReferencedKeyCheckerMessage extends
         // set bit on to indicate no change
         if (this.refColSameAfterModBitsMapping == null) {
           this.refColSameAfterModBitsMapping =
-              LongObjectHashMap.withExpectedSize(8);
+              IntObjectHashMap.withExpectedSize(8);
         }
         if (refColSameAfterUpdt == null) {
           int numCols = this.refColUpdtd2DependentCols.size();

@@ -80,6 +80,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   private volatile Set<PersistentMemberID> allMembersWaitingFor;
   private volatile Set<PersistentMemberID> offlineMembersWaitingFor;
   protected final Object lock;
+  private static PersistenceAdvisorObserver observer = null;
   
   public static final boolean TRACE = true;//Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
   
@@ -747,6 +748,10 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
         replicates + " are " + remoteStates.stateOnPeers + " remotestate persistent ids " + remoteStates.persistentIds);
 
     boolean equal = false;
+    if (observer != null) {
+      observer.observe(regionPath);
+    }
+
     for(Map.Entry<InternalDistributedMember, PersistentMemberState> entry: remoteStates.stateOnPeers.entrySet()) {
 
       InternalDistributedMember member = entry.getKey();
@@ -1345,5 +1350,14 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   
   public boolean isOnline() {
     return online;
+  }
+
+  public static interface PersistenceAdvisorObserver {
+    default public void observe(String regionPath) {
+    }
+  }
+
+  public static void setPersistenceAdvisorObserver(PersistenceAdvisorObserver o) {
+     observer = o;
   }
 }

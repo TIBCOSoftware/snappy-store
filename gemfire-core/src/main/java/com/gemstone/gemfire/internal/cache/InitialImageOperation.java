@@ -5016,11 +5016,15 @@ public class InitialImageOperation  {
     public SnapshotBucketLockReleaseMessage() {
     }
 
-    public SnapshotBucketLockReleaseMessage(String regionPath, int processorId) {
+    private SnapshotBucketLockReleaseMessage(String regionPath, int processorId) {
       this.regionPath = regionPath;
       this.processorId = processorId;
     }
 
+    @Override
+    public int getProcessorId() {
+      return this.processorId;
+    }
 
     public static void send(
         InternalDistributedMember members, DM dm, String regionPath) throws ReplyException {
@@ -5079,6 +5083,12 @@ public class InitialImageOperation  {
           replyMsg.setRecipient(getSender());
           replyMsg.setException(replyException);
           dm.putOutgoing(replyMsg);
+        } else {
+          if (logger.fineEnabled()) {
+            logger.fine("SnapshotBucketLockReleaseMessage.process done for <" +
+                this + '>');
+          }
+          ReplyMessage.send(getSender(), this.processorId, null, dm, null);
         }
       }
     }

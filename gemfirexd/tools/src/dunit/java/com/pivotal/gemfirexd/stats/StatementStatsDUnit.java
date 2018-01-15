@@ -780,8 +780,8 @@ public class StatementStatsDUnit extends DistributedSQLTestBase {
 
     long totExecTime = s.getLong(prefix + "TotalExecutionTime");
     // TotalExecutionTime notes in wall clock millis while ExecuteTime notes
-    // in nanoTime, so the two can be different by a millisecond
-    if ((executeTime - totExecTime) > 1000000L) {
+    // in nanoTime, so the two can be different by a few milliseconds
+    if ((executeTime - totExecTime) > 5000000L) {
       throw new TestException("Total Execution time " + totExecTime +
           " cannot be less than execute time " + executeTime);
     }

@@ -217,6 +217,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.TransformUtils;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
@@ -414,7 +415,7 @@ public class PartitionedRegion extends LocalRegion implements
   private int columnMaxDeltaRows = -1;
 
   /** Minimum size for ColumnBatches. */
-  private int columnMinDeltaRows = 200;
+  private int columnMinDeltaRows = SystemProperties.SNAPPY_MIN_COLUMN_DELTA_ROWS;
 
   /** default compression used by the column store */
   private String columnCompressionCodec;

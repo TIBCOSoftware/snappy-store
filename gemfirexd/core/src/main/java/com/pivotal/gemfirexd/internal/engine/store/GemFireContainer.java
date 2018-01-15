@@ -522,7 +522,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (metaData == null) return null;
         ((PartitionedRegion)this.region).setColumnBatchSizes(
             metaData.columnBatchSize, metaData.columnMaxDeltaRows,
-            GfxdConstants.SNAPPY_MIN_COLUMN_DELTA_ROWS);
+            SystemProperties.SNAPPY_MIN_COLUMN_DELTA_ROWS);
         return metaData;
       }
       return externalTableMetaData.get();
