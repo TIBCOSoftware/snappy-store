@@ -21,14 +21,16 @@ public class SnappyExternalTableStats {
   private String tableName;
   private String tableType;
   private String provider;
+  private String dataSourcePath;
   private Object externalStore;
 
   public SnappyExternalTableStats(String tableName, String tableType,
-      String provider, Object externalStore) {
+      String provider, Object externalStore, String dataSourcePath) {
     this.tableName = tableName;
     this.tableType = tableType;
     this.provider = provider;
     this.externalStore = externalStore;
+    this.dataSourcePath = dataSourcePath;
   }
 
 
@@ -47,4 +49,9 @@ public class SnappyExternalTableStats {
   public Object getExternalStore() {
     return externalStore;
   }
+
+  public String getDataSourcePath() {
+    return dataSourcePath;
+  }
+
 }
