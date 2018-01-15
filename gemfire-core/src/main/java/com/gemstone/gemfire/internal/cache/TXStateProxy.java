@@ -2987,28 +2987,47 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     // for state flush
     DistributionAdvisor advisor = null;
     long viewVersion = -1;
-    if (dataRegion != null) {
-      if (hasPossibleRecipients && !isSnapshot()) {
-        advisor = dataRegion.getDistributionAdvisor();
-        viewVersion = advisor.startOperation();
-        if (LOG_VERSIONS) {
+
+    try {
+      if (dataRegion != null) {
+        if (hasPossibleRecipients && !isSnapshot()) {
+          advisor = dataRegion.getDistributionAdvisor();
+          viewVersion = advisor.startOperation();
+          if (LOG_VERSIONS) {
+            logger = r.getLogWriterI18n();
+            logger.info(LocalizedStrings.DEBUG, "TX: "
+                + getTransactionId().shortToString()
+                + " dispatching operation in view version " + viewVersion);
+          }
+        }
+        TransactionObserver observer = getObserver();
+        if (observer != null) {
           logger = r.getLogWriterI18n();
           logger.info(LocalizedStrings.DEBUG, "TX: "
               + getTransactionId().shortToString()
               + " dispatching operation in view version " + viewVersion);
+          observer.beforePerformOp(this);
         }
-      }
-      addAffectedRegion(dataRegion);
-    }
-    else {
-      addAffectedRegion(r);
-    }
-    if (lockPolicy == LockingPolicy.SNAPSHOT) {
-      event.setTXState(this);
-      return performOp.operateOnSharedDataView(event, expectedOldValue, cacheWrite, lastModified, flags);
-    }
 
-    try {
+        // if checkTXState fails here..we don't have endOperation
+        addAffectedRegion(dataRegion);
+      }
+      else {
+        TransactionObserver observer = getObserver();
+        if (observer != null) {
+          logger = r.getLogWriterI18n();
+          logger.info(LocalizedStrings.DEBUG, "TX: "
+              + getTransactionId().shortToString()
+              + " dispatching operation in view version " + viewVersion);
+          observer.beforePerformOp(this);
+        }
+        // if checkTXState fails here..we don't have endOperation
+        addAffectedRegion(r);
+      }
+      if (lockPolicy == LockingPolicy.SNAPSHOT) {
+        event.setTXState(this);
+        return performOp.operateOnSharedDataView(event, expectedOldValue, cacheWrite, lastModified, flags);
+      }
       try {
         // in case of a local operation flush the pending ops else the batched
         // information can become incorrect

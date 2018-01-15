@@ -48,7 +48,8 @@ public class VMStatsRegionEntryHeap extends VMStatsRegionEntry
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -56,7 +57,7 @@ public class VMStatsRegionEntryHeap extends VMStatsRegionEntry
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -125,7 +126,7 @@ public class VMStatsRegionEntryHeap extends VMStatsRegionEntry
     this.missCount = 0;
   }
   @Override
-  public boolean hasStats() {
+  public final boolean hasStats() {
     return true;
   }
   private Object key;
@@ -134,7 +135,7 @@ public class VMStatsRegionEntryHeap extends VMStatsRegionEntry
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   private volatile Object value;
@@ -154,12 +155,27 @@ public class VMStatsRegionEntryHeap extends VMStatsRegionEntry
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
   @Override
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return this.value;
   }
   @Override
-  protected void setValueField(Object v) {
+  protected final void setValueField(Object v) {
     this.value = v;
+  }
+  @Override
+  public final Token getValueAsToken() {
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
+  }
+  @Override
+  public final boolean isValueNull() {
+    return this.value == null;
   }
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {

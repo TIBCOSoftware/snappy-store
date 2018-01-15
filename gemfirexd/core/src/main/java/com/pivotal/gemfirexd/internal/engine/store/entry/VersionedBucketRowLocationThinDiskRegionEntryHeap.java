@@ -82,7 +82,8 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -90,7 +91,7 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -101,11 +102,11 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  protected void initialize(RegionEntryContext context, Object value) {
+  protected final void initialize(RegionEntryContext context, Object value) {
     diskInitialize(context, value);
   }
   @Override
-  public int updateAsyncEntrySize(EnableLRU capacityController) {
+  public final int updateAsyncEntrySize(EnableLRU capacityController) {
     throw new IllegalStateException("should never be called");
   }
   private void diskInitialize(RegionEntryContext context, Object value) {
@@ -116,11 +117,11 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     Helper.initialize(this, drs, value);
   }
   protected DiskId id;
-  public DiskId getDiskId() {
+  public final DiskId getDiskId() {
     return this.id;
   }
   @Override
-  public void setDiskId(RegionEntry old) {
+  public final void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
   private VersionSource memberID;
@@ -129,25 +130,25 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
   private int regionVersionLowBytes;
   private byte entryVersionHighByte;
   private byte distributedSystemId;
-  public int getEntryVersion() {
+  public final int getEntryVersion() {
     return ((entryVersionHighByte << 16) & 0xFF0000) | (entryVersionLowBytes & 0xFFFF);
   }
-  public long getRegionVersion() {
+  public final long getRegionVersion() {
     return (((long)regionVersionHighBytes) << 32) | (regionVersionLowBytes & 0x00000000FFFFFFFFL);
   }
-  public long getVersionTimeStamp() {
+  public final long getVersionTimeStamp() {
     return getLastModified();
   }
-  public void setVersionTimeStamp(long time) {
+  public final void setVersionTimeStamp(long time) {
     setLastModified(time);
   }
-  public VersionSource getMemberID() {
+  public final VersionSource getMemberID() {
     return this.memberID;
   }
-  public int getDistributedSystemId() {
+  public final int getDistributedSystemId() {
     return this.distributedSystemId;
   }
-  public void setVersions(VersionTag tag) {
+  public final void setVersions(VersionTag tag) {
     this.memberID = tag.getMemberID();
     int eVersion = tag.getEntryVersion();
     this.entryVersionLowBytes = (short)(eVersion & 0xffff);
@@ -165,14 +166,14 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     }
     this.distributedSystemId = (byte)(tag.getDistributedSystemId() & 0xff);
   }
-  public void setMemberID(VersionSource memberID) {
+  public final void setMemberID(VersionSource memberID) {
     this.memberID = memberID;
   }
   @Override
-  public VersionStamp getVersionStamp() {
+  public final VersionStamp getVersionStamp() {
     return this;
   }
-  public VersionTag asVersionTag() {
+  public final VersionTag asVersionTag() {
     VersionTag tag = VersionTag.create(memberID);
     tag.setEntryVersion(getEntryVersion());
     tag.setRegionVersion(this.regionVersionHighBytes, this.regionVersionLowBytes);
@@ -180,19 +181,19 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     tag.setDistributedSystemId(this.distributedSystemId);
     return tag;
   }
-  public void processVersionTag(LocalRegion r, VersionTag tag,
+  public final void processVersionTag(LocalRegion r, VersionTag tag,
       boolean isTombstoneFromGII, boolean hasDelta,
       VersionSource thisVM, InternalDistributedMember sender, boolean checkForConflicts) {
     basicProcessVersionTag(r, tag, isTombstoneFromGII, hasDelta, thisVM, sender, checkForConflicts);
   }
   @Override
-  public void processVersionTag(EntryEvent cacheEvent) {
+  public final void processVersionTag(EntryEvent cacheEvent) {
     super.processVersionTag(cacheEvent);
   }
-  public short getRegionVersionHighBytes() {
+  public final short getRegionVersionHighBytes() {
     return this.regionVersionHighBytes;
   }
-  public int getRegionVersionLowBytes() {
+  public final int getRegionVersionLowBytes() {
     return this.regionVersionLowBytes;
   }
   private Object key;
@@ -201,7 +202,7 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   private volatile Object value;
@@ -221,12 +222,27 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
   @Override
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return this.value;
   }
   @Override
-  protected void setValueField(Object v) {
+  protected final void setValueField(Object v) {
     this.value = v;
+  }
+  @Override
+  public final Token getValueAsToken() {
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
+  }
+  @Override
+  public final boolean isValueNull() {
+    return this.value == null;
   }
   private transient ExtraTableInfo tableInfo;
   @Override
@@ -264,11 +280,11 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     return null;
   }
   @Override
-  public int estimateMemoryUsage() {
+  public final int estimateMemoryUsage() {
     return ClassSize.refSize;
   }
   @Override
-  public int getTypeFormatId() {
+  public final int getTypeFormatId() {
     return StoredFormatIds.ACCESS_MEM_HEAP_ROW_LOCATION_ID;
   }
   @Override
@@ -287,19 +303,19 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     return this.hashCode() - other.hashCode();
   }
   @Override
-  public DataValueDescriptor recycle() {
+  public final DataValueDescriptor recycle() {
     return this;
   }
   @Override
-  public DataValueDescriptor getNewNull() {
+  public final DataValueDescriptor getNewNull() {
     return DataValueFactory.DUMMY;
   }
   @Override
-  public boolean isNull() {
+  public final boolean isNull() {
     return this == DataValueFactory.DUMMY;
   }
   @Override
-  public Object getObject() throws StandardException {
+  public final Object getObject() throws StandardException {
     return this;
   }
   @Override
@@ -426,43 +442,43 @@ public class VersionedBucketRowLocationThinDiskRegionEntryHeap extends RowLocati
     throw new UnsupportedOperationException("Implement the method for DataType="+ this);
   }
   @Override
-  public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
+  public final Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
     final Object value = this.value;
     return value != null && !Token.isRemovedFromDisk(value)
         ? value : Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
   }
   @Override
-  public Object getValueOrOffHeapEntry(LocalRegion owner) {
+  public final Object getValueOrOffHeapEntry(LocalRegion owner) {
     return this.getValue(owner);
   }
   @Override
-  public Object getRawValue() {
+  public final Object getRawValue() {
     return this._getValue();
   }
   @Override
-  public Version[] getSerializationVersions() {
+  public final Version[] getSerializationVersions() {
     return null;
   }
   private final int bucketId;
   @Override
-  public Object getValue(GemFireContainer baseContainer) {
+  public final Object getValue(GemFireContainer baseContainer) {
     return RegionEntryUtils.getValue(baseContainer, this.bucketId, this);
   }
   @Override
-  public Object getValueWithoutFaultIn(GemFireContainer baseContainer) {
+  public final Object getValueWithoutFaultIn(GemFireContainer baseContainer) {
     return RegionEntryUtils.getValueWithoutFaultIn(baseContainer,this.bucketId, this);
   }
   @Override
-  public ExecRow getRow(GemFireContainer baseContainer) {
+  public final ExecRow getRow(GemFireContainer baseContainer) {
     return RegionEntryUtils.getRow(baseContainer, this.bucketId, this, this.tableInfo);
   }
   @Override
-  public ExecRow getRowWithoutFaultIn(GemFireContainer baseContainer) {
+  public final ExecRow getRowWithoutFaultIn(GemFireContainer baseContainer) {
     return RegionEntryUtils.getRowWithoutFaultIn(baseContainer, this.bucketId, this,
         this.tableInfo);
   }
   @Override
-  public int getBucketID() {
+  public final int getBucketID() {
     return this.bucketId;
   }
   @Override

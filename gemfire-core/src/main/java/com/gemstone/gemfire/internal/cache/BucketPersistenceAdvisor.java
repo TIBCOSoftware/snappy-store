@@ -435,7 +435,10 @@ public class BucketPersistenceAdvisor extends PersistenceAdvisorImpl {
   }
 
   public void setAtomicCreation(boolean atomicCreation) {
-    synchronized(lock) {
+    if (getPersistentID() != null) {
+      return;
+    }
+    synchronized (lock) {
       this.atomicCreation = atomicCreation;
     }
   }
@@ -450,4 +453,5 @@ public class BucketPersistenceAdvisor extends PersistenceAdvisorImpl {
         .getProxyBucketArray()[proxyBucket.getBucketId()];
     return colocatedProxyBucket.getPersistenceAdvisor();
   }
+
 }

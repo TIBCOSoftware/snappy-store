@@ -151,7 +151,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   ////////////////////////// instance methods /////////////////////////
   /////////////////////////////////////////////////////////////////////
 
-  public boolean dispatchListenerEvents(final EntryEventImpl event) throws InterruptedException {
+  public final boolean dispatchListenerEvents(final EntryEventImpl event)
+      throws InterruptedException {
     final LocalRegion rgn = event.getRegion();
     final LogWriterI18n lw = rgn.getCache().getLoggerI18n();
 
@@ -219,8 +220,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   public void resetCounts() throws InternalStatisticsDisabledException {
     throw new InternalStatisticsDisabledException();
   }
-    
-  public void _removePhase1(LocalRegion r) {
+
+  public final void _removePhase1(LocalRegion r) {
     _setValue(r, Token.REMOVED_PHASE1);
     // debugging for 38467 (hot thread in ARM.basicUpdate)
 //    this.removeTrace = new Exception("stack trace for thread " + Thread.currentThread());
@@ -234,7 +235,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
 //    this.removeTrace = new Exception("stack trace for thread " + Thread.currentThread());
   }
 
-  public void makeTombstone(LocalRegion r, VersionTag version) throws RegionClearedException {
+  public final void makeTombstone(LocalRegion r, VersionTag version)
+      throws RegionClearedException {
     assert r.getVersionVector() != null;
     assert version != null;
     if (r.getServerProxy() == null &&
@@ -263,7 +265,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   
 
   @Override
-  public void setValueWithTombstoneCheck(@Unretained Object v, EntryEvent e) throws RegionClearedException {
+  public final void setValueWithTombstoneCheck(@Unretained Object v, EntryEvent e)
+      throws RegionClearedException {
     if (v == Token.TOMBSTONE) {
       makeTombstone((LocalRegion)e.getRegion(), ((EntryEventImpl)e).getVersionTag());
     } else {
@@ -473,7 +476,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   }
   
   @Released
-  protected void setValue(RegionEntryContext context, @Unretained Object value, boolean recentlyUsed) {
+  protected final void setValue(RegionEntryContext context,
+      @Unretained Object value, boolean recentlyUsed) {
     _setValue(context, value);
     if (value != null && context != null && context instanceof LocalRegion
         && ((LocalRegion)context).isThisRegionBeingClosedOrDestroyed()
@@ -543,19 +547,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       ((SerializedDiskBuffer)v).retain();
     }
     return v;
-  }
-
-  @Retained
-  public Object getHeapValueInVMOrDiskWithoutFaultIn(LocalRegion owner) {
-    final Object v;
-    if (owner.compressor == null) {
-      v = _getValue();
-      // null should only be possible if disk entry
-      return v != null ? v : Token.NOT_AVAILABLE;
-    } else {
-      v = decompress(owner, _getValue());
-      return v != null ? v : Token.NOT_AVAILABLE;
-    }
   }
 
   @Override
@@ -1230,7 +1221,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     public int keyHashCode(final Object key, final boolean compareValues) {
       return CustomEntryConcurrentHashMap.keyHash(key, compareValues);
     }
-  };
+  }
 
   protected static final MapCallback<RegionEntry,
       QueuedSynchronizer, AbstractRegionEntry, Void> waitQCreator =
@@ -1286,8 +1277,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     }
     return value;
   }
-  
- protected boolean okToStoreOffHeap(Object v) {
+
+  protected final boolean okToStoreOffHeap(Object v) {
     if (v == null) return false;
     if (Token.isInvalidOrRemoved(v)) return false;
     if (v == Token.NOT_AVAILABLE) return false;
@@ -1754,16 +1745,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     }
   }
 
-  @Override
-  public Token getValueAsToken() {
-    Object v = getValueField();
-    if (v == null || v instanceof Token) {
-      return (Token)v;
-    } else {
-      return Token.NOT_A_TOKEN;
-    }
-  }
-  
   /**
    * Reads the value of this region entry.
    * Provides low level access to the value field.
@@ -1778,33 +1759,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
    */
   protected abstract void setValueField(@Unretained Object v);
 
-  @Retained
-  public Object getTransformedValue() {
-    return _getValueRetain(null, false);
-  }
-
-  public final void setValueResultOfSearch(boolean v) {
-    // TODO: TX: Below is not proper for new TX; need to avoid locking
-    // in write mode for netsearch rather lock in read mode.
-    // Get rid of these two methods once it is done.
-    /*
-    long storedValue;
-    long newValue;
-    if (v) {
-      do {
-        storedValue = lastModifiedUpdater.get(this);
-        newValue = storedValue | VALUE_RESULT_OF_SEARCH;
-      } while (!lastModifiedUpdater.compareAndSet(this, storedValue, newValue));
-    } else {
-      do {
-        storedValue = lastModifiedUpdater.get(this);
-        newValue = storedValue & ~(VALUE_RESULT_OF_SEARCH);
-      } while (!lastModifiedUpdater.compareAndSet(this, storedValue, newValue));
-    }
-    */
-  }
-
-  public boolean hasValidVersion() {
+  public final boolean hasValidVersion() {
     VersionStamp stamp = (VersionStamp)this;
     boolean has = stamp.getRegionVersion() != 0 || stamp.getEntryVersion() != 0;
     return has;
@@ -2198,7 +2153,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   }
   
   public void release() {
-    
   }
 
   protected final void processVersionTag(EntryEvent cacheEvent,
@@ -2424,7 +2378,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   }
 
   /** perform conflict checking for a stamp/tag */
-  protected boolean checkForConflict(LocalRegion region,
+  protected final boolean checkForConflict(LocalRegion region,
       VersionStamp stamp, VersionTag tag,
       boolean isTombstoneFromGII,
       boolean deltaCheck, VersionSource dmId,
@@ -2757,14 +2711,6 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   }
 
   /**
-   * For GemFireXD RowLocation implementations that also implement RegionKey.
-   */
-  public final void waitForRegionInitialization(String regionPath) {
-    throw new UnsupportedOperationException("unexpected invocation for "
-        + toString());
-  }
-
-  /**
    * For GemFireXD implementations that also implement Sizeable.
    * Note that XD in somes cases returns the AbstractRegionEntry as
    * the key of the the region entry. In those cases we may call
@@ -3085,19 +3031,19 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     return (null == getValueAsToken());
   }
 
-  public boolean isInvalid() {
+  public final boolean isInvalid() {
     return Token.isInvalid(getValueAsToken());
   }
 
-  public boolean isDestroyed() {
+  public final boolean isDestroyed() {
     return Token.isDestroyed(getValueAsToken());
   }
 
-  public void setValueToNull(RegionEntryContext context) {
+  public final void setValueToNull(RegionEntryContext context) {
     _setValue(context, null);
   }
   
-  public boolean isInvalidOrRemoved() {
+  public final boolean isInvalidOrRemoved() {
     return Token.isInvalidOrRemoved(getValueAsToken());
   }
 
@@ -3124,8 +3070,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   public void returnToPool() {
     // noop by default
   }
-  
-  public void markDeleteFromIndexInProgress() {
+
+  public final void markDeleteFromIndexInProgress() {
     long storedValue;   
     long indexKeyUsers;
     do {
@@ -3136,7 +3082,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         && compareAndSetLastModifiedField(storedValue, UPDATE_IN_PROGRESS_MASK | storedValue)));
   }
 
-  public void unmarkDeleteFromIndexInProgress() {
+  public final void unmarkDeleteFromIndexInProgress() {
     long storedValue, newValue;
     do {
 
@@ -3147,9 +3093,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     } while (!compareAndSetLastModifiedField(storedValue, newValue));
 
   }
-  public boolean useRowLocationForIndexKey() {
-    
-   
+
+  public final boolean useRowLocationForIndexKey() {
     long storedValue = getlastModifiedField();
     long indexKeyUsers = INDEX_KEY_UPDATERS_MASK & storedValue;
     indexKeyUsers = indexKeyUsers >> INDEX_KEY_UPDATERS_SHIFT;
@@ -3167,8 +3112,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
  
   }
 
-  public void endIndexKeyUpdate() {
-    
+  public final void endIndexKeyUpdate() {
     long newValue;
     long indexKeyUsers;
     long storedValue;
@@ -3186,5 +3130,4 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     } while (!compareAndSetLastModifiedField(storedValue, newValue));
 
   }
-  
 }

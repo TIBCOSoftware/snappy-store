@@ -86,7 +86,8 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -94,7 +95,7 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -111,45 +112,46 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   @Retained @Released private volatile long ohAddress;
   private final static AtomicLongFieldUpdater<VMBucketRowLocationThinRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMBucketRowLocationThinRegionEntryOffHeap.class, "ohAddress");
   @Override
-  public boolean isOffHeap() {
+  public final boolean isOffHeap() {
     return true;
   }
   @Override
-  public Token getValueAsToken() {
+  public final Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }
   @Override
   @Unretained
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return OffHeapRegionEntryHelper._getValue(this);
   }
   @Override
-  protected void setValueField(@Unretained Object v) {
+  protected final void setValueField(@Unretained Object v) {
     OffHeapRegionEntryHelper.setValue(this, v);
   }
   @Override
   @Retained
-  public Object _getValueRetain(RegionEntryContext context, boolean decompress) {
+  public final Object _getValueRetain(RegionEntryContext context,
+      boolean decompress) {
     return OffHeapRegionEntryHelper._getValueRetain(this, decompress);
   }
   @Override
-  public long getAddress() {
+  public final long getAddress() {
     return ohAddrUpdater.get(this);
   }
   @Override
-  public boolean setAddress(long expectedAddr, long newAddr) {
+  public final boolean setAddress(long expectedAddr, long newAddr) {
     return ohAddrUpdater.compareAndSet(this, expectedAddr, newAddr);
   }
   @Override
   @Released
-  public void release() {
+  public final void release() {
     OffHeapRegionEntryHelper.releaseEntry(this);
   }
   private transient ExtraTableInfo tableInfo;
@@ -188,11 +190,11 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
     return null;
   }
   @Override
-  public int estimateMemoryUsage() {
+  public final int estimateMemoryUsage() {
     return ClassSize.refSize;
   }
   @Override
-  public int getTypeFormatId() {
+  public final int getTypeFormatId() {
     return StoredFormatIds.ACCESS_MEM_HEAP_ROW_LOCATION_ID;
   }
   @Override
@@ -211,19 +213,19 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
     return this.hashCode() - other.hashCode();
   }
   @Override
-  public DataValueDescriptor recycle() {
+  public final DataValueDescriptor recycle() {
     return this;
   }
   @Override
-  public DataValueDescriptor getNewNull() {
+  public final DataValueDescriptor getNewNull() {
     return DataValueFactory.DUMMY;
   }
   @Override
-  public boolean isNull() {
+  public final boolean isNull() {
     return this == DataValueFactory.DUMMY;
   }
   @Override
-  public Object getObject() throws StandardException {
+  public final Object getObject() throws StandardException {
     return this;
   }
   @Override
@@ -350,15 +352,15 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
     throw new UnsupportedOperationException("Implement the method for DataType="+ this);
   }
   @Override
-  public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
+  public final Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
     return this;
   }
   @Override
-  public Object getValueOrOffHeapEntry(LocalRegion owner) {
+  public final Object getValueOrOffHeapEntry(LocalRegion owner) {
     return this;
   }
   @Override
-  public Object getRawValue() {
+  public final Object getRawValue() {
     Object val = OffHeapRegionEntryHelper._getValueRetain(this, false);
     if (val != null && !Token.isInvalidOrRemoved(val)
         && val != Token.NOT_AVAILABLE) {
@@ -368,7 +370,7 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
     return null;
   }
   @Override
-  public Object prepareValueForCache(RegionEntryContext r, Object val,
+  public final Object prepareValueForCache(RegionEntryContext r, Object val,
       boolean isEntryUpdate, boolean valHasMetadataForGfxdOffHeapUpdate) {
     if (okToStoreOffHeap(val)
         && OffHeapRegionEntryUtils.isValidValueForGfxdOffHeapStorage(val)) {
@@ -382,7 +384,7 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
     return super.prepareValueForCache(r, val, isEntryUpdate, valHasMetadataForGfxdOffHeapUpdate);
   }
   @Override
-  public boolean destroy(LocalRegion region, EntryEventImpl event,
+  public final boolean destroy(LocalRegion region, EntryEventImpl event,
       boolean inTokenMode, boolean cacheWrite, @Unretained Object expectedOldValue,
       boolean forceDestroy, boolean removeRecoveredEntry)
       throws CacheWriterException, EntryNotFoundException, TimeoutException,
@@ -399,29 +401,29 @@ public class VMBucketRowLocationThinRegionEntryOffHeap extends RowLocationThinRe
         expectedOldValue, forceDestroy, removeRecoveredEntry);
   }
   @Override
-  public Version[] getSerializationVersions() {
+  public final Version[] getSerializationVersions() {
     return null;
   }
   private final int bucketId;
   @Override
-  public Object getValue(GemFireContainer baseContainer) {
+  public final Object getValue(GemFireContainer baseContainer) {
     return RegionEntryUtils.getValue(baseContainer, this.bucketId, this);
   }
   @Override
-  public Object getValueWithoutFaultIn(GemFireContainer baseContainer) {
+  public final Object getValueWithoutFaultIn(GemFireContainer baseContainer) {
     return RegionEntryUtils.getValueWithoutFaultIn(baseContainer,this.bucketId, this);
   }
   @Override
-  public ExecRow getRow(GemFireContainer baseContainer) {
+  public final ExecRow getRow(GemFireContainer baseContainer) {
     return RegionEntryUtils.getRow(baseContainer, this.bucketId, this, this.tableInfo);
   }
   @Override
-  public ExecRow getRowWithoutFaultIn(GemFireContainer baseContainer) {
+  public final ExecRow getRowWithoutFaultIn(GemFireContainer baseContainer) {
     return RegionEntryUtils.getRowWithoutFaultIn(baseContainer, this.bucketId, this,
         this.tableInfo);
   }
   @Override
-  public int getBucketID() {
+  public final int getBucketID() {
     return this.bucketId;
   }
   @Override

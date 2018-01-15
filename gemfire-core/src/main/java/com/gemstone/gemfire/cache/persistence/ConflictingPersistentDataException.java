@@ -17,7 +17,7 @@
 package com.gemstone.gemfire.cache.persistence;
 
 import com.gemstone.gemfire.GemFireException;
-import com.gemstone.gemfire.admin.AdminDistributedSystem;
+import com.gemstone.gemfire.cache.DiskAccessException;
 
 /**
  * Thrown when a member with persistence is recovering, and it discovers that
@@ -32,7 +32,7 @@ import com.gemstone.gemfire.admin.AdminDistributedSystem;
  * @author dsmith
  * @since 6.5
  */
-public class ConflictingPersistentDataException extends GemFireException {
+public class ConflictingPersistentDataException extends DiskAccessException {
 
   private static final long serialVersionUID = -2629287782021455875L;
 
@@ -51,7 +51,5 @@ public class ConflictingPersistentDataException extends GemFireException {
   public ConflictingPersistentDataException(Throwable cause) {
     super(cause);
   }
-
-  
 
 }

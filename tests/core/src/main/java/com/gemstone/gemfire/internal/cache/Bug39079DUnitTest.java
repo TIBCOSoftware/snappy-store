@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.File;
@@ -318,6 +315,18 @@ public class Bug39079DUnitTest extends CacheTestCase {
     @Override
     protected void setValueField(Object v) {
       this.value = v;
+    }
+
+    @Override
+    public Token getValueAsToken() {
+      Object v = this.value;
+      if (v == null) {
+        return null;
+      } else if (v instanceof Token) {
+        return (Token)v;
+      } else {
+        return Token.NOT_A_TOKEN;
+      }
     }
 
     @Override

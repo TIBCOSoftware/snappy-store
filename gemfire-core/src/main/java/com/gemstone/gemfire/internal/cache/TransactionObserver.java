@@ -86,4 +86,6 @@ public interface TransactionObserver {
    *          if this is invoked during rollback
    */
   public void afterSend(TXStateProxy tx, boolean rollback);
+
+  public void beforePerformOp(TXStateProxy tx);
 }
