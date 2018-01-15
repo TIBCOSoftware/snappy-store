@@ -113,19 +113,24 @@ public class FabricServerImpl extends FabricServiceImpl implements FabricServer 
 
   public void notifyTableInitialized() {
     synchronized (initializationNotification) {
+      notified = true;
       initializationNotification.notify();
     }
   }
 
   public void notifyTableWait() {
     synchronized (initializationNotification) {
+      notified = true;
       initializationNotification.notify();
     }
   }
 
   public void waitTableInitialized() throws InterruptedException {
     synchronized (initializationNotification) {
-      initializationNotification.wait();
+      while (!notified) {
+        initializationNotification.wait();
+      }
+      notified = false;
     }
   }
 }

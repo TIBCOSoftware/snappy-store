@@ -1261,62 +1261,82 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
 
-      ExecutorService execService = Executors
-          .newCachedThreadPool(new ThreadFactory() {
-            AtomicInteger threadNum = new AtomicInteger(0);
+      // In case of reconnect, same cache is used and many locks are
+      // already taken by reconnect thread.
+      // Can't do initlization in different thread.
+      if (Thread.currentThread().getName().equals("ReconnectThread")) {
+        for (GemFireContainer container : uninitializedContainers) {
+          if (logger.infoEnabled() &&
+              !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+            logger.info("FabricDatabase: start initializing container: "
+                + container);
+          }
+          container.initializeRegion();
+          // wait for notification
+          if (logger.infoEnabled() &&
+              !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+            logger.info("FabricDatabase: end initializing container: "
+                + container);
+          }
+        }
+      }
+      else {
+        ExecutorService execService = Executors
+            .newCachedThreadPool(new ThreadFactory() {
+              AtomicInteger threadNum = new AtomicInteger(0);
 
-            public Thread newThread(final Runnable r) {
-              LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
-              Thread result = new Thread(LogWriterImpl.createThreadGroup(
-                  "RegionInitializerExecutionThreadGroup", logger), r,
-                  "RegionInitializer Thread-" + threadNum.incrementAndGet());
-              result.setDaemon(true);
-              return result;
+              public Thread newThread(final Runnable r) {
+                LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
+                Thread result = new Thread(LogWriterImpl.createThreadGroup(
+                    "RegionInitializerExecutionThreadGroup", logger), r,
+                    "RegionInitializer Thread-" + threadNum.incrementAndGet());
+                result.setDaemon(true);
+                return result;
+              }
+            });
+
+
+        List<Callable> tasks = new ArrayList<Callable>();
+        List<Future<Object>> results = new LinkedList<>();
+        for (GemFireContainer container : uninitializedContainers) {
+          if (logger.infoEnabled() &&
+              !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+            logger.info("FabricDatabase: start initializing container: "
+                + container);
+          }
+          // do 1 at a time
+          // check if one is done then submit next
+          final FabricService service = FabricServiceManager
+              .currentFabricServiceInstance();
+          Future f = execService.submit(new Callable<Boolean>() {
+            @Override
+            public Boolean call() throws Exception {
+              container.initializeRegion();
+              if (service instanceof FabricServerImpl) {
+                ((FabricServerImpl)service).notifyTableInitialized();
+              }
+              return true;
             }
           });
+          results.add(f);
 
-      List<Callable> tasks = new ArrayList<Callable>();
-      List<Future<Object>> results = new LinkedList<>();
-      for (GemFireContainer container : uninitializedContainers) {
-        if (logger.infoEnabled() &&
-            !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
-          logger.info("FabricDatabase: start initializing container: "
-              + container);
-        }
-        // do 5 at a time
-        // check if atleast one is done
-        // if atleast one is done then submit next
-        final FabricService service = FabricServiceManager
-            .currentFabricServiceInstance();
-        Future f = execService.submit(new Callable<Boolean>() {
-          @Override
-          public Boolean call() throws Exception {
-            container.initializeRegion();
-            if (service instanceof FabricServerImpl) {
-              ((FabricServerImpl)service).notifyTableInitialized();
-            }
-            return true;
+          if (service instanceof FabricServerImpl) {
+            ((FabricServerImpl)service).waitTableInitialized();
           }
-        });
-        results.add(f);
 
-        if (service instanceof FabricServerImpl) {
-          ((FabricServerImpl)service).waitTableInitialized();
+          // wait for notification
+          if (logger.infoEnabled() &&
+              !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+            logger.info("FabricDatabase: end initializing container: "
+                + container);
+          }
         }
 
-        // wait for notification
-        if (logger.infoEnabled() &&
-            !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
-          logger.info("FabricDatabase: end initializing container: "
-              + container);
-        }
-      }
-
-      for (Future f : results) {
-        //if (f.isDone()) {
+        for (Future f : results) {
           f.get();
-        //}
+        }
       }
+
 
 
       //container.initializeRegion();
