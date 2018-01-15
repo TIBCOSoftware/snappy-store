@@ -129,7 +129,7 @@ import com.gemstone.org.jgroups.View;
 import com.gemstone.org.jgroups.protocols.pbcast.JoinRsp;
 import com.gemstone.org.jgroups.stack.IpAddress;
 import com.gemstone.org.jgroups.util.StreamableFixedID;
-import io.snappydata.collection.LongObjectHashMap;
+import io.snappydata.collection.IntObjectHashMap;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -169,8 +169,8 @@ public final class DSFIDFactory implements DataSerializableFixedID {
 
   private static volatile boolean typesRegistered;
   private static final Supplier[] dsfidMap = new Supplier[256];
-  private static final LongObjectHashMap<Supplier<?>> dsfidMap2 =
-      LongObjectHashMap.withExpectedSize(512);
+  private static final IntObjectHashMap<Supplier<?>> dsfidMap2 =
+      IntObjectHashMap.withExpectedSize(512);
 
   static {
     if (!InternalDistributedSystem.isHadoopGfxdLonerMode()) {
@@ -1131,7 +1131,7 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     return dsfidMap;
   }
 
-  static LongObjectHashMap<Supplier<?>> getDsfidmap2() {
+  static IntObjectHashMap<Supplier<?>> getDsfidmap2() {
     return dsfidMap2;
   }
 }

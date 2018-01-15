@@ -84,6 +84,7 @@ import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWrite
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.gemstone.org.jgroups.util.StringId;
+import io.snappydata.collection.OpenHashSet;
 
 /**
  * Implementation of DataStore (DS) for a PartitionedRegion (PR). This will be
@@ -2973,8 +2974,8 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * store.
    *
    */
-  public final List getLocalBucketsListTestOnly() {
-    final List bucketList = new ArrayList();
+  public final List<Integer> getLocalBucketsListTestOnly() {
+    final List<Integer> bucketList = new ArrayList<Integer>();
     visitBuckets(new BucketVisitor() {
       @Override
       public void visit(Integer bucketId, Region r) {
@@ -2989,8 +2990,8 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * data store.
    *
    */
-  public final List getLocalPrimaryBucketsListTestOnly() {
-    final List primaryBucketList = new ArrayList();
+  public final List<Integer> getLocalPrimaryBucketsListTestOnly() {
+    final List<Integer> primaryBucketList = new ArrayList<Integer>();
     visitBuckets(new BucketVisitor() {
       @Override
       public void visit(Integer bucketId, Region r) {
@@ -3090,14 +3091,12 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * Returns a set of local buckets.
    * @return a snapshot of the current set of BucketRegions
    */
-  @SuppressWarnings("unchecked")
   public Set<BucketRegion> getAllLocalBucketRegions() {
-    return new THashSet(localBucket2RegionMap.values());
+    return new OpenHashSet<>(localBucket2RegionMap.values());
   }
 
-  @SuppressWarnings("unchecked")
   public Set<BucketRegion> getAllLocalPrimaryBucketRegions() {
-    THashSet retVal = new THashSet();
+    OpenHashSet<BucketRegion> retVal = new OpenHashSet<>();
     for (BucketRegion br : localBucket2RegionMap.values()) {
       if (br.getBucketAdvisor().isPrimary()) {
         retVal.add(br);
@@ -3106,9 +3105,8 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
     return retVal;
   }
 
-  @SuppressWarnings("unchecked")
   public Set<Integer> getAllLocalPrimaryBucketIds() {
-    THashSet bucketIds = new THashSet();
+    OpenHashSet<Integer> bucketIds = new OpenHashSet<>();
     for (BucketRegion bucket : localBucket2RegionMap.values()) {
       if (bucket.getBucketAdvisor().isPrimary()) {
         bucketIds.add(Integer.valueOf(bucket.getId()));

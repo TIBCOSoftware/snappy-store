@@ -89,6 +89,8 @@ public final class SystemProperties {
   public static final String GFXD_FACTORY_PROVIDER = "com.pivotal.gemfirexd."
       + "internal.engine.store.entry.GfxdObjectFactoriesProvider";
 
+  public static final int SNAPPY_MIN_COLUMN_DELTA_ROWS = 200;
+
   /**
    * Common internal product callbacks on client and server side to possibly
    * plugin some system behaviour.

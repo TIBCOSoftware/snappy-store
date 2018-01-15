@@ -110,7 +110,7 @@ import com.gemstone.org.jgroups.stack.IpAddress;
 import com.gemstone.org.jgroups.stack.ProtocolStack;
 import com.gemstone.org.jgroups.util.GemFireTracer;
 import com.gemstone.gnu.trove.TObjectProcedure;
-import io.snappydata.collection.LongObjectHashMap;
+import io.snappydata.collection.IntObjectHashMap;
 
 public final class JGroupMembershipManager implements MembershipManager {
 
@@ -3293,7 +3293,7 @@ public final class JGroupMembershipManager implements MembershipManager {
             calculatedMembers.add((JGroupMember)destinations[i].getNetMember());
           }
         } // send to explicit list
-        LongObjectHashMap<Message> messages = LongObjectHashMap.withExpectedSize(2);
+        IntObjectHashMap<Message> messages = IntObjectHashMap.withExpectedSize(2);
         long startSer = theStats.startMsgSerialization();
         boolean firstMessage = true;
         for (Iterator it=calculatedMembers.iterator(); it.hasNext(); ) {

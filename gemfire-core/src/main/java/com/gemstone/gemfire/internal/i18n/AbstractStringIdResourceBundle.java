@@ -21,7 +21,7 @@ import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.i18n.StringIdImpl;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.org.jgroups.util.StringId;
-import io.snappydata.collection.LongObjectHashMap;
+import io.snappydata.collection.IntObjectHashMap;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -38,7 +38,7 @@ import java.util.Locale;
  * @since 5.7 
  */
 public class AbstractStringIdResourceBundle {
-  private LongObjectHashMap<String> data;
+  private IntObjectHashMap<String> data;
 
   /** 
    * The {@link java.util.ResourceBundle} that implements the message lookup
@@ -47,8 +47,8 @@ public class AbstractStringIdResourceBundle {
   private static AbstractStringIdResourceBundle messageBundle;
   
   /**
-   * Init method to populate the LongObjectHashMap for Non-english locales
-   * <code>data = LongObjectHashMap.withExpectedSize(...);</code>
+   * Init method to populate the IntObjectHashMap for Non-english locales
+   * <code>data = IntObjectHashMap.withExpectedSize(...);</code>
    *
    * The default bundle, English, will be
    * <code>data = null</code>
@@ -76,8 +76,8 @@ public class AbstractStringIdResourceBundle {
     }
   }
 	
-  private LongObjectHashMap<String> readDataFile(InputStream is) {
-    LongObjectHashMap<String> map = LongObjectHashMap.withExpectedSize(128);
+  private IntObjectHashMap<String> readDataFile(InputStream is) {
+    IntObjectHashMap<String> map = IntObjectHashMap.withExpectedSize(128);
     boolean complete = false;
     BufferedReader input = null;
     try {

@@ -142,7 +142,7 @@ task doSplit(dependsOn: buildMessages) {
   def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').buildDir}/resources/main/${locDir}"
 
   inputs.file msgXml
-  outputs.file "${clientResourceDir}/clientmessages_en.properties"
+  outputs.files "${msgEnDir}/m0_en.properties", "${clientResourceDir}/clientmessages_en.properties"
 
   doLast {
     splitMessages('messages_en.properties', msgEnDir)
@@ -179,7 +179,7 @@ task doSplit(dependsOn: buildMessages) {
 task odbcMeta {
   dependsOn "${subprojectBase}snappydata-store-prebuild:processResources", 'processResources', "${subprojectBase}snappydata-store-prebuild:jar"
   def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
-  outputs.files "${metaDir}/metadata.properties"
+  outputs.file "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir
 
   doFirst {

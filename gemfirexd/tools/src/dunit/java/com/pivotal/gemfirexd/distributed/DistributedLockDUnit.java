@@ -41,7 +41,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector
 import com.pivotal.gemfirexd.internal.engine.distributed.message.RegionExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockService;
-import io.snappydata.collection.LongObjectHashMap;
+import io.snappydata.collection.IntObjectHashMap;
 import io.snappydata.test.dunit.AsyncInvocation;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
@@ -488,7 +488,7 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     int[][] arrays5 = (int[][])async4.getResult();
 
     System.gc();
-    LongObjectHashMap<Object> allKeys = LongObjectHashMap.withExpectedSize(
+    IntObjectHashMap<Object> allKeys = IntObjectHashMap.withExpectedSize(
         numKeysPerVM * 5);
     checkUniqueKeys(allKeys, arrays1, "currentVM");
     checkUniqueKeys(allKeys, arrays2, getServerVM(1));
@@ -602,7 +602,7 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     // --------------- End function message execution -----------------
   }
 
-  private static void checkUniqueKeys(final LongObjectHashMap<Object> allKeys,
+  private static void checkUniqueKeys(final IntObjectHashMap<Object> allKeys,
       final int[][] arrays, final Object vm) {
     Object oldVM;
     // check uniqueness of keys and also that each list is in ascending order
