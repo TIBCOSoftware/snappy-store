@@ -369,7 +369,7 @@ implements CredentialInitializer
 			// plug-ins to be installed and that can be used as authentication
 			// method.
 			//
-			initDirContextEnv.put(Context.SECURITY_AUTHENTICATION, "simple" );
+			initDirContextEnv.put(Context.SECURITY_AUTHENTICATION, "simple");
 		}
 
 		// Retrieve and set the search base (root) DN to use on the ldap
@@ -382,7 +382,7 @@ implements CredentialInitializer
 			this.searchBaseDN = "";
 
 		// retrieve principal and credentials for the search bind as the
-		// user may not want to allow anonymous binds ID
+		// user may not want to allow anonymous binds (for searches)
 		this.searchAuthDN =
 					authenticationService.getProperty(Property.AUTH_LDAP_SEARCH_DN);
 		this.searchAuthPW =

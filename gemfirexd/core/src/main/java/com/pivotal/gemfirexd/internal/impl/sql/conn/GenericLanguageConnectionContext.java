@@ -493,8 +493,6 @@ public final class GenericLanguageConnectionContext
             SchemaDescriptor sd =
                 dd.getSchemaDescriptor(
                     defaultSchema, getTransactionCompile(), false);
-			LogWriter logger = GemFireCacheImpl.getExisting().getLogger();
-			logger.warning("Setting the default schema with authid conditioned as= " + authorizationId );
 
             if (sd == null) {
                 sd = new SchemaDescriptor(
