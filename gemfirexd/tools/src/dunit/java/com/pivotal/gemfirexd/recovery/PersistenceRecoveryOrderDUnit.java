@@ -367,7 +367,7 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
    * that we revoke.
    * @throws Throwable
    */
-  public void testRevokeAMember() throws Throwable {
+  public void _testRevokeAMember() throws Throwable {
 
     startVMs(1, 2);
     Properties p = new Properties();
