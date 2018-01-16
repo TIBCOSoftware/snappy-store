@@ -613,7 +613,7 @@ public abstract class DistributedCacheOperation {
           }
         }
 
-        if (viewVersion > 0) {
+        if (viewVersion != -1) {
           region.getDistributionAdvisor().endOperation(viewVersion);
           viewVersion = -1;
         }

@@ -49,7 +49,8 @@ public class VMThinDiskRegionEntryHeap extends VMThinDiskRegionEntry
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -57,7 +58,7 @@ public class VMThinDiskRegionEntryHeap extends VMThinDiskRegionEntry
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -68,11 +69,11 @@ public class VMThinDiskRegionEntryHeap extends VMThinDiskRegionEntry
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  protected void initialize(RegionEntryContext context, Object value) {
+  protected final void initialize(RegionEntryContext context, Object value) {
     diskInitialize(context, value);
   }
   @Override
-  public int updateAsyncEntrySize(EnableLRU capacityController) {
+  public final int updateAsyncEntrySize(EnableLRU capacityController) {
     throw new IllegalStateException("should never be called");
   }
   private void diskInitialize(RegionEntryContext context, Object value) {
@@ -83,11 +84,11 @@ public class VMThinDiskRegionEntryHeap extends VMThinDiskRegionEntry
     Helper.initialize(this, drs, value);
   }
   protected DiskId id;
-  public DiskId getDiskId() {
+  public final DiskId getDiskId() {
     return this.id;
   }
   @Override
-  public void setDiskId(RegionEntry old) {
+  public final void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
   private Object key;
@@ -96,7 +97,7 @@ public class VMThinDiskRegionEntryHeap extends VMThinDiskRegionEntry
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   private volatile Object value;
@@ -116,12 +117,27 @@ public class VMThinDiskRegionEntryHeap extends VMThinDiskRegionEntry
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
   @Override
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return this.value;
   }
   @Override
-  protected void setValueField(Object v) {
+  protected final void setValueField(Object v) {
     this.value = v;
+  }
+  @Override
+  public final Token getValueAsToken() {
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
+  }
+  @Override
+  public final boolean isValueNull() {
+    return this.value == null;
   }
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {

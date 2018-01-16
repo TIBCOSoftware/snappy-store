@@ -313,16 +313,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * @throws RegionClearedException thrown if the region is concurrently cleared
    */
   public void setValueWithTombstoneCheck(@Unretained Object value, EntryEvent event) throws RegionClearedException;
-  
-  /**
-   * Returns the value as stored by the RegionEntry implementation.  For instance, if compressed this
-   * value would be the compressed form.
-   *  
-   * @since 7.5
-   */
-  @Retained
-  public Object getTransformedValue();
-  
+
   /**
    * Returns the value of an entry as it resides in the VM.
    * @return the value or EntryEvent.NOT_AVAILABLE token if it's not in

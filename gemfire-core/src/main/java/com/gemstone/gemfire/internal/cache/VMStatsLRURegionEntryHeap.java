@@ -51,7 +51,8 @@ public class VMStatsLRURegionEntryHeap extends VMStatsLRURegionEntry
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -59,7 +60,7 @@ public class VMStatsLRURegionEntryHeap extends VMStatsLRURegionEntry
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -71,7 +72,7 @@ public class VMStatsLRURegionEntryHeap extends VMStatsLRURegionEntry
     this.next = n;
   }
   @Override
-  public void setDelayedDiskId(LocalRegion r) {
+  public final void setDelayedDiskId(LocalRegion r) {
   }
   public final synchronized int updateEntrySize(EnableLRU capacityController) {
     return updateEntrySize(capacityController, _getValue());
@@ -163,7 +164,7 @@ public class VMStatsLRURegionEntryHeap extends VMStatsLRURegionEntry
     this.missCount = 0;
   }
   @Override
-  public boolean hasStats() {
+  public final boolean hasStats() {
     return true;
   }
   private Object key;
@@ -172,7 +173,7 @@ public class VMStatsLRURegionEntryHeap extends VMStatsLRURegionEntry
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   private volatile Object value;
@@ -192,12 +193,27 @@ public class VMStatsLRURegionEntryHeap extends VMStatsLRURegionEntry
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
   @Override
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return this.value;
   }
   @Override
-  protected void setValueField(Object v) {
+  protected final void setValueField(Object v) {
     this.value = v;
+  }
+  @Override
+  public final Token getValueAsToken() {
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
+  }
+  @Override
+  public final boolean isValueNull() {
+    return this.value == null;
   }
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {
