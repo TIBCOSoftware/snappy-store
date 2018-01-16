@@ -160,7 +160,6 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     conn.commit();
 
     VM server1 = serverVMs.get(0);
-    VM server3 = serverVMs.get(2);
 
     server1.invoke(new SerializableRunnable() {
       @Override
@@ -183,7 +182,9 @@ public class TransactionDUnit extends DistributedSQLTestBase {
                 while (!executed[0]) {
                   synchronized (waitLock) {
                     executed[1] = true;
-                    waitLock.wait();
+                    if (!executed[0]) {
+                      waitLock.wait();
+                    }
                   }
                 }
                 Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "Going to inesrt for one bucket");
@@ -221,8 +222,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
           public void beforePerformOp(TXStateProxy tx) {
             Misc.getI18NLogWriter().info(LocalizedStrings.DEBUG, "before Op : Waiting for 10 sec");
             try {
-              Thread.sleep(60000);
-              Thread.sleep(60000);
+              Thread.sleep(10000);
             } catch (InterruptedException e) {
               e.printStackTrace();
             }
@@ -270,8 +270,9 @@ public class TransactionDUnit extends DistributedSQLTestBase {
         e.printStackTrace();
       }
     }
+    conn.commit();
 
-    Thread.sleep(300000);
+    Thread.sleep(30000);
 
     restartVMNums(-3);
     restartVMNums(-2);
@@ -4162,7 +4163,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
           @Override
           public boolean done() {
-            return rm.getRebalanceOperations().isEmpty();
+            return rm.getRebalanceOperations().isEmpty() &&
+                stats.getRebalancesCompleted() > 0;
           }
 
           @Override

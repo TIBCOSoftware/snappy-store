@@ -567,15 +567,6 @@ public final class GfxdTXEntryState extends TXEntryState implements
   /**
    * {@inheritDoc}
    */
-  @Unretained
-  @Override
-  public Object getTransformedValue() {
-    return super.getValueInTXOrRegion();
-  }
-
-  /**
-   * {@inheritDoc}
-   */
   @Override
   @Retained
   public Object getValueOffHeapOrDiskWithoutFaultIn(LocalRegion owner) {

@@ -80,7 +80,8 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -88,7 +89,7 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -99,7 +100,7 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  protected void initialize(RegionEntryContext drs, Object value) {
+  protected final void initialize(RegionEntryContext drs, Object value) {
     boolean isBackup;
     if (drs instanceof LocalRegion) {
       isBackup = ((LocalRegion)drs).getDiskRegion().isBackup();
@@ -148,15 +149,15 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
     Helper.initialize(this, drs, value);
   }
   protected DiskId id;
-  public DiskId getDiskId() {
+  public final DiskId getDiskId() {
     return this.id;
   }
   @Override
-  public void setDiskId(RegionEntry old) {
+  public final void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
   @Override
-  public void setDelayedDiskId(LocalRegion r) {
+  public final void setDelayedDiskId(LocalRegion r) {
     DiskStoreImpl ds = r.getDiskStore();
     long maxOplogSize = ds.getMaxOplogSize();
     this.id = DiskId.createDiskId(maxOplogSize, false , ds.needsLinkedList());
@@ -199,7 +200,7 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   private volatile Object value;
@@ -219,12 +220,27 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
   @Override
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return this.value;
   }
   @Override
-  protected void setValueField(Object v) {
+  protected final void setValueField(Object v) {
     this.value = v;
+  }
+  @Override
+  public final Token getValueAsToken() {
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
+  }
+  @Override
+  public final boolean isValueNull() {
+    return this.value == null;
   }
   private transient ExtraTableInfo tableInfo;
   @Override
@@ -262,11 +278,11 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
     return null;
   }
   @Override
-  public int estimateMemoryUsage() {
+  public final int estimateMemoryUsage() {
     return ClassSize.refSize;
   }
   @Override
-  public int getTypeFormatId() {
+  public final int getTypeFormatId() {
     return StoredFormatIds.ACCESS_MEM_HEAP_ROW_LOCATION_ID;
   }
   @Override
@@ -285,19 +301,19 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
     return this.hashCode() - other.hashCode();
   }
   @Override
-  public DataValueDescriptor recycle() {
+  public final DataValueDescriptor recycle() {
     return this;
   }
   @Override
-  public DataValueDescriptor getNewNull() {
+  public final DataValueDescriptor getNewNull() {
     return DataValueFactory.DUMMY;
   }
   @Override
-  public boolean isNull() {
+  public final boolean isNull() {
     return this == DataValueFactory.DUMMY;
   }
   @Override
-  public Object getObject() throws StandardException {
+  public final Object getObject() throws StandardException {
     return this;
   }
   @Override
@@ -424,43 +440,43 @@ public class VMBucketRowLocationThinDiskLRURegionEntryHeap extends RowLocationTh
     throw new UnsupportedOperationException("Implement the method for DataType="+ this);
   }
   @Override
-  public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
+  public final Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
     final Object value = this.value;
     return value != null && !Token.isRemovedFromDisk(value)
         ? value : Helper.getValueHeapOrDiskWithoutFaultIn(this, owner);
   }
   @Override
-  public Object getValueOrOffHeapEntry(LocalRegion owner) {
+  public final Object getValueOrOffHeapEntry(LocalRegion owner) {
     return this.getValue(owner);
   }
   @Override
-  public Object getRawValue() {
+  public final Object getRawValue() {
     return this._getValue();
   }
   @Override
-  public Version[] getSerializationVersions() {
+  public final Version[] getSerializationVersions() {
     return null;
   }
   private final int bucketId;
   @Override
-  public Object getValue(GemFireContainer baseContainer) {
+  public final Object getValue(GemFireContainer baseContainer) {
     return RegionEntryUtils.getValue(baseContainer, this.bucketId, this);
   }
   @Override
-  public Object getValueWithoutFaultIn(GemFireContainer baseContainer) {
+  public final Object getValueWithoutFaultIn(GemFireContainer baseContainer) {
     return RegionEntryUtils.getValueWithoutFaultIn(baseContainer,this.bucketId, this);
   }
   @Override
-  public ExecRow getRow(GemFireContainer baseContainer) {
+  public final ExecRow getRow(GemFireContainer baseContainer) {
     return RegionEntryUtils.getRow(baseContainer, this.bucketId, this, this.tableInfo);
   }
   @Override
-  public ExecRow getRowWithoutFaultIn(GemFireContainer baseContainer) {
+  public final ExecRow getRowWithoutFaultIn(GemFireContainer baseContainer) {
     return RegionEntryUtils.getRowWithoutFaultIn(baseContainer, this.bucketId, this,
         this.tableInfo);
   }
   @Override
-  public int getBucketID() {
+  public final int getBucketID() {
     return this.bucketId;
   }
   @Override
