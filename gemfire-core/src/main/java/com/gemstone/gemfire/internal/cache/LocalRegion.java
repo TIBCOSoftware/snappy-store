@@ -2684,10 +2684,8 @@ public class LocalRegion extends AbstractRegion
     if (includeHDFSResults()) {
       return -1;
     }
-    
-    final DiskRegion dr;
-    if ((dr = getDiskRegion()) != null && !isUsedForMetaRegion()
-        && !isUsedForPartitionedRegionAdmin()) {
+    if (getDiskRegion() != null && isOverflowEnabled() &&
+        !isUsedForMetaRegion() && !isUsedForPartitionedRegionAdmin()) {
       //Wait for the disk region to recover values first.
       // Commenting it as it was causing a distributed deadlock if there is 
       // a GII happpening from remote node in case of gemfireXD
@@ -2696,14 +2694,12 @@ public class LocalRegion extends AbstractRegion
       // latest DISK STORES for two regions then it can cause a distributed deadlock.
       // Bug 52317
       //dr.waitForAsyncRecovery();
-      if (dr.getNumOverflowOnDisk() > 0) {
-        long cacheSize = DistributedRegion.MAX_PENDING_ENTRIES;
+      long cacheSize = DistributedRegion.MAX_PENDING_ENTRIES;
 
-        if (reduceCacheFactor > 0.0 && reduceCacheFactor != 1.0) {
-          cacheSize = (long)(cacheSize / reduceCacheFactor);
-        }
-        return cacheSize;
+      if (reduceCacheFactor > 0.0 && reduceCacheFactor != 1.0) {
+        cacheSize = (long)(cacheSize / reduceCacheFactor);
       }
+      return cacheSize;
     }
     return -1;
   }
@@ -2714,7 +2710,7 @@ public class LocalRegion extends AbstractRegion
         && getPartitionedRegion().includeHDFSResults();
   }
 
-  final long adjustDiskIterCacheSize(long cacheSize, long numEntries) {
+  static long adjustDiskIterCacheSize(long cacheSize, long numEntries) {
     return Math.max(Math.min(cacheSize, numEntries + 256), 8192L);
   }
 
@@ -2745,9 +2741,9 @@ public class LocalRegion extends AbstractRegion
    * over the entries in disk order (except if the region is an internal one
    * which will always return a hash map iterator).
    */
-  public Iterator<RegionEntry> getBestLocalIterator(boolean includeValues,
+  public Iterator<RegionEntry> getBestLocalIterator(
       final long cacheSize, boolean keepDiskMap) {
-    if (includeValues && DiskBlockSortManager.DISK_PAGE_SIZE > 0
+    if (DiskBlockSortManager.DISK_PAGE_SIZE > 0
         && getDiskIteratorCacheSize(1.0) >= 0) {
       // if total region size is smaller then reduce the cache size
       return new DiskSavyIterator(this, cacheSize, keepDiskMap);
@@ -3241,7 +3237,7 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  protected boolean isOverflowEnabled() {
+  public boolean isOverflowEnabled() {
     EvictionAttributes ea = getAttributes().getEvictionAttributes();
     return ea != null && ea.getAction().isOverflowToDisk();
   }

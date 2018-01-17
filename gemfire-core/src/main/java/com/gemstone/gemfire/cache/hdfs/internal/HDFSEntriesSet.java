@@ -37,6 +37,7 @@ import com.gemstone.gemfire.internal.cache.LocalRegion.IteratorType;
 import com.gemstone.gemfire.internal.cache.PrimaryBucketException;
 import com.gemstone.gemfire.internal.cache.TXRegionState;
 import com.gemstone.gemfire.internal.cache.TXState;
+import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -123,7 +124,7 @@ public class HDFSEntriesSet extends AbstractSet {
     return true;
   }
 
-  public class HDFSIterator implements Iterator {
+  public class HDFSIterator implements CloseableIterator {
     private final IteratorType type;
     private final boolean deserialize;
     
@@ -230,7 +231,8 @@ public class HDFSEntriesSet extends AbstractSet {
     public void remove() {
       throw new UnsupportedOperationException();
     }
-    
+
+    @Override
     public void close() {
       if (queueNext) {
         queue.close();

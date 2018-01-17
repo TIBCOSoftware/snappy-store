@@ -17,21 +17,24 @@
 
 package io.snappydata.collection;
 
+import java.util.function.LongFunction;
+
 import com.koloboke.compile.KolobokeMap;
 import com.koloboke.function.LongObjPredicate;
 
 @KolobokeMap
 public abstract class LongObjectHashMap<V> {
 
+  private Object globalState;
+
   public static <V> LongObjectHashMap<V> withExpectedSize(int expectedSize) {
     return new KolobokeLongObjectHashMap<>(expectedSize);
   }
 
-  public abstract V put(long key, V value);
+  public abstract void justPut(long key, V value);
 
-  public final void update(long key, V value) {
-    put(key, value);
-  }
+  public abstract V computeIfAbsent(long key,
+      LongFunction<? extends V> mappingFunction);
 
   public abstract V get(long key);
 
@@ -40,6 +43,14 @@ public abstract class LongObjectHashMap<V> {
   public abstract V remove(long key);
 
   public abstract boolean forEachWhile(LongObjPredicate<? super V> predicate);
+
+  public final Object getGlobalState() {
+    return this.globalState;
+  }
+
+  public final void setGlobalState(Object state) {
+    this.globalState = state;
+  }
 
   public abstract int size();
 

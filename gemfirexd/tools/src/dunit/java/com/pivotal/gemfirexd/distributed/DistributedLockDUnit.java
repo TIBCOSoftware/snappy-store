@@ -611,7 +611,9 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
       for (final int key : array) {
         final long currentKey = (key & 0xFFFFFFFFL);
         if (currentKey > lastKey) {
-          if ((oldVM = allKeys.put(key, vm)) == null) {
+          oldVM = allKeys.get(key);
+          if (oldVM == null) {
+            allKeys.justPut(key, vm);
             lastKey = currentKey;
           }
           else {

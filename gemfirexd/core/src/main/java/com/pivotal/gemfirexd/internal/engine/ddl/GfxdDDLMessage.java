@@ -265,7 +265,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
         // indicates that this node should not execute anything in finish
         // message or if origin node goes down before finish message
         this.args.connId = EmbedConnection.UNINITIALIZED;
-        pendingDDLMessages.put(ddlId, this);
+        pendingDDLMessages.justPut(ddlId, this);
       }
       return;
     }
@@ -353,7 +353,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
         // add self as the pending message to handle sender failure before
         // DDL commit/rollback
         synchronized (pendingDDLMessages) {
-          pendingDDLMessages.put(ddlId, this);
+          pendingDDLMessages.justPut(ddlId, this);
         }
       }
       if (GemFireXDUtils.TraceDDLReplay) {

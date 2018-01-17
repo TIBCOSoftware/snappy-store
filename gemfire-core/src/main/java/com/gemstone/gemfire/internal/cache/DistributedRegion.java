@@ -3520,7 +3520,7 @@ public class DistributedRegion extends LocalRegion implements
    * Once the regionEntries iterator has nothing more to iterate
    * it starts iterating over, in disk order, the entries on disk.
    */
-  public static final class DiskSavyIterator implements Iterator<RegionEntry> {
+  public static final class DiskSavyIterator implements DiskRegionIterator {
     //private boolean usingIt = true;
     private Iterator<?> it;
     private LocalRegion region;
@@ -3567,10 +3567,11 @@ public class DistributedRegion extends LocalRegion implements
       final int arraySize = Math.max(maxPendingEntries > 1000000 ? 200000
           : ((int)maxPendingEntries / 5), 8192);
       return (this.diskMap = new ArraySortedCollection(
-          new DiskEntryPage.DEPComparator(), null, null, arraySize, 0));
+          DiskEntryPage.DEPComparator.instance, null, null, arraySize, 0));
     }
 
-    final void setRegion(LocalRegion lr) {
+    @Override
+    public void setRegion(LocalRegion lr) {
       this.region = lr;
       this.it = lr.entries.regionEntries().iterator();
     }
@@ -3598,6 +3599,7 @@ public class DistributedRegion extends LocalRegion implements
       }
     }
 
+    @Override
     public boolean initDiskIterator() {
       if (this.it != null) {
         this.it = null;
@@ -3664,7 +3666,7 @@ public class DistributedRegion extends LocalRegion implements
             }
           }
           RegionEntry re = (RegionEntry)this.it.next();
-          if (re.isOverflowedToDisk(this.region, dp)) {
+          if (re.isOverflowedToDisk(this.region, dp, false)) {
             // add dp to sorted list
             // avoid create DiskPage everytime for lookup
             // TODO: SW: Can reduce the intermediate memory and boost
@@ -3674,7 +3676,7 @@ public class DistributedRegion extends LocalRegion implements
             // order at the end. Once done use this iterator for all local
             // entries iterators
             final ArraySortedCollection map = getDiskMap();
-            map.add(new DiskEntryPage(dp, re));
+            map.add(new DiskEntryPage(dp, re, this.region));
             // flush the diskMap if it has reached the max
             if (this.maxPendingEntries > 0
                 && ++this.diskMapSize >= this.maxPendingEntries) {
@@ -3748,6 +3750,14 @@ public class DistributedRegion extends LocalRegion implements
       this.offset = offset;
     }
 
+    public final long getOplogId() {
+      return this.oplogId;
+    }
+
+    public final long getOffset() {
+      return this.offset;
+    }
+
     @Override
     public int hashCode() {
       return Long.valueOf(this.oplogId ^ this.offset).hashCode();
@@ -3782,27 +3792,38 @@ public class DistributedRegion extends LocalRegion implements
   }
 
   public static class DiskEntryPage extends DiskPosition {
-    public final RegionEntry entry;
+    protected RegionEntry entry;
+    protected final LocalRegion region;
     final int readerId;
-    final boolean faultIn;
 
-    public DiskEntryPage(DiskPosition dp, RegionEntry re) {
-      this(dp, re, 0, false);
+    public DiskEntryPage(DiskPosition dp, RegionEntry re, LocalRegion region) {
+      this(dp, re, region, 0);
     }
 
-    public DiskEntryPage(DiskPosition dp, RegionEntry re,
-        int readerId, boolean faultIn) {
-      this.setPosition(dp.oplogId, dp.offset / DiskBlockSortManager.DISK_PAGE_SIZE);
+    public DiskEntryPage(RegionEntry re, LocalRegion region, int readerId) {
       this.entry = re;
+      this.region = region;
       this.readerId = readerId;
-      this.faultIn = faultIn;
     }
 
-    public final RegionEntry getRegionEntry() {
+    DiskEntryPage(DiskPosition dp, RegionEntry re,
+        LocalRegion region, int readerId) {
+      this(re, region, readerId);
+      this.setPosition(dp.oplogId, dp.offset / DiskBlockSortManager.DISK_PAGE_SIZE);
+    }
+
+    protected Object readEntryValue() {
+      return this.entry.getValue(this.region);
+    }
+
+    public RegionEntry getEntry() {
       return this.entry;
     }
 
     public static final class DEPComparator implements Comparator<Object> {
+
+      public static final DEPComparator instance = new DEPComparator();
+
       /**
        * {@inheritDoc}
        */

@@ -270,7 +270,7 @@ public NewLRUClockHand(Object region, EnableLRU ccHelper,
           continue;
         }
       } else {
-        UnsafeHolder.getUnsafe().monitorEnter(aNode);
+        UnsafeHolder.monitorEnter(aNode);
       }
       // If this Entry is part of a transaction, skip it since
       // eviction should not cause commit conflicts

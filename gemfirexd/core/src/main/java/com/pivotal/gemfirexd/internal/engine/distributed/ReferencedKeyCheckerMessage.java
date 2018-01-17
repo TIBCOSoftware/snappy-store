@@ -896,7 +896,7 @@ public final class ReferencedKeyCheckerMessage extends
             for (int j = 0; j < byteArraySize; ++j) {
               bytes[j] = in.readByte();
             }
-            this.refColSameAfterModBitsMapping.put(rowNum,bytes);
+            this.refColSameAfterModBitsMapping.justPut(rowNum,bytes);
             
           }
         }
@@ -1128,7 +1128,7 @@ public final class ReferencedKeyCheckerMessage extends
           int numCols = this.refColUpdtd2DependentCols.size();
           refColSameAfterUpdt = new byte[FormatableBitSet
               .numBytesFromBits(numCols)];
-          this.refColSameAfterModBitsMapping.put(rowNum, refColSameAfterUpdt);
+          this.refColSameAfterModBitsMapping.justPut(rowNum, refColSameAfterUpdt);
         }
         // based on j identify the right byte from array & its pos
         // TODO:Asif clean up.

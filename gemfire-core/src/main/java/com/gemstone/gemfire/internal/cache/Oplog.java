@@ -8536,7 +8536,8 @@ public final class Oplog implements CompactableOplog {
       return false;
     }
     @Override
-    public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp) {
+    public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp,
+        boolean alwaysFetchPosition) {
       // TODO Auto-generated method stub
       return false;
     }

@@ -336,7 +336,8 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       return false;
     }
     @Override
-    public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp) {
+    public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp,
+        boolean alwaysFetchPosition) {
       // TODO Auto-generated method stub
       return false;
     }

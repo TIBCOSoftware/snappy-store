@@ -49,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
+import java.util.function.BiFunction;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.StatisticsFactory;
@@ -127,7 +128,6 @@ import com.gemstone.gemfire.internal.SetUtils;
 import com.gemstone.gemfire.internal.cache.BucketAdvisor.ServerBucketProfile;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.DestroyPartitionedRegionMessage.DestroyPartitionedRegionResponse;
-import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskSavyIterator;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException.PutAllPartialResult;
 import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
@@ -6720,35 +6720,6 @@ public class PartitionedRegion extends LocalRegion implements
    * @param includeValues
    *          if true then iterator needs the values else only keys (e.g. to
    *          avoid disk reads)
-   */
-  public final Iterator<?> localEntriesIterator(
-      final InternalRegionFunctionContext context, final boolean primaryOnly,
-      final boolean forUpdate, final boolean includeValues) {
-    final TXStateInterface tx = getTXState();
-    TXState txState = null;
-    if (tx != null) {
-      txState = tx.getLocalTXState();
-    }
-    return localEntriesIterator(context, primaryOnly, forUpdate, includeValues,
-        txState);
-  }
-
-  /**
-   * Get an iterator on local entries possibly filtered by given
-   * FunctionContext.
-   * 
-   * @param context
-   *          FunctionContext, if any, from the execution of a function on
-   *          region
-   * @param primaryOnly
-   *          if true then return only the primary bucket entries when there is
-   *          no FunctionContext provided or the context has no filter
-   * @param forUpdate
-   *          if true then the entry has to be fetched for update so will be
-   *          locked if required in a transactional context
-   * @param includeValues
-   *          if true then iterator needs the values else only keys (e.g. to
-   *          avoid disk reads)
    * @param txState
    *          the current TXState
    */
@@ -7104,12 +7075,23 @@ public class PartitionedRegion extends LocalRegion implements
     }
   }
 
+  private static final BiFunction<BucketRegion, Long, Iterator<RegionEntry>>
+      DEFAULT_ITERATOR_CREATOR = (br, numEntries) -> br.getBestLocalIterator(
+      numEntries >= 0 ? adjustDiskIterCacheSize(
+          DistributedRegion.MAX_PENDING_ENTRIES, numEntries) : 0, true);
+
   public final class PRLocalScanIterator implements PREntriesIterator<Object>,
       CloseableIterator<Object> {
 
     private final Iterator<Integer> bucketIdsIter;
 
     private final TXState txState;
+
+    /**
+     * A creator for region iterator that includes values so can optimize
+     * disk iteration. The default uses <code>DiskSavyIterator</code>.
+     */
+    private final BiFunction<BucketRegion, Long, Iterator<RegionEntry>> createIterator;
 
     private final boolean includeHDFS;
 
@@ -7136,9 +7118,7 @@ public class PartitionedRegion extends LocalRegion implements
 
     private final boolean fetchRemoteEntries;
 
-    private boolean commitOnClose;
-
-    public PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
+    PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
         final boolean forUpdate, final boolean includeValues) {
       this.includeHDFS = includeHDFSResults();
       Iterator<Integer> iter = null;
@@ -7180,6 +7160,7 @@ public class PartitionedRegion extends LocalRegion implements
       this.bucketIdsIter = iter;
       this.numEntries = numEntries;
       this.txState = tx;
+      this.createIterator = DEFAULT_ITERATOR_CREATOR;
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.diskIteratorInitialized = false;
@@ -7187,8 +7168,17 @@ public class PartitionedRegion extends LocalRegion implements
 
     }
 
+    PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
+        final boolean forUpdate, final boolean includeValues,
+        final boolean fetchRemote) {
+      this(bucketIds, tx, DEFAULT_ITERATOR_CREATOR, forUpdate,
+          includeValues, fetchRemote);
+    }
+
     public PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
-        final boolean forUpdate, final boolean includeValues, final boolean fetchRemote) {
+        BiFunction<BucketRegion, Long, Iterator<RegionEntry>> createIterator,
+        final boolean forUpdate, final boolean includeValues,
+        final boolean fetchRemote) {
       this.includeHDFS = includeHDFSResults();
       Iterator<Integer> iter = null;
       long numEntries = -1;
@@ -7220,6 +7210,7 @@ public class PartitionedRegion extends LocalRegion implements
       this.remoteEntryFetched = false;
       this.bucketIdsIter = iter;
       this.txState = tx;
+      this.createIterator = createIterator;
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.numEntries = numEntries;
@@ -7247,8 +7238,8 @@ public class PartitionedRegion extends LocalRegion implements
     }
 
     public void close() {
-      if (bucketEntriesIter instanceof HDFSIterator) {
-        ((HDFSIterator) bucketEntriesIter).close();
+      if (bucketEntriesIter instanceof CloseableIterator<?>) {
+        ((CloseableIterator<?>)bucketEntriesIter).close();
       }
     }
 
@@ -7300,8 +7291,8 @@ public class PartitionedRegion extends LocalRegion implements
           for (;;) {
             if (!this.bucketIdsIter.hasNext()) {
               // check for an open disk iterator
-              if (bucketEntriesIter instanceof DiskSavyIterator) {
-                if (((DiskSavyIterator)bucketEntriesIter)
+              if (bucketEntriesIter instanceof DiskRegionIterator) {
+                if (((DiskRegionIterator)bucketEntriesIter)
                     .initDiskIterator()) {
                   this.diskIteratorInitialized = true;
                   break;
@@ -7310,11 +7301,6 @@ public class PartitionedRegion extends LocalRegion implements
               // no more buckets need to be visited
               this.bucketEntriesIter = null;
               this.moveNext = false;
-              if (commitOnClose) {
-                getCache().getCacheTransactionManager().masqueradeAs(this.txState);
-                getCache().getCacheTransactionManager().commit();
-                commitOnClose = false;
-              }
               return false;
             }
             final int bucketId = this.bucketIdsIter.next().intValue();
@@ -7357,11 +7343,6 @@ public class PartitionedRegion extends LocalRegion implements
           }
         }
       }
-      if (this.currentEntry == null && commitOnClose) {
-        getCache().getCacheTransactionManager().masqueradeAs(this.txState);
-        getCache().getCacheTransactionManager().commit();
-        commitOnClose = false;
-      }
       return (this.currentEntry != null);
     }
 
@@ -7369,10 +7350,11 @@ public class PartitionedRegion extends LocalRegion implements
       this.currentBucketId = bucketId;
       this.currentBucketRegion = br;
       if (this.bucketEntriesIter == null) {
-        long cacheSize = this.numEntries >= 0 ? adjustDiskIterCacheSize(
-            DistributedRegion.MAX_PENDING_ENTRIES, this.numEntries) : 0;
-        this.bucketEntriesIter = br.getBestLocalIterator(
-            this.includeValues, cacheSize, true);
+        if (this.includeValues) {
+          this.bucketEntriesIter = this.createIterator.apply(br, numEntries);
+        } else {
+          this.bucketEntriesIter = br.entries.regionEntries().iterator();
+        }
         if (this.bucketEntriesIter instanceof HDFSIterator) {
           if (this.forUpdate) {
             ((HDFSIterator)bucketEntriesIter).setForUpdate();
@@ -7381,7 +7363,11 @@ public class PartitionedRegion extends LocalRegion implements
             ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
           }
         }
-      } else if (!(this.bucketEntriesIter instanceof DiskSavyIterator)) {
+      } else if (this.bucketEntriesIter instanceof DiskRegionIterator) {
+        // wait for region recovery etc.
+        br.getDiskIteratorCacheSize(1.0);
+        ((DiskRegionIterator)this.bucketEntriesIter).setRegion(br);
+      } else {
         this.bucketEntriesIter = br.entries.regionEntries().iterator();
         if (this.bucketEntriesIter instanceof HDFSIterator) {
           if (this.forUpdate) {
@@ -7391,10 +7377,6 @@ public class PartitionedRegion extends LocalRegion implements
             ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
           }
         }
-      } else {
-        // wait for region recovery etc.
-        br.getDiskIteratorCacheSize(1.0);
-        ((DiskSavyIterator)this.bucketEntriesIter).setRegion(br);
       }
     }
 
@@ -7406,6 +7388,10 @@ public class PartitionedRegion extends LocalRegion implements
         this.bucketEntriesIter = entries.iterator();
       }
       // if null, then iterator already set
+    }
+
+    public Iterator<RegionEntry> getBucketEntriesIterator() {
+      return this.bucketEntriesIter;
     }
 
     private Set<RegionEntry> getBucketEntries(final int bucketId) {

@@ -16,11 +16,16 @@
  */
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.concurrent.GuardedBy;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArraySortedCollection;
 import com.gemstone.gemfire.internal.util.Enumerator;
 
@@ -78,16 +83,16 @@ public final class DiskBlockSortManager {
     return this.readerId.incrementAndGet();
   }
 
-  public DiskBlockSorter getSorter(LocalRegion region,
+  public DiskBlockSorter getSorter(LocalRegion region, boolean fullScan,
       Collection<DistributedRegion.DiskEntryPage> entries) {
     synchronized (this.lock) {
       DiskBlockSorter sorter = this.blockSorter;
       if (sorter == null || sorter.readOnly) {
-        this.blockSorter = sorter = new DiskBlockSorter(region, this.lock);
+        this.blockSorter = sorter = new DiskBlockSorter(region, fullScan, lock);
       } else {
         sorter.incrementRefCount();
       }
-      if (entries != null) {
+      if (entries != null && !entries.isEmpty()) {
         for (DistributedRegion.DiskEntryPage entry : entries) {
           sorter.addNewEntry(entry);
         }
@@ -100,10 +105,13 @@ public final class DiskBlockSortManager {
     /**
      * the underlying sorter
      */
-    private final ArraySortedCollection sorter;
+    private ArraySortedCollection sorter;
+    private final ArrayList<Object> sorted;
+    private final boolean fullScan;
 
-    private final LocalRegion region;
     private final Object lock;
+    private final CancelCriterion regionStopper;
+    private final CancelCriterion diskStoreStopper;
 
     /**
      * The number of readers that have opened this sorter. When the sorter
@@ -116,19 +124,21 @@ public final class DiskBlockSortManager {
 
     boolean readOnly;
 
-    DiskBlockSorter(LocalRegion region, Object lock) {
+    DiskBlockSorter(LocalRegion region, boolean fullScan, Object lock) {
       this.sorter = new ArraySortedCollection(
-          new DistributedRegion.DiskEntryPage.DEPComparator(), null, null,
+          DistributedRegion.DiskEntryPage.DEPComparator.instance, null, null,
           DISK_BLOCK_SORTER_ARRAY_SIZE, 0);
-      this.region = region;
+      this.sorted = new ArrayList<>();
+      this.fullScan = fullScan;
       this.lock = lock;
+      this.regionStopper = region.getCancelCriterion();
+      this.diskStoreStopper = region.getDiskStore().getCancelCriterion();
       this.refCount = 1; // for the first reader
     }
 
+    @GuardedBy("lock")
     void incrementRefCount() {
-      synchronized (this.lock) {
-        this.refCount++;
-      }
+      this.refCount++;
     }
 
     public boolean addEntry(DistributedRegion.DiskEntryPage entry) {
@@ -149,7 +159,8 @@ public final class DiskBlockSortManager {
      * results that will switch this sorter into read-only mode.
      * A negative time means wait indefinitely.
      */
-    public ReaderIdEnumerator enumerate(int readerId, long maxWaitMillis) {
+    public ReaderIdEnumerator enumerate(int readerId, boolean faultIn,
+        long maxWaitMillis) {
       synchronized (this.lock) {
         if (--this.refCount <= 0) {
           // notify any waiters
@@ -159,9 +170,6 @@ public final class DiskBlockSortManager {
           if (maxWaitMillis < 0) {
             maxWaitMillis = Long.MAX_VALUE;
           }
-          final CancelCriterion regionStopper = this.region.getCancelCriterion();
-          final CancelCriterion diskStoreStopper = this.region.getDiskStore()
-              .getCancelCriterion();
           regionStopper.checkCancelInProgress(null);
           diskStoreStopper.checkCancelInProgress(null);
           // loop wait to check for cancellation and ignore spurious wakeups
@@ -181,45 +189,72 @@ public final class DiskBlockSortManager {
         }
         this.readOnly = true;
 
-        return new ReaderIdEnumerator(readerId, this.region, this.sorter);
+        // capture sorter output once
+        if (this.sorter != null) {
+          Enumerator enumerator = this.sorter.enumerator();
+          Object next;
+          while ((next = enumerator.nextElement()) != null) {
+            this.sorted.add(next);
+          }
+          this.sorter = null;
+        }
+        return new ReaderIdEnumerator(readerId, faultIn);
       }
     }
 
+    @GuardedBy("lock")
     void addNewEntry(DistributedRegion.DiskEntryPage entry) {
       this.sorter.add(entry);
     }
-  }
 
-  public static final class ReaderIdEnumerator
-      implements Enumerator<DistributedRegion.DiskEntryPage> {
+    public final class ReaderIdEnumerator
+        implements Enumerator<DistributedRegion.DiskEntryPage> {
 
-    private final int requiredId;
-    private final LocalRegion region;
-    private final Enumerator allElements;
+      private final int requiredId;
+      private final Iterator<Object> sortedIterator;
+      private final boolean faultIn;
+      private boolean recoveryStopped;
 
-    ReaderIdEnumerator(int readerId, LocalRegion region,
-        ArraySortedCollection sorter) {
-      this.requiredId = readerId;
-      this.region = region;
-      this.allElements = sorter.enumerator();
-    }
-
-    @Override
-    public DistributedRegion.DiskEntryPage nextElement() {
-      Object next;
-      while ((next = this.allElements.nextElement()) != null) {
-        DistributedRegion.DiskEntryPage entry =
-            (DistributedRegion.DiskEntryPage)next;
-        // fault-in the value if required in any case to do ordered
-        // disk reads as much as possible
-        if (entry.faultIn) {
-          OffHeapHelper.release(entry.entry.getValue(region));
-        }
-        if (entry.readerId == this.requiredId) {
-          return entry;
-        }
+      ReaderIdEnumerator(int readerId, boolean faultIn) {
+        this.requiredId = readerId;
+        this.sortedIterator = sorted.iterator();
+        // no need to check for recovery condition if this is not a full scan
+        this.faultIn = faultIn;
+        this.recoveryStopped = !fullScan && faultIn;
       }
-      return null;
+
+      @Override
+      public DistributedRegion.DiskEntryPage nextElement() {
+        StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
+        while (this.sortedIterator.hasNext()) {
+          DistributedRegion.DiskEntryPage entry =
+              (DistributedRegion.DiskEntryPage)this.sortedIterator.next();
+          boolean faultInEntry = faultIn;
+          // if this is a full-scan and there is memory available then fault-in
+          // the value in any case to do ordered disk reads as much as possible;
+          // also once recovery is stopped, it will never be checked again
+          if (!recoveryStopped) {
+            recoveryStopped = callbacks.shouldStopRecovery();
+            if (!recoveryStopped) {
+              if (fullScan) {
+                diskStoreStopper.checkCancelInProgress(null);
+                OffHeapHelper.release(entry.readEntryValue());
+                faultInEntry = false;
+              } else if (!faultInEntry) {
+                faultInEntry = true; // fault-in in any case if possible
+              }
+            }
+          }
+          if (entry.readerId == this.requiredId) {
+            if (faultInEntry) {
+              diskStoreStopper.checkCancelInProgress(null);
+              OffHeapHelper.release(entry.readEntryValue());
+            }
+            return entry;
+          }
+        }
+        return null;
+      }
     }
   }
 }

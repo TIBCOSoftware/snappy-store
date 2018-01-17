@@ -352,8 +352,8 @@ public interface DiskEntry extends RegionEntry {
     }*/
 
     static boolean isOverflowedToDisk(DiskEntry de, DiskRegionView dr,
-        DistributedRegion.DiskPosition dp, RegionEntryContext context) {
-      if (!de.isValueNull()) {
+        DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition) {
+      if (!alwaysFetchPosition && !de.isValueNull()) {
         return false;
       }
       DiskId did;
@@ -369,13 +369,13 @@ public interface DiskEntry extends RegionEntry {
       }
       try {
       synchronized (syncObj) {
-        if (de.isValueNull()) {
+        if (alwaysFetchPosition || de.isValueNull()) {
           if (did == null) {
             synchronized (de) {
               did = de.getDiskId();
             }
             assert did != null;
-            return isOverflowedToDisk(de, dr, dp, context);
+            return isOverflowedToDisk(de, dr, dp, alwaysFetchPosition);
           } else {
             dp.setPosition(did.getOplogId(), did.getOffsetInOplog());
             return true;
@@ -1180,7 +1180,7 @@ public interface DiskEntry extends RegionEntry {
       //if the region happens to be persistent PR type, the owning region passed is PR,
       // but it will have DiskRegion as null. GemFireXD takes care of passing owning region
       // as BucketRegion in case of Overflow type entry. This is fix for Bug # 41804
-      if ( entry instanceof LRUEntry && !dr.isSync() ) {
+      if (!dr.isSync() && entry instanceof LRUEntry) {
         synchronized (entry) {
           DiskId did = entry.getDiskId();
           if (did != null && did.isPendingAsync()) {
@@ -1222,14 +1222,16 @@ public interface DiskEntry extends RegionEntry {
         }
       }
       } finally {
-        v = OffHeapHelper.copyAndReleaseIfNeeded(v);
+        if (region.getEnableOffHeapMemory()) {
+          v = OffHeapHelper.copyAndReleaseIfNeeded(v);
+        }
         // At this point v should be either a heap object or a retained gfxd off-heap reference.
       }
       if (Token.isRemoved(v)) {
         // fix for bug 31800
         v = null;
       } else {
-        ((RegionEntry)entry).setRecentlyUsed();
+        entry.setRecentlyUsed();
       }
       if (lruFaultedIn) {
        lruUpdateCallback(region);

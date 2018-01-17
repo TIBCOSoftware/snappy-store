@@ -704,6 +704,14 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
         buffer = null;
         removalEntry = (LRUEntry)lruList.getLRUEntry(skipped);
         if (removalEntry != null) {
+          // skip "high-priority" entries e.g. stats rows (SNAP-2102)
+          if (skipLockedEntries && CallbackFactoryProvider.getStoreCallbacks()
+              .skipEvictionForEntry(removalEntry)) {
+            UnsafeHolder.monitorExit(removalEntry);
+            skipped.add(removalEntry);
+            removalEntry = null;
+            continue;
+          }
           // get the handle to off-heap entry before eviction
           if (includeOffHeapBytes && !removalEntry.isOffHeap()) {
             // add off-heap size to the MSB of evictedBytes
@@ -758,7 +766,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
         if (removalEntry != null) {
           monitorExit(removalEntry, buffer);
         }
-        // add back any skipped entries due to locks to LRU list
+        // add back any skipped entries due to locks or priority to LRU list
         final int numSkipped = skipped.size();
         for (int i = 0; i < numSkipped; i++) {
           lruList.appendEntry(skipped.get(i));

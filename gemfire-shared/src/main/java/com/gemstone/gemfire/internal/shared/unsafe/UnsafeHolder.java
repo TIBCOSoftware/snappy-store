@@ -417,6 +417,10 @@ public abstract class UnsafeHolder {
     return true;
   }
 
+  public static void monitorEnter(Object obj) {
+    getUnsafe().monitorEnter(obj);
+  }
+
   public static void monitorExit(Object obj) {
     getUnsafe().monitorExit(obj);
   }

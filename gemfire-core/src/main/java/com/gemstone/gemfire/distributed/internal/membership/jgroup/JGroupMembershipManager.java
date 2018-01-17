@@ -3301,7 +3301,7 @@ public final class JGroupMembershipManager implements MembershipManager {
           short version = mbr.getAddress().getVersionOrdinal();
           if (!messages.contains(version)) {
             Message jmsg = createJGMessage(msg, local, version);
-            messages.put(version, jmsg);
+            messages.justPut(version, jmsg);
             if (firstMessage) {
               theStats.incSentBytes(jmsg.getLength());
               firstMessage = false;

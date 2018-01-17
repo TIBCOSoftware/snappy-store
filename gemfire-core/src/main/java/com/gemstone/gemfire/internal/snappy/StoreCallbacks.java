@@ -22,6 +22,7 @@ import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
+import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
@@ -39,6 +40,8 @@ public interface StoreCallbacks {
   List<String> getInternalTableSchemas();
 
   boolean isColumnTable(String qualifiedName);
+
+  boolean skipEvictionForEntry(LRUEntry entry);
 
   int getHashCodeSnappy(Object dvd, int numPartitions);
 
