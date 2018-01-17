@@ -22,15 +22,17 @@ public class SnappyExternalTableStats {
   private String tableType;
   private String provider;
   private String dataSourcePath;
+  private String driverClass;
   private Object externalStore;
 
   public SnappyExternalTableStats(String tableName, String tableType,
-      String provider, Object externalStore, String dataSourcePath) {
+      String provider, Object externalStore, String dataSourcePath, String driverClass) {
     this.tableName = tableName;
     this.tableType = tableType;
     this.provider = provider;
     this.externalStore = externalStore;
     this.dataSourcePath = dataSourcePath;
+    this.driverClass = driverClass;
   }
 
 
@@ -54,4 +56,7 @@ public class SnappyExternalTableStats {
     return dataSourcePath;
   }
 
+  public String getDriverClass() {
+    return driverClass;
+  }
 }
