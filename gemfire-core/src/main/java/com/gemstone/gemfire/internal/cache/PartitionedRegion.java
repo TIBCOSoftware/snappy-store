@@ -8151,9 +8151,24 @@ public class PartitionedRegion extends LocalRegion implements
           waitInterval = PartitionedRegion.VM_OWNERSHIP_WAIT_TIME;
           startTime = 0;
         }
-  
+        int count = 0;
         while (!this.lockOwned) {
           cache.getCancelCriterion().checkCancelInProgress(null);
+          // wait in multiples of ackWaitThreshold, before trying again.
+          // once wait increases to 60sec, wait for 60 sec.
+          if (count > 0) {
+            try {
+              for (int i = 0; i < (ackWaitThreshold * count) / 200; i++) {
+                  cache.getCancelCriterion().checkCancelInProgress(null);
+                  Thread.sleep(200);
+              }
+              Thread.sleep(ackWaitThreshold * count);
+            } catch (InterruptedException e) {
+            }
+          }
+          if (count < 4) {
+            count++;
+          }
           this.lockOwned = this.lockService.lock(this.lockName,
               waitInterval, -1);
           if (!this.lockOwned && ackSAThreshold > 0 && enableAlerts) {
@@ -9606,8 +9621,8 @@ public class PartitionedRegion extends LocalRegion implements
    * region in the data Store.
    * 
    */
-  public List getLocalBucketsListTestOnly() {
-    List localBucketList = null;
+  public List<Integer> getLocalBucketsListTestOnly() {
+    List<Integer> localBucketList = null;
     if (this.dataStore != null) {
       localBucketList = this.dataStore.getLocalBucketsListTestOnly();
     }

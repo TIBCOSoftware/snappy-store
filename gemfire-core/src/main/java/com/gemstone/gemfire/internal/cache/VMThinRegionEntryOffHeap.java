@@ -52,7 +52,8 @@ public class VMThinRegionEntryOffHeap extends VMThinRegionEntry
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -60,7 +61,7 @@ public class VMThinRegionEntryOffHeap extends VMThinRegionEntry
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -77,45 +78,46 @@ public class VMThinRegionEntryOffHeap extends VMThinRegionEntry
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   @Retained @Released private volatile long ohAddress;
   private final static AtomicLongFieldUpdater<VMThinRegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMThinRegionEntryOffHeap.class, "ohAddress");
   @Override
-  public boolean isOffHeap() {
+  public final boolean isOffHeap() {
     return true;
   }
   @Override
-  public Token getValueAsToken() {
+  public final Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }
   @Override
   @Unretained
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return OffHeapRegionEntryHelper._getValue(this);
   }
   @Override
-  protected void setValueField(@Unretained Object v) {
+  protected final void setValueField(@Unretained Object v) {
     OffHeapRegionEntryHelper.setValue(this, v);
   }
   @Override
   @Retained
-  public Object _getValueRetain(RegionEntryContext context, boolean decompress) {
+  public final Object _getValueRetain(RegionEntryContext context,
+      boolean decompress) {
     return OffHeapRegionEntryHelper._getValueRetain(this, decompress);
   }
   @Override
-  public long getAddress() {
+  public final long getAddress() {
     return ohAddrUpdater.get(this);
   }
   @Override
-  public boolean setAddress(long expectedAddr, long newAddr) {
+  public final boolean setAddress(long expectedAddr, long newAddr) {
     return ohAddrUpdater.compareAndSet(this, expectedAddr, newAddr);
   }
   @Override
   @Released
-  public void release() {
+  public final void release() {
     OffHeapRegionEntryHelper.releaseEntry(this);
   }
   private static RegionEntryFactory factory = new RegionEntryFactory() {

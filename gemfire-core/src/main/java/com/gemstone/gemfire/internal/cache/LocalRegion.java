@@ -111,6 +111,7 @@ import com.gemstone.gemfire.cache.hdfs.internal.HoplogListenerForRegion;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.HDFSRegionDirector;
 import com.gemstone.gemfire.cache.hdfs.internal.hoplog.HDFSRegionDirector.HdfsRegionManager;
 import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
+import com.gemstone.gemfire.cache.persistence.ConflictingPersistentDataException;
 import com.gemstone.gemfire.cache.query.FunctionDomainException;
 import com.gemstone.gemfire.cache.query.IndexMaintenanceException;
 import com.gemstone.gemfire.cache.query.IndexType;
@@ -8278,6 +8279,14 @@ public class LocalRegion extends AbstractRegion
     if (dae != null && dae.isRemote()) {
       return;
     }
+    if (duringInitialization && !(dae instanceof ConflictingPersistentDataException)) {
+      return;
+    }
+
+    if (causedByRDE(dae)) {
+      return;
+    }
+
     LogWriterI18n logger = getCache().getLoggerI18n();
     // Locally Destroy the region
     boolean gotRDE = false;

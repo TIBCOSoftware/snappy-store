@@ -8556,11 +8556,6 @@ public final class Oplog implements CompactableOplog {
       // TODO Auto-generated method stub
     }
     @Override
-    public Object getTransformedValue() {
-      // TODO Auto-generated method stub
-      return null;
-    }
-    @Override
     public Object getValueInVM(RegionEntryContext context) {
       // TODO Auto-generated method stub
       return null;

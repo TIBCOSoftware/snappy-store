@@ -356,11 +356,6 @@ public class ValidatingDiskRegion extends DiskRegion implements DiskRecoveryStor
       // TODO Auto-generated method stub
     }
     @Override
-    public Object getTransformedValue() {
-      // TODO Auto-generated method stub
-      return null;
-    }
-    @Override
     public Object getValueInVM(RegionEntryContext context) {
       // TODO Auto-generated method stub
       return null;

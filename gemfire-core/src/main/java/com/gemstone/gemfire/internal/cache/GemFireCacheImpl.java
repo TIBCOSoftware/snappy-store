@@ -1549,32 +1549,31 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   //TODO: As an optimizations we can change the ds and maintain it at cache level and punish writes.
   //return snapshotRVV;
   public Map getSnapshotRVV() {
+    lockForSnapshotRvv.readLock().lock();
     try {
       // Wait for all the regions to get initialized before taking snapshot.
-      lockForSnapshotRvv.readLock().lock();
       final ObjectObjectHashMap<String, Map> snapshot =
           ObjectObjectHashMap.withExpectedSize(this.pathToRegion.size());
       this.pathToRegion.values().forEach(region -> {
-        RegionVersionVector rvv;
-        if (region instanceof BucketRegion) {
-          BucketRegion br = (BucketRegion)region;
-          PartitionedRegion pr = br.getPartitionedRegion();
-          if (pr.concurrencyChecksEnabled) {
-            pr.waitForData();
+        if (region.isInternalRegion() || (region instanceof HARegion)) return;
+        PartitionedRegion pr;
+        if (region.getPartitionAttributes() != null &&
+            (pr = (PartitionedRegion)region).isDataStore() &&
+            pr.concurrencyChecksEnabled) {
+          pr.waitForData();
+          for (BucketRegion br : pr.getDataStore().getAllLocalBucketRegions()) {
             // if null then create the rvv for that bucket!
             // For Initialization case, so that we have all the data before snapshot.
             br.waitForData();
             snapshot.put(br.getFullPath(),
                 br.getVersionVector().getSnapShotOfMemberVersion());
           }
-        } else if ((rvv = region.getVersionVector()) != null &&
-            !region.isSecret() && !region.isUsedForMetaRegion() &&
-            !region.isInternalRegion() && !(region instanceof HARegion) &&
-            !region.isUsedForPartitionedRegionAdmin()) {
+        } else if (region.getVersionVector() != null) {
           // if null then create the rvv for that region!
           // For Initialization case, so that we have all the data before snapshot.
           region.waitForData();
-          snapshot.put(region.getFullPath(), rvv.getSnapShotOfMemberVersion());
+          snapshot.put(region.getFullPath(),
+              region.getVersionVector().getSnapShotOfMemberVersion());
         }
       });
       return snapshot;
@@ -3504,9 +3503,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     synchronized (this.rootRegions) {
       for (Object r : this.rootRegions.values()) {
         LocalRegion rgn = (LocalRegion) r;
-        if (rgn.isSecret() || rgn.isUsedForMetaRegion() || rgn instanceof HARegion || rgn.isUsedForPartitionedRegionAdmin()
-            || rgn.isInternalRegion()/* rgn.isUsedForPartitionedRegionBucket() */) {
-          continue; // Skip administrative PartitionedRegions
+        if (rgn.isInternalRegion() || (rgn instanceof HARegion)) {
+          continue; // skip administrative and internal regions
         }
         result.add(rgn);
         result.addAll(rgn.basicSubregions(true));

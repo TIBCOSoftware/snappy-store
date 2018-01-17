@@ -409,6 +409,18 @@ public class Bug37377DUnitTest extends CacheTestCase
     }
 
     @Override
+    public Token getValueAsToken() {
+      Object v = this.value;
+      if (v == null) {
+        return null;
+      } else if (v instanceof Token) {
+        return (Token)v;
+      } else {
+        return Token.NOT_A_TOKEN;
+      }
+    }
+
+    @Override
     public DiskId getDiskId() {
       // TODO Auto-generated method stub
       return null;
