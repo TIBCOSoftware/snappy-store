@@ -4416,6 +4416,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       RegionEntry entry;
       boolean isOffHeapEnabled = region.getEnableOffHeapMemory();
       if (isOffHeapEnabled || indexes != null) {
+        int totalExceptionCount = 0;
         while (bucketEntriesIter.hasNext()) {
           entry = (RegionEntry) bucketEntriesIter.next();
           try {
@@ -4423,11 +4424,18 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
               basicClearEntry(region, dr, tc, indexes, entry, bucketId);
             }
           } catch (Throwable th) {
-            if (logger != null) {
+            // in case of not destroyOffline, no need to log.
+            // However, after the index fix we shouldn't reach here.
+            totalExceptionCount++;
+            if (logger != null && (totalExceptionCount == 1)) {
               logger.error("Exception in removing the entry from index. "
                   + "Ignoring & continuing the loop ", th);
             }
           } finally {
+            if (logger != null && totalExceptionCount > 1) {
+              logger.error("Exception in removing the entry from index. "
+                  + "Total exception count : " + totalExceptionCount);
+            }
             if (isOffHeapEnabled) {
               ((AbstractRegionEntry) entry).release();
             }

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireIOException;
@@ -169,7 +170,7 @@ public class DistributionAdvisor  {
    * of the profile set.  This is volatile since it is used in a tight loop
    * while waiting for operations to complete
    */
-  private volatile long previousVersionOpCount;
+  private final AtomicLong previousVersionOpCount = new AtomicLong(0);
   /**
    * the number of operations in-progress for the current version of
    * the profile set
@@ -414,7 +415,7 @@ public class DistributionAdvisor  {
     try {
       synchronized(this) {
         this.membershipClosed = true;
-        this.previousVersionOpCount = 0;
+        this.previousVersionOpCount.set(0);
         this.currentVersionOpCount = 0;
       }
       getDistributionManager().removeMembershipListener(this.ml);
@@ -659,7 +660,8 @@ public class DistributionAdvisor  {
             InternalDistributedSystem.getLoggerI18n().info(LocalizedStrings.DEBUG, "StateFlush incremented membership version: " + membershipVersion);
           }
           newProfile.initialMembershipVersion = membershipVersion;
-          previousVersionOpCount += currentVersionOpCount;
+          previousVersionOpCount.addAndGet(currentVersionOpCount);
+          //previousVersionOpCount += currentVersionOpCount;
           currentVersionOpCount = 0;
         }
       }
@@ -770,13 +772,14 @@ public class DistributionAdvisor  {
       if (StateFlushOperation.DEBUG) {
         InternalDistributedSystem.getLoggerI18n().info(LocalizedStrings.DEBUG, "StateFlush forced new membership version: " + membershipVersion);
       }
-      previousVersionOpCount += currentVersionOpCount;
+      previousVersionOpCount.addAndGet(currentVersionOpCount);
+      //previousVersionOpCount += currentVersionOpCount;
       currentVersionOpCount = 0;
       if (VERBOSE || StateFlushOperation.DEBUG) {
         LogWriterI18n log = getLogWriter();
         log.info(LocalizedStrings.DEBUG, "advisor for " + getAdvisee()
             + " forced new membership version to " + membershipVersion 
-            + " previousOpCount=" + previousVersionOpCount);
+            + " previousOpCount=" + previousVersionOpCount.get());
       }
     }
   }
@@ -818,9 +821,9 @@ public class DistributionAdvisor  {
     }
     }
     else {
-      previousVersionOpCount--;
+      previousVersionOpCount.decrementAndGet();
       if (StateFlushOperation.DEBUG) {
-        InternalDistributedSystem.getLoggerI18n().info(LocalizedStrings.DEBUG, "StateFlush previous opcount incremented: " + previousVersionOpCount);
+        InternalDistributedSystem.getLoggerI18n().info(LocalizedStrings.DEBUG, "StateFlush previous opcount incremented: " + previousVersionOpCount.get());
     }
     }
     return membershipVersion;
@@ -848,14 +851,14 @@ public class DistributionAdvisor  {
     long warnTime = startTime + timeout;
     long quitTime = warnTime + timeout - 1000L;
     boolean warned = false;
-    while (previousVersionOpCount > 0) {
+    while (previousVersionOpCount.get() > 0) {
       // The advisor's close() method will set the pVOC to zero.  This loop
       // must not terminate due to cache closure until that happens.
       // See bug 34361 comment 79
       if (StateFlushOperation.DEBUG) {
         logger.info(
             LocalizedStrings.DEBUG,
-            "Waiting for current operations to finish("+previousVersionOpCount+")");
+            "Waiting for current operations to finish("+previousVersionOpCount.get()+")");
       }
       try {
         Thread.sleep(50);
