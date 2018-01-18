@@ -158,6 +158,21 @@ public final class DiskBlockSortManager {
       this.refCount++;
     }
 
+    /**
+     * Add a new entry to this sorter. If the add fails due to iteration
+     * having started (and sorter going into {@link #readOnlyMode}) then
+     * this will return false. Caller is supposed to fetch a new sorter
+     * if false is returned passing it the entries that were added to
+     * this sorter so far. So a typical usage of this will be like:
+     * <pre>
+     * List&lt;DiskEntryPage&gt; allEntries;
+     * ...
+     * allEntries.add(entry);
+     * if (!sorter.addEntry(entry)) {
+     *   sorter = sortManager.getSorter(region, fullScan, allEntries);
+     * }
+     * </pre>
+     */
     public boolean addEntry(DistributedRegion.DiskEntryPage entry) {
       synchronized (this.lock) {
         if (this.readOnlyMode) {
