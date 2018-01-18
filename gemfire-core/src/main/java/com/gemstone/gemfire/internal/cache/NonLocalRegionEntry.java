@@ -389,7 +389,14 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public Token getValueAsToken() {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
   }
   @Override
   public Object _getValueRetain(RegionEntryContext context, boolean decompress) {
@@ -700,7 +707,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public boolean isValueNull() {
-    return (null == getValueAsToken());
+    return this.value == null;
   }
 
   @Override

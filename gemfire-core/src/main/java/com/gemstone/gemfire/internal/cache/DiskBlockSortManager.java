@@ -44,6 +44,23 @@ import static com.gemstone.gemfire.internal.cache.GemFireCacheImpl.sysProps;
  * that iterators can grab hold of and add their blocks. The cleanup of sorters
  * will happen automatically by GC as and when all iterators lose the reference
  * to a sorter after having done all the reads.
+ * <p>
+ * The overall flow looks like this in the "good" case:
+ * <pre>
+ * Iterator1 => getSorter => addEntry => addEntry => ... => enumerate(wait)
+ * Iterator2 => getSorter => addEntry => addEntry => ... => enumerate(wait)
+ * Iterator3 => getSorter => addEntry => addEntry => ... => enumerate(wait)
+ * </pre>
+ * In case some iterators finish early but others later then the flow is:
+ * <pre>
+ * Iterator1 => getSorter => addEntry => ... => enumerate(wait)
+ * Iterator2 => getSorter => addEntry => ... => enumerate(wait)
+ * Iterator3 => getSorter => addEntry => addEntry(fail) =>
+ *              getSorter(previously added entries) => ... => enumerate(wait)
+ * </pre>
+ * This also means that iterators are expected to track the set of entries
+ * they are adding to the sorter to be able to switch to a new sorter in case
+ * addition fails due to the sorter going into a read-only mode.
  */
 public final class DiskBlockSortManager {
 
@@ -87,7 +104,7 @@ public final class DiskBlockSortManager {
       Collection<DistributedRegion.DiskEntryPage> entries) {
     synchronized (this.lock) {
       DiskBlockSorter sorter = this.blockSorter;
-      if (sorter == null || sorter.readOnly) {
+      if (sorter == null || sorter.readOnlyMode) {
         this.blockSorter = sorter = new DiskBlockSorter(region, fullScan, lock);
       } else {
         sorter.incrementRefCount();
@@ -116,13 +133,13 @@ public final class DiskBlockSortManager {
     /**
      * The number of readers that have opened this sorter. When the sorter
      * is to be read, then it can wait for some time before switching it to
-     * {@link #readOnly} mode if there are still readers that are adding blocks
+     * {@link #readOnlyMode} mode if there are still readers that are adding blocks
      * to this sorter. After the timeout, any remaining readers will be
      * switched to a new {@link DiskBlockSorter} if they add new blocks.
      */
     private int refCount;
 
-    boolean readOnly;
+    boolean readOnlyMode;
 
     DiskBlockSorter(LocalRegion region, boolean fullScan, Object lock) {
       this.sorter = new ArraySortedCollection(
@@ -143,7 +160,7 @@ public final class DiskBlockSortManager {
 
     public boolean addEntry(DistributedRegion.DiskEntryPage entry) {
       synchronized (this.lock) {
-        if (this.readOnly) {
+        if (this.readOnlyMode) {
           return false;
         } else {
           addNewEntry(entry);
@@ -187,7 +204,7 @@ public final class DiskBlockSortManager {
                 (System.currentTimeMillis() - start) < maxWaitMillis);
           }
         }
-        this.readOnly = true;
+        this.readOnlyMode = true;
 
         // capture sorter output once
         if (this.sorter != null) {
@@ -213,31 +230,31 @@ public final class DiskBlockSortManager {
       private final int requiredId;
       private final Iterator<Object> sortedIterator;
       private final boolean faultIn;
-      private boolean recoveryStopped;
+      private boolean faultInStopped;
 
       ReaderIdEnumerator(int readerId, boolean faultIn) {
         this.requiredId = readerId;
         this.sortedIterator = sorted.iterator();
         // no need to check for recovery condition if this is not a full scan
         this.faultIn = faultIn;
-        this.recoveryStopped = !fullScan && faultIn;
+        this.faultInStopped = !fullScan && faultIn;
       }
 
       @Override
       public DistributedRegion.DiskEntryPage nextElement() {
         StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
         while (this.sortedIterator.hasNext()) {
+          diskStoreStopper.checkCancelInProgress(null);
           DistributedRegion.DiskEntryPage entry =
               (DistributedRegion.DiskEntryPage)this.sortedIterator.next();
           boolean faultInEntry = faultIn;
           // if this is a full-scan and there is memory available then fault-in
           // the value in any case to do ordered disk reads as much as possible;
-          // also once recovery is stopped, it will never be checked again
-          if (!recoveryStopped) {
-            recoveryStopped = callbacks.shouldStopRecovery();
-            if (!recoveryStopped) {
+          // also once these faultins are stopped, it will never be checked again
+          if (!faultInStopped) {
+            faultInStopped = callbacks.shouldStopRecovery();
+            if (!faultInStopped) {
               if (fullScan) {
-                diskStoreStopper.checkCancelInProgress(null);
                 OffHeapHelper.release(entry.readEntryValue());
                 faultInEntry = false;
               } else if (!faultInEntry) {
@@ -247,7 +264,6 @@ public final class DiskBlockSortManager {
           }
           if (entry.readerId == this.requiredId) {
             if (faultInEntry) {
-              diskStoreStopper.checkCancelInProgress(null);
               OffHeapHelper.release(entry.readEntryValue());
             }
             return entry;
