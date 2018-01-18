@@ -7132,6 +7132,15 @@ public class PartitionedRegion extends LocalRegion implements
 
     PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
         final boolean forUpdate, final boolean includeValues) {
+      this(primaryOnly, tx, DEFAULT_ITERATOR_CREATOR,
+          DEFAULT_REMOTE_ITERATOR_CREATOR, forUpdate, includeValues);
+    }
+
+    public PRLocalScanIterator(final boolean primaryOnly, final TXState tx,
+        BiFunction<BucketRegion, Long, Iterator<RegionEntry>> createIterator,
+        BiFunction<Integer, PRLocalScanIterator,
+            Iterator<RegionEntry>> createRemoteIterator,
+        final boolean forUpdate, final boolean includeValues) {
       this.includeHDFS = includeHDFSResults();
       Iterator<Integer> iter = null;
       long numEntries = -1;
@@ -7172,8 +7181,8 @@ public class PartitionedRegion extends LocalRegion implements
       this.bucketIdsIter = iter;
       this.numEntries = numEntries;
       this.txState = tx;
-      this.createIterator = DEFAULT_ITERATOR_CREATOR;
-      this.createRemoteIterator = DEFAULT_REMOTE_ITERATOR_CREATOR;
+      this.createIterator = createIterator;
+      this.createRemoteIterator = createRemoteIterator;
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.diskIteratorInitialized = false;
