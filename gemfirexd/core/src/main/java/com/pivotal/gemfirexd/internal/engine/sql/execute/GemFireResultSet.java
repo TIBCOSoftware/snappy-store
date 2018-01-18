@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.CacheLoaderException;
 import com.gemstone.gemfire.cache.DataPolicy;
@@ -828,10 +830,11 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
   }
 
   @SuppressWarnings("unchecked")
-  private List<?> callGetAllExecutorMessage() throws StandardException {
-    final LogWriterI18n logger = this.getAllMsg.getRegion().getLogWriterI18n();
+  public static List<?> callGetAllExecutorMessage(
+      @Nonnull RegionMultiKeyExecutorMessage getAllMsg) throws StandardException {
+    final LogWriterI18n logger = getAllMsg.getRegion().getLogWriterI18n();
     try {
-      return (ArrayList<Object>)this.getAllMsg.executeFunction();
+      return (ArrayList<Object>)getAllMsg.executeFunction();
     } catch (GemFireXDRuntimeException ex) {
       if (logger.fineEnabled()) {
         logger.fine("Got GemFireXDRuntimeException exception", ex);
@@ -857,8 +860,8 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       throw Misc.processGemFireException(gfeex, gfeex,
           "execution of ResultSet.next()", true);
     } catch (StandardException ex) {
-      if (this.getAllMsg instanceof GetAllExecutorMessage
-          && ((GetAllExecutorMessage)this.getAllMsg).hasLoader()) {
+      if (getAllMsg instanceof GetAllExecutorMessage
+          && ((GetAllExecutorMessage)getAllMsg).hasLoader()) {
         if (!SQLState.LANG_DUPLICATE_KEY_CONSTRAINT.equals(ex.getSQLState())
             && !SQLState.LANG_FK_VIOLATION.equals(ex.getSQLState())) {
           throw ex;
@@ -870,8 +873,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     } catch (SQLException sqle) {
       // wrap in StandardException
       throw Misc.processFunctionException("GemFireResultSet.executeGetAll",
-          sqle, this.getAllMsg != null ? this.getAllMsg.getTarget() : null,
-          this.getAllMsg.getRegion());
+          sqle, getAllMsg.getTarget(), getAllMsg.getRegion());
     }
 
     return null;
@@ -985,7 +987,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
 
     this.getAllMsg = new GetAllExecutorMessage(giRegion, keys.toArray(), null,
         null, null, null, null, null, tx, this.lcc, this.forUpdate, queryHDFS);
-    this.getAllResults = callGetAllExecutorMessage();
+    this.getAllResults = callGetAllExecutorMessage(this.getAllMsg);
 
     if (doLog) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -1135,7 +1137,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
           this.projectionFixedColumns, this.projectionVarColumns,
           this.projectionLobColumns, this.projectionAllColumnsWithLobs, tx,
           this.lcc, this.forUpdate, this.queryHDFS);
-      this.getAllResults = callGetAllExecutorMessage();
+      this.getAllResults = callGetAllExecutorMessage(this.getAllMsg);
     } finally {
       if (this.stats != null) {
         this.stats.incNumGetsEndedByte();
@@ -1222,7 +1224,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
           this.projectionFormat, this.projectionFixedColumns,
           this.projectionVarColumns, this.projectionLobColumns,
           this.projectionAllColumnsWithLobs);
-      this.getAllResults = callGetAllExecutorMessage();
+      this.getAllResults = callGetAllExecutorMessage(this.getAllMsg);
     } finally {
       if (this.stats != null) {
         this.stats.incNumGetsEndedByte();

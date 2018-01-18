@@ -7079,6 +7079,12 @@ public class PartitionedRegion extends LocalRegion implements
       DEFAULT_ITERATOR_CREATOR = (br, numEntries) -> br.getBestLocalIterator(
       numEntries >= 0 ? adjustDiskIterCacheSize(
           DistributedRegion.MAX_PENDING_ENTRIES, numEntries) : 0, true);
+  private static final BiFunction<Integer, PRLocalScanIterator, Iterator<RegionEntry>>
+      DEFAULT_REMOTE_ITERATOR_CREATOR = (bucketId, iter) -> {
+    Set<RegionEntry> remoteEntries = iter.getBucketEntries(bucketId);
+    // if null, then iterator already set
+    return remoteEntries != null ? remoteEntries.iterator() : null;
+  };
 
   public final class PRLocalScanIterator implements PREntriesIterator<Object>,
       CloseableIterator<Object> {
@@ -7092,6 +7098,12 @@ public class PartitionedRegion extends LocalRegion implements
      * disk iteration. The default uses <code>DiskSavyIterator</code>.
      */
     private final BiFunction<BucketRegion, Long, Iterator<RegionEntry>> createIterator;
+
+    /**
+     * A creator for remote bucket entries.
+     */
+    private final BiFunction<Integer, PRLocalScanIterator,
+        Iterator<RegionEntry>> createRemoteIterator;
 
     private final boolean includeHDFS;
 
@@ -7161,6 +7173,7 @@ public class PartitionedRegion extends LocalRegion implements
       this.numEntries = numEntries;
       this.txState = tx;
       this.createIterator = DEFAULT_ITERATOR_CREATOR;
+      this.createRemoteIterator = DEFAULT_REMOTE_ITERATOR_CREATOR;
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.diskIteratorInitialized = false;
@@ -7171,12 +7184,14 @@ public class PartitionedRegion extends LocalRegion implements
     PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
         final boolean forUpdate, final boolean includeValues,
         final boolean fetchRemote) {
-      this(bucketIds, tx, DEFAULT_ITERATOR_CREATOR, forUpdate,
-          includeValues, fetchRemote);
+      this(bucketIds, tx, DEFAULT_ITERATOR_CREATOR,
+          DEFAULT_REMOTE_ITERATOR_CREATOR, forUpdate, includeValues, fetchRemote);
     }
 
     public PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
         BiFunction<BucketRegion, Long, Iterator<RegionEntry>> createIterator,
+        BiFunction<Integer, PRLocalScanIterator,
+            Iterator<RegionEntry>> createRemoteIterator,
         final boolean forUpdate, final boolean includeValues,
         final boolean fetchRemote) {
       this.includeHDFS = includeHDFSResults();
@@ -7211,6 +7226,7 @@ public class PartitionedRegion extends LocalRegion implements
       this.bucketIdsIter = iter;
       this.txState = tx;
       this.createIterator = createIterator;
+      this.createRemoteIterator = createRemoteIterator;
       this.forUpdate = forUpdate;
       this.includeValues = includeValues;
       this.numEntries = numEntries;
@@ -7383,11 +7399,7 @@ public class PartitionedRegion extends LocalRegion implements
     private void setRemoteBucketEntriesIterator(int bucketId) {
       this.currentBucketId = bucketId;
       this.currentBucketRegion = null;
-      Set<RegionEntry> entries = getBucketEntries(bucketId);
-      if (entries != null) {
-        this.bucketEntriesIter = entries.iterator();
-      }
-      // if null, then iterator already set
+      this.bucketEntriesIter = this.createRemoteIterator.apply(bucketId, this);
     }
 
     public Iterator<RegionEntry> getBucketEntriesIterator() {
@@ -7396,7 +7408,7 @@ public class PartitionedRegion extends LocalRegion implements
 
     private Set<RegionEntry> getBucketEntries(final int bucketId) {
       final int retryAttempts = calcRetry();
-      Set<RegionEntry> entries = null;
+      Set<RegionEntry> entries;
       int count = 0;
       InternalDistributedMember nod = getOrCreateNodeForBucketRead(bucketId);
       RetryTimeKeeper snoozer = null;
@@ -7465,7 +7477,7 @@ public class PartitionedRegion extends LocalRegion implements
       if (logger.fineEnabled()) {
         logger.fine("getBucketEntries: no entries found returning empty set");
       }
-      return Collections.EMPTY_SET;
+      return Collections.emptySet();
     }
 
     private void setCurrRegionAndBucketId(RegionEntry val) {
