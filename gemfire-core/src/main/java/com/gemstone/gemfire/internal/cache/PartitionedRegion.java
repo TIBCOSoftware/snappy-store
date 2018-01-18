@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.StatisticsFactory;
@@ -5119,6 +5120,17 @@ public class PartitionedRegion extends LocalRegion implements
    *         keys can be found.
    */
   public Set getBucketKeys(int bucketNum, boolean allowTombstones) {
+    return getBucketKeys(bucketNum, null, allowTombstones, getTXState());
+  }
+
+  /**
+   * Fetch the keys for the given bucket identifier, if the bucket is local or
+   * remote. This version of the method allows you to retrieve Tombstone entries
+   * as well as undestroyed entries. It also allows passing
+   * a <code>Predicate</code> to filter out only the required keys.
+   */
+   public Set getBucketKeys(int bucketNum, Predicate<?> predicate,
+      boolean allowTombstones, TXStateInterface tx) {
     Integer buck = Integer.valueOf(bucketNum);
     final int retryAttempts = calcRetry();
     Set ret = null;
@@ -5150,12 +5162,21 @@ public class PartitionedRegion extends LocalRegion implements
 
       try {
         if (nod.equals(getMyId())) {
-          ret = this.dataStore.getKeysLocally(buck, allowTombstones);
+          if (predicate == null) {
+            ret = this.dataStore.getKeysLocally(buck, allowTombstones);
+          } else {
+            ret = this.dataStore.handleRemoteGetKeys(buck,
+                InterestType.FILTER_CLASS, predicate, allowTombstones);
+          }
         }
         else {
-          final TXStateInterface tx = getTXState();
-          FetchKeysResponse r = FetchKeysMessage.send(nod, this, tx,
-              buck, allowTombstones);
+          FetchKeysResponse r;
+          if (predicate == null) {
+            r = FetchKeysMessage.send(nod, this, tx, buck, allowTombstones);
+          } else {
+            r = FetchKeysMessage.sendInterestQuery(nod, this, tx, buck,
+                InterestType.FILTER_CLASS, predicate, allowTombstones);
+          }
           ret = r.waitForKeys();
         }
         if (ret != null) {

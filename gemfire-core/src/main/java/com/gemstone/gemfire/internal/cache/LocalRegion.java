@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongBinaryOperator;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -5360,7 +5361,22 @@ public class LocalRegion extends AbstractRegion
       }
     }
     else if (interestType == InterestType.FILTER_CLASS) {
-      throw new UnsupportedOperationException(LocalizedStrings.AbstractRegion_INTERESTTYPEFILTER_CLASS_NOT_YET_SUPPORTED.toLocalizedString());
+      // object class must be a Predicate
+      if (interestArg instanceof Predicate<?>) {
+        OpenHashSet<Object> result = new OpenHashSet<>();
+        @SuppressWarnings("unchecked")
+        Predicate<Object> filter = (Predicate<Object>)interestArg;
+        for (Object key : keySet(allowTombstones)) {
+          if (filter.test(key)) {
+            result.add(key);
+          }
+        }
+        return result;
+      } else {
+        throw new UnsupportedOperationException(LocalizedStrings
+            .AbstractRegion_INTERESTTYPEFILTER_CLASS_NOT_YET_SUPPORTED
+            .toLocalizedString());
+      }
     }
     else if (interestType == InterestType.OQL_QUERY) {
       throw new UnsupportedOperationException(LocalizedStrings.AbstractRegion_INTERESTTYPEOQL_QUERY_NOT_YET_SUPPORTED.toLocalizedString());
