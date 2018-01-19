@@ -1295,8 +1295,6 @@ public final class FabricDatabase implements ModuleControl,
               }
             });
 
-
-        List<Callable> tasks = new ArrayList<Callable>();
         List<Future<Object>> results = new LinkedList<>();
         for (GemFireContainer container : uninitializedContainers) {
           if (logger.infoEnabled() &&

@@ -412,8 +412,10 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       //will remove that ID from the peers.
       if(initializingId != null) {
         if(traceOn()) {
-          trace(" We still have an initializing id: " + initializingId + "  Telling peers to remove the old id " +
-              oldId + " and transitioning this initializing id to old id. recipients " + profileUpdateRecipients);
+          trace(" We still have an initializing id: " + initializingId +
+              "  Telling peers to remove the old id " +
+              oldId + " and transitioning this initializing id to old id. recipients "
+              + profileUpdateRecipients);
         }
         //TODO prpersist - clean this up
         long viewVersion = advisor.startOperation();
@@ -734,14 +736,10 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
 
     for(Map.Entry<InternalDistributedMember, PersistentMemberState> entry: remoteStates.stateOnPeers.entrySet()) {
-
       InternalDistributedMember member = entry.getKey();
       PersistentMemberID remoteId = remoteStates.persistentIds.get(member);
-
       // check for same diskIds and check how old it is
       // may print the information and if allow then go ahead with the initialization
-
-
       final PersistentMemberID myId = getPersistentID();
       PersistentMemberState stateOnPeer = entry.getValue();
 
@@ -750,15 +748,15 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
             LocalizedStrings.PersistentMemberManager_Member_0_is_already_revoked
                 .toLocalizedString(myId));
       }
-      
-      
+
       if(myId != null && stateOnPeer == null) {
         // This can be made as a property to make sure doesn't happen always
         if (true) {
           // There is nothign on remote or remote has same diskId.
           if (remoteId == null || (remoteId.diskStoreId == myId.diskStoreId)) {
             // continue..
-            advisor.getLogWriter().info(LocalizedStrings.DEBUG, "Continuing as my DiskStoreId is same as remoteID" + member + " remoteID " + remoteId);
+            advisor.getLogWriter().info(LocalizedStrings.DEBUG,
+                "Continuing as my DiskStoreId is same as remoteID" + member + " remoteID " + remoteId);
           } else {
             String message = LocalizedStrings.CreatePersistentRegionProcessor_SPLIT_DISTRIBUTED_SYSTEM
                 .toLocalizedString(regionPath, member, remoteId, myId);

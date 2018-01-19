@@ -747,11 +747,7 @@ public class SystemAdmin {
     String uuidString = cmdLine.remove(0);
     UUID uuid = UUID.fromString(uuidString);
     InternalDistributedSystem ads = getAdminCnx(cmd, cmdLine);
-    Set<PersistentID> s1 = AdminDistributedSystemImpl
-        .getMissingPersistentMembers(ads.getDistributionManager());
-
     AdminDistributedSystemImpl.unblockPersistentMember(ads.getDistributionManager(), uuid);
-
 
     // check that no region using this disk-store should be blocked
     Set<PersistentID> s = AdminDistributedSystemImpl
@@ -1720,13 +1716,13 @@ public class SystemAdmin {
                 "are lost. Once a disk store is revoked its files can no longer be loaded so be " +
                 "careful. Use the list-missing-disk-stores command to get descriptions of the " +
                 "missing disk stores.\n" +
-                "You must pass the in the unique id for the disk store to revoke. The unique id is listed in the output " +
+                "You must pass the unique id for the disk store to revoke. The unique id is listed in the output " +
                 "of the list-missing-disk-stores command, for example a63d7d99-f8f8-4907-9eb7-cca965083dbb.\n" +
                 "This command will use the \"" + propsFile + "\" file, if available, to determine what distributed system to connect to.");
     helpMap.put("unblock-disk-store",
         "Connects to a running system and tells its members to continue instead of waiting for the latest " +
             " disk store to be available. \n" +
-            "You must pass the in the unique id for the disk store to unblock. The unique id is listed in the output " +
+            "You must pass the unique id for the disk store to unblock. The unique id is listed in the output " +
             "of the list-missing-disk-stores command, for example a63d7d99-f8f8-4907-9eb7-cca965083dbb.\n" +
             "This command will use the \"" + propsFile + "\" file, if available, to determine what distributed system to connect to.");
     helpMap.put("show-disk-store-metadata", 
